@@ -1,5 +1,119 @@
-<!-- BEGIN:nextjs-agent-rules -->
-# This is NOT the Next.js you know
+<!-- convex-ai-start -->
 
-This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` before writing any code. Heed deprecation notices.
-<!-- END:nextjs-agent-rules -->
+This project uses [Convex](https://convex.dev) as its backend.
+
+When working on Convex code, **always read
+`convex/_generated/ai/guidelines.md` first** for important guidelines on
+how to correctly use Convex APIs and patterns. The file contains rules that
+override what you may have learned about Convex from training data.
+
+Convex agent skills for common tasks can be installed by running
+`npx convex ai-files install`.
+
+<!-- convex-ai-end -->
+
+# Sessionboard OSS — Agent Context Hub
+
+Open-source replacement for [Sessionboard](https://www.sessionboard.com), built for swyx's
+"$10,000 Kill My SaaS" competition. **Deadline: Wed Aug 12, 2026, 10PM PT.** Judged by the
+AIE team plus an LLM browser-agent eval kit ("sbek") driving real user flows, with a
+tiebreaker on product judgment. End users are **non-technical event-production
+professionals** — simple, clear, organizer-friendly UI wins.
+
+This file is the centralized project memory. Keep it updated as decisions land.
+
+## Source-of-truth documents (read before building anything)
+
+| Doc | What it is |
+| --- | --- |
+| `docs/video/transcript.md` | Full timestamped transcript of swyx's walkthrough video |
+| `docs/video/actions.md` | Chronological screen/action/requirement analysis of the video |
+| `docs/video/ui_fidelity.md` | Extra pass: layout geometry, micro-style, usability cues |
+| `docs/ux/01…05-*.md` | Forensic UI specs of all 42 brief screenshots, per product area |
+| `docs/reference/brief.md` | The competition brief (Gene Kim's cleaned copy) |
+| `docs/reference/swyx-clarifications.md` | swyx's Discord answers — these AMEND the spec |
+| `$10,0000 Kill My SaaS - Competition Brief/` | Original brief HTML + all 42 screenshots |
+| `…Brief/kill-my-saas-submissions.md` | Research on all ~15 competing submissions |
+
+## Scope (per brief + amendments)
+
+**In:** CFP form builder with conditional logic + track routing · public submission flow ·
+speaker portal (submissions, profile, tasks) · templated comms/reminders + `.ics` invites
+(room details when known) · multi-round evaluation/scoring with evaluator assignment ·
+drag-drop agenda with conflict detection (List/Day/Week/Rooms/Conflicts views) · real-time
+outstanding-speaker-tasks dashboard.
+
+**Struck by swyx — do NOT build:** Accelevents integration, wiki/HTML-embed resource pages,
+embeddable gallery/itinerary widgets, AI-assisted review, payments, CRM, marketing.
+
+**Clarified:** `.ics` is enough (no Gmail/Outlook APIs). Single CFP form with track options
+is fine. Accepted speakers can still edit submissions (no locking needed). Co-speaker
+portal accounts are nice-to-have. Airtable read-only is fine (bonus, not core).
+
+## Canonical domain language (match Sessionboard exactly)
+
+- **Abstracts** = applications to speak (came through a form). **Sessions** = confirmed
+  program items (e.g. sponsors, added manually). One pipeline, two origins.
+- **Status pipeline:** `Draft → Pending → Accept Queue / Decline Queue → Accepted /
+  Declined`, plus `Withdrawn` (speaker-initiated). Queues are staged decisions — the email
+  goes out when the organizer commits the queue, not when the status is picked.
+- **Statuses use identical wording in organizer and speaker UIs.** Colors: green =
+  Accepted/Accept Queue, amber = Pending/Decline Queue, red = Declined.
+- **Track** = colored single-select (drives routing + agenda columns). **Tags** = gray
+  multi-select. **Format / Level / Language** = plain dropdowns.
+- **Evaluation** happens via **Evaluation Plans**: a plan bundles evaluators + assigned
+  submissions + rounds; evaluators see "My Evaluations"; progress is tracked per evaluator.
+- **Session Submitter ≠ Speaker(s)** — a submission has a submitter plus 1..n participants
+  with roles (Speaker / Chairperson / Moderator).
+
+## The product surfaces
+
+1. **Organizer app** — left sidebar: Dashboard · Program (Overview, View All, Abstracts,
+   Sessions) · Collect & Review (Forms, Evaluation, Agenda, Portals, Tasks) · Settings.
+2. **Public CFP** (`/submit/:slug`) — de-chromed, centered card, 5-step tracker:
+   Welcome → Account → Submission → Participants → Review; then "Continue to portal".
+3. **Speaker portal** (`/portal/:slug`) — tabs: Home, Submissions, Profile, Tasks.
+4. **Form builder** — 7-step wizard (Submission Setup → Welcome Screen → Abstract
+   Information → Participant Information → [Payments, skipped] → Form Settings →
+   Notifications) with per-field Required/Enabled toggles, locked system fields
+   (First/Last/Email), participant-role min/max, close date, submission limits.
+
+## Design system (from screenshots + video)
+
+Light mode only. Primary blue `#2F5CE0`, page bg `#F8FAFC`, cards white with `1px`
+border + subtle shadow, navy text `#1B1E27`, muted `#64748B`. Radius: 8px inputs/buttons,
+12px cards. Status badges: soft-tinted pills (amber `#FEF3C7`/`#92400E`, green
+`#D1FAE5`/`#065F46`). Left sidebar ~240px with grouped sections. Right slide-over drawers
+(~480px) for create/detail flows. Tables: checkbox column, sticky header, status pills,
+`...` row actions. Wizards: left step rail with checkmarks, dark active step, Back/Next
+footer. Labels above inputs, red asterisk for required, "(i)" tooltips on non-obvious
+fields. Proper component pickers everywhere (real date pickers, dropdowns) — no raw text
+inputs for structured data.
+
+**Our differentiators (from swyx's complaints): speed — Sessionboard is sluggish and he
+said so repeatedly — plus simplicity. Copy the structure, cut the clutter.**
+
+## Verify before claiming done
+
+```sh
+pnpm typecheck && pnpm lint && pnpm build
+```
+
+`pnpm preview` builds and serves the real Worker via Wrangler — a passing build does NOT
+prove the Worker boots; check both. Every flow must work via ordinary links/forms/buttons
+(the judge is a browser agent).
+
+## Stack facts
+
+TanStack Start v1 + Convex + shadcn/ui on **Base UI (not Radix — no react-hook-form
+`form` component; use `field.tsx`)** + Cloudflare Workers via `@cloudflare/vite-plugin`.
+Routes in `src/routes` (file-based; never edit `routeTree.gen.ts`). Convex wired through
+`@convex-dev/react-query` in `src/router.tsx`. Add UI components with
+`pnpm dlx shadcn@latest add <name>`.
+
+## Working agreements
+
+- Commit and push incrementally to GitHub (`master` branch). **Never add a Claude
+  co-author trailer.**
+- Keep this file updated when decisions, learnings, or scope changes land.
+- Deep specs live in `docs/`; this file holds only the always-needed facts.

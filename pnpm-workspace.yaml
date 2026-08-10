@@ -1,8 +1,8 @@
-packages:
-  - "apps/*"
-  - "packages/*"
+packages: []
 
 allowBuilds:
-  sharp: true
+  esbuild: true
+  lightningcss: true
   unrs-resolver: true
+  workerd: true
   msw: false
