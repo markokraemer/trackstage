@@ -29,7 +29,7 @@ while not GOAL:
     sleep(fallback_heartbeat=25min)   # events wake earlier
 ```
 
-## RUNNING NOW (8 agents)
+## RUNNING NOW
 
 | Agent | Delivers |
 | --- | --- |

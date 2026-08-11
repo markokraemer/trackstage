@@ -1312,3 +1312,12 @@ limit error — a test-strictness nit that was previously unreachable, not a reg
 **Verified:** `pnpm typecheck` 0 errors, eslint clean on every touched file, and a crawl of
 all 15 docs routes at 1440px and 390px — no broken images, no horizontal page overflow, no
 console errors.
+
+## Integration gate GREEN (2026-08-11 ~08:45)
+All builders landed. Quiet-window gate: typecheck 0 · lint 0 errors · 147 unit ·
+verify-backend 517/517 · flows 49/49 ×3 consecutive. Four fixes to get there:
+deliverPending chains full batches (real bug — bulk sends >25 stranded the tail),
+API-key sweeps in verify-backend + mcp spec (20-key cap), auto-place assertion
+scoped to its own placements, "Hi there" fallback for nameless recipients.
+Root-caused environmental noise: e2e agent's self-relaunching flows loop was
+mutating the deployment mid-verify — stopped for good.
