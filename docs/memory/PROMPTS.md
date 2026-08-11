@@ -5,7 +5,7 @@ These are the raw inputs that produced this repo — replayable against any othe
 agent session for adversarial comparison.
 
 ## claude-code session `118b76be-7bc9-4385-b170-00baeb55f0ff` — the founding session (2026-08-11, scaffold → full build)
-43 prompts.
+52 prompts.
 
 ---
 
@@ -427,3 +427,76 @@ all of these user messages. go analyze all my latest user messages and please pe
 
 also the api thing by the way is going to serve as a full reference. can you save a prompt.md in my downloads folder that i can give to another agent to do as a complete pass to ensure that all of the criteria that i laid out in this entire session are implemented perfectly?  / [REDACTED-SECRET]
  304 │ CLOUDFLARE_EMAIL=marko@kortix.ai if you can also all the images etc. i referenced if they are kind of available, please make sure that they're still available in the prompt somehow. oh shit you can't. there is my cloudflare global ip. you have to remove this for sure
+
+---
+
+### 44 <sub>2026-08-11T02:40:06.535Z</sub>
+
+<local-command-stdout>Login successful</local-command-stdout>
+
+---
+
+### 45 <sub>2026-08-11T02:42:55.504Z</sub>
+
+https://sessionboard.mintlify.app/api-reference/ and again mentioning the end-to-end api-based parity implementation in depth and with that also full ui and functionality ux/ui implementation to fully match whatever session board is doing in depth
+
+---
+
+### 46 <sub>2026-08-11T02:43:49.328Z</sub>
+
+Something went wrong!
+Hide Error
+ignoreDismissal is not defined / you also deterministically as already mentioned before fix all of these errors as well
+
+---
+
+### 47 <sub>2026-08-11T02:48:59.904Z</sub>
+
+@here more product walkthroughs for your clanker  / yourself to validate https://learn.sessionboard.com/videos/overview
+
+
+as well as how it is supposed to look from:
+participant POV https://learn.sessionboard.com/participants/overview
+organizer POV https://learn.sessionboard.com/get-started/overview
+ 
+ / yo very important: feeding this as well as context. use the usual gemini analysis path so you can go through it in depth and analyze the full video transcripts, the full product onboardings, product walkthroughs, et cetera, et cetera, et cetera. make sure that we do all of that. make sure that you get the full context ux/ui understanding. you get full understanding of course based on the api reference but you need to have an in-depth understanding and mapping of the actual software that we are cloning of course so make sure that that is the case
+
+---
+
+### 48 <sub>2026-08-11T02:50:55.064Z</sub>
+
+basically create a loop here where you will set yourself a goal. did you set the loop and the goal? make sure that you keep learning about the product via api reference by consuming the videos via the gemini 3.6 flash. get an in-depth understanding of the ux/ui. you can also use vision capabilities to just look frame by frame at how things are looking etc.
+
+regardless the full video walkthroughs for the ux/ui of the api reference, you can understand the full actual api and all the things you can do. we should have a full product parity clone etc. here that just works perfectly, is very ux/ui friendly, very simple to use, very intuitive to use. the whole flow should be very very clear
+
+---
+
+### 49 <sub>2026-08-11T02:51:48.473Z</sub>
+
+https://github.com/markokraemer/sessionboard/ domain -- https://trackstage.app/ you please also configure full ci/cd on the actual thing so that we deploy. also i don't know if you bought the domain. if you bought it, make sure that we deploy everything on cloudflare, that everything is nicely implemented and covered, deployed on trackstage.app, and that it's put in the description of the project etc. like everything
+
+---
+
+### 50 <sub>2026-08-11T02:51:48.473Z</sub>
+
+get it fully ready for the cloy in every aspect from a to the
+
+---
+
+### 51 <sub>2026-08-11T03:00:08.195Z</sub>
+
+the home page: please remove all the slop as well as from the navigation bar. make sure that the docs are clear because they're quite important. also add docs for the self-host thing as a final thing. it should be the smallest one. it should mostly just be product docs really like one just like how to self-host.
+
+revamp the whole landing page. it has a lot of yap yap yap. it should just be a bit more like enough bar and all the stuff should be a little less yappy. actually it also is pretty good. it already looks quite nice and stuff so it's not bad
+
+---
+
+### 52 <sub>2026-08-11T03:02:29.077Z</sub>
+
+okay make sure the goal skill, the goal is set and the loop is set. you're gonna work 100% deeply until everything here is 100% finished. keep reading my messages, regenerate all the messages i sent, keep rereading them / have a big clear task list of all the things that are left open. you can literally have a task.md that you're taking care of here and work on centralizing everything in the full loop even in pseudo code. layout the loops and then you can use a workflow tool to enforce these same types of loops.
+
+just test everything in a proper way, the full platform, everything, so that everything will work flawlessly and all the criteria are implemented. we have a full clone and a 100% competitor of sessionboard according to the requirements.
+
+keep running in a loop where you check against the videos, against the api reference, against all public-facing information and docs that we have about the product like the videos and the api reference. they should be sufficient so we can have full parity in every aspect. of course we have better ux/ui here etc. non-technical organizer-friendly ux/ui, the way we've been pursuing it, improved that even more.
+
+make sure everything is understandable. the flow is understandable and it's intuitive to understand. let's keep pushing on all the things i also already said in all previous messages. set yourself to go and set yourself to loop and don't stop until all of this is 100% done
