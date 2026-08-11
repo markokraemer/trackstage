@@ -9,6 +9,6 @@ import { appLink } from "@/lib/app-links"
 
 export const Route = createFileRoute("/app/settings/api-mcp")({
   component: () => (
-    <LegacyAppRedirect to={(ref) => appLink.settingsSection(ref, "api-mcp")} />
+    <LegacyAppRedirect to={(ref) => appLink.settingsSection(ref, "api-mcp")} section="settings" />
   ),
 })

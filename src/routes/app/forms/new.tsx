@@ -8,5 +8,5 @@ import { LegacyAppRedirect } from "@/components/shell/legacy-redirect"
 import { appLink } from "@/lib/app-links"
 
 export const Route = createFileRoute("/app/forms/new")({
-  component: () => <LegacyAppRedirect to={appLink.formNew} />,
+  component: () => <LegacyAppRedirect to={appLink.formNew} section="forms" />,
 })

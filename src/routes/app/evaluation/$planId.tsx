@@ -13,5 +13,5 @@ export const Route = createFileRoute("/app/evaluation/$planId")({
 
 function LegacyPlanRedirect() {
   const { planId } = Route.useParams()
-  return <LegacyAppRedirect to={(ref) => appLink.evaluationPlan(ref, planId)} />
+  return <LegacyAppRedirect to={(ref) => appLink.evaluationPlan(ref, planId)} section="evaluation" />
 }

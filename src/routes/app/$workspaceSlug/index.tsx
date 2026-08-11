@@ -4,6 +4,7 @@ import { RiBuilding2Line } from "@remixicon/react"
 
 import { buttonVariants } from "@/components/ui/button"
 import { EmptyState } from "@/components/shared/empty-state"
+import { FirstRunDashboard } from "@/components/shell/empty-event-state"
 import { Skeleton } from "@/components/ui/skeleton"
 import { appLink } from "@/lib/app-links"
 import { eventRefOf, useCurrentEvent } from "@/lib/current-event"
@@ -11,9 +12,10 @@ import { eventRefOf, useCurrentEvent } from "@/lib/current-event"
 /**
  * `/app/:workspaceSlug` — a workspace with no section named. Lands on the
  * workspace's event context: the event you last touched there (else its first
- * event) at its canonical dashboard, or the workspace hub when it owns no
- * events yet. An address naming a workspace you can't reach reads exactly
- * like one that doesn't exist.
+ * event) at its canonical dashboard. A workspace that owns no events yet
+ * renders the first-run dashboard IN PLACE — create-your-event, not a bounce
+ * to workspace settings (regression fixed 2026-08-11). An address naming a
+ * workspace you can't reach reads exactly like one that doesn't exist.
  */
 export const Route = createFileRoute("/app/$workspaceSlug/")({
   component: WorkspaceIndexRedirect,
@@ -22,14 +24,13 @@ export const Route = createFileRoute("/app/$workspaceSlug/")({
 function WorkspaceIndexRedirect() {
   const { workspaceSlug } = Route.useParams()
   const navigate = useNavigate()
-  const { event, workspace, isLoading } = useCurrentEvent()
+  const { event, workspace, isLoading, isWorkspaceEmpty } = useCurrentEvent()
 
   const known = workspace?.slug === workspaceSlug
-  const target = known
-    ? event && event.organizationId === workspace.id
+  const target =
+    known && event && event.organizationId === workspace.id
       ? appLink.dashboard(eventRefOf(event))
-      : appLink.workspaceHub(workspace.slug)
-    : undefined
+      : undefined
 
   useEffect(() => {
     if (target) void navigate({ href: target, replace: true })
@@ -49,6 +50,12 @@ function WorkspaceIndexRedirect() {
         className="mx-auto mt-16 max-w-lg"
       />
     )
+  }
+
+  // The workspace exists and owns no events — the app's first-run experience,
+  // rendered at this address rather than redirected away from it.
+  if (known && !target && isWorkspaceEmpty) {
+    return <FirstRunDashboard />
   }
 
   return (

@@ -9,6 +9,6 @@ import { appLink } from "@/lib/app-links"
 
 export const Route = createFileRoute("/app/settings/fields-and-options")({
   component: () => (
-    <LegacyAppRedirect to={(ref) => appLink.settingsSection(ref, "fields-and-options")} />
+    <LegacyAppRedirect to={(ref) => appLink.settingsSection(ref, "fields-and-options")} section="settings" />
   ),
 })

@@ -49,11 +49,13 @@ export function useWorkspaceSwitcher() {
       const hasEvents = selectWorkspace(workspaceId)
       if (!option) return
       const first = option.events.at(0)
+      // An empty workspace lands on its first-run home (create an event is
+      // the obvious next step there) — never on workspace settings.
       void navigate({
         href:
           hasEvents && first
             ? appLink.dashboard(eventRefOf(first))
-            : appLink.workspaceHub(option.slug),
+            : appLink.workspaceHome(option.slug),
       })
     },
     [workspaceOptions, selectWorkspace, navigate],

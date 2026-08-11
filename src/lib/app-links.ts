@@ -103,6 +103,8 @@ export const appLink = {
 
   // ——— Workspace-scoped ————————————————————————————————————————————————
   workspaceHub: (workspaceSlug: string) => `/app/${workspaceSlug}/workspace`,
+  /** The workspace's landing: its event context, or first-run when empty. */
+  workspaceHome: (workspaceSlug: string) => `/app/${workspaceSlug}`,
 
   // ——— Global (personal, or cross-workspace) ————————————————————————————
   app: "/app",

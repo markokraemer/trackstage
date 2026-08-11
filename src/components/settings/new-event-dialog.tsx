@@ -134,10 +134,17 @@ export function NewEventDialog({
       setSlug("")
       setSlugTouched(false)
       setErrors({})
+      // Land in the new event's DASHBOARD — the event's home, with the
+      // switcher already on it. (Was: event settings; the first thing a new
+      // organizer saw after creating their event was a settings page.)
+      // (The legacy/empty-state route underneath also redirects the moment
+      // the new event lands in the reactive list — LegacyAppRedirect defers
+      // to a pending navigation, so this one is the last word.)
       await navigate({
-        to: (workspaceSlug
-          ? appLink.settings({ workspaceSlug, eventSlug: created.slug })
-          : legacyAppLink.settings) as never,
+        href: workspaceSlug
+          ? appLink.dashboard({ workspaceSlug, eventSlug: created.slug })
+          : legacyAppLink.dashboard,
+        replace: false,
       })
     } catch (caught) {
       const message = errorMessage(caught, "Couldn't create that event.")

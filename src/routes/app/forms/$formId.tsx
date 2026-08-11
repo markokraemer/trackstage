@@ -13,5 +13,5 @@ export const Route = createFileRoute("/app/forms/$formId")({
 
 function LegacyFormRedirect() {
   const { formId } = Route.useParams()
-  return <LegacyAppRedirect to={(ref) => appLink.form(ref, formId)} />
+  return <LegacyAppRedirect to={(ref) => appLink.form(ref, formId)} section="forms" />
 }
