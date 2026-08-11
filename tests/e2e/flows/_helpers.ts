@@ -338,6 +338,17 @@ export async function gotoApp(page: Page, path: string) {
   await page.waitForURL(pattern, { timeout: 15_000 }).catch(() => {})
 
   await selectEvent(page)
+
+  // A bare legacy path in a FRESH browser context has no last-touched-event
+  // pointer, so its redirect lands on the workspace hub — and selectEvent then
+  // switches "in place" without ever reaching the section we asked for.
+  // selectEvent just wrote the pointer, so simply asking for the same path
+  // again resolves it to the canonical section URL.
+  if (rest && !pattern.test(new URL(page.url()).pathname)) {
+    await gotoStable(page, path)
+    await waitForShell(page)
+    await page.waitForURL(pattern, { timeout: 15_000 }).catch(() => {})
+  }
 }
 
 /**
