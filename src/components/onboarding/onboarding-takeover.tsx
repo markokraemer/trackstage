@@ -533,6 +533,17 @@ export function OnboardingTakeover({
                         <RiArrowRightLine size={16} aria-hidden />
                       </Button>
                     </div>
+                    {/* The one way out of a mistyped address (Marko, round 4):
+                        a gate with no skip still needs a door back to /login. */}
+                    <p className="text-center text-sm text-muted-foreground">
+                      Wrong account?{" "}
+                      <Link
+                        to="/logout"
+                        className="font-medium text-foreground underline-offset-4 hover:underline"
+                      >
+                        Log out
+                      </Link>
+                    </p>
                   </>
                 ) : null}
 
