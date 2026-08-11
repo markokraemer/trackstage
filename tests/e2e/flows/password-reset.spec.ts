@@ -115,10 +115,10 @@ test.describe("password reset", () => {
     // No password form to fill in — there is nothing this page could do with it.
     await expect(page.getByLabel("New password")).toHaveCount(0)
 
-    // The CTA is a real <a href> wearing Base UI's role="button" (the house
-    // pattern for button-styled navigation), so it is addressed by that role.
+    // The CTA is a real link (button-styled navigation is a plain <a> +
+    // buttonVariants since the rule-19 pass — no role="button" on links).
     await expect(async () => {
-      await page.getByRole("button", { name: /email me a new link/i }).click()
+      await page.getByRole("link", { name: /email me a new link/i }).click()
       await expect(
         page.getByRole("heading", { name: /reset your password/i }),
       ).toBeVisible({ timeout: 2_000 })
