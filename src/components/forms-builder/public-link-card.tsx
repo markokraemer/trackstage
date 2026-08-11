@@ -134,7 +134,7 @@ export function PublicLinkCard({
             </Button>
             <Button
               type="button"
-              variant="ghost"
+              variant="outline"
               onClick={() => {
                 setEditing(false)
                 setValue(slug)
@@ -167,7 +167,7 @@ export function PublicLinkCard({
             </a>
             <Button
               type="button"
-              variant="ghost"
+              variant="outline"
               onClick={() => setEditing(true)}
             >
               <RiPencilLine aria-hidden />

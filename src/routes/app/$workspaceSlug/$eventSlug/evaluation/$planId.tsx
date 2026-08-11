@@ -90,7 +90,7 @@ function PlanDetailPage() {
     <Link
       to={evaluationHref}
       search={{ tab: "plans" }}
-      className={buttonVariants({ variant: "outline", size: "sm" })}
+      className={buttonVariants({ variant: "outline" })}
     >
       <RiArrowLeftLine aria-hidden />
       All plans
@@ -212,8 +212,13 @@ function PlanDetailPage() {
           <>
             {backButton}
             <DeletePlanButton planId={plan._id} name={plan.name} />
+            {/*
+              Always outline: closing/reopening is a state-change, not the
+              page's primary action (rule in src/components/ui/button.tsx) —
+              and flipping variants with state reads as two different buttons.
+            */}
             <Button
-              variant={closed ? "outline" : "default"}
+              variant="outline"
               disabled={closePlan.isPending}
               onClick={toggleClosed}
             >

@@ -144,7 +144,7 @@ function DashboardPage() {
               />
               <Link
                 to={appLink.speakers(eventRef)}
-                className={buttonVariants({ size: "sm" })}
+                className={buttonVariants({ variant: "outline", size: "sm" })}
               >
                 <RiUserVoiceLine aria-hidden />
                 View speakers
