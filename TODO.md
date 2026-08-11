@@ -64,6 +64,13 @@ Source of truth for everything Marko asked + build status. Update continuously.
 - ⏳ Post-workflow: per-flow deep e2e specs (form builder → publish → public submit →
   queues → agenda drag → portal → evaluation), then keep green through reconciliation
 
+## Integration-gate flags (from hierarchy agent handoff)
+- ⏳ ~10 remaining `render={<a>/<Link>}` without nativeButton={false} (evaluation, agenda,
+  submissions, marketing, public) — crawler will catch; sweep at reconciliation
+- ⏳ /app intermittent SSR error "null useRef" from copilot/ai-elements dependency — investigate
+- ⏳ Move /app/settings/api-mcp → /app/account/api-mcp (account-level by nature)
+- ⏳ Dev deployment has stray "MCP Test Event" from live-fire suite — reseed before demos
+
 ## Quality / hill-climb
 - ⏳ First full pass review vs screenshots + video (UX 1:1 check), then vs SPEC acceptance
   criteria

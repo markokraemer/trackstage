@@ -1713,6 +1713,71 @@ function schema(
   return { type: "object", properties, required, additionalProperties: false }
 }
 
+/**
+ * Validates a tool call's arguments against the tool's own `inputSchema`
+ * before anything reaches the database.
+ *
+ * Without this the first line of defence is Convex's argument validator, whose
+ * `ArgumentValidationError` dumps the internal validator shape (and the
+ * caller's user id) into the model's context — unreadable for an LLM and a
+ * needless leak. A model that gets "Missing required argument `event`" back
+ * instead simply fixes the call. Deliberately shallow: the surface is flat
+ * strings/numbers/booleans plus two small arrays, so a full JSON Schema
+ * implementation would be dead weight.
+ */
+function validateArgs(
+  tool: ToolDef,
+  args: Record<string, unknown>,
+): string | null {
+  const properties = tool.inputSchema.properties as Record<
+    string,
+    Record<string, any> | undefined
+  >
+  for (const key of tool.inputSchema.required ?? []) {
+    if (args[key] === undefined || args[key] === null) {
+      return `Missing required argument \`${key}\` for ${tool.name}.`
+    }
+  }
+  for (const [key, value] of Object.entries(args)) {
+    if (value === undefined) continue
+    const spec = properties[key]
+    if (!spec) {
+      return `Unknown argument \`${key}\` for ${tool.name}. Accepted: ${Object.keys(properties).join(", ") || "(none)"}.`
+    }
+    const expected = spec.type as string | undefined
+    const actual = Array.isArray(value) ? "array" : typeof value
+    if (
+      expected &&
+      expected !== actual &&
+      // JSON has one number type; "5" for a number is still a mistake worth
+      // naming, but an integer sent for a string field is not.
+      !(expected === "number" && actual === "number")
+    ) {
+      return `Argument \`${key}\` of ${tool.name} must be a ${expected}, got ${actual}.`
+    }
+    const allowed = spec.enum as Array<string> | undefined
+    if (allowed && !allowed.includes(value as string)) {
+      return `Invalid value ${JSON.stringify(value)} for \`${key}\`. One of: ${allowed.join(", ")}.`
+    }
+  }
+  return null
+}
+
+/**
+ * Convex wraps a thrown Error as "Uncaught Error: <message>" plus a stack of
+ * bundled-file frames. The message is the part a model can act on; the frames
+ * are noise that costs tokens and points at our source layout.
+ */
+function toolErrorMessage(error: unknown): string {
+  const raw = error instanceof Error ? error.message : String(error)
+  return (
+    raw
+      .split(/\n\s+at\s/)[0]
+      .replace(/^(Uncaught\s+)?(Convex)?Error:\s*/i, "")
+      .trim() || "Something went wrong."
+  )
+}
+
 export const TOOLS: Array<ToolDef> = [
   // ——— Workspaces & events ———————————————————————————————————————————————
   {
@@ -2232,7 +2297,8 @@ export const TOOLS: Array<ToolDef> = [
         event: EVENT_ARG,
         key: {
           type: "string",
-          description: "Template key, e.g. accepted | declined | waitlisted | reminder | confirmation.",
+          enum: TEMPLATE_KEYS,
+          description: "Which template to rewrite.",
         },
         subject: { type: "string" },
         body: { type: "string", description: "Plain text or HTML." },
@@ -2284,7 +2350,11 @@ export const TOOLS: Array<ToolDef> = [
     inputSchema: schema(
       {
         event: EVENT_ARG,
-        key: { type: "string", description: "Template key, e.g. \"accepted\"." },
+        key: {
+          type: "string",
+          enum: TEMPLATE_KEYS,
+          description: "Which template to proof.",
+        },
         to: { type: "string", description: "Override recipient. Defaults to your own address." },
       },
       ["event", "key"],
@@ -2491,6 +2561,8 @@ async function handleRpc(
       if (typeof args !== "object" || args === null || Array.isArray(args)) {
         return rpcError(id, INVALID_PARAMS, "`arguments` must be an object.")
       }
+      const invalid = validateArgs(tool, args as Record<string, unknown>)
+      if (invalid) return rpcError(id, INVALID_PARAMS, invalid)
       try {
         const result = await tool.run(ctx, userId, args as Record<string, any>)
         return rpcResult(id, {
@@ -2501,8 +2573,7 @@ async function handleRpc(
       } catch (error) {
         // Tool failures are RESULTS with isError, not protocol errors — that's
         // what lets the model read the message and correct itself.
-        const detail =
-          error instanceof Error ? error.message : "Something went wrong."
+        const detail = toolErrorMessage(error)
         return rpcResult(id, {
           content: [{ type: "text", text: detail }],
           isError: true,
