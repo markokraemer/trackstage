@@ -11,6 +11,7 @@
 
 <p align="center">
   <a href="https://trackstage.app">trackstage.app</a> ·
+  <a href="https://trackstage.app/launch.mp4">90-second film</a> ·
   <a href="#try-it">Try it</a> ·
   <a href="#self-host">Self-host</a> ·
   <a href="#api">API</a> ·
@@ -32,11 +33,12 @@ and everything updates live.
 
 | I want to… | Go to |
 | --- | --- |
-| Run an event (organizer demo) | `/login` — demo credentials shown on the page |
-| Submit a talk (public CFP) | `/submit/ai-engineer/ai-summit-2026/cfp` |
-| See what speakers see | `/portal` — open a speaker's emailed link (copy one from the organizer's Speakers table); no password |
-| Browse a published program | `/e/ai-engineer/ai-summit-2026` |
-| Read the docs | `/docs` |
+| Run an event (organizer demo) | [trackstage.app/login](https://trackstage.app/login) — `organizer@demo.sessionboard.dev` / `demo2026` (also shown on the page) |
+| Submit a talk (public CFP) | [trackstage.app/submit/ai-engineer/ai-summit-2026/cfp](https://trackstage.app/submit/ai-engineer/ai-summit-2026/cfp) |
+| See what speakers see | [trackstage.app/portal](https://trackstage.app/portal) — open a speaker's emailed link (copy one from the organizer's Speakers table); no password |
+| Browse a published program | [trackstage.app/e/ai-engineer/ai-summit-2026](https://trackstage.app/e/ai-engineer/ai-summit-2026) |
+| Read the docs | [trackstage.app/docs](https://trackstage.app/docs) |
+| Watch the launch film | [trackstage.app/launch.mp4](https://trackstage.app/launch.mp4) (90 s) |
 
 ## What's inside
 
