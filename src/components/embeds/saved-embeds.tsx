@@ -6,21 +6,23 @@
  * whole thing, the newsletter wants speakers) and need to come back to them.
  * This is that shelf: name a configuration, reopen it, hand the same code to a
  * colleague, delete it when the event is over.
+ *
+ * It lives at the top of the builder's left rail (2026-08-12), so it is a
+ * compact section rather than a card of its own — the right-hand side of the
+ * screen belongs to the preview.
  */
 
 import * as React from "react"
 import { useConvexMutation } from "@convex-dev/react-query"
 import { api } from "@convex/_generated/api"
 import type { Doc, Id } from "@convex/_generated/dataModel"
-import { RiBookmarkLine, RiDeleteBinLine } from "@remixicon/react"
+import { RiDeleteBinLine } from "@remixicon/react"
 import { toast } from "sonner"
 
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
-import { Card } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Switch } from "@/components/ui/switch"
-import { StatusPill } from "@/components/shared/status-pill"
 import { formatById, widgetById } from "@/components/embeds/embed-config"
 import { errorMessage } from "@/lib/errors"
 
@@ -72,8 +74,7 @@ export function SavedEmbeds({
       toast.success(`Deleted “${embed.name}”`)
     } catch (error) {
       toast.error("Couldn't delete that embed", {
-        description:
-          errorMessage(error, "Please try again."),
+        description: errorMessage(error, "Please try again."),
       })
     } finally {
       setRemoving(null)
@@ -82,43 +83,23 @@ export function SavedEmbeds({
 
   if (loading) {
     return (
-      <Card className="gap-3 p-5">
-        <Skeleton className="h-5 w-40" />
-        <Skeleton className="h-14 w-full" />
-      </Card>
+      <section className="flex flex-col gap-2 px-4 py-4">
+        <Skeleton className="h-3.5 w-28" />
+        <Skeleton className="h-11 w-full" />
+      </section>
     )
   }
 
-  if (!embeds || embeds.length === 0) {
-    return (
-      <Card className="gap-1.5 border-dashed p-5">
-        <p className="flex items-center gap-2 font-heading text-base font-semibold text-foreground">
-          <RiBookmarkLine size={16} aria-hidden />
-          Saved embeds
-        </p>
-        <p className="text-sm text-muted-foreground">
-          Configure a widget below and press{" "}
-          <span className="font-medium text-foreground">Save embed</span> to
-          keep it here — handy when different pages of your site need different
-          versions.
-        </p>
-      </Card>
-    )
-  }
+  // Nothing saved yet: the rail's "Save this embed" section is where the idea
+  // is introduced, so an empty shelf would only take space from the controls.
+  if (!embeds || embeds.length === 0) return null
 
   return (
-    <Card className="gap-3 p-5">
-      <div>
-        <p className="flex items-center gap-2 font-heading text-base font-semibold text-foreground">
-          <RiBookmarkLine size={16} aria-hidden />
-          Saved embeds
-        </p>
-        <p className="text-sm text-muted-foreground">
-          Click one to load its configuration and copy the code again. The
-          switch turns an embed off everywhere it's pasted.
-        </p>
-      </div>
-      <ul className="flex flex-col gap-2">
+    <section className="flex flex-col gap-2 px-4 py-4">
+      <h2 className="font-heading text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+        Saved embeds
+      </h2>
+      <ul className="flex flex-col gap-1.5">
         {embeds.map((embed) => {
           const widget = widgetById(embed.widget)
           const format = formatById(embed.options.format)
@@ -128,39 +109,30 @@ export function SavedEmbeds({
             <li key={embed._id}>
               <div
                 className={cn(
-                  "flex flex-wrap items-center gap-3 rounded-lg border border-border px-3 py-2.5 transition-colors",
-                  active ? "bg-accent/60 ring-2 ring-primary" : "bg-card",
+                  "flex items-center gap-1.5 rounded-lg border px-2 py-1.5 transition-colors",
+                  active
+                    ? "border-primary bg-primary/5"
+                    : "border-border bg-card",
                 )}
               >
                 <button
                   type="button"
                   onClick={() => onLoad(embed)}
                   aria-pressed={active}
-                  className="flex min-w-0 flex-1 items-center gap-3 rounded-md text-left outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+                  title={`${embed.name} — ${widget.name} · ${format.name}`}
+                  className="flex min-w-0 flex-1 flex-col rounded-md text-left outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
                 >
                   <span
                     className={cn(
-                      "flex size-8 shrink-0 items-center justify-center rounded-lg bg-accent text-accent-foreground",
-                      !live && "opacity-50",
+                      "truncate text-sm font-medium text-foreground",
+                      !live && "text-muted-foreground",
                     )}
                   >
-                    <widget.icon size={16} aria-hidden />
+                    {embed.name}
+                    {live ? "" : " · off"}
                   </span>
-                  <span className="min-w-0">
-                    <span className="flex min-w-0 items-center gap-2">
-                      <span className="truncate font-medium text-foreground">
-                        {embed.name}
-                      </span>
-                      {live ? null : (
-                        <StatusPill status="inactive" label="Off" size="sm" />
-                      )}
-                    </span>
-                    <span className="block truncate text-xs text-muted-foreground">
-                      {widget.name} · {format.name}
-                      {embed.options.track
-                        ? ` · ${embed.options.track.split(",").join(", ")}`
-                        : ""}
-                    </span>
+                  <span className="truncate text-xs text-muted-foreground">
+                    {widget.name} · {format.name}
                   </span>
                 </button>
                 <Switch
@@ -184,6 +156,6 @@ export function SavedEmbeds({
           )
         })}
       </ul>
-    </Card>
+    </section>
   )
 }
