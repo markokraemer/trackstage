@@ -98,7 +98,12 @@ export function QueueBanner({
           className
         )}
       >
-        <div className="flex min-w-0 flex-1 items-start gap-2.5">
+        {/* `basis-64`: without a real base size, flex-wrap happily kept the
+            buttons on the text's line and crushed the copy to one word per
+            line at 390px ("Send declines" is just narrow enough to fit;
+            "Send acceptances" wasn't — so only ONE of the two banners broke).
+            With a 16rem basis the buttons wrap below instead. */}
+        <div className="flex min-w-0 flex-1 basis-64 items-start gap-2.5">
           <RiStackLine
             size={18}
             aria-hidden
