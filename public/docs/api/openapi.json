@@ -134,9 +134,9 @@
                   "data": {
                     "conflicts": [],
                     "event": {
-                      "_id": "j975xr4mvpac72vvhfmnst0kf98c8hat",
-                      "agenda_published_at": "2026-08-06T03:20:13.406Z",
-                      "created_at": "2026-08-11T03:20:13.406Z",
+                      "_id": "j971emkyf6md23jphggczhghvd8c8qjq",
+                      "agenda_published_at": "2026-08-06T03:27:18.602Z",
+                      "created_at": "2026-08-11T03:27:18.602Z",
                       "description": "Two days for the people building AI systems that have to work on Monday morning. Practitioner talks on evaluation, agents, retrieval, inference infrastructure and the product decisions in between — no keynote fluff, no vendor pitches.",
                       "endsAt": 1791939600000,
                       "ends_at": "2026-10-14T01:00:00.000Z",
@@ -145,7 +145,7 @@
                         "translated_fields": false,
                         "webhooks": true
                       },
-                      "id": "j975xr4mvpac72vvhfmnst0kf98c8hat",
+                      "id": "j971emkyf6md23jphggczhghvd8c8qjq",
                       "logo_url": null,
                       "name": "AI Engineer Summit 2026",
                       "slug": "ai-summit-2026",
@@ -158,56 +158,56 @@
                       "website_url": "https://example.com/ai-summit-2026"
                     },
                     "published": true,
-                    "published_at": "2026-08-06T03:20:13.406Z",
+                    "published_at": "2026-08-06T03:27:18.602Z",
                     "rooms": [
                       {
                         "capacity": 300,
-                        "id": "js7cpcennn7v4826y5zqnamhgs8c921h",
+                        "id": "js7928f758c8d8qn6xqj705py58c9r3j",
                         "name": "Main Stage",
                         "order": 0
                       },
                       {
                         "capacity": 80,
-                        "id": "js78qxf00131mytkmvew51h2r18c8cxn",
+                        "id": "js703wmx07yh80wngvzx2xnt9h8c811v",
                         "name": "Workshop Room",
                         "order": 1
                       }
                     ],
                     "scheduled": [
                       {
-                        "duration_minutes": 60,
-                        "ends_at": "2026-10-12T18:00:00.000Z",
-                        "id": "k573nxkn11trw2m0hmhcr91cgh8c915m",
-                        "room_id": "js7cpcennn7v4826y5zqnamhgs8c921h",
-                        "starts_at": "2026-10-12T17:00:00.000Z",
-                        "title": "Building reliable agents: a practitioner's playbook",
-                        "track_id": "kd74r6vy5f46c848dgfgs7g0v98c9wpf"
+                        "duration_minutes": 45,
+                        "ends_at": "2026-10-12T09:45:00.000Z",
+                        "id": "k57cfvgs8hrs97xbvv82vcbd4d8c8y59",
+                        "room_id": "js7928f758c8d8qn6xqj705py58c9r3j",
+                        "starts_at": "2026-10-12T09:00:00.000Z",
+                        "title": "Structured output without the sadness",
+                        "track_id": "kd7805tv3jwftr3zw2w5bq0sms8c89wn"
                       },
                       {
                         "duration_minutes": 45,
-                        "ends_at": "2026-10-12T17:45:00.000Z",
-                        "id": "k57bv1wtxa1d4fv3d4jcka4s2n8c8saf",
-                        "room_id": "js78qxf00131mytkmvew51h2r18c8cxn",
-                        "starts_at": "2026-10-12T17:00:00.000Z",
-                        "title": "Evaluation harnesses for production LLMs",
-                        "track_id": "kd74r6vy5f46c848dgfgs7g0v98c9wpf"
+                        "ends_at": "2026-10-12T09:45:00.000Z",
+                        "id": "k57818z4rbjk54p03n1kna0rw58c8t7d",
+                        "room_id": "js703wmx07yh80wngvzx2xnt9h8c811v",
+                        "starts_at": "2026-10-12T09:00:00.000Z",
+                        "title": "Cost modelling for inference-heavy products",
+                        "track_id": "kd71aqbkdmt4nevr61p5wdg64d8c8pb9"
                       }
                     ],
                     "totals": {
                       "conflicts": 0,
-                      "scheduled": 6,
+                      "scheduled": 10,
                       "unscheduled": 0
                     },
                     "tracks": [
                       {
                         "color": "#2F5CE0",
-                        "id": "kd74r6vy5f46c848dgfgs7g0v98c9wpf",
+                        "id": "kd7805tv3jwftr3zw2w5bq0sms8c89wn",
                         "name": "AI Engineering",
                         "order": 0
                       },
                       {
                         "color": "#1E9E6B",
-                        "id": "kd7c95fhe6erz94891pndzh2cn8c987v",
+                        "id": "kd71aqbkdmt4nevr61p5wdg64d8c8pb9",
                         "name": "Product",
                         "order": 1
                       }
@@ -375,11 +375,11 @@
                   "data": [
                     {
                       "contains_pii": false,
-                      "createdAt": "2026-08-11T03:20:13.406Z",
+                      "createdAt": "2026-08-11T03:27:18.602Z",
                       "enabled": true,
                       "field_source": "standard",
                       "field_type": "short_text",
-                      "form_id": "jd779pds55ntt54qgjv3hnqybn8c92j3",
+                      "form_id": "jd78d2k3nfftskesewr6qesn7d8c90d8",
                       "form_slug": "cfp",
                       "help": "Aim for something an attendee could choose from a schedule without extra context.",
                       "id": "title",
@@ -388,7 +388,7 @@
                       "public_name": "Session title",
                       "required": true,
                       "scope": "session",
-                      "updatedAt": "2026-08-11T03:20:13.406Z"
+                      "updatedAt": "2026-08-11T03:27:18.602Z"
                     }
                   ],
                   "pagination": {
@@ -404,11 +404,11 @@
                   "results": [
                     {
                       "contains_pii": false,
-                      "createdAt": "2026-08-11T03:20:13.406Z",
+                      "createdAt": "2026-08-11T03:27:18.602Z",
                       "enabled": true,
                       "field_source": "standard",
                       "field_type": "short_text",
-                      "form_id": "jd779pds55ntt54qgjv3hnqybn8c92j3",
+                      "form_id": "jd78d2k3nfftskesewr6qesn7d8c90d8",
                       "form_slug": "cfp",
                       "help": "Aim for something an attendee could choose from a schedule without extra context.",
                       "id": "title",
@@ -417,7 +417,7 @@
                       "public_name": "Session title",
                       "required": true,
                       "scope": "session",
-                      "updatedAt": "2026-08-11T03:20:13.406Z"
+                      "updatedAt": "2026-08-11T03:27:18.602Z"
                     }
                   ],
                   "unknownResource": false
@@ -1406,9 +1406,9 @@
                     "pageSize": 25,
                     "page_size": 25,
                     "totalPages": 1,
-                    "totalResults": 3,
+                    "totalResults": 4,
                     "total_pages": 1,
-                    "total_results": 3
+                    "total_results": 4
                   },
                   "results": [
                     {
@@ -1727,11 +1727,11 @@
                   "data": [
                     {
                       "capacity": 300,
-                      "created_at": "2026-08-11T03:20:13.406Z",
-                      "id": "js7cpcennn7v4826y5zqnamhgs8c921h",
+                      "created_at": "2026-08-11T03:27:18.602Z",
+                      "id": "js7928f758c8d8qn6xqj705py58c9r3j",
                       "name": "Main Stage",
                       "order": 0,
-                      "updated_at": "2026-08-11T03:20:13.406Z"
+                      "updated_at": "2026-08-11T03:27:18.602Z"
                     }
                   ],
                   "pagination": {
@@ -1747,11 +1747,11 @@
                   "results": [
                     {
                       "capacity": 300,
-                      "created_at": "2026-08-11T03:20:13.406Z",
-                      "id": "js7cpcennn7v4826y5zqnamhgs8c921h",
+                      "created_at": "2026-08-11T03:27:18.602Z",
+                      "id": "js7928f758c8d8qn6xqj705py58c9r3j",
                       "name": "Main Stage",
                       "order": 0,
-                      "updated_at": "2026-08-11T03:20:13.406Z"
+                      "updated_at": "2026-08-11T03:27:18.602Z"
                     }
                   ],
                   "unknownResource": false
@@ -2038,7 +2038,7 @@
                 "schema": {
                   "type": "string"
                 },
-                "example": "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//Trackstage//Event Schedule//EN\r\nCALSCALE:GREGORIAN\r\nMETHOD:PUBLISH\r\nX-WR-CALNAME:AI Engineer Summit 2026\r\nBEGIN:VEVENT\r\nUID:k57amp377bn4c089m5kp22r0zh8c8j2f@ai-summit-2026.trackstage\r\nDTSTAMP:20260811T032130Z\r\nDTSTART:20261012T160000Z\r\nDTEND:20261012T164500Z\r\nSUMMARY:Opening keynote: the year AI engineering grew up\r\n…"
+                "example": "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//Trackstage//Event Schedule//EN\r\nCALSCALE:GREGORIAN\r\nMETHOD:PUBLISH\r\nX-WR-CALNAME:AI Engineer Summit 2026\r\nBEGIN:VEVENT\r\nUID:k57818z4rbjk54p03n1kna0rw58c8t7d@ai-summit-2026.trackstage\r\nDTSTAMP:20260811T032838Z\r\nDTSTART:20261012T090000Z\r\nDTEND:20261012T094500Z\r\nSUMMARY:Cost modelling for inference-heavy products\r\n…"
               }
             }
           },
@@ -2255,6 +2255,416 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/SessionsPage"
+                },
+                "example": {
+                  "data": [
+                    {
+                      "answers": {
+                        "description": "<p>A talk created by the verify script.</p>",
+                        "format": "Talk",
+                        "language": "English",
+                        "level": "Introductory",
+                        "title": "Verification Talk",
+                        "track": "AI Engineering"
+                      },
+                      "capacity": null,
+                      "chairpersons": [],
+                      "created_at": "2026-08-11T03:27:33.444Z",
+                      "custom_fields": [
+                        {
+                          "created_at": "2026-08-11T03:27:33.444Z",
+                          "id": "description",
+                          "internal_name": "description",
+                          "name": "Session description",
+                          "type": "long_text",
+                          "value": "<p>A talk created by the verify script.</p>",
+                          "value_raw": "<p>A talk created by the verify script.</p>"
+                        },
+                        {
+                          "created_at": "2026-08-11T03:27:33.444Z",
+                          "id": "format",
+                          "internal_name": "format",
+                          "name": "Format",
+                          "type": "dropdown",
+                          "value": "Talk",
+                          "value_raw": "Talk"
+                        }
+                      ],
+                      "decidedAt": 1786418865308,
+                      "decided_at": "2026-08-11T03:27:45.308Z",
+                      "deleted_at": null,
+                      "description": "<p>A talk created by the verify script.</p>",
+                      "durationMinutes": null,
+                      "duration_minutes": null,
+                      "endTime": null,
+                      "ends_at": null,
+                      "format": {
+                        "id": "Talk",
+                        "name": "Talk"
+                      },
+                      "friendly_id": "SESS-64530",
+                      "friendly_id_raw": 64530,
+                      "id": "k57a8s50rhxh9xck6kznjnng2d8c88yq",
+                      "is_abstract": true,
+                      "is_public": true,
+                      "kind": "abstract",
+                      "language": {
+                        "id": "English",
+                        "name": "English"
+                      },
+                      "level": {
+                        "id": "Introductory",
+                        "name": "Introductory"
+                      },
+                      "location": null,
+                      "moderators": [],
+                      "notified_at": "2026-08-11T03:27:45.308Z",
+                      "participants": [
+                        {
+                          "about": "An updated bio from the verify script.",
+                          "bio": "An updated bio from the verify script.",
+                          "company": null,
+                          "company_name": null,
+                          "created_at": "2026-08-11T03:27:31.360Z",
+                          "email": "verify-e2e-mso3nrc2@example.com",
+                          "firstName": "Vera",
+                          "first_name": "Vera",
+                          "friendly_id": "SPK-95912",
+                          "friendly_id_raw": 95912,
+                          "full_name": "Vera Efftest",
+                          "headshotUrl": "https://neat-sparrow-926.eu-west-1.convex.cloud/api/storage/40d6bda7-5627-4674-a9a0-5f1d6275277a",
+                          "id": "m97cd0d1qabm1r6784jzxc846s8c8wyy",
+                          "jobTitle": "QA Engineer",
+                          "lastName": "Efftest",
+                          "last_name": "Efftest",
+                          "linkedin_url": null,
+                          "name": "Vera Efftest",
+                          "participant_role": {
+                            "core_role": "speaker",
+                            "name": "Speaker",
+                            "name_plural": "Speakers",
+                            "slug": "speaker"
+                          },
+                          "phone_mobile": null,
+                          "photo_url": "https://neat-sparrow-926.eu-west-1.convex.cloud/api/storage/40d6bda7-5627-4674-a9a0-5f1d6275277a",
+                          "pronouns": null,
+                          "salutation": null,
+                          "title": "QA Engineer",
+                          "twitter_url": null,
+                          "updated_at": "2026-08-11T03:27:31.360Z",
+                          "website_url": null,
+                          "workflow_status": null
+                        }
+                      ],
+                      "room": null,
+                      "speakers": [
+                        {
+                          "about": "An updated bio from the verify script.",
+                          "bio": "An updated bio from the verify script.",
+                          "company": null,
+                          "company_name": null,
+                          "created_at": "2026-08-11T03:27:31.360Z",
+                          "email": "verify-e2e-mso3nrc2@example.com",
+                          "firstName": "Vera",
+                          "first_name": "Vera",
+                          "friendly_id": "SPK-95912",
+                          "friendly_id_raw": 95912,
+                          "full_name": "Vera Efftest",
+                          "headshotUrl": "https://neat-sparrow-926.eu-west-1.convex.cloud/api/storage/40d6bda7-5627-4674-a9a0-5f1d6275277a",
+                          "id": "m97cd0d1qabm1r6784jzxc846s8c8wyy",
+                          "jobTitle": "QA Engineer",
+                          "lastName": "Efftest",
+                          "last_name": "Efftest",
+                          "linkedin_url": null,
+                          "name": "Vera Efftest",
+                          "participant_role": {
+                            "core_role": "speaker",
+                            "name": "Speaker",
+                            "name_plural": "Speakers",
+                            "slug": "speaker"
+                          },
+                          "phone_mobile": null,
+                          "photo_url": "https://neat-sparrow-926.eu-west-1.convex.cloud/api/storage/40d6bda7-5627-4674-a9a0-5f1d6275277a",
+                          "pronouns": null,
+                          "salutation": null,
+                          "title": "QA Engineer",
+                          "twitter_url": null,
+                          "updated_at": "2026-08-11T03:27:31.360Z",
+                          "website_url": null,
+                          "workflow_status": null
+                        }
+                      ],
+                      "startTime": null,
+                      "starts_at": null,
+                      "status": "accepted",
+                      "submittedAt": 1786418853444.4263,
+                      "submitter": {
+                        "about": "An updated bio from the verify script.",
+                        "bio": "An updated bio from the verify script.",
+                        "company": null,
+                        "company_name": null,
+                        "created_at": "2026-08-11T03:27:31.360Z",
+                        "email": "verify-e2e-mso3nrc2@example.com",
+                        "firstName": "Vera",
+                        "first_name": "Vera",
+                        "friendly_id": "SPK-95912",
+                        "friendly_id_raw": 95912,
+                        "full_name": "Vera Efftest",
+                        "headshotUrl": "https://neat-sparrow-926.eu-west-1.convex.cloud/api/storage/40d6bda7-5627-4674-a9a0-5f1d6275277a",
+                        "id": "m97cd0d1qabm1r6784jzxc846s8c8wyy",
+                        "jobTitle": "QA Engineer",
+                        "lastName": "Efftest",
+                        "last_name": "Efftest",
+                        "linkedin_url": null,
+                        "name": "Vera Efftest",
+                        "participant_role": null,
+                        "phone_mobile": null,
+                        "photo_url": "https://neat-sparrow-926.eu-west-1.convex.cloud/api/storage/40d6bda7-5627-4674-a9a0-5f1d6275277a",
+                        "pronouns": null,
+                        "salutation": null,
+                        "title": "QA Engineer",
+                        "twitter_url": null,
+                        "updated_at": "2026-08-11T03:27:31.360Z",
+                        "website_url": null,
+                        "workflow_status": null
+                      },
+                      "subsessions": [],
+                      "tags": [],
+                      "title": "Verification Talk (edited)",
+                      "track": {
+                        "color": "#2F5CE0",
+                        "created_at": "2026-08-11T03:27:18.602Z",
+                        "event_id": "j971emkyf6md23jphggczhghvd8c8qjq",
+                        "id": "kd7805tv3jwftr3zw2w5bq0sms8c89wn",
+                        "name": "AI Engineering",
+                        "order": 0,
+                        "updated_at": "2026-08-11T03:27:18.602Z"
+                      },
+                      "trackColor": "#2F5CE0",
+                      "updated_at": "2026-08-11T03:27:33.444Z"
+                    }
+                  ],
+                  "event": {
+                    "_id": "j971emkyf6md23jphggczhghvd8c8qjq",
+                    "agenda_published_at": "2026-08-06T03:27:18.602Z",
+                    "created_at": "2026-08-11T03:27:18.602Z",
+                    "description": "Two days for the people building AI systems that have to work on Monday morning. Practitioner talks on evaluation, agents, retrieval, inference infrastructure and the product decisions in between — no keynote fluff, no vendor pitches.",
+                    "endsAt": 1791939600000,
+                    "ends_at": "2026-10-14T01:00:00.000Z",
+                    "features": {
+                      "custom_fields": true,
+                      "translated_fields": false,
+                      "webhooks": true
+                    },
+                    "id": "j971emkyf6md23jphggczhghvd8c8qjq",
+                    "logo_url": null,
+                    "name": "AI Engineer Summit 2026",
+                    "slug": "ai-summit-2026",
+                    "startsAt": 1791820800000,
+                    "starts_at": "2026-10-12T16:00:00.000Z",
+                    "timezone": "America/Los_Angeles",
+                    "type": "Conference",
+                    "venue": "Moscone West, San Francisco",
+                    "websiteUrl": "https://example.com/ai-summit-2026",
+                    "website_url": "https://example.com/ai-summit-2026"
+                  },
+                  "pagination": {
+                    "currentPage": 1,
+                    "current_page": 1,
+                    "pageSize": 1,
+                    "page_size": 1,
+                    "totalPages": 9,
+                    "totalResults": 9,
+                    "total_pages": 9,
+                    "total_results": 9
+                  },
+                  "results": [
+                    {
+                      "answers": {
+                        "description": "<p>A talk created by the verify script.</p>",
+                        "format": "Talk",
+                        "language": "English",
+                        "level": "Introductory",
+                        "title": "Verification Talk",
+                        "track": "AI Engineering"
+                      },
+                      "capacity": null,
+                      "chairpersons": [],
+                      "created_at": "2026-08-11T03:27:33.444Z",
+                      "custom_fields": [
+                        {
+                          "created_at": "2026-08-11T03:27:33.444Z",
+                          "id": "description",
+                          "internal_name": "description",
+                          "name": "Session description",
+                          "type": "long_text",
+                          "value": "<p>A talk created by the verify script.</p>",
+                          "value_raw": "<p>A talk created by the verify script.</p>"
+                        },
+                        {
+                          "created_at": "2026-08-11T03:27:33.444Z",
+                          "id": "format",
+                          "internal_name": "format",
+                          "name": "Format",
+                          "type": "dropdown",
+                          "value": "Talk",
+                          "value_raw": "Talk"
+                        }
+                      ],
+                      "decidedAt": 1786418865308,
+                      "decided_at": "2026-08-11T03:27:45.308Z",
+                      "deleted_at": null,
+                      "description": "<p>A talk created by the verify script.</p>",
+                      "durationMinutes": null,
+                      "duration_minutes": null,
+                      "endTime": null,
+                      "ends_at": null,
+                      "format": {
+                        "id": "Talk",
+                        "name": "Talk"
+                      },
+                      "friendly_id": "SESS-64530",
+                      "friendly_id_raw": 64530,
+                      "id": "k57a8s50rhxh9xck6kznjnng2d8c88yq",
+                      "is_abstract": true,
+                      "is_public": true,
+                      "kind": "abstract",
+                      "language": {
+                        "id": "English",
+                        "name": "English"
+                      },
+                      "level": {
+                        "id": "Introductory",
+                        "name": "Introductory"
+                      },
+                      "location": null,
+                      "moderators": [],
+                      "notified_at": "2026-08-11T03:27:45.308Z",
+                      "participants": [
+                        {
+                          "about": "An updated bio from the verify script.",
+                          "bio": "An updated bio from the verify script.",
+                          "company": null,
+                          "company_name": null,
+                          "created_at": "2026-08-11T03:27:31.360Z",
+                          "email": "verify-e2e-mso3nrc2@example.com",
+                          "firstName": "Vera",
+                          "first_name": "Vera",
+                          "friendly_id": "SPK-95912",
+                          "friendly_id_raw": 95912,
+                          "full_name": "Vera Efftest",
+                          "headshotUrl": "https://neat-sparrow-926.eu-west-1.convex.cloud/api/storage/40d6bda7-5627-4674-a9a0-5f1d6275277a",
+                          "id": "m97cd0d1qabm1r6784jzxc846s8c8wyy",
+                          "jobTitle": "QA Engineer",
+                          "lastName": "Efftest",
+                          "last_name": "Efftest",
+                          "linkedin_url": null,
+                          "name": "Vera Efftest",
+                          "participant_role": {
+                            "core_role": "speaker",
+                            "name": "Speaker",
+                            "name_plural": "Speakers",
+                            "slug": "speaker"
+                          },
+                          "phone_mobile": null,
+                          "photo_url": "https://neat-sparrow-926.eu-west-1.convex.cloud/api/storage/40d6bda7-5627-4674-a9a0-5f1d6275277a",
+                          "pronouns": null,
+                          "salutation": null,
+                          "title": "QA Engineer",
+                          "twitter_url": null,
+                          "updated_at": "2026-08-11T03:27:31.360Z",
+                          "website_url": null,
+                          "workflow_status": null
+                        }
+                      ],
+                      "room": null,
+                      "speakers": [
+                        {
+                          "about": "An updated bio from the verify script.",
+                          "bio": "An updated bio from the verify script.",
+                          "company": null,
+                          "company_name": null,
+                          "created_at": "2026-08-11T03:27:31.360Z",
+                          "email": "verify-e2e-mso3nrc2@example.com",
+                          "firstName": "Vera",
+                          "first_name": "Vera",
+                          "friendly_id": "SPK-95912",
+                          "friendly_id_raw": 95912,
+                          "full_name": "Vera Efftest",
+                          "headshotUrl": "https://neat-sparrow-926.eu-west-1.convex.cloud/api/storage/40d6bda7-5627-4674-a9a0-5f1d6275277a",
+                          "id": "m97cd0d1qabm1r6784jzxc846s8c8wyy",
+                          "jobTitle": "QA Engineer",
+                          "lastName": "Efftest",
+                          "last_name": "Efftest",
+                          "linkedin_url": null,
+                          "name": "Vera Efftest",
+                          "participant_role": {
+                            "core_role": "speaker",
+                            "name": "Speaker",
+                            "name_plural": "Speakers",
+                            "slug": "speaker"
+                          },
+                          "phone_mobile": null,
+                          "photo_url": "https://neat-sparrow-926.eu-west-1.convex.cloud/api/storage/40d6bda7-5627-4674-a9a0-5f1d6275277a",
+                          "pronouns": null,
+                          "salutation": null,
+                          "title": "QA Engineer",
+                          "twitter_url": null,
+                          "updated_at": "2026-08-11T03:27:31.360Z",
+                          "website_url": null,
+                          "workflow_status": null
+                        }
+                      ],
+                      "startTime": null,
+                      "starts_at": null,
+                      "status": "accepted",
+                      "submittedAt": 1786418853444.4263,
+                      "submitter": {
+                        "about": "An updated bio from the verify script.",
+                        "bio": "An updated bio from the verify script.",
+                        "company": null,
+                        "company_name": null,
+                        "created_at": "2026-08-11T03:27:31.360Z",
+                        "email": "verify-e2e-mso3nrc2@example.com",
+                        "firstName": "Vera",
+                        "first_name": "Vera",
+                        "friendly_id": "SPK-95912",
+                        "friendly_id_raw": 95912,
+                        "full_name": "Vera Efftest",
+                        "headshotUrl": "https://neat-sparrow-926.eu-west-1.convex.cloud/api/storage/40d6bda7-5627-4674-a9a0-5f1d6275277a",
+                        "id": "m97cd0d1qabm1r6784jzxc846s8c8wyy",
+                        "jobTitle": "QA Engineer",
+                        "lastName": "Efftest",
+                        "last_name": "Efftest",
+                        "linkedin_url": null,
+                        "name": "Vera Efftest",
+                        "participant_role": null,
+                        "phone_mobile": null,
+                        "photo_url": "https://neat-sparrow-926.eu-west-1.convex.cloud/api/storage/40d6bda7-5627-4674-a9a0-5f1d6275277a",
+                        "pronouns": null,
+                        "salutation": null,
+                        "title": "QA Engineer",
+                        "twitter_url": null,
+                        "updated_at": "2026-08-11T03:27:31.360Z",
+                        "website_url": null,
+                        "workflow_status": null
+                      },
+                      "subsessions": [],
+                      "tags": [],
+                      "title": "Verification Talk (edited)",
+                      "track": {
+                        "color": "#2F5CE0",
+                        "created_at": "2026-08-11T03:27:18.602Z",
+                        "event_id": "j971emkyf6md23jphggczhghvd8c8qjq",
+                        "id": "kd7805tv3jwftr3zw2w5bq0sms8c89wn",
+                        "name": "AI Engineering",
+                        "order": 0,
+                        "updated_at": "2026-08-11T03:27:18.602Z"
+                      },
+                      "trackColor": "#2F5CE0",
+                      "updated_at": "2026-08-11T03:27:33.444Z"
+                    }
+                  ]
                 }
               }
             }
@@ -2408,87 +2818,51 @@
                 },
                 "example": {
                   "data": {
-                    "answers": {
-                      "description": "Four practitioners compare notes on the agent architectures they abandoned, the assumptions that did not survive production, and what they would build differently today.",
-                      "format": "Panel",
-                      "language": "English",
-                      "level": "Intermediate",
-                      "takeaways": "Honest post-mortems from four production agent systems.",
-                      "title": "Closing panel: what we got wrong about agents",
-                      "track": "Product"
-                    },
-                    "capacity": 300,
+                    "answers": {},
+                    "capacity": 80,
                     "chairpersons": [],
-                    "created_at": "2026-08-11T03:20:13.406Z",
-                    "custom_fields": [
-                      {
-                        "created_at": "2026-08-11T03:20:13.406Z",
-                        "id": "description",
-                        "internal_name": "description",
-                        "name": "Session description",
-                        "type": "long_text",
-                        "value": "Four practitioners compare notes on the agent architectures they abandoned, the assumptions that did not survive production, and what they would build differently today.",
-                        "value_raw": "Four practitioners compare notes on the agent architectures they abandoned, the assumptions that did not survive production, and what they would build differently today."
-                      },
-                      {
-                        "created_at": "2026-08-11T03:20:13.406Z",
-                        "id": "format",
-                        "internal_name": "format",
-                        "name": "Format",
-                        "type": "dropdown",
-                        "value": "Panel",
-                        "value_raw": "Panel"
-                      }
-                    ],
-                    "decidedAt": 1785900013406,
-                    "decided_at": "2026-08-05T03:20:13.406Z",
+                    "created_at": "2026-08-11T03:28:35.947Z",
+                    "custom_fields": [],
+                    "decidedAt": null,
+                    "decided_at": null,
                     "deleted_at": null,
-                    "description": "Four practitioners compare notes on the agent architectures they abandoned, the assumptions that did not survive production, and what they would build differently today.",
-                    "durationMinutes": 60,
-                    "duration_minutes": 60,
-                    "endTime": 1791936000000,
-                    "ends_at": "2026-10-14T00:00:00.000Z",
-                    "format": {
-                      "id": "Panel",
-                      "name": "Panel"
-                    },
-                    "friendly_id": "SESS-90130",
-                    "friendly_id_raw": 90130,
-                    "id": "k573esg28z33r2y8q5jbm20kmd8c8jr4",
+                    "description": "Created by the agenda e2e flow.",
+                    "durationMinutes": 45,
+                    "duration_minutes": 45,
+                    "endTime": 1791801900000,
+                    "ends_at": "2026-10-12T10:45:00.000Z",
+                    "format": null,
+                    "friendly_id": "SESS-71011",
+                    "friendly_id_raw": 71011,
+                    "id": "k5745eqp5fr8ecwwtk71tcq61n8c8ghd",
                     "is_abstract": false,
                     "is_public": true,
                     "kind": "session",
-                    "language": {
-                      "id": "English",
-                      "name": "English"
-                    },
-                    "level": {
-                      "id": "Intermediate",
-                      "name": "Intermediate"
-                    },
-                    "location": "Main Stage",
+                    "language": null,
+                    "level": null,
+                    "location": "Workshop Room",
                     "moderators": [],
-                    "notified_at": "2026-08-06T03:20:13.406Z",
+                    "notified_at": null,
                     "participants": [
                       {
-                        "about": "Noah is CTO at Fathom Robotics, where inference cost is a line item the board reads every month. He previously built pricing systems at a payments company.",
-                        "bio": "Noah is CTO at Fathom Robotics, where inference cost is a line item the board reads every month. He previously built pricing systems at a payments company.",
-                        "company": "Fathom Robotics",
-                        "company_name": "Fathom Robotics",
-                        "created_at": "2026-08-11T03:20:13.406Z",
-                        "email": "noah.blackwood@example.com",
-                        "firstName": "Noah",
-                        "first_name": "Noah",
-                        "friendly_id": "SPK-96276",
-                        "friendly_id_raw": 96276,
-                        "full_name": "Noah Blackwood",
-                        "headshotUrl": "https://neat-sparrow-926.eu-west-1.convex.cloud/api/storage/f4174a13-0326-4343-b477-1175c1d082f0",
-                        "id": "m97bp802eg7h3w37pxqb4qszwd8c892t",
-                        "jobTitle": "Chief Technology Officer",
-                        "lastName": "Blackwood",
-                        "last_name": "Blackwood",
+                        "about": null,
+                        "bio": null,
+                        "company": null,
+                        "company_name": null,
+                        "created_at": "2026-08-11T03:28:35.947Z",
+                        "email": "agenda-mso3p553-cyh23@example.com",
+                        "firstName": "Aggie",
+                        "first_name": "Aggie",
+                        "friendly_id": "SPK-50369",
+                        "friendly_id_raw": 50369,
+                        "full_name": "Aggie Enda",
+                        "headshotUrl": null,
+                        "id": "m97az6mve2978qw0s37deftq0s8c8hnn",
+                        "jobTitle": null,
+                        "lastName": "Enda",
+                        "last_name": "Enda",
                         "linkedin_url": null,
-                        "name": "Noah Blackwood",
+                        "name": "Aggie Enda",
                         "participant_role": {
                           "core_role": "speaker",
                           "name": "Speaker",
@@ -2496,79 +2870,44 @@
                           "slug": "speaker"
                         },
                         "phone_mobile": null,
-                        "photo_url": "https://neat-sparrow-926.eu-west-1.convex.cloud/api/storage/f4174a13-0326-4343-b477-1175c1d082f0",
+                        "photo_url": null,
                         "pronouns": null,
                         "salutation": null,
-                        "title": "Chief Technology Officer",
+                        "title": null,
                         "twitter_url": null,
-                        "updated_at": "2026-08-11T03:20:13.406Z",
-                        "website_url": null,
-                        "workflow_status": null
-                      },
-                      {
-                        "about": "Daniel builds clinical decision-support systems at Meridian Health, in a regulatory environment where 'we will fix it in the next deploy' is not an option.",
-                        "bio": "Daniel builds clinical decision-support systems at Meridian Health, in a regulatory environment where 'we will fix it in the next deploy' is not an option.",
-                        "company": "Meridian Health",
-                        "company_name": "Meridian Health",
-                        "created_at": "2026-08-11T03:20:13.406Z",
-                        "email": "daniel.okonkwo@example.com",
-                        "firstName": "Daniel",
-                        "first_name": "Daniel",
-                        "friendly_id": "SPK-35200",
-                        "friendly_id_raw": 35200,
-                        "full_name": "Daniel Okonkwo",
-                        "headshotUrl": "https://neat-sparrow-926.eu-west-1.convex.cloud/api/storage/dacc3473-ed7e-459c-b592-b93ce084513d",
-                        "id": "m971k3gw65kh339a7tz3jt4pq98c853e",
-                        "jobTitle": "Director of AI",
-                        "lastName": "Okonkwo",
-                        "last_name": "Okonkwo",
-                        "linkedin_url": null,
-                        "name": "Daniel Okonkwo",
-                        "participant_role": {
-                          "core_role": "speaker",
-                          "name": "Speaker",
-                          "name_plural": "Speakers",
-                          "slug": "speaker"
-                        },
-                        "phone_mobile": null,
-                        "photo_url": "https://neat-sparrow-926.eu-west-1.convex.cloud/api/storage/dacc3473-ed7e-459c-b592-b93ce084513d",
-                        "pronouns": null,
-                        "salutation": null,
-                        "title": "Director of AI",
-                        "twitter_url": null,
-                        "updated_at": "2026-08-11T03:20:13.406Z",
+                        "updated_at": "2026-08-11T03:28:35.947Z",
                         "website_url": null,
                         "workflow_status": null
                       }
                     ],
                     "room": {
-                      "capacity": 300,
-                      "created_at": "2026-08-11T03:20:13.406Z",
-                      "id": "js7cpcennn7v4826y5zqnamhgs8c921h",
-                      "name": "Main Stage",
-                      "order": 0,
-                      "updated_at": "2026-08-11T03:20:13.406Z"
+                      "capacity": 80,
+                      "created_at": "2026-08-11T03:27:18.602Z",
+                      "id": "js703wmx07yh80wngvzx2xnt9h8c811v",
+                      "name": "Workshop Room",
+                      "order": 1,
+                      "updated_at": "2026-08-11T03:27:18.602Z"
                     },
                     "speakers": [
                       {
-                        "about": "Noah is CTO at Fathom Robotics, where inference cost is a line item the board reads every month. He previously built pricing systems at a payments company.",
-                        "bio": "Noah is CTO at Fathom Robotics, where inference cost is a line item the board reads every month. He previously built pricing systems at a payments company.",
-                        "company": "Fathom Robotics",
-                        "company_name": "Fathom Robotics",
-                        "created_at": "2026-08-11T03:20:13.406Z",
-                        "email": "noah.blackwood@example.com",
-                        "firstName": "Noah",
-                        "first_name": "Noah",
-                        "friendly_id": "SPK-96276",
-                        "friendly_id_raw": 96276,
-                        "full_name": "Noah Blackwood",
-                        "headshotUrl": "https://neat-sparrow-926.eu-west-1.convex.cloud/api/storage/f4174a13-0326-4343-b477-1175c1d082f0",
-                        "id": "m97bp802eg7h3w37pxqb4qszwd8c892t",
-                        "jobTitle": "Chief Technology Officer",
-                        "lastName": "Blackwood",
-                        "last_name": "Blackwood",
+                        "about": null,
+                        "bio": null,
+                        "company": null,
+                        "company_name": null,
+                        "created_at": "2026-08-11T03:28:35.947Z",
+                        "email": "agenda-mso3p553-cyh23@example.com",
+                        "firstName": "Aggie",
+                        "first_name": "Aggie",
+                        "friendly_id": "SPK-50369",
+                        "friendly_id_raw": 50369,
+                        "full_name": "Aggie Enda",
+                        "headshotUrl": null,
+                        "id": "m97az6mve2978qw0s37deftq0s8c8hnn",
+                        "jobTitle": null,
+                        "lastName": "Enda",
+                        "last_name": "Enda",
                         "linkedin_url": null,
-                        "name": "Noah Blackwood",
+                        "name": "Aggie Enda",
                         "participant_role": {
                           "core_role": "speaker",
                           "name": "Speaker",
@@ -2576,108 +2915,56 @@
                           "slug": "speaker"
                         },
                         "phone_mobile": null,
-                        "photo_url": "https://neat-sparrow-926.eu-west-1.convex.cloud/api/storage/f4174a13-0326-4343-b477-1175c1d082f0",
+                        "photo_url": null,
                         "pronouns": null,
                         "salutation": null,
-                        "title": "Chief Technology Officer",
+                        "title": null,
                         "twitter_url": null,
-                        "updated_at": "2026-08-11T03:20:13.406Z",
-                        "website_url": null,
-                        "workflow_status": null
-                      },
-                      {
-                        "about": "Daniel builds clinical decision-support systems at Meridian Health, in a regulatory environment where 'we will fix it in the next deploy' is not an option.",
-                        "bio": "Daniel builds clinical decision-support systems at Meridian Health, in a regulatory environment where 'we will fix it in the next deploy' is not an option.",
-                        "company": "Meridian Health",
-                        "company_name": "Meridian Health",
-                        "created_at": "2026-08-11T03:20:13.406Z",
-                        "email": "daniel.okonkwo@example.com",
-                        "firstName": "Daniel",
-                        "first_name": "Daniel",
-                        "friendly_id": "SPK-35200",
-                        "friendly_id_raw": 35200,
-                        "full_name": "Daniel Okonkwo",
-                        "headshotUrl": "https://neat-sparrow-926.eu-west-1.convex.cloud/api/storage/dacc3473-ed7e-459c-b592-b93ce084513d",
-                        "id": "m971k3gw65kh339a7tz3jt4pq98c853e",
-                        "jobTitle": "Director of AI",
-                        "lastName": "Okonkwo",
-                        "last_name": "Okonkwo",
-                        "linkedin_url": null,
-                        "name": "Daniel Okonkwo",
-                        "participant_role": {
-                          "core_role": "speaker",
-                          "name": "Speaker",
-                          "name_plural": "Speakers",
-                          "slug": "speaker"
-                        },
-                        "phone_mobile": null,
-                        "photo_url": "https://neat-sparrow-926.eu-west-1.convex.cloud/api/storage/dacc3473-ed7e-459c-b592-b93ce084513d",
-                        "pronouns": null,
-                        "salutation": null,
-                        "title": "Director of AI",
-                        "twitter_url": null,
-                        "updated_at": "2026-08-11T03:20:13.406Z",
+                        "updated_at": "2026-08-11T03:28:35.947Z",
                         "website_url": null,
                         "workflow_status": null
                       }
                     ],
-                    "startTime": 1791932400000,
-                    "starts_at": "2026-10-13T23:00:00.000Z",
+                    "startTime": 1791799200000,
+                    "starts_at": "2026-10-12T10:00:00.000Z",
                     "status": "accepted",
-                    "submittedAt": 1786418413406.3608,
+                    "submittedAt": 1786418915947.0808,
                     "submitter": {
-                      "about": "Noah is CTO at Fathom Robotics, where inference cost is a line item the board reads every month. He previously built pricing systems at a payments company.",
-                      "bio": "Noah is CTO at Fathom Robotics, where inference cost is a line item the board reads every month. He previously built pricing systems at a payments company.",
-                      "company": "Fathom Robotics",
-                      "company_name": "Fathom Robotics",
-                      "created_at": "2026-08-11T03:20:13.406Z",
-                      "email": "noah.blackwood@example.com",
-                      "firstName": "Noah",
-                      "first_name": "Noah",
-                      "friendly_id": "SPK-96276",
-                      "friendly_id_raw": 96276,
-                      "full_name": "Noah Blackwood",
-                      "headshotUrl": "https://neat-sparrow-926.eu-west-1.convex.cloud/api/storage/f4174a13-0326-4343-b477-1175c1d082f0",
-                      "id": "m97bp802eg7h3w37pxqb4qszwd8c892t",
-                      "jobTitle": "Chief Technology Officer",
-                      "lastName": "Blackwood",
-                      "last_name": "Blackwood",
+                      "about": null,
+                      "bio": null,
+                      "company": null,
+                      "company_name": null,
+                      "created_at": "2026-08-11T03:28:35.947Z",
+                      "email": "organizer@demo.sessionboard.dev",
+                      "firstName": "Dana",
+                      "first_name": "Dana",
+                      "friendly_id": "SPK-57771",
+                      "friendly_id_raw": 57771,
+                      "full_name": "Dana Organizer",
+                      "headshotUrl": null,
+                      "id": "m978pq4hq0nnsase57ks3sct4d8c9nyx",
+                      "jobTitle": null,
+                      "lastName": "Organizer",
+                      "last_name": "Organizer",
                       "linkedin_url": null,
-                      "name": "Noah Blackwood",
+                      "name": "Dana Organizer",
                       "participant_role": null,
                       "phone_mobile": null,
-                      "photo_url": "https://neat-sparrow-926.eu-west-1.convex.cloud/api/storage/f4174a13-0326-4343-b477-1175c1d082f0",
+                      "photo_url": null,
                       "pronouns": null,
                       "salutation": null,
-                      "title": "Chief Technology Officer",
+                      "title": null,
                       "twitter_url": null,
-                      "updated_at": "2026-08-11T03:20:13.406Z",
+                      "updated_at": "2026-08-11T03:28:35.947Z",
                       "website_url": null,
                       "workflow_status": null
                     },
                     "subsessions": [],
-                    "tags": [
-                      {
-                        "id": "panel",
-                        "name": "panel"
-                      },
-                      {
-                        "id": "agents",
-                        "name": "agents"
-                      }
-                    ],
-                    "title": "Closing panel: what we got wrong about agents",
-                    "track": {
-                      "color": "#1E9E6B",
-                      "created_at": "2026-08-11T03:20:13.406Z",
-                      "event_id": "j975xr4mvpac72vvhfmnst0kf98c8hat",
-                      "id": "kd7c95fhe6erz94891pndzh2cn8c987v",
-                      "name": "Product",
-                      "order": 1,
-                      "updated_at": "2026-08-11T03:20:13.406Z"
-                    },
-                    "trackColor": "#1E9E6B",
-                    "updated_at": "2026-08-11T03:20:13.406Z"
+                    "tags": [],
+                    "title": "Dragged dg-mso3p553-rtglw",
+                    "track": null,
+                    "trackColor": null,
+                    "updated_at": "2026-08-11T03:28:35.947Z"
                   }
                 }
               }
@@ -3499,7 +3786,7 @@
     },
     "/v1/event/{eventRef}/sessions/status": {
       "post": {
-        "operationId": "searchSessionStatuses",
+        "operationId": "searchSessionsByStatus",
         "tags": [
           "Sessions"
         ],
@@ -3592,15 +3879,15 @@
                       "bio": null,
                       "company": "Ridgeline",
                       "company_name": "Ridgeline",
-                      "created_at": "2026-08-11T03:20:13.406Z",
+                      "created_at": "2026-08-11T03:27:18.602Z",
                       "email": "tom.beaumont@example.com",
                       "firstName": "Tom",
                       "first_name": "Tom",
-                      "friendly_id": "SPK-28922",
-                      "friendly_id_raw": 28922,
+                      "friendly_id": "SPK-45805",
+                      "friendly_id_raw": 45805,
                       "full_name": "Tom Beaumont",
-                      "headshotUrl": "https://neat-sparrow-926.eu-west-1.convex.cloud/api/storage/324e42a8-dc32-4820-8e87-c8df90980880",
-                      "id": "m974s794ev0mskw5vq6zemcydd8c9rwd",
+                      "headshotUrl": "https://neat-sparrow-926.eu-west-1.convex.cloud/api/storage/a5589509-4703-4955-8e1c-26c9a32fff3e",
+                      "id": "m97ar7w0qz8xxwb6zsyr4nbgkh8c8whm",
                       "jobTitle": "Developer Advocate",
                       "lastName": "Beaumont",
                       "last_name": "Beaumont",
@@ -3608,12 +3895,12 @@
                       "name": "Tom Beaumont",
                       "participant_role": null,
                       "phone_mobile": null,
-                      "photo_url": "https://neat-sparrow-926.eu-west-1.convex.cloud/api/storage/324e42a8-dc32-4820-8e87-c8df90980880",
+                      "photo_url": "https://neat-sparrow-926.eu-west-1.convex.cloud/api/storage/a5589509-4703-4955-8e1c-26c9a32fff3e",
                       "pronouns": null,
                       "salutation": null,
                       "sessions": [
                         {
-                          "id": "k57bv1wtxa1d4fv3d4jcka4s2n8c8saf",
+                          "id": "k576ypz0a1h0hsv1ysfq2egc1x8c9gnp",
                           "role": "speaker",
                           "startTime": 1791824400000,
                           "starts_at": "2026-10-12T17:00:00.000Z",
@@ -3623,15 +3910,15 @@
                       ],
                       "title": "Developer Advocate",
                       "twitter_url": null,
-                      "updated_at": "2026-08-11T03:20:13.406Z",
+                      "updated_at": "2026-08-11T03:27:18.602Z",
                       "website_url": null,
                       "workflow_status": null
                     }
                   ],
                   "event": {
-                    "_id": "j975xr4mvpac72vvhfmnst0kf98c8hat",
-                    "agenda_published_at": "2026-08-06T03:20:13.406Z",
-                    "created_at": "2026-08-11T03:20:13.406Z",
+                    "_id": "j971emkyf6md23jphggczhghvd8c8qjq",
+                    "agenda_published_at": "2026-08-06T03:27:18.602Z",
+                    "created_at": "2026-08-11T03:27:18.602Z",
                     "description": "Two days for the people building AI systems that have to work on Monday morning. Practitioner talks on evaluation, agents, retrieval, inference infrastructure and the product decisions in between — no keynote fluff, no vendor pitches.",
                     "endsAt": 1791939600000,
                     "ends_at": "2026-10-14T01:00:00.000Z",
@@ -3640,7 +3927,7 @@
                       "translated_fields": false,
                       "webhooks": true
                     },
-                    "id": "j975xr4mvpac72vvhfmnst0kf98c8hat",
+                    "id": "j971emkyf6md23jphggczhghvd8c8qjq",
                     "logo_url": null,
                     "name": "AI Engineer Summit 2026",
                     "slug": "ai-summit-2026",
@@ -3657,10 +3944,10 @@
                     "current_page": 1,
                     "pageSize": 1,
                     "page_size": 1,
-                    "totalPages": 14,
-                    "totalResults": 14,
-                    "total_pages": 14,
-                    "total_results": 14
+                    "totalPages": 16,
+                    "totalResults": 16,
+                    "total_pages": 16,
+                    "total_results": 16
                   },
                   "results": [
                     {
@@ -3668,15 +3955,15 @@
                       "bio": null,
                       "company": "Ridgeline",
                       "company_name": "Ridgeline",
-                      "created_at": "2026-08-11T03:20:13.406Z",
+                      "created_at": "2026-08-11T03:27:18.602Z",
                       "email": "tom.beaumont@example.com",
                       "firstName": "Tom",
                       "first_name": "Tom",
-                      "friendly_id": "SPK-28922",
-                      "friendly_id_raw": 28922,
+                      "friendly_id": "SPK-45805",
+                      "friendly_id_raw": 45805,
                       "full_name": "Tom Beaumont",
-                      "headshotUrl": "https://neat-sparrow-926.eu-west-1.convex.cloud/api/storage/324e42a8-dc32-4820-8e87-c8df90980880",
-                      "id": "m974s794ev0mskw5vq6zemcydd8c9rwd",
+                      "headshotUrl": "https://neat-sparrow-926.eu-west-1.convex.cloud/api/storage/a5589509-4703-4955-8e1c-26c9a32fff3e",
+                      "id": "m97ar7w0qz8xxwb6zsyr4nbgkh8c8whm",
                       "jobTitle": "Developer Advocate",
                       "lastName": "Beaumont",
                       "last_name": "Beaumont",
@@ -3684,12 +3971,12 @@
                       "name": "Tom Beaumont",
                       "participant_role": null,
                       "phone_mobile": null,
-                      "photo_url": "https://neat-sparrow-926.eu-west-1.convex.cloud/api/storage/324e42a8-dc32-4820-8e87-c8df90980880",
+                      "photo_url": "https://neat-sparrow-926.eu-west-1.convex.cloud/api/storage/a5589509-4703-4955-8e1c-26c9a32fff3e",
                       "pronouns": null,
                       "salutation": null,
                       "sessions": [
                         {
-                          "id": "k57bv1wtxa1d4fv3d4jcka4s2n8c8saf",
+                          "id": "k576ypz0a1h0hsv1ysfq2egc1x8c9gnp",
                           "role": "speaker",
                           "startTime": 1791824400000,
                           "starts_at": "2026-10-12T17:00:00.000Z",
@@ -3699,7 +3986,7 @@
                       ],
                       "title": "Developer Advocate",
                       "twitter_url": null,
-                      "updated_at": "2026-08-11T03:20:13.406Z",
+                      "updated_at": "2026-08-11T03:27:18.602Z",
                       "website_url": null,
                       "workflow_status": null
                     }
@@ -4262,43 +4549,32 @@
                 "example": {
                   "data": [
                     {
-                      "decidedAt": 1785900013406,
-                      "description": "Four practitioners compare notes on the agent architectures they abandoned, the assumptions that did not survive production, and what they would build differently today.",
-                      "format": "Panel",
-                      "id": "k573esg28z33r2y8q5jbm20kmd8c8jr4",
-                      "kind": "session",
+                      "decidedAt": null,
+                      "description": "<p>A talk created by the verify script.</p>",
+                      "format": "Talk",
+                      "id": "k57a7y1qvb8wvbfe7q2wj5928s8c8a4z",
+                      "kind": "abstract",
                       "language": "English",
-                      "level": "Intermediate",
+                      "level": "Introductory",
                       "speakers": [
                         {
-                          "company": "Fathom Robotics",
-                          "email": "noah.blackwood@example.com",
-                          "id": "m97bp802eg7h3w37pxqb4qszwd8c892t",
-                          "jobTitle": "Chief Technology Officer",
-                          "name": "Noah Blackwood",
-                          "role": "speaker"
-                        },
-                        {
-                          "company": "Meridian Health",
-                          "email": "daniel.okonkwo@example.com",
-                          "id": "m971k3gw65kh339a7tz3jt4pq98c853e",
-                          "jobTitle": "Director of AI",
-                          "name": "Daniel Okonkwo",
+                          "company": null,
+                          "email": "verify-quiet-mso3nunn@example.com",
+                          "id": "m97f7dwt7rmehcsqreq8sxjnzh8c9h3e",
+                          "jobTitle": null,
+                          "name": "Quinn Quiet",
                           "role": "speaker"
                         }
                       ],
-                      "status": "accepted",
-                      "submittedAt": 1786418413406.3608,
-                      "tags": [
-                        "panel",
-                        "agents"
-                      ],
-                      "title": "Closing panel: what we got wrong about agents",
-                      "track": "Product"
+                      "status": "pending",
+                      "submittedAt": 1786418856941.303,
+                      "tags": [],
+                      "title": "Quiet Talk",
+                      "track": "AI Engineering"
                     }
                   ],
                   "event": {
-                    "_id": "j975xr4mvpac72vvhfmnst0kf98c8hat",
+                    "_id": "j971emkyf6md23jphggczhghvd8c8qjq",
                     "endsAt": 1791939600000,
                     "name": "AI Engineer Summit 2026",
                     "slug": "ai-summit-2026",
@@ -4309,44 +4585,33 @@
                   "pagination": {
                     "currentPage": 1,
                     "pageSize": 1,
-                    "totalPages": 18,
-                    "totalResults": 18
+                    "totalPages": 20,
+                    "totalResults": 20
                   },
                   "results": [
                     {
-                      "decidedAt": 1785900013406,
-                      "description": "Four practitioners compare notes on the agent architectures they abandoned, the assumptions that did not survive production, and what they would build differently today.",
-                      "format": "Panel",
-                      "id": "k573esg28z33r2y8q5jbm20kmd8c8jr4",
-                      "kind": "session",
+                      "decidedAt": null,
+                      "description": "<p>A talk created by the verify script.</p>",
+                      "format": "Talk",
+                      "id": "k57a7y1qvb8wvbfe7q2wj5928s8c8a4z",
+                      "kind": "abstract",
                       "language": "English",
-                      "level": "Intermediate",
+                      "level": "Introductory",
                       "speakers": [
                         {
-                          "company": "Fathom Robotics",
-                          "email": "noah.blackwood@example.com",
-                          "id": "m97bp802eg7h3w37pxqb4qszwd8c892t",
-                          "jobTitle": "Chief Technology Officer",
-                          "name": "Noah Blackwood",
-                          "role": "speaker"
-                        },
-                        {
-                          "company": "Meridian Health",
-                          "email": "daniel.okonkwo@example.com",
-                          "id": "m971k3gw65kh339a7tz3jt4pq98c853e",
-                          "jobTitle": "Director of AI",
-                          "name": "Daniel Okonkwo",
+                          "company": null,
+                          "email": "verify-quiet-mso3nunn@example.com",
+                          "id": "m97f7dwt7rmehcsqreq8sxjnzh8c9h3e",
+                          "jobTitle": null,
+                          "name": "Quinn Quiet",
                           "role": "speaker"
                         }
                       ],
-                      "status": "accepted",
-                      "submittedAt": 1786418413406.3608,
-                      "tags": [
-                        "panel",
-                        "agents"
-                      ],
-                      "title": "Closing panel: what we got wrong about agents",
-                      "track": "Product"
+                      "status": "pending",
+                      "submittedAt": 1786418856941.303,
+                      "tags": [],
+                      "title": "Quiet Talk",
+                      "track": "AI Engineering"
                     }
                   ]
                 }
@@ -4743,12 +5008,12 @@
                   "data": [
                     {
                       "color": "#2F5CE0",
-                      "created_at": "2026-08-11T03:20:13.406Z",
-                      "event_id": "j975xr4mvpac72vvhfmnst0kf98c8hat",
-                      "id": "kd74r6vy5f46c848dgfgs7g0v98c9wpf",
+                      "created_at": "2026-08-11T03:27:18.602Z",
+                      "event_id": "j971emkyf6md23jphggczhghvd8c8qjq",
+                      "id": "kd7805tv3jwftr3zw2w5bq0sms8c89wn",
                       "name": "AI Engineering",
                       "order": 0,
-                      "updated_at": "2026-08-11T03:20:13.406Z"
+                      "updated_at": "2026-08-11T03:27:18.602Z"
                     }
                   ],
                   "pagination": {
@@ -4764,12 +5029,12 @@
                   "results": [
                     {
                       "color": "#2F5CE0",
-                      "created_at": "2026-08-11T03:20:13.406Z",
-                      "event_id": "j975xr4mvpac72vvhfmnst0kf98c8hat",
-                      "id": "kd74r6vy5f46c848dgfgs7g0v98c9wpf",
+                      "created_at": "2026-08-11T03:27:18.602Z",
+                      "event_id": "j971emkyf6md23jphggczhghvd8c8qjq",
+                      "id": "kd7805tv3jwftr3zw2w5bq0sms8c89wn",
                       "name": "AI Engineering",
                       "order": 0,
-                      "updated_at": "2026-08-11T03:20:13.406Z"
+                      "updated_at": "2026-08-11T03:27:18.602Z"
                     }
                   ],
                   "unknownResource": false
@@ -5062,9 +5327,9 @@
                 "example": {
                   "data": [
                     {
-                      "_id": "j97bk9433dc09t1vjxg5drkrtn8c9tgz",
+                      "_id": "j97c636dpqayasnhm4whc59cx98c8c8v",
                       "agenda_published_at": null,
-                      "created_at": "2026-08-11T03:20:13.406Z",
+                      "created_at": "2026-08-11T03:27:18.602Z",
                       "description": "A single-track day for the people who maintain design systems, and everyone who has to live with them.",
                       "endsAt": 1793919600000,
                       "ends_at": "2026-11-05T23:00:00.000Z",
@@ -5073,7 +5338,7 @@
                         "translated_fields": false,
                         "webhooks": true
                       },
-                      "id": "j97bk9433dc09t1vjxg5drkrtn8c9tgz",
+                      "id": "j97c636dpqayasnhm4whc59cx98c8c8v",
                       "logo_url": null,
                       "name": "Design Systems Day",
                       "slug": "design-systems-day",
@@ -5097,9 +5362,9 @@
                   },
                   "results": [
                     {
-                      "_id": "j97bk9433dc09t1vjxg5drkrtn8c9tgz",
+                      "_id": "j97c636dpqayasnhm4whc59cx98c8c8v",
                       "agenda_published_at": null,
-                      "created_at": "2026-08-11T03:20:13.406Z",
+                      "created_at": "2026-08-11T03:27:18.602Z",
                       "description": "A single-track day for the people who maintain design systems, and everyone who has to live with them.",
                       "endsAt": 1793919600000,
                       "ends_at": "2026-11-05T23:00:00.000Z",
@@ -5108,7 +5373,7 @@
                         "translated_fields": false,
                         "webhooks": true
                       },
-                      "id": "j97bk9433dc09t1vjxg5drkrtn8c9tgz",
+                      "id": "j97c636dpqayasnhm4whc59cx98c8c8v",
                       "logo_url": null,
                       "name": "Design Systems Day",
                       "slug": "design-systems-day",
@@ -8051,9 +8316,9 @@
     "GET /v1/events 200": {
       "data": [
         {
-          "_id": "j97bk9433dc09t1vjxg5drkrtn8c9tgz",
+          "_id": "j97c636dpqayasnhm4whc59cx98c8c8v",
           "agenda_published_at": null,
-          "created_at": "2026-08-11T03:20:13.406Z",
+          "created_at": "2026-08-11T03:27:18.602Z",
           "description": "A single-track day for the people who maintain design systems, and everyone who has to live with them.",
           "endsAt": 1793919600000,
           "ends_at": "2026-11-05T23:00:00.000Z",
@@ -8062,7 +8327,7 @@
             "translated_fields": false,
             "webhooks": true
           },
-          "id": "j97bk9433dc09t1vjxg5drkrtn8c9tgz",
+          "id": "j97c636dpqayasnhm4whc59cx98c8c8v",
           "logo_url": null,
           "name": "Design Systems Day",
           "slug": "design-systems-day",
@@ -8086,9 +8351,9 @@
       },
       "results": [
         {
-          "_id": "j97bk9433dc09t1vjxg5drkrtn8c9tgz",
+          "_id": "j97c636dpqayasnhm4whc59cx98c8c8v",
           "agenda_published_at": null,
-          "created_at": "2026-08-11T03:20:13.406Z",
+          "created_at": "2026-08-11T03:27:18.602Z",
           "description": "A single-track day for the people who maintain design systems, and everyone who has to live with them.",
           "endsAt": 1793919600000,
           "ends_at": "2026-11-05T23:00:00.000Z",
@@ -8097,7 +8362,7 @@
             "translated_fields": false,
             "webhooks": true
           },
-          "id": "j97bk9433dc09t1vjxg5drkrtn8c9tgz",
+          "id": "j97c636dpqayasnhm4whc59cx98c8c8v",
           "logo_url": null,
           "name": "Design Systems Day",
           "slug": "design-systems-day",
@@ -8110,144 +8375,198 @@
         }
       ]
     },
-    "GET /v1/event/{eventRef}/submissions 200": {
+    "GET /v1/event/{eventRef}/sessions 200": {
       "data": [
         {
-          "decidedAt": 1785900013406,
-          "description": "Four practitioners compare notes on the agent architectures they abandoned, the assumptions that did not survive production, and what they would build differently today.",
-          "format": "Panel",
-          "id": "k573esg28z33r2y8q5jbm20kmd8c8jr4",
-          "kind": "session",
-          "language": "English",
-          "level": "Intermediate",
-          "speakers": [
+          "answers": {
+            "description": "<p>A talk created by the verify script.</p>",
+            "format": "Talk",
+            "language": "English",
+            "level": "Introductory",
+            "title": "Verification Talk",
+            "track": "AI Engineering"
+          },
+          "capacity": null,
+          "chairpersons": [],
+          "created_at": "2026-08-11T03:27:33.444Z",
+          "custom_fields": [
             {
-              "company": "Fathom Robotics",
-              "email": "noah.blackwood@example.com",
-              "id": "m97bp802eg7h3w37pxqb4qszwd8c892t",
-              "jobTitle": "Chief Technology Officer",
-              "name": "Noah Blackwood",
-              "role": "speaker"
+              "created_at": "2026-08-11T03:27:33.444Z",
+              "id": "description",
+              "internal_name": "description",
+              "name": "Session description",
+              "type": "long_text",
+              "value": "<p>A talk created by the verify script.</p>",
+              "value_raw": "<p>A talk created by the verify script.</p>"
             },
             {
-              "company": "Meridian Health",
-              "email": "daniel.okonkwo@example.com",
-              "id": "m971k3gw65kh339a7tz3jt4pq98c853e",
-              "jobTitle": "Director of AI",
-              "name": "Daniel Okonkwo",
-              "role": "speaker"
+              "created_at": "2026-08-11T03:27:33.444Z",
+              "id": "format",
+              "internal_name": "format",
+              "name": "Format",
+              "type": "dropdown",
+              "value": "Talk",
+              "value_raw": "Talk"
             }
           ],
-          "status": "accepted",
-          "submittedAt": 1786418413406.3608,
-          "tags": [
-            "panel",
-            "agents"
+          "decidedAt": 1786418865308,
+          "decided_at": "2026-08-11T03:27:45.308Z",
+          "deleted_at": null,
+          "description": "<p>A talk created by the verify script.</p>",
+          "durationMinutes": null,
+          "duration_minutes": null,
+          "endTime": null,
+          "ends_at": null,
+          "format": {
+            "id": "Talk",
+            "name": "Talk"
+          },
+          "friendly_id": "SESS-64530",
+          "friendly_id_raw": 64530,
+          "id": "k57a8s50rhxh9xck6kznjnng2d8c88yq",
+          "is_abstract": true,
+          "is_public": true,
+          "kind": "abstract",
+          "language": {
+            "id": "English",
+            "name": "English"
+          },
+          "level": {
+            "id": "Introductory",
+            "name": "Introductory"
+          },
+          "location": null,
+          "moderators": [],
+          "notified_at": "2026-08-11T03:27:45.308Z",
+          "participants": [
+            {
+              "about": "An updated bio from the verify script.",
+              "bio": "An updated bio from the verify script.",
+              "company": null,
+              "company_name": null,
+              "created_at": "2026-08-11T03:27:31.360Z",
+              "email": "verify-e2e-mso3nrc2@example.com",
+              "firstName": "Vera",
+              "first_name": "Vera",
+              "friendly_id": "SPK-95912",
+              "friendly_id_raw": 95912,
+              "full_name": "Vera Efftest",
+              "headshotUrl": "https://neat-sparrow-926.eu-west-1.convex.cloud/api/storage/40d6bda7-5627-4674-a9a0-5f1d6275277a",
+              "id": "m97cd0d1qabm1r6784jzxc846s8c8wyy",
+              "jobTitle": "QA Engineer",
+              "lastName": "Efftest",
+              "last_name": "Efftest",
+              "linkedin_url": null,
+              "name": "Vera Efftest",
+              "participant_role": {
+                "core_role": "speaker",
+                "name": "Speaker",
+                "name_plural": "Speakers",
+                "slug": "speaker"
+              },
+              "phone_mobile": null,
+              "photo_url": "https://neat-sparrow-926.eu-west-1.convex.cloud/api/storage/40d6bda7-5627-4674-a9a0-5f1d6275277a",
+              "pronouns": null,
+              "salutation": null,
+              "title": "QA Engineer",
+              "twitter_url": null,
+              "updated_at": "2026-08-11T03:27:31.360Z",
+              "website_url": null,
+              "workflow_status": null
+            }
           ],
-          "title": "Closing panel: what we got wrong about agents",
-          "track": "Product"
+          "room": null,
+          "speakers": [
+            {
+              "about": "An updated bio from the verify script.",
+              "bio": "An updated bio from the verify script.",
+              "company": null,
+              "company_name": null,
+              "created_at": "2026-08-11T03:27:31.360Z",
+              "email": "verify-e2e-mso3nrc2@example.com",
+              "firstName": "Vera",
+              "first_name": "Vera",
+              "friendly_id": "SPK-95912",
+              "friendly_id_raw": 95912,
+              "full_name": "Vera Efftest",
+              "headshotUrl": "https://neat-sparrow-926.eu-west-1.convex.cloud/api/storage/40d6bda7-5627-4674-a9a0-5f1d6275277a",
+              "id": "m97cd0d1qabm1r6784jzxc846s8c8wyy",
+              "jobTitle": "QA Engineer",
+              "lastName": "Efftest",
+              "last_name": "Efftest",
+              "linkedin_url": null,
+              "name": "Vera Efftest",
+              "participant_role": {
+                "core_role": "speaker",
+                "name": "Speaker",
+                "name_plural": "Speakers",
+                "slug": "speaker"
+              },
+              "phone_mobile": null,
+              "photo_url": "https://neat-sparrow-926.eu-west-1.convex.cloud/api/storage/40d6bda7-5627-4674-a9a0-5f1d6275277a",
+              "pronouns": null,
+              "salutation": null,
+              "title": "QA Engineer",
+              "twitter_url": null,
+              "updated_at": "2026-08-11T03:27:31.360Z",
+              "website_url": null,
+              "workflow_status": null
+            }
+          ],
+          "startTime": null,
+          "starts_at": null,
+          "status": "accepted",
+          "submittedAt": 1786418853444.4263,
+          "submitter": {
+            "about": "An updated bio from the verify script.",
+            "bio": "An updated bio from the verify script.",
+            "company": null,
+            "company_name": null,
+            "created_at": "2026-08-11T03:27:31.360Z",
+            "email": "verify-e2e-mso3nrc2@example.com",
+            "firstName": "Vera",
+            "first_name": "Vera",
+            "friendly_id": "SPK-95912",
+            "friendly_id_raw": 95912,
+            "full_name": "Vera Efftest",
+            "headshotUrl": "https://neat-sparrow-926.eu-west-1.convex.cloud/api/storage/40d6bda7-5627-4674-a9a0-5f1d6275277a",
+            "id": "m97cd0d1qabm1r6784jzxc846s8c8wyy",
+            "jobTitle": "QA Engineer",
+            "lastName": "Efftest",
+            "last_name": "Efftest",
+            "linkedin_url": null,
+            "name": "Vera Efftest",
+            "participant_role": null,
+            "phone_mobile": null,
+            "photo_url": "https://neat-sparrow-926.eu-west-1.convex.cloud/api/storage/40d6bda7-5627-4674-a9a0-5f1d6275277a",
+            "pronouns": null,
+            "salutation": null,
+            "title": "QA Engineer",
+            "twitter_url": null,
+            "updated_at": "2026-08-11T03:27:31.360Z",
+            "website_url": null,
+            "workflow_status": null
+          },
+          "subsessions": [],
+          "tags": [],
+          "title": "Verification Talk (edited)",
+          "track": {
+            "color": "#2F5CE0",
+            "created_at": "2026-08-11T03:27:18.602Z",
+            "event_id": "j971emkyf6md23jphggczhghvd8c8qjq",
+            "id": "kd7805tv3jwftr3zw2w5bq0sms8c89wn",
+            "name": "AI Engineering",
+            "order": 0,
+            "updated_at": "2026-08-11T03:27:18.602Z"
+          },
+          "trackColor": "#2F5CE0",
+          "updated_at": "2026-08-11T03:27:33.444Z"
         }
       ],
       "event": {
-        "_id": "j975xr4mvpac72vvhfmnst0kf98c8hat",
-        "endsAt": 1791939600000,
-        "name": "AI Engineer Summit 2026",
-        "slug": "ai-summit-2026",
-        "startsAt": 1791820800000,
-        "timezone": "America/Los_Angeles",
-        "venue": "Moscone West, San Francisco"
-      },
-      "pagination": {
-        "currentPage": 1,
-        "pageSize": 1,
-        "totalPages": 18,
-        "totalResults": 18
-      },
-      "results": [
-        {
-          "decidedAt": 1785900013406,
-          "description": "Four practitioners compare notes on the agent architectures they abandoned, the assumptions that did not survive production, and what they would build differently today.",
-          "format": "Panel",
-          "id": "k573esg28z33r2y8q5jbm20kmd8c8jr4",
-          "kind": "session",
-          "language": "English",
-          "level": "Intermediate",
-          "speakers": [
-            {
-              "company": "Fathom Robotics",
-              "email": "noah.blackwood@example.com",
-              "id": "m97bp802eg7h3w37pxqb4qszwd8c892t",
-              "jobTitle": "Chief Technology Officer",
-              "name": "Noah Blackwood",
-              "role": "speaker"
-            },
-            {
-              "company": "Meridian Health",
-              "email": "daniel.okonkwo@example.com",
-              "id": "m971k3gw65kh339a7tz3jt4pq98c853e",
-              "jobTitle": "Director of AI",
-              "name": "Daniel Okonkwo",
-              "role": "speaker"
-            }
-          ],
-          "status": "accepted",
-          "submittedAt": 1786418413406.3608,
-          "tags": [
-            "panel",
-            "agents"
-          ],
-          "title": "Closing panel: what we got wrong about agents",
-          "track": "Product"
-        }
-      ]
-    },
-    "GET /v1/event/{eventRef}/speakers 200": {
-      "data": [
-        {
-          "about": null,
-          "bio": null,
-          "company": "Ridgeline",
-          "company_name": "Ridgeline",
-          "created_at": "2026-08-11T03:20:13.406Z",
-          "email": "tom.beaumont@example.com",
-          "firstName": "Tom",
-          "first_name": "Tom",
-          "friendly_id": "SPK-28922",
-          "friendly_id_raw": 28922,
-          "full_name": "Tom Beaumont",
-          "headshotUrl": "https://neat-sparrow-926.eu-west-1.convex.cloud/api/storage/324e42a8-dc32-4820-8e87-c8df90980880",
-          "id": "m974s794ev0mskw5vq6zemcydd8c9rwd",
-          "jobTitle": "Developer Advocate",
-          "lastName": "Beaumont",
-          "last_name": "Beaumont",
-          "linkedin_url": null,
-          "name": "Tom Beaumont",
-          "participant_role": null,
-          "phone_mobile": null,
-          "photo_url": "https://neat-sparrow-926.eu-west-1.convex.cloud/api/storage/324e42a8-dc32-4820-8e87-c8df90980880",
-          "pronouns": null,
-          "salutation": null,
-          "sessions": [
-            {
-              "id": "k57bv1wtxa1d4fv3d4jcka4s2n8c8saf",
-              "role": "speaker",
-              "startTime": 1791824400000,
-              "starts_at": "2026-10-12T17:00:00.000Z",
-              "status": "accepted",
-              "title": "Evaluation harnesses for production LLMs"
-            }
-          ],
-          "title": "Developer Advocate",
-          "twitter_url": null,
-          "updated_at": "2026-08-11T03:20:13.406Z",
-          "website_url": null,
-          "workflow_status": null
-        }
-      ],
-      "event": {
-        "_id": "j975xr4mvpac72vvhfmnst0kf98c8hat",
-        "agenda_published_at": "2026-08-06T03:20:13.406Z",
-        "created_at": "2026-08-11T03:20:13.406Z",
+        "_id": "j971emkyf6md23jphggczhghvd8c8qjq",
+        "agenda_published_at": "2026-08-06T03:27:18.602Z",
+        "created_at": "2026-08-11T03:27:18.602Z",
         "description": "Two days for the people building AI systems that have to work on Monday morning. Practitioner talks on evaluation, agents, retrieval, inference infrastructure and the product decisions in between — no keynote fluff, no vendor pitches.",
         "endsAt": 1791939600000,
         "ends_at": "2026-10-14T01:00:00.000Z",
@@ -8256,7 +8575,7 @@
           "translated_fields": false,
           "webhooks": true
         },
-        "id": "j975xr4mvpac72vvhfmnst0kf98c8hat",
+        "id": "j971emkyf6md23jphggczhghvd8c8qjq",
         "logo_url": null,
         "name": "AI Engineer Summit 2026",
         "slug": "ai-summit-2026",
@@ -8273,26 +8592,284 @@
         "current_page": 1,
         "pageSize": 1,
         "page_size": 1,
-        "totalPages": 14,
-        "totalResults": 14,
-        "total_pages": 14,
-        "total_results": 14
+        "totalPages": 9,
+        "totalResults": 9,
+        "total_pages": 9,
+        "total_results": 9
       },
       "results": [
+        {
+          "answers": {
+            "description": "<p>A talk created by the verify script.</p>",
+            "format": "Talk",
+            "language": "English",
+            "level": "Introductory",
+            "title": "Verification Talk",
+            "track": "AI Engineering"
+          },
+          "capacity": null,
+          "chairpersons": [],
+          "created_at": "2026-08-11T03:27:33.444Z",
+          "custom_fields": [
+            {
+              "created_at": "2026-08-11T03:27:33.444Z",
+              "id": "description",
+              "internal_name": "description",
+              "name": "Session description",
+              "type": "long_text",
+              "value": "<p>A talk created by the verify script.</p>",
+              "value_raw": "<p>A talk created by the verify script.</p>"
+            },
+            {
+              "created_at": "2026-08-11T03:27:33.444Z",
+              "id": "format",
+              "internal_name": "format",
+              "name": "Format",
+              "type": "dropdown",
+              "value": "Talk",
+              "value_raw": "Talk"
+            }
+          ],
+          "decidedAt": 1786418865308,
+          "decided_at": "2026-08-11T03:27:45.308Z",
+          "deleted_at": null,
+          "description": "<p>A talk created by the verify script.</p>",
+          "durationMinutes": null,
+          "duration_minutes": null,
+          "endTime": null,
+          "ends_at": null,
+          "format": {
+            "id": "Talk",
+            "name": "Talk"
+          },
+          "friendly_id": "SESS-64530",
+          "friendly_id_raw": 64530,
+          "id": "k57a8s50rhxh9xck6kznjnng2d8c88yq",
+          "is_abstract": true,
+          "is_public": true,
+          "kind": "abstract",
+          "language": {
+            "id": "English",
+            "name": "English"
+          },
+          "level": {
+            "id": "Introductory",
+            "name": "Introductory"
+          },
+          "location": null,
+          "moderators": [],
+          "notified_at": "2026-08-11T03:27:45.308Z",
+          "participants": [
+            {
+              "about": "An updated bio from the verify script.",
+              "bio": "An updated bio from the verify script.",
+              "company": null,
+              "company_name": null,
+              "created_at": "2026-08-11T03:27:31.360Z",
+              "email": "verify-e2e-mso3nrc2@example.com",
+              "firstName": "Vera",
+              "first_name": "Vera",
+              "friendly_id": "SPK-95912",
+              "friendly_id_raw": 95912,
+              "full_name": "Vera Efftest",
+              "headshotUrl": "https://neat-sparrow-926.eu-west-1.convex.cloud/api/storage/40d6bda7-5627-4674-a9a0-5f1d6275277a",
+              "id": "m97cd0d1qabm1r6784jzxc846s8c8wyy",
+              "jobTitle": "QA Engineer",
+              "lastName": "Efftest",
+              "last_name": "Efftest",
+              "linkedin_url": null,
+              "name": "Vera Efftest",
+              "participant_role": {
+                "core_role": "speaker",
+                "name": "Speaker",
+                "name_plural": "Speakers",
+                "slug": "speaker"
+              },
+              "phone_mobile": null,
+              "photo_url": "https://neat-sparrow-926.eu-west-1.convex.cloud/api/storage/40d6bda7-5627-4674-a9a0-5f1d6275277a",
+              "pronouns": null,
+              "salutation": null,
+              "title": "QA Engineer",
+              "twitter_url": null,
+              "updated_at": "2026-08-11T03:27:31.360Z",
+              "website_url": null,
+              "workflow_status": null
+            }
+          ],
+          "room": null,
+          "speakers": [
+            {
+              "about": "An updated bio from the verify script.",
+              "bio": "An updated bio from the verify script.",
+              "company": null,
+              "company_name": null,
+              "created_at": "2026-08-11T03:27:31.360Z",
+              "email": "verify-e2e-mso3nrc2@example.com",
+              "firstName": "Vera",
+              "first_name": "Vera",
+              "friendly_id": "SPK-95912",
+              "friendly_id_raw": 95912,
+              "full_name": "Vera Efftest",
+              "headshotUrl": "https://neat-sparrow-926.eu-west-1.convex.cloud/api/storage/40d6bda7-5627-4674-a9a0-5f1d6275277a",
+              "id": "m97cd0d1qabm1r6784jzxc846s8c8wyy",
+              "jobTitle": "QA Engineer",
+              "lastName": "Efftest",
+              "last_name": "Efftest",
+              "linkedin_url": null,
+              "name": "Vera Efftest",
+              "participant_role": {
+                "core_role": "speaker",
+                "name": "Speaker",
+                "name_plural": "Speakers",
+                "slug": "speaker"
+              },
+              "phone_mobile": null,
+              "photo_url": "https://neat-sparrow-926.eu-west-1.convex.cloud/api/storage/40d6bda7-5627-4674-a9a0-5f1d6275277a",
+              "pronouns": null,
+              "salutation": null,
+              "title": "QA Engineer",
+              "twitter_url": null,
+              "updated_at": "2026-08-11T03:27:31.360Z",
+              "website_url": null,
+              "workflow_status": null
+            }
+          ],
+          "startTime": null,
+          "starts_at": null,
+          "status": "accepted",
+          "submittedAt": 1786418853444.4263,
+          "submitter": {
+            "about": "An updated bio from the verify script.",
+            "bio": "An updated bio from the verify script.",
+            "company": null,
+            "company_name": null,
+            "created_at": "2026-08-11T03:27:31.360Z",
+            "email": "verify-e2e-mso3nrc2@example.com",
+            "firstName": "Vera",
+            "first_name": "Vera",
+            "friendly_id": "SPK-95912",
+            "friendly_id_raw": 95912,
+            "full_name": "Vera Efftest",
+            "headshotUrl": "https://neat-sparrow-926.eu-west-1.convex.cloud/api/storage/40d6bda7-5627-4674-a9a0-5f1d6275277a",
+            "id": "m97cd0d1qabm1r6784jzxc846s8c8wyy",
+            "jobTitle": "QA Engineer",
+            "lastName": "Efftest",
+            "last_name": "Efftest",
+            "linkedin_url": null,
+            "name": "Vera Efftest",
+            "participant_role": null,
+            "phone_mobile": null,
+            "photo_url": "https://neat-sparrow-926.eu-west-1.convex.cloud/api/storage/40d6bda7-5627-4674-a9a0-5f1d6275277a",
+            "pronouns": null,
+            "salutation": null,
+            "title": "QA Engineer",
+            "twitter_url": null,
+            "updated_at": "2026-08-11T03:27:31.360Z",
+            "website_url": null,
+            "workflow_status": null
+          },
+          "subsessions": [],
+          "tags": [],
+          "title": "Verification Talk (edited)",
+          "track": {
+            "color": "#2F5CE0",
+            "created_at": "2026-08-11T03:27:18.602Z",
+            "event_id": "j971emkyf6md23jphggczhghvd8c8qjq",
+            "id": "kd7805tv3jwftr3zw2w5bq0sms8c89wn",
+            "name": "AI Engineering",
+            "order": 0,
+            "updated_at": "2026-08-11T03:27:18.602Z"
+          },
+          "trackColor": "#2F5CE0",
+          "updated_at": "2026-08-11T03:27:33.444Z"
+        }
+      ]
+    },
+    "GET /v1/event/{eventRef}/submissions 200": {
+      "data": [
+        {
+          "decidedAt": null,
+          "description": "<p>A talk created by the verify script.</p>",
+          "format": "Talk",
+          "id": "k57a7y1qvb8wvbfe7q2wj5928s8c8a4z",
+          "kind": "abstract",
+          "language": "English",
+          "level": "Introductory",
+          "speakers": [
+            {
+              "company": null,
+              "email": "verify-quiet-mso3nunn@example.com",
+              "id": "m97f7dwt7rmehcsqreq8sxjnzh8c9h3e",
+              "jobTitle": null,
+              "name": "Quinn Quiet",
+              "role": "speaker"
+            }
+          ],
+          "status": "pending",
+          "submittedAt": 1786418856941.303,
+          "tags": [],
+          "title": "Quiet Talk",
+          "track": "AI Engineering"
+        }
+      ],
+      "event": {
+        "_id": "j971emkyf6md23jphggczhghvd8c8qjq",
+        "endsAt": 1791939600000,
+        "name": "AI Engineer Summit 2026",
+        "slug": "ai-summit-2026",
+        "startsAt": 1791820800000,
+        "timezone": "America/Los_Angeles",
+        "venue": "Moscone West, San Francisco"
+      },
+      "pagination": {
+        "currentPage": 1,
+        "pageSize": 1,
+        "totalPages": 20,
+        "totalResults": 20
+      },
+      "results": [
+        {
+          "decidedAt": null,
+          "description": "<p>A talk created by the verify script.</p>",
+          "format": "Talk",
+          "id": "k57a7y1qvb8wvbfe7q2wj5928s8c8a4z",
+          "kind": "abstract",
+          "language": "English",
+          "level": "Introductory",
+          "speakers": [
+            {
+              "company": null,
+              "email": "verify-quiet-mso3nunn@example.com",
+              "id": "m97f7dwt7rmehcsqreq8sxjnzh8c9h3e",
+              "jobTitle": null,
+              "name": "Quinn Quiet",
+              "role": "speaker"
+            }
+          ],
+          "status": "pending",
+          "submittedAt": 1786418856941.303,
+          "tags": [],
+          "title": "Quiet Talk",
+          "track": "AI Engineering"
+        }
+      ]
+    },
+    "GET /v1/event/{eventRef}/speakers 200": {
+      "data": [
         {
           "about": null,
           "bio": null,
           "company": "Ridgeline",
           "company_name": "Ridgeline",
-          "created_at": "2026-08-11T03:20:13.406Z",
+          "created_at": "2026-08-11T03:27:18.602Z",
           "email": "tom.beaumont@example.com",
           "firstName": "Tom",
           "first_name": "Tom",
-          "friendly_id": "SPK-28922",
-          "friendly_id_raw": 28922,
+          "friendly_id": "SPK-45805",
+          "friendly_id_raw": 45805,
           "full_name": "Tom Beaumont",
-          "headshotUrl": "https://neat-sparrow-926.eu-west-1.convex.cloud/api/storage/324e42a8-dc32-4820-8e87-c8df90980880",
-          "id": "m974s794ev0mskw5vq6zemcydd8c9rwd",
+          "headshotUrl": "https://neat-sparrow-926.eu-west-1.convex.cloud/api/storage/a5589509-4703-4955-8e1c-26c9a32fff3e",
+          "id": "m97ar7w0qz8xxwb6zsyr4nbgkh8c8whm",
           "jobTitle": "Developer Advocate",
           "lastName": "Beaumont",
           "last_name": "Beaumont",
@@ -8300,12 +8877,12 @@
           "name": "Tom Beaumont",
           "participant_role": null,
           "phone_mobile": null,
-          "photo_url": "https://neat-sparrow-926.eu-west-1.convex.cloud/api/storage/324e42a8-dc32-4820-8e87-c8df90980880",
+          "photo_url": "https://neat-sparrow-926.eu-west-1.convex.cloud/api/storage/a5589509-4703-4955-8e1c-26c9a32fff3e",
           "pronouns": null,
           "salutation": null,
           "sessions": [
             {
-              "id": "k57bv1wtxa1d4fv3d4jcka4s2n8c8saf",
+              "id": "k576ypz0a1h0hsv1ysfq2egc1x8c9gnp",
               "role": "speaker",
               "startTime": 1791824400000,
               "starts_at": "2026-10-12T17:00:00.000Z",
@@ -8315,7 +8892,83 @@
           ],
           "title": "Developer Advocate",
           "twitter_url": null,
-          "updated_at": "2026-08-11T03:20:13.406Z",
+          "updated_at": "2026-08-11T03:27:18.602Z",
+          "website_url": null,
+          "workflow_status": null
+        }
+      ],
+      "event": {
+        "_id": "j971emkyf6md23jphggczhghvd8c8qjq",
+        "agenda_published_at": "2026-08-06T03:27:18.602Z",
+        "created_at": "2026-08-11T03:27:18.602Z",
+        "description": "Two days for the people building AI systems that have to work on Monday morning. Practitioner talks on evaluation, agents, retrieval, inference infrastructure and the product decisions in between — no keynote fluff, no vendor pitches.",
+        "endsAt": 1791939600000,
+        "ends_at": "2026-10-14T01:00:00.000Z",
+        "features": {
+          "custom_fields": true,
+          "translated_fields": false,
+          "webhooks": true
+        },
+        "id": "j971emkyf6md23jphggczhghvd8c8qjq",
+        "logo_url": null,
+        "name": "AI Engineer Summit 2026",
+        "slug": "ai-summit-2026",
+        "startsAt": 1791820800000,
+        "starts_at": "2026-10-12T16:00:00.000Z",
+        "timezone": "America/Los_Angeles",
+        "type": "Conference",
+        "venue": "Moscone West, San Francisco",
+        "websiteUrl": "https://example.com/ai-summit-2026",
+        "website_url": "https://example.com/ai-summit-2026"
+      },
+      "pagination": {
+        "currentPage": 1,
+        "current_page": 1,
+        "pageSize": 1,
+        "page_size": 1,
+        "totalPages": 16,
+        "totalResults": 16,
+        "total_pages": 16,
+        "total_results": 16
+      },
+      "results": [
+        {
+          "about": null,
+          "bio": null,
+          "company": "Ridgeline",
+          "company_name": "Ridgeline",
+          "created_at": "2026-08-11T03:27:18.602Z",
+          "email": "tom.beaumont@example.com",
+          "firstName": "Tom",
+          "first_name": "Tom",
+          "friendly_id": "SPK-45805",
+          "friendly_id_raw": 45805,
+          "full_name": "Tom Beaumont",
+          "headshotUrl": "https://neat-sparrow-926.eu-west-1.convex.cloud/api/storage/a5589509-4703-4955-8e1c-26c9a32fff3e",
+          "id": "m97ar7w0qz8xxwb6zsyr4nbgkh8c8whm",
+          "jobTitle": "Developer Advocate",
+          "lastName": "Beaumont",
+          "last_name": "Beaumont",
+          "linkedin_url": null,
+          "name": "Tom Beaumont",
+          "participant_role": null,
+          "phone_mobile": null,
+          "photo_url": "https://neat-sparrow-926.eu-west-1.convex.cloud/api/storage/a5589509-4703-4955-8e1c-26c9a32fff3e",
+          "pronouns": null,
+          "salutation": null,
+          "sessions": [
+            {
+              "id": "k576ypz0a1h0hsv1ysfq2egc1x8c9gnp",
+              "role": "speaker",
+              "startTime": 1791824400000,
+              "starts_at": "2026-10-12T17:00:00.000Z",
+              "status": "accepted",
+              "title": "Evaluation harnesses for production LLMs"
+            }
+          ],
+          "title": "Developer Advocate",
+          "twitter_url": null,
+          "updated_at": "2026-08-11T03:27:18.602Z",
           "website_url": null,
           "workflow_status": null
         }
@@ -8325,11 +8978,11 @@
       "data": [
         {
           "contains_pii": false,
-          "createdAt": "2026-08-11T03:20:13.406Z",
+          "createdAt": "2026-08-11T03:27:18.602Z",
           "enabled": true,
           "field_source": "standard",
           "field_type": "short_text",
-          "form_id": "jd779pds55ntt54qgjv3hnqybn8c92j3",
+          "form_id": "jd78d2k3nfftskesewr6qesn7d8c90d8",
           "form_slug": "cfp",
           "help": "Aim for something an attendee could choose from a schedule without extra context.",
           "id": "title",
@@ -8338,7 +8991,7 @@
           "public_name": "Session title",
           "required": true,
           "scope": "session",
-          "updatedAt": "2026-08-11T03:20:13.406Z"
+          "updatedAt": "2026-08-11T03:27:18.602Z"
         }
       ],
       "pagination": {
@@ -8354,11 +9007,11 @@
       "results": [
         {
           "contains_pii": false,
-          "createdAt": "2026-08-11T03:20:13.406Z",
+          "createdAt": "2026-08-11T03:27:18.602Z",
           "enabled": true,
           "field_source": "standard",
           "field_type": "short_text",
-          "form_id": "jd779pds55ntt54qgjv3hnqybn8c92j3",
+          "form_id": "jd78d2k3nfftskesewr6qesn7d8c90d8",
           "form_slug": "cfp",
           "help": "Aim for something an attendee could choose from a schedule without extra context.",
           "id": "title",
@@ -8367,7 +9020,7 @@
           "public_name": "Session title",
           "required": true,
           "scope": "session",
-          "updatedAt": "2026-08-11T03:20:13.406Z"
+          "updatedAt": "2026-08-11T03:27:18.602Z"
         }
       ],
       "unknownResource": false
@@ -8376,12 +9029,12 @@
       "data": [
         {
           "color": "#2F5CE0",
-          "created_at": "2026-08-11T03:20:13.406Z",
-          "event_id": "j975xr4mvpac72vvhfmnst0kf98c8hat",
-          "id": "kd74r6vy5f46c848dgfgs7g0v98c9wpf",
+          "created_at": "2026-08-11T03:27:18.602Z",
+          "event_id": "j971emkyf6md23jphggczhghvd8c8qjq",
+          "id": "kd7805tv3jwftr3zw2w5bq0sms8c89wn",
           "name": "AI Engineering",
           "order": 0,
-          "updated_at": "2026-08-11T03:20:13.406Z"
+          "updated_at": "2026-08-11T03:27:18.602Z"
         }
       ],
       "pagination": {
@@ -8397,12 +9050,12 @@
       "results": [
         {
           "color": "#2F5CE0",
-          "created_at": "2026-08-11T03:20:13.406Z",
-          "event_id": "j975xr4mvpac72vvhfmnst0kf98c8hat",
-          "id": "kd74r6vy5f46c848dgfgs7g0v98c9wpf",
+          "created_at": "2026-08-11T03:27:18.602Z",
+          "event_id": "j971emkyf6md23jphggczhghvd8c8qjq",
+          "id": "kd7805tv3jwftr3zw2w5bq0sms8c89wn",
           "name": "AI Engineering",
           "order": 0,
-          "updated_at": "2026-08-11T03:20:13.406Z"
+          "updated_at": "2026-08-11T03:27:18.602Z"
         }
       ],
       "unknownResource": false
@@ -8411,11 +9064,11 @@
       "data": [
         {
           "capacity": 300,
-          "created_at": "2026-08-11T03:20:13.406Z",
-          "id": "js7cpcennn7v4826y5zqnamhgs8c921h",
+          "created_at": "2026-08-11T03:27:18.602Z",
+          "id": "js7928f758c8d8qn6xqj705py58c9r3j",
           "name": "Main Stage",
           "order": 0,
-          "updated_at": "2026-08-11T03:20:13.406Z"
+          "updated_at": "2026-08-11T03:27:18.602Z"
         }
       ],
       "pagination": {
@@ -8431,11 +9084,11 @@
       "results": [
         {
           "capacity": 300,
-          "created_at": "2026-08-11T03:20:13.406Z",
-          "id": "js7cpcennn7v4826y5zqnamhgs8c921h",
+          "created_at": "2026-08-11T03:27:18.602Z",
+          "id": "js7928f758c8d8qn6xqj705py58c9r3j",
           "name": "Main Stage",
           "order": 0,
-          "updated_at": "2026-08-11T03:20:13.406Z"
+          "updated_at": "2026-08-11T03:27:18.602Z"
         }
       ],
       "unknownResource": false
@@ -8520,9 +9173,9 @@
         "pageSize": 25,
         "page_size": 25,
         "totalPages": 1,
-        "totalResults": 3,
+        "totalResults": 4,
         "total_pages": 1,
-        "total_results": 3
+        "total_results": 4
       },
       "results": [
         {
@@ -8634,9 +9287,9 @@
       "data": {
         "conflicts": [],
         "event": {
-          "_id": "j975xr4mvpac72vvhfmnst0kf98c8hat",
-          "agenda_published_at": "2026-08-06T03:20:13.406Z",
-          "created_at": "2026-08-11T03:20:13.406Z",
+          "_id": "j971emkyf6md23jphggczhghvd8c8qjq",
+          "agenda_published_at": "2026-08-06T03:27:18.602Z",
+          "created_at": "2026-08-11T03:27:18.602Z",
           "description": "Two days for the people building AI systems that have to work on Monday morning. Practitioner talks on evaluation, agents, retrieval, inference infrastructure and the product decisions in between — no keynote fluff, no vendor pitches.",
           "endsAt": 1791939600000,
           "ends_at": "2026-10-14T01:00:00.000Z",
@@ -8645,7 +9298,7 @@
             "translated_fields": false,
             "webhooks": true
           },
-          "id": "j975xr4mvpac72vvhfmnst0kf98c8hat",
+          "id": "j971emkyf6md23jphggczhghvd8c8qjq",
           "logo_url": null,
           "name": "AI Engineer Summit 2026",
           "slug": "ai-summit-2026",
@@ -8658,56 +9311,56 @@
           "website_url": "https://example.com/ai-summit-2026"
         },
         "published": true,
-        "published_at": "2026-08-06T03:20:13.406Z",
+        "published_at": "2026-08-06T03:27:18.602Z",
         "rooms": [
           {
             "capacity": 300,
-            "id": "js7cpcennn7v4826y5zqnamhgs8c921h",
+            "id": "js7928f758c8d8qn6xqj705py58c9r3j",
             "name": "Main Stage",
             "order": 0
           },
           {
             "capacity": 80,
-            "id": "js78qxf00131mytkmvew51h2r18c8cxn",
+            "id": "js703wmx07yh80wngvzx2xnt9h8c811v",
             "name": "Workshop Room",
             "order": 1
           }
         ],
         "scheduled": [
           {
-            "duration_minutes": 60,
-            "ends_at": "2026-10-12T18:00:00.000Z",
-            "id": "k573nxkn11trw2m0hmhcr91cgh8c915m",
-            "room_id": "js7cpcennn7v4826y5zqnamhgs8c921h",
-            "starts_at": "2026-10-12T17:00:00.000Z",
-            "title": "Building reliable agents: a practitioner's playbook",
-            "track_id": "kd74r6vy5f46c848dgfgs7g0v98c9wpf"
+            "duration_minutes": 45,
+            "ends_at": "2026-10-12T09:45:00.000Z",
+            "id": "k57cfvgs8hrs97xbvv82vcbd4d8c8y59",
+            "room_id": "js7928f758c8d8qn6xqj705py58c9r3j",
+            "starts_at": "2026-10-12T09:00:00.000Z",
+            "title": "Structured output without the sadness",
+            "track_id": "kd7805tv3jwftr3zw2w5bq0sms8c89wn"
           },
           {
             "duration_minutes": 45,
-            "ends_at": "2026-10-12T17:45:00.000Z",
-            "id": "k57bv1wtxa1d4fv3d4jcka4s2n8c8saf",
-            "room_id": "js78qxf00131mytkmvew51h2r18c8cxn",
-            "starts_at": "2026-10-12T17:00:00.000Z",
-            "title": "Evaluation harnesses for production LLMs",
-            "track_id": "kd74r6vy5f46c848dgfgs7g0v98c9wpf"
+            "ends_at": "2026-10-12T09:45:00.000Z",
+            "id": "k57818z4rbjk54p03n1kna0rw58c8t7d",
+            "room_id": "js703wmx07yh80wngvzx2xnt9h8c811v",
+            "starts_at": "2026-10-12T09:00:00.000Z",
+            "title": "Cost modelling for inference-heavy products",
+            "track_id": "kd71aqbkdmt4nevr61p5wdg64d8c8pb9"
           }
         ],
         "totals": {
           "conflicts": 0,
-          "scheduled": 6,
+          "scheduled": 10,
           "unscheduled": 0
         },
         "tracks": [
           {
             "color": "#2F5CE0",
-            "id": "kd74r6vy5f46c848dgfgs7g0v98c9wpf",
+            "id": "kd7805tv3jwftr3zw2w5bq0sms8c89wn",
             "name": "AI Engineering",
             "order": 0
           },
           {
             "color": "#1E9E6B",
-            "id": "kd7c95fhe6erz94891pndzh2cn8c987v",
+            "id": "kd71aqbkdmt4nevr61p5wdg64d8c8pb9",
             "name": "Product",
             "order": 1
           }
@@ -8715,90 +9368,54 @@
         "unscheduled": []
       }
     },
-    "GET /v1/event/{eventRef}/schedule.ics 200": "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//Trackstage//Event Schedule//EN\r\nCALSCALE:GREGORIAN\r\nMETHOD:PUBLISH\r\nX-WR-CALNAME:AI Engineer Summit 2026\r\nBEGIN:VEVENT\r\nUID:k57amp377bn4c089m5kp22r0zh8c8j2f@ai-summit-2026.trackstage\r\nDTSTAMP:20260811T032130Z\r\nDTSTART:20261012T160000Z\r\nDTEND:20261012T164500Z\r\nSUMMARY:Opening keynote: the year AI engineering grew up\r\n…",
+    "GET /v1/event/{eventRef}/schedule.ics 200": "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//Trackstage//Event Schedule//EN\r\nCALSCALE:GREGORIAN\r\nMETHOD:PUBLISH\r\nX-WR-CALNAME:AI Engineer Summit 2026\r\nBEGIN:VEVENT\r\nUID:k57818z4rbjk54p03n1kna0rw58c8t7d@ai-summit-2026.trackstage\r\nDTSTAMP:20260811T032838Z\r\nDTSTART:20261012T090000Z\r\nDTEND:20261012T094500Z\r\nSUMMARY:Cost modelling for inference-heavy products\r\n…",
     "GET /v1/event/{eventRef}/sessions/{sessionId} 200": {
       "data": {
-        "answers": {
-          "description": "Four practitioners compare notes on the agent architectures they abandoned, the assumptions that did not survive production, and what they would build differently today.",
-          "format": "Panel",
-          "language": "English",
-          "level": "Intermediate",
-          "takeaways": "Honest post-mortems from four production agent systems.",
-          "title": "Closing panel: what we got wrong about agents",
-          "track": "Product"
-        },
-        "capacity": 300,
+        "answers": {},
+        "capacity": 80,
         "chairpersons": [],
-        "created_at": "2026-08-11T03:20:13.406Z",
-        "custom_fields": [
-          {
-            "created_at": "2026-08-11T03:20:13.406Z",
-            "id": "description",
-            "internal_name": "description",
-            "name": "Session description",
-            "type": "long_text",
-            "value": "Four practitioners compare notes on the agent architectures they abandoned, the assumptions that did not survive production, and what they would build differently today.",
-            "value_raw": "Four practitioners compare notes on the agent architectures they abandoned, the assumptions that did not survive production, and what they would build differently today."
-          },
-          {
-            "created_at": "2026-08-11T03:20:13.406Z",
-            "id": "format",
-            "internal_name": "format",
-            "name": "Format",
-            "type": "dropdown",
-            "value": "Panel",
-            "value_raw": "Panel"
-          }
-        ],
-        "decidedAt": 1785900013406,
-        "decided_at": "2026-08-05T03:20:13.406Z",
+        "created_at": "2026-08-11T03:28:35.947Z",
+        "custom_fields": [],
+        "decidedAt": null,
+        "decided_at": null,
         "deleted_at": null,
-        "description": "Four practitioners compare notes on the agent architectures they abandoned, the assumptions that did not survive production, and what they would build differently today.",
-        "durationMinutes": 60,
-        "duration_minutes": 60,
-        "endTime": 1791936000000,
-        "ends_at": "2026-10-14T00:00:00.000Z",
-        "format": {
-          "id": "Panel",
-          "name": "Panel"
-        },
-        "friendly_id": "SESS-90130",
-        "friendly_id_raw": 90130,
-        "id": "k573esg28z33r2y8q5jbm20kmd8c8jr4",
+        "description": "Created by the agenda e2e flow.",
+        "durationMinutes": 45,
+        "duration_minutes": 45,
+        "endTime": 1791801900000,
+        "ends_at": "2026-10-12T10:45:00.000Z",
+        "format": null,
+        "friendly_id": "SESS-71011",
+        "friendly_id_raw": 71011,
+        "id": "k5745eqp5fr8ecwwtk71tcq61n8c8ghd",
         "is_abstract": false,
         "is_public": true,
         "kind": "session",
-        "language": {
-          "id": "English",
-          "name": "English"
-        },
-        "level": {
-          "id": "Intermediate",
-          "name": "Intermediate"
-        },
-        "location": "Main Stage",
+        "language": null,
+        "level": null,
+        "location": "Workshop Room",
         "moderators": [],
-        "notified_at": "2026-08-06T03:20:13.406Z",
+        "notified_at": null,
         "participants": [
           {
-            "about": "Noah is CTO at Fathom Robotics, where inference cost is a line item the board reads every month. He previously built pricing systems at a payments company.",
-            "bio": "Noah is CTO at Fathom Robotics, where inference cost is a line item the board reads every month. He previously built pricing systems at a payments company.",
-            "company": "Fathom Robotics",
-            "company_name": "Fathom Robotics",
-            "created_at": "2026-08-11T03:20:13.406Z",
-            "email": "noah.blackwood@example.com",
-            "firstName": "Noah",
-            "first_name": "Noah",
-            "friendly_id": "SPK-96276",
-            "friendly_id_raw": 96276,
-            "full_name": "Noah Blackwood",
-            "headshotUrl": "https://neat-sparrow-926.eu-west-1.convex.cloud/api/storage/f4174a13-0326-4343-b477-1175c1d082f0",
-            "id": "m97bp802eg7h3w37pxqb4qszwd8c892t",
-            "jobTitle": "Chief Technology Officer",
-            "lastName": "Blackwood",
-            "last_name": "Blackwood",
+            "about": null,
+            "bio": null,
+            "company": null,
+            "company_name": null,
+            "created_at": "2026-08-11T03:28:35.947Z",
+            "email": "agenda-mso3p553-cyh23@example.com",
+            "firstName": "Aggie",
+            "first_name": "Aggie",
+            "friendly_id": "SPK-50369",
+            "friendly_id_raw": 50369,
+            "full_name": "Aggie Enda",
+            "headshotUrl": null,
+            "id": "m97az6mve2978qw0s37deftq0s8c8hnn",
+            "jobTitle": null,
+            "lastName": "Enda",
+            "last_name": "Enda",
             "linkedin_url": null,
-            "name": "Noah Blackwood",
+            "name": "Aggie Enda",
             "participant_role": {
               "core_role": "speaker",
               "name": "Speaker",
@@ -8806,79 +9423,44 @@
               "slug": "speaker"
             },
             "phone_mobile": null,
-            "photo_url": "https://neat-sparrow-926.eu-west-1.convex.cloud/api/storage/f4174a13-0326-4343-b477-1175c1d082f0",
+            "photo_url": null,
             "pronouns": null,
             "salutation": null,
-            "title": "Chief Technology Officer",
+            "title": null,
             "twitter_url": null,
-            "updated_at": "2026-08-11T03:20:13.406Z",
-            "website_url": null,
-            "workflow_status": null
-          },
-          {
-            "about": "Daniel builds clinical decision-support systems at Meridian Health, in a regulatory environment where 'we will fix it in the next deploy' is not an option.",
-            "bio": "Daniel builds clinical decision-support systems at Meridian Health, in a regulatory environment where 'we will fix it in the next deploy' is not an option.",
-            "company": "Meridian Health",
-            "company_name": "Meridian Health",
-            "created_at": "2026-08-11T03:20:13.406Z",
-            "email": "daniel.okonkwo@example.com",
-            "firstName": "Daniel",
-            "first_name": "Daniel",
-            "friendly_id": "SPK-35200",
-            "friendly_id_raw": 35200,
-            "full_name": "Daniel Okonkwo",
-            "headshotUrl": "https://neat-sparrow-926.eu-west-1.convex.cloud/api/storage/dacc3473-ed7e-459c-b592-b93ce084513d",
-            "id": "m971k3gw65kh339a7tz3jt4pq98c853e",
-            "jobTitle": "Director of AI",
-            "lastName": "Okonkwo",
-            "last_name": "Okonkwo",
-            "linkedin_url": null,
-            "name": "Daniel Okonkwo",
-            "participant_role": {
-              "core_role": "speaker",
-              "name": "Speaker",
-              "name_plural": "Speakers",
-              "slug": "speaker"
-            },
-            "phone_mobile": null,
-            "photo_url": "https://neat-sparrow-926.eu-west-1.convex.cloud/api/storage/dacc3473-ed7e-459c-b592-b93ce084513d",
-            "pronouns": null,
-            "salutation": null,
-            "title": "Director of AI",
-            "twitter_url": null,
-            "updated_at": "2026-08-11T03:20:13.406Z",
+            "updated_at": "2026-08-11T03:28:35.947Z",
             "website_url": null,
             "workflow_status": null
           }
         ],
         "room": {
-          "capacity": 300,
-          "created_at": "2026-08-11T03:20:13.406Z",
-          "id": "js7cpcennn7v4826y5zqnamhgs8c921h",
-          "name": "Main Stage",
-          "order": 0,
-          "updated_at": "2026-08-11T03:20:13.406Z"
+          "capacity": 80,
+          "created_at": "2026-08-11T03:27:18.602Z",
+          "id": "js703wmx07yh80wngvzx2xnt9h8c811v",
+          "name": "Workshop Room",
+          "order": 1,
+          "updated_at": "2026-08-11T03:27:18.602Z"
         },
         "speakers": [
           {
-            "about": "Noah is CTO at Fathom Robotics, where inference cost is a line item the board reads every month. He previously built pricing systems at a payments company.",
-            "bio": "Noah is CTO at Fathom Robotics, where inference cost is a line item the board reads every month. He previously built pricing systems at a payments company.",
-            "company": "Fathom Robotics",
-            "company_name": "Fathom Robotics",
-            "created_at": "2026-08-11T03:20:13.406Z",
-            "email": "noah.blackwood@example.com",
-            "firstName": "Noah",
-            "first_name": "Noah",
-            "friendly_id": "SPK-96276",
-            "friendly_id_raw": 96276,
-            "full_name": "Noah Blackwood",
-            "headshotUrl": "https://neat-sparrow-926.eu-west-1.convex.cloud/api/storage/f4174a13-0326-4343-b477-1175c1d082f0",
-            "id": "m97bp802eg7h3w37pxqb4qszwd8c892t",
-            "jobTitle": "Chief Technology Officer",
-            "lastName": "Blackwood",
-            "last_name": "Blackwood",
+            "about": null,
+            "bio": null,
+            "company": null,
+            "company_name": null,
+            "created_at": "2026-08-11T03:28:35.947Z",
+            "email": "agenda-mso3p553-cyh23@example.com",
+            "firstName": "Aggie",
+            "first_name": "Aggie",
+            "friendly_id": "SPK-50369",
+            "friendly_id_raw": 50369,
+            "full_name": "Aggie Enda",
+            "headshotUrl": null,
+            "id": "m97az6mve2978qw0s37deftq0s8c8hnn",
+            "jobTitle": null,
+            "lastName": "Enda",
+            "last_name": "Enda",
             "linkedin_url": null,
-            "name": "Noah Blackwood",
+            "name": "Aggie Enda",
             "participant_role": {
               "core_role": "speaker",
               "name": "Speaker",
@@ -8886,108 +9468,56 @@
               "slug": "speaker"
             },
             "phone_mobile": null,
-            "photo_url": "https://neat-sparrow-926.eu-west-1.convex.cloud/api/storage/f4174a13-0326-4343-b477-1175c1d082f0",
+            "photo_url": null,
             "pronouns": null,
             "salutation": null,
-            "title": "Chief Technology Officer",
+            "title": null,
             "twitter_url": null,
-            "updated_at": "2026-08-11T03:20:13.406Z",
-            "website_url": null,
-            "workflow_status": null
-          },
-          {
-            "about": "Daniel builds clinical decision-support systems at Meridian Health, in a regulatory environment where 'we will fix it in the next deploy' is not an option.",
-            "bio": "Daniel builds clinical decision-support systems at Meridian Health, in a regulatory environment where 'we will fix it in the next deploy' is not an option.",
-            "company": "Meridian Health",
-            "company_name": "Meridian Health",
-            "created_at": "2026-08-11T03:20:13.406Z",
-            "email": "daniel.okonkwo@example.com",
-            "firstName": "Daniel",
-            "first_name": "Daniel",
-            "friendly_id": "SPK-35200",
-            "friendly_id_raw": 35200,
-            "full_name": "Daniel Okonkwo",
-            "headshotUrl": "https://neat-sparrow-926.eu-west-1.convex.cloud/api/storage/dacc3473-ed7e-459c-b592-b93ce084513d",
-            "id": "m971k3gw65kh339a7tz3jt4pq98c853e",
-            "jobTitle": "Director of AI",
-            "lastName": "Okonkwo",
-            "last_name": "Okonkwo",
-            "linkedin_url": null,
-            "name": "Daniel Okonkwo",
-            "participant_role": {
-              "core_role": "speaker",
-              "name": "Speaker",
-              "name_plural": "Speakers",
-              "slug": "speaker"
-            },
-            "phone_mobile": null,
-            "photo_url": "https://neat-sparrow-926.eu-west-1.convex.cloud/api/storage/dacc3473-ed7e-459c-b592-b93ce084513d",
-            "pronouns": null,
-            "salutation": null,
-            "title": "Director of AI",
-            "twitter_url": null,
-            "updated_at": "2026-08-11T03:20:13.406Z",
+            "updated_at": "2026-08-11T03:28:35.947Z",
             "website_url": null,
             "workflow_status": null
           }
         ],
-        "startTime": 1791932400000,
-        "starts_at": "2026-10-13T23:00:00.000Z",
+        "startTime": 1791799200000,
+        "starts_at": "2026-10-12T10:00:00.000Z",
         "status": "accepted",
-        "submittedAt": 1786418413406.3608,
+        "submittedAt": 1786418915947.0808,
         "submitter": {
-          "about": "Noah is CTO at Fathom Robotics, where inference cost is a line item the board reads every month. He previously built pricing systems at a payments company.",
-          "bio": "Noah is CTO at Fathom Robotics, where inference cost is a line item the board reads every month. He previously built pricing systems at a payments company.",
-          "company": "Fathom Robotics",
-          "company_name": "Fathom Robotics",
-          "created_at": "2026-08-11T03:20:13.406Z",
-          "email": "noah.blackwood@example.com",
-          "firstName": "Noah",
-          "first_name": "Noah",
-          "friendly_id": "SPK-96276",
-          "friendly_id_raw": 96276,
-          "full_name": "Noah Blackwood",
-          "headshotUrl": "https://neat-sparrow-926.eu-west-1.convex.cloud/api/storage/f4174a13-0326-4343-b477-1175c1d082f0",
-          "id": "m97bp802eg7h3w37pxqb4qszwd8c892t",
-          "jobTitle": "Chief Technology Officer",
-          "lastName": "Blackwood",
-          "last_name": "Blackwood",
+          "about": null,
+          "bio": null,
+          "company": null,
+          "company_name": null,
+          "created_at": "2026-08-11T03:28:35.947Z",
+          "email": "organizer@demo.sessionboard.dev",
+          "firstName": "Dana",
+          "first_name": "Dana",
+          "friendly_id": "SPK-57771",
+          "friendly_id_raw": 57771,
+          "full_name": "Dana Organizer",
+          "headshotUrl": null,
+          "id": "m978pq4hq0nnsase57ks3sct4d8c9nyx",
+          "jobTitle": null,
+          "lastName": "Organizer",
+          "last_name": "Organizer",
           "linkedin_url": null,
-          "name": "Noah Blackwood",
+          "name": "Dana Organizer",
           "participant_role": null,
           "phone_mobile": null,
-          "photo_url": "https://neat-sparrow-926.eu-west-1.convex.cloud/api/storage/f4174a13-0326-4343-b477-1175c1d082f0",
+          "photo_url": null,
           "pronouns": null,
           "salutation": null,
-          "title": "Chief Technology Officer",
+          "title": null,
           "twitter_url": null,
-          "updated_at": "2026-08-11T03:20:13.406Z",
+          "updated_at": "2026-08-11T03:28:35.947Z",
           "website_url": null,
           "workflow_status": null
         },
         "subsessions": [],
-        "tags": [
-          {
-            "id": "panel",
-            "name": "panel"
-          },
-          {
-            "id": "agents",
-            "name": "agents"
-          }
-        ],
-        "title": "Closing panel: what we got wrong about agents",
-        "track": {
-          "color": "#1E9E6B",
-          "created_at": "2026-08-11T03:20:13.406Z",
-          "event_id": "j975xr4mvpac72vvhfmnst0kf98c8hat",
-          "id": "kd7c95fhe6erz94891pndzh2cn8c987v",
-          "name": "Product",
-          "order": 1,
-          "updated_at": "2026-08-11T03:20:13.406Z"
-        },
-        "trackColor": "#1E9E6B",
-        "updated_at": "2026-08-11T03:20:13.406Z"
+        "tags": [],
+        "title": "Dragged dg-mso3p553-rtglw",
+        "track": null,
+        "trackColor": null,
+        "updated_at": "2026-08-11T03:28:35.947Z"
       }
     }
   }

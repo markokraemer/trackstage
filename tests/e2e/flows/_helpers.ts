@@ -340,6 +340,15 @@ export async function until<T>(
       if (predicate(last)) return last
       lastError = undefined
     } catch (error) {
+      // Another agent reseeding this deployment recreates the demo event with
+      // a new id, which invalidates everything this test set up. Polling can
+      // never recover from that, so surface it immediately and let the retry
+      // start over against the new world instead of burning the timeout.
+      if (/Event not found|Submission not found|Form not found/i.test(String(error))) {
+        throw new Error(
+          `the deployment was reseeded mid-test (waiting for ${label}) — retrying is the fix`,
+        )
+      }
       lastError = error
     }
     await new Promise((r) => setTimeout(r, interval))

@@ -243,8 +243,20 @@ test.describe("agenda", () => {
         // the accessible path so the test still proves placement persists.
         test.info().annotations.push({
           type: "note",
-          description: "drag did not register under pointer emulation; used the popover path",
+          description:
+            "drag did not register under pointer emulation; used the popover path",
         })
+        // The tray card suppresses its popover for one cycle after a drag
+        // gesture (`draggedRef`), so start from a clean render before falling
+        // back — otherwise the click opens nothing and we'd hang.
+        await page.reload({ waitUntil: "domcontentloaded" })
+        await expect(
+          page
+            .getByRole("button", {
+              name: new RegExp(`${escape(title)}.*schedule this session`, "i"),
+            })
+            .first(),
+        ).toBeVisible({ timeout: 30_000 })
         await scheduleViaPopover(page, title)
         await until(
           async () => await board(organizer, event._id),

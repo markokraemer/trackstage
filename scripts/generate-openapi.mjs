@@ -1813,6 +1813,20 @@ async function main() {
   const live = process.argv.includes("--live")
   const { routes, settingsResources } = await loadRoutes()
 
+  // Duplicate operationIds silently break generated clients, so they are a
+  // hard error rather than something to notice in review.
+  const seen = new Map()
+  for (const route of routes) {
+    const previous = seen.get(route.operationId)
+    if (previous) {
+      console.error(
+        `Duplicate operationId "${route.operationId}": ${previous} and ${route.method} ${route.path}`,
+      )
+      process.exit(1)
+    }
+    seen.set(route.operationId, `${route.method} ${route.path}`)
+  }
+
   const dispatcherProblems = await checkDispatcher(routes, settingsResources)
   if (dispatcherProblems.length > 0) {
     console.error("Route manifest and dispatcher disagree:")

@@ -53,5 +53,6 @@ Start there; these files are the raw evidence.
 | Importing data | `loom.com/embed/66d0dd40…` | Loom embed, no transcript; `/settings/importing-data` documents the full contract in more detail |
 
 Every other `/videos/*` page also ships a **verbatim timestamped transcript inside its HTML**
-(a `<details>Video transcript</details>` block), captured during the crawl — so the narration
-layer is independently corroborated for all 26 analysed videos.
+(a `<details>Video transcript</details>` block). All 25 of them are captured in
+**[`transcripts.md`](transcripts.md)** — so the narration layer is complete and independently
+checkable even for the videos whose Gemini pass timed out.

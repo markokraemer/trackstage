@@ -187,7 +187,7 @@ export const API_ROUTES: Array<ApiRoute> = [
   {
     method: "POST",
     path: "/v1/event/{eventRef}/sessions/status",
-    operationId: "searchSessionStatuses",
+    operationId: "searchSessionsByStatus",
     tag: "Sessions",
     summary: "Search sessions by status",
     description:

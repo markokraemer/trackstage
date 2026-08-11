@@ -236,11 +236,29 @@ export function PointerDragChip({
     let y = 0
     let seen = false
 
+    const GAP = 16
+    const MARGIN = 8
+
     function paint() {
       frame = 0
       const node = ref.current
       if (!node) return
-      node.style.transform = `translate3d(${x + 16}px, ${y + 18}px, 0)`
+      // Flip to the other side of the cursor rather than run off the window.
+      // The tray sits at the right edge of the grid, which is exactly where an
+      // organizer parks a card mid-thought — a clipped chip there would hide
+      // the sentence that explains why the ghost went away.
+      const { width, height } = node.getBoundingClientRect()
+      const right = x + GAP + width
+      const bottom = y + GAP + 2 + height
+      const left =
+        right > window.innerWidth - MARGIN
+          ? Math.max(MARGIN, x - GAP - width)
+          : x + GAP
+      const top =
+        bottom > window.innerHeight - MARGIN
+          ? Math.max(MARGIN, y - GAP - height)
+          : y + GAP + 2
+      node.style.transform = `translate3d(${left}px, ${top}px, 0)`
       if (!seen) return
       node.style.opacity = "1"
     }

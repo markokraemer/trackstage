@@ -84,6 +84,13 @@ module graph is briefly inconsistent and React's dispatcher comes back null.
 protect journeys, not to re-report one transient ten times per run). Judge SSR
 health from `crawl.spec.ts` on a quiet tree.
 
+**KI-4 — a mid-run reseed invalidates a test's fixtures.** `seed:setup`
+recreates the demo event with a *new* id, so any spec holding one starts
+getting `Event not found`. `until()` detects that specific error and fails
+fast with "the deployment was reseeded mid-test" so Playwright's retry starts
+over against the new world instead of burning the timeout. If you see that
+message, nothing is broken — someone reseeded while you were running.
+
 **Related, same cause:** `[copilot] MCP tool loading failed: getRequestHeaders
 is not a function` (`src/routes/api/chat.ts:143`). `getRequestHeaders` *is*
 exported by the installed `@tanstack/react-start/server` — verified directly —

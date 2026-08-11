@@ -250,7 +250,9 @@ Effort: XS <30min · S ~1h · M ~half day · L ~a day+.
   the two fields never auto-sync, so editing a speaker's email must not move their portal login.
   Add `people.portalUsername` (defaults to email), authenticate on it, expose "Change portal
   username" on the speaker drawer.
-- ⏳ **[L3] Audit log / change history** (S1 · M) — closes sbek **CNT-11**. Generic
+- ⏳ **[L3] Audit log / change history** (S1 · M) — **already directed by Marko** (HISTORY.md 61:
+  full restore is overkill for v1, but a lightweight audit log ships); this pass supplies the
+  proven shape to build it in. Closes sbek **CNT-11**. Generic
   `Subject · Type · User · Action · Field · New Value · Occurred At` table surfaced globally
   (a History page) and inline on each session + speaker. Also the right home for MCP/copilot
   writes ("every agent action appears in the record's activity feed" is literally their model).
@@ -333,6 +335,36 @@ Effort: XS <30min · S ~1h · M ~half day · L ~a day+.
   sends the emails (their docs warn twice that changing a status emails nobody) · we ship the
   brief's **Track** view (they ship Month instead) · auto-place is one click · our CFP form is
   embeddable and our API is public (their form is link-only and applications have no API).
+
+## API parity (rule 28) — DONE, with a UI work order it produced
+
+- ✅ **Full REST API: 4 endpoints → 80.** Mapped Sessionboard's entire public API
+  (131 paths / 177 ops) and closed every program-side gap. Matrix, field-by-field diffs,
+  and every deliberate non-mirror: `docs/reference/api-parity.md`.
+- ✅ **OpenAPI generated, not hand-written** — `pnpm openapi:regen` builds
+  `public/docs/api/openapi.json` from `convex/apiRoutes.ts`; `pnpm openapi:check` fails on
+  drift; `pnpm openapi:verify` probes all 80 routes against the live deployment.
+- ⏳ **CI step for the deploy agent to place** in `.github/workflows/ci.yml` after "Lint":
+  `- name: OpenAPI spec up to date` / `run: pnpm openapi:check`.
+
+### P0 — backend already ships, these are UI-only builds
+- ⏳ **Session delete + restore (trash)** — the product has *no way to delete a submission*
+  at all. API does soft-delete + restore; needs a row action, a confirm, and a trash view.
+- ⏳ **Editable custom-field answers** — organizers can see "Form answers" in the detail
+  drawer but not edit them. `PUT /sessions/{id}/fields` already writes them.
+- ⏳ **Value-list management (formats / levels / languages / tags)** — currently hardcoded
+  in `src/components/submissions/constants.ts`; an organizer cannot add a session format.
+  The API edits them via the owning form question; needs a Settings card.
+- ⏳ **Webhooks settings card** — full backend (CRUD, HMAC signing, retries, delivery log,
+  test send, secret rotation), zero UI. Belongs on `/app/settings/integrations`.
+
+### P1
+- ⏳ Room / start time / duration editable in the submission drawer (today: agenda only).
+- ⏳ Bulk edit beyond status (track, format, delete) — the API does all three.
+- ⏳ File rename + re-assign to a participant (`PUT .../files/{id}` exists).
+- ⏳ Organizer-side headshot upload (today the organizer can only leave a note).
+- ⏳ Scope picker in the new-API-key dialog (`apiKeys.create` now takes `scopes`).
+- ⏳ Format / level / language filters on the submissions table.
 
 ## Standing process
 - ✅ Git repo = source of truth; commit+push incrementally; no Claude co-author

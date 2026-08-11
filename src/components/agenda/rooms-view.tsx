@@ -37,7 +37,15 @@ import type {
   ScheduledSession,
 } from "./agenda-model"
 import { conflictsForSession, shingle, speakerLabel } from "./agenda-model"
-import { formatMinutes, formatTimeRange, minutesIntoDay } from "./agenda-time"
+import {
+  SLOT_MINUTES,
+  clamp,
+  formatDuration,
+  formatMinutes,
+  formatTimeRange,
+  minutesIntoDay,
+  snapMinutes,
+} from "./agenda-time"
 import {
   DragAnnouncer,
   DropGhost,
@@ -230,6 +238,7 @@ export function RoomsView({
                 dayKeys={dayKeys}
                 timeZone={timeZone}
                 windowStartMinutes={windowStartMinutes}
+                windowEndMinutes={windowEndMinutes}
                 draggedRef={draggedRef}
                 focusId={focusId}
                 machine={machine}
@@ -289,6 +298,7 @@ interface RoomLaneProps {
   dayKeys: Array<string>
   timeZone: string
   windowStartMinutes: number
+  windowEndMinutes: number
   draggedRef: React.RefObject<boolean>
   focusId?: string
   machine: AgendaDragMachine
@@ -305,6 +315,7 @@ function RoomLane({
   dayKeys,
   timeZone,
   windowStartMinutes,
+  windowEndMinutes,
   draggedRef,
   focusId,
   machine,
@@ -353,6 +364,7 @@ function RoomLane({
             dayKeys={dayKeys}
             timeZone={timeZone}
             windowStartMinutes={windowStartMinutes}
+            windowEndMinutes={windowEndMinutes}
             depth={depth}
             draggedRef={draggedRef}
             focused={focusId === session.id}
@@ -383,6 +395,7 @@ interface LaneBlockProps {
   dayKeys: Array<string>
   timeZone: string
   windowStartMinutes: number
+  windowEndMinutes: number
   depth: number
   draggedRef: React.RefObject<boolean>
   focused: boolean
@@ -398,23 +411,82 @@ function LaneBlock({
   dayKeys,
   timeZone,
   windowStartMinutes,
+  windowEndMinutes,
   depth,
   draggedRef,
   focused,
   justPlaced,
   machine,
 }: LaneBlockProps) {
+  const { place } = useAgendaActions()
   const reduced = useReducedMotion()
   const [open, setOpen] = React.useState(false)
+  const [draftDuration, setDraftDuration] = React.useState<number | null>(null)
+  const resizeRef = React.useRef<{
+    startX: number
+    startDuration: number
+  } | null>(null)
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: session.id,
   })
   const grabbed = machine.isGrabbed(session.id)
 
   const start = minutesIntoDay(session.startsAt, timeZone)
+  const duration = draftDuration ?? session.durationMinutes
   const left = (start - windowStartMinutes) * PX_PER_MINUTE + 2
-  const width = Math.max(session.durationMinutes * PX_PER_MINUTE - 4, 40)
+  const width = Math.max(duration * PX_PER_MINUTE - 4, 40)
   const top = 8 + depth * 10
+  const maxDuration = Math.max(SLOT_MINUTES, windowEndMinutes - start)
+  const roomName = rooms.find((room) => room._id === session.roomId)?.name
+
+  // ——— Resize ————————————————————————————————————————————————————————————
+  // Time runs left → right here, so the grab handle is the *right* edge. Same
+  // 15-minute snap and same duration chip as the vertical grids — the gesture
+  // is the block's trailing edge either way.
+
+  function durationFromPointer(clientX: number): number {
+    const state = resizeRef.current
+    if (!state) return session.durationMinutes
+    const deltaMinutes = (clientX - state.startX) / PX_PER_MINUTE
+    return clamp(
+      snapMinutes(state.startDuration + deltaMinutes),
+      SLOT_MINUTES,
+      maxDuration
+    )
+  }
+
+  function beginResize(event: React.PointerEvent<HTMLDivElement>) {
+    event.preventDefault()
+    event.stopPropagation()
+    event.currentTarget.setPointerCapture(event.pointerId)
+    resizeRef.current = {
+      startX: event.clientX,
+      startDuration: session.durationMinutes,
+    }
+    setDraftDuration(session.durationMinutes)
+  }
+
+  function commitDuration(next: number) {
+    if (!session.roomId || next === session.durationMinutes) return
+    void place({
+      submissionId: session.id,
+      roomId: session.roomId,
+      startsAt: session.startsAt,
+      durationMinutes: next,
+      title: session.title,
+      roomName,
+      timeZone,
+      silent: true,
+    })
+  }
+
+  function endResize(event: React.PointerEvent<HTMLDivElement>) {
+    if (!resizeRef.current) return
+    resizeRef.current = null
+    const next = durationFromPointer(event.clientX)
+    setDraftDuration(null)
+    commitDuration(next)
+  }
 
   const spring = reduced
     ? { duration: 0 }
@@ -422,6 +494,8 @@ function LaneBlock({
 
   return (
     <motion.div
+      data-slot="agenda-lane-block"
+      data-session-title={session.title}
       className="absolute"
       style={{ zIndex: 10 + depth }}
       initial={
@@ -459,9 +533,26 @@ function LaneBlock({
               focused && !conflicted && "ring-2 ring-primary/70"
             )}
             style={sessionBlockStyle(session, { conflicted })}
-            onKeyDown={(event: React.KeyboardEvent) =>
+            onKeyDown={(event: React.KeyboardEvent) => {
+              // Shift+arrows resize without ever leaving the keyboard.
+              if (
+                event.shiftKey &&
+                !grabbed &&
+                (event.key === "ArrowRight" || event.key === "ArrowLeft")
+              ) {
+                event.preventDefault()
+                commitDuration(
+                  clamp(
+                    session.durationMinutes +
+                      (event.key === "ArrowRight" ? SLOT_MINUTES : -SLOT_MINUTES),
+                    SLOT_MINUTES,
+                    maxDuration
+                  )
+                )
+                return
+              }
               machine.onCardKeyDown(session)(event)
-            }
+            }}
             {...listeners}
             {...attributes}
             aria-describedby={HINT_ID}
@@ -513,6 +604,28 @@ function LaneBlock({
           </PopoverContent>
         </Popover>
       </div>
+
+      <div
+        role="presentation"
+        title="Drag to change the session length"
+        onPointerDown={beginResize}
+        onPointerMove={(event) => {
+          if (!resizeRef.current) return
+          setDraftDuration(durationFromPointer(event.clientX))
+        }}
+        onPointerUp={endResize}
+        onPointerCancel={endResize}
+        className="absolute inset-y-2 -right-0.5 z-20 w-2 cursor-ew-resize touch-none rounded-full opacity-0 transition-opacity hover:bg-primary/40 hover:opacity-100"
+      />
+
+      {draftDuration !== null ? (
+        <span
+          data-slot="agenda-resize-chip"
+          className="pointer-events-none absolute top-0 -right-2 z-50 translate-x-full rounded-lg bg-foreground px-2 py-1 text-[11px] font-semibold text-background tabular-nums shadow-lg"
+        >
+          {formatDuration(draftDuration)}
+        </span>
+      ) : null}
     </motion.div>
   )
 }
