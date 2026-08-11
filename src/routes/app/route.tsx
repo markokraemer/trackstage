@@ -257,7 +257,14 @@ function OrganizerLayout() {
   }
 
   if (onboardingGate.state === "show") {
-    return <OnboardingTakeover onDone={onboardingGate.finish} />
+    return (
+      <OnboardingTakeover
+        mode={onboardingGate.mode}
+        email={onboardingGate.email}
+        emailVerified={onboardingGate.emailVerified}
+        onDone={onboardingGate.finish}
+      />
+    )
   }
   if (onboardingGate.state === "pending") {
     return <OnboardingTakeoverPending />
@@ -265,6 +272,12 @@ function OrganizerLayout() {
 
   return (
     <div className="min-h-svh bg-background">
+      {/* Soft "confirm your email" nudge — the VERY top of the shell, above
+          the nav bar (Marko, 2026-08-12). Informational only, never a gate;
+          new unverified accounts are pinned by the onboarding takeover before
+          they ever see this, so it mostly serves pre-existing accounts. */}
+      <VerifyEmailBanner />
+
       {/*
         Tier 1 — slim global top bar.
 
@@ -449,9 +462,6 @@ function OrganizerLayout() {
           </DropdownMenu>
         </div>
       </header>
-
-      {/* Soft "confirm your email" nudge — informational only, never a gate. */}
-      <VerifyEmailBanner />
 
       <div className="flex">
         {/* Tier 2 — event-scoped left sidebar */}
