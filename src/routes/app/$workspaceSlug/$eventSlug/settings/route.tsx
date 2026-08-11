@@ -12,7 +12,6 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { Card, CardContent } from "@/components/ui/card"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { TooltipProvider } from "@/components/ui/tooltip"
-import { SettingsLevelNav } from "@/components/shell/settings-level-nav"
 import { NewEventDialog } from "@/components/settings/new-event-dialog"
 import { formatZonedDateRange } from "@/components/settings/timezone"
 import { useCurrentEvent } from "@/lib/current-event"
@@ -65,8 +64,6 @@ function SettingsLayout() {
   return (
     <TooltipProvider>
       <div className="flex flex-col gap-6">
-        <SettingsLevelNav level="event" />
-
         <PageHeader
           title={event ? `Event settings — ${event.name}` : "Event settings"}
           description={
@@ -103,6 +100,9 @@ function SettingsLayout() {
           */}
           {/* Plain text flow, not a flex row: a flex gap would strand the
               sentence's punctuation a space away from the word before it. */}
+          {/* The two things that DON'T belong to this event are named with
+              links that OPEN their modals in place (`?settings=…`) — the old
+              Account | Workspace | Event sibling-tab row is gone for good. */}
           <p className="text-xs text-foreground/70">
             <RiBuilding2Line
               size={14}
@@ -111,10 +111,9 @@ function SettingsLayout() {
             />
             These tabs change this event only. Teammates and roles live in{" "}
             <Link
-              to={
-                eventRef
-                  ? appLink.workspaceHub(eventRef.workspaceSlug)
-                  : appLink.workspaceHubFallback
+              to="."
+              search={(prev: Record<string, unknown>) =>
+                ({ ...prev, settings: "workspace" }) as never
               }
               className="font-medium text-primary underline-offset-4 hover:underline"
             >
@@ -123,8 +122,14 @@ function SettingsLayout() {
             {event?.organizationName ? ` (${event.organizationName})` : ""}; your
             API keys and MCP connection live in{" "}
             <Link
-              to={appLink.account}
-              search={{ tab: "api-mcp" }}
+              to="."
+              search={(prev: Record<string, unknown>) =>
+                ({
+                  ...prev,
+                  settings: "account",
+                  settingsTab: "api-mcp",
+                }) as never
+              }
               className="font-medium text-primary underline-offset-4 hover:underline"
             >
               Account settings
