@@ -42,7 +42,7 @@ function Calendar({
       locale={locale}
       formatters={{
         formatMonthDropdown: (date) =>
-          date.toLocaleString(locale?.code, { month: "short" }),
+          date.toLocaleString(locale.code, { month: "short" }),
         ...formatters,
       }}
       classNames={{
