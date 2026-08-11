@@ -105,14 +105,21 @@ test.describe("form builder", () => {
     try {
       // ——— Create ————————————————————————————————————————————————————————
       // The event the shell lands on is the one the form belongs to; the
-      // helper pins it to the demo event before we start.
+      // helper pins it to the demo event before we start. "New form" opens a
+      // DIALOG over the Forms list (`?new=1` — the old `/forms/new` address
+      // redirects here with the dialog already open), not a separate page.
       await gotoApp(page, "/app/forms")
       await page.getByRole("link", { name: /new form/i }).first().click()
-      await expect(
-        page.getByRole("heading", { name: /new submission form/i }).first(),
-      ).toBeVisible({ timeout: 30_000 })
-      await fillStable(page.getByLabel(/form name/i).first(), originalName)
-      await page.getByRole("button", { name: /^create form$/i }).first().click()
+      const createDialog = page
+        .getByRole("dialog")
+        .filter({ has: page.getByRole("heading", { name: /new submission form/i }) })
+      await expect(createDialog).toBeVisible({ timeout: 30_000 })
+      await expect(page).toHaveURL(/[?&]new=/, { timeout: 10_000 })
+      await fillStable(createDialog.getByLabel(/form name/i).first(), originalName)
+      await createDialog
+        .getByRole("button", { name: /^create form$/i })
+        .first()
+        .click()
       // Lands on the canonical `/app/:workspaceSlug/:eventSlug/forms/:id`
       // editor address, not the bare legacy `/app/forms/:id` shape.
       await expect(page).toHaveURL(

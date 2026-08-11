@@ -91,7 +91,9 @@ const QUICK_ACTIONS: Array<QuickAction> = [
     keywords: "new cfp call for papers builder add",
     icon: RiSurveyLine,
     run: ({ go, eventRef }) =>
-      go(eventRef ? appLink.formNew(eventRef) : legacyAppLink.forms),
+      // `?new=1` opens the New-form dialog on the Forms list (the create flow
+      // is a modal, not a page — src/components/forms-builder/new-form-dialog.tsx).
+      go(eventRef ? appLink.forms(eventRef) : legacyAppLink.forms, { new: "1" }),
   },
   {
     id: "add-speaker",

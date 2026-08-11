@@ -1,5 +1,5 @@
 import { useState } from "react"
-import { Link, createFileRoute } from "@tanstack/react-router"
+import { Link, createFileRoute, useNavigate } from "@tanstack/react-router"
 import { useQuery } from "@tanstack/react-query"
 import { convexQuery, useConvexMutation } from "@convex-dev/react-query"
 import { api } from "@convex/_generated/api"
@@ -16,9 +16,20 @@ import { Tabs, TabsCount, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useCurrentEvent } from "@/lib/current-event"
 import { appLink, legacyAppLink } from "@/lib/app-links"
 import { FormCard } from "@/components/forms-builder/form-card"
+import { NewFormDialog } from "@/components/forms-builder/new-form-dialog"
 import { friendlyError } from "@/components/forms-builder/model"
 
+/**
+ * `?new=1` opens the "New form" dialog — URL-addressable like the settings
+ * modals (src/components/shell/settings-dialogs.tsx), and what the legacy
+ * `/forms/new` address redirects to. Conditional key: never `{ new: undefined }`
+ * so plain `<Link>`s to this page need no search at all.
+ */
 export const Route = createFileRoute("/app/$workspaceSlug/$eventSlug/forms/")({
+  validateSearch: (search: Record<string, unknown>): { new?: boolean } =>
+    search.new === true || search.new === "1" || search.new === 1
+      ? { new: true }
+      : {},
   component: FormsListPage,
 })
 
@@ -31,6 +42,8 @@ type StatusFilter = "all" | "open" | "closed"
  * — the single loudest complaint in swyx's walkthrough.
  */
 function FormsListPage() {
+  const navigate = useNavigate()
+  const { new: newFormOpen } = Route.useSearch()
   const { event, eventRef, isEmpty } = useCurrentEvent()
   const [search, setSearch] = useState("")
   const [status, setStatus] = useState<StatusFilter>("all")
@@ -55,9 +68,18 @@ function FormsListPage() {
     }
   }
 
+  const closeNewForm = () => {
+    void navigate({
+      to: ".",
+      search: (prev) => ({ ...prev, new: undefined }),
+      replace: true,
+    })
+  }
+
   const newFormLink = (
     <Link
-      to={eventRef ? appLink.formNew(eventRef) : legacyAppLink.forms}
+      to="."
+      search={(prev) => ({ ...prev, new: true })}
       className={buttonVariants({ size: "sm" })}
     >
       <RiAddLine aria-hidden />
@@ -159,7 +181,8 @@ function FormsListPage() {
           description="A submission form is your call for papers: you choose the questions, share one public link, and proposals land in your Submissions list ready to review."
           action={
             <Link
-              to={eventRef ? appLink.formNew(eventRef) : legacyAppLink.forms}
+              to="."
+              search={(prev) => ({ ...prev, new: true })}
               className={buttonVariants()}
             >
               <RiAddLine aria-hidden />
@@ -235,6 +258,8 @@ function FormsListPage() {
           ))}
         </div>
       )}
+
+      <NewFormDialog open={newFormOpen === true} onClose={closeNewForm} />
     </div>
   )
 }
