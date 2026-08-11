@@ -161,9 +161,12 @@ export async function renderMessageFor(
 
   const template =
     args.override ?? (await resolveTemplate(ctx, args.eventId, args.templateKey))
+  const fullName = `${person.firstName} ${person.lastName}`.trim()
   const vars: Record<string, string> = {
-    speakerName: `${person.firstName} ${person.lastName}`.trim(),
-    firstName: person.firstName,
+    speakerName: fullName || "there",
+    // A CFP submission only requires an email, so a recipient can have no
+    // name at all — "Hi {{firstName}}," must never render as "Hi  ,".
+    firstName: person.firstName.trim() || fullName || "there",
     eventName: event.name,
     sessionTitle: submission?.title ?? "",
     portalLink: portalLinkFor(person.portalToken),
