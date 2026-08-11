@@ -407,7 +407,14 @@ export function toolIcon(toolName: string): IconComponent {
   return TOOL_VIEWS[toolName]?.icon ?? FALLBACK_ICON
 }
 
-/** True when we have a purpose-built view — used by tests and the frame. */
+/**
+ * True when we have a purpose-built view rather than the auto view.
+ *
+ * Nothing in the UI branches on this any more — every tool the server exposes
+ * has one, and a tool that doesn't still renders through `AutoView`. It stays
+ * as the assertion the renderer suite uses to catch a tool shipping without a
+ * view, which is the whole point of keeping the two lists in lockstep.
+ */
 export function hasToolView(toolName: string): boolean {
   return Boolean(TOOL_VIEWS[toolName]?.OutputView)
 }
