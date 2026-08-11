@@ -1,4 +1,9 @@
 import { format, formatDistanceToNowStrict, isPast, isToday } from "date-fns"
+import { profileCompletenessOf } from "@convex/lib/profileCompleteness"
+import type {
+  Completeness,
+  CompletenessItem,
+} from "@convex/lib/profileCompleteness"
 
 import { formatZonedDateRange } from "@/components/settings/timezone"
 import type { PortalMe, PortalSubmission, PortalTask } from "./portal-context"
@@ -126,47 +131,24 @@ export function humanizeKey(key: string): string {
   return spaced.charAt(0).toUpperCase() + spaced.slice(1)
 }
 
-export interface CompletenessItem {
-  key: "bio" | "headshot" | "links" | "details"
-  label: string
-  done: boolean
-}
+export type { Completeness, CompletenessItem }
 
-export interface Completeness {
-  items: Array<CompletenessItem>
-  done: number
-  total: number
-  percent: number
-}
-
-/** Drives the "My Profile" meter on Home and the profile page banner. */
+/**
+ * Drives the "My Profile" meter on Home and the profile page banner.
+ *
+ * The four items themselves live in `convex/lib/profileCompleteness.ts`,
+ * because the SERVER counts them too — it is what ticks the "update your
+ * profile" task off by itself. One definition, or the meter and the task
+ * eventually disagree in front of the speaker.
+ */
 export function profileCompleteness(me: PortalMe): Completeness {
-  const links = me.links ?? {}
-  const items: Array<CompletenessItem> = [
-    {
-      key: "bio",
-      label: "Biography",
-      done: Boolean(me.bio && me.bio.trim().length > 0),
-    },
-    { key: "headshot", label: "Headshot", done: Boolean(me.headshotUrl) },
-    {
-      key: "details",
-      label: "Job title & company",
-      done: Boolean(me.jobTitle && me.company),
-    },
-    {
-      key: "links",
-      label: "A link",
-      done: Boolean(links.linkedin || links.twitter || links.website),
-    },
-  ]
-  const done = items.filter((item) => item.done).length
-  return {
-    items,
-    done,
-    total: items.length,
-    percent: Math.round((done / items.length) * 100),
-  }
+  return profileCompletenessOf({
+    bio: me.bio,
+    jobTitle: me.jobTitle,
+    company: me.company,
+    links: me.links,
+    hasHeadshot: Boolean(me.headshotUrl),
+  })
 }
 
 /** Speakers may withdraw anything that is not already decided or gone. */

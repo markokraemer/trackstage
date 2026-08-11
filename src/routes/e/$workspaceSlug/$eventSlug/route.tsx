@@ -1,8 +1,8 @@
 import { Link, Outlet, createFileRoute, redirect } from "@tanstack/react-router"
-import { useSuspenseQuery } from "@tanstack/react-query"
+import { useQuery, useSuspenseQuery } from "@tanstack/react-query"
 import { convexQuery } from "@convex-dev/react-query"
 import { api } from "@convex/_generated/api"
-import { RiCalendarEventLine } from "@remixicon/react"
+import { RiCalendarEventLine, RiEyeOffLine } from "@remixicon/react"
 
 import { buttonVariants } from "@/components/ui/button"
 import { EmptyState } from "@/components/shared/empty-state"
@@ -70,9 +70,15 @@ export const Route = createFileRoute("/e/$workspaceSlug/$eventSlug")({
 
 function PublicEventLayout() {
   const { workspaceSlug, eventSlug: slug } = Route.useParams()
-  const { embed } = Route.useSearch()
+  const { embed, e: embedId, accent, brand } = Route.useSearch()
   const { data: event } = useSuspenseQuery(
     convexQuery(api.events.getBySlug, { slug, workspaceSlug }),
+  )
+  // Only snippets copied out of a SAVED embed carry `?e=` — everything else
+  // skips this round-trip entirely. An unknown id answers "enabled", so a
+  // hand-written link (or one whose saved row was deleted) keeps working.
+  const { data: embedState } = useQuery(
+    convexQuery(api.embeds.publicState, embedId ? { embedId } : "skip"),
   )
 
   if (!event) {
@@ -93,8 +99,31 @@ function PublicEventLayout() {
     )
   }
 
+  // The off switch (sbek EMB-15). The organizer flipped this embed off in
+  // Embeds → Saved embeds, so every copy of the snippet already pasted around
+  // the web says so — calmly, and without leaking the programme it used to
+  // show. The colour and header options ride in from the same saved row, so a
+  // widget looks like the site it lives on rather than like us.
+  if (embedState && !embedState.enabled) {
+    return (
+      <main className="flex min-h-svh items-center justify-center bg-background p-6">
+        <EmptyState
+          icon={RiEyeOffLine}
+          title="This embed is turned off"
+          description={`The organizers of ${event.name} have turned this widget off for now. It will reappear here the moment they turn it back on.`}
+          className="max-w-lg"
+        />
+      </main>
+    )
+  }
+
   return (
-    <PublicShell event={event} embed={Boolean(embed)}>
+    <PublicShell
+      event={event}
+      embed={Boolean(embed)}
+      accent={accent ?? embedState?.accent ?? undefined}
+      brandHeader={Boolean(brand) || embedState?.showHeader === true}
+    >
       <Outlet />
     </PublicShell>
   )

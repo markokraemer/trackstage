@@ -1,6 +1,7 @@
 import type { ReactNode } from "react"
 import {
   RiAttachment2,
+  RiGroupLine,
   RiMailCheckLine,
   RiMailLine,
   RiMailSendLine,
@@ -23,6 +24,7 @@ import {
   asArray,
   bool,
   formatWhen,
+  num,
   str,
   strList,
   useSectionLink,
@@ -323,5 +325,87 @@ export function TemplateDetailView({ output }: ToolOutputProps) {
         Open Communications
       </GoLink>
     </Panel>
+  )
+}
+
+// ——— count_bulk_audience —————————————————————————————————————————————————
+
+const AUDIENCE_LABELS: Record<string, string> = {
+  all_speakers: "everyone on the roster",
+  accepted: "accepted speakers",
+  incomplete_tasks: "speakers with unfinished tasks",
+  manual: "the addresses you listed",
+}
+
+/**
+ * The dry run before a blast. Its whole job is to make the number REAL before
+ * anyone commits to it — so the count is the headline, and a handful of actual
+ * addresses sit underneath it as proof that the filter selected the people the
+ * organizer had in mind.
+ */
+export function BulkAudienceView({ output }: ToolOutputProps) {
+  const recipients = num(output.recipients) ?? 0
+  const audience = str(output.audience) ?? "all_speakers"
+  const samples = strList(output.sampleEmails)
+  if (recipients === 0) {
+    return (
+      <EmptyRow>
+        Nobody matches {AUDIENCE_LABELS[audience] ?? audience} — a send right
+        now would go to zero people.
+      </EmptyRow>
+    )
+  }
+  return (
+    <Banner
+      tone="neutral"
+      icon={<RiGroupLine size={16} />}
+      title={`${recipients} recipient${recipients === 1 ? "" : "s"} — ${AUDIENCE_LABELS[audience] ?? audience}`}
+    >
+      {samples.length > 0 ? (
+        <div className="flex flex-wrap gap-1">
+          {samples.slice(0, 6).map((email) => (
+            <Chip key={email} tone="muted">
+              {email}
+            </Chip>
+          ))}
+          {recipients > samples.length ? (
+            <Chip tone="muted">+{recipients - samples.length} more</Chip>
+          ) : null}
+        </div>
+      ) : null}
+      <Note>
+        Nothing has been sent — this only counted who would receive it.
+      </Note>
+    </Banner>
+  )
+}
+
+// ——— send_bulk_email —————————————————————————————————————————————————————
+
+export function BulkEmailSentView({ output }: ToolOutputProps) {
+  const communicationsLink = useSectionLink("communications")
+  const queued = num(output.queued) ?? 0
+  const recipients = num(output.recipients) ?? queued
+  return (
+    <Banner
+      icon={<RiMailSendLine size={16} />}
+      tone={queued > 0 ? "good" : "neutral"}
+      title={
+        queued === 0
+          ? "Nothing was queued — that audience is empty"
+          : `${queued} email${queued === 1 ? "" : "s"} queued`
+      }
+    >
+      <FieldGrid
+        entries={[
+          { label: "Subject", value: str(output.subject) ?? "—" },
+          { label: "Recipients", value: String(recipients) },
+        ]}
+      />
+      {str(output.note) ? <Note>{str(output.note)}</Note> : null}
+      <GoLink to={communicationsLink} search={{ tab: "outbox" }}>
+        Watch them send in the outbox
+      </GoLink>
+    </Banner>
   )
 }

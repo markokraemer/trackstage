@@ -5,7 +5,7 @@
       "events": [
         {
           "endsAt": "2026-10-14T01:00:00.000Z",
-          "eventId": "j972cy9qbmve3d3c85p0bjmnzh8c8tv3",
+          "eventId": "j97a7rtr9rbj9ezjfqfb3qd5nx8c8hcv",
           "name": "AI Engineer Summit 2026",
           "organizationId": "mn7fs8btg5szyhbkqdfhtd4xmn8c8xhg",
           "organizationName": "AI Engineer",
@@ -17,73 +17,8 @@
           "yourRole": "owner"
         },
         {
-          "endsAt": null,
-          "eventId": "j9726nrwb529ang7nfwxjvdms18c8zz4",
-          "name": "Copilot Verification Event",
-          "organizationId": "mn7fs8btg5szyhbkqdfhtd4xmn8c8xhg",
-          "organizationName": "AI Engineer",
-          "slug": "copilot-verification-event",
-          "startsAt": null,
-          "timezone": "UTC",
-          "type": null,
-          "venue": null,
-          "yourRole": "owner"
-        },
-        {
-          "endsAt": null,
-          "eventId": "j97bjah3m4tyweek9mpqsvzqpx8c8qc5",
-          "name": "Copilot Verification Event",
-          "organizationId": "mn7fs8btg5szyhbkqdfhtd4xmn8c8xhg",
-          "organizationName": "AI Engineer",
-          "slug": "copilot-verification-event-2",
-          "startsAt": null,
-          "timezone": "UTC",
-          "type": null,
-          "venue": null,
-          "yourRole": "owner"
-        },
-        {
-          "endsAt": null,
-          "eventId": "j970hvs1kjqc185cp9ebm43sdn8c885g",
-          "name": "Copilot Verification Event",
-          "organizationId": "mn7fs8btg5szyhbkqdfhtd4xmn8c8xhg",
-          "organizationName": "AI Engineer",
-          "slug": "copilot-verification-event-3",
-          "startsAt": null,
-          "timezone": "UTC",
-          "type": null,
-          "venue": null,
-          "yourRole": "owner"
-        },
-        {
-          "endsAt": null,
-          "eventId": "j97fhrwczh3mb77rfkyn77tezh8c8b1p",
-          "name": "Copilot Verification Event",
-          "organizationId": "mn7fs8btg5szyhbkqdfhtd4xmn8c8xhg",
-          "organizationName": "AI Engineer",
-          "slug": "copilot-verification-event-4",
-          "startsAt": null,
-          "timezone": "UTC",
-          "type": null,
-          "venue": null,
-          "yourRole": "owner"
-        },
-        {
-          "endsAt": null,
-          "eventId": "j972c4ems4mk1hjgfv814ewjgn8c9tcm",
-          "name": "Copilot Verification Event",
-          "organizationId": "mn7fs8btg5szyhbkqdfhtd4xmn8c8xhg",
-          "organizationName": "AI Engineer",
-          "slug": "copilot-verification-event-5",
-          "startsAt": null,
-          "timezone": "UTC",
-          "type": null,
-          "venue": null,
-          "yourRole": "owner"
-        },
-        {
           "endsAt": "2026-11-05T23:00:00.000Z",
-          "eventId": "j974s9qpdjwa6wyaw6z79961a98c9ams",
+          "eventId": "j971xt2t3pbptpk0kb3aegrc3d8c982e",
           "name": "Design Systems Day",
           "organizationId": "mn7fs8btg5szyhbkqdfhtd4xmn8c8xhg",
           "organizationName": "AI Engineer",
@@ -102,10 +37,17 @@
     "output": {
       "workspaces": [
         {
-          "eventCount": 6,
+          "eventCount": 2,
           "name": "AI Engineer",
           "organizationId": "mn7fs8btg5szyhbkqdfhtd4xmn8c8xhg",
           "slug": "ai-engineer",
+          "yourRole": "owner"
+        },
+        {
+          "eventCount": 0,
+          "name": "t12",
+          "organizationId": "mn725eqf7g5nwtgp5jga954xbx8c9xyn",
+          "slug": "t12",
           "yourRole": "owner"
         }
       ]
@@ -1656,6 +1598,2024 @@
         "tasks": 0
       },
       "slug": "copilot-verification-event"
+    }
+  },
+  "list_workspace_members": {
+    "input": {
+      "workspace": "ai-engineer"
+    },
+    "output": {
+      "memberCount": 9,
+      "members": [
+        {
+          "accepted": false,
+          "email": "member-msop599l-ghqjf@example.com",
+          "eventScope": null,
+          "memberId": "mh77wp1xgepdxatepdrxvj3n4d8c9017",
+          "role": "member"
+        },
+        {
+          "accepted": true,
+          "email": "organizer@demo.sessionboard.dev",
+          "eventScope": null,
+          "memberId": "mh74jvj8vw6f9k0w684kmr9s558c816e",
+          "role": "owner"
+        },
+        {
+          "accepted": true,
+          "email": "tenant-mso12v1r-z2zhm@example.com",
+          "eventScope": null,
+          "memberId": "mh79bn3tcv5rassvn48epqt7wx8c8wqa",
+          "role": "member"
+        },
+        {
+          "accepted": true,
+          "email": "tenant-mso13bxi-rb0vs@example.com",
+          "eventScope": null,
+          "memberId": "mh7ceyj4kdc7g8h69smanwtxd98c8p7e",
+          "role": "member"
+        },
+        {
+          "accepted": true,
+          "email": "tenant-mso19mar-y7oab@example.com",
+          "eventScope": null,
+          "memberId": "mh75sx2hqc16dsfeqvt6keswzd8c9akq",
+          "role": "member"
+        },
+        {
+          "accepted": true,
+          "email": "tenant-msoocp7h-c003u@example.com",
+          "eventScope": null,
+          "memberId": "mh71ea72p22d2abtwk0sdnrbr18c9b67",
+          "role": "member"
+        },
+        {
+          "accepted": true,
+          "email": "tenant-msov8p7n-z0qtp@example.com",
+          "eventScope": null,
+          "memberId": "mh70p100bqtar20nfqj0spzwd18c9pvv",
+          "role": "member"
+        },
+        {
+          "accepted": true,
+          "email": "tenant-msova0xn-5eg3z@example.com",
+          "eventScope": null,
+          "memberId": "mh7dvct0fhrfwjfy3t9dx6hk858c98yr",
+          "role": "member"
+        },
+        {
+          "accepted": true,
+          "email": "tenant-msovbfp0-6mh70@example.com",
+          "eventScope": null,
+          "memberId": "mh71n7h6vskzcv9be3h4pt36ad8c8xca",
+          "role": "member"
+        }
+      ],
+      "workspace": {
+        "name": "AI Engineer",
+        "organizationId": "mn7fs8btg5szyhbkqdfhtd4xmn8c8xhg",
+        "slug": "ai-engineer"
+      }
+    }
+  },
+  "list_tasks": {
+    "input": {
+      "event": "ai-summit-2026"
+    },
+    "output": {
+      "data": [
+        {
+          "completed_at": null,
+          "created_at": "2026-08-11T19:58:32.992Z",
+          "due_at": "2026-08-31T19:58:32.992Z",
+          "form_id": null,
+          "id": "k9786t6qb5e9633ymn9j9xf9ks8c8a08",
+          "instructions": "PDF please, 16:9. We collect slides a week ahead so the AV team can test them.",
+          "is_complete": false,
+          "is_overdue": false,
+          "kind": "upload",
+          "response": null,
+          "session_id": null,
+          "session_title": null,
+          "speaker": {
+            "email": "rafael.duarte@example.com",
+            "full_name": "Rafael Duarte",
+            "id": "m9773rf8fgmx5qxzb7qnb0nm0d8c8aa2"
+          },
+          "speaker_id": "m9773rf8fgmx5qxzb7qnb0nm0d8c8aa2",
+          "title": "Upload your slides"
+        },
+        {
+          "completed_at": "2026-08-06T19:58:32.992Z",
+          "created_at": "2026-08-11T19:58:32.992Z",
+          "due_at": "2026-08-23T19:58:32.992Z",
+          "form_id": null,
+          "id": "k9793g6y8wcnrjt2jny2tdrcp58c99j5",
+          "instructions": "Review the biography on your profile and confirm it is current.",
+          "is_complete": true,
+          "is_overdue": false,
+          "kind": "confirm",
+          "response": null,
+          "session_id": null,
+          "session_title": null,
+          "speaker": {
+            "email": "rafael.duarte@example.com",
+            "full_name": "Rafael Duarte",
+            "id": "m9773rf8fgmx5qxzb7qnb0nm0d8c8aa2"
+          },
+          "speaker_id": "m9773rf8fgmx5qxzb7qnb0nm0d8c8aa2",
+          "title": "Confirm your biography"
+        },
+        {
+          "completed_at": null,
+          "created_at": "2026-08-11T19:58:32.992Z",
+          "due_at": "2026-08-13T19:58:32.992Z",
+          "form_id": null,
+          "id": "k971wc8n4380k0qb1pqb5p1zjd8c9qd8",
+          "instructions": "A square image, at least 800×800px. It appears on the public programme.",
+          "is_complete": false,
+          "is_overdue": false,
+          "kind": "headshot",
+          "response": null,
+          "session_id": null,
+          "session_title": null,
+          "speaker": {
+            "email": "rafael.duarte@example.com",
+            "full_name": "Rafael Duarte",
+            "id": "m9773rf8fgmx5qxzb7qnb0nm0d8c8aa2"
+          },
+          "speaker_id": "m9773rf8fgmx5qxzb7qnb0nm0d8c8aa2",
+          "title": "Upload your headshot"
+        },
+        {
+          "completed_at": null,
+          "created_at": "2026-08-11T19:58:32.992Z",
+          "due_at": "2026-08-31T19:58:32.992Z",
+          "form_id": null,
+          "id": "k9761ycrwf56enbqgm7n2c64hh8c8cjn",
+          "instructions": "PDF please, 16:9. We collect slides a week ahead so the AV team can test them.",
+          "is_complete": false,
+          "is_overdue": false,
+          "kind": "upload",
+          "response": null,
+          "session_id": null,
+          "session_title": null,
+          "speaker": {
+            "email": "liam.ferguson@example.com",
+            "full_name": "Liam Ferguson",
+            "id": "m977ezpsv5fdxhmk9sgqjym2098c8sq1"
+          },
+          "speaker_id": "m977ezpsv5fdxhmk9sgqjym2098c8sq1",
+          "title": "Upload your slides"
+        },
+        {
+          "completed_at": null,
+          "created_at": "2026-08-11T19:58:32.992Z",
+          "due_at": "2026-08-14T19:58:32.992Z",
+          "form_id": null,
+          "id": "k977qsm6hwxj31mgezp02aktxx8c9ptv",
+          "instructions": "Add a short biography (60–100 words) so we can introduce you properly.",
+          "is_complete": false,
+          "is_overdue": false,
+          "kind": "confirm",
+          "response": null,
+          "session_id": null,
+          "session_title": null,
+          "speaker": {
+            "email": "liam.ferguson@example.com",
+            "full_name": "Liam Ferguson",
+            "id": "m977ezpsv5fdxhmk9sgqjym2098c8sq1"
+          },
+          "speaker_id": "m977ezpsv5fdxhmk9sgqjym2098c8sq1",
+          "title": "Confirm your biography"
+        },
+        {
+          "completed_at": "2026-08-10T19:58:32.992Z",
+          "created_at": "2026-08-11T19:58:32.992Z",
+          "due_at": "2026-08-23T19:58:32.992Z",
+          "form_id": null,
+          "id": "k979t4b4dan10g78rhshybgsms8c97ct",
+          "instructions": "A square image, at least 800×800px. It appears on the public programme.",
+          "is_complete": true,
+          "is_overdue": false,
+          "kind": "headshot",
+          "response": null,
+          "session_id": null,
+          "session_title": null,
+          "speaker": {
+            "email": "liam.ferguson@example.com",
+            "full_name": "Liam Ferguson",
+            "id": "m977ezpsv5fdxhmk9sgqjym2098c8sq1"
+          },
+          "speaker_id": "m977ezpsv5fdxhmk9sgqjym2098c8sq1",
+          "title": "Upload your headshot"
+        },
+        {
+          "completed_at": null,
+          "created_at": "2026-08-11T19:58:32.992Z",
+          "due_at": "2026-08-31T19:58:32.992Z",
+          "form_id": null,
+          "id": "k970wn0xd1ewab2c0ks4hbv1qs8c92ey",
+          "instructions": "PDF please, 16:9. We collect slides a week ahead so the AV team can test them.",
+          "is_complete": false,
+          "is_overdue": false,
+          "kind": "upload",
+          "response": null,
+          "session_id": null,
+          "session_title": null,
+          "speaker": {
+            "email": "tom.beaumont@example.com",
+            "full_name": "Tom Beaumont",
+            "id": "m974q53mw45ext3hskj71x4d998c8x74"
+          },
+          "speaker_id": "m974q53mw45ext3hskj71x4d998c8x74",
+          "title": "Upload your slides"
+        },
+        {
+          "completed_at": null,
+          "created_at": "2026-08-11T19:58:32.992Z",
+          "due_at": "2026-08-12T19:58:32.992Z",
+          "form_id": null,
+          "id": "k975wc5g7hqnv8mj44yp9htjsx8c880e",
+          "instructions": "Add a short biography (60–100 words) so we can introduce you properly.",
+          "is_complete": false,
+          "is_overdue": false,
+          "kind": "confirm",
+          "response": null,
+          "session_id": null,
+          "session_title": null,
+          "speaker": {
+            "email": "tom.beaumont@example.com",
+            "full_name": "Tom Beaumont",
+            "id": "m974q53mw45ext3hskj71x4d998c8x74"
+          },
+          "speaker_id": "m974q53mw45ext3hskj71x4d998c8x74",
+          "title": "Confirm your biography"
+        },
+        {
+          "completed_at": "2026-08-08T19:58:32.992Z",
+          "created_at": "2026-08-11T19:58:32.992Z",
+          "due_at": "2026-08-23T19:58:32.992Z",
+          "form_id": null,
+          "id": "k97f42t9dv3na9h72k2mgv62c18c9j4c",
+          "instructions": "A square image, at least 800×800px. It appears on the public programme.",
+          "is_complete": true,
+          "is_overdue": false,
+          "kind": "headshot",
+          "response": null,
+          "session_id": null,
+          "session_title": null,
+          "speaker": {
+            "email": "tom.beaumont@example.com",
+            "full_name": "Tom Beaumont",
+            "id": "m974q53mw45ext3hskj71x4d998c8x74"
+          },
+          "speaker_id": "m974q53mw45ext3hskj71x4d998c8x74",
+          "title": "Upload your headshot"
+        },
+        {
+          "completed_at": null,
+          "created_at": "2026-08-11T19:58:32.992Z",
+          "due_at": "2026-08-31T19:58:32.992Z",
+          "form_id": null,
+          "id": "k97b7dr4m9z5j8yw2qzj8a1ep58c88d2",
+          "instructions": "PDF please, 16:9. We collect slides a week ahead so the AV team can test them.",
+          "is_complete": false,
+          "is_overdue": false,
+          "kind": "upload",
+          "response": null,
+          "session_id": null,
+          "session_title": null,
+          "speaker": {
+            "email": "sofia.marchetti@example.com",
+            "full_name": "Sofia Marchetti",
+            "id": "m97c6psn2x0ac1fj7xsvdgg43x8c967t"
+          },
+          "speaker_id": "m97c6psn2x0ac1fj7xsvdgg43x8c967t",
+          "title": "Upload your slides"
+        },
+        {
+          "completed_at": "2026-08-07T19:58:32.992Z",
+          "created_at": "2026-08-11T19:58:32.992Z",
+          "due_at": "2026-08-23T19:58:32.992Z",
+          "form_id": null,
+          "id": "k97avjk66s1gxrc5800zmcnpgd8c8v6h",
+          "instructions": "Review the biography on your profile and confirm it is current.",
+          "is_complete": true,
+          "is_overdue": false,
+          "kind": "confirm",
+          "response": null,
+          "session_id": null,
+          "session_title": null,
+          "speaker": {
+            "email": "sofia.marchetti@example.com",
+            "full_name": "Sofia Marchetti",
+            "id": "m97c6psn2x0ac1fj7xsvdgg43x8c967t"
+          },
+          "speaker_id": "m97c6psn2x0ac1fj7xsvdgg43x8c967t",
+          "title": "Confirm your biography"
+        },
+        {
+          "completed_at": null,
+          "created_at": "2026-08-11T19:58:32.992Z",
+          "due_at": "2026-08-09T19:58:32.992Z",
+          "form_id": null,
+          "id": "k97ewvsetnmg13bw9q684srqdd8c8mme",
+          "instructions": "A square image, at least 800×800px. It appears on the public programme.",
+          "is_complete": false,
+          "is_overdue": true,
+          "kind": "headshot",
+          "response": null,
+          "session_id": null,
+          "session_title": null,
+          "speaker": {
+            "email": "sofia.marchetti@example.com",
+            "full_name": "Sofia Marchetti",
+            "id": "m97c6psn2x0ac1fj7xsvdgg43x8c967t"
+          },
+          "speaker_id": "m97c6psn2x0ac1fj7xsvdgg43x8c967t",
+          "title": "Upload your headshot"
+        },
+        {
+          "completed_at": null,
+          "created_at": "2026-08-11T19:58:32.992Z",
+          "due_at": "2026-08-13T19:58:32.992Z",
+          "form_id": null,
+          "id": "k97ar3arr9hwd1a14a41ndmsv98c9arr",
+          "instructions": "PDF please, 16:9. We collect slides a week ahead so the AV team can test them.",
+          "is_complete": false,
+          "is_overdue": false,
+          "kind": "upload",
+          "response": null,
+          "session_id": null,
+          "session_title": null,
+          "speaker": {
+            "email": "ava.nakamura@example.com",
+            "full_name": "Ava Nakamura",
+            "id": "m971v851r1dy9h01mrne1077sx8c834m"
+          },
+          "speaker_id": "m971v851r1dy9h01mrne1077sx8c834m",
+          "title": "Upload your slides"
+        },
+        {
+          "completed_at": "2026-08-05T19:58:32.992Z",
+          "created_at": "2026-08-11T19:58:32.992Z",
+          "due_at": "2026-08-23T19:58:32.992Z",
+          "form_id": null,
+          "id": "k97ajd0sptfs5s3fn4mh5m27n98c9m94",
+          "instructions": "Review the biography on your profile and confirm it is current.",
+          "is_complete": true,
+          "is_overdue": false,
+          "kind": "confirm",
+          "response": null,
+          "session_id": null,
+          "session_title": null,
+          "speaker": {
+            "email": "ava.nakamura@example.com",
+            "full_name": "Ava Nakamura",
+            "id": "m971v851r1dy9h01mrne1077sx8c834m"
+          },
+          "speaker_id": "m971v851r1dy9h01mrne1077sx8c834m",
+          "title": "Confirm your biography"
+        },
+        {
+          "completed_at": "2026-08-05T19:58:32.992Z",
+          "created_at": "2026-08-11T19:58:32.992Z",
+          "due_at": "2026-08-23T19:58:32.992Z",
+          "form_id": null,
+          "id": "k97bmx2vtkm3mmg2vw5ghk4k918c8t69",
+          "instructions": "A square image, at least 800×800px. It appears on the public programme.",
+          "is_complete": true,
+          "is_overdue": false,
+          "kind": "headshot",
+          "response": null,
+          "session_id": null,
+          "session_title": null,
+          "speaker": {
+            "email": "ava.nakamura@example.com",
+            "full_name": "Ava Nakamura",
+            "id": "m971v851r1dy9h01mrne1077sx8c834m"
+          },
+          "speaker_id": "m971v851r1dy9h01mrne1077sx8c834m",
+          "title": "Upload your headshot"
+        },
+        {
+          "completed_at": "2026-08-09T19:58:32.992Z",
+          "created_at": "2026-08-11T19:58:32.992Z",
+          "due_at": "2026-08-31T19:58:32.992Z",
+          "form_id": null,
+          "id": "k97e96a43071k3jbk8bkn754m58c98e3",
+          "instructions": "PDF please, 16:9. We collect slides a week ahead so the AV team can test them.",
+          "is_complete": true,
+          "is_overdue": false,
+          "kind": "upload",
+          "response": null,
+          "session_id": null,
+          "session_title": null,
+          "speaker": {
+            "email": "priya.raghavan@example.com",
+            "full_name": "Priya Raghavan",
+            "id": "m975z73p3cakpqjkcxme8abmwd8c9h57"
+          },
+          "speaker_id": "m975z73p3cakpqjkcxme8abmwd8c9h57",
+          "title": "Upload your slides"
+        },
+        {
+          "completed_at": "2026-08-02T19:58:32.992Z",
+          "created_at": "2026-08-11T19:58:32.992Z",
+          "due_at": "2026-08-23T19:58:32.992Z",
+          "form_id": null,
+          "id": "k970snmwvfws6y992wj17hbfnd8c9c1v",
+          "instructions": "Review the biography on your profile and confirm it is current.",
+          "is_complete": true,
+          "is_overdue": false,
+          "kind": "confirm",
+          "response": null,
+          "session_id": null,
+          "session_title": null,
+          "speaker": {
+            "email": "priya.raghavan@example.com",
+            "full_name": "Priya Raghavan",
+            "id": "m975z73p3cakpqjkcxme8abmwd8c9h57"
+          },
+          "speaker_id": "m975z73p3cakpqjkcxme8abmwd8c9h57",
+          "title": "Confirm your biography"
+        },
+        {
+          "completed_at": "2026-08-02T19:58:32.992Z",
+          "created_at": "2026-08-11T19:58:32.992Z",
+          "due_at": "2026-08-23T19:58:32.992Z",
+          "form_id": null,
+          "id": "k97d2g7na2jcraaw0bm3reqr3h8c9erw",
+          "instructions": "A square image, at least 800×800px. It appears on the public programme.",
+          "is_complete": true,
+          "is_overdue": false,
+          "kind": "headshot",
+          "response": null,
+          "session_id": null,
+          "session_title": null,
+          "speaker": {
+            "email": "priya.raghavan@example.com",
+            "full_name": "Priya Raghavan",
+            "id": "m975z73p3cakpqjkcxme8abmwd8c9h57"
+          },
+          "speaker_id": "m975z73p3cakpqjkcxme8abmwd8c9h57",
+          "title": "Upload your headshot"
+        }
+      ],
+      "pagination": {
+        "currentPage": 1,
+        "current_page": 1,
+        "pageSize": 100,
+        "page_size": 100,
+        "totalPages": 1,
+        "totalResults": 18,
+        "total_pages": 1,
+        "total_results": 18
+      },
+      "results": [
+        {
+          "completed_at": null,
+          "created_at": "2026-08-11T19:58:32.992Z",
+          "due_at": "2026-08-31T19:58:32.992Z",
+          "form_id": null,
+          "id": "k9786t6qb5e9633ymn9j9xf9ks8c8a08",
+          "instructions": "PDF please, 16:9. We collect slides a week ahead so the AV team can test them.",
+          "is_complete": false,
+          "is_overdue": false,
+          "kind": "upload",
+          "response": null,
+          "session_id": null,
+          "session_title": null,
+          "speaker": {
+            "email": "rafael.duarte@example.com",
+            "full_name": "Rafael Duarte",
+            "id": "m9773rf8fgmx5qxzb7qnb0nm0d8c8aa2"
+          },
+          "speaker_id": "m9773rf8fgmx5qxzb7qnb0nm0d8c8aa2",
+          "title": "Upload your slides"
+        },
+        {
+          "completed_at": "2026-08-06T19:58:32.992Z",
+          "created_at": "2026-08-11T19:58:32.992Z",
+          "due_at": "2026-08-23T19:58:32.992Z",
+          "form_id": null,
+          "id": "k9793g6y8wcnrjt2jny2tdrcp58c99j5",
+          "instructions": "Review the biography on your profile and confirm it is current.",
+          "is_complete": true,
+          "is_overdue": false,
+          "kind": "confirm",
+          "response": null,
+          "session_id": null,
+          "session_title": null,
+          "speaker": {
+            "email": "rafael.duarte@example.com",
+            "full_name": "Rafael Duarte",
+            "id": "m9773rf8fgmx5qxzb7qnb0nm0d8c8aa2"
+          },
+          "speaker_id": "m9773rf8fgmx5qxzb7qnb0nm0d8c8aa2",
+          "title": "Confirm your biography"
+        },
+        {
+          "completed_at": null,
+          "created_at": "2026-08-11T19:58:32.992Z",
+          "due_at": "2026-08-13T19:58:32.992Z",
+          "form_id": null,
+          "id": "k971wc8n4380k0qb1pqb5p1zjd8c9qd8",
+          "instructions": "A square image, at least 800×800px. It appears on the public programme.",
+          "is_complete": false,
+          "is_overdue": false,
+          "kind": "headshot",
+          "response": null,
+          "session_id": null,
+          "session_title": null,
+          "speaker": {
+            "email": "rafael.duarte@example.com",
+            "full_name": "Rafael Duarte",
+            "id": "m9773rf8fgmx5qxzb7qnb0nm0d8c8aa2"
+          },
+          "speaker_id": "m9773rf8fgmx5qxzb7qnb0nm0d8c8aa2",
+          "title": "Upload your headshot"
+        },
+        {
+          "completed_at": null,
+          "created_at": "2026-08-11T19:58:32.992Z",
+          "due_at": "2026-08-31T19:58:32.992Z",
+          "form_id": null,
+          "id": "k9761ycrwf56enbqgm7n2c64hh8c8cjn",
+          "instructions": "PDF please, 16:9. We collect slides a week ahead so the AV team can test them.",
+          "is_complete": false,
+          "is_overdue": false,
+          "kind": "upload",
+          "response": null,
+          "session_id": null,
+          "session_title": null,
+          "speaker": {
+            "email": "liam.ferguson@example.com",
+            "full_name": "Liam Ferguson",
+            "id": "m977ezpsv5fdxhmk9sgqjym2098c8sq1"
+          },
+          "speaker_id": "m977ezpsv5fdxhmk9sgqjym2098c8sq1",
+          "title": "Upload your slides"
+        },
+        {
+          "completed_at": null,
+          "created_at": "2026-08-11T19:58:32.992Z",
+          "due_at": "2026-08-14T19:58:32.992Z",
+          "form_id": null,
+          "id": "k977qsm6hwxj31mgezp02aktxx8c9ptv",
+          "instructions": "Add a short biography (60–100 words) so we can introduce you properly.",
+          "is_complete": false,
+          "is_overdue": false,
+          "kind": "confirm",
+          "response": null,
+          "session_id": null,
+          "session_title": null,
+          "speaker": {
+            "email": "liam.ferguson@example.com",
+            "full_name": "Liam Ferguson",
+            "id": "m977ezpsv5fdxhmk9sgqjym2098c8sq1"
+          },
+          "speaker_id": "m977ezpsv5fdxhmk9sgqjym2098c8sq1",
+          "title": "Confirm your biography"
+        },
+        {
+          "completed_at": "2026-08-10T19:58:32.992Z",
+          "created_at": "2026-08-11T19:58:32.992Z",
+          "due_at": "2026-08-23T19:58:32.992Z",
+          "form_id": null,
+          "id": "k979t4b4dan10g78rhshybgsms8c97ct",
+          "instructions": "A square image, at least 800×800px. It appears on the public programme.",
+          "is_complete": true,
+          "is_overdue": false,
+          "kind": "headshot",
+          "response": null,
+          "session_id": null,
+          "session_title": null,
+          "speaker": {
+            "email": "liam.ferguson@example.com",
+            "full_name": "Liam Ferguson",
+            "id": "m977ezpsv5fdxhmk9sgqjym2098c8sq1"
+          },
+          "speaker_id": "m977ezpsv5fdxhmk9sgqjym2098c8sq1",
+          "title": "Upload your headshot"
+        },
+        {
+          "completed_at": null,
+          "created_at": "2026-08-11T19:58:32.992Z",
+          "due_at": "2026-08-31T19:58:32.992Z",
+          "form_id": null,
+          "id": "k970wn0xd1ewab2c0ks4hbv1qs8c92ey",
+          "instructions": "PDF please, 16:9. We collect slides a week ahead so the AV team can test them.",
+          "is_complete": false,
+          "is_overdue": false,
+          "kind": "upload",
+          "response": null,
+          "session_id": null,
+          "session_title": null,
+          "speaker": {
+            "email": "tom.beaumont@example.com",
+            "full_name": "Tom Beaumont",
+            "id": "m974q53mw45ext3hskj71x4d998c8x74"
+          },
+          "speaker_id": "m974q53mw45ext3hskj71x4d998c8x74",
+          "title": "Upload your slides"
+        },
+        {
+          "completed_at": null,
+          "created_at": "2026-08-11T19:58:32.992Z",
+          "due_at": "2026-08-12T19:58:32.992Z",
+          "form_id": null,
+          "id": "k975wc5g7hqnv8mj44yp9htjsx8c880e",
+          "instructions": "Add a short biography (60–100 words) so we can introduce you properly.",
+          "is_complete": false,
+          "is_overdue": false,
+          "kind": "confirm",
+          "response": null,
+          "session_id": null,
+          "session_title": null,
+          "speaker": {
+            "email": "tom.beaumont@example.com",
+            "full_name": "Tom Beaumont",
+            "id": "m974q53mw45ext3hskj71x4d998c8x74"
+          },
+          "speaker_id": "m974q53mw45ext3hskj71x4d998c8x74",
+          "title": "Confirm your biography"
+        },
+        {
+          "completed_at": "2026-08-08T19:58:32.992Z",
+          "created_at": "2026-08-11T19:58:32.992Z",
+          "due_at": "2026-08-23T19:58:32.992Z",
+          "form_id": null,
+          "id": "k97f42t9dv3na9h72k2mgv62c18c9j4c",
+          "instructions": "A square image, at least 800×800px. It appears on the public programme.",
+          "is_complete": true,
+          "is_overdue": false,
+          "kind": "headshot",
+          "response": null,
+          "session_id": null,
+          "session_title": null,
+          "speaker": {
+            "email": "tom.beaumont@example.com",
+            "full_name": "Tom Beaumont",
+            "id": "m974q53mw45ext3hskj71x4d998c8x74"
+          },
+          "speaker_id": "m974q53mw45ext3hskj71x4d998c8x74",
+          "title": "Upload your headshot"
+        },
+        {
+          "completed_at": null,
+          "created_at": "2026-08-11T19:58:32.992Z",
+          "due_at": "2026-08-31T19:58:32.992Z",
+          "form_id": null,
+          "id": "k97b7dr4m9z5j8yw2qzj8a1ep58c88d2",
+          "instructions": "PDF please, 16:9. We collect slides a week ahead so the AV team can test them.",
+          "is_complete": false,
+          "is_overdue": false,
+          "kind": "upload",
+          "response": null,
+          "session_id": null,
+          "session_title": null,
+          "speaker": {
+            "email": "sofia.marchetti@example.com",
+            "full_name": "Sofia Marchetti",
+            "id": "m97c6psn2x0ac1fj7xsvdgg43x8c967t"
+          },
+          "speaker_id": "m97c6psn2x0ac1fj7xsvdgg43x8c967t",
+          "title": "Upload your slides"
+        },
+        {
+          "completed_at": "2026-08-07T19:58:32.992Z",
+          "created_at": "2026-08-11T19:58:32.992Z",
+          "due_at": "2026-08-23T19:58:32.992Z",
+          "form_id": null,
+          "id": "k97avjk66s1gxrc5800zmcnpgd8c8v6h",
+          "instructions": "Review the biography on your profile and confirm it is current.",
+          "is_complete": true,
+          "is_overdue": false,
+          "kind": "confirm",
+          "response": null,
+          "session_id": null,
+          "session_title": null,
+          "speaker": {
+            "email": "sofia.marchetti@example.com",
+            "full_name": "Sofia Marchetti",
+            "id": "m97c6psn2x0ac1fj7xsvdgg43x8c967t"
+          },
+          "speaker_id": "m97c6psn2x0ac1fj7xsvdgg43x8c967t",
+          "title": "Confirm your biography"
+        },
+        {
+          "completed_at": null,
+          "created_at": "2026-08-11T19:58:32.992Z",
+          "due_at": "2026-08-09T19:58:32.992Z",
+          "form_id": null,
+          "id": "k97ewvsetnmg13bw9q684srqdd8c8mme",
+          "instructions": "A square image, at least 800×800px. It appears on the public programme.",
+          "is_complete": false,
+          "is_overdue": true,
+          "kind": "headshot",
+          "response": null,
+          "session_id": null,
+          "session_title": null,
+          "speaker": {
+            "email": "sofia.marchetti@example.com",
+            "full_name": "Sofia Marchetti",
+            "id": "m97c6psn2x0ac1fj7xsvdgg43x8c967t"
+          },
+          "speaker_id": "m97c6psn2x0ac1fj7xsvdgg43x8c967t",
+          "title": "Upload your headshot"
+        },
+        {
+          "completed_at": null,
+          "created_at": "2026-08-11T19:58:32.992Z",
+          "due_at": "2026-08-13T19:58:32.992Z",
+          "form_id": null,
+          "id": "k97ar3arr9hwd1a14a41ndmsv98c9arr",
+          "instructions": "PDF please, 16:9. We collect slides a week ahead so the AV team can test them.",
+          "is_complete": false,
+          "is_overdue": false,
+          "kind": "upload",
+          "response": null,
+          "session_id": null,
+          "session_title": null,
+          "speaker": {
+            "email": "ava.nakamura@example.com",
+            "full_name": "Ava Nakamura",
+            "id": "m971v851r1dy9h01mrne1077sx8c834m"
+          },
+          "speaker_id": "m971v851r1dy9h01mrne1077sx8c834m",
+          "title": "Upload your slides"
+        },
+        {
+          "completed_at": "2026-08-05T19:58:32.992Z",
+          "created_at": "2026-08-11T19:58:32.992Z",
+          "due_at": "2026-08-23T19:58:32.992Z",
+          "form_id": null,
+          "id": "k97ajd0sptfs5s3fn4mh5m27n98c9m94",
+          "instructions": "Review the biography on your profile and confirm it is current.",
+          "is_complete": true,
+          "is_overdue": false,
+          "kind": "confirm",
+          "response": null,
+          "session_id": null,
+          "session_title": null,
+          "speaker": {
+            "email": "ava.nakamura@example.com",
+            "full_name": "Ava Nakamura",
+            "id": "m971v851r1dy9h01mrne1077sx8c834m"
+          },
+          "speaker_id": "m971v851r1dy9h01mrne1077sx8c834m",
+          "title": "Confirm your biography"
+        },
+        {
+          "completed_at": "2026-08-05T19:58:32.992Z",
+          "created_at": "2026-08-11T19:58:32.992Z",
+          "due_at": "2026-08-23T19:58:32.992Z",
+          "form_id": null,
+          "id": "k97bmx2vtkm3mmg2vw5ghk4k918c8t69",
+          "instructions": "A square image, at least 800×800px. It appears on the public programme.",
+          "is_complete": true,
+          "is_overdue": false,
+          "kind": "headshot",
+          "response": null,
+          "session_id": null,
+          "session_title": null,
+          "speaker": {
+            "email": "ava.nakamura@example.com",
+            "full_name": "Ava Nakamura",
+            "id": "m971v851r1dy9h01mrne1077sx8c834m"
+          },
+          "speaker_id": "m971v851r1dy9h01mrne1077sx8c834m",
+          "title": "Upload your headshot"
+        },
+        {
+          "completed_at": "2026-08-09T19:58:32.992Z",
+          "created_at": "2026-08-11T19:58:32.992Z",
+          "due_at": "2026-08-31T19:58:32.992Z",
+          "form_id": null,
+          "id": "k97e96a43071k3jbk8bkn754m58c98e3",
+          "instructions": "PDF please, 16:9. We collect slides a week ahead so the AV team can test them.",
+          "is_complete": true,
+          "is_overdue": false,
+          "kind": "upload",
+          "response": null,
+          "session_id": null,
+          "session_title": null,
+          "speaker": {
+            "email": "priya.raghavan@example.com",
+            "full_name": "Priya Raghavan",
+            "id": "m975z73p3cakpqjkcxme8abmwd8c9h57"
+          },
+          "speaker_id": "m975z73p3cakpqjkcxme8abmwd8c9h57",
+          "title": "Upload your slides"
+        },
+        {
+          "completed_at": "2026-08-02T19:58:32.992Z",
+          "created_at": "2026-08-11T19:58:32.992Z",
+          "due_at": "2026-08-23T19:58:32.992Z",
+          "form_id": null,
+          "id": "k970snmwvfws6y992wj17hbfnd8c9c1v",
+          "instructions": "Review the biography on your profile and confirm it is current.",
+          "is_complete": true,
+          "is_overdue": false,
+          "kind": "confirm",
+          "response": null,
+          "session_id": null,
+          "session_title": null,
+          "speaker": {
+            "email": "priya.raghavan@example.com",
+            "full_name": "Priya Raghavan",
+            "id": "m975z73p3cakpqjkcxme8abmwd8c9h57"
+          },
+          "speaker_id": "m975z73p3cakpqjkcxme8abmwd8c9h57",
+          "title": "Confirm your biography"
+        },
+        {
+          "completed_at": "2026-08-02T19:58:32.992Z",
+          "created_at": "2026-08-11T19:58:32.992Z",
+          "due_at": "2026-08-23T19:58:32.992Z",
+          "form_id": null,
+          "id": "k97d2g7na2jcraaw0bm3reqr3h8c9erw",
+          "instructions": "A square image, at least 800×800px. It appears on the public programme.",
+          "is_complete": true,
+          "is_overdue": false,
+          "kind": "headshot",
+          "response": null,
+          "session_id": null,
+          "session_title": null,
+          "speaker": {
+            "email": "priya.raghavan@example.com",
+            "full_name": "Priya Raghavan",
+            "id": "m975z73p3cakpqjkcxme8abmwd8c9h57"
+          },
+          "speaker_id": "m975z73p3cakpqjkcxme8abmwd8c9h57",
+          "title": "Upload your headshot"
+        }
+      ]
+    }
+  },
+  "list_files": {
+    "input": {
+      "event": "ai-summit-2026"
+    },
+    "output": {
+      "countsByApprovalStatus": {
+        "approved": 1
+      },
+      "files": [
+        {
+          "approvalStatus": "approved",
+          "fileId": "kh7c3efp3sb2v2e8gh0tngnr258c8pm4",
+          "filename": "opening-keynote-slides.pdf",
+          "reviewNote": "Looks great — AV have the deck.",
+          "session": "Opening keynote: the year AI engineering grew up",
+          "speaker": "Priya Raghavan <priya.raghavan@example.com>",
+          "task": "Upload your slides",
+          "uploadedAt": "2026-08-11T19:58:36.672Z",
+          "version": 1
+        }
+      ],
+      "note": "Approve or reject one with review_file. Approved files are what public session pages may expose.",
+      "returned": 1,
+      "total": 1
+    }
+  },
+  "count_bulk_audience": {
+    "input": {
+      "event": "ai-summit-2026",
+      "audience": "accepted"
+    },
+    "output": {
+      "audience": "accepted",
+      "note": "This is exactly who send_bulk_email would email with the same arguments.",
+      "recipients": 16,
+      "sampleEmails": [
+        "sofia.marchetti@example.com",
+        "ava.nakamura@example.com",
+        "tom.beaumont@example.com",
+        "hana.kobayashi@example.com",
+        "liam.ferguson@example.com",
+        "rafael.duarte@example.com",
+        "elena.petrova@example.com",
+        "priya.raghavan@example.com",
+        "noah.blackwood@example.com",
+        "daniel.okonkwo@example.com"
+      ]
+    }
+  },
+  "list_evaluation_plans": {
+    "input": {
+      "event": "ai-summit-2026"
+    },
+    "output": {
+      "data": [
+        {
+          "assigned_count": 16,
+          "average_score": 4.3,
+          "blind": false,
+          "completed_count": 10,
+          "completion_pct": 63,
+          "created_at": "2026-08-11T19:58:32.992Z",
+          "criteria": [
+            {
+              "id": "overall",
+              "label": "Overall",
+              "options": null,
+              "type": "numeric",
+              "weight": 1
+            },
+            {
+              "id": "relevance",
+              "label": "Relevance",
+              "options": null,
+              "type": "numeric",
+              "weight": 1
+            }
+          ],
+          "due_at": "2026-09-26T00:00:00.000Z",
+          "evaluator_count": 2,
+          "id": "kn7e3e98kbvz52855smwthcec58c8tpq",
+          "name": "Round 1 — Programme Committee",
+          "opens_at": null,
+          "outstanding_count": 6,
+          "recused_count": 0,
+          "round": 1,
+          "scored_count": 10,
+          "status": "open",
+          "submission_count": 8,
+          "submission_ids": [
+            "k57fjx2z12yr4098666pcgyapx8c87wh",
+            "k570ck4przm6wy3tmyv65kz5hx8c9x6n",
+            "k57cdcabj5n6dwppa6fjnfcxjd8c9vcs",
+            "k5701d4ksfq5vjwarhb2n4mk0x8c87es",
+            "k577h4wmb7qq32ggqgz28578758c8g1a",
+            "k57b5q08xv8r176s8ykndc2tdd8c9zp9",
+            "k57cqfjerkdsxhas4fzn4r8y798c8pj7",
+            "k5711qjjy48tmsh1b63rt86cpn8c8z04"
+          ]
+        },
+        {
+          "assigned_count": 0,
+          "average_score": null,
+          "blind": false,
+          "completed_count": 0,
+          "completion_pct": 0,
+          "created_at": "2026-08-11T19:58:32.992Z",
+          "criteria": [
+            {
+              "id": "overall",
+              "label": "Overall",
+              "options": null,
+              "type": "numeric",
+              "weight": 1
+            },
+            {
+              "id": "relevance",
+              "label": "Relevance",
+              "options": null,
+              "type": "numeric",
+              "weight": 1
+            }
+          ],
+          "due_at": null,
+          "evaluator_count": 0,
+          "id": "kn71rx66n52bs7m27fp9a4b37d8c92ff",
+          "name": "Round 2 — Final Review",
+          "opens_at": null,
+          "outstanding_count": 0,
+          "recused_count": 0,
+          "round": 2,
+          "scored_count": 0,
+          "status": "closed",
+          "submission_count": 0,
+          "submission_ids": []
+        }
+      ],
+      "pagination": {
+        "currentPage": 1,
+        "current_page": 1,
+        "pageSize": 100,
+        "page_size": 100,
+        "totalPages": 1,
+        "totalResults": 2,
+        "total_pages": 1,
+        "total_results": 2
+      },
+      "results": [
+        {
+          "assigned_count": 16,
+          "average_score": 4.3,
+          "blind": false,
+          "completed_count": 10,
+          "completion_pct": 63,
+          "created_at": "2026-08-11T19:58:32.992Z",
+          "criteria": [
+            {
+              "id": "overall",
+              "label": "Overall",
+              "options": null,
+              "type": "numeric",
+              "weight": 1
+            },
+            {
+              "id": "relevance",
+              "label": "Relevance",
+              "options": null,
+              "type": "numeric",
+              "weight": 1
+            }
+          ],
+          "due_at": "2026-09-26T00:00:00.000Z",
+          "evaluator_count": 2,
+          "id": "kn7e3e98kbvz52855smwthcec58c8tpq",
+          "name": "Round 1 — Programme Committee",
+          "opens_at": null,
+          "outstanding_count": 6,
+          "recused_count": 0,
+          "round": 1,
+          "scored_count": 10,
+          "status": "open",
+          "submission_count": 8,
+          "submission_ids": [
+            "k57fjx2z12yr4098666pcgyapx8c87wh",
+            "k570ck4przm6wy3tmyv65kz5hx8c9x6n",
+            "k57cdcabj5n6dwppa6fjnfcxjd8c9vcs",
+            "k5701d4ksfq5vjwarhb2n4mk0x8c87es",
+            "k577h4wmb7qq32ggqgz28578758c8g1a",
+            "k57b5q08xv8r176s8ykndc2tdd8c9zp9",
+            "k57cqfjerkdsxhas4fzn4r8y798c8pj7",
+            "k5711qjjy48tmsh1b63rt86cpn8c8z04"
+          ]
+        },
+        {
+          "assigned_count": 0,
+          "average_score": null,
+          "blind": false,
+          "completed_count": 0,
+          "completion_pct": 0,
+          "created_at": "2026-08-11T19:58:32.992Z",
+          "criteria": [
+            {
+              "id": "overall",
+              "label": "Overall",
+              "options": null,
+              "type": "numeric",
+              "weight": 1
+            },
+            {
+              "id": "relevance",
+              "label": "Relevance",
+              "options": null,
+              "type": "numeric",
+              "weight": 1
+            }
+          ],
+          "due_at": null,
+          "evaluator_count": 0,
+          "id": "kn71rx66n52bs7m27fp9a4b37d8c92ff",
+          "name": "Round 2 — Final Review",
+          "opens_at": null,
+          "outstanding_count": 0,
+          "recused_count": 0,
+          "round": 2,
+          "scored_count": 0,
+          "status": "closed",
+          "submission_count": 0,
+          "submission_ids": []
+        }
+      ]
+    }
+  },
+  "get_evaluation_plan": {
+    "input": {
+      "planId": "kn7e3e98kbvz52855smwthcec58c8tpq",
+      "event": "ai-summit-2026"
+    },
+    "output": {
+      "data": {
+        "assigned_count": 16,
+        "average_score": 4.3,
+        "blind": false,
+        "completed_count": 10,
+        "completion_pct": 63,
+        "created_at": "2026-08-11T19:58:32.992Z",
+        "criteria": [
+          {
+            "id": "overall",
+            "label": "Overall",
+            "options": null,
+            "type": "numeric",
+            "weight": 1
+          },
+          {
+            "id": "relevance",
+            "label": "Relevance",
+            "options": null,
+            "type": "numeric",
+            "weight": 1
+          }
+        ],
+        "due_at": "2026-09-26T00:00:00.000Z",
+        "evaluator_count": 2,
+        "evaluators": [
+          {
+            "assigned_count": 8,
+            "assigned_submission_ids": [
+              "k57fjx2z12yr4098666pcgyapx8c87wh",
+              "k570ck4przm6wy3tmyv65kz5hx8c9x6n",
+              "k57cdcabj5n6dwppa6fjnfcxjd8c9vcs",
+              "k5701d4ksfq5vjwarhb2n4mk0x8c87es",
+              "k577h4wmb7qq32ggqgz28578758c8g1a",
+              "k57b5q08xv8r176s8ykndc2tdd8c9zp9",
+              "k57cqfjerkdsxhas4fzn4r8y798c8pj7",
+              "k5711qjjy48tmsh1b63rt86cpn8c8z04"
+            ],
+            "completed_count": 6,
+            "created_at": "2026-08-11T19:58:32.992Z",
+            "custom_assignment": false,
+            "email": "alex.rivera@example.com",
+            "id": "kx79rsf5szqxm5gqabs6pw8w2h8c9z22",
+            "last_reminded_at": null,
+            "name": "Alex Rivera",
+            "outstanding_count": 2,
+            "plan_id": "kn7e3e98kbvz52855smwthcec58c8tpq",
+            "recused_count": 0,
+            "review_path": "/review/demo-eval-alex",
+            "token": "demo-eval-alex"
+          },
+          {
+            "assigned_count": 8,
+            "assigned_submission_ids": [
+              "k57fjx2z12yr4098666pcgyapx8c87wh",
+              "k570ck4przm6wy3tmyv65kz5hx8c9x6n",
+              "k57cdcabj5n6dwppa6fjnfcxjd8c9vcs",
+              "k5701d4ksfq5vjwarhb2n4mk0x8c87es",
+              "k577h4wmb7qq32ggqgz28578758c8g1a",
+              "k57b5q08xv8r176s8ykndc2tdd8c9zp9",
+              "k57cqfjerkdsxhas4fzn4r8y798c8pj7",
+              "k5711qjjy48tmsh1b63rt86cpn8c8z04"
+            ],
+            "completed_count": 4,
+            "created_at": "2026-08-11T19:58:32.992Z",
+            "custom_assignment": false,
+            "email": "sam.okafor@example.com",
+            "id": "kx72rea571mzm4vrb743k0vm358c8etn",
+            "last_reminded_at": null,
+            "name": "Sam Okafor",
+            "outstanding_count": 4,
+            "plan_id": "kn7e3e98kbvz52855smwthcec58c8tpq",
+            "recused_count": 0,
+            "review_path": "/review/demo-eval-sam",
+            "token": "demo-eval-sam"
+          }
+        ],
+        "id": "kn7e3e98kbvz52855smwthcec58c8tpq",
+        "name": "Round 1 — Programme Committee",
+        "opens_at": null,
+        "outstanding_count": 6,
+        "recused_count": 0,
+        "round": 1,
+        "scored_count": 10,
+        "status": "open",
+        "submission_count": 8,
+        "submission_ids": [
+          "k57fjx2z12yr4098666pcgyapx8c87wh",
+          "k570ck4przm6wy3tmyv65kz5hx8c9x6n",
+          "k57cdcabj5n6dwppa6fjnfcxjd8c9vcs",
+          "k5701d4ksfq5vjwarhb2n4mk0x8c87es",
+          "k577h4wmb7qq32ggqgz28578758c8g1a",
+          "k57b5q08xv8r176s8ykndc2tdd8c9zp9",
+          "k57cqfjerkdsxhas4fzn4r8y798c8pj7",
+          "k5711qjjy48tmsh1b63rt86cpn8c8z04"
+        ],
+        "submissions": [
+          {
+            "average_score": 4.25,
+            "completed_count": 2,
+            "id": "k57fjx2z12yr4098666pcgyapx8c87wh",
+            "recused_count": 0,
+            "status": "pending",
+            "title": "Shipping LLM features when latency is the product"
+          },
+          {
+            "average_score": 4,
+            "completed_count": 2,
+            "id": "k570ck4przm6wy3tmyv65kz5hx8c9x6n",
+            "recused_count": 0,
+            "status": "pending",
+            "title": "Vector databases at ten billion embeddings"
+          },
+          {
+            "average_score": 3.5,
+            "completed_count": 1,
+            "id": "k57cdcabj5n6dwppa6fjnfcxjd8c9vcs",
+            "recused_count": 0,
+            "status": "pending",
+            "title": "From notebook to nine-nines: productionising ML in regulated healthcare"
+          },
+          {
+            "average_score": 5,
+            "completed_count": 1,
+            "id": "k5701d4ksfq5vjwarhb2n4mk0x8c87es",
+            "recused_count": 0,
+            "status": "pending",
+            "title": "Teaching your model to say “I don't know”"
+          },
+          {
+            "average_score": 4.25,
+            "completed_count": 2,
+            "id": "k577h4wmb7qq32ggqgz28578758c8g1a",
+            "recused_count": 0,
+            "status": "accept_queue",
+            "title": "Structured output without the sadness"
+          },
+          {
+            "average_score": 4.5,
+            "completed_count": 1,
+            "id": "k57b5q08xv8r176s8ykndc2tdd8c9zp9",
+            "recused_count": 0,
+            "status": "accept_queue",
+            "title": "Cost modelling for inference-heavy products"
+          },
+          {
+            "average_score": null,
+            "completed_count": 0,
+            "id": "k57cqfjerkdsxhas4fzn4r8y798c8pj7",
+            "recused_count": 0,
+            "status": "decline_queue",
+            "title": "Why we rewrote our stack in Rust (again)"
+          },
+          {
+            "average_score": 5,
+            "completed_count": 1,
+            "id": "k5711qjjy48tmsh1b63rt86cpn8c8z04",
+            "recused_count": 0,
+            "status": "accepted",
+            "title": "Building reliable agents: a practitioner's playbook"
+          }
+        ]
+      }
+    }
+  },
+  "list_evaluations": {
+    "input": {
+      "event": "ai-summit-2026"
+    },
+    "output": {
+      "data": [
+        {
+          "comment": "Strong, concrete and clearly grounded in real work. The latency-budget framing is the kind of thing attendees can apply on Monday.",
+          "completed_at": "2026-08-06T19:58:32.992Z",
+          "created_at": "2026-08-11T19:58:32.992Z",
+          "evaluator_email": "alex.rivera@example.com",
+          "evaluator_id": "kx79rsf5szqxm5gqabs6pw8w2h8c9z22",
+          "id": "ks7fgk4dt9jpqwf4v1zxpv2m7n8c8xt3",
+          "plan_id": "kn7e3e98kbvz52855smwthcec58c8tpq",
+          "plan_name": "Round 1 — Programme Committee",
+          "recusal_reason": null,
+          "recused": false,
+          "round": 1,
+          "scores": {
+            "overall": 4,
+            "relevance": 5
+          },
+          "session_id": "k57fjx2z12yr4098666pcgyapx8c87wh",
+          "session_title": "Shipping LLM features when latency is the product",
+          "values": {}
+        },
+        {
+          "comment": "Good talk. Would like a little more on measurement methodology, but the substance is there.",
+          "completed_at": "2026-08-07T07:58:32.992Z",
+          "created_at": "2026-08-11T19:58:32.992Z",
+          "evaluator_email": "sam.okafor@example.com",
+          "evaluator_id": "kx72rea571mzm4vrb743k0vm358c8etn",
+          "id": "ks7dhn530w1vp9g593qbpv9x3d8c9x9z",
+          "plan_id": "kn7e3e98kbvz52855smwthcec58c8tpq",
+          "plan_name": "Round 1 — Programme Committee",
+          "recusal_reason": null,
+          "recused": false,
+          "round": 1,
+          "scores": {
+            "overall": 4,
+            "relevance": 4
+          },
+          "session_id": "k57fjx2z12yr4098666pcgyapx8c87wh",
+          "session_title": "Shipping LLM features when latency is the product",
+          "values": {}
+        },
+        {
+          "comment": "Genuinely advanced material from someone clearly operating at this scale. Rare and worth a main-stage slot.",
+          "completed_at": "2026-08-07T19:58:32.992Z",
+          "created_at": "2026-08-11T19:58:32.992Z",
+          "evaluator_email": "alex.rivera@example.com",
+          "evaluator_id": "kx79rsf5szqxm5gqabs6pw8w2h8c9z22",
+          "id": "ks730fpjzjw2kpz6mgas3detns8c8sdk",
+          "plan_id": "kn7e3e98kbvz52855smwthcec58c8tpq",
+          "plan_name": "Round 1 — Programme Committee",
+          "recusal_reason": null,
+          "recused": false,
+          "round": 1,
+          "scores": {
+            "overall": 5,
+            "relevance": 4
+          },
+          "session_id": "k570ck4przm6wy3tmyv65kz5hx8c9x6n",
+          "session_title": "Vector databases at ten billion embeddings",
+          "values": {}
+        },
+        {
+          "comment": "Excellent depth, though the audience for ten-billion-vector problems may be narrow for this event.",
+          "completed_at": "2026-08-08T07:58:32.992Z",
+          "created_at": "2026-08-11T19:58:32.992Z",
+          "evaluator_email": "sam.okafor@example.com",
+          "evaluator_id": "kx72rea571mzm4vrb743k0vm358c8etn",
+          "id": "ks79a95pmhy8kdb4wk71zkaft98c9w6t",
+          "plan_id": "kn7e3e98kbvz52855smwthcec58c8tpq",
+          "plan_name": "Round 1 — Programme Committee",
+          "recusal_reason": null,
+          "recused": false,
+          "round": 1,
+          "scores": {
+            "overall": 4,
+            "relevance": 3
+          },
+          "session_id": "k570ck4przm6wy3tmyv65kz5hx8c9x6n",
+          "session_title": "Vector databases at ten billion embeddings",
+          "values": {}
+        },
+        {
+          "comment": "Valuable and unusually well grounded in compliance reality, but a half-day workshop is a big ask for our schedule.",
+          "completed_at": "2026-08-08T19:58:32.992Z",
+          "created_at": "2026-08-11T19:58:32.992Z",
+          "evaluator_email": "alex.rivera@example.com",
+          "evaluator_id": "kx79rsf5szqxm5gqabs6pw8w2h8c9z22",
+          "id": "ks738he9vxw8vz46z7c6k1nxj18c9dff",
+          "plan_id": "kn7e3e98kbvz52855smwthcec58c8tpq",
+          "plan_name": "Round 1 — Programme Committee",
+          "recusal_reason": null,
+          "recused": false,
+          "round": 1,
+          "scores": {
+            "overall": 3,
+            "relevance": 4
+          },
+          "session_id": "k57cdcabj5n6dwppa6fjnfcxjd8c9vcs",
+          "session_title": "From notebook to nine-nines: productionising ML in regulated healthcare",
+          "values": {}
+        },
+        {
+          "comment": "The best abstract in my batch. Abstention is under-discussed and this proposal treats it as an engineering problem rather than a research curiosity.",
+          "completed_at": "2026-08-09T07:58:32.992Z",
+          "created_at": "2026-08-11T19:58:32.992Z",
+          "evaluator_email": "alex.rivera@example.com",
+          "evaluator_id": "kx79rsf5szqxm5gqabs6pw8w2h8c9z22",
+          "id": "ks7e5bky8cvd0x12hmh2zcd1js8c9cx8",
+          "plan_id": "kn7e3e98kbvz52855smwthcec58c8tpq",
+          "plan_name": "Round 1 — Programme Committee",
+          "recusal_reason": null,
+          "recused": false,
+          "round": 1,
+          "scores": {
+            "overall": 5,
+            "relevance": 5
+          },
+          "session_id": "k5701d4ksfq5vjwarhb2n4mk0x8c87es",
+          "session_title": "Teaching your model to say “I don't know”",
+          "values": {}
+        },
+        {
+          "comment": "Tight, useful, and perfectly sized as a lightning talk. Easy yes.",
+          "completed_at": "2026-08-09T19:58:32.992Z",
+          "created_at": "2026-08-11T19:58:32.992Z",
+          "evaluator_email": "alex.rivera@example.com",
+          "evaluator_id": "kx79rsf5szqxm5gqabs6pw8w2h8c9z22",
+          "id": "ks73pqwy3zq7sk9yfa4k4k99sn8c8h0s",
+          "plan_id": "kn7e3e98kbvz52855smwthcec58c8tpq",
+          "plan_name": "Round 1 — Programme Committee",
+          "recusal_reason": null,
+          "recused": false,
+          "round": 1,
+          "scores": {
+            "overall": 4,
+            "relevance": 4
+          },
+          "session_id": "k577h4wmb7qq32ggqgz28578758c8g1a",
+          "session_title": "Structured output without the sadness",
+          "values": {}
+        },
+        {
+          "comment": "Everyone in the room has fought this. Practical and well scoped.",
+          "completed_at": "2026-08-10T07:58:32.992Z",
+          "created_at": "2026-08-11T19:58:32.992Z",
+          "evaluator_email": "sam.okafor@example.com",
+          "evaluator_id": "kx72rea571mzm4vrb743k0vm358c8etn",
+          "id": "ks7820wsnxg97cw781731n7j6s8c9cwa",
+          "plan_id": "kn7e3e98kbvz52855smwthcec58c8tpq",
+          "plan_name": "Round 1 — Programme Committee",
+          "recusal_reason": null,
+          "recused": false,
+          "round": 1,
+          "scores": {
+            "overall": 5,
+            "relevance": 4
+          },
+          "session_id": "k577h4wmb7qq32ggqgz28578758c8g1a",
+          "session_title": "Structured output without the sadness",
+          "values": {}
+        },
+        {
+          "comment": "Cost is the conversation every team is having and almost nobody submits about. Would schedule.",
+          "completed_at": "2026-08-10T19:58:32.992Z",
+          "created_at": "2026-08-11T19:58:32.992Z",
+          "evaluator_email": "alex.rivera@example.com",
+          "evaluator_id": "kx79rsf5szqxm5gqabs6pw8w2h8c9z22",
+          "id": "ks773a1xdh8v3rak5zmk907kn18c8qyq",
+          "plan_id": "kn7e3e98kbvz52855smwthcec58c8tpq",
+          "plan_name": "Round 1 — Programme Committee",
+          "recusal_reason": null,
+          "recused": false,
+          "round": 1,
+          "scores": {
+            "overall": 4,
+            "relevance": 5
+          },
+          "session_id": "k57b5q08xv8r176s8ykndc2tdd8c9zp9",
+          "session_title": "Cost modelling for inference-heavy products",
+          "values": {}
+        },
+        {
+          "comment": "Clear, experienced and specific. The failure-mode taxonomy alone justifies the slot.",
+          "completed_at": "2026-08-11T07:58:32.992Z",
+          "created_at": "2026-08-11T19:58:32.992Z",
+          "evaluator_email": "sam.okafor@example.com",
+          "evaluator_id": "kx72rea571mzm4vrb743k0vm358c8etn",
+          "id": "ks7br7mg92dfw8mzgvha6wyd1d8c8rc9",
+          "plan_id": "kn7e3e98kbvz52855smwthcec58c8tpq",
+          "plan_name": "Round 1 — Programme Committee",
+          "recusal_reason": null,
+          "recused": false,
+          "round": 1,
+          "scores": {
+            "overall": 5,
+            "relevance": 5
+          },
+          "session_id": "k5711qjjy48tmsh1b63rt86cpn8c8z04",
+          "session_title": "Building reliable agents: a practitioner's playbook",
+          "values": {}
+        }
+      ],
+      "pagination": {
+        "currentPage": 1,
+        "current_page": 1,
+        "pageSize": 100,
+        "page_size": 100,
+        "totalPages": 1,
+        "totalResults": 10,
+        "total_pages": 1,
+        "total_results": 10
+      },
+      "results": [
+        {
+          "comment": "Strong, concrete and clearly grounded in real work. The latency-budget framing is the kind of thing attendees can apply on Monday.",
+          "completed_at": "2026-08-06T19:58:32.992Z",
+          "created_at": "2026-08-11T19:58:32.992Z",
+          "evaluator_email": "alex.rivera@example.com",
+          "evaluator_id": "kx79rsf5szqxm5gqabs6pw8w2h8c9z22",
+          "id": "ks7fgk4dt9jpqwf4v1zxpv2m7n8c8xt3",
+          "plan_id": "kn7e3e98kbvz52855smwthcec58c8tpq",
+          "plan_name": "Round 1 — Programme Committee",
+          "recusal_reason": null,
+          "recused": false,
+          "round": 1,
+          "scores": {
+            "overall": 4,
+            "relevance": 5
+          },
+          "session_id": "k57fjx2z12yr4098666pcgyapx8c87wh",
+          "session_title": "Shipping LLM features when latency is the product",
+          "values": {}
+        },
+        {
+          "comment": "Good talk. Would like a little more on measurement methodology, but the substance is there.",
+          "completed_at": "2026-08-07T07:58:32.992Z",
+          "created_at": "2026-08-11T19:58:32.992Z",
+          "evaluator_email": "sam.okafor@example.com",
+          "evaluator_id": "kx72rea571mzm4vrb743k0vm358c8etn",
+          "id": "ks7dhn530w1vp9g593qbpv9x3d8c9x9z",
+          "plan_id": "kn7e3e98kbvz52855smwthcec58c8tpq",
+          "plan_name": "Round 1 — Programme Committee",
+          "recusal_reason": null,
+          "recused": false,
+          "round": 1,
+          "scores": {
+            "overall": 4,
+            "relevance": 4
+          },
+          "session_id": "k57fjx2z12yr4098666pcgyapx8c87wh",
+          "session_title": "Shipping LLM features when latency is the product",
+          "values": {}
+        },
+        {
+          "comment": "Genuinely advanced material from someone clearly operating at this scale. Rare and worth a main-stage slot.",
+          "completed_at": "2026-08-07T19:58:32.992Z",
+          "created_at": "2026-08-11T19:58:32.992Z",
+          "evaluator_email": "alex.rivera@example.com",
+          "evaluator_id": "kx79rsf5szqxm5gqabs6pw8w2h8c9z22",
+          "id": "ks730fpjzjw2kpz6mgas3detns8c8sdk",
+          "plan_id": "kn7e3e98kbvz52855smwthcec58c8tpq",
+          "plan_name": "Round 1 — Programme Committee",
+          "recusal_reason": null,
+          "recused": false,
+          "round": 1,
+          "scores": {
+            "overall": 5,
+            "relevance": 4
+          },
+          "session_id": "k570ck4przm6wy3tmyv65kz5hx8c9x6n",
+          "session_title": "Vector databases at ten billion embeddings",
+          "values": {}
+        },
+        {
+          "comment": "Excellent depth, though the audience for ten-billion-vector problems may be narrow for this event.",
+          "completed_at": "2026-08-08T07:58:32.992Z",
+          "created_at": "2026-08-11T19:58:32.992Z",
+          "evaluator_email": "sam.okafor@example.com",
+          "evaluator_id": "kx72rea571mzm4vrb743k0vm358c8etn",
+          "id": "ks79a95pmhy8kdb4wk71zkaft98c9w6t",
+          "plan_id": "kn7e3e98kbvz52855smwthcec58c8tpq",
+          "plan_name": "Round 1 — Programme Committee",
+          "recusal_reason": null,
+          "recused": false,
+          "round": 1,
+          "scores": {
+            "overall": 4,
+            "relevance": 3
+          },
+          "session_id": "k570ck4przm6wy3tmyv65kz5hx8c9x6n",
+          "session_title": "Vector databases at ten billion embeddings",
+          "values": {}
+        },
+        {
+          "comment": "Valuable and unusually well grounded in compliance reality, but a half-day workshop is a big ask for our schedule.",
+          "completed_at": "2026-08-08T19:58:32.992Z",
+          "created_at": "2026-08-11T19:58:32.992Z",
+          "evaluator_email": "alex.rivera@example.com",
+          "evaluator_id": "kx79rsf5szqxm5gqabs6pw8w2h8c9z22",
+          "id": "ks738he9vxw8vz46z7c6k1nxj18c9dff",
+          "plan_id": "kn7e3e98kbvz52855smwthcec58c8tpq",
+          "plan_name": "Round 1 — Programme Committee",
+          "recusal_reason": null,
+          "recused": false,
+          "round": 1,
+          "scores": {
+            "overall": 3,
+            "relevance": 4
+          },
+          "session_id": "k57cdcabj5n6dwppa6fjnfcxjd8c9vcs",
+          "session_title": "From notebook to nine-nines: productionising ML in regulated healthcare",
+          "values": {}
+        },
+        {
+          "comment": "The best abstract in my batch. Abstention is under-discussed and this proposal treats it as an engineering problem rather than a research curiosity.",
+          "completed_at": "2026-08-09T07:58:32.992Z",
+          "created_at": "2026-08-11T19:58:32.992Z",
+          "evaluator_email": "alex.rivera@example.com",
+          "evaluator_id": "kx79rsf5szqxm5gqabs6pw8w2h8c9z22",
+          "id": "ks7e5bky8cvd0x12hmh2zcd1js8c9cx8",
+          "plan_id": "kn7e3e98kbvz52855smwthcec58c8tpq",
+          "plan_name": "Round 1 — Programme Committee",
+          "recusal_reason": null,
+          "recused": false,
+          "round": 1,
+          "scores": {
+            "overall": 5,
+            "relevance": 5
+          },
+          "session_id": "k5701d4ksfq5vjwarhb2n4mk0x8c87es",
+          "session_title": "Teaching your model to say “I don't know”",
+          "values": {}
+        },
+        {
+          "comment": "Tight, useful, and perfectly sized as a lightning talk. Easy yes.",
+          "completed_at": "2026-08-09T19:58:32.992Z",
+          "created_at": "2026-08-11T19:58:32.992Z",
+          "evaluator_email": "alex.rivera@example.com",
+          "evaluator_id": "kx79rsf5szqxm5gqabs6pw8w2h8c9z22",
+          "id": "ks73pqwy3zq7sk9yfa4k4k99sn8c8h0s",
+          "plan_id": "kn7e3e98kbvz52855smwthcec58c8tpq",
+          "plan_name": "Round 1 — Programme Committee",
+          "recusal_reason": null,
+          "recused": false,
+          "round": 1,
+          "scores": {
+            "overall": 4,
+            "relevance": 4
+          },
+          "session_id": "k577h4wmb7qq32ggqgz28578758c8g1a",
+          "session_title": "Structured output without the sadness",
+          "values": {}
+        },
+        {
+          "comment": "Everyone in the room has fought this. Practical and well scoped.",
+          "completed_at": "2026-08-10T07:58:32.992Z",
+          "created_at": "2026-08-11T19:58:32.992Z",
+          "evaluator_email": "sam.okafor@example.com",
+          "evaluator_id": "kx72rea571mzm4vrb743k0vm358c8etn",
+          "id": "ks7820wsnxg97cw781731n7j6s8c9cwa",
+          "plan_id": "kn7e3e98kbvz52855smwthcec58c8tpq",
+          "plan_name": "Round 1 — Programme Committee",
+          "recusal_reason": null,
+          "recused": false,
+          "round": 1,
+          "scores": {
+            "overall": 5,
+            "relevance": 4
+          },
+          "session_id": "k577h4wmb7qq32ggqgz28578758c8g1a",
+          "session_title": "Structured output without the sadness",
+          "values": {}
+        },
+        {
+          "comment": "Cost is the conversation every team is having and almost nobody submits about. Would schedule.",
+          "completed_at": "2026-08-10T19:58:32.992Z",
+          "created_at": "2026-08-11T19:58:32.992Z",
+          "evaluator_email": "alex.rivera@example.com",
+          "evaluator_id": "kx79rsf5szqxm5gqabs6pw8w2h8c9z22",
+          "id": "ks773a1xdh8v3rak5zmk907kn18c8qyq",
+          "plan_id": "kn7e3e98kbvz52855smwthcec58c8tpq",
+          "plan_name": "Round 1 — Programme Committee",
+          "recusal_reason": null,
+          "recused": false,
+          "round": 1,
+          "scores": {
+            "overall": 4,
+            "relevance": 5
+          },
+          "session_id": "k57b5q08xv8r176s8ykndc2tdd8c9zp9",
+          "session_title": "Cost modelling for inference-heavy products",
+          "values": {}
+        },
+        {
+          "comment": "Clear, experienced and specific. The failure-mode taxonomy alone justifies the slot.",
+          "completed_at": "2026-08-11T07:58:32.992Z",
+          "created_at": "2026-08-11T19:58:32.992Z",
+          "evaluator_email": "sam.okafor@example.com",
+          "evaluator_id": "kx72rea571mzm4vrb743k0vm358c8etn",
+          "id": "ks7br7mg92dfw8mzgvha6wyd1d8c8rc9",
+          "plan_id": "kn7e3e98kbvz52855smwthcec58c8tpq",
+          "plan_name": "Round 1 — Programme Committee",
+          "recusal_reason": null,
+          "recused": false,
+          "round": 1,
+          "scores": {
+            "overall": 5,
+            "relevance": 5
+          },
+          "session_id": "k5711qjjy48tmsh1b63rt86cpn8c8z04",
+          "session_title": "Building reliable agents: a practitioner's playbook",
+          "values": {}
+        }
+      ]
+    }
+  },
+  "list_field_options": {
+    "input": {
+      "event": "ai-summit-2026",
+      "resource": "tracks"
+    },
+    "output": {
+      "data": [
+        {
+          "color": "#2F5CE0",
+          "created_at": "2026-08-11T19:58:32.992Z",
+          "event_id": "j97a7rtr9rbj9ezjfqfb3qd5nx8c8hcv",
+          "id": "kd7bqbgrswqb53475y53vp1w6h8c8zn2",
+          "name": "AI Engineering",
+          "order": 0,
+          "updated_at": "2026-08-11T19:58:32.992Z"
+        },
+        {
+          "color": "#1E9E6B",
+          "created_at": "2026-08-11T19:58:32.992Z",
+          "event_id": "j97a7rtr9rbj9ezjfqfb3qd5nx8c8hcv",
+          "id": "kd765rkh0n9jea8axxmpdzex2d8c83s3",
+          "name": "Product",
+          "order": 1,
+          "updated_at": "2026-08-11T19:58:32.992Z"
+        },
+        {
+          "color": "#B45309",
+          "created_at": "2026-08-11T19:58:32.992Z",
+          "event_id": "j97a7rtr9rbj9ezjfqfb3qd5nx8c8hcv",
+          "id": "kd7arjygef2wbq2gr2w4vgdx6x8c8ss3",
+          "name": "Infrastructure",
+          "order": 2,
+          "updated_at": "2026-08-11T19:58:32.992Z"
+        }
+      ],
+      "pagination": {
+        "currentPage": 1,
+        "current_page": 1,
+        "pageSize": 100,
+        "page_size": 100,
+        "totalPages": 1,
+        "totalResults": 3,
+        "total_pages": 1,
+        "total_results": 3
+      },
+      "results": [
+        {
+          "color": "#2F5CE0",
+          "created_at": "2026-08-11T19:58:32.992Z",
+          "event_id": "j97a7rtr9rbj9ezjfqfb3qd5nx8c8hcv",
+          "id": "kd7bqbgrswqb53475y53vp1w6h8c8zn2",
+          "name": "AI Engineering",
+          "order": 0,
+          "updated_at": "2026-08-11T19:58:32.992Z"
+        },
+        {
+          "color": "#1E9E6B",
+          "created_at": "2026-08-11T19:58:32.992Z",
+          "event_id": "j97a7rtr9rbj9ezjfqfb3qd5nx8c8hcv",
+          "id": "kd765rkh0n9jea8axxmpdzex2d8c83s3",
+          "name": "Product",
+          "order": 1,
+          "updated_at": "2026-08-11T19:58:32.992Z"
+        },
+        {
+          "color": "#B45309",
+          "created_at": "2026-08-11T19:58:32.992Z",
+          "event_id": "j97a7rtr9rbj9ezjfqfb3qd5nx8c8hcv",
+          "id": "kd7arjygef2wbq2gr2w4vgdx6x8c8ss3",
+          "name": "Infrastructure",
+          "order": 2,
+          "updated_at": "2026-08-11T19:58:32.992Z"
+        }
+      ],
+      "unknownResource": false
+    }
+  },
+  "list_webhooks": {
+    "input": {
+      "event": "ai-summit-2026"
+    },
+    "output": {
+      "data": [],
+      "results": []
+    }
+  },
+  "list_embeds": {
+    "input": {
+      "event": "ai-summit-2026"
+    },
+    "output": {
+      "embedCount": 2,
+      "embeds": [
+        {
+          "embedId": "n17es3g7q4vv6c44m0v3hq1fss8c9ja0",
+          "name": "Agenda for the homepage",
+          "options": {
+            "format": "iframe",
+            "height": 900
+          },
+          "widget": "agenda"
+        },
+        {
+          "embedId": "n17993bj0zwpdqqtrnjj0hxqjs8c9edc",
+          "name": "Speaker gallery for the sponsors page",
+          "options": {
+            "format": "iframe",
+            "height": 720,
+            "hideDescriptions": true,
+            "hideSearch": true
+          },
+          "widget": "speaker-gallery"
+        }
+      ],
+      "formats": [
+        "iframe",
+        "html",
+        "link",
+        "json",
+        "xml",
+        "ics"
+      ],
+      "note": "Saved embed configurations for the event's public widgets. The Embeds page turns one into a copy-paste snippet.",
+      "widgets": [
+        "agenda",
+        "itinerary",
+        "sessions",
+        "speaker-gallery",
+        "speaker-list"
+      ]
+    }
+  },
+  "list_activity": {
+    "input": {
+      "event": "ai-summit-2026"
+    },
+    "output": {
+      "activity": [
+        {
+          "action": "unscheduled",
+          "actor": "Dana Organizer",
+          "actorType": "organizer",
+          "at": "2026-08-11T20:00:06.189Z",
+          "entity": "session",
+          "summary": "Removed from the agenda · Keyboard kb-msp340ts-zq5yh"
+        },
+        {
+          "action": "scheduled",
+          "actor": "Dana Organizer",
+          "actorType": "organizer",
+          "at": "2026-08-11T20:00:02.655Z",
+          "entity": "session",
+          "summary": "Scheduled to Main Stage, 2026-10-12T16:00:00.000Z (45 min) · Keyboard kb-msp340ts-zq5yh"
+        },
+        {
+          "action": "created",
+          "actor": "Dana Organizer",
+          "actorType": "organizer",
+          "at": "2026-08-11T19:59:56.606Z",
+          "entity": "session",
+          "summary": "Session added manually · Keyboard kb-msp340ts-zq5yh"
+        },
+        {
+          "action": "published",
+          "actor": "Dana Organizer",
+          "actorType": "organizer",
+          "at": "2026-08-11T19:59:55.110Z",
+          "entity": "agenda",
+          "summary": "Agenda published — 9 scheduled sessions went public"
+        },
+        {
+          "action": "unpublished",
+          "actor": "Dana Organizer",
+          "actorType": "organizer",
+          "at": "2026-08-11T19:59:51.989Z",
+          "entity": "agenda",
+          "summary": "Agenda unpublished — the public schedule is hidden again"
+        },
+        {
+          "action": "published",
+          "actor": "Dana Organizer",
+          "actorType": "organizer",
+          "at": "2026-08-11T19:59:48.204Z",
+          "entity": "agenda",
+          "summary": "Agenda published — 9 scheduled sessions went public"
+        },
+        {
+          "action": "unpublished",
+          "actor": "Dana Organizer",
+          "actorType": "organizer",
+          "at": "2026-08-11T19:59:44.161Z",
+          "entity": "agenda",
+          "summary": "Agenda unpublished — the public schedule is hidden again"
+        },
+        {
+          "action": "unscheduled",
+          "actor": "Dana Organizer",
+          "actorType": "organizer",
+          "at": "2026-08-11T19:59:27.342Z",
+          "entity": "session",
+          "summary": "Removed from the agenda · Auto B au-msp337pb-fg0j3"
+        },
+        {
+          "action": "unscheduled",
+          "actor": "Dana Organizer",
+          "actorType": "organizer",
+          "at": "2026-08-11T19:59:26.844Z",
+          "entity": "session",
+          "summary": "Removed from the agenda · Auto A au-msp337dg-wuw9b"
+        },
+        {
+          "action": "auto_placed",
+          "actor": "Dana Organizer",
+          "actorType": "organizer",
+          "at": "2026-08-11T19:59:24.951Z",
+          "entity": "agenda",
+          "summary": "Auto-placed 5 sessions"
+        },
+        {
+          "action": "created",
+          "actor": "Dana Organizer",
+          "actorType": "organizer",
+          "at": "2026-08-11T19:59:18.857Z",
+          "entity": "session",
+          "summary": "Session added manually · Auto B au-msp337pb-fg0j3"
+        },
+        {
+          "action": "created",
+          "actor": "Dana Organizer",
+          "actorType": "organizer",
+          "at": "2026-08-11T19:59:18.424Z",
+          "entity": "session",
+          "summary": "Session added manually · Auto A au-msp337dg-wuw9b"
+        },
+        {
+          "action": "unscheduled",
+          "actor": "Dana Organizer",
+          "actorType": "organizer",
+          "at": "2026-08-11T19:59:10.851Z",
+          "entity": "session",
+          "summary": "Removed from the agenda · Dragged dg-msp32uk9-gd47i"
+        },
+        {
+          "action": "scheduled",
+          "actor": "Dana Organizer",
+          "actorType": "organizer",
+          "at": "2026-08-11T19:59:08.056Z",
+          "entity": "session",
+          "summary": "Scheduled to Main Stage, 2026-10-12T17:30:00.000Z (45 min) · Dragged dg-msp32uk9-gd47i"
+        },
+        {
+          "action": "created",
+          "actor": "Dana Organizer",
+          "actorType": "organizer",
+          "at": "2026-08-11T19:59:01.850Z",
+          "entity": "session",
+          "summary": "Session added manually · Dragged dg-msp32uk9-gd47i"
+        },
+        {
+          "action": "unscheduled",
+          "actor": "Dana Organizer",
+          "actorType": "organizer",
+          "at": "2026-08-11T19:59:00.448Z",
+          "entity": "session",
+          "summary": "Removed from the agenda · Agenda Two ag-msp32g21-o3mkz"
+        },
+        {
+          "action": "unscheduled",
+          "actor": "Dana Organizer",
+          "actorType": "organizer",
+          "at": "2026-08-11T19:59:00.037Z",
+          "entity": "session",
+          "summary": "Removed from the agenda · Agenda One ag-msp32g21-o3mkz"
+        },
+        {
+          "action": "unscheduled",
+          "actor": "Dana Organizer",
+          "actorType": "organizer",
+          "at": "2026-08-11T19:58:58.743Z",
+          "entity": "session",
+          "summary": "Removed from the agenda · Agenda One ag-msp32g21-o3mkz"
+        },
+        {
+          "action": "rescheduled",
+          "actor": "Dana Organizer",
+          "actorType": "organizer",
+          "at": "2026-08-11T19:58:57.879Z",
+          "entity": "session",
+          "summary": "Moved to Main Stage, 2026-10-12T14:00:00.000Z (30 min) · Agenda Two ag-msp32g21-o3mkz"
+        },
+        {
+          "action": "scheduled",
+          "actor": "Dana Organizer",
+          "actorType": "organizer",
+          "at": "2026-08-11T19:58:56.528Z",
+          "entity": "session",
+          "summary": "Scheduled to Main Stage, 2026-10-12T14:00:00.000Z (45 min) · Agenda Two ag-msp32g21-o3mkz"
+        },
+        {
+          "action": "scheduled",
+          "actor": "Dana Organizer",
+          "actorType": "organizer",
+          "at": "2026-08-11T19:58:52.286Z",
+          "entity": "session",
+          "summary": "Scheduled to Main Stage, 2026-10-12T14:00:00.000Z (45 min) · Agenda One ag-msp32g21-o3mkz"
+        },
+        {
+          "action": "created",
+          "actor": "Dana Organizer",
+          "actorType": "organizer",
+          "at": "2026-08-11T19:58:43.466Z",
+          "entity": "session",
+          "summary": "Session added manually · Agenda Two ag-msp32g21-o3mkz"
+        },
+        {
+          "action": "created",
+          "actor": "Dana Organizer",
+          "actorType": "organizer",
+          "at": "2026-08-11T19:58:43.027Z",
+          "entity": "session",
+          "summary": "Session added manually · Agenda One ag-msp32g21-o3mkz"
+        }
+      ],
+      "note": "filter: \"agents\" shows only MCP/API writes — including this session's own. Other filter values match an entity kind (submission, form, speaker, session, agenda, settings).",
+      "returned": 23
+    }
+  },
+  "list_trash": {
+    "input": {
+      "event": "ai-summit-2026"
+    },
+    "output": {
+      "event": "AI Engineer Summit 2026",
+      "note": "The trash is empty.",
+      "returned": 0,
+      "total": 0,
+      "trashed": []
     }
   }
 }

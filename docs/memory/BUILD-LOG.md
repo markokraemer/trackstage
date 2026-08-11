@@ -2649,3 +2649,86 @@ conversation, panel dragged to 792px, Connect modal opens from both places and C
 command minted `sb_live_2cc0718f…`. Zero console errors. `pnpm typecheck` + `eslint`
 clean; the three failing unit tests are a sibling wave's new task-library tools awaiting
 their tool views, untouched by this work.
+
+## 2026-08-11 ~21:30–22:15 — Adversarial-review close-out: full generative UI, MCP residuals, ledger P2s, README truth
+
+Closing the remaining items in `docs/reference/adversarial-review-findings.md`. F1–F4 were
+already fixed in `bc7ad5f`; this session took F5, F12, F9/F10/F11, F15 — plus the LICENSE
+gap the README sweep surfaced.
+
+**F5 — generative UI for every MCP tool (Marko #30).** The registry had been built at 34
+tools and the server had since tripled, so ~50 of 84 rendered as raw JSON. Two layers now:
+
+1. **Bespoke views for all 84 tools.** New files: `evaluation.tsx` (plans, plan detail
+   with per-evaluator progress bars, scorecards incl. recusals, distribute, remind,
+   token rotation), `settings.tsx` (field options, the four `manage_*` receipts sharing
+   one card, webhooks, embeds, workspace members, `update_workspace`, activity),
+   `tasks-files.tsx` (task list with overdue/done stats, task edit, template delete, file
+   library with the review gate, review + delete receipts). Extended the existing files
+   with `update_event` (driven by the tool's INPUT, so 30 unchanged fields don't bury the
+   two that moved — portal toggles stated in speaker terms), `update_submission`,
+   participants, trash/delete/restore + `list_trash`, speaker CRUD + bulk import with
+   per-row outcomes, `update_form`, `manage_form_question`, bulk-email audience + send,
+   and `set_agenda_published`.
+2. **`auto.tsx` — the AUTO VIEW as the floor, not raw JSON.** A tool nobody has written a
+   view for (including one added to the server tomorrow) still renders: REST envelope
+   unwrapped so `data`/`results` aren't drawn twice, keys humanised, ISO strings dated,
+   URLs linked, statuses pilled, arrays of objects tabled (capped, "+N more"), arrays of
+   strings chipped, the server's own `note` surfaced as prose — and **anything named like
+   a credential masked**, because an auto-generated card is exactly where a webhook secret
+   would leak by accident. Raw JSON survives only for a non-object payload or a view that
+   threw.
+
+`tests/unit/copilot-renderers.test.tsx` now reads its tool list from the GENERATED
+`src/docs/generated/mcp-tools.ts` instead of a hand-curated array, so the suite fails the
+moment a tool is added without a view or a fixture. 298 tests in that file (341 repo-wide).
+Added 12 read-only prompts to `scripts/verify-copilot.mjs` and ran them, so the fixtures
+are now REAL captures for 43 tools, not imagined shapes.
+
+**F12 — MCP full-proxy residuals.** Added `update_workspace` (rename/re-address, taken
+slug auto-suffixed and reported), `list_trash` (restore_submission's id was undiscoverable
+— a door with no handle), and `rotate_evaluator_token` (the only way to kill a leaked
+review link without deleting the evaluator's scores). Also fixed a real inconsistency
+found on the way: **MCP's `list_submissions` was returning trashed rows** while every
+organizer screen hides them. 81 → 84 tools (28 read / 56 write), docs regenerated,
+`mcp-proxy-matrix.md` updated — including softening its overstated "REST and MCP cannot
+drift" claim (F20b) to the truth: only the apiV1-wrapping third can't drift.
+`scripts/verify-backend.mjs` no longer hardcodes the count; it reads `MCP_TOOL_COUNT` from
+the generated docs and compares it against the LIVE server's `tools/list`, so the two
+sources cross-check instead of the assertion checking itself (the F1 self-masking shape).
+
+**F9/F10/F11 (ledger P2s, sub-agent).** X/Twitter autosave clobber fixed at the source —
+`portal.updateProfile` merges `links` key-by-key, the client sends only the field that
+changed. Profile-task auto-tick: `convex/lib/profileTasks.ts` + `profileCompleteness.ts`
+(the speaker-facing definition, reused, not a second one); a profile task assigned to an
+already-complete profile is born done, and any profile write re-checks. EMB-15: per-embed
+enable/disable (missing ⇒ enabled), accent colour + header branding, an XML schedule feed,
+and multi-track filtering. **Deliberately skipped: custom CSS** — arbitrary CSS through a
+URL into our page is a real footgun and inside an iframe the host can't style it anyway.
+**Also not covered:** `convex/mcp.ts` has two direct `insert("tasks")` sites that don't yet
+apply the born-done rule (they still auto-tick on the next profile save).
+
+**F15 — README swept whole, not just the three flagged lines.** 13 corrections (84 tools /
+12 groups, 600+ backend checks not 129, `cd trackstage`, "custom fields are creatable" was
+plain false, the real `.ics` path, 9 smoke routes, `openapi:check` in CI, the CF token
+scopes, a machine-local zsh alias replaced with real exports, the `/portal` row that was a
+dead end for a first-time reader). The sweep also caught that **the README claimed MIT
+twice with no LICENSE file in the tree** — added `LICENSE` (MIT) and `"license": "MIT"` in
+package.json, so the most load-bearing claim in an open-source README is now true.
+
+**F14 — the Declare-the-winner button was REVIEWED AND KEPT.** Prompt #66 is ambiguous;
+Marko wired the Stripe link himself today. It stays. Not touched.
+
+**Verified.** 84 tools live on dev via JSON-RPC (28/56, both new writes refuse without
+`confirm: true`, the new read doesn't ask); `update_workspace` slug collision exercised
+(auto-suffixed to `ai-engineer-jnsr`, then restored); `rotate_evaluator_token` returned a
+fresh `/review/…` URL. Browser: signed in, drove two real copilot turns covering ten tool
+views — evaluation plans, plan detail, tasks, files, tracks, webhooks, embeds, activity,
+trash, workspace members. Zero `[data-view-fallback]` nodes, real track colours in the DOM,
+five progress bars, no horizontal overflow, **zero console errors**. `pnpm typecheck` +
+`pnpm lint` (0 errors) + `pnpm test` 341/341 + `pnpm build` all green.
+
+**Noted, not fixed (outside this punch list):** F6 `unknownResource: false` still leaks into
+Event-Settings list bodies; the audit-log `summary` strings store raw ISO timestamps, so the
+activity feed reads "Scheduled to Main Stage, 2026-10-12T16:00:00.000Z (45 min)" in both the
+copilot card and the Settings → Activity page.

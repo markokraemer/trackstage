@@ -34,7 +34,7 @@ and everything updates live.
 | --- | --- |
 | Run an event (organizer demo) | `/login` — demo credentials shown on the page |
 | Submit a talk (public CFP) | `/submit/ai-engineer/ai-summit-2026/cfp` |
-| See what speakers see | `/portal` — magic link, no password |
+| See what speakers see | `/portal` — open a speaker's emailed link (copy one from the organizer's Speakers table); no password |
 | Browse a published program | `/e/ai-engineer/ai-summit-2026` |
 | Read the docs | `/docs` |
 
@@ -89,15 +89,16 @@ Measured against Sessionboard's own product, not just matched to it:
 2. **Status-change emails from the pipeline itself.** Committing an accept/decline
    queue sends the decision email, creates the speaker's onboarding tasks, and flips
    every surface at once — one action, no separate mail-merge step.
-3. **A real API for form fields and webhooks.** Custom fields are creatable via the
-   REST API, and webhooks are API-managed with HMAC signatures, one-time secrets,
-   rotation, and a delivery log — Sessionboard's API reads but barely writes.
+3. **A REST API that actually writes.** Tracks, rooms, tags, formats, levels,
+   languages and custom statuses are all creatable over the API, and webhooks are
+   API-managed with HMAC signatures, one-time secrets, rotation, and a delivery log —
+   Sessionboard's API reads but barely writes.
 4. **An MCP server and an in-app copilot.** Operate the whole event from Claude,
    ChatGPT, or Codex — or press ⌘I and hand the work to the built-in copilot with
    approval gates. Sessionboard has nothing in this category.
 5. **Speed, and you can read the code.** Every interaction is optimistic and instant —
    the complaint that started this project was sluggishness — and the entire product
-   is MIT-licensed source you can self-host in four commands.
+   is MIT-licensed source you can self-host in five commands.
 
 ## AI copilot
 
@@ -109,10 +110,13 @@ approval card first, and results render as real product UI, not prose.
 ## MCP
 
 A full [MCP](https://modelcontextprotocol.io) server ships with the product — operate
-your entire event from Claude, ChatGPT, Codex, or any MCP client. 31 tools across
-events, forms, submissions, decisions, agenda, speakers, and communications —
-including the destructive half (`delete_event`, `delete_form`, `remove_task`), which
-is double-confirmed rather than absent.
+your entire event from Claude, ChatGPT, Codex, or any MCP client. 84 tools in 12
+groups (workspaces & events · CFP forms · submissions & decisions · agenda ·
+speakers · speaker tasks · files & review · email · evaluation · event setup ·
+webhooks & embeds · activity) — the always-current list renders at `/docs/mcp`.
+Every tool that writes anything refuses without `confirm: true`, so the destructive
+half (`delete_event`, `delete_form`, `remove_task`) is gated rather than absent —
+and `delete_event` additionally demands the event's exact name.
 
 ```sh
 claude mcp add trackstage --transport http https://<your-convex-site>/mcp \
@@ -135,13 +139,15 @@ curl -H "Authorization: Bearer demo-api-token" \
   https://<your-convex-site>/v1/event/ai-summit-2026/sessions
 ```
 
-`/v1/event/{slug}/sessions · /speakers · /submissions`, plus an open
-`/schedule.ics` calendar feed. OpenAPI spec + interactive reference at `/docs/api`.
+`/v1/event/{slug}/sessions · /speakers · /submissions · /forms · /tasks ·
+/evaluations`, workspace-level `/v1/events` and `/v1/webhooks`, plus an open
+`/v1/event/{slug}/schedule.ics` calendar feed that needs no credential.
+OpenAPI spec + interactive reference at `/docs/api`.
 
 ## Self-host
 
 ```sh
-git clone https://github.com/markokraemer/trackstage && cd sessionboard
+git clone https://github.com/markokraemer/trackstage && cd trackstage
 pnpm install
 pnpm dev:setup                    # provisions a free Convex backend (interactive login)
 pnpm dev                          # http://localhost:3000
@@ -151,7 +157,7 @@ pnpm exec convex run seed:setup   # demo data + organizer account
 ### Deploy
 
 ```sh
-pnpm deploy   # convex deploy (backend) → vite build → wrangler deploy (Worker)
+pnpm deploy   # convex deploy (backend) → vite build → wrangler deploy (Worker) → smoke test
 ```
 
 The build reads `.env.production` (committed, public values only), so a production
@@ -164,7 +170,8 @@ belong and are never in the repo:
 | `wrangler secret put …` | `OPENROUTER_API_KEY` (the copilot runs in the Worker) |
 
 `master` is the integration branch — every push runs **CI** (typecheck · lint ·
-unit tests). Releasing to production is one deliberate step:
+OpenAPI spec up to date · unit tests). Releasing to production is one deliberate
+step:
 
 ```sh
 git push origin master:prod   # promote master to production
@@ -175,13 +182,14 @@ Worker → production smoke test). The Actions tab's "Deploy → Run workflow" b
 releases any ref manually. See
 `.github/workflows/`. CI needs three repo secrets: `CONVEX_DEPLOY_KEY`
 (`pnpm exec convex deployment token create github-actions --prod`),
-`CLOUDFLARE_API_TOKEN` (scoped: Workers Scripts R/W, Workers Observability Write,
-Account Settings Read, Zone DNS + Workers Routes Write) and `CLOUDFLARE_ACCOUNT_ID`.
+`CLOUDFLARE_API_TOKEN` (scoped: Workers Scripts R/W, Workers KV R/W, Workers
+Observability Write, Account Settings Read, Workers Routes Write + Zone DNS Write)
+and `CLOUDFLARE_ACCOUNT_ID`.
 
 Verify a deploy at any time:
 
 ```sh
-node scripts/smoke-production.mjs          # 5 SSR routes + /v1 + /mcp + OAuth discovery
+node scripts/smoke-production.mjs          # 9 SSR routes + /v1 + /mcp + OAuth discovery
 APP_URL=https://your-app.workers.dev node scripts/smoke-production.mjs
 ```
 
@@ -190,10 +198,14 @@ APP_URL=https://your-app.workers.dev node scripts/smoke-production.mjs
 Two idempotent scripts, in this order — re-run either one safely:
 
 ```sh
-source ~/.zshrc && cloudflare-env-global                 # CF credentials
+export CLOUDFLARE_EMAIL=… CLOUDFLARE_GLOBAL_API_KEY=…    # CF credentials
 node scripts/configure-domain.mjs  yourdomain.com        # Resend domain + SPF/DKIM/MX
 RESEND_API_KEY=… node scripts/attach-domain.mjs yourdomain.com trackstage
 ```
+
+(`attach-domain.mjs` also accepts a scoped `CLOUDFLARE_API_TOKEN` instead — Workers
+Scripts Write + Zone DNS/Routes Write — which is what CI uses. `configure-domain.mjs`
+needs the global key, because it writes DNS through the account-key endpoint.)
 
 `attach-domain.mjs` attaches the domain to the Worker, waits for it to serve, moves
 Convex `SITE_URL` (Better Auth base URL, portal links, MCP OAuth issuer) onto it, and
@@ -207,8 +219,10 @@ TanStack Start (React 19) · [Convex](https://convex.dev) (reactive database, fi
 storage, crons) · Better Auth · shadcn/ui on Base UI · Cloudflare Workers.
 
 ```sh
-pnpm test          # unit
-pnpm test:backend  # 129 live end-to-end backend checks (auth, scoping, rules, files, MCP)
+pnpm test          # unit (vitest)
+pnpm test:backend  # 600+ live end-to-end checks across 36 sections — seeds a real
+                   # Convex deployment, then drives auth, scoping, rules, files,
+                   # comms, the REST API and MCP against it
 pnpm test:e2e      # Playwright: route crawler + per-flow suites
 ```
 

@@ -458,3 +458,145 @@ export function FormDeletedView({ output }: ToolOutputProps) {
     </Banner>
   )
 }
+
+// ——— update_form —————————————————————————————————————————————————————————
+
+/** The `{data: …}` REST envelope the apiV1-backed form tools answer with. */
+function formRecord(output: Record<string, unknown>): Record<string, unknown> {
+  return isRecord(output.data) ? output.data : output
+}
+
+/**
+ * `update_form` covers the CONTENT half of a form (public title, heading,
+ * welcome copy, notified addresses, participant rules) while
+ * `update_form_settings` covers the switches. Both answer with the whole form,
+ * so like the settings view this card is driven by what the caller ASKED to
+ * change — a receipt for the edit, not a dump of the record.
+ */
+const FORM_CONTENT_LABELS: Record<string, string> = {
+  externalTitle: "Public title",
+  pageHeading: "Page heading",
+  welcomeMessage: "Welcome message",
+  showWelcomeMessage: "Welcome screen",
+  notifyEmails: "Notify",
+  speakerMin: "Min speakers",
+  speakerMax: "Max speakers",
+  chairpersonEnabled: "Chairperson role",
+  moderatorEnabled: "Moderator role",
+  sendConfirmationEmail: "Confirmation email",
+}
+
+/** HTML can arrive in `welcomeMessage`; it is copy, so it is shown as text. */
+function plainText(value: unknown): string {
+  return typeof value === "string"
+    ? value.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim()
+    : ""
+}
+
+export function FormUpdatedView({ input, output }: ToolOutputProps) {
+  const formsLink = useSectionLink("forms")
+  const form = formRecord(output)
+  const args = isRecord(input) ? input : {}
+  const changed = Object.keys(args).filter(
+    (key) => key in FORM_CONTENT_LABELS && args[key] !== undefined,
+  )
+  const name = str(form.name) ?? str(form.external_title) ?? "Form"
+
+  return (
+    <Banner icon={<RiFileList3Line size={16} />} title={`${name} updated`}>
+      <FieldGrid
+        entries={
+          changed.length > 0
+            ? changed.map((key) => {
+                const value = args[key]
+                return {
+                  label: FORM_CONTENT_LABELS[key],
+                  value:
+                    typeof value === "boolean"
+                      ? value
+                        ? "On"
+                        : "Off"
+                      : Array.isArray(value)
+                        ? value.join(", ") || "—"
+                        : key === "welcomeMessage"
+                          ? (plainText(value) || "—")
+                          : String(value ?? "—"),
+                }
+              })
+            : [{ label: "Status", value: str(form.status) ?? "open" }]
+        }
+      />
+      <GoLink to={formsLink}>All forms</GoLink>
+    </Banner>
+  )
+}
+
+// ——— manage_form_question ————————————————————————————————————————————————
+
+export function FormQuestionSavedView({ input, output }: ToolOutputProps) {
+  const formsLink = useSectionLink("forms")
+  const question = formRecord(output)
+  const args = isRecord(input) ? input : {}
+  const action = str(args.action) ?? "update"
+  const label =
+    str(question.label) ?? str(args.label) ?? str(question.name) ?? "Question"
+  const options = strList(question.options ?? args.options)
+
+  if (action === "delete") {
+    return (
+      <Banner
+        tone="bad"
+        icon={<RiDeleteBin6Line size={16} />}
+        title={`“${label}” removed from the form`}
+      >
+        <Note>
+          Answers already submitted keep their value — they simply stop being
+          asked for. Nobody mid-draft loses what they typed.
+        </Note>
+        <GoLink to={formsLink}>All forms</GoLink>
+      </Banner>
+    )
+  }
+
+  const required = question.required ?? args.required
+  return (
+    <Banner
+      icon={<RiFileList3Line size={16} />}
+      title={`“${label}” ${action === "create" ? "added to the form" : "updated"}`}
+    >
+      <FieldGrid
+        entries={[
+          {
+            label: "Type",
+            value: str(question.type) ?? str(args.type) ?? "short_text",
+          },
+          { label: "Required", value: required === true ? "Yes" : "No" },
+          ...(question.enabled === false
+            ? [{ label: "State", value: "Hidden on the public form" }]
+            : []),
+          ...(str(question.help) ?? str(args.help)
+            ? [
+                {
+                  label: "Help text",
+                  value: (str(question.help) ?? str(args.help))!,
+                },
+              ]
+            : []),
+        ]}
+      />
+      {options.length > 0 ? (
+        <div className="flex flex-wrap gap-1 pt-0.5">
+          {options.slice(0, 10).map((option) => (
+            <Chip key={option} tone="muted">
+              {option}
+            </Chip>
+          ))}
+          {options.length > 10 ? (
+            <Chip tone="muted">+{options.length - 10}</Chip>
+          ) : null}
+        </div>
+      ) : null}
+      <GoLink to={formsLink}>All forms</GoLink>
+    </Banner>
+  )
+}

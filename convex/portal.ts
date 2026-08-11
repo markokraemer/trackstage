@@ -17,6 +17,7 @@ import {
   renderTaskText,
 } from "./lib/taskVars"
 import { addComment, threadFor } from "./lib/uploadComments"
+import { completeTasksOfKind, syncProfileTasks } from "./lib/profileTasks"
 import { cfpClosedMessage, isFormOpen } from "./lib/formWindow"
 import { notifySubmissionAdmins } from "./platformEmails"
 
@@ -359,32 +360,38 @@ export const updateProfile = mutation({
   },
   handler: async (ctx, args) => {
     const person = await requirePerson(ctx, args.portalToken)
-    await ctx.db.patch(person._id, args.patch)
-
-    // Completing profile data auto-completes matching tasks.
-    const updated = await ctx.db.get(person._id)
-    if (updated?.bio && updated.bio.trim().length > 0) {
-      await completeTasksOfKind(ctx, person._id, "profile")
+    const { links, ...fields } = args.patch
+    // `links` is MERGED, field by field, never replaced. The portal saves on
+    // blur, one field at a time, so two links left in quick succession used to
+    // race: each save rebuilt the whole object from the client's last-confirmed
+    // snapshot, and the slower one overwrote the URL the faster one had just
+    // stored (adversarial-review F9). Merging server-side makes each save
+    // independent of what the client believes about the other two links —
+    // there is no snapshot to go stale.
+    //
+    // An empty string is how a link is CLEARED (a key that is simply absent
+    // means "leave this one alone"): Convex drops `undefined` on the wire, so
+    // absent and "erase it" would otherwise be the same message.
+    const patch: Partial<Doc<"people">> = { ...fields }
+    if (links) {
+      const merged = { ...(person.links ?? {}) }
+      for (const key of ["linkedin", "twitter", "website"] as const) {
+        const value = links[key]
+        if (value === undefined) continue
+        if (value.trim() === "") delete merged[key]
+        else merged[key] = value.trim()
+      }
+      patch.links = merged
     }
+    await ctx.db.patch(person._id, patch)
+
+    // Completing profile data auto-completes the "update your profile" task —
+    // and "complete" means what the speaker's own meter means, all four items,
+    // not just a bio (adversarial-review F10). convex/lib/profileTasks.ts.
+    await syncProfileTasks(ctx, await ctx.db.get(person._id))
     return null
   },
 })
-
-async function completeTasksOfKind(
-  ctx: MutationCtx,
-  personId: Id<"people">,
-  kind: string,
-) {
-  const tasks = await ctx.db
-    .query("tasks")
-    .withIndex("by_personId", (q) => q.eq("personId", personId))
-    .collect()
-  for (const task of tasks) {
-    if (task.kind === kind && !task.completedAt) {
-      await ctx.db.patch(task._id, { completedAt: Date.now() })
-    }
-  }
-}
 
 // Speakers may edit their submissions — including after acceptance (swyx
 // clarified acceptance-locking is unused). Editing a draft keeps it draft;
@@ -608,6 +615,9 @@ export const attachUpload = mutation({
       // Replaces the photo AND deletes the one it replaces (convex/lib/files).
       await replaceHeadshot(ctx, person, args.storageId)
       await completeTasksOfKind(ctx, person._id, "headshot")
+      // A headshot is one of the four things a complete profile needs, so the
+      // photo that finishes the profile also finishes the profile task.
+      await syncProfileTasks(ctx, await ctx.db.get(person._id))
     }
 
     // Versioning: next version within the same slot (task or submission).

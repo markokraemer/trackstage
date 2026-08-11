@@ -28,6 +28,7 @@ import { mutation, query } from "./_generated/server"
 import { randomToken, requireEventAccess } from "./lib/auth"
 import { emitWebhook } from "./webhooks"
 import { record as recordAudit } from "./lib/audit"
+import { syncProfileTasks } from "./lib/profileTasks"
 import {
   assertImageUpload,
   deleteUploadRow,
@@ -218,6 +219,10 @@ export const updateProfile = mutation({
       patch.publicVisible = args.patch.publicVisible
     }
     await ctx.db.patch(args.personId, { ...patch, updatedAt: Date.now() })
+    // An organizer typing in the missing bio finishes the profile just as
+    // surely as the speaker doing it, so the "update your profile" task ticks
+    // itself here too (convex/lib/profileTasks.ts).
+    await syncProfileTasks(ctx, await ctx.db.get("people", args.personId))
     await emitWebhook(ctx, person.eventId, "speaker.updated", {
       id: args.personId,
       email: person.email,
@@ -399,6 +404,8 @@ export const setHeadshot = mutation({
     })
     await completeHeadshotTasks(ctx, args.personId)
     await ctx.db.patch(args.personId, { updatedAt: Date.now() })
+    // The photo may have been the last missing profile item.
+    await syncProfileTasks(ctx, await ctx.db.get("people", args.personId))
 
     const name = `${person.firstName} ${person.lastName}`.trim() || person.email
     await emitWebhook(ctx, person.eventId, "speaker.updated", {

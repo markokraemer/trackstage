@@ -121,6 +121,16 @@ export const MCP_TOOL_GROUPS: Array<McpToolGroup> = [
         required: ["email","role","confirm"],
       },
       {
+        name: "update_workspace",
+        title: "Rename a workspace or change its address",
+        description: "Renames a workspace and/or changes its address (the first segment of every app and public link). A taken address is auto-suffixed rather than refused, and the reply tells you the address that is actually live. Changing the address breaks every existing link that used the old one. Requires the admin or owner role.",
+        readOnly: false,
+        destructive: true,
+        requiresConfirm: true,
+        args: ["workspace","name","slug","confirm"],
+        required: ["confirm"],
+      },
+      {
         name: "update_workspace_member",
         title: "Change a member's role or event scope",
         description: "Changes a workspace member's role (owner only) and/or their event scope (admin+; pass an empty eventRefs array to give them every event again). Owners can't be changed, and admins are never event-scoped.",
@@ -301,6 +311,16 @@ export const MCP_TOOL_GROUPS: Array<McpToolGroup> = [
         requiresConfirm: true,
         args: ["submissionId","confirm"],
         required: ["submissionId","confirm"],
+      },
+      {
+        name: "list_trash",
+        title: "List trashed submissions",
+        description: "Everything soft-deleted on the event, newest deletion first, with the date it went. This is the only place a trashed submission is visible — list_submissions hides them exactly as the organizer's screens do — so it is where restore_submission gets its id.",
+        readOnly: true,
+        destructive: false,
+        requiresConfirm: false,
+        args: ["event","limit"],
+        required: ["event"],
       },
       {
         name: "restore_submission",
@@ -739,6 +759,16 @@ export const MCP_TOOL_GROUPS: Array<McpToolGroup> = [
         required: ["event","evaluatorId","confirm"],
       },
       {
+        name: "rotate_evaluator_token",
+        title: "Reissue an evaluator's review link",
+        description: "Issues a fresh magic link for one evaluator and kills the old one instantly — the fix for a review link that was forwarded, leaked or pasted somewhere public. Their scores so far are kept; only the link changes. The new URL comes back in the reply, so send it to them. Admin or owner role.",
+        readOnly: false,
+        destructive: true,
+        requiresConfirm: true,
+        args: ["evaluatorId","confirm"],
+        required: ["evaluatorId","confirm"],
+      },
+      {
         name: "remove_evaluator",
         title: "Remove an evaluator",
         description: "Removes an evaluator from their plan together with the scores they entered. Their magic link stops working immediately. Admin or owner role.",
@@ -910,4 +940,4 @@ export const MCP_TOOL_GROUPS: Array<McpToolGroup> = [
   },
 ]
 
-export const MCP_TOOL_COUNT = 81
+export const MCP_TOOL_COUNT = 84

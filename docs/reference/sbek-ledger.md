@@ -144,14 +144,14 @@ that dropped the value entirely on failure now echo it in the toast, and
 | Item | Verdict | Class | Root cause | Action |
 | --- | --- | --- | --- | --- |
 | SPK-05 / SPK-09 / SPK-12 | partial | **product** (C1/C2) | All three trace to the same two bugs: tasks assigned with no due date, and roster progress columns "clipped" (in fact covered by the sticky column) | **FIXED** via C1 + C2 |
-| — | defect | product | X/Twitter URL on the portal profile didn't persist until re-entered and blurred | Open — autosave race |
-| — | defect | product | "Update their profile" task didn't auto-complete for an already-complete profile | Open — the docs promise it ticks itself |
+| — | defect | product | X/Twitter URL on the portal profile didn't persist until re-entered and blurred | **FIXED** — each link saves on its own and `portal.updateProfile` MERGES `links` field by field (empty string clears), so two blurs in flight can't overwrite each other's URL |
+| — | defect | product | "Update their profile" task didn't auto-complete for an already-complete profile | **FIXED** — one definition of "complete" (`convex/lib/profileCompleteness.ts`, the four items the speaker's own meter counts) shared by the portal meter and the server; profile tasks are born done when assigned to a complete profile, and ANY profile write (portal edit, headshot upload, organizer edit, API) re-checks |
 
 ### Public widgets / Embeds (baseline 95.7)
 
 | Item | Verdict | Class | Root cause | Action |
 | --- | --- | --- | --- | --- |
-| EMB-15 | partial | product | Named gaps: no branding/colour or custom CSS, no XML output, no per-embed enable/disable, single-track filter rather than per-field selection | Open — four gaps, a toggle alone wouldn't flip it |
+| EMB-15 | partial | product | Named gaps: no branding/colour or custom CSS, no XML output, no per-embed enable/disable, single-track filter rather than per-field selection | **THREE OF FOUR CLOSED** — per-embed on/off switch (saved snippets carry `?e={id}`; off renders "This embed is turned off"), branding (accent colour + event logo/name header), XML feed (`GET /v1/event/{ref}/schedule.xml`, `?track=` filterable), and the track filter now takes several tracks. **Custom CSS deliberately skipped** — arbitrary CSS from a URL into our page is a security footgun, and the host page can't style inside an iframe anyway |
 | — | defect | **product** | "Show more" rendered on text that isn't clamped — decided by character count (>180), which can't know the card's width. 6 of 9 cards showed a button that did nothing | **FIXED** — clamp, then measure `scrollHeight > clientHeight`; the toggle appears only when the text really is cut off |
 | — | defect | **product** | `?day=` deep link "not honoured" — it *is* honoured, but a `day` matching no bucket (outside the program, or emptied by `?track=`) fell silently to day 1 | **FIXED** — deterministic fallback plus a line saying which day is being shown instead |
 | — | defect | product | Personal schedule is localStorage-only | Open — by design |
@@ -263,8 +263,8 @@ handlers, so the per-session Files tab is untouched.
 
 | Item | Weight | Gap |
 | --- | --- | --- |
-| EMB-15 | — | Four named gaps (branding/CSS, XML, per-embed enable/disable, per-field selection) — a toggle alone would not flip it |
+| EMB-15 | — | Three of the four named gaps closed (enable/disable, branding colour + header, XML feed, multi-track filter); only **custom CSS** is left, deliberately — see the Embeds table above |
 | ABS-09 | — | The reminder control exists and is state-aware; the agent has never had turns left to click it |
 | CFP-06 / CFP-09 | — | Judge-couldn't-see: the scenarios work in two different events, so the speaker's own submission is never checked on the organizer side. Evidence artefact, not a product gap |
 | ABS-14 | — | `not_found`: no AI review capability. Deliberate — swyx struck AI-assisted review from scope |
-| — | — | Evaluator name shown as raw email in progress views; X/Twitter URL autosave race; "Update their profile" task not auto-ticking |
+| — | — | Evaluator name shown as raw email in progress views. (The X/Twitter autosave race and the profile-task auto-tick are fixed — see the Speaker Management table.) |

@@ -298,6 +298,73 @@ const PROMPTS = [
     text: 'Schedule "Copilot Verification Keynote" in the first room at 10:00 on the first day of the event for 30 minutes.',
     expect: "schedule_session",
   },
+
+  // ——— Read-only coverage for the 2026-08-11 generative-UI pass ————————————
+  // Every one of these is a READ, so the block is safe to re-run against any
+  // deployment and safe to run in any order. Their job is to capture REAL
+  // payloads for the new tool views (the renderer tests draw whatever lands in
+  // tests/fixtures/copilot-tool-payloads.json), and to prove the model can
+  // still find each tool now that the surface is 84 tools deep.
+  {
+    id: "members",
+    text: "Who is in my workspace, and what events can each of them see?",
+    expect: "list_workspace_members",
+  },
+  {
+    id: "tasks",
+    text: "Call list_tasks for this event and show me every speaker task with its due date.",
+    expect: "list_tasks",
+  },
+  {
+    id: "files",
+    text: "What files have speakers uploaded, and which are still waiting for review?",
+    expect: "list_files",
+  },
+  {
+    id: "audience",
+    text: "How many people would a bulk email to accepted speakers reach? Just count them, don't send anything.",
+    expect: "count_bulk_audience",
+  },
+  {
+    id: "plans",
+    text: "List the evaluation plans on this event.",
+    expect: "list_evaluation_plans",
+  },
+  {
+    id: "plan-detail",
+    text: "Show me the full detail of the first evaluation plan, including every evaluator and their progress.",
+    expect: "get_evaluation_plan",
+  },
+  {
+    id: "evaluations",
+    text: "Call list_evaluations for this event and show me the individual scorecards.",
+    expect: "list_evaluations",
+  },
+  {
+    id: "tracks",
+    text: "What tracks does this event have?",
+    expect: "list_field_options",
+  },
+  {
+    id: "webhooks",
+    text: "List the webhooks configured on this event.",
+    expect: "list_webhooks",
+  },
+  {
+    id: "embeds",
+    text: "What embeds have I saved for this event?",
+    expect: "list_embeds",
+  },
+  {
+    id: "activity",
+    text: "Show me the recent activity on this event — what has changed lately?",
+    expect: "list_activity",
+  },
+  {
+    id: "trash",
+    text: "Is there anything in the trash for this event? Use list_trash.",
+    expect: "list_trash",
+  },
 ]
 
 /**

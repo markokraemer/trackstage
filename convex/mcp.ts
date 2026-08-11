@@ -43,6 +43,7 @@ import {
   formPath,
   uniqueEventSlug,
   uniqueFormSlug,
+  uniqueWorkspaceSlug,
   workspaceSlugForEvent,
 } from "./lib/publicLinks"
 
@@ -859,7 +860,15 @@ export const listSubmissions = internalQuery({
           .order("desc")
           .take(MAX_ROWS)
 
-    let joined = await Promise.all(rows.map((row) => withJoins(ctx, row)))
+    // Trashed rows are gone from every organizer listing and the agenda, so
+    // they must be gone from here too — an agent that saw them would report
+    // counts the organizer's own screen contradicts. list_trash is where they
+    // live, and where restore_submission gets its ids.
+    let joined = await Promise.all(
+      rows
+        .filter((row) => row.deletedAt === undefined)
+        .map((row) => withJoins(ctx, row)),
+    )
     if (args.track) {
       const needle = args.track.trim().toLowerCase()
       joined = joined.filter(
@@ -885,6 +894,51 @@ export const listSubmissions = internalQuery({
       total: joined.length,
       returned: Math.min(joined.length, limit),
       submissions: joined.slice(0, limit).map(submissionRow),
+    }
+  },
+})
+
+/**
+ * The trash — mirrors convex/submissions.ts::listDeleted.
+ *
+ * restore_submission needs an id, and a soft-deleted id is discoverable
+ * NOWHERE else through MCP (list_submissions filters trashed rows out, exactly
+ * like the organizer's screens). Without this the restore tool is a door with
+ * no handle, which is why the adversarial review counted it as a full-proxy
+ * gap rather than a nicety.
+ */
+export const listTrash = internalQuery({
+  args: {
+    userId: v.string(),
+    event: v.string(),
+    limit: v.optional(v.number()),
+  },
+  returns: v.any(),
+  handler: async (ctx, args) => {
+    const event = await resolveEvent(ctx, args.userId, args.event)
+    const rows = await ctx.db
+      .query("submissions")
+      .withIndex("by_eventId", (q) => q.eq("eventId", event._id))
+      .take(MAX_ROWS)
+    const deleted = rows
+      .filter((row) => row.deletedAt !== undefined)
+      .sort((a, b) => (b.deletedAt ?? 0) - (a.deletedAt ?? 0))
+    const limit = Math.min(Math.max(args.limit ?? 50, 1), 200)
+    const joined = await Promise.all(
+      deleted.slice(0, limit).map((row) => withJoins(ctx, row)),
+    )
+    return {
+      event: event.name,
+      total: deleted.length,
+      returned: joined.length,
+      trashed: joined.map((row, index) => ({
+        ...submissionRow(row),
+        deletedAt: iso(deleted[index].deletedAt),
+      })),
+      note:
+        deleted.length === 0
+          ? "The trash is empty."
+          : "Bring any of these back with restore_submission. Nothing here appears in listings, on the agenda, or on public pages.",
     }
   },
 })
@@ -2510,6 +2564,100 @@ export const removeWorkspaceMember = internalMutation({
       removed: true,
       email: target.email,
       note: "Their access ended immediately. Invite them again with invite_workspace_member if needed.",
+    }
+  },
+})
+
+/**
+ * Rename / re-address a workspace — mirrors convex/workspaces.ts::update.
+ *
+ * The slug is the FIRST segment of every canonical app and public address, so
+ * it follows the same rule as event slugs: a taken or reserved address is
+ * auto-suffixed rather than refused, and the caller is told what it actually
+ * became (never left guessing at a URL that doesn't exist).
+ */
+export const updateWorkspace = internalMutation({
+  args: {
+    userId: v.string(),
+    workspace: v.optional(v.string()),
+    name: v.optional(v.string()),
+    slug: v.optional(v.string()),
+  },
+  returns: v.any(),
+  handler: async (ctx, args) => {
+    const { org } = await resolveWorkspace(
+      ctx,
+      args.userId,
+      args.workspace,
+      "admin",
+    )
+    if (args.name === undefined && args.slug === undefined) {
+      throw new ConvexError("Nothing to change — pass name and/or slug.")
+    }
+    if (args.name !== undefined && !args.name.trim()) {
+      throw new ConvexError("Workspace name can't be empty.")
+    }
+
+    let slug: string | undefined
+    if (args.slug !== undefined) {
+      const desired = args.slug.trim().toLowerCase()
+      if (!desired) throw new ConvexError("Workspace address can't be empty.")
+      slug =
+        desired === org.slug
+          ? org.slug
+          : await uniqueWorkspaceSlug(ctx, desired, org._id)
+    }
+    const slugAdjusted =
+      slug !== undefined && slug !== args.slug!.trim().toLowerCase()
+
+    await ctx.db.patch(org._id, {
+      ...(args.name !== undefined ? { name: args.name.trim() } : {}),
+      ...(slug !== undefined ? { slug } : {}),
+    })
+    const live = slug ?? org.slug
+    return {
+      organizationId: org._id,
+      name: args.name?.trim() ?? org.name,
+      slug: live,
+      slugAdjusted,
+      url: `${siteUrl()}/app/${live}`,
+      note: slugAdjusted
+        ? `"${args.slug!.trim().toLowerCase()}" was taken, so the workspace now lives at "${live}". Every existing link with the old address stops working.`
+        : slug !== undefined && slug !== org.slug
+          ? "Every existing link that used the old workspace address stops working."
+          : undefined,
+    }
+  },
+})
+
+/**
+ * Rotate an evaluator's magic-link token — mirrors
+ * convex/evaluationsAdmin.ts::rotateEvaluatorToken.
+ *
+ * The token IS the evaluator's credential (there is no password), so this is
+ * the only way to revoke a leaked or forwarded review link without deleting
+ * the evaluator and their scores.
+ */
+export const rotateEvaluatorToken = internalMutation({
+  args: { userId: v.string(), evaluatorId: v.string() },
+  returns: v.any(),
+  handler: async (ctx, args) => {
+    const id = ctx.db.normalizeId("evaluators", args.evaluatorId.trim())
+    const evaluator = id ? await ctx.db.get(id) : null
+    if (!evaluator) {
+      throw new ConvexError(
+        "That evaluator no longer exists — see get_evaluation_plan for current evaluator ids.",
+      )
+    }
+    await eventAccessFor(ctx, args.userId, evaluator.eventId, "admin")
+    const token = randomToken()
+    await ctx.db.patch(evaluator._id, { token })
+    return {
+      evaluatorId: evaluator._id,
+      email: evaluator.email,
+      name: evaluator.name,
+      reviewUrl: `${siteUrl()}/review/${token}`,
+      note: "The old link stopped working immediately. Send them this one — their scores so far are untouched.",
     }
   },
 })
@@ -4161,6 +4309,26 @@ export const TOOLS: Array<ToolDef> = [
       }),
   },
   {
+    name: "update_workspace",
+    title: "Rename a workspace or change its address",
+    description:
+      "Renames a workspace and/or changes its address (the first segment of every app and public link). A taken address is auto-suffixed rather than refused, and the reply tells you the address that is actually live. Changing the address breaks every existing link that used the old one. Requires the admin or owner role.",
+    inputSchema: schema({
+      workspace: { type: "string", description: "Workspace id or slug. Optional when you have one." },
+      name: { type: "string", description: "The new display name." },
+      slug: { type: "string", description: "The new URL address, e.g. \"acme-events\"." },
+    }),
+    readOnly: false,
+    idempotent: true,
+    run: (ctx, userId, args) =>
+      ctx.runMutation(internal.mcp.updateWorkspace, {
+        userId,
+        workspace: args.workspace,
+        name: args.name,
+        slug: args.slug,
+      }),
+  },
+  {
     name: "invite_workspace_member",
     title: "Invite a teammate (SENDS EMAIL)",
     description:
@@ -4420,6 +4588,26 @@ export const TOOLS: Array<ToolDef> = [
         "That submission",
       )
     },
+  },
+  {
+    name: "list_trash",
+    title: "List trashed submissions",
+    description:
+      "Everything soft-deleted on the event, newest deletion first, with the date it went. This is the only place a trashed submission is visible — list_submissions hides them exactly as the organizer's screens do — so it is where restore_submission gets its id.",
+    inputSchema: schema(
+      {
+        event: EVENT_ARG,
+        limit: { type: "number", description: "Max rows (default 50, max 200)." },
+      },
+      ["event"],
+    ),
+    readOnly: true,
+    run: (ctx, userId, args) =>
+      ctx.runQuery(internal.mcp.listTrash, {
+        userId,
+        event: args.event,
+        limit: args.limit,
+      }),
   },
   {
     name: "restore_submission",
@@ -5195,6 +5383,23 @@ export const TOOLS: Array<ToolDef> = [
         }),
         "That evaluator",
       ),
+  },
+  {
+    name: "rotate_evaluator_token",
+    title: "Reissue an evaluator's review link",
+    description:
+      "Issues a fresh magic link for one evaluator and kills the old one instantly — the fix for a review link that was forwarded, leaked or pasted somewhere public. Their scores so far are kept; only the link changes. The new URL comes back in the reply, so send it to them. Admin or owner role.",
+    inputSchema: schema(
+      { evaluatorId: { type: "string", description: "From get_evaluation_plan." } },
+      ["evaluatorId"],
+    ),
+    readOnly: false,
+    idempotent: false,
+    run: (ctx, userId, args) =>
+      ctx.runMutation(internal.mcp.rotateEvaluatorToken, {
+        userId,
+        evaluatorId: args.evaluatorId,
+      }),
   },
   {
     name: "remove_evaluator",

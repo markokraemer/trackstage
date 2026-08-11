@@ -141,6 +141,13 @@ export const EMBED_FORMATS: Array<EmbedFormat> = [
     icon: RiFileCodeLine,
   },
   {
+    id: "xml",
+    name: "XML feed",
+    description:
+      "A live XML feed of the programme — for a CMS or site builder whose import box speaks XML.",
+    icon: RiFileCodeLine,
+  },
+  {
     id: "ics",
     name: "Calendar feed",
     description:
@@ -160,14 +167,40 @@ export interface EmbedOptions {
   hideSpeakers?: boolean
   hideImages?: boolean
   hideSearch?: boolean
+  /** One track name, or several comma-separated — the URL takes both. */
   track?: string
   height?: number
+  /** Branding: accent colour as `#RRGGBB`. */
+  accent?: string
+  /** Branding: the event's logo and name above the widget. */
+  showHeader?: boolean
 }
 
-/** Build the public widget query from a widget + the organizer's options. */
+/** `"AI, Infra"` ⇄ `["AI", "Infra"]` — the stored shape is the URL's shape. */
+export function tracksOf(track: string | undefined): Array<string> {
+  if (!track) return []
+  return track
+    .split(",")
+    .map((name) => name.trim())
+    .filter((name) => name.length > 0)
+}
+
+export function tracksToOption(tracks: Array<string>): string | undefined {
+  return tracks.length === 0 ? undefined : tracks.join(",")
+}
+
+/**
+ * Build the public widget query from a widget + the organizer's options.
+ *
+ * `embedId` is threaded in for SAVED embeds only: it is what lets the public
+ * page ask whether the organizer has since switched this embed off. Branding
+ * rides in the URL too, so a snippet is still self-contained — the saved row
+ * is the off switch, not a lookup the widget depends on to render.
+ */
 export function searchFor(
   widget: WidgetType,
   options: EmbedOptions,
+  embedId?: string,
 ): WidgetSearch {
   return {
     embed: true,
@@ -177,6 +210,9 @@ export function searchFor(
     hideImages: options.hideImages ? true : undefined,
     hideSearch: options.hideSearch ? true : undefined,
     track: options.track,
+    accent: options.accent,
+    brand: options.showHeader ? true : undefined,
+    e: embedId,
   }
 }
 

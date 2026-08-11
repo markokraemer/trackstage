@@ -630,16 +630,31 @@ export default defineSchema({
     name: v.string(),
     // agenda | itinerary | sessions | speaker-gallery | speaker-list
     widget: v.string(),
+    /**
+     * The off switch (sbek EMB-15). A saved embed's snippet carries its id, so
+     * turning this off turns the widget off everywhere it was pasted — the
+     * page answers "this embed is turned off" instead of the programme.
+     * ABSENT ⇒ ON: every embed saved before this field existed keeps working.
+     */
+    enabled: v.optional(v.boolean()),
     options: v.object({
-      // Delivery format of the snippet: iframe | html | link | json | ics
+      // Delivery format of the snippet: iframe | html | link | json | xml | ics
       format: v.optional(v.string()),
       hideDescriptions: v.optional(v.boolean()),
       hideSpeakers: v.optional(v.boolean()),
       hideImages: v.optional(v.boolean()),
       hideSearch: v.optional(v.boolean()),
-      /** Track NAME (public URLs filter by name, not id). */
+      /**
+       * Track NAMES (public URLs filter by name, not id). One name is the
+       * historical shape and still valid; several are comma-separated, which
+       * is exactly what the `?track=` URL parameter accepts.
+       */
       track: v.optional(v.string()),
       height: v.optional(v.number()),
+      /** Branding: the organizer's accent colour, `#RRGGBB`. */
+      accent: v.optional(v.string()),
+      /** Branding: show the event's logo and name at the top of the widget. */
+      showHeader: v.optional(v.boolean()),
     }),
   }).index("by_eventId", ["eventId"]),
 

@@ -485,3 +485,228 @@ export function ManualSessionView({ input, output }: ToolOutputProps) {
     </Banner>
   )
 }
+
+// ——— update_submission ———————————————————————————————————————————————————
+
+/** The `{data: …}` REST envelope these apiV1-backed tools answer with. */
+function apiRecord(output: Record<string, unknown>): Record<string, unknown> {
+  return isRecord(output.data) ? output.data : output
+}
+
+/**
+ * `update_submission` proxies the REST session resource, so the reply is the
+ * WHOLE session — dozens of fields, most of them untouched. Echoing all of it
+ * would bury the one thing the organizer wants confirmed: that the fields they
+ * just asked to change actually changed. So the card is driven by the tool's
+ * INPUT (what was asked for) and reads the new values out of the output.
+ */
+const SUBMISSION_FIELD_LABELS: Record<string, string> = {
+  title: "Title",
+  description: "Abstract",
+  track: "Track",
+  format: "Format",
+  level: "Level",
+  language: "Language",
+  tags: "Tags",
+  durationMinutes: "Duration",
+  notes: "Internal notes",
+}
+
+export function SubmissionUpdatedView({ input, output }: ToolOutputProps) {
+  const submissionsLink = useSectionLink("submissions")
+  const session = apiRecord(output)
+  const args = isRecord(input) ? input : {}
+  const changed = Object.keys(args).filter(
+    (key) => key in SUBMISSION_FIELD_LABELS && args[key] !== undefined,
+  )
+  const title = str(session.title) ?? str(args.title) ?? "Submission"
+  const track = isRecord(session.track)
+    ? str(session.track.name)
+    : str(session.track)
+
+  return (
+    <Banner icon={<RiPresentationLine size={16} />} title={`${title} updated`}>
+      <FieldGrid
+        entries={
+          changed.length > 0
+            ? changed.map((key) => ({
+                label: SUBMISSION_FIELD_LABELS[key],
+                value:
+                  key === "track"
+                    ? (track ?? String(args[key]))
+                    : key === "tags"
+                      ? strList(session.tags ?? args.tags).join(", ") || "—"
+                      : key === "durationMinutes"
+                        ? `${num(session.duration_minutes) ?? num(args.durationMinutes) ?? 0} min`
+                        : (str(session[key]) ?? String(args[key] ?? "—")),
+              }))
+            : [
+                {
+                  label: "Status",
+                  value: (
+                    <StatusPill
+                      status={str(session.status) ?? "pending"}
+                      size="sm"
+                    />
+                  ),
+                },
+              ]
+        }
+      />
+      <GoLink {...submissionTarget(submissionsLink, str(session.id))}>
+        Open in Submissions
+      </GoLink>
+    </Banner>
+  )
+}
+
+// ——— add_participant / remove_participant ————————————————————————————————
+
+const ROLE_LABELS: Record<string, string> = {
+  speaker: "Speaker",
+  chairperson: "Chairperson",
+  moderator: "Moderator",
+}
+
+export function ParticipantChangedView({
+  input,
+  output,
+  toolName,
+}: ToolOutputProps) {
+  const submissionsLink = useSectionLink("submissions")
+  const removing = toolName === "remove_participant"
+  const person = apiRecord(output)
+  const args = isRecord(input) ? input : {}
+  const who =
+    str(person.full_name) ??
+    str(person.name) ??
+    str(person.email) ??
+    str(args.speaker) ??
+    "That person"
+  const role = str(person.role) ?? str(args.role) ?? "speaker"
+  const submissionId = str(person.session_id) ?? str(args.submissionId)
+
+  if (removing) {
+    return (
+      <Banner
+        tone="neutral"
+        icon={<RiPresentationLine size={16} />}
+        title={`${who} removed from the line-up`}
+      >
+        <Note>
+          They are still in the event — profile, tasks and files untouched.
+          Only their place on this session went.
+        </Note>
+        <GoLink {...submissionTarget(submissionsLink, submissionId)}>
+          Open in Submissions
+        </GoLink>
+      </Banner>
+    )
+  }
+
+  return (
+    <Banner
+      icon={<RiPresentationLine size={16} />}
+      title={`${who} added as ${(ROLE_LABELS[role] ?? role).toLowerCase()}`}
+    >
+      <FieldGrid
+        entries={[
+          ...(str(person.email)
+            ? [{ label: "Email", value: str(person.email)! }]
+            : []),
+          { label: "Role", value: ROLE_LABELS[role] ?? role },
+        ]}
+      />
+      {output.created === false ? (
+        <Note>
+          They were already on this session, so this moved them to the new role
+          rather than adding them twice.
+        </Note>
+      ) : null}
+      <GoLink {...submissionTarget(submissionsLink, submissionId)}>
+        Open in Submissions
+      </GoLink>
+    </Banner>
+  )
+}
+
+// ——— delete_submission / restore_submission ——————————————————————————————
+
+export function SubmissionTrashedView({ output, toolName }: ToolOutputProps) {
+  const submissionsLink = useSectionLink("submissions")
+  const restoring = toolName === "restore_submission"
+  const session = apiRecord(output)
+  const title = str(session.title) ?? "Submission"
+  return (
+    <Banner
+      tone={restoring ? "good" : "warn"}
+      icon={<RiPresentationLine size={16} />}
+      title={restoring ? `${title} restored` : `${title} moved to the trash`}
+    >
+      {restoring ? (
+        <Note>
+          It is back in every list, on the agenda and on public pages, with its
+          status, participants and files intact.
+        </Note>
+      ) : (
+        <Note>
+          It has left every list, the agenda and all public pages — but nothing
+          is destroyed. Find it with list_trash and bring it back with
+          restore_submission.
+        </Note>
+      )}
+      <GoLink {...submissionTarget(submissionsLink, str(session.id))}>
+        Open in Submissions
+      </GoLink>
+    </Banner>
+  )
+}
+
+// ——— list_trash ——————————————————————————————————————————————————————————
+
+export function TrashView({ output }: ToolOutputProps) {
+  const submissionsLink = useSectionLink("submissions")
+  const rows = asArray(output.trashed) ?? []
+  if (rows.length === 0) {
+    return (
+      <EmptyRow>
+        The trash is empty — nothing has been deleted on this event.
+      </EmptyRow>
+    )
+  }
+  return (
+    <Panel title="Trash" meta={`${num(output.total) ?? rows.length}`}>
+      <Rows>
+        {rows.slice(0, MAX_ROWS).map((row, index) => (
+          <Row key={str(row.submissionId) ?? index} className="items-start">
+            <RiTimeLine
+              size={15}
+              aria-hidden
+              className="mt-0.5 shrink-0 text-muted-foreground"
+            />
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm text-foreground">
+                {str(row.title) ?? "Untitled"}
+              </p>
+              <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-muted-foreground">
+                <Speakers value={row.speakers} />
+                {formatWhen(row.deletedAt) ? (
+                  <span>deleted {formatWhen(row.deletedAt)}</span>
+                ) : null}
+              </div>
+            </div>
+            <StatusPill status={str(row.status) ?? "pending"} size="sm" />
+          </Row>
+        ))}
+      </Rows>
+      {rows.length > MAX_ROWS ? (
+        <Note>+{rows.length - MAX_ROWS} more in the trash.</Note>
+      ) : null}
+      <Note>
+        Ask me to restore any of these — nothing here shows on a public page or
+        counts towards a total.
+      </Note>
+      <GoLink to={submissionsLink}>Open Submissions</GoLink>
+    </Panel>
+  )
+}

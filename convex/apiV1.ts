@@ -9,6 +9,7 @@ import { recordWorkspace } from "./lib/audit"
 import { computeConflicts } from "./agenda"
 import { deleteEventCascade } from "./events"
 import { deleteUploadRow } from "./lib/files"
+import { personProfileComplete, syncProfileTasks } from "./lib/profileTasks"
 import {
   eventPath,
   formPath,
@@ -1373,6 +1374,9 @@ export const writeSpeaker = internalMutation({
         patch.links = { ...(person.links ?? {}), ...links }
       await ctx.db.patch(person._id, patch)
       const fresh = await ctx.db.get(person._id)
+      // Any profile write can be the one that finishes the profile, and the
+      // "update your profile" task ticks itself when it does.
+      await syncProfileTasks(ctx, fresh)
       const shaped = await speakerShape(ctx, fresh as Doc<"people">)
       await emitWebhook(ctx, event._id, "speaker.updated", shaped)
       return { data: shaped }
@@ -3557,6 +3561,13 @@ export const writeTask = internalMutation({
           kind,
           submissionId,
           dueAt: input.due_at,
+          // Same rule the app applies (tasksAdmin.insertTasks): a profile task
+          // for an already-complete profile is born done rather than sitting
+          // open with nothing left for the speaker to do.
+          completedAt:
+            kind === "profile" && personProfileComplete(person)
+              ? Date.now()
+              : undefined,
         })
         const task = await ctx.db.get(taskId)
         created.push(await taskShape(ctx, task as Doc<"tasks">))

@@ -1,9 +1,10 @@
 import { httpAction } from "./_generated/server"
 import type { ActionCtx } from "./_generated/server"
-import { internal } from "./_generated/api"
+import { api, internal } from "./_generated/api"
 import { hashApiKey, keyPrefix } from "./apiKeys"
 import { signPayload } from "./webhooks"
 import { buildCalendar } from "./lib/apiIcs"
+import { buildProgramXml, parseTrackFilter } from "./lib/apiXml"
 import { humanMessage } from "./lib/errors"
 import {
   API_ROUTES,
@@ -546,6 +547,47 @@ export const handleApiRequest = httpAction(async (ctx, req) => {
       headers: {
         "Content-Type": "text/calendar; charset=utf-8",
         "Content-Disposition": `attachment; filename="${rest[1] || "schedule"}.ics"`,
+        "Cache-Control": "no-store",
+        ...CORS_HEADERS,
+      },
+    })
+  }
+
+  // The XML programme feed. Open for the same reason the calendar feed is:
+  // the thing consuming it is a site builder's "import a feed" box, not code
+  // that can hold a credential, and it carries only what the public event page
+  // already shows. `?track=` narrows it, comma-separated for several tracks —
+  // the same filter the embeddable widgets take (sbek EMB-15).
+  if (rest[0] === "event" && rest.length === 3 && rest[2] === "schedule.xml") {
+    if (method !== "GET")
+      return errorResponse("Only GET is supported here.", 405)
+    const program = await ctx.runQuery(api.publicData.schedule, {
+      slug: rest[1],
+    })
+    if (program === null)
+      return errorResponse(`No event with slug "${rest[1]}".`, 404)
+    const wanted = parseTrackFilter(url.searchParams.get("track"))
+    const sessions = [
+      ...program.days.flatMap((day) => day.sessions),
+      ...program.unscheduled,
+    ].filter(
+      (session) =>
+        wanted.length === 0 ||
+        (session.track !== null &&
+          wanted.includes(session.track.name.toLowerCase())),
+    )
+    const body = buildProgramXml(
+      {
+        event: program.event,
+        published: program.published,
+        sessions,
+      },
+      Date.now(),
+    )
+    return new Response(body, {
+      status: 200,
+      headers: {
+        "Content-Type": "application/xml; charset=utf-8",
         "Cache-Control": "no-store",
         ...CORS_HEADERS,
       },
@@ -1941,7 +1983,7 @@ async function handleEventScoped(
   }
 
   return errorResponse(
-    `Unknown resource "${resource}". Supported: sessions, speakers, submissions, forms, tasks, evaluation-plans, evaluators, evaluations, agenda, fields, tags, tracks, rooms, formats, levels, languages, statuses, schedule.ics.`,
+    `Unknown resource "${resource}". Supported: sessions, speakers, submissions, forms, tasks, evaluation-plans, evaluators, evaluations, agenda, fields, tags, tracks, rooms, formats, levels, languages, statuses, schedule.ics, schedule.xml.`,
     404,
   )
 }

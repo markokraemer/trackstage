@@ -453,3 +453,99 @@ export function EventDeletedView({ output }: ToolOutputProps) {
     </Banner>
   )
 }
+
+// ——— update_event ————————————————————————————————————————————————————————
+
+/**
+ * `update_event` proxies the REST event resource, so the reply is the entire
+ * event record — thirty-odd fields where two changed. The card is therefore
+ * driven by the INPUT (what the organizer asked for) and reads the new values
+ * from the output: a receipt for the edit, not a dump of the row.
+ *
+ * The three portal toggles are called out separately because they are the only
+ * fields here that change what a SPEAKER can do, and an organizer who flips
+ * `allowSubmissionEdits` deserves to see that stated in speaker terms.
+ */
+const EVENT_FIELD_LABELS: Record<string, string> = {
+  name: "Name",
+  venue: "Venue",
+  timezone: "Timezone",
+  description: "Description",
+  websiteUrl: "Website",
+  startsAt: "Starts",
+  endsAt: "Ends",
+}
+
+const PORTAL_TOGGLES: Record<string, { label: string; on: string; off: string }> = {
+  allowSubmissionEdits: {
+    label: "Editing after the CFP closes",
+    on: "Speakers can still edit their submissions after the deadline.",
+    off: "Editing closes with the CFP — for everyone, accepted included.",
+  },
+  alwaysShowTasks: {
+    label: "Tasks always visible",
+    on: "Every speaker sees their task list, accepted or not.",
+    off: "Tasks appear once a speaker is accepted.",
+  },
+  extendTaskDeadlines: {
+    label: "Late task submissions",
+    on: "Speakers can still complete tasks after the due date.",
+    off: "Tasks lock on their due date.",
+  },
+}
+
+export function EventUpdatedView({ input, output }: ToolOutputProps) {
+  const eventRef = useCopilotEventRef()
+  const settingsLink = eventRef ? appLink.settings(eventRef) : legacyAppLink.settings
+  const event = isRecord(output.data) ? output.data : output
+  const args = isRecord(input) ? input : {}
+
+  const changed = Object.keys(args).filter(
+    (key) => key in EVENT_FIELD_LABELS && args[key] !== undefined
+  )
+  const toggles = Object.keys(args).filter(
+    (key) => key in PORTAL_TOGGLES && typeof args[key] === "boolean"
+  )
+
+  const entries = changed.map((key) => {
+    const raw = event[key === "websiteUrl" ? "website_url" : key] ?? args[key]
+    const value =
+      key === "startsAt" || key === "endsAt"
+        ? (formatDate(
+            event[key === "startsAt" ? "starts_at" : "ends_at"] ?? args[key]
+          ) ?? String(args[key]))
+        : String(raw ?? "—")
+    return { label: EVENT_FIELD_LABELS[key], value }
+  })
+
+  return (
+    <Banner
+      icon={<RiCalendarEventLine size={16} />}
+      title={`${str(event.name) ?? "Event"} updated`}
+    >
+      {entries.length > 0 ? <FieldGrid entries={entries} /> : null}
+      {toggles.length > 0 ? (
+        <div className="space-y-1 pt-0.5">
+          {toggles.map((key) => {
+            const toggle = PORTAL_TOGGLES[key]
+            const on = args[key] === true
+            return (
+              <div key={key} className="flex items-start gap-2 text-xs">
+                <Chip tone={on ? "muted" : "warn"}>
+                  {toggle.label}: {on ? "on" : "off"}
+                </Chip>
+                <span className="min-w-0 flex-1 text-muted-foreground">
+                  {on ? toggle.on : toggle.off}
+                </span>
+              </div>
+            )
+          })}
+        </div>
+      ) : null}
+      {entries.length === 0 && toggles.length === 0 ? (
+        <Note>Nothing visible changed — the event is as it was.</Note>
+      ) : null}
+      <GoLink to={settingsLink}>Event settings</GoLink>
+    </Banner>
+  )
+}

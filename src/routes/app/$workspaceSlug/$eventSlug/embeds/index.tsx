@@ -30,13 +30,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Separator } from "@/components/ui/separator"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
+import { Checkbox } from "@/components/ui/checkbox"
 import { Field, FieldDescription, FieldLabel } from "@/components/ui/field"
 import { PageHeader } from "@/components/shared/page-header"
 import { EmptyState } from "@/components/shared/empty-state"
@@ -49,9 +43,12 @@ import {
   escapeHtml,
   formatById,
   searchFor,
+  tracksOf,
+  tracksToOption,
   widgetById,
 } from "@/components/embeds/embed-config"
 import type { EmbedOptions } from "@/components/embeds/embed-config"
+import { TRACK_COLORS } from "@/components/settings/track-color-picker"
 import { useCurrentEvent } from "@/lib/current-event"
 import { eventPath } from "@/lib/public-links"
 import { errorMessage } from "@/lib/errors"
@@ -73,6 +70,13 @@ export const Route = createFileRoute("/app/$workspaceSlug/$eventSlug/embeds/")({
 
 const ALL_TRACKS = "All tracks"
 
+/**
+ * Starting points for the accent colour — the eight track colours organizers
+ * already choose from (src/components/settings/track-color-picker.tsx), so the
+ * whole product picks colour from one palette. Any hex still works.
+ */
+const ACCENT_PRESETS = TRACK_COLORS
+
 function EmbedsPage() {
   // The event comes from the sidebar switcher, like every other organizer
   // screen (docs/memory/RULES.md 23a). This page used to carry its own Event
@@ -91,7 +95,9 @@ function EmbedsPage() {
   const [showSpeakers, setShowSpeakers] = useState(true)
   const [showPhotos, setShowPhotos] = useState(true)
   const [showSearch, setShowSearch] = useState(true)
-  const [track, setTrack] = useState(ALL_TRACKS)
+  const [tracks, setTracks] = useState<Array<string>>([])
+  const [accent, setAccent] = useState("")
+  const [showHeader, setShowHeader] = useState(false)
   const [height, setHeight] = useState(widget.height)
   const [device, setDevice] = useState<"desktop" | "mobile">("desktop")
   const [refreshKey, setRefreshKey] = useState(0)
@@ -100,6 +106,8 @@ function EmbedsPage() {
   const [savedId, setSavedId] = useState<Id<"embeds"> | null>(null)
   const [embedName, setEmbedName] = useState("")
   const [saving, setSaving] = useState(false)
+  /** The off switch of the row being edited (new embeds are born live). */
+  const [enabled, setEnabled] = useState(true)
 
   // The height default follows the widget unless the organizer typed one.
   useEffect(() => {
@@ -125,11 +133,19 @@ function EmbedsPage() {
     ),
   )
   const saveEmbed = useConvexMutation(api.embeds.save)
+  const toggleEnabled = useConvexMutation(api.embeds.setEnabled)
 
   const [origin, setOrigin] = useState("")
   useEffect(() => {
     setOrigin(window.location.origin)
   }, [])
+
+  // Only a complete `#RRGGBB` is ever put in front of the widget — the field
+  // stays editable mid-typing without repainting the preview through six
+  // half-finished colours.
+  const accentHex = /^#[0-9a-fA-F]{6}$/.test(accent.trim())
+    ? accent.trim().toUpperCase()
+    : ""
 
   const options: EmbedOptions = {
     format: formatId,
@@ -137,11 +153,16 @@ function EmbedsPage() {
     hideSpeakers: !showSpeakers,
     hideImages: !showPhotos,
     hideSearch: !showSearch,
-    track: track === ALL_TRACKS ? undefined : track,
+    track: tracksToOption(tracks),
     height,
+    accent: accentHex || undefined,
+    showHeader,
   }
 
-  const search = searchFor(widget, options)
+  // A saved embed's snippet carries its id, so the off switch reaches every
+  // copy already pasted around the web. An unsaved configuration is just a
+  // link, exactly as before.
+  const search = searchFor(widget, options, savedId ?? undefined)
 
   const relativeUrl =
     activeSlug && activeWorkspaceSlug
@@ -190,12 +211,17 @@ function EmbedsPage() {
       ].join("\n")
     }
 
+    const wanted = tracks.map((name) => name.toLowerCase())
     const days = (program?.days ?? []).map((day) => ({
       ...day,
       sessions:
-        track === ALL_TRACKS
+        wanted.length === 0
           ? day.sessions
-          : day.sessions.filter((session) => session.track?.name === track),
+          : day.sessions.filter(
+              (session) =>
+                session.track !== null &&
+                wanted.includes(session.track.name.toLowerCase()),
+            ),
     }))
     const withSessions = days.filter((day) => day.sessions.length > 0)
     if (withSessions.length === 0) return "<!-- No scheduled sessions yet -->"
@@ -228,7 +254,7 @@ function EmbedsPage() {
     widget.dataset,
     speakerData,
     program,
-    track,
+    tracks,
     showDescriptions,
     showSpeakers,
   ])
@@ -243,6 +269,15 @@ function EmbedsPage() {
     ? `${apiBase}/${widget.dataset === "speakers" ? "speakers" : "sessions"}`
     : null
   const icsFeedUrl = apiBase ? `${apiBase}/schedule.ics` : null
+  // The XML feed takes the same track filter the widgets do, so a
+  // track-specific page can import a track-specific feed.
+  const xmlFeedUrl = apiBase
+    ? `${apiBase}/schedule.xml${
+        tracks.length > 0
+          ? `?track=${encodeURIComponent(tracks.join(","))}`
+          : ""
+      }`
+    : null
 
   /** What the "Get code" tab hands over, per format. */
   const deliverable: { value: string; label: string; help: string } = (() => {
@@ -264,6 +299,12 @@ function EmbedsPage() {
           value: jsonUrl ?? "",
           label: "REST endpoint",
           help: "Returns paginated JSON. Send an API key as `Authorization: Bearer …` — create one under Settings → API & MCP.",
+        }
+      case "xml":
+        return {
+          value: xmlFeedUrl ?? "",
+          label: "XML feed URL",
+          help: "A live XML document of the published programme — point your CMS or site builder's feed importer at it. No key needed.",
         }
       case "ics":
         return {
@@ -289,7 +330,11 @@ function EmbedsPage() {
     setShowSpeakers(!embed.options.hideSpeakers)
     setShowPhotos(!embed.options.hideImages)
     setShowSearch(!embed.options.hideSearch)
-    setTrack(embed.options.track ?? ALL_TRACKS)
+    setTracks(tracksOf(embed.options.track))
+    setAccent(embed.options.accent ?? "")
+    setShowHeader(embed.options.showHeader === true)
+    // Rows saved before the off switch existed have no `enabled` — they are on.
+    setEnabled(embed.enabled !== false)
     setHeight(embed.options.height ?? widgetById(embed.widget).height)
     toast.success(`Loaded “${embed.name}”`)
   }
@@ -308,6 +353,7 @@ function EmbedsPage() {
         embedId: savedId ?? undefined,
         name,
         widget: widget.id,
+        enabled,
         options,
       })
       setSavedId(id)
@@ -519,32 +565,113 @@ function EmbedsPage() {
 
           <Separator />
 
+          {/* Which tracks — several, not one: a sponsor page often covers two
+              rooms of a conference, and picking them one at a time meant two
+              embeds where one would do. Nothing ticked = the whole program. */}
           <Field>
-            <FieldLabel htmlFor="opt-track">Show only one track</FieldLabel>
+            <FieldLabel>Tracks to include</FieldLabel>
             <FieldDescription>
-              Handy for a track-specific landing page on your website.
+              Leave everything unticked to show the whole program, or pick the
+              tracks this page is about.
             </FieldDescription>
-            <Select
-              items={[
-                ALL_TRACKS,
-                ...(program?.tracks ?? []).map((t) => t.name),
-              ].map((name) => ({ value: name, label: name }))}
-              value={track}
-              onValueChange={(next) => setTrack(String(next))}
-            >
-              <SelectTrigger id="opt-track" className="w-full">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value={ALL_TRACKS}>{ALL_TRACKS}</SelectItem>
-                {(program?.tracks ?? []).map((item) => (
-                  <SelectItem key={item._id} value={item.name}>
-                    {item.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            {(program?.tracks ?? []).length === 0 ? (
+              <p className="text-xs text-muted-foreground">
+                This event has no tracks yet — add them under Settings → Event.
+              </p>
+            ) : (
+              <div className="flex flex-col gap-2 rounded-lg border border-border p-3">
+                <label className="flex cursor-pointer items-center gap-2 text-sm font-medium text-foreground">
+                  <Checkbox
+                    checked={tracks.length === 0}
+                    onCheckedChange={() => setTracks([])}
+                  />
+                  {ALL_TRACKS}
+                </label>
+                <div className="flex flex-col gap-2 border-t border-border pt-2">
+                  {(program?.tracks ?? []).map((item) => (
+                    <label
+                      key={item._id}
+                      className="flex cursor-pointer items-center gap-2 text-sm text-foreground"
+                    >
+                      <Checkbox
+                        checked={tracks.includes(item.name)}
+                        onCheckedChange={(checked) =>
+                          setTracks((prev) =>
+                            checked
+                              ? [...prev, item.name]
+                              : prev.filter((name) => name !== item.name),
+                          )
+                        }
+                      />
+                      <span
+                        aria-hidden
+                        className="size-2.5 shrink-0 rounded-full"
+                        style={{ backgroundColor: item.color }}
+                      />
+                      {item.name}
+                    </label>
+                  ))}
+                </div>
+              </div>
+            )}
           </Field>
+
+          <Separator />
+
+          {/* Branding — the widget lives on somebody else's page and should
+              look like it belongs there. Colour repaints links and buttons
+              only; the surfaces stay neutral so it never fights the host. */}
+          <Field>
+            <FieldLabel htmlFor="opt-accent">Accent colour</FieldLabel>
+            <FieldDescription>
+              Used for links and buttons inside the widget. Leave empty to use
+              the Trackstage blue.
+            </FieldDescription>
+            <div className="flex flex-wrap items-center gap-2">
+              <span
+                aria-hidden
+                className="size-8 shrink-0 rounded-lg ring-1 ring-foreground/10"
+                style={{ backgroundColor: accentHex || "var(--primary)" }}
+              />
+              <Input
+                id="opt-accent"
+                value={accent}
+                onChange={(event) => setAccent(event.target.value)}
+                placeholder="#0F6E70"
+                spellCheck={false}
+                className="min-w-0 flex-1 font-mono text-xs uppercase"
+              />
+              {accent ? (
+                <Button variant="ghost" size="sm" onClick={() => setAccent("")}>
+                  Reset
+                </Button>
+              ) : null}
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              {ACCENT_PRESETS.map((preset) => (
+                <button
+                  key={preset.value}
+                  type="button"
+                  aria-label={preset.name}
+                  aria-pressed={accentHex === preset.value}
+                  onClick={() => setAccent(preset.value)}
+                  className={cn(
+                    "size-6 rounded-md ring-1 ring-foreground/10 outline-none transition hover:scale-110 focus-visible:ring-3 focus-visible:ring-ring/50",
+                    accentHex === preset.value && "ring-2 ring-foreground/60",
+                  )}
+                  style={{ backgroundColor: preset.value }}
+                />
+              ))}
+            </div>
+          </Field>
+
+          <OptionSwitch
+            id="opt-header"
+            label="Event name and logo"
+            description="Adds a small branded header above the widget."
+            checked={showHeader}
+            onChange={setShowHeader}
+          />
 
           {format.id === "iframe" ? (
             <Field>
@@ -571,7 +698,8 @@ function EmbedsPage() {
           <Field>
             <FieldLabel htmlFor="embed-name">Save this embed</FieldLabel>
             <FieldDescription>
-              Name the configuration so you can come back to it.
+              Name the configuration so you can come back to it — and so you
+              can turn this embed off later without editing your website.
             </FieldDescription>
             <div className="flex flex-wrap items-center gap-2">
               <Input
@@ -599,6 +727,7 @@ function EmbedsPage() {
                   onClick={() => {
                     setSavedId(null)
                     setEmbedName("")
+                    setEnabled(true)
                   }}
                 >
                   Save as new instead
@@ -606,6 +735,37 @@ function EmbedsPage() {
               </FieldDescription>
             ) : null}
           </Field>
+
+          {savedId ? (
+            <>
+              <Separator />
+              {/* The off switch, where the organizer is already looking after
+                  saving. Turning it off makes every copy of this snippet — on
+                  every site it was pasted into — say so instead of showing the
+                  programme (sbek EMB-15). */}
+              <OptionSwitch
+                id="opt-enabled"
+                label="Embed is live"
+                description="Turn off to replace it with “This embed is turned off” everywhere it's pasted."
+                checked={enabled}
+                onChange={(next) => {
+                  setEnabled(next)
+                  void toggleEnabled({ embedId: savedId, enabled: next })
+                    .then(() =>
+                      toast.success(
+                        next ? "Embed turned on" : "Embed turned off",
+                      ),
+                    )
+                    .catch((error: unknown) => {
+                      setEnabled(!next)
+                      toast.error("Couldn't change that", {
+                        description: errorMessage(error, "Please try again."),
+                      })
+                    })
+                }}
+              />
+            </>
+          ) : null}
 
           {program ? (
             <p className="text-xs text-muted-foreground">
@@ -712,6 +872,7 @@ function EmbedsPage() {
                 <FieldDescription>{deliverable.help}</FieldDescription>
                 {format.id === "link" ||
                 format.id === "json" ||
+                format.id === "xml" ||
                 format.id === "ics" ? (
                   <div className="flex flex-wrap items-center gap-2">
                     <Input

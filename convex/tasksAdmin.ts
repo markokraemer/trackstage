@@ -4,6 +4,7 @@ import type { MutationCtx } from "./_generated/server"
 import { mutation, query } from "./_generated/server"
 import { requireEventAccess } from "./lib/auth"
 import { enrichUploads } from "./lib/files"
+import { personProfileComplete } from "./lib/profileTasks"
 import { makeTaskVarsCache, renderTaskText } from "./lib/taskVars"
 import { addComment, threadFor } from "./lib/uploadComments"
 
@@ -110,6 +111,17 @@ async function insertTasks(
   for (const personId of args.personIds) {
     const person = await ctx.db.get(personId)
     if (!person || person.eventId !== args.eventId) continue
+    // A "profile" task handed to a speaker whose profile is ALREADY complete
+    // is born done. Otherwise it sits open forever: nothing the speaker can do
+    // in their portal would change the profile, so the auto-tick never fires
+    // and the organizer chases someone who has nothing left to give
+    // (adversarial-review F10). Only `profile` — a headshot or upload task is
+    // a request for a NEW file, and "send us a better photo" is a fair thing
+    // to ask someone who already has one. convex/lib/profileTasks.ts.
+    const bornDone =
+      args.kind === "profile" && personProfileComplete(person)
+        ? Date.now()
+        : undefined
     await ctx.db.insert("tasks", {
       eventId: args.eventId,
       personId,
@@ -118,6 +130,7 @@ async function insertTasks(
       kind: args.kind,
       submissionId,
       dueAt: args.dueAt,
+      completedAt: bornDone,
     })
     created++
   }

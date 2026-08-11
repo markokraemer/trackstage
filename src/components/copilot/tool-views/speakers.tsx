@@ -4,6 +4,7 @@ import {
   RiKey2Line,
   RiMailSendLine,
   RiTaskLine,
+  RiUserAddLine,
 } from "@remixicon/react"
 
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
@@ -25,6 +26,7 @@ import {
   asArray,
   formatDate,
   initials,
+  isRecord,
   num,
   str,
   strList,
@@ -362,5 +364,149 @@ export function TaskRemovedView({ output }: ToolOutputProps) {
       {str(output.note) ? <Note>{str(output.note)}</Note> : null}
       <GoLink to={speakersLink}>Open Speakers</GoLink>
     </Banner>
+  )
+}
+
+// ——— add_speaker / update_speaker ————————————————————————————————————————
+
+/** The `{data: …}` REST envelope the apiV1-backed speaker tools answer with. */
+function speakerRecord(output: Record<string, unknown>): Record<string, unknown> {
+  return isRecord(output.data) ? output.data : output
+}
+
+/**
+ * One receipt for both add and update, because the payload is identical and
+ * the organizer's follow-up is identical too: check what the person's public
+ * card now says, and send them their portal link if they haven't got one.
+ */
+export function SpeakerSavedView({ output, toolName }: ToolOutputProps) {
+  const speakersLink = useSectionLink("speakers")
+  const person = speakerRecord(output)
+  const added = toolName === "add_speaker"
+  const name =
+    str(person.full_name) ??
+    str([str(person.first_name), str(person.last_name)].filter(Boolean).join(" ")) ??
+    str(person.email) ??
+    "Speaker"
+  const affiliation = [str(person.title), str(person.company_name)]
+    .filter(Boolean)
+    .join(" · ")
+  return (
+    <Banner
+      icon={<RiUserAddLine size={16} />}
+      title={`${name} ${added ? "added" : "updated"}`}
+    >
+      <FieldGrid
+        entries={[
+          ...(str(person.email)
+            ? [{ label: "Email", value: str(person.email)! }]
+            : []),
+          ...(affiliation ? [{ label: "Role", value: affiliation }] : []),
+          ...(str(person.workflow_status)
+            ? [{ label: "Stage", value: str(person.workflow_status)! }]
+            : []),
+          {
+            label: "Public profile",
+            value: person.is_public === false ? "Hidden" : "Visible",
+          },
+        ]}
+      />
+      {added ? (
+        <Note>
+          They can&apos;t see anything yet — ask me for their portal link to let
+          them in.
+        </Note>
+      ) : null}
+      <GoLink to={speakersLink}>Open Speakers</GoLink>
+    </Banner>
+  )
+}
+
+// ——— remove_speaker ——————————————————————————————————————————————————————
+
+export function SpeakerRemovedView({ output }: ToolOutputProps) {
+  const speakersLink = useSectionLink("speakers")
+  const person = speakerRecord(output)
+  const name = str(person.full_name) ?? str(person.name) ?? str(output.name)
+  return (
+    <Banner
+      tone="bad"
+      icon={<RiDeleteBin6Line size={16} />}
+      title={`${name ?? "Speaker"} removed from the event`}
+    >
+      <Note>
+        Their tasks, uploads and headshot went with them. Emails already sent
+        stay in the outbox for the record.
+      </Note>
+      <GoLink to={speakersLink}>Open Speakers</GoLink>
+    </Banner>
+  )
+}
+
+// ——— bulk_add_speakers ———————————————————————————————————————————————————
+
+const OUTCOME_TONE: Record<string, "good" | "muted" | "warn"> = {
+  added: "good",
+  updated: "muted",
+  skipped: "warn",
+}
+
+/**
+ * A bulk import is only trustworthy if it says what it did to EACH row — an
+ * "18 imported" headline hides the three addresses that silently matched
+ * someone who already existed. So the per-row outcomes are the body of the
+ * card, not a footnote.
+ */
+export function BulkSpeakersView({ output }: ToolOutputProps) {
+  const speakersLink = useSectionLink("speakers")
+  const added = num(output.added) ?? 0
+  const updated = num(output.updated) ?? 0
+  const skipped = num(output.skipped) ?? 0
+  const rows = asArray(output.results) ?? []
+  return (
+    <Panel title="Bulk speaker import" meta={`${num(output.total) ?? rows.length} row(s)`}>
+      <StatRow
+        stats={[
+          { label: "Added", value: added, tone: added > 0 ? "good" : "default" },
+          { label: "Filled in", value: updated },
+          {
+            label: "Skipped",
+            value: skipped,
+            tone: skipped > 0 ? "warn" : "default",
+          },
+        ]}
+      />
+      {rows.length > 0 ? (
+        <Rows>
+          {rows.slice(0, 8).map((row, index) => {
+            const outcome = str(row.outcome) ?? "added"
+            const key = outcome.split(" ")[0]
+            return (
+              <Row key={str(row.email) ?? index} className="items-center">
+                <span className="min-w-0 flex-1 truncate text-sm text-foreground">
+                  {str(row.email) ?? "—"}
+                </span>
+                <Chip tone={OUTCOME_TONE[key] === "good" ? "muted" : (OUTCOME_TONE[key] ?? "muted")}>
+                  {outcome}
+                </Chip>
+              </Row>
+            )
+          })}
+        </Rows>
+      ) : null}
+      {rows.length > 8 ? (
+        <Note>
+          +{rows.length - 8} more rows
+          {str(output.resultsTruncated) ? ` (${str(output.resultsTruncated)})` : ""}.
+        </Note>
+      ) : null}
+      {skipped > 0 ? (
+        <Note>
+          Skipped rows already existed with nothing blank left to fill — an
+          import never overwrites what a speaker wrote themselves.
+        </Note>
+      ) : null}
+      <GoLink to={speakersLink}>Open Speakers</GoLink>
+    </Panel>
   )
 }

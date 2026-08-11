@@ -20,6 +20,22 @@ const CONVEX_URL = env.VITE_CONVEX_URL
 const SITE_URL = env.VITE_CONVEX_SITE_URL
 if (!CONVEX_URL) throw new Error("VITE_CONVEX_URL missing from .env.local")
 
+/**
+ * The tool count the DOCS publish, read from the generated table rather than
+ * hardcoded here — so this check compares two independent things (what
+ * /docs/mcp promises vs what the LIVE server answers to tools/list) instead of
+ * asserting a number against itself. Adding a tool and forgetting to deploy,
+ * or deploying and forgetting to regenerate the docs, both fail here.
+ */
+const MCP_TOOL_COUNT = Number(
+  /MCP_TOOL_COUNT = (\d+)/.exec(
+    readFileSync(new URL("../src/docs/generated/mcp-tools.ts", import.meta.url), "utf8"),
+  )?.[1],
+)
+if (!Number.isInteger(MCP_TOOL_COUNT)) {
+  throw new Error("Could not read MCP_TOOL_COUNT from src/docs/generated/mcp-tools.ts")
+}
+
 const client = new ConvexHttpClient(CONVEX_URL)
 
 let passed = 0
@@ -2256,7 +2272,7 @@ if (SITE_URL) {
 
   const tools = await rpc("tools/list", {})
   const toolNames = (tools.body?.result?.tools ?? []).map((t) => t.name)
-  ok("tools/list returns the full 81-tool surface", toolNames.length === 81, `got ${toolNames.length}: ${toolNames.join(", ")}`)
+  ok(`tools/list returns the full ${MCP_TOOL_COUNT}-tool surface`, toolNames.length === MCP_TOOL_COUNT, `got ${toolNames.length}: ${toolNames.join(", ")}`)
   ok("task-library tools present",
     ["list_task_library", "save_task_template", "assign_task_from_template"].every((n) => toolNames.includes(n)),
     toolNames.filter((n) => n.includes("task")).join(", "))

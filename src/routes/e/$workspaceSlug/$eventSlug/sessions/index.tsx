@@ -21,6 +21,10 @@ import {
   useSearchParamWriter,
   useUrlText,
 } from "@/components/public/use-url-text"
+import {
+  matchesTrackFilter,
+  trackFilter,
+} from "@/components/public/widget-search"
 import type { PublicSession } from "@/components/public/types"
 
 /**
@@ -65,12 +69,19 @@ function SessionsPage() {
   const format = search.format ?? ALL_FORMATS
   const room = search.room ?? ALL_ROOMS
 
+  // `?track=` accepts several names, comma-separated (sbek EMB-15). When an
+  // embed pins more than one, that set IS the catalog: the Track dropdown
+  // steps aside rather than offering a visitor a way to unpin it, and the
+  // remaining filters work inside the pinned tracks.
+  const wantedTracks = trackFilter(search.track)
+  const pinnedTracks = wantedTracks.length > 1
+
   const needle = query.trim().toLowerCase()
   const eq = (a: string | undefined | null, b: string) =>
     (a ?? "").toLowerCase() === b.toLowerCase()
 
   const sessions = data.sessions.filter((session: PublicSession) => {
-    if (track !== ALL_TRACKS && !eq(session.track?.name, track)) return false
+    if (!matchesTrackFilter(wantedTracks, session.track?.name)) return false
     if (format !== ALL_FORMATS && !eq(session.format, format)) return false
     if (room !== ALL_ROOMS && !eq(session.room?.name, room)) return false
     if (!needle) return true
@@ -94,13 +105,20 @@ function SessionsPage() {
 
   const filtered =
     needle !== "" ||
-    track !== ALL_TRACKS ||
+    (!pinnedTracks && track !== ALL_TRACKS) ||
     format !== ALL_FORMATS ||
     room !== ALL_ROOMS
 
   const resetFilters = () => {
     setQuery("")
-    setParams({ q: undefined, track: undefined, format: undefined, room: undefined })
+    setParams({
+      q: undefined,
+      // Never clear a track set the embed pinned — that is the widget's
+      // subject, not a filter the visitor put on.
+      track: pinnedTracks ? search.track : undefined,
+      format: undefined,
+      room: undefined,
+    })
   }
 
   return (
@@ -119,7 +137,7 @@ function SessionsPage() {
           searchLabel="Search sessions"
           filters={
             <>
-              {facets.tracks.length > 0 ? (
+              {facets.tracks.length > 0 && !pinnedTracks ? (
                 <FacetSelect
                   label="Track"
                   value={track}

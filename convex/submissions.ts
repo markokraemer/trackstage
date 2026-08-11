@@ -9,6 +9,7 @@ import type { AuditActor } from "./lib/audit"
 import { record as recordAudit, statusChangeSummary } from "./lib/audit"
 import { emitWebhook } from "./webhooks"
 import { enrichUploads } from "./lib/files"
+import { personProfileComplete } from "./lib/profileTasks"
 
 export const STATUSES = [
   "draft",
@@ -386,9 +387,12 @@ export async function ensureOnboardingTasks(
       (t: Doc<"tasks">) => t.kind === task.kind && t.eventId === eventId,
     )
     if (already) continue
+    // Born done when the speaker has already supplied what the task asks for.
+    // "Profile" means the same four items the speaker's own meter counts, not
+    // just a bio (convex/lib/profileCompleteness.ts — adversarial-review F10).
     const completedByProfile =
       (task.kind === "headshot" && person?.headshotId) ||
-      (task.kind === "profile" && person?.bio)
+      (task.kind === "profile" && person && personProfileComplete(person))
     await ctx.db.insert("tasks", {
       eventId,
       personId,

@@ -11,6 +11,7 @@ import {
   EmptyRow,
   FieldGrid,
   GoLink,
+  LinkRow,
   Note,
   Panel,
   Row,
@@ -341,6 +342,60 @@ export function AutoPlaceView({ output }: ToolOutputProps) {
           </GoLink>
         ) : null}
       </div>
+    </Banner>
+  )
+}
+
+// ——— set_agenda_published ————————————————————————————————————————————————
+
+/**
+ * Publishing is a one-switch, high-consequence act: it is the moment the
+ * timetable becomes a promise to the public. So the card says which way the
+ * switch went in plain words and, when the agenda just went live, hands over
+ * the actual public address rather than describing it.
+ */
+export function AgendaPublishedView({ input, output }: ToolOutputProps) {
+  const agendaLink = useSectionLink("agenda")
+  const event = isRecord(output.data) ? output.data : output
+  const requested = isRecord(input) ? input : {}
+  const publishedAt = str(event.agenda_published_at)
+  const published =
+    typeof requested.published === "boolean"
+      ? requested.published
+      : Boolean(publishedAt)
+  const publicPath = str(event.public_url)
+  const publicUrl =
+    publicPath && typeof window !== "undefined"
+      ? new URL(publicPath, window.location.origin).toString()
+      : publicPath
+
+  return (
+    <Banner
+      tone={published ? "good" : "warn"}
+      icon={<RiCalendarScheduleLine size={16} />}
+      title={
+        published
+          ? `${str(event.name) ?? "The agenda"} is now public`
+          : `${str(event.name) ?? "The agenda"} is no longer public`
+      }
+    >
+      {published ? (
+        <>
+          <Note>
+            Anyone with the link can see the timetable, and speakers see their
+            room and slot. Changes from here on are visible immediately.
+          </Note>
+          {publicUrl ? <LinkRow url={publicUrl} label="Public event page" /> : null}
+        </>
+      ) : (
+        <Note>
+          The public page now hides the schedule. Nothing was deleted — flip it
+          back on whenever the timetable is ready.
+        </Note>
+      )}
+      <GoLink to={agendaLink} search={{ view: "day" }}>
+        Open Agenda
+      </GoLink>
     </Banner>
   )
 }

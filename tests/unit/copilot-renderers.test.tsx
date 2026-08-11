@@ -53,53 +53,24 @@ vi.mock("@tanstack/react-router", () => ({
 
 const { CopilotToolOutput, TOOL_VIEWS, hasToolView } =
   await import("@/components/copilot/tool-views/registry")
+const { MCP_TOOL_COUNT, MCP_TOOL_GROUPS } = await import("@/docs/generated/mcp-tools")
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "../..")
 
 /**
- * The tools with PURPOSE-BUILT views (src/components/copilot/tool-views).
- * No longer the full MCP surface: the 2026-08-11 full-proxy pass grew the
- * server to 81 tools, and everything outside this list renders through the
- * JSON fallback view by design (asserted below). Add a tool here when it
- * gains a bespoke view, not when it is added to the server.
+ * The tools the copilot must draw richly — read from the GENERATED MCP tool
+ * table (`scripts/generate-mcp-tools.mjs` writes it from `convex/mcp.ts`), not
+ * hand-maintained here.
+ *
+ * That is the point of the 2026-08-11 generative-UI pass: the registry is no
+ * longer a curated subset that quietly falls behind the server. Every tool the
+ * server exposes has a purpose-built view, so the list and the server are the
+ * same list by construction — add a tool to `convex/mcp.ts` and this suite
+ * fails until it has a view and a fixture.
  */
-const ALL_TOOLS = [
-  "list_workspaces",
-  "list_events",
-  "create_event",
-  "get_event_overview",
-  "list_forms",
-  "get_form",
-  "create_form",
-  "update_form_settings",
-  "get_public_form_link",
-  "list_submissions",
-  "get_submission",
-  "set_submission_status",
-  "commit_decision_queue",
-  "add_manual_session",
-  "get_agenda",
-  "schedule_session",
-  "unschedule_session",
-  "auto_place_sessions",
-  "list_speakers",
-  "get_speaker_portal_link",
-  "assign_task",
-  "send_reminders",
-  "list_templates",
-  "update_template",
-  "list_outbox",
-  "send_test_email",
-  "get_template",
-  "delete_event",
-  "delete_form",
-  "remove_task",
-  "get_event_summary",
-  // Task library (product-fixes wave, 2026-08-11).
-  "list_task_library",
-  "save_task_template",
-  "assign_task_from_template",
-] as const
+const ALL_TOOLS: ReadonlyArray<string> = MCP_TOOL_GROUPS.flatMap((group) =>
+  group.tools.map((tool) => tool.name)
+)
 
 type Payload = { input: unknown; output: unknown }
 
@@ -835,6 +806,668 @@ const SHAPES: Record<string, Payload> = {
       note: "Queued for delivery. Check list_outbox for the final status.",
     },
   },
+
+  // ——— The 2026-08-11 generative-UI pass ————————————————————————————————
+  // Shapes taken from real calls against the dev MCP deployment. The
+  // apiV1-backed tools answer in the REST envelope (`{data, results,
+  // pagination}`, snake_cased); the bespoke convex/mcp.ts tools answer with a
+  // small flat object plus a `note`. Both forms are represented here on
+  // purpose — the views have to read either.
+  update_workspace: {
+    input: { workspace: "ai-engineer", name: "AI Engineer", slug: "ai-engineer" },
+    output: {
+      organizationId: "org1",
+      name: "AI Engineer",
+      slug: "ai-engineer",
+      slugAdjusted: false,
+      url: "http://localhost:3000/app/ai-engineer",
+    },
+  },
+  update_event: {
+    input: { event: "ai-summit-2026", venue: "Moscone South", allowSubmissionEdits: false },
+    output: {
+      data: {
+        id: "ev1",
+        name: "AI Engineer Summit 2026",
+        slug: "ai-summit-2026",
+        venue: "Moscone South",
+        timezone: "America/Los_Angeles",
+        starts_at: "2026-10-12T16:00:00.000Z",
+        ends_at: "2026-10-14T01:00:00.000Z",
+        public_url: "/e/ai-engineer/ai-summit-2026",
+        portal_settings: {
+          allow_submission_edits: false,
+          always_show_tasks: false,
+          extend_task_deadlines: true,
+        },
+      },
+    },
+  },
+  list_workspace_members: {
+    input: { workspace: "ai-engineer" },
+    output: {
+      workspace: { organizationId: "org1", name: "AI Engineer", slug: "ai-engineer" },
+      memberCount: 2,
+      members: [
+        {
+          memberId: "mem1",
+          email: "organizer@demo.sessionboard.dev",
+          role: "owner",
+          accepted: true,
+          eventScope: null,
+        },
+        {
+          memberId: "mem2",
+          email: "scoped@example.com",
+          role: "member",
+          accepted: false,
+          eventScope: ["AI Engineer Summit 2026"],
+        },
+      ],
+    },
+  },
+  invite_workspace_member: {
+    input: { email: "new@example.com", role: "member" },
+    output: {
+      email: "new@example.com",
+      role: "member",
+      eventScope: "All events",
+      invited: true,
+    },
+  },
+  update_workspace_member: {
+    input: { memberId: "mem2", role: "admin" },
+    output: { memberId: "mem2", email: "scoped@example.com", role: "admin", eventScope: "all events" },
+  },
+  remove_workspace_member: {
+    input: { memberId: "mem2" },
+    output: {
+      removed: true,
+      email: "scoped@example.com",
+      note: "Their access ended immediately. Invite them again with invite_workspace_member if needed.",
+    },
+  },
+  update_form: {
+    input: { form: "main-cfp-2026", externalTitle: "Call for Speakers 2026", speakerMax: 3 },
+    output: {
+      data: {
+        id: "form1",
+        name: "Main CFP 2026",
+        external_title: "Call for Speakers 2026",
+        status: "open",
+      },
+    },
+  },
+  manage_form_question: {
+    input: {
+      event: "ai-summit-2026",
+      action: "create",
+      label: "What will attendees take away?",
+      type: "long_text",
+      required: true,
+    },
+    output: {
+      data: {
+        id: "field1",
+        label: "What will attendees take away?",
+        type: "long_text",
+        required: true,
+        enabled: true,
+        help: "Three bullet points is plenty.",
+        options: null,
+      },
+    },
+  },
+  update_submission: {
+    input: { submissionId: "sub1", title: "Shipping agents that don't drift", tags: ["agents"] },
+    output: {
+      data: {
+        id: "sub1",
+        title: "Shipping agents that don't drift",
+        status: "accepted",
+        tags: ["agents"],
+        track: { id: "trk1", name: "AI Engineering" },
+        duration_minutes: 45,
+      },
+    },
+  },
+  delete_submission: {
+    input: { submissionId: "sub1" },
+    output: { data: { id: "sub1", title: "Duplicate submission", status: "pending" } },
+  },
+  restore_submission: {
+    input: { event: "ai-summit-2026", submissionId: "sub1" },
+    output: { data: { id: "sub1", title: "Duplicate submission", status: "pending" } },
+  },
+  list_trash: {
+    input: { event: "ai-summit-2026" },
+    output: {
+      event: "AI Engineer Summit 2026",
+      total: 2,
+      returned: 2,
+      trashed: [
+        {
+          submissionId: "sub9",
+          title: "Spam submission",
+          status: "pending",
+          kind: "abstract",
+          track: null,
+          format: "Talk",
+          level: null,
+          tags: [],
+          speakers: ["Spammy McSpam <spam@example.com>"],
+          scheduled: null,
+          deletedAt: "2026-08-11T19:31:06.218Z",
+        },
+      ],
+      note: "Bring any of these back with restore_submission.",
+    },
+  },
+  add_participant: {
+    input: { submissionId: "sub1", speaker: "ada@example.com", role: "moderator" },
+    output: {
+      data: {
+        id: "person1",
+        full_name: "Ada Lovelace",
+        email: "ada@example.com",
+        role: "moderator",
+        participant_id: "part1",
+        session_id: "sub1",
+      },
+      created: true,
+    },
+  },
+  remove_participant: {
+    input: { submissionId: "sub1", speaker: "ada@example.com" },
+    output: { data: { deleted: true }, deleted: true },
+  },
+  set_agenda_published: {
+    input: { event: "ai-summit-2026", published: true },
+    output: {
+      data: {
+        id: "ev1",
+        name: "AI Engineer Summit 2026",
+        agenda_published_at: "2026-08-11T19:42:05.951Z",
+        public_url: "/e/ai-engineer/ai-summit-2026",
+      },
+    },
+  },
+  add_speaker: {
+    input: { event: "ai-summit-2026", email: "grace@example.com", firstName: "Grace" },
+    output: {
+      data: {
+        id: "person2",
+        full_name: "Grace Hopper",
+        email: "grace@example.com",
+        title: "Rear Admiral",
+        company_name: "US Navy",
+        workflow_status: "invited",
+        is_public: true,
+      },
+    },
+  },
+  update_speaker: {
+    input: { event: "ai-summit-2026", speaker: "grace@example.com", company: "US Navy" },
+    output: {
+      data: {
+        id: "person2",
+        full_name: "Grace Hopper",
+        email: "grace@example.com",
+        company_name: "US Navy",
+        is_public: true,
+      },
+    },
+  },
+  remove_speaker: {
+    input: { event: "ai-summit-2026", speaker: "grace@example.com" },
+    output: { data: { deleted: true, full_name: "Grace Hopper" } },
+  },
+  bulk_add_speakers: {
+    input: { event: "ai-summit-2026", rows: [{ email: "a@example.com" }] },
+    output: {
+      added: 2,
+      updated: 1,
+      skipped: 1,
+      total: 4,
+      results: [
+        { email: "a@example.com", outcome: "added" },
+        { email: "b@example.com", outcome: "updated (blanks filled)" },
+        { email: "c@example.com", outcome: "skipped (already complete)" },
+      ],
+    },
+  },
+  list_tasks: {
+    input: { event: "ai-summit-2026" },
+    output: {
+      data: [
+        {
+          id: "task1",
+          title: "Upload your slides",
+          instructions: "PDF please, 16:9.",
+          kind: "upload",
+          due_at: "2026-08-31T19:38:44.911Z",
+          completed_at: null,
+          is_complete: false,
+          is_overdue: true,
+          response: null,
+          session_id: null,
+          session_title: null,
+          speaker: { id: "person3", email: "rafael.duarte@example.com", full_name: "Rafael Duarte" },
+        },
+        {
+          id: "task2",
+          title: "Update their profile",
+          kind: "profile",
+          due_at: null,
+          completed_at: "2026-08-02T10:00:00.000Z",
+          is_complete: true,
+          is_overdue: false,
+          speaker: { id: "person4", email: "ada@example.com", full_name: "Ada Lovelace" },
+        },
+      ],
+      results: [],
+      pagination: { currentPage: 1, pageSize: 100, totalPages: 1, totalResults: 2 },
+    },
+  },
+  update_task: {
+    input: { event: "ai-summit-2026", taskId: "task1", completed: true },
+    output: {
+      data: {
+        id: "task1",
+        title: "Upload your slides",
+        kind: "upload",
+        due_at: "2026-08-31T19:38:44.911Z",
+        is_complete: true,
+        speaker: { id: "person3", email: "rafael.duarte@example.com", full_name: "Rafael Duarte" },
+      },
+    },
+  },
+  delete_task_template: {
+    input: { template: "tpl1" },
+    output: {
+      deleted: true,
+      templateId: "tpl1",
+      title: "Upload your slides",
+      note: "Removed from the library. Tasks already assigned from it keep their wording.",
+    },
+  },
+  list_files: {
+    input: { event: "ai-summit-2026" },
+    output: {
+      total: 2,
+      returned: 2,
+      countsByApprovalStatus: { approved: 1, pending: 1 },
+      files: [
+        {
+          fileId: "file1",
+          filename: "opening-keynote-slides.pdf",
+          speaker: "Ada Lovelace <ada@example.com>",
+          session: "Opening keynote",
+          task: "Upload your slides",
+          version: 2,
+          approvalStatus: "approved",
+          reviewNote: "Looks great — AV have the deck.",
+          uploadedAt: "2026-08-11T19:38:48.984Z",
+        },
+        {
+          fileId: "file2",
+          filename: "headshot.jpg",
+          speaker: "Rafael Duarte <rafael.duarte@example.com>",
+          session: null,
+          task: "Upload a headshot",
+          version: 1,
+          approvalStatus: "pending",
+          reviewNote: null,
+          uploadedAt: "2026-08-10T09:12:00.000Z",
+        },
+      ],
+      note: "Files awaiting review block nothing automatically — approve or ask for changes.",
+    },
+  },
+  review_file: {
+    input: { fileId: "file2", approvalStatus: "changes_requested", reviewNote: "Please send a 16:9 crop." },
+    output: {
+      fileId: "file2",
+      filename: "headshot.jpg",
+      approvalStatus: "changes_requested",
+      reviewNote: "Please send a 16:9 crop.",
+      speaker: "rafael.duarte@example.com",
+      taskReopened: true,
+    },
+  },
+  delete_file: {
+    input: { fileId: "file2" },
+    output: {
+      deleted: true,
+      fileId: "file2",
+      filename: "headshot.jpg",
+      note: "The file row and its stored bytes are gone. This cannot be undone.",
+    },
+  },
+  count_bulk_audience: {
+    input: { event: "ai-summit-2026", audience: "accepted" },
+    output: {
+      audience: "accepted",
+      recipients: 10,
+      sampleEmails: ["sofia.marchetti@example.com", "ada@example.com"],
+      note: "Nothing sent — this only counted the audience.",
+    },
+  },
+  send_bulk_email: {
+    input: { event: "ai-summit-2026", audience: "accepted", subject: "Travel details" },
+    output: {
+      queued: 10,
+      recipients: 10,
+      subject: "Travel details",
+      note: "Each recipient gets their own copy with {{firstName}} etc. resolved. Track delivery with list_outbox.",
+    },
+  },
+  list_evaluation_plans: {
+    input: { event: "ai-summit-2026" },
+    output: {
+      data: [
+        {
+          id: "plan1",
+          name: "Round 1 — Programme Committee",
+          round: 1,
+          status: "open",
+          blind: false,
+          due_at: "2026-09-26T00:00:00.000Z",
+          opens_at: null,
+          submission_count: 8,
+          evaluator_count: 2,
+          assigned_count: 16,
+          completed_count: 10,
+          outstanding_count: 6,
+          recused_count: 0,
+          completion_pct: 63,
+          average_score: 4.3,
+          criteria: [
+            { id: "overall", label: "Overall", type: "numeric", weight: 1, options: null },
+          ],
+        },
+      ],
+      results: [],
+      pagination: { currentPage: 1, pageSize: 100, totalPages: 1, totalResults: 1 },
+    },
+  },
+  get_evaluation_plan: {
+    input: { event: "ai-summit-2026", planId: "plan1" },
+    output: {
+      data: {
+        id: "plan1",
+        name: "Round 1 — Programme Committee",
+        round: 1,
+        status: "open",
+        blind: false,
+        due_at: "2026-09-26T00:00:00.000Z",
+        submission_count: 8,
+        evaluator_count: 2,
+        assigned_count: 16,
+        completed_count: 10,
+        outstanding_count: 6,
+        average_score: 4.3,
+        criteria: [
+          { id: "overall", label: "Overall", type: "numeric", weight: 1, options: null },
+        ],
+        evaluators: [
+          {
+            id: "eval1",
+            name: "Alex Rivera",
+            email: "alex.rivera@example.com",
+            assigned_count: 8,
+            completed_count: 6,
+            outstanding_count: 2,
+            recused_count: 0,
+            custom_assignment: false,
+            review_path: "/review/abc123",
+            token: "abc123",
+            last_reminded_at: null,
+          },
+        ],
+        submissions: [
+          { id: "sub1", title: "Opening keynote", status: "pending", average_score: 4.25, completed_count: 2 },
+        ],
+      },
+    },
+  },
+  create_evaluation_plan: {
+    input: { event: "ai-summit-2026", name: "Round 2 — Final Review" },
+    output: {
+      data: {
+        id: "plan2",
+        name: "Round 2 — Final Review",
+        round: 2,
+        status: "open",
+        submission_count: 4,
+        evaluator_count: 0,
+        due_at: "2026-10-01T00:00:00.000Z",
+        criteria: [{ id: "overall", label: "Overall", type: "numeric", weight: 1 }],
+      },
+    },
+  },
+  update_evaluation_plan: {
+    input: { event: "ai-summit-2026", planId: "plan1", status: "closed" },
+    output: {
+      data: {
+        id: "plan1",
+        name: "Round 1 — Programme Committee",
+        round: 1,
+        status: "closed",
+        submission_count: 8,
+        evaluator_count: 2,
+      },
+    },
+  },
+  delete_evaluation_plan: {
+    input: { event: "ai-summit-2026", planId: "plan1" },
+    output: { data: { id: "plan1", name: "Round 1 — Programme Committee", deleted: true } },
+  },
+  add_evaluator: {
+    input: { event: "ai-summit-2026", planId: "plan1", email: "jo@example.com", name: "Jo Smith" },
+    output: {
+      data: {
+        id: "eval2",
+        name: "Jo Smith",
+        email: "jo@example.com",
+        assigned_count: 8,
+        custom_assignment: false,
+        review_path: "/review/def456",
+      },
+    },
+  },
+  update_evaluator: {
+    input: { event: "ai-summit-2026", evaluatorId: "eval2", assignedSubmissionIds: ["sub1"] },
+    output: {
+      data: {
+        id: "eval2",
+        name: "Jo Smith",
+        email: "jo@example.com",
+        assigned_count: 1,
+        custom_assignment: true,
+        review_path: "/review/def456",
+      },
+    },
+  },
+  rotate_evaluator_token: {
+    input: { evaluatorId: "eval2" },
+    output: {
+      evaluatorId: "eval2",
+      email: "jo@example.com",
+      name: "Jo Smith",
+      reviewUrl: "http://localhost:3000/review/ghi789",
+      note: "The old link stopped working immediately.",
+    },
+  },
+  remove_evaluator: {
+    input: { event: "ai-summit-2026", evaluatorId: "eval2" },
+    output: { data: { id: "eval2", name: "Jo Smith", email: "jo@example.com", deleted: true } },
+  },
+  list_evaluations: {
+    input: { event: "ai-summit-2026" },
+    output: {
+      data: [
+        {
+          id: "score1",
+          plan_id: "plan1",
+          plan_name: "Round 1 — Programme Committee",
+          round: 1,
+          session_id: "sub1",
+          session_title: "Opening keynote",
+          evaluator_id: "eval1",
+          evaluator_email: "alex.rivera@example.com",
+          scores: { overall: 4, relevance: 5 },
+          comment: "Strong opener, good fit for the main stage.",
+          recused: false,
+          recusal_reason: null,
+          completed_at: "2026-08-06T19:38:44.911Z",
+        },
+        {
+          id: "score2",
+          plan_id: "plan1",
+          session_title: "Closing panel",
+          evaluator_email: "jo@example.com",
+          scores: {},
+          recused: true,
+          recusal_reason: "Works at the same company",
+          completed_at: null,
+        },
+      ],
+      results: [],
+      pagination: { currentPage: 1, pageSize: 100, totalPages: 1, totalResults: 2 },
+    },
+  },
+  distribute_evaluations: {
+    input: { planId: "plan1", perReviewerCap: 5 },
+    output: {
+      plan: "Round 1 — Programme Committee",
+      assigned: 8,
+      unassigned: 2,
+      evaluatorCount: 2,
+      note: "Some submissions stayed unassigned — add evaluators or raise perReviewerCap, then run again.",
+    },
+  },
+  remind_evaluators: {
+    input: { planId: "plan1" },
+    output: {
+      plan: "Round 1 — Programme Committee",
+      reminded: 2,
+      skipped: 1,
+      recipients: ["alex.rivera@example.com", "jo@example.com"],
+      note: "Each email carries that evaluator's own review link.",
+    },
+  },
+  list_field_options: {
+    input: { event: "ai-summit-2026", resource: "tracks" },
+    output: {
+      data: [
+        { id: "trk1", name: "AI Engineering", color: "#2F5CE0", order: 0 },
+        { id: "trk2", name: "Product", color: "#0F6E70", order: 1 },
+      ],
+      results: [],
+      pagination: { currentPage: 1, pageSize: 100, totalPages: 1, totalResults: 2 },
+      unknownResource: false,
+    },
+  },
+  manage_room: {
+    input: { event: "ai-summit-2026", action: "create", name: "Main Stage", capacity: 300 },
+    output: { data: { id: "room1", name: "Main Stage", capacity: 300, order: 0 } },
+  },
+  manage_track: {
+    input: { event: "ai-summit-2026", action: "create", name: "AI Engineering", color: "#2F5CE0" },
+    output: { data: { id: "trk1", name: "AI Engineering", color: "#2F5CE0", order: 0 } },
+  },
+  manage_field_option: {
+    input: { event: "ai-summit-2026", resource: "tags", action: "create", value: "agents" },
+    output: { data: { id: "tag1", value: "agents", name: "agents" } },
+  },
+  manage_session_status: {
+    input: { event: "ai-summit-2026", action: "create", name: "Waitlisted", pipelineStatus: "pending" },
+    output: {
+      data: { id: "st1", name: "Waitlisted", pipeline_status: "pending", color: "amber", order: 20 },
+    },
+  },
+  list_webhooks: {
+    input: { event: "ai-summit-2026" },
+    output: {
+      data: [
+        {
+          id: "wh1",
+          url: "https://example.com/hook",
+          events: ["submission.created", "session.scheduled"],
+          enabled: true,
+          consecutive_failures: 0,
+          last_delivery_at: "2026-08-11T19:42:05.668Z",
+          last_error: null,
+          secret: "whsec_7a16abbb6c7551ecef65b3bd047ceaeb",
+        },
+      ],
+      results: [],
+    },
+  },
+  manage_webhook: {
+    input: { event: "ai-summit-2026", action: "create", url: "https://example.com/hook" },
+    output: {
+      data: {
+        id: "wh1",
+        url: "https://example.com/hook",
+        events: ["submission.created"],
+        enabled: true,
+        secret: "whsec_7a16abbb6c7551ecef65b3bd047ceaeb",
+        consecutive_failures: 0,
+      },
+    },
+  },
+  list_embeds: {
+    input: { event: "ai-summit-2026" },
+    output: {
+      embedCount: 1,
+      embeds: [
+        {
+          embedId: "emb1",
+          name: "Agenda for the homepage",
+          widget: "agenda",
+          options: { format: "iframe", height: 900 },
+        },
+      ],
+      widgets: ["agenda", "speakers"],
+      formats: ["iframe", "html", "link", "json", "ics"],
+      note: "Copy the snippet from the Embeds page.",
+    },
+  },
+  save_embed: {
+    input: { event: "ai-summit-2026", name: "Agenda for the homepage", widget: "agenda" },
+    output: { embedId: "emb1", name: "Agenda for the homepage", widget: "agenda", updated: false },
+  },
+  delete_embed: {
+    input: { embedId: "emb1" },
+    output: { deleted: true, embedId: "emb1", name: "Agenda for the homepage" },
+  },
+  list_activity: {
+    input: { event: "ai-summit-2026", filter: "agents" },
+    output: {
+      returned: 2,
+      activity: [
+        {
+          id: "act1",
+          summary: "Moved “Opening keynote” to the accept queue",
+          actor: "organizer@demo.sessionboard.dev",
+          entity: "submission",
+          at: "2026-08-11T19:42:05.951Z",
+          source: "mcp",
+        },
+        {
+          id: "act2",
+          summary: "Published the agenda",
+          actor: "organizer@demo.sessionboard.dev",
+          entity: "agenda",
+          at: "2026-08-11T18:02:00.000Z",
+          source: "app",
+        },
+      ],
+      note: '"agents" narrows this to MCP and API writes.',
+    },
+  },
 }
 
 /** Live captures win; the hand-written shape is the fallback. */
@@ -865,25 +1498,28 @@ function renderTool(toolName: string, payload: Payload) {
 afterEach(cleanup)
 
 describe("copilot tool-view registry", () => {
-  it("has a purpose-built view for every tool in the curated list", () => {
+  it("has a purpose-built view for EVERY tool the MCP server exposes", () => {
     const missing = ALL_TOOLS.filter((name) => !hasToolView(name))
     expect(missing).toEqual([])
-    expect(ALL_TOOLS.length).toBe(34)
+    expect(ALL_TOOLS.length).toBe(MCP_TOOL_COUNT)
   })
 
   it("does not register views for tools the MCP server doesn't expose", () => {
     const extra = Object.keys(TOOL_VIEWS).filter(
-      (name) => !(ALL_TOOLS as ReadonlyArray<string>).includes(name)
+      (name) => !ALL_TOOLS.includes(name)
     )
     expect(extra).toEqual([])
   })
 
-  it("falls back to raw JSON for an unknown tool", () => {
+  it("draws an unknown tool with the auto view, never naked JSON", () => {
     const { container } = renderTool("some_future_tool", {
       input: {},
-      output: { hello: "world" },
+      output: { hello: "world", total_results: 3 },
     })
-    expect(container.querySelector("[data-view-fallback]")).not.toBeNull()
+    expect(container.querySelector("[data-view-fallback]")).toBeNull()
+    // Humanised key, real value — not a JSON blob.
+    expect(container.textContent).toContain("Hello")
+    expect(container.textContent).toContain("world")
   })
 
   it("falls back to raw JSON when the output is not an object", () => {
@@ -1119,6 +1755,136 @@ describe("what each view actually says", () => {
     expect(container.textContent).toContain("You're in!")
   })
 
+  it("update_event states a portal toggle in speaker terms", () => {
+    const { container } = renderTool("update_event", SHAPES.update_event)
+    expect(container.textContent).toContain("Moscone South")
+    expect(container.textContent).toContain(
+      "Editing closes with the CFP — for everyone, accepted included."
+    )
+  })
+
+  it("list_tasks counts overdue work and strikes through what's done", () => {
+    const { container } = renderTool("list_tasks", SHAPES.list_tasks)
+    expect(container.textContent).toContain("Overdue")
+    expect(container.textContent).toContain("overdue")
+    expect(container.querySelector(".line-through")?.textContent).toContain(
+      "Update their profile"
+    )
+    expect(container.querySelectorAll('[role="progressbar"]').length).toBe(1)
+  })
+
+  it("review_file says the speaker's task reopened", () => {
+    const { container } = renderTool("review_file", SHAPES.review_file)
+    expect(container.textContent).toContain("Changes requested")
+    expect(container.textContent).toContain("Please send a 16:9 crop.")
+    expect(container.textContent).toContain("task reopened")
+  })
+
+  it("list_files leads with what is still awaiting review", () => {
+    const { container } = renderTool("list_files", SHAPES.list_files)
+    expect(container.textContent).toContain("Awaiting review")
+    expect(container.textContent).toContain("opening-keynote-slides.pdf")
+    expect(container.textContent).toContain("v2")
+  })
+
+  it("get_evaluation_plan shows per-evaluator progress bars", () => {
+    const { container } = renderTool(
+      "get_evaluation_plan",
+      SHAPES.get_evaluation_plan
+    )
+    expect(container.textContent).toContain("Alex Rivera")
+    expect(container.textContent).toContain("6/8")
+    expect(
+      container.querySelectorAll('[role="progressbar"]').length
+    ).toBeGreaterThan(0)
+    expect(container.textContent).toContain("Outstanding")
+  })
+
+  it("list_evaluations shows recusals as rows but flags them", () => {
+    const { container } = renderTool("list_evaluations", SHAPES.list_evaluations)
+    expect(container.textContent).toContain("Recused")
+    expect(container.textContent).toContain("Works at the same company")
+    expect(container.textContent).toContain("excluded from every average")
+  })
+
+  it("distribute_evaluations warns about what didn't fit", () => {
+    const { container } = renderTool(
+      "distribute_evaluations",
+      SHAPES.distribute_evaluations
+    )
+    expect(container.textContent).toContain("2 left unassigned")
+    expect(container.textContent).toContain("REPLACED")
+  })
+
+  it("bulk_add_speakers reports the outcome of every row", () => {
+    const { container } = renderTool(
+      "bulk_add_speakers",
+      SHAPES.bulk_add_speakers
+    )
+    expect(container.textContent).toContain("added")
+    expect(container.textContent).toContain("updated (blanks filled)")
+    expect(container.textContent).toContain("skipped (already complete)")
+  })
+
+  it("manage_webhook hands over the signing secret exactly once", () => {
+    const { container } = renderTool("manage_webhook", SHAPES.manage_webhook)
+    expect(container.querySelector("code")?.textContent).toContain(
+      "https://example.com/hook"
+    )
+    expect(container.textContent).toContain(
+      "whsec_7a16abbb6c7551ecef65b3bd047ceaeb"
+    )
+    expect(container.textContent).toContain("only time the secret is shown")
+  })
+
+  it("list_webhooks never prints the signing secret", () => {
+    const { container } = renderTool("list_webhooks", SHAPES.list_webhooks)
+    expect(container.textContent).toContain("https://example.com/hook")
+    expect(container.textContent).not.toContain("whsec_")
+  })
+
+  it("list_workspace_members spells out event scope and pending invites", () => {
+    const { container } = renderTool(
+      "list_workspace_members",
+      SHAPES.list_workspace_members
+    )
+    expect(container.textContent).toContain("All events")
+    expect(container.textContent).toContain("AI Engineer Summit 2026")
+    expect(container.textContent).toContain("Invited")
+  })
+
+  it("list_trash says how to get a submission back", () => {
+    const { container } = renderTool("list_trash", SHAPES.list_trash)
+    expect(container.textContent).toContain("Spam submission")
+    expect(container.textContent).toContain("restore")
+  })
+
+  it("remove_participant distinguishes detaching from deleting", () => {
+    const { container } = renderTool(
+      "remove_participant",
+      SHAPES.remove_participant
+    )
+    expect(container.textContent).toContain("still in the event")
+  })
+
+  it("set_agenda_published hands over the public URL", () => {
+    const { container } = renderTool(
+      "set_agenda_published",
+      SHAPES.set_agenda_published
+    )
+    expect(container.textContent).toContain("now public")
+    expect(container.querySelector("code")?.textContent).toContain(
+      "/e/ai-engineer/ai-summit-2026"
+    )
+  })
+
+  it("manage_track renders the real colour the organizer picked", () => {
+    const { container } = renderTool("manage_track", SHAPES.manage_track)
+    const dot = container.querySelector("[data-slot=track-dot]")
+    expect(dot?.getAttribute("style")).toContain("rgb(47, 92, 224)")
+    expect(container.textContent).toContain("#2F5CE0")
+  })
+
   it("empty results get a friendly row, not an empty box", () => {
     const cases: Array<[string, unknown]> = [
       ["list_submissions", { submissions: [], total: 0, returned: 0 }],
@@ -1139,5 +1905,100 @@ describe("what each view actually says", () => {
       ).toBeGreaterThan(10)
       unmount()
     }
+  })
+})
+
+// ——— The auto view: the floor under every tool ————————————————————————————
+
+describe("auto view (no bespoke renderer)", () => {
+  const auto = (output: unknown) =>
+    renderTool("a_tool_we_have_never_seen", { input: {}, output })
+
+  it("unwraps the REST envelope instead of drawing data and results twice", () => {
+    const { container } = auto({
+      data: [{ name: "Main Stage", capacity: 300 }],
+      results: [{ name: "Main Stage", capacity: 300 }],
+      pagination: { totalResults: 40, currentPage: 1, pageSize: 100 },
+    })
+    expect(container.querySelectorAll("table").length).toBe(1)
+    expect(container.querySelectorAll("tbody tr").length).toBe(1)
+    expect(container.textContent).toContain("Main Stage")
+    // The server knows about more rows than it sent — say so rather than
+    // implying the one row on screen is the whole answer.
+    expect(container.textContent).toContain("40 total")
+  })
+
+  it("humanises keys and types values", () => {
+    const { container } = auto({
+      full_name: "Ada Lovelace",
+      is_public: true,
+      created_at: "2026-08-11T19:42:05.951Z",
+      website_url: "https://example.com",
+    })
+    expect(container.textContent).toContain("Full name")
+    expect(container.textContent).toContain("Yes")
+    expect(container.querySelector('a[target="_blank"]')?.getAttribute("href")).toBe(
+      "https://example.com"
+    )
+    // A raw ISO string would read as machine output; the view formats it.
+    expect(container.textContent).not.toContain("2026-08-11T19:42:05.951Z")
+  })
+
+  it("never prints anything that looks like a credential", () => {
+    const { container } = auto({
+      name: "Hook",
+      secret: "whsec_deadbeefdeadbeefdeadbeef",
+      token: "tok_abcdef123456",
+    })
+    expect(container.textContent).not.toContain("deadbeefdeadbeef")
+    expect(container.textContent).not.toContain("abcdef123456")
+    expect(container.textContent).toContain("hidden")
+  })
+
+  it("surfaces the server's own note as prose", () => {
+    const { container } = auto({
+      queued: 3,
+      note: "Track delivery with list_outbox.",
+    })
+    expect(container.textContent).toContain("Track delivery with list_outbox.")
+  })
+
+  it("renders arrays of strings as chips and arrays of objects as a table", () => {
+    const { container } = auto({
+      events: ["submission.created", "session.scheduled"],
+      rows: [
+        { name: "One", status: "open" },
+        { name: "Two", status: "closed" },
+      ],
+    })
+    expect(container.textContent).toContain("submission.created")
+    expect(container.querySelectorAll("tbody tr").length).toBe(2)
+    expect(container.querySelectorAll("thead th").length).toBe(2)
+  })
+
+  it("caps long tables and says how many it held back", () => {
+    const { container } = auto({
+      rows: Array.from({ length: 20 }, (_, index) => ({ name: `Row ${index}` })),
+    })
+    expect(container.querySelectorAll("tbody tr").length).toBe(8)
+    expect(container.textContent).toContain("+12 more")
+  })
+
+  it("stays standing on hostile and empty payloads", () => {
+    for (const output of [
+      {},
+      { nested: { deep: { deeper: { deepest: 1 } } } },
+      { weird: [null, undefined, () => {}] },
+      { mixed: [1, "two", { three: 3 }] },
+    ]) {
+      const { container, unmount } = auto(output)
+      expect(container.querySelector("[data-view-fallback]")).toBeNull()
+      unmount()
+    }
+  })
+
+  it("still falls back to raw JSON when the output is not an object at all", () => {
+    const { container } = auto("just a string")
+    expect(container.querySelector("[data-view-fallback]")).not.toBeNull()
   })
 })

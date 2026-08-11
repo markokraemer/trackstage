@@ -48,14 +48,20 @@ function Page() {
           <Shot
             src="embeds.png"
             alt="The Embeds page with widget, format and display options"
-            caption="Widget (agenda, sessions, speakers…), format (iframe, link, static HTML, JSON, calendar feed), then what shows."
+            caption="Widget (agenda, sessions, speakers…), format (iframe, link, static HTML, JSON, XML, calendar feed), then what shows — including which tracks and your own accent colour."
           />
         </Step>
 
         <Step title="Give the configuration a name so you can come back to it — “Agenda for the sponsors page”.">
           <p className="doc-prose">
-            The calendar feed needs no key at all: attendees subscribe once and
-            their calendar keeps itself right.
+            A saved embed also gets an <strong>off switch</strong>: turn it off
+            and every page you pasted it into says “This embed is turned off”
+            instead of showing the programme — no need to edit your website.
+          </p>
+          <p className="doc-prose">
+            The calendar and XML feeds need no key at all: attendees subscribe
+            once and their calendar keeps itself right, and a CMS that imports
+            an XML feed re-reads yours whenever the programme changes.
           </p>
         </Step>
       </Steps>

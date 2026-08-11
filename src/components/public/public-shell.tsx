@@ -96,6 +96,18 @@ export interface PublicShellProps {
   event: ShellEvent
   /** Bare widget mode — no hero, no nav. */
   embed?: boolean
+  /**
+   * Branding for an embedded widget (sbek EMB-15): the organizer's accent
+   * colour as `#RRGGBB`. It repaints links, buttons and focus rings only —
+   * the surfaces stay neutral, because a widget has to sit inside somebody
+   * else's page without shouting at it.
+   */
+  accent?: string
+  /**
+   * Branding: put the event's logo and name above the widget. Off by default —
+   * most embeds sit under a heading the site already wrote.
+   */
+  brandHeader?: boolean
   children: React.ReactNode
 }
 
@@ -121,16 +133,76 @@ function useStuck(): [React.RefObject<HTMLDivElement | null>, boolean] {
   return [sentinel, stuck]
 }
 
-export function PublicShell({ event, embed, children }: PublicShellProps) {
+/**
+ * Black or white, whichever stays readable on the organizer's accent. Plain
+ * relative luminance — the same rule a designer applies by eye, so a pale
+ * yellow brand doesn't ship white-on-white buttons.
+ */
+function readableOn(hex: string): string {
+  const channel = (offset: number) => {
+    const value = parseInt(hex.slice(offset, offset + 2), 16) / 255
+    return value <= 0.03928 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4
+  }
+  const luminance =
+    0.2126 * channel(1) + 0.7152 * channel(3) + 0.0722 * channel(5)
+  return luminance > 0.45 ? "#111111" : "#FFFFFF"
+}
+
+/** The accent, as the handful of tokens that carry it. */
+function accentStyle(accent: string | undefined): React.CSSProperties | undefined {
+  if (!accent || !/^#[0-9a-fA-F]{6}$/.test(accent)) return undefined
+  return {
+    "--primary": accent,
+    "--primary-foreground": readableOn(accent),
+    "--ring": accent,
+  } as React.CSSProperties
+}
+
+export function PublicShell({
+  event,
+  embed,
+  accent,
+  brandHeader,
+  children,
+}: PublicShellProps) {
   const dates = formatEventDates(event.startsAt, event.endsAt, event.timezone)
   const { count } = useMySchedule(event.slug)
   const [sentinel, stuck] = useStuck()
+  const brandStyle = accentStyle(accent)
 
   if (embed) {
     return (
-      <div className="flex min-h-svh flex-col bg-background">
+      <div className="flex min-h-svh flex-col bg-background" style={brandStyle}>
         <main className="container-page flex-1 py-4">
-          <div className={PUBLIC_CONTENT}>{children}</div>
+          <div className={PUBLIC_CONTENT}>
+            {brandHeader ? (
+              <div className="mb-4 flex items-center gap-3 border-b border-border pb-3">
+                {event.logoUrl ? (
+                  <img
+                    src={event.logoUrl}
+                    alt=""
+                    width={40}
+                    height={40}
+                    loading="eager"
+                    decoding="async"
+                    className="size-10 shrink-0 rounded-lg border border-border bg-background object-contain"
+                  />
+                ) : null}
+                <div className="min-w-0">
+                  <p className="truncate font-heading text-base font-semibold text-foreground">
+                    {event.name}
+                  </p>
+                  {dates ? (
+                    <p className="truncate text-xs text-muted-foreground">
+                      {dates}
+                      {event.venue ? ` · ${event.venue}` : ""}
+                    </p>
+                  ) : null}
+                </div>
+              </div>
+            ) : null}
+            {children}
+          </div>
         </main>
         <div className="container-page pb-4">
           <EmbedAttribution />
@@ -140,7 +212,7 @@ export function PublicShell({ event, embed, children }: PublicShellProps) {
   }
 
   return (
-    <div className="flex min-h-svh flex-col bg-background">
+    <div className="flex min-h-svh flex-col bg-background" style={brandStyle}>
       <a
         href="#event-content"
         className="sr-only rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground focus:not-sr-only focus:absolute focus:top-3 focus:left-3 focus:z-50"

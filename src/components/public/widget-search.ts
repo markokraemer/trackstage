@@ -18,8 +18,22 @@ export interface WidgetSearch {
   hideImages?: true
   /** Hide the search + filter toolbar (fixed, curated embeds). */
   hideSearch?: true
-  /** Content filter: only show sessions on this track (by name). */
+  /**
+   * Content filter: only show sessions on these tracks, BY NAME. One name is
+   * the everyday case (the track chips on the public page set exactly one);
+   * an embed that covers two rooms of a conference comma-separates them.
+   */
   track?: string
+  /**
+   * The saved embed this URL was generated from. Present only on snippets
+   * copied out of a SAVED embed, and used for one thing: asking whether the
+   * organizer has since switched that embed off (sbek EMB-15).
+   */
+  e?: string
+  /** Branding: accent colour as `#RRGGBB`, applied to links and buttons. */
+  accent?: string
+  /** Branding: show the event's logo and name above the widget. */
+  brand?: true
   /** Sessions catalog facets, by display name — linkable like every filter. */
   format?: string
   room?: string
@@ -48,6 +62,46 @@ function text(value: unknown): string | undefined {
   return trimmed === "" ? undefined : trimmed
 }
 
+/** `#RRGGBB` only — anything else is ignored rather than styled with. */
+function hexColor(value: unknown): string | undefined {
+  const raw = text(value)
+  if (!raw) return undefined
+  return /^#[0-9a-fA-F]{6}$/.test(raw) ? raw : undefined
+}
+
+/**
+ * `?track=AI,Infra` → `["ai", "infra"]`, lower-cased for comparison. One name
+ * is the common case; the list is what lets a curated embed pin several
+ * tracks. Every filter site parses through here so they can't drift.
+ */
+export function trackFilter(track: string | undefined): Array<string> {
+  if (!track) return []
+  return track
+    .split(",")
+    .map((name) => name.trim().toLowerCase())
+    .filter((name) => name.length > 0)
+}
+
+/** Does this session's track pass a (possibly multi-value) `?track=` filter? */
+export function matchesTrackFilter(
+  wanted: Array<string>,
+  trackName: string | undefined,
+): boolean {
+  if (wanted.length === 0) return true
+  return trackName !== undefined && wanted.includes(trackName.toLowerCase())
+}
+
+/** The human phrase for a `?track=` filter: "the AI track" / "the selected tracks". */
+export function trackFilterLabel(track: string | undefined): string | null {
+  const names = (track ?? "")
+    .split(",")
+    .map((name) => name.trim())
+    .filter((name) => name.length > 0)
+  if (names.length === 0) return null
+  if (names.length === 1) return `the ${names[0]} track`
+  return `the ${names.slice(0, -1).join(", ")} and ${names[names.length - 1]} tracks`
+}
+
 /** `validateSearch` for the `/e/$workspaceSlug/$eventSlug` layout — children inherit these. */
 export function validateWidgetSearch(
   search: Record<string, unknown>,
@@ -59,6 +113,9 @@ export function validateWidgetSearch(
     hideImages: flag(search.hideImages),
     hideSearch: flag(search.hideSearch),
     track: text(search.track),
+    e: text(search.e),
+    accent: hexColor(search.accent),
+    brand: flag(search.brand),
     format: text(search.format),
     room: text(search.room),
     view: text(search.view),

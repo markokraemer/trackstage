@@ -6,7 +6,7 @@ read is gated behind an explicit approval**. This document is the authoritative
 capability-by-capability audit: the app surface (ground truth: the 169 public Convex
 functions the organizer UI calls), the MCP tool that covers it, and its gate tier.
 
-**Surface: 81 tools** (27 reads, 54 writes) in `convex/mcp.ts` (`TOOLS`), docs table
+**Surface: 84 tools** (28 reads, 56 writes) in `convex/mcp.ts` (`TOOLS`), docs table
 generated into `src/docs/generated/mcp-tools.ts`, rendered at `/docs/mcp`.
 
 ## The gating model (three layers, one rule)
@@ -49,6 +49,7 @@ Tiers: **R** read (ungated) · **W** write (`confirm: true`) · **D** destructiv
 | Create event (`events.create`) | `create_event` | W |
 | Edit details, dates, venue + **portal toggles** (`events.update`) | `update_event` | D |
 | Delete event + cascade (`events.remove`) | `delete_event` | **D+** |
+| Rename workspace / change its address (`workspaces.update`) | `update_workspace` | D |
 | Members roster (`workspaces.members`) | `list_workspace_members` | R |
 | Invite teammate, event-scoped (`workspaces.addMember`) | `invite_workspace_member` | W (sends email) |
 | Change role / event scope (`updateMemberRole`, `setMemberEventAccess`) | `update_workspace_member` | D |
@@ -74,7 +75,7 @@ Tiers: **R** read (ungated) · **W** write (`confirm: true`) · **D** destructiv
 | Stage a decision (`submissions.setStatus`, `bulkSetStatus`) | `set_submission_status` (per id; loop for bulk) | D |
 | Commit a queue → decision emails (`submissions.commitQueue`) | `commit_decision_queue` | D (email) |
 | Add manual session (`submissions.addManual`) | `add_manual_session` | W |
-| Trash / restore (`submissions.remove/restore/listDeleted`) | `delete_submission`, `restore_submission` | D / W |
+| Trash / list trash / restore (`submissions.remove/listDeleted/restore`) | `delete_submission`, `list_trash`, `restore_submission` | D / R / W |
 | Attach / detach / re-role participants (`speakersAdmin.*Participant`) | `add_participant`, `remove_participant` | W / D |
 
 ### Agenda
@@ -136,6 +137,7 @@ Tiers: **R** read (ungated) · **W** write (`confirm: true`) · **D** destructiv
 | Delete plan + scores (`deletePlan`) | `delete_evaluation_plan` | D |
 | Add evaluator → magic review link (`addEvaluator`) | `add_evaluator` | W |
 | Hand-pick assignments (`setAssignments`) | `update_evaluator` | D |
+| Reissue a leaked review link (`rotateEvaluatorToken`) | `rotate_evaluator_token` | D |
 | Remove evaluator + their scores (`removeEvaluator`) | `remove_evaluator` | D |
 | **Distribute** round-robin with cap (`autoDistribute`) | `distribute_evaluations` | D |
 | **Remind** outstanding evaluators (`remindOutstandingEvaluators`) | `remind_evaluators` | D (email) |
@@ -180,7 +182,12 @@ Tiers: **R** read (ungated) · **W** write (`confirm: true`) · **D** destructiv
 ## REST parity note
 
 Wherever a REST route existed, its MCP tool **wraps the same internal function**
-(`internal.apiV1.*`), so REST and MCP cannot drift. Capabilities that are MCP-only
+(`internal.apiV1.*`), so those tools cannot drift from REST. That is about a third of
+the surface; the rest (every read, plus `create_event`, `create_form`,
+`set_submission_status`, `commit_decision_queue`, `add_manual_session`, the agenda
+writes, and the tools added in this pass) are bespoke `convex/mcp.ts` functions that
+call the same tables and helpers but are not literally the REST handler — they CAN
+drift, and the live-fire gate is what holds them honest. Capabilities that are MCP-only
 (bulk email, evaluation distribute/remind, file review, embeds, workspace members,
 activity, task-template delete) mirror organizer-app functions directly; they have no
 Sessionboard-API counterpart, and rule 28's REST surface intentionally tracks
@@ -190,7 +197,9 @@ pattern is one manifest entry.
 
 ## Verification
 
-- `scripts/verify-backend.mjs` → "MCP server" section: 81-tool count, truthful
+- `scripts/verify-backend.mjs` → "MCP server" section: tool count asserted against
+  `MCP_TOOL_COUNT` in the GENERATED docs table (two independent sources — published
+  docs vs the live server's `tools/list` — so neither can drift unnoticed), truthful
   annotations, every write's schema requires `confirm`, no read carries it, five
   representative writes refuse without `confirm: true` with the instructive message,
   refused writes change nothing, reads run ungated — plus all pre-existing MCP flow

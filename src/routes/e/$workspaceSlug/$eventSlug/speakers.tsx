@@ -18,6 +18,11 @@ import {
   useSearchParamWriter,
   useUrlText,
 } from "@/components/public/use-url-text"
+import {
+  matchesTrackFilter,
+  trackFilter,
+  trackFilterLabel,
+} from "@/components/public/widget-search"
 import type { PublicSpeakerRow } from "@/components/public/types"
 
 /**
@@ -50,14 +55,16 @@ function SpeakersPage() {
   const { event } = data
   const view = search.view === "list" ? "list" : "gallery"
 
-  const trackFilter = search.track?.toLowerCase()
+  // One track name or several, comma-separated — a speaker stays if any of
+  // their sessions is on one of them (sbek EMB-15).
+  const wantedTracks = trackFilter(search.track)
   const needle = query.trim().toLowerCase()
 
   const speakers = data.speakers.filter((speaker: PublicSpeakerRow) => {
     if (
-      trackFilter &&
-      !speaker.sessions.some(
-        (session) => session.track?.name.toLowerCase() === trackFilter,
+      wantedTracks.length > 0 &&
+      !speaker.sessions.some((session) =>
+        matchesTrackFilter(wantedTracks, session.track?.name),
       )
     ) {
       return false
@@ -132,7 +139,7 @@ function SpeakersPage() {
           title={
             query
               ? `No speakers match "${query}"`
-              : `No speakers on the ${search.track} track`
+              : `No speakers on ${trackFilterLabel(search.track) ?? "this track"}`
           }
           description="Try part of a name, a company, or clear the search to see everyone."
           action={

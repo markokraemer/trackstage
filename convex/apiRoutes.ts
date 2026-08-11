@@ -105,6 +105,23 @@ export const API_ROUTES: Array<ApiRoute> = [
     bodyKind: "none",
   },
   {
+    method: "GET",
+    path: "/v1/event/{eventRef}/schedule.xml",
+    operationId: "getScheduleXml",
+    tag: "Calendar",
+    summary: "The published programme as XML",
+    description:
+      "The same published programme as the JSON endpoints, served as plain XML for site builders and CMSs that import a feed rather than call an API. Deliberately open, like the calendar feed — it carries exactly what the public event page already shows. Pass `?track=Name` (or several, comma-separated) to narrow it to one part of the programme.",
+    scope: null,
+    bucket: null,
+    requestBody: null,
+    responses: [[200, null]],
+    errors: [404],
+    query: [],
+    open: true,
+    bodyKind: "none",
+  },
+  {
     method: "POST",
     path: "/v1/_echo",
     operationId: "echoWebhookDelivery",

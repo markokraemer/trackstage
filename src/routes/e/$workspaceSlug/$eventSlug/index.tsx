@@ -23,6 +23,11 @@ import {
   formatTime,
   formatTimeZoneLabel,
 } from "@/components/public/format"
+import {
+  matchesTrackFilter,
+  trackFilter,
+  trackFilterLabel,
+} from "@/components/public/widget-search"
 import type { PublicDay, PublicSession } from "@/components/public/types"
 
 /**
@@ -55,9 +60,12 @@ function SchedulePage() {
   if (!data) return null
   const { event, tracks, rooms, totals } = data
 
-  const trackFilter = search.track?.toLowerCase()
+  // `?track=` takes one name or several, comma-separated — the chips below set
+  // one, a curated embed can pin a handful (sbek EMB-15).
+  const wantedTracks = trackFilter(search.track)
+  const trackLabel = trackFilterLabel(search.track)
   const matchesTrack = (session: PublicSession) =>
-    !trackFilter || session.track?.name.toLowerCase() === trackFilter
+    matchesTrackFilter(wantedTracks, session.track?.name)
 
   const days: Array<PublicDay> = data.days
     .map((day) => ({ ...day, sessions: day.sessions.filter(matchesTrack) }))
@@ -172,7 +180,7 @@ function SchedulePage() {
             data.publicMessage
               ? "The organizer is still putting the programme together. This page fills in the moment they publish it."
               : search.track
-                ? `No sessions on the "${search.track}" track have been scheduled yet. Try another track.`
+                ? `No sessions on ${trackLabel} have been scheduled yet. Try another track.`
                 : "Sessions appear here as soon as the organizer accepts them and gives them a time slot. Check back soon."
           }
           action={
@@ -303,13 +311,13 @@ function SchedulePage() {
                 <p className="text-sm text-muted-foreground">
                   {activeDay.sessions.length}{" "}
                   {activeDay.sessions.length === 1 ? "session" : "sessions"}
-                  {search.track ? ` on the ${search.track} track` : ""}
+                  {trackLabel ? ` on ${trackLabel}` : ""}
                   {zoneLabel ? ` · all times ${zoneLabel}` : ""}
                 </p>
                 {dayNotFound ? (
                   <p className="mt-1 text-sm text-muted-foreground">
                     Nothing scheduled on {search.day}
-                    {search.track ? ` for the ${search.track} track` : ""} —
+                    {trackLabel ? ` for ${trackLabel}` : ""} —
                     showing {activeDay.label} instead.
                   </p>
                 ) : null}

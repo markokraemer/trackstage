@@ -63,6 +63,22 @@ interface ProfilePatch {
   links?: { linkedin?: string; twitter?: string; website?: string }
 }
 
+type Links = NonNullable<ProfilePatch["links"]>
+
+/** The server's `links` merge (convex/portal.ts), mirrored for the optimistic
+ * pass: a key that is present replaces, an empty string clears, an absent key
+ * leaves the stored value alone. */
+function mergeLinks(current: Links | undefined, patch: Links): Links {
+  const merged: Links = { ...(current ?? {}) }
+  for (const key of LINK_FIELDS) {
+    const value = patch[key]
+    if (value === undefined) continue
+    if (value.trim() === "") delete merged[key]
+    else merged[key] = value.trim()
+  }
+  return merged
+}
+
 function draftFrom(me: PortalMe): Draft {
   return {
     salutation: me.salutation ?? "",
@@ -97,6 +113,7 @@ export function ProfileEditor() {
   ).withOptimisticUpdate((localStore, args) => {
     const current = localStore.getQuery(api.portal.home, { portalToken })
     if (!current) return
+    const { links, ...fields } = args.patch
     localStore.setQuery(
       api.portal.home,
       { portalToken },
@@ -104,8 +121,13 @@ export function ProfileEditor() {
         ...current,
         me: {
           ...current.me,
-          ...args.patch,
-          links: args.patch.links ?? current.me.links,
+          ...fields,
+          // `links` is a partial patch (see `commit` below) — merge it exactly
+          // the way the server does, or the optimistic pass would blank the two
+          // links this save never mentioned.
+          links: links
+            ? mergeLinks(current.me.links, links)
+            : current.me.links,
         },
       },
     )
@@ -135,21 +157,22 @@ export function ProfileEditor() {
         return
       }
 
-      const next = { ...savedRef.current, [key]: value }
+      // ONE field per save, links included. Rebuilding all three links from a
+      // client snapshot is what made a fast second blur overwrite the URL the
+      // first one had just stored: the snapshot only advanced after the
+      // round-trip, so the second save carried a stale twitter/website and the
+      // server (which replaced the whole `links` object) believed it. Now each
+      // link is patched on its own and merged server-side — an empty string
+      // means "clear this one" — so two saves in flight can never disagree
+      // about a field neither of them touched. (adversarial-review F9)
       const patch: ProfilePatch = LINK_FIELDS.includes(key as LinkField)
-        ? {
-            links: {
-              linkedin: next.linkedin.trim() || undefined,
-              twitter: next.twitter.trim() || undefined,
-              website: next.website.trim() || undefined,
-            },
-          }
+        ? { links: { [key]: value.trim() } }
         : { [key]: value }
 
       setSaving(true)
       try {
         await updateProfile({ portalToken, patch })
-        savedRef.current = next
+        savedRef.current = { ...savedRef.current, [key]: value }
         toast.success("Profile saved", { id: "portal-profile-save" })
       } catch (error) {
         setDraft((prev) => ({ ...prev, [key]: savedRef.current[key] }))
