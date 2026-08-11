@@ -20,7 +20,7 @@ import type { Id } from "./_generated/dataModel"
 // What we add on top — theirs documents "custom headers" as the only
 // integrity story — is that every delivery is HMAC-SHA256 signed over
 // `${timestamp}.${body}` with the endpoint's own `whsec_…` secret, sent as
-//     Sessionboard-Signature: t=<unix-seconds>,v1=<hex>
+//     Trackstage-Signature: t=<unix-seconds>,v1=<hex>
 // so a receiver can verify authenticity and reject replays without trusting
 // the network. Failed deliveries retry with exponential backoff.
 //
@@ -301,10 +301,10 @@ export const deliver = internalAction({
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "User-Agent": "Sessionboard-Webhooks/1",
-          "Sessionboard-Event": target.eventType,
-          "Sessionboard-Delivery": args.deliveryId,
-          "Sessionboard-Signature": `t=${timestamp},v1=${signature}`,
+          "User-Agent": "Trackstage-Webhooks/1",
+          "Trackstage-Event": target.eventType,
+          "Trackstage-Delivery": args.deliveryId,
+          "Trackstage-Signature": `t=${timestamp},v1=${signature}`,
         },
         body: target.payload,
         signal: controller.signal,
@@ -314,7 +314,7 @@ export const deliver = internalAction({
       ok = res.ok
       if (!ok) error = `Endpoint responded ${res.status}`
     } catch (e) {
-      error = String((e as Error)?.message ?? e).slice(0, 300)
+      error = (e instanceof Error ? e.message : String(e)).slice(0, 300)
     }
 
     const exhausted = !ok && args.attempt >= MAX_ATTEMPTS

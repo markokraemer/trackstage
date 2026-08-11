@@ -32,7 +32,7 @@ function locationOf(session: IcsSession): string | undefined {
 
 export function icsForSession(session: IcsSession): string {
   const args: BuildIcsArgs = {
-    uid: `${session.submissionId}@sessionboard`,
+    uid: `${session.submissionId}@trackstage`,
     title: session.title,
     description: session.description,
     startsAt: session.startsAt,

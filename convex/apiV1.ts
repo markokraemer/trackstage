@@ -185,7 +185,7 @@ function customFieldValues(
 ): Array<Record<string, unknown>> {
   const byId = new Map(defs.map((d) => [d.id, d]))
   const out: Array<Record<string, unknown>> = []
-  for (const [questionId, raw] of Object.entries(submission.answers ?? {})) {
+  for (const [questionId, raw] of Object.entries(submission.answers)) {
     const def = byId.get(questionId)
     out.push({
       id: questionId,
@@ -330,7 +330,7 @@ async function sessionShape(
     notified_at: iso(submission.notifiedAt),
     custom_fields: customFieldValues(submission, opts.defs),
     // Ours-better: the untouched answer map, keyed by question id.
-    answers: submission.answers ?? {},
+    answers: submission.answers,
     speakers,
     chairpersons,
     moderators,
@@ -634,7 +634,7 @@ export const searchSessions = internalQuery({
     // Shape only the page being returned — the joins are the expensive part.
     const page = paginate(filtered, args.page, args.pageSize)
     const shaped = []
-    for (const row of page.data as Array<Doc<"submissions">>) {
+    for (const row of page.data) {
       shaped.push(
         await sessionShape(ctx, row, {
           defs,
@@ -669,6 +669,10 @@ export const getSession = internalQuery({
     if (!id) return { notFound: true }
     const submission = await ctx.db.get(id)
     if (!submission || submission.eventId !== event._id) return { notFound: true }
+    // A soft-deleted session reads as gone unless the caller opts in, the same
+    // way it disappears from search — `expand=deleted` is the undo affordance.
+    if (submission.deletedAt !== undefined && !args.expand.includes("deleted"))
+      return { notFound: true }
     const maps = await loadMaps(ctx, event._id)
     const defs = await fieldDefinitions(ctx, event._id)
     return {
@@ -813,7 +817,7 @@ async function applySessionWrite(
   if (input.tags !== undefined) patch.tags = input.tags
 
   if (input.room_id !== undefined) {
-    if (input.room_id === "" || input.room_id === null) patch.roomId = undefined
+    if (input.room_id === "") patch.roomId = undefined
     else {
       const roomId = ctx.db.normalizeId("rooms", input.room_id)
       const room = roomId ? await ctx.db.get(roomId) : null
@@ -823,7 +827,7 @@ async function applySessionWrite(
     }
   }
   if (input.track_id !== undefined) {
-    if (input.track_id === "" || input.track_id === null) patch.trackId = undefined
+    if (input.track_id === "") patch.trackId = undefined
     else {
       const trackId = ctx.db.normalizeId("tracks", input.track_id)
       const track = trackId ? await ctx.db.get(trackId) : null
@@ -835,7 +839,7 @@ async function applySessionWrite(
 
   if (input.custom_fields && typeof input.custom_fields === "object") {
     const base = existing?.answers ?? {}
-    patch.answers = { ...base, ...(input.custom_fields as Record<string, unknown>) }
+    patch.answers = { ...base, ...input.custom_fields }
   }
 
   patch.updatedAt = Date.now()
@@ -868,16 +872,16 @@ async function applySessionWrite(
 
   const id = await ctx.db.insert("submissions", {
     eventId: event._id,
-    kind: (patch.kind as string) ?? "session",
-    title: (patch.title as string) ?? "Untitled session",
+    kind: (patch.kind as string | undefined) ?? "session",
+    title: (patch.title as string | undefined) ?? "Untitled session",
     description: patch.description as string | undefined,
-    answers: (patch.answers as Record<string, unknown>) ?? {},
+    answers: (patch.answers as Record<string, unknown> | undefined) ?? {},
     trackId: patch.trackId as Id<"tracks"> | undefined,
     format: patch.format as string | undefined,
     level: patch.level as string | undefined,
     language: patch.language as string | undefined,
-    tags: (patch.tags as Array<string>) ?? [],
-    status: (patch.status as string) ?? "pending",
+    tags: (patch.tags as Array<string> | undefined) ?? [],
+    status: (patch.status as string | undefined) ?? "pending",
     submitterId: submitter._id,
     roomId: patch.roomId as Id<"rooms"> | undefined,
     startsAt: patch.startsAt as number | undefined,
@@ -1111,7 +1115,7 @@ export const bulkSessions = internalMutation({
           status: "error",
           error: {
             code: "operation_failed",
-            message: String((e as Error)?.message ?? e),
+            message: e instanceof Error ? e.message : String(e),
           },
         })
         failed++
@@ -1166,7 +1170,7 @@ export const searchSpeakers = internalQuery({
 
     const page = paginate(filtered, args.page, args.pageSize)
     const shaped = []
-    for (const person of page.data as Array<Doc<"people">>) {
+    for (const person of page.data) {
       const sessions = await ctx.db
         .query("submissionParticipants")
         .withIndex("by_personId", (q) => q.eq("personId", person._id))
@@ -1402,9 +1406,7 @@ export const listSettings = internalQuery({
 
     let items: Array<Record<string, unknown>>
     if (args.resource === "fields") {
-      items = (await fieldDefinitions(ctx, event._id)) as unknown as Array<
-        Record<string, unknown>
-      >
+      items = await fieldDefinitions(ctx, event._id)
     } else if (args.resource === "rooms") {
       const rows = await ctx.db
         .query("rooms")
@@ -1450,7 +1452,7 @@ export const listSettings = internalQuery({
     } else if (VALUE_LIST_QUESTION[args.resource]) {
       items = await valueList(ctx, event._id, args.resource)
     } else {
-      return { unknownResource: true }
+      return { ...paginate([], args.page, args.pageSize), unknownResource: true }
     }
 
     if (args.search) {
@@ -1461,7 +1463,7 @@ export const listSettings = internalQuery({
           .includes(needle),
       )
     }
-    return paginate(items, args.page, args.pageSize)
+    return { ...paginate(items, args.page, args.pageSize), unknownResource: false }
   },
 })
 

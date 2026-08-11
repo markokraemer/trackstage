@@ -94,7 +94,7 @@ async function handlePost({
     user = null
   }
   if (!user) {
-    return jsonError("Sign in to use the Sessionboard copilot.", 401)
+    return jsonError("Sign in to use the Trackstage copilot.", 401)
   }
 
   const apiKey = readEnv("OPENROUTER_API_KEY")

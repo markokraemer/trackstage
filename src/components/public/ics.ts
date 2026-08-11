@@ -56,7 +56,7 @@ export function buildIcs(calendarName: string, events: Array<IcsEvent>): string 
   const lines: Array<string> = [
     "BEGIN:VCALENDAR",
     "VERSION:2.0",
-    "PRODID:-//Sessionboard OSS//Public Program//EN",
+    "PRODID:-//Trackstage//Public Program//EN",
     "CALSCALE:GREGORIAN",
     "METHOD:PUBLISH",
     `X-WR-CALNAME:${escapeText(calendarName)}`,

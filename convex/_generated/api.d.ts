@@ -10,6 +10,7 @@
 
 import type * as agenda from "../agenda.js";
 import type * as airtable from "../airtable.js";
+import type * as apiHttp from "../apiHttp.js";
 import type * as apiKeys from "../apiKeys.js";
 import type * as apiV1 from "../apiV1.js";
 import type * as auth from "../auth.js";
@@ -23,6 +24,7 @@ import type * as files from "../files.js";
 import type * as forms from "../forms.js";
 import type * as http from "../http.js";
 import type * as lib_airtable from "../lib/airtable.js";
+import type * as lib_apiIcs from "../lib/apiIcs.js";
 import type * as lib_auth from "../lib/auth.js";
 import type * as lib_email from "../lib/email.js";
 import type * as lib_files from "../lib/files.js";
@@ -50,6 +52,7 @@ import type {
 declare const fullApi: ApiFromModules<{
   agenda: typeof agenda;
   airtable: typeof airtable;
+  apiHttp: typeof apiHttp;
   apiKeys: typeof apiKeys;
   apiV1: typeof apiV1;
   auth: typeof auth;
@@ -63,6 +66,7 @@ declare const fullApi: ApiFromModules<{
   forms: typeof forms;
   http: typeof http;
   "lib/airtable": typeof lib_airtable;
+  "lib/apiIcs": typeof lib_apiIcs;
   "lib/auth": typeof lib_auth;
   "lib/email": typeof lib_email;
   "lib/files": typeof lib_files;

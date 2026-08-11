@@ -128,9 +128,50 @@ pnpm dev                          # http://localhost:3000
 pnpm exec convex run seed:setup   # demo data + organizer account
 ```
 
-Deploy with `pnpm deploy` (Convex + Cloudflare Workers). Optional env:
-`RESEND_API_KEY` (real email) · `SITE_URL` (your app origin — required for MCP OAuth) ·
-`PUBLIC_API_TOKEN` · `OPENROUTER_API_KEY` (copilot).
+### Deploy
+
+```sh
+pnpm deploy   # convex deploy (backend) → vite build → wrangler deploy (Worker)
+```
+
+The build reads `.env.production` (committed, public values only), so a production
+build always points at the production Convex deployment. Secrets live where they
+belong and are never in the repo:
+
+| Where | What |
+| --- | --- |
+| `convex env set … --prod` | `BETTER_AUTH_SECRET` · `RESEND_API_KEY` · `EMAIL_FROM` · `SITE_URL` (your app origin — required for MCP OAuth and every emailed link) · `PUBLIC_API_TOKEN` · `EXTRA_TRUSTED_ORIGINS` (optional) |
+| `wrangler secret put …` | `OPENROUTER_API_KEY` (the copilot runs in the Worker) |
+
+Pushing to `master` does all of this automatically: **CI** (typecheck · lint · unit
+tests) gates **Deploy** (Convex → build → Worker → production smoke test). See
+`.github/workflows/`. CI needs three repo secrets: `CONVEX_DEPLOY_KEY`
+(`pnpm exec convex deployment token create github-actions --prod`),
+`CLOUDFLARE_API_TOKEN` (scoped: Workers Scripts R/W, Workers Observability Write,
+Account Settings Read, Zone DNS + Workers Routes Write) and `CLOUDFLARE_ACCOUNT_ID`.
+
+Verify a deploy at any time:
+
+```sh
+node scripts/smoke-production.mjs          # 5 SSR routes + /v1 + /mcp + OAuth discovery
+APP_URL=https://your-app.workers.dev node scripts/smoke-production.mjs
+```
+
+### Custom domain
+
+Two idempotent scripts, in this order — re-run either one safely:
+
+```sh
+source ~/.zshrc && cloudflare-env-global                 # CF credentials
+node scripts/configure-domain.mjs  yourdomain.com        # Resend domain + SPF/DKIM/MX
+RESEND_API_KEY=… node scripts/attach-domain.mjs yourdomain.com trackstage
+```
+
+`attach-domain.mjs` attaches the domain to the Worker, waits for it to serve, moves
+Convex `SITE_URL` (Better Auth base URL, portal links, MCP OAuth issuer) onto it, and
+moves `EMAIL_FROM` once Resend reports the domain verified. Then set
+`VITE_SITE_URL` in `.env.production`, add the `routes`/`custom_domain` entry to
+`wrangler.jsonc`, and redeploy so the client bundle agrees.
 
 ## Stack & testing
 

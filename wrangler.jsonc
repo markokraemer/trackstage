@@ -6,5 +6,14 @@
   "compatibility_flags": ["nodejs_compat"],
   "observability": {
     "enabled": true
-  }
+  },
+  // Production custom domain. Cloudflare provisions the DNS record and the
+  // certificate from this declaration on `wrangler deploy` — the zone
+  // (trackstage.app) lives in the same account as the Worker.
+  // The workers.dev URL (https://trackstage.kortix.workers.dev) stays live as
+  // a fallback; convex/auth.ts trusts both origins.
+  "routes": [{ "pattern": "trackstage.app", "custom_domain": true }],
+  // Declaring `routes` would otherwise turn the workers.dev URL off; keep it
+  // on so https://trackstage.kortix.workers.dev remains a working fallback.
+  "workers_dev": true
 }

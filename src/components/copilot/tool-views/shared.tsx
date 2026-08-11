@@ -382,7 +382,11 @@ export function StatCard({
         tone === "bad" && "border-status-red-dot/40 bg-status-red-bg/40"
       )}
     >
-      <div className="truncate text-[11px] font-medium tracking-wide text-muted-foreground uppercase">
+      {/*
+        Wraps rather than truncates: six cards in a 460px panel clipped
+        "Awaiting slot" to "AWAITING SL…", which is worse than two short lines.
+      */}
+      <div className="text-[11px] leading-tight font-medium tracking-wide text-muted-foreground uppercase">
         {label}
       </div>
       <div className="mt-0.5 text-lg leading-none font-semibold text-foreground tabular-nums">

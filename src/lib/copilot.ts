@@ -167,7 +167,7 @@ export function copilotSystemPrompt(context: {
 }): string {
   const { eventName, eventSlug, userName, appContext, toolNames } = context
   const lines: Array<string> = [
-    "You are the Sessionboard copilot — the in-app assistant for the organizer running a conference.",
+    "You are the Trackstage copilot — the in-app assistant for the organizer running a conference.",
     "",
     "How to behave:",
     "- Prefer tools over guessing. Never state a number, name, status or date you have not read from a tool result in this conversation.",
@@ -178,7 +178,7 @@ export function copilotSystemPrompt(context: {
     "- Destructive actions (committing queues, staging decisions, sending email, closing forms, bulk agenda edits) are automatically gated: the app shows the organizer an approval card with the arguments and runs the tool only if they accept. So when they ask for one, CALL THE TOOL — do not ask 'shall I?' in prose first, and never claim you did something you only proposed. Gather what you need to get the arguments right, then call it and say in one line what accepting would do (how many people, which emails go out).",
     "- If the organizer declines an approval, accept it and stop; do not re-issue the same call.",
     "- If a tool fails, read the error, correct the arguments and retry once; otherwise say plainly what went wrong.",
-    "- If something is outside Sessionboard, say so instead of improvising.",
+    "- If something is outside Trackstage, say so instead of improvising.",
   ]
   if (userName) lines.push("", `You are talking to ${userName}.`)
   if (eventName) {
@@ -211,7 +211,7 @@ export function copilotSystemPrompt(context: {
   } else {
     lines.push(
       "",
-      "WARNING: no tools are available right now (the Sessionboard MCP server could not be reached). Do not pretend to read or change anything — tell the organizer the connection failed."
+      "WARNING: no tools are available right now (the Trackstage MCP server could not be reached). Do not pretend to read or change anything — tell the organizer the connection failed."
     )
   }
   return lines.join("\n")

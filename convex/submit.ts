@@ -4,6 +4,7 @@ import type { Doc, Id } from "./_generated/dataModel"
 import type { MutationCtx } from "./_generated/server"
 import { mutation, query } from "./_generated/server"
 import { scheduleAirtableSync } from "./airtable"
+import { emitWebhook } from "./webhooks"
 import { randomToken } from "./lib/auth"
 import { notifySubmissionAdmins } from "./platformEmails"
 
@@ -460,6 +461,16 @@ export const submit = mutation({
 
     // Mirror to Airtable within seconds (no-op unless connected).
     await scheduleAirtableSync(ctx, form.eventId)
+
+    // Outbound webhooks (convex/webhooks.ts) — fire-and-forget, never blocks
+    // the speaker's submission on a customer's endpoint being reachable.
+    await emitWebhook(ctx, form.eventId, "submission.created", {
+      id: submissionId,
+      form_id: form._id,
+      submitter_email: person.email,
+      submitter_name:
+        `${person.firstName} ${person.lastName}`.trim() || person.email,
+    })
 
     return {
       submissionId,

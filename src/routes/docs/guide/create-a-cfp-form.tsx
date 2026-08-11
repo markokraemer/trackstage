@@ -11,7 +11,7 @@ import {
 
 export const Route = createFileRoute("/docs/guide/create-a-cfp-form")({
   component: Page,
-  head: () => ({ meta: [{ title: "Create your CFP form · Sessionboard docs" }] }),
+  head: () => ({ meta: [{ title: "Create your CFP form · Trackstage docs" }] }),
 })
 
 function Page() {

@@ -112,7 +112,7 @@ export function CopilotPanel() {
           side="right"
           showOverlay={false}
           showCloseButton
-          aria-label="Sessionboard copilot"
+          aria-label="Trackstage copilot"
           style={{ width: `min(100vw, ${width}px)` }}
           className="flex w-full flex-col gap-0 p-0 sm:max-w-none"
         >

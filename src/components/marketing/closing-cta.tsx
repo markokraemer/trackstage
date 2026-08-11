@@ -20,7 +20,7 @@ export function ClosingCta() {
     <section className="relative w-full overflow-hidden bg-foreground py-20 sm:py-24">
       <div
         aria-hidden
-        className="pointer-events-none absolute inset-0 opacity-[0.07] [background-image:linear-gradient(to_right,var(--background)_1px,transparent_1px),linear-gradient(to_bottom,var(--background)_1px,transparent_1px)] [background-size:72px_72px] [mask-image:radial-gradient(90%_100%_at_50%_0%,black,transparent_75%)]"
+        className="pointer-events-none absolute inset-0 [background-image:linear-gradient(to_right,var(--background)_1px,transparent_1px),linear-gradient(to_bottom,var(--background)_1px,transparent_1px)] [mask-image:radial-gradient(90%_100%_at_50%_0%,black,transparent_75%)] [background-size:72px_72px] opacity-[0.07]"
       />
 
       <div className="container-page relative flex flex-col items-center text-center">
@@ -33,8 +33,7 @@ export function ClosingCta() {
           Your next call for speakers opens in about ten seconds.
         </h2>
         <p className="mt-5 max-w-xl text-base leading-relaxed text-pretty text-background/70">
-          Open the demo, click through a real event, then run your own on the
-          same code. No trial, no seat count, no call with anybody.
+          Open the demo, then run your own event on the same code.
         </p>
 
         <div className="mt-9 flex w-full flex-col items-stretch justify-center gap-2.5 sm:w-auto sm:flex-row sm:items-center">
@@ -62,17 +61,6 @@ export function ClosingCta() {
             Read the source
           </Button>
         </div>
-
-        <p className="mt-6 text-sm text-background/60">
-          Or{" "}
-          <Link
-            to="/login"
-            className="rounded-sm text-background underline underline-offset-4 outline-none hover:text-background focus-visible:ring-3 focus-visible:ring-background/40"
-          >
-            sign in
-          </Link>{" "}
-          if you already have a workspace.
-        </p>
       </div>
     </section>
   )

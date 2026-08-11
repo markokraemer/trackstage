@@ -7,6 +7,7 @@ import type { Id } from "../../../convex/_generated/dataModel"
 import {
   MAIN_EVENT_NAME,
   createSubmission,
+  fillStable,
   ORGANIZER_STATE,
   armed,
   clearToasts,
@@ -110,7 +111,7 @@ test.describe("emails", () => {
     // with another agent's reseed or a leftover queue.
     const speakerEmail = testEmail("mail-speaker")
     const title = `Outbox Proof ${unique("t")}`
-    await createSubmission(client, {
+    const submissionId = await createSubmission(client, {
       eventId: event._id,
       title,
       status: "accept_queue",
@@ -132,9 +133,13 @@ test.describe("emails", () => {
       .getByRole("button", { name: /^send acceptances$/i })
       .last()
       .click()
-    await expect(page.getByRole("button", { name: /send acceptances/i })).toHaveCount(
-      0,
-      { timeout: 30_000 },
+    // Another agent's leftovers can keep the banner alive, so wait on OUR
+    // submission rather than on the banner disappearing.
+    await until(
+      async () =>
+        await client.query(api.submissions.get, { submissionId }),
+      (s) => s.status === "accepted",
+      { timeout: 45_000, label: "our staged submission was committed" },
     )
 
     // Every message queued by that commit must reach a terminal status.
@@ -187,22 +192,18 @@ test.describe("emails", () => {
     await page.getByRole("button", { name: /^view$/i }).first().click()
     const drawer = page.getByRole("dialog").first()
     await expect(drawer).toBeVisible({ timeout: 15_000 })
-    await expect(drawer.getByText(/^to$/i).first()).toBeVisible()
-    await expect(drawer.getByText(/email as the speaker sees it/i).first()).toBeVisible()
+    await expect(
+      drawer.getByText(/email as the speaker sees it/i).first(),
+    ).toBeVisible({ timeout: 15_000 })
     await expect(drawer.getByText(/\/portal\/t\//i).first()).toBeVisible()
     await page.keyboard.press("Escape")
 
     // Nothing in the whole outbox may be sitting in "Failed".
-    await page.getByLabel(/status/i).first().click().catch(() => {})
-    const failedOption = page.getByRole("option", { name: /^failed$/i })
-    if ((await failedOption.count()) > 0) {
-      await failedOption.first().click()
-      await expect(
-        page.getByText(/no emails match these filters/i).first(),
-      ).toBeVisible({ timeout: 20_000 })
-    } else {
-      await page.keyboard.press("Escape")
-    }
+    await page.getByLabel(/filter by status/i).first().click()
+    await page.getByRole("option", { name: /^failed$/i }).first().click()
+    await expect(
+      page.getByText(/no emails match these filters/i).first(),
+    ).toBeVisible({ timeout: 20_000 })
     watcher.assertClean("/app/communications outbox")
   })
 
@@ -224,7 +225,11 @@ test.describe("emails", () => {
       page.getByText(/every speaker with outstanding tasks/i).first(),
     ).toBeVisible({ timeout: 15_000 })
     await page.getByRole("button", { name: /^send reminders$/i }).last().click()
-    await expectToast(page, /remind|sent|queued|skipped|nobody|no one/i, 30_000)
+    await expectToast(
+      page,
+      /reminder queued|everyone was reminded recently|nobody to remind/i,
+      30_000,
+    )
     await clearToasts(page)
 
     // The 20h dedupe means a repeat run can legitimately queue zero. Either
@@ -263,11 +268,11 @@ test.describe("emails", () => {
     const dialog = page.getByRole("dialog").first()
     await expect(dialog).toBeVisible({ timeout: 15_000 })
 
-    await dialog.getByLabel(/subject/i).first().fill(`Venue update ${marker}`)
-    await dialog
-      .getByLabel(/message/i)
-      .first()
-      .fill(`Hi {{firstName}} — the venue changed. Your portal: {{portalLink}} (${marker})`)
+    await fillStable(dialog.locator("#compose-subject"), `Venue update ${marker}`)
+    await fillStable(
+      dialog.locator("#compose-body"),
+      `Hi {{firstName}} — the venue changed. Your portal: {{portalLink}} (${marker})`,
+    )
 
     const send = dialog.getByRole("button", { name: /^send to \d+ (person|people)$/i }).first()
     await expect(send).toBeVisible({ timeout: 15_000 })
@@ -276,7 +281,7 @@ test.describe("emails", () => {
     )
     expect(promised, "the demo event has speakers to email").toBeGreaterThan(0)
     await send.click()
-    await expectToast(page, /queued/i, 30_000)
+    await expectToast(page, /queued \d+ email/i, 30_000)
     await clearToasts(page)
 
     const settled = await settledSince(client, event._id, since, {
@@ -305,8 +310,11 @@ test.describe("emails", () => {
     await page.getByRole("button", { name: /edit template/i }).first().click()
     const drawer = page.getByRole("dialog").first()
     await expect(drawer).toBeVisible({ timeout: 15_000 })
-    await drawer.getByRole("button", { name: /send test to myself/i }).first().click()
-    await expectToast(page, /test email sent/i, 30_000)
+    await drawer
+      .getByRole("button", { name: /send test to myself/i })
+      .first()
+      .click()
+    await expectToast(page, /test email sent to/i, 30_000)
     await page.keyboard.press("Escape")
     await clearToasts(page)
 

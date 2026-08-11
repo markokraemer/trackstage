@@ -5,8 +5,9 @@ import { PRODUCT_NAME } from "@/components/marketing/links"
 
 /**
  * Social proof, honestly. We have no customers to name yet, so instead of
- * borrowed logos this strip says what kind of event the tool is shaped for —
- * and admits how new it is rather than dressing it up.
+ * borrowed logos this strip names the kinds of event the tool is shaped for —
+ * one line of copy and the drift, nothing more (trim pass, 2026-08-11: the
+ * apologetic paragraph about having no logos was itself the slop).
  *
  * `LogoMarquee` (interior.dev) does the drifting; it stops the moment a pointer
  * or keyboard focus lands on it, and falls back to a plain scroller under
@@ -18,17 +19,13 @@ const EVENT_TYPES: Array<LogoMarqueeItem> = [
   "Company summits",
   "Academic symposia",
   "Hackathons",
-  "Workshop series",
   "User groups",
-  "Unconferences",
-  "Product launches",
-  "Research colloquia",
 ].map((label) => ({ id: label, label }))
 
 export function ProofStrip() {
   return (
     <MarketingSection spacing="tight">
-      <div className="flex flex-col items-center gap-5 text-center">
+      <div className="flex flex-col items-center gap-6 text-center">
         <p className="text-sm font-medium text-muted-foreground">
           Built for the people who actually produce events
         </p>
@@ -37,14 +34,8 @@ export function ProofStrip() {
           items={EVENT_TYPES}
           label={`Kinds of event ${PRODUCT_NAME} is built for`}
           speed={26}
-          className="border-0 shadow-none [mask-image:linear-gradient(to_right,transparent,black_8%,black_92%,transparent)]"
+          className="border-0 [mask-image:linear-gradient(to_right,transparent,black_8%,black_92%,transparent)] shadow-none"
         />
-
-        <p className="container-reading text-xs leading-relaxed text-muted-foreground/80">
-          No customer logos on this page — the project is brand new and
-          we&rsquo;re not going to borrow anyone else&rsquo;s. Run an event on it
-          and yours goes here first.
-        </p>
       </div>
     </MarketingSection>
   )

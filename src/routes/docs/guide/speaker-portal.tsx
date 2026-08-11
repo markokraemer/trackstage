@@ -10,7 +10,7 @@ import {
 
 export const Route = createFileRoute("/docs/guide/speaker-portal")({
   component: Page,
-  head: () => ({ meta: [{ title: "Speaker portal · Sessionboard docs" }] }),
+  head: () => ({ meta: [{ title: "Speaker portal · Trackstage docs" }] }),
 })
 
 function Page() {

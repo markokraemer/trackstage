@@ -59,3 +59,40 @@ Format: date · decision · why · status.
   in place). Converting to real Fumadocs remains possible post-deadline (NEEDS-DEPS
   in BUILD-LOG); the user-visible outcome — simple docs w/ screenshots + accurate
   API/MCP references — is delivered. ⏳ optional swap
+
+- **2026-08-11 · Production topology: Convex `keen-eagle-41` + Cloudflare Worker
+  `trackstage` on trackstage.app** — the app and the backend deploy as two artifacts in
+  a fixed order (Convex first, Worker second) because the Worker bundle assumes the
+  functions and schema it calls already exist. The Worker keeps its workers.dev URL
+  alive alongside the custom domain (`workers_dev: true` — declaring `routes` silently
+  turns it off), so there is always a second working origin when DNS or a cert is
+  mid-change. ✅
+- **2026-08-11 · `.env.production` is COMMITTED (public values only)** — `VITE_*` config
+  is compiled into the client bundle, so it is public by construction; the only question
+  is whether a production build reliably picks the production values up. Vite loads
+  `.env.production` after `.env.local`, so committing it makes "build → deploy" correct
+  by default instead of correct-if-you-remember-the-env-prefix, and CI needs no secrets
+  to produce a correct bundle. Trade-off accepted: `pnpm preview` (vite build + wrangler
+  dev) now talks to PROD Convex — `pnpm dev` is the dev-deployment path. Every real
+  secret stays in `convex env … --prod` or `wrangler secret put`. ✅
+- **2026-08-11 · CI gates deploy via `workflow_run`, not a single workflow** — CI
+  (typecheck · lint · unit) and Deploy are separate files so a PR runs the gate without
+  ever touching the deploy path; Deploy checks out `workflow_run.head_sha`, i.e. the
+  exact commit CI validated, never "whatever master is now". Backend/e2e suites are
+  deliberately NOT in CI: both drive a live deployment and mutate seeded data, so
+  concurrent runs would fight over the same rows. ✅
+- **2026-08-11 · CI uses a SCOPED Cloudflare token, never the global key** — minted via
+  `POST /user/tokens` with the global key: Workers Scripts R/W, Workers KV R/W, Workers
+  Observability Write, Account Settings Read (account-scoped) + Workers Routes Write and
+  DNS Write (all zones, for custom-domain attach). A leaked global key owns every zone
+  and every product on the account; this one can only redeploy a Worker. ✅
+- **2026-08-11 · A deploy is not green until the live origin renders** — `wrangler
+  deploy` only proves an upload, and an SSR crash still returns a 200 shell. The deploy
+  job ends in `scripts/smoke-production.mjs`, which asserts 200 **plus expected content**
+  on five routes, plus `/v1`, plus the `/mcp` 401+`resource_metadata` challenge, plus
+  both OAuth discovery documents. It fails the job on the first miss. ✅
+- **2026-08-11 · Better Auth gains explicit `trustedOrigins`** — `baseURL` alone trusts a
+  single origin, so moving `SITE_URL` to the custom domain would have broken sign-in on
+  the workers.dev fallback and on localhost. `trustedOrigins` now lists SITE_URL +
+  trackstage.app + the workers.dev URL + localhost, with `EXTRA_TRUSTED_ORIGINS`
+  (comma-separated deployment env var) for preview origins — no code change to add one. ✅

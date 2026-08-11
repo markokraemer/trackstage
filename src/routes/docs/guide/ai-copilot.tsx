@@ -11,7 +11,7 @@ import {
 
 export const Route = createFileRoute("/docs/guide/ai-copilot")({
   component: Page,
-  head: () => ({ meta: [{ title: "AI copilot · Sessionboard docs" }] }),
+  head: () => ({ meta: [{ title: "AI copilot · Trackstage docs" }] }),
 })
 
 function Page() {

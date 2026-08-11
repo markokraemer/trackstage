@@ -90,13 +90,32 @@ export const ensureCopilotKey = mutation({
   },
 })
 
+/**
+ * REST API scopes a key may carry (convex/apiHttp.ts). Omitting `scopes`
+ * entirely — which is what the UI does today, and what every key minted before
+ * this existed has — leaves the key unrestricted: it acts with exactly the
+ * permissions its owner's workspace membership grants. Passing scopes can only
+ * narrow that, never widen it.
+ */
+export const API_SCOPES = [
+  "read:events",
+  "read:sessions",
+  "read:contacts",
+  "write:sessions",
+  "write:contacts",
+  "write:fields",
+  "write:metadata",
+  "write:events",
+] as const
+
 export const create = mutation({
-  args: { name: v.optional(v.string()) },
+  args: { name: v.optional(v.string()), scopes: v.optional(v.array(v.string())) },
   returns: v.object({
     keyId: v.id("apiKeys"),
     key: v.string(),
     prefix: v.string(),
     name: v.string(),
+    scopes: v.union(v.array(v.string()), v.null()),
   }),
   handler: async (ctx, args) => {
     const user = await requireUser(ctx)
@@ -111,6 +130,19 @@ export const create = mutation({
       throw new Error("You already have 20 API keys. Revoke one first.")
     }
 
+    let scopes: Array<string> | undefined
+    if (args.scopes !== undefined) {
+      const unknown = args.scopes.filter(
+        (scope) => !API_SCOPES.includes(scope as (typeof API_SCOPES)[number]),
+      )
+      if (unknown.length > 0) {
+        throw new Error(
+          `Unknown scope(s): ${unknown.join(", ")}. Valid scopes: ${API_SCOPES.join(", ")}.`,
+        )
+      }
+      scopes = args.scopes
+    }
+
     const key = generateApiKey()
     const keyId = await ctx.db.insert("apiKeys", {
       userId: user.userId,
@@ -118,9 +150,10 @@ export const create = mutation({
       keyHash: await hashApiKey(key),
       prefix: keyPrefix(key),
       createdAt: Date.now(),
+      scopes,
     })
     // The only time the plaintext key ever leaves the server.
-    return { keyId, key, prefix: keyPrefix(key), name }
+    return { keyId, key, prefix: keyPrefix(key), name, scopes: scopes ?? null }
   },
 })
 
@@ -133,6 +166,7 @@ export const list = query({
       prefix: v.string(),
       createdAt: v.number(),
       lastUsedAt: v.union(v.number(), v.null()),
+      scopes: v.union(v.array(v.string()), v.null()),
     }),
   ),
   handler: async (ctx) => {
@@ -152,6 +186,7 @@ export const list = query({
         prefix: row.prefix,
         createdAt: row.createdAt,
         lastUsedAt: row.lastUsedAt ?? null,
+        scopes: row.scopes ?? null,
       }))
   },
 })

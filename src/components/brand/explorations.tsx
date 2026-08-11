@@ -5,7 +5,7 @@
  * axes (feel · accent · type); this file is now the RECORD of that decision,
  * not a chooser. Candidate **E — "De-blued" — SHIPPED**: today's structure with
  * the blue drained out of the chrome and reserved for primary buttons, links,
- * focus rings and the active nav item. The accent stays Sessionboard blue
+ * focus rings and the active nav item. The accent stays Trackstage blue
  * `#2F5CE0`; the teal/petrol family was reviewed and rejected. Type is
  * unchanged (Inter everywhere).
  *
@@ -216,7 +216,7 @@ export function DesignExplorations() {
           Today's structure with the blue taken out of the chrome. Page headers
           are a neutral hairline instead of a lavender panel, the sidebar and
           its active item are grey, secondary surfaces lose their tint, and
-          Active/Scheduled stop reading as links. Sessionboard blue{" "}
+          Active/Scheduled stop reading as links. Trackstage blue{" "}
           <code className="font-mono">#2F5CE0</code> stays, and it now appears
           in exactly five places: primary buttons, links, the active nav item,
           the selected-row indicator, and{" "}

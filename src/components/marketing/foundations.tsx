@@ -16,42 +16,39 @@ interface Foundation {
   icon: RemixiconComponentType
 }
 
-/** The boring-but-important stuff, said in plain words (docs/memory/RULES.md 18f). */
+/**
+ * The boring-but-important stuff, said in plain words (docs/memory/RULES.md
+ * 18f) — a title and at most six words each (trim pass, 2026-08-11).
+ */
 const FOUNDATIONS: Array<Foundation> = [
   {
     title: "Workspaces & roles",
-    description:
-      "Your team and all your events in one workspace. Invite people, set who can do what, switch workspaces in a click.",
+    description: "Your team, your events, one workspace.",
     icon: RiTeamLine,
   },
   {
     title: "Sign-in done properly",
-    description:
-      "Accounts, sessions, invites and password resets handled by Better Auth — not improvised on a Saturday.",
+    description: "Better Auth accounts, invites and resets.",
     icon: RiShieldKeyholeLine,
   },
   {
     title: "Many events, one place",
-    description:
-      "Run this year's summit and next year's while last year's programme stays published. Events never bleed into each other.",
+    description: "Last year's, this year's, next year's.",
     icon: RiCheckboxCircleLine,
   },
   {
     title: "Host it yourself",
-    description:
-      "MIT licensed. Run it on your own infrastructure and change whatever you want. Nobody can take it away or reprice it.",
+    description: "MIT licensed. Your servers, your rules.",
     icon: RiServerLine,
   },
   {
     title: "Fast, everywhere",
-    description:
-      "Edge-deployed with a realtime database behind it. Decisions, drags and edits land for everyone else immediately.",
+    description: "Edge-deployed, realtime, instant for everyone.",
     icon: RiFlashlightLine,
   },
   {
     title: "Plain words",
-    description:
-      "Written for event producers, not procurement. Every screen says what it does, and the destructive ones ask first.",
+    description: "Written for producers, not procurement.",
     icon: RiTranslate2,
   },
 ]
@@ -62,7 +59,6 @@ export function Foundations() {
       <SectionIntro
         eyebrow="Foundations"
         title="The unglamorous parts, taken seriously"
-        description="Nobody picks software for its auth stack. Everybody notices when it's missing."
       />
 
       <div className="mt-12 grid gap-x-10 gap-y-10 sm:grid-cols-2 lg:grid-cols-3">
@@ -71,7 +67,11 @@ export function Foundations() {
             key={item.title}
             className="border-t border-border pt-5 pl-0.5 first:border-t"
           >
-            <item.icon size={18} aria-hidden className="text-muted-foreground" />
+            <item.icon
+              size={18}
+              aria-hidden
+              className="text-muted-foreground"
+            />
             <h3 className="mt-3 font-heading text-base font-medium text-foreground">
               {item.title}
             </h3>

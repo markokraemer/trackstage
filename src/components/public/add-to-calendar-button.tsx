@@ -38,7 +38,7 @@ export function sessionsToIcsEvents(
       ].filter((part): part is string => Boolean(part))
 
       return {
-        uid: `${session._id}@${event.slug}.sessionboard`,
+        uid: `${session._id}@${event.slug}.trackstage`,
         title: session.title,
         description: descriptionParts.join("\n\n"),
         location: session.room?.name ?? event.venue ?? undefined,

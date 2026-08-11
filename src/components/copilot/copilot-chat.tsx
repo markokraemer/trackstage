@@ -267,13 +267,13 @@ export function CopilotChat({
               placeholder={
                 event
                   ? `Ask about ${event.name}…`
-                  : "Ask the Sessionboard copilot…"
+                  : "Ask the Trackstage copilot…"
               }
               className="max-h-40 min-h-11 px-3 py-2.5 text-sm"
             />
             <InputGroupAddon align="block-end" className="gap-2">
               <span className="truncate text-xs text-muted-foreground">
-                Runs on your Sessionboard MCP tools
+                Runs on your Trackstage MCP tools
               </span>
               {busy ? (
                 <Button
@@ -331,7 +331,7 @@ function CopilotEmptyState({
             isPage ? "text-xl" : "text-base"
           )}
         >
-          {headline ?? "Ask your Sessionboard copilot"}
+          {headline ?? "Ask your Trackstage copilot"}
         </h2>
         <p className="mx-auto max-w-md text-sm text-muted-foreground">
           {eventName

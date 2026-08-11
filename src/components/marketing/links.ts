@@ -6,13 +6,13 @@
 /**
  * The product name and the domains shown in mock browser chrome, in ONE place.
  *
- * A rename is coming, so nothing on this page spells the name out inline —
- * prefer the `Logo`/`Wordmark` components where a lockup fits, and these
- * constants where prose or an aria-label needs the bare string.
+ * Nothing on this page spells the name out inline — prefer the `Logo`/`Wordmark`
+ * components where a lockup fits, and these constants where prose or an
+ * aria-label needs the bare string.
  */
-export const PRODUCT_NAME = "Sessionboard"
-export const PRODUCT_APP_HOST = "app.sessionboard.dev"
-export const PRODUCT_SITE_HOST = "sessionboard.dev"
+export const PRODUCT_NAME = "Trackstage"
+export const PRODUCT_APP_HOST = "trackstage.app"
+export const PRODUCT_SITE_HOST = "trackstage.app"
 
 export const GITHUB_URL = "https://github.com/markokraemer/sessionboard"
 export const GITHUB_LICENSE_URL = `${GITHUB_URL}/blob/main/LICENSE`

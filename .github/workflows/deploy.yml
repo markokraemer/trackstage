@@ -1,0 +1,99 @@
+name: Deploy
+
+# Production deploy: Convex backend first (schema + functions), then the
+# Cloudflare Worker that serves the app. Runs only after the CI workflow has
+# gone green for the same commit on master.
+#
+# `workflow_run` is used instead of `needs:` because CI lives in its own file;
+# every step below therefore checks out the exact SHA CI validated, never
+# whatever master happens to be at the time.
+#
+# Required repository secrets:
+#   CONVEX_DEPLOY_KEY       prod deploy key (`convex deployment token create … --prod`)
+#   CLOUDFLARE_API_TOKEN    scoped token: Workers Scripts R/W, Workers KV R/W,
+#                           Workers Observability Write, Account Settings Read,
+#                           Workers Routes Write + DNS Write (all zones)
+#   CLOUDFLARE_ACCOUNT_ID   Cloudflare account the Worker lives in
+#
+# Build-time config (VITE_CONVEX_URL / VITE_CONVEX_SITE_URL / VITE_SITE_URL)
+# comes from the committed .env.production — those are public values baked into
+# the client bundle, so CI needs no secrets to produce a correct build.
+# Runtime secrets live on the Convex deployment (`convex env set … --prod`) and
+# as Worker secrets (`wrangler secret put …`); neither is touched by a deploy.
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [master]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    name: Convex + Cloudflare Workers
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    # workflow_dispatch has no workflow_run payload, so allow it through too.
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      github.event.workflow_run.conclusion == 'success'
+    environment:
+      name: production
+      url: https://trackstage.app
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          # The commit CI validated (falls back to the dispatched ref).
+          ref: ${{ github.event.workflow_run.head_sha || github.ref }}
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # Backend first: the Worker bundle that follows assumes these functions
+      # and this schema already exist.
+      - name: Deploy Convex (production)
+        run: pnpm exec convex deploy -y
+        env:
+          CONVEX_DEPLOY_KEY: ${{ secrets.CONVEX_DEPLOY_KEY }}
+
+      - name: Build app (mode=production → .env.production)
+        run: pnpm build
+
+      - name: Deploy Cloudflare Worker
+        run: pnpm exec wrangler deploy
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+      # A deploy that reports success while the Worker 500s on boot is worse
+      # than a failed deploy — prove the live origin renders before going green.
+      - name: Smoke-test production
+        run: node scripts/smoke-production.mjs
+
+      - name: Summary
+        if: always()
+        run: |
+          {
+            echo "### Deployed"
+            echo ""
+            echo "- App: https://trackstage.app"
+            echo "- Fallback: https://trackstage.kortix.workers.dev"
+            echo "- Convex: https://keen-eagle-41.convex.cloud"
+            echo "- Commit: \`${{ github.event.workflow_run.head_sha || github.sha }}\`"
+          } >> "$GITHUB_STEP_SUMMARY"

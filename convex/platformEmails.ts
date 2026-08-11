@@ -89,11 +89,11 @@ export const sendWorkspaceInvite = internalAction({
     return await sendTransactionalEmail({
       to: args.toEmail,
       kind: "workspace-invite",
-      subject: `${args.inviterName} invited you to ${args.workspaceName} on Sessionboard`,
+      subject: `${args.inviterName} invited you to ${args.workspaceName} on Trackstage`,
       html: [
         `<p>Hi,</p>`,
-        `<p><strong>${args.inviterName}</strong> invited you to join the <strong>${args.workspaceName}</strong> workspace on Sessionboard as ${args.role === "admin" ? "an admin" : "a member"}.</p>`,
-        `<p>Sessionboard is where the team manages the call for speakers, reviews submissions, and builds the event agenda.</p>`,
+        `<p><strong>${args.inviterName}</strong> invited you to join the <strong>${args.workspaceName}</strong> workspace on Trackstage as ${args.role === "admin" ? "an admin" : "a member"}.</p>`,
+        `<p>Trackstage is where the team manages the call for speakers, reviews submissions, and builds the event agenda.</p>`,
         emailButton(loginUrl, "Create your account"),
         `<p>Sign up with this email address (${args.toEmail}) and you'll land in the workspace automatically.</p>`,
       ].join("\n"),
@@ -125,15 +125,15 @@ export const sendPasswordReset = internalAction({
       to: args.toEmail,
       kind: "password-reset",
       previewNote: `link=${args.url}`,
-      subject: "Reset your Sessionboard password",
+      subject: "Reset your Trackstage password",
       html: [
         `<p>${firstName ? `Hi ${firstName},` : "Hi,"}</p>`,
-        `<p>We received a request to reset the password for your Sessionboard account (${args.toEmail}). Pick a new one here:</p>`,
+        `<p>We received a request to reset the password for your Trackstage account (${args.toEmail}). Pick a new one here:</p>`,
         emailButton(args.url, "Reset your password"),
         `<p style="color:#5b5b66;font-size:13px">This link expires in ${args.expiresInMinutes} minutes and can only be used once.</p>`,
         `<p style="color:#5b5b66;font-size:13px">If the button doesn't work, paste this into your browser:<br /><span style="word-break:break-all">${args.url}</span></p>`,
         `<p style="color:#5b5b66;font-size:13px">Didn't ask for this? You can safely ignore this email — your password stays exactly as it is unless the link above is used.</p>`,
-        `<p style="color:#5b5b66;font-size:13px">— Sessionboard</p>`,
+        `<p style="color:#5b5b66;font-size:13px">— Trackstage</p>`,
       ].join("\n"),
     })
   },
@@ -175,7 +175,7 @@ export const sendSubmissionNotification = internalAction({
     const html = [
       `<p>${verb}${who} for <strong>${args.eventName}</strong>${args.formName ? ` via ${args.formName}` : ""}.</p>`,
       `<p style="font-size:17px;margin:18px 0 6px"><strong>${args.submissionTitle}</strong></p>`,
-      emailButton(args.link, "Open in Sessionboard"),
+      emailButton(args.link, "Open in Trackstage"),
       `<p style="color:#6b7280;font-size:13px">You're receiving this because your address is on this form's notification list. Change it in the form builder's Notifications step.</p>`,
     ].join("\n")
 

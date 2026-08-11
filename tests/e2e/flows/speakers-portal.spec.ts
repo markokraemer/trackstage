@@ -61,15 +61,16 @@ async function freshSpeaker(
   label: string,
 ) {
   const email = testEmail(label)
+  const lastName = `Portal${unique("p").slice(-4)}`
   const added = await organizer.mutation(api.speakersAdmin.addManual, {
     eventId,
     firstName: "Portia",
-    lastName: `Portal${unique("p").slice(-4)}`,
+    lastName,
     email,
     company: "Portal Co",
     workflowStatus: "confirmed",
   })
-  return { ...added, email }
+  return { ...added, email, lastName }
 }
 
 test.describe("speakers roster + portal", () => {
@@ -98,11 +99,12 @@ test.describe("speakers roster + portal", () => {
     const dialog = page.getByRole("dialog").first()
     await expect(dialog).toBeVisible({ timeout: 20_000 })
     await fillStable(dialog.locator("#task-title"), taskTitle)
-    await fillStable(dialog.locator("#task-speaker-search"), speaker.email)
-    await dialog
-      .getByRole("checkbox", { name: new RegExp("assign to", "i") })
-      .first()
-      .check()
+    await fillStable(dialog.locator("#task-speaker-search"), speaker.lastName)
+    const assignTo = dialog.getByRole("checkbox", {
+      name: new RegExp(`assign to .*${speaker.lastName}`, "i"),
+    })
+    await expect(assignTo).toBeVisible({ timeout: 20_000 })
+    await assignTo.check()
     await dialog.getByRole("button", { name: /^assign task$/i }).first().click()
     await expectToast(page, /task assigned/i, 30_000)
     await clearToasts(page)
@@ -117,7 +119,8 @@ test.describe("speakers roster + portal", () => {
     const portal = await context.newPage()
     const portalWatcher = armed(portal)
     await gotoStable(portal, `/portal/t/${speaker.portalToken}`, "networkidle")
-    await expect(portal.getByRole("tab", { name: /profile/i }).first()).toBeVisible({
+    // The magic link lands on the portal home for this speaker.
+    await expect(portal.getByText(speaker.lastName).first()).toBeVisible({
       timeout: 45_000,
     })
 

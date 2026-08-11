@@ -10,7 +10,7 @@ import {
 
 export const Route = createFileRoute("/docs/guide/share-and-collect")({
   component: Page,
-  head: () => ({ meta: [{ title: "Share it & collect · Sessionboard docs" }] }),
+  head: () => ({ meta: [{ title: "Share it & collect · Trackstage docs" }] }),
 })
 
 function Page() {

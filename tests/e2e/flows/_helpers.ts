@@ -128,6 +128,11 @@ export async function createSubmission(
 export const KNOWN_CONSOLE_NOISE = [
   // KI-1: Base UI Tabs render Links via `render`, keeping nativeButton=true.
   /Base UI: A component that acts as a button expected a native <button>/i,
+  // Not a page error at all: the TanStack devtools bridge replays *server*
+  // console output into every connected browser tab, so a log emitted while
+  // handling someone else's request shows up here. Dev-only transport noise —
+  // real SSR failures still arrive as `pageerror`, which stays strict.
+  /__tsd\/open-source/i,
 ]
 
 /** Arm console tracking and return the watcher (call assertClean at the end). */

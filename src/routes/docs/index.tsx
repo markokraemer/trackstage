@@ -41,7 +41,7 @@ const SURFACES = [
     icon: RiCodeSSlashLine,
     title: "API",
     description:
-      "Read your sessions, speakers and submissions over plain HTTP, plus a calendar feed that needs no key.",
+      "Read your sessions, speakers and submissions over plain HTTP, plus a calendar feed that needs no key. Full-screen interactive reference.",
     meta: "4 endpoints",
   },
   {
@@ -137,6 +137,17 @@ function DocsIndexPage() {
           </li>
         ))}
       </ol>
+
+      <p className="mt-6 text-[0.875rem] text-muted-foreground">
+        Running it yourself?{" "}
+        <Link
+          to="/docs/self-host"
+          className="font-medium text-primary underline underline-offset-4"
+        >
+          Self-host in five minutes
+        </Link>
+        .
+      </p>
     </div>
   )
 }

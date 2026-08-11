@@ -73,8 +73,16 @@ const COLUMNS: Array<FooterColumn> = [
   {
     title: "The competition",
     links: [
-      { label: "Kill My SaaS brief", href: KILL_MY_SAAS_POST_URL, external: true },
-      { label: "The tool we're replacing", href: SESSIONBOARD_URL, external: true },
+      {
+        label: "Kill My SaaS brief",
+        href: KILL_MY_SAAS_POST_URL,
+        external: true,
+      },
+      {
+        label: "Sessionboard — the tool we're replacing",
+        href: SESSIONBOARD_URL,
+        external: true,
+      },
     ],
   },
 ]
@@ -97,9 +105,7 @@ export function MarketingFooter() {
               className="[&_[data-slot=wordmark]]:text-background"
             />
             <p className="mt-4 text-sm leading-relaxed text-background/60">
-              Open-source speaker and program management. Collect talks, review
-              them, build the agenda, keep everyone in the loop. Fork it, host
-              it, make it yours.
+              Open-source speaker &amp; program management.
             </p>
           </div>
 
@@ -132,10 +138,7 @@ export function MarketingFooter() {
         </div>
 
         <div className="mt-12 flex flex-col gap-4 border-t border-background/10 pt-7 text-sm text-background/55 lg:flex-row lg:items-center lg:justify-between">
-          <p>
-            MIT licensed — free forever, self-host it anywhere. Built for
-            swyx&rsquo;s Kill My SaaS.
-          </p>
+          <p>MIT licensed. Built for swyx&rsquo;s Kill My SaaS.</p>
           <div className="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:gap-5">
             <p className="font-mono text-xs">
               {PUBLIC_ICS_PATH} · {MCP_ENDPOINT_PATH}

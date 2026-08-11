@@ -41,26 +41,22 @@ const PILLARS: Array<Pillar> = [
   {
     icon: RiInboxUnarchiveLine,
     title: "Collect",
-    description:
-      "One public form, your questions, your tracks. Submissions arrive already sorted.",
+    description: "One public form. Submissions arrive sorted by track.",
   },
   {
     icon: RiScalesLine,
     title: "Decide",
-    description:
-      "Evaluators score what's assigned to them. You stage accepts and declines, then send.",
+    description: "Evaluators score. You stage accepts, then send.",
   },
   {
     icon: RiCalendarScheduleLine,
     title: "Schedule",
-    description:
-      "Drag accepted sessions onto rooms and times. Clashes surface while you're moving them.",
+    description: "Drag sessions into rooms. Clashes flag themselves.",
   },
   {
     icon: RiMailSendLine,
     title: "Communicate",
-    description:
-      "Decisions, reminders and room details go out as templates, with the calendar invite attached.",
+    description: "Templated emails, with the calendar invite attached.",
   },
 ]
 
@@ -73,13 +69,17 @@ interface FeatureRow {
   link: { label: string; to?: "/login"; href?: string }
 }
 
-/** The rest of the product, one row per screen — each with its real capture. */
+/**
+ * The rest of the product, one row per screen — each with its real capture.
+ * One line of copy per row, deliberately: the screenshot beside it is doing the
+ * explaining (trim pass, 2026-08-11).
+ */
 const FEATURES: Array<FeatureRow> = [
   {
     eyebrow: "Form builder",
     title: "Build the call for speakers in an afternoon",
     description:
-      "A guided six-step wizard writes your public form: your questions, your wording, your tracks. Follow-up questions appear only when they're relevant, and the Track answer routes each submission to the right place. Copy the link and you're collecting.",
+      "A six-step wizard writes your public form — your questions, your tracks, follow-ups that appear only when they're relevant.",
     icon: RiSurveyLine,
     shot: "form",
     link: { label: "See the live form", href: DEMO_CFP_URL },
@@ -88,7 +88,7 @@ const FEATURES: Array<FeatureRow> = [
     eyebrow: "Agenda",
     title: "Drag a session into a room. That's the whole thing.",
     description:
-      "One board, four views — list, day, rooms and conflicts. Accepted sessions wait in a tray until you place them, double-bookings are flagged as you drag, and the public schedule updates the moment you publish.",
+      "List, day, rooms and conflicts on one board — double-bookings flag themselves while you're still dragging.",
     icon: RiCalendarScheduleLine,
     shot: "agendaGif",
     link: { label: "Open the agenda", to: "/login" },
@@ -97,7 +97,7 @@ const FEATURES: Array<FeatureRow> = [
     eyebrow: "Speaker portal",
     title: "Speakers keep their own details up to date",
     description:
-      "Send one link — no password for them to forget. They see their talks, their profile completeness and exactly what's still outstanding, so you stop digging headshots out of email threads.",
+      "One link, no password: they see their talks, their profile and exactly what's still outstanding.",
     icon: RiUserVoiceLine,
     shot: "portal",
     link: { label: "Open the speaker portal", href: DEMO_PORTAL_URL },
@@ -106,7 +106,7 @@ const FEATURES: Array<FeatureRow> = [
     eyebrow: "Public program",
     title: "Your schedule, published the moment you're ready",
     description:
-      "Attendees get a fast public schedule, session pages and speaker pages on your event link, plus personal itineraries and calendar files. Your website team gets an API instead of a ticket queue.",
+      "A fast public schedule with session and speaker pages, personal itineraries and calendar files.",
     icon: RiGlobalLine,
     shot: "program",
     link: { label: "See a published program", href: DEMO_PROGRAM_URL },
@@ -127,7 +127,7 @@ export function FeatureSections() {
             </span>
           </>
         }
-        description="The same jobs the $40k-a-year tool does — fewer clicks, plainer words, and pages that finish loading before you've let go of the mouse."
+        description="The same jobs the $40k-a-year tool does, in fewer clicks."
       />
 
       <ShowcaseBlock />

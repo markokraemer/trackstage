@@ -63,4 +63,10 @@ crons.interval(
   {},
 )
 
+// Public REST API housekeeping (convex/webhooks.ts): trim the webhook delivery
+// log past its retention window, and drop two-phase file uploads that were
+// initiated but never completed (along with any bytes they parked in storage).
+crons.cron("webhook-delivery-sweep", "20 4 * * *", internal.webhooks.sweepDeliveries, {})
+crons.cron("upload-intent-sweep", "40 4 * * *", internal.webhooks.sweepUploadIntents, {})
+
 export default crons

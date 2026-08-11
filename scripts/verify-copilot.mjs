@@ -44,6 +44,9 @@ const DEMO = {
   password: "demo2026",
 }
 
+/** A single turn may chain up to 16 tool steps; beyond this it is wedged. */
+const TURN_TIMEOUT_MS = 180_000
+
 const args = process.argv.slice(2)
 const only = args.find((a) => a.startsWith("--only="))?.slice("--only=".length)
 const write = !args.includes("--no-write")
@@ -97,6 +100,8 @@ async function signIn() {
  * `tool-approval-request` and `tool-output-available`.
  */
 async function turn(cookies, { messages, eventName, eventSlug, knownTools }) {
+  // A wedged model stream must fail this turn, not hang the whole suite —
+  // which is exactly what happened before this timeout existed.
   const res = await fetch(`${APP}/api/chat`, {
     method: "POST",
     headers: {
@@ -110,6 +115,7 @@ async function turn(cookies, { messages, eventName, eventSlug, knownTools }) {
       eventName,
       eventSlug,
     }),
+    signal: AbortSignal.timeout(TURN_TIMEOUT_MS),
   })
   if (!res.ok) {
     throw new Error(`chat failed: ${res.status} ${await res.text()}`)
@@ -347,8 +353,11 @@ const APPROVALS = [
   },
   {
     id: "delete-event",
-    // Same: only the throwaway event this run created.
-    text: 'Delete the event called "Copilot Verification Event".',
+    // Same: only the throwaway event this run created. `delete_event` takes
+    // two independent confirmations and its description tells the model never
+    // to guess `confirmName` — so the prompt has to supply it verbatim, which
+    // is exactly how a real organizer would be asked for it.
+    text: 'Delete the event named exactly "Copilot Verification Event". Its confirmName is "Copilot Verification Event" and confirm is true. Call delete_event now.',
     expect: "delete_event",
   },
 ]
@@ -389,10 +398,16 @@ async function main() {
   for (const prompt of PROMPTS) {
     if (only && !prompt.id.includes(only)) continue
     console.log(`▸ ${prompt.id}: "${prompt.text}"`)
-    const result = await turn(cookies, {
-      messages: [userMessage(prompt.text)],
-      ...context,
-    })
+    let result
+    try {
+      result = await turn(cookies, {
+        messages: [userMessage(prompt.text)],
+        ...context,
+      })
+    } catch (error) {
+      check(`${prompt.id} → turn completed`, false, String(error))
+      continue
+    }
     record(result.tools)
     const hit = result.tools.find((t) => t.toolName === prompt.expect)
     check(`${prompt.id} → called ${prompt.expect}`, Boolean(hit),
@@ -410,10 +425,16 @@ async function main() {
   for (const prompt of APPROVALS) {
     if (only && !prompt.id.includes(only)) continue
     console.log(`▸ ${prompt.id} (approval): "${prompt.text}"`)
-    const first = await turn(cookies, {
-      messages: [userMessage(prompt.text)],
-      ...context,
-    })
+    let first
+    try {
+      first = await turn(cookies, {
+        messages: [userMessage(prompt.text)],
+        ...context,
+      })
+    } catch (error) {
+      check(`${prompt.id} → turn completed`, false, String(error))
+      continue
+    }
     const suspended = first.tools.find((t) => t.toolName === prompt.expect)
     check(
       `${prompt.id} → ${prompt.expect} requested approval`,
@@ -432,31 +453,50 @@ async function main() {
     // does this automatically via `sendAutomaticallyWhen`.
     if (!suspended?.approvalId) continue
 
+    // Rebuild the assistant turn EXACTLY as the browser would resend it:
+    // tools that already ran carry their output (so the SDK does not run them
+    // a second time), and only the suspended ones carry an approval answer.
+    // Getting this wrong double-executed every tool in the turn — which reads
+    // as "Task not found" / "No form matches <id>" on the second pass, i.e. a
+    // harness bug that looks exactly like a product bug.
+    const assistantParts = []
+    for (const event of first.events) {
+      if (event.type !== "tool-input-available") continue
+      const approvalId = first.events.find(
+        (other) =>
+          other.type === "tool-approval-request" &&
+          other.toolCallId === event.toolCallId,
+      )?.approvalId
+      const done = first.events.find(
+        (other) =>
+          other.type === "tool-output-available" &&
+          other.toolCallId === event.toolCallId,
+      )
+      const base = {
+        type: "dynamic-tool",
+        toolName: event.toolName,
+        toolCallId: event.toolCallId,
+        input: event.input,
+      }
+      if (approvalId) {
+        assistantParts.push({
+          ...base,
+          state: "approval-responded",
+          approval: { id: approvalId, approved: true },
+        })
+      } else if (done) {
+        assistantParts.push({
+          ...base,
+          state: "output-available",
+          output: done.output,
+        })
+      }
+    }
+
     const approvalTurn = await turn(cookies, {
       messages: [
         userMessage(prompt.text),
-        {
-          id: "a-1",
-          role: "assistant",
-          parts: first.events
-            .filter((e) => e.type === "tool-input-available")
-            .map((e) => ({
-              type: "dynamic-tool",
-              toolName: e.toolName,
-              toolCallId: e.toolCallId,
-              state: "approval-responded",
-              input: e.input,
-              approval: {
-                id:
-                  first.events.find(
-                    (x) =>
-                      x.type === "tool-approval-request" &&
-                      x.toolCallId === e.toolCallId,
-                  )?.approvalId ?? suspended.approvalId,
-                approved: true,
-              },
-            })),
-        },
+        { id: "a-1", role: "assistant", parts: assistantParts },
       ],
       ...context,
       knownTools: first.names,

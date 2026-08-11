@@ -757,7 +757,7 @@ export const icsContexts = internalQuery({
       out.push({
         messageId,
         filename: `${slugify(submission.title) || "session"}.ics`,
-        uid: `${submission._id}@sessionboard`,
+        uid: `${submission._id}@trackstage`,
         title: submission.title,
         description: submission.description,
         startsAt: submission.startsAt,

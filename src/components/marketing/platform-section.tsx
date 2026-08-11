@@ -1,15 +1,12 @@
 import {
   RiCalendarCheckLine,
   RiCodeSSlashLine,
-  RiKey2Line,
   RiPlugLine,
   RiRobot2Line,
   RiTerminalBoxLine,
 } from "@remixicon/react"
 import type { RemixiconComponentType } from "@remixicon/react"
 
-import { cn } from "@/lib/utils"
-import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { MarketingSection, SectionIntro } from "@/components/marketing/section"
 import {
@@ -30,42 +27,30 @@ interface Surface {
   meta: string
 }
 
-/** Three ways out of the app — all of them real, all of them documented. */
+/**
+ * Three ways out of the app — all of them real, all of them documented. One
+ * tight row is the whole section now (trim pass, 2026-08-11): the copilot
+ * prompt-chip panel repeated what the MCP cell already says.
+ */
 const SURFACES: Array<Surface> = [
   {
     icon: RiCodeSSlashLine,
     title: "Read API",
-    description:
-      "Sessions, speakers and submissions as paginated JSON. Point your event site at it instead of pasting a schedule into HTML.",
+    description: "Sessions, speakers and submissions as paginated JSON.",
     meta: `GET ${PUBLIC_API_PREFIX}/sessions`,
   },
   {
     icon: RiCalendarCheckLine,
     title: "Calendar feed",
-    description:
-      "The whole programme as .ics — subscribed once and correct forever. No key needed, and every decision email carries the invite too.",
+    description: "The whole programme as .ics. No key needed.",
     meta: `GET ${PUBLIC_ICS_PATH}`,
   },
   {
-    icon: RiKey2Line,
-    title: "Keys, not scraping",
-    description:
-      "Workspace-scoped API keys and OAuth for agents. Nothing here needs a browser session or a support ticket.",
-    meta: "Authorization: Bearer sk_…",
+    icon: RiRobot2Line,
+    title: "MCP server",
+    description: `${MCP_TOOL_COUNT} tools over OAuth. Anything destructive asks first.`,
+    meta: `POST ${MCP_ENDPOINT_PATH}`,
   },
-]
-
-/**
- * The prompts our MCP tools actually cover — copy of the real tool surface in
- * `convex/mcp.ts`, written as an organizer would say them. Rendered as static
- * chips: this is a picture of the copilot, not a fake chat you can talk to.
- */
-const COPILOT_PROMPTS = [
-  "Who still owes me a headshot?",
-  "Accept the top three AI Engineering talks",
-  "Move the keynote to Main Stage at 9am",
-  "Send reminders to everyone with an open task",
-  "What's clashing on Tuesday?",
 ]
 
 export function PlatformSection() {
@@ -82,7 +67,7 @@ export function PlatformSection() {
             </span>
           </>
         }
-        description="Everything the app can read, something else can read too — over a documented HTTP API, over calendar feeds, or over MCP."
+        description={`Point your website at the API, subscribe to the calendar feed, or connect Claude, ChatGPT and Codex straight to ${PRODUCT_NAME}.`}
       />
 
       <div className="mt-12 grid overflow-hidden rounded-2xl border border-border bg-card lg:grid-cols-3">
@@ -109,68 +94,15 @@ export function PlatformSection() {
         ))}
       </div>
 
-      {/* MCP + copilot — one calm panel, no simulated conversation. */}
-      <div className="mt-5 grid gap-5 rounded-2xl border border-border bg-card p-6 lg:grid-cols-[1fr_1.1fr] lg:gap-10 lg:p-8">
-        <div>
-          <div className="flex items-center gap-2.5">
-            <span className="flex size-8 items-center justify-center rounded-lg border border-border text-muted-foreground">
-              <RiRobot2Line size={16} aria-hidden />
-            </span>
-            <Badge variant="secondary" className="h-6 rounded-full px-2.5">
-              MCP server built in
-            </Badge>
-          </div>
-
-          <h3 className="mt-5 font-heading text-2xl font-semibold tracking-[-0.02em] text-balance text-foreground">
-            Ask for it instead of clicking for it
-          </h3>
-          <p className="mt-3.5 text-base leading-relaxed text-pretty text-muted-foreground">
-            {PRODUCT_NAME} ships {MCP_TOOL_COUNT} MCP tools over OAuth at{" "}
-            <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-[13px] text-foreground">
-              {MCP_ENDPOINT_PATH}
-            </code>
-            . Connect Claude, ChatGPT or Codex and they can read your programme
-            and change it — or use the copilot built into the app, which runs on
-            exactly the same tools. Anything destructive asks first.
-          </p>
-
-          <div className="mt-6 flex flex-wrap gap-2.5">
-            <Button
-              variant="outline"
-              nativeButton={false}
-              render={<a href={GITHUB_README_URL} {...EXTERNAL_LINK_PROPS} />}
-            >
-              <RiTerminalBoxLine aria-hidden />
-              Read the docs
-            </Button>
-          </div>
-        </div>
-
-        <div className="rounded-xl border border-border bg-background p-5">
-          <p className="text-xs font-medium tracking-[0.1em] text-muted-foreground uppercase">
-            Things people ask it
-          </p>
-          <ul className="mt-4 flex flex-wrap gap-2">
-            {COPILOT_PROMPTS.map((prompt, index) => (
-              <li key={prompt}>
-                <Badge
-                  variant="outline"
-                  className={cn(
-                    // Long prompts must wrap on a 360px screen, not push the page.
-                    "h-auto rounded-full border-border bg-card px-3.5 py-1.5 text-[13px] font-normal whitespace-normal",
-                    index === 0 ? "text-foreground" : "text-muted-foreground"
-                  )}
-                >
-                  {prompt}
-                </Badge>
-              </li>
-            ))}
-          </ul>
-          <p className="mt-5 text-xs leading-relaxed text-muted-foreground">
-            Every tool call that writes — accepting a talk, moving a session,
-            emailing a speaker — surfaces a confirmation card before it runs.
-          </p>
-        </div>
+      <div className="mt-7">
+        <Button
+          variant="outline"
+          nativeButton={false}
+          render={<a href={GITHUB_README_URL} {...EXTERNAL_LINK_PROPS} />}
+        >
+          <RiTerminalBoxLine aria-hidden />
+          Read the docs
+        </Button>
       </div>
     </MarketingSection>
   )

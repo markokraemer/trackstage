@@ -7,7 +7,10 @@ import {
 
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
-import { DISPLAY_HEADING, MarketingSection } from "@/components/marketing/section"
+import {
+  DISPLAY_HEADING,
+  MarketingSection,
+} from "@/components/marketing/section"
 import {
   EXTERNAL_LINK_PROPS,
   GITHUB_URL,
@@ -17,8 +20,8 @@ import {
 } from "@/components/marketing/links"
 
 const STATS = [
-  { value: "$40k+/yr", label: "What the tool we're replacing costs" },
-  { value: "MIT", label: "What this one costs" },
+  { value: "$40k+/yr", label: "The tool we're replacing" },
+  { value: "MIT", label: "This one" },
   { value: "100%", label: "Of the source, in the open" },
 ]
 
@@ -44,24 +47,21 @@ export function OpenSource() {
 
         <div className="space-y-4 text-base leading-relaxed text-muted-foreground">
           <p>
-            swyx runs the AI Engineer conferences. His team pays over $40,000 a
-            year for{" "}
+            swyx&rsquo;s team pays over $40,000 a year for{" "}
             <a
               href={SESSIONBOARD_URL}
               {...EXTERNAL_LINK_PROPS}
               className={PROSE_LINK_CLASS}
             >
-              a speaker platform
-            </a>{" "}
-            they use maybe a third of. So he wrote a brief, put $10,000 on the
-            table, and asked the internet to kill it.
+              Sessionboard
+            </a>
+            , which they use maybe a third of — so he put $10,000 on the table
+            and asked the internet to kill it.
           </p>
           <p>
-            This is our answer — the same jobs, rebuilt for the people who
-            actually produce events rather than the people who buy software. The
-            code, the design system, the decisions and the build log are all in
-            the repo. If it doesn&rsquo;t do what your event needs, open an
-            issue. Or change it yourself; that&rsquo;s rather the point.
+            This is our answer: the same jobs, rebuilt for the people who
+            actually produce events. Code, design system and build log are all
+            in the repo.
           </p>
 
           <div className="flex flex-wrap gap-2.5 pt-2">
@@ -94,7 +94,7 @@ export function OpenSource() {
         </div>
       </div>
 
-      <dl className="mt-14 grid gap-px overflow-hidden rounded-2xl border border-border bg-border sm:grid-cols-3">
+      <dl className="mt-12 grid gap-px overflow-hidden rounded-2xl border border-border bg-border sm:grid-cols-3">
         {STATS.map((stat) => (
           <div key={stat.label} className="bg-card px-6 py-5">
             <dt

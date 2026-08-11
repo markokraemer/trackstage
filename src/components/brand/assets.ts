@@ -1,5 +1,5 @@
 /**
- * Brand asset kit — one source of truth for the Sessionboard logo geometry,
+ * Brand asset kit — one source of truth for the Trackstage logo geometry,
  * plus pure client-side SVG/PNG generators for every asset we could need
  * (docs/memory/RULES.md #18). No server assets, no build step: the same rect
  * geometry drives the React `<LogoMark>`, the downloadable SVGs, the rasterised
@@ -12,7 +12,7 @@ export const BRAND_MUTED = "#6E6E76"
 export const BRAND_SURFACE = "#FAFAFA"
 export const BRAND_WHITE = "#FFFFFF"
 
-export const WORDMARK = "Sessionboard"
+export const WORDMARK = "Trackstage"
 export const BRAND_TAGLINE =
   "Open-source speaker and program management"
 
@@ -48,7 +48,7 @@ export type BrandTone = "color" | "inverse"
 const FONT_STACK = `'Inter Variable', Inter, system-ui, -apple-system, 'Segoe UI', sans-serif`
 
 /** Wordmark width as a multiple of its font size (Inter Semibold, tight). */
-const WORDMARK_WIDTH_RATIO = 6.35
+const WORDMARK_WIDTH_RATIO = 5.35
 /** Lockup metrics, all relative to the mark size. */
 const LOCKUP_GAP = 0.28
 const LOCKUP_FONT = 0.62
@@ -340,7 +340,7 @@ export async function downloadSocialAvatarPng(px: number): Promise<void> {
   const image = await loadSvgImage(socialAvatarSvg(px))
   const { canvas, ctx } = createCanvas(px, px)
   ctx.drawImage(image, 0, 0, px, px)
-  triggerDownload(await canvasToBlob(canvas), `sessionboard-social-${px}.png`)
+  triggerDownload(await canvasToBlob(canvas), `trackstage-social-${px}.png`)
 }
 
 /** 1200×630 OG banner PNG, text drawn with the real Inter. */
@@ -378,7 +378,7 @@ export async function downloadOgImagePng(): Promise<void> {
     markTop + markSize + 156,
   )
 
-  triggerDownload(await canvasToBlob(canvas), "sessionboard-og-1200x630.png")
+  triggerDownload(await canvasToBlob(canvas), "trackstage-og-1200x630.png")
 }
 
 /** Favicon PNG at a given pixel size, from the boxed mark. */

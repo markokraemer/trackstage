@@ -14,7 +14,7 @@ import { statusLabel } from "@/components/shared/status-pill"
  *  - the EVENT in the switcher — name, slug and dates, so the model can pass
  *    the right `event` argument and reason about "next week";
  *  - the SCREEN — which page, and the filters/selection that page keeps in the
- *    URL. Sessionboard deliberately puts every filter in the query string
+ *    URL. Trackstage deliberately puts every filter in the query string
  *    (see /app/submissions, /app/agenda, /app/communications), which means the
  *    copilot can read the organizer's current view without any screen having
  *    to report it.

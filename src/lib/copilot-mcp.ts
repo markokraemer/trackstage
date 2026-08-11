@@ -20,7 +20,7 @@ import type { ToolSet } from "ai"
  */
 
 const PROTOCOL_VERSION = "2025-06-18"
-const CLIENT_INFO = { name: "sessionboard-copilot", version: "1.0.0" }
+const CLIENT_INFO = { name: "trackstage-copilot", version: "1.0.0" }
 
 type JsonRpcResponse = {
   jsonrpc: "2.0"
@@ -84,7 +84,7 @@ async function rpc(
     })
   } catch (cause) {
     throw new McpTransportError(
-      `Could not reach the Sessionboard MCP server at ${connection.endpoint}: ${
+      `Could not reach the Trackstage MCP server at ${connection.endpoint}: ${
         cause instanceof Error ? cause.message : String(cause)
       }`
     )
@@ -95,21 +95,21 @@ async function rpc(
 
   if (response.status === 401 || response.status === 403) {
     throw new McpTransportError(
-      "The Sessionboard MCP server rejected the copilot's credentials."
+      "The Trackstage MCP server rejected the copilot's credentials."
     )
   }
 
   const text = await response.text()
   if (!response.ok && text.length === 0) {
     throw new McpTransportError(
-      `Sessionboard MCP server returned ${response.status}.`
+      `Trackstage MCP server returned ${response.status}.`
     )
   }
 
   const payload = parseBody(text, response.headers.get("content-type"))
   if (!payload) {
     throw new McpTransportError(
-      `Sessionboard MCP server returned an unreadable ${method} response.`
+      `Trackstage MCP server returned an unreadable ${method} response.`
     )
   }
   if (payload.error) {

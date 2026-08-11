@@ -547,3 +547,60 @@ organizer had no way back in.
   and every seeded speaker currently fail at the provider (logged as `[email:failed]`, never
   surfaced to the user). Verifying a domain + changing `EMAIL_FROM` is a one-time config step
   and is the only thing between this and real delivery.
+
+## 2026-08-11 · Session: production deployment + CI/CD + the Trackstage rename
+
+**Trackstage is live at https://trackstage.app.** What that took, and what was learned.
+
+**Prod Convex is a separate deployment, not a promoted dev.** `convex deploy -y`
+provisioned `keen-eagle-41` (dashboard: `.../sessionboard/keen-eagle-41`) alongside dev
+`neat-sparrow-926`. First push failed typecheck on an in-flight `convex/apiV1.ts` that
+used `internal.webhooks.deliver` without importing `internal` — a one-line fix, but the
+useful part is the shape of the failure: **`convex deploy` typechecks the whole `convex/`
+tree, so any agent's half-written file blocks everyone's deploy.** Env set on prod: a
+NEW `BETTER_AUTH_SECRET` (never dev's — a shared signing secret means a dev session is a
+prod session), `RESEND_API_KEY` (copied), `EMAIL_FROM`, `OPENROUTER_API_KEY`,
+a freshly generated `PUBLIC_API_TOKEN`, `SITE_URL`. Then `seed:setup --prod` — 18
+submissions, 14 people, 18 tasks, 2 events.
+
+**The copilot key is a WORKER secret, not a Convex one.** `src/routes/api/chat.ts` runs
+in the Cloudflare Worker, so `OPENROUTER_API_KEY` had to go in via `wrangler secret put`;
+setting it only on Convex would have produced a copilot that 500s in production and works
+locally (`.dev.vars`, which the vite plugin generates from `.env.local`, is dev-only and
+is never uploaded by `wrangler deploy`).
+
+**Domain landed mid-session.** Marko registered trackstage.app while this was running, so
+step 5 (domain-ready) became step-now: `routes: [{pattern, custom_domain: true}]` in
+`wrangler.jsonc` → Cloudflare provisioned record + cert. Two gotchas worth remembering:
+(1) **declaring `routes` disables workers.dev** unless you also set `"workers_dev": true`
+— the deploy output warns, quietly; (2) the local macOS resolver cached the pre-registration
+NXDOMAIN for the whole session — 1.1.1.1 answered correctly and `curl --resolve
+trackstage.app:443:104.21.72.202` returned a valid-cert 200, which is how the domain was
+verified. **A negative DNS cache on one machine is not a broken deploy.**
+
+Origin rebind, in the order that keeps the app working: custom domain serves → Convex
+`SITE_URL=https://trackstage.app` → rebuild (`.env.production` `VITE_SITE_URL`) → redeploy.
+`convex/auth.ts` gained explicit `trustedOrigins` because Better Auth's `baseURL` trusts
+exactly one origin, and moving it would otherwise have broken the workers.dev fallback and
+localhost. Resend reported trackstage.app **verified** (DKIM + SPF), so prod `EMAIL_FROM`
+is now `Trackstage <hello@trackstage.app>` — **the "Resend is in test mode" blocker that
+has been in TODO.md all week is closed for production.**
+
+**CI/CD.** `ci.yml` (typecheck · lint · unit, on push/PR to master) gates `deploy.yml`
+via `workflow_run` on the exact validated SHA. Backend + e2e stay out of CI on purpose:
+both mutate a live deployment's seeded data. Deploy runs convex → build → wrangler →
+`scripts/smoke-production.mjs`, a new 9-check live crawl (5 SSR routes asserted on
+*content* not just status, `/v1`, `/mcp` initialize, both OAuth discovery documents).
+Cloudflare access is a **scoped** token minted through `POST /user/tokens` — the global
+key never leaves the machine.
+
+**Verified live before claiming done:** 6 routes 200 with real SSR HTML on trackstage.app
+(`/`, `/login`, `/docs`, `/design-system`, `/submit/ai-summit-2026`, `/e/ai-summit-2026`);
+sign-in 200 with the demo organizer through both the Convex site and the app's own
+`/api/auth` proxy; `/v1/event/ai-summit-2026/sessions` 200 with the real bearer token;
+`/mcp` returning the 401 + `resource_metadata` challenge that IS the OAuth contract; both
+discovery documents advertising `issuer: https://trackstage.app`.
+
+**One-command domain path for next time:** `scripts/attach-domain.mjs` (attach → wait for
+200 → move `SITE_URL` → move `EMAIL_FROM` once Resend verifies), idempotent, paired with
+the existing `scripts/configure-domain.mjs`. Documented in README → Deploy.

@@ -33,24 +33,21 @@ interface DemoEntry {
 const DEMO_ENTRIES: Array<DemoEntry> = [
   {
     title: "Organizer demo",
-    description:
-      "The full event: submissions, review queues, the agenda and everything your speakers still owe you.",
+    description: "Submissions, review queues, agenda, speaker tasks.",
     cta: "Open the organizer app",
     icon: RiUserSettingsLine,
     to: "/login",
   },
   {
     title: "Speaker portal demo",
-    description:
-      "What a speaker sees after they're accepted — their talks, their profile, their to-do list.",
+    description: "What a speaker sees after they're accepted.",
     cta: "Open the speaker portal",
     icon: RiMicLine,
     href: DEMO_PORTAL_URL,
   },
   {
     title: "Submit a talk",
-    description:
-      "The public call-for-speakers form, exactly as a speaker fills it in. No account needed.",
+    description: "The public CFP form. No account needed.",
     cta: "Open the CFP form",
     icon: RiSendPlaneLine,
     href: DEMO_CFP_URL,
@@ -62,7 +59,7 @@ const DEMO_ENTRIES: Array<DemoEntry> = [
  * pattern: hairlines between the cells, no shadows, no rounded islands.
  */
 const CELL_CLASS = cn(
-  "group flex h-full flex-col gap-2.5 p-6 outline-none transition-colors",
+  "group flex h-full flex-col gap-2.5 p-6 transition-colors outline-none",
   "border-t border-border first:border-t-0 sm:border-t-0 sm:border-l sm:first:border-l-0",
   "hover:bg-background focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:ring-inset"
 )
@@ -85,8 +82,7 @@ export function DemoEntries() {
           Three ways in. Pick a seat.
         </h2>
         <p className="max-w-sm text-sm leading-relaxed text-pretty text-muted-foreground sm:text-right">
-          Everything below runs on a pre-loaded demo event. Nothing to install,
-          nothing to configure, nothing you can break.
+          Live, on a pre-loaded event. Nothing to install.
         </p>
       </div>
 
@@ -129,7 +125,7 @@ export function DemoEntries() {
       </div>
 
       <p className="mt-6 text-sm text-muted-foreground">
-        Curious what attendees see?{" "}
+        Attendee view:{" "}
         <a
           href={DEMO_PROGRAM_URL}
           className="inline-flex items-center gap-1 rounded-sm font-medium text-foreground underline underline-offset-4 outline-none hover:text-primary focus-visible:ring-3 focus-visible:ring-ring/50"

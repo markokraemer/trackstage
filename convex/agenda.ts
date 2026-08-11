@@ -3,6 +3,7 @@ import type { Doc, Id } from "./_generated/dataModel"
 import type { MutationCtx, QueryCtx } from "./_generated/server"
 import { mutation, query } from "./_generated/server"
 import { requireEventAccess } from "./lib/auth"
+import { emitWebhook } from "./webhooks"
 
 // A submission is schedulable when accepted (or a manual session).
 function isSchedulable(s: Doc<"submissions">) {
@@ -198,10 +199,16 @@ export const publishAgenda = mutation({
         q.eq("eventId", event._id).eq("status", "accepted"),
       )
       .collect()
-    return {
-      agendaPublishedAt: now,
-      sessionCount: accepted.filter((s) => s.startsAt !== undefined).length,
-    }
+    const sessionCount = accepted.filter((s) => s.startsAt !== undefined).length
+    // Outbound webhooks (convex/webhooks.ts) — fire-and-forget.
+    await emitWebhook(ctx, args.eventId, "agenda.published", {
+      id: args.eventId,
+      name: event.name,
+      slug: event.slug,
+      published_at: new Date(now).toISOString(),
+      session_count: sessionCount,
+    })
+    return { agendaPublishedAt: now, sessionCount }
   },
 })
 
@@ -243,6 +250,13 @@ export const schedule = mutation({
     })
     // Conflicts are computed reactively by `board` — scheduling is never
     // blocked, only flagged (organizers stay in control).
+    await emitWebhook(ctx, submission.eventId, "session.scheduled", {
+      id: args.submissionId,
+      title: submission.title,
+      room_id: args.roomId,
+      starts_at: new Date(args.startsAt).toISOString(),
+      duration_minutes: args.durationMinutes,
+    })
     return null
   },
 })
@@ -256,6 +270,10 @@ export const unschedule = mutation({
     await ctx.db.patch(args.submissionId, {
       roomId: undefined,
       startsAt: undefined,
+    })
+    await emitWebhook(ctx, submission.eventId, "session.unscheduled", {
+      id: args.submissionId,
+      title: submission.title,
     })
     return null
   },

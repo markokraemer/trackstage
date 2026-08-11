@@ -64,9 +64,11 @@ Source of truth for everything Marko asked + build status. Update continuously.
   link → new password signs in, old one 401s, token can't be replayed, no account enumeration)
   + `tests/e2e/flows/password-reset.spec.ts` (4/4)
 - ✅ Verified a real delivery end-to-end (Resend accepted, `sent: true`, to marko@kortix.ai)
-- 🔨 **Resend account is still in TEST MODE — blocks all real mail.** `EMAIL_FROM` is
-  `onboarding@resend.dev`, so Resend 403s every recipient except marko@kortix.ai. Verify a
-  domain at resend.com/domains and set `EMAIL_FROM` to it (one-time config, needs Marko)
+- ✅ **Resend test mode RESOLVED 2026-08-11** — `trackstage.app` is registered and
+  **verified** on Resend (DKIM + SPF green). Prod `EMAIL_FROM` is now
+  `Trackstage <hello@trackstage.app>`, so real mail goes to real recipients from the
+  production deployment. (Dev deployment still sends from `onboarding@resend.dev` until
+  it is flipped too.)
 
 ## Testing (harness live)
 - ✅ pnpm test (vitest unit, ics 7/7) · pnpm test:backend (78/78) · pnpm test:e2e
@@ -120,7 +122,20 @@ Source of truth for everything Marko asked + build status. Update continuously.
 - ⏳ e2e flows work via plain links/forms/buttons (browser-agent judge)
 
 ## Ship
-- ⏳ Deploy: convex deploy + wrangler deploy (workers.dev), custom domain optional
+- ✅ **Deploy — LIVE 2026-08-11**: prod Convex `keen-eagle-41` (deployed + seeded + all env
+  set) · Cloudflare Worker `trackstage` on **https://trackstage.app** (custom domain,
+  `trackstage.kortix.workers.dev` kept as fallback origin). `.env.production` (committed,
+  public values) bakes the prod Convex URLs into every production build;
+  `OPENROUTER_API_KEY` is a Worker secret. Verified: 6 SSR routes 200, sign-in 200,
+  `/v1` 200 with the real `PUBLIC_API_TOKEN`, `/mcp` 401+resource_metadata challenge,
+  OAuth discovery advertising the `https://trackstage.app` issuer.
+- ✅ **CI/CD**: `.github/workflows/ci.yml` (typecheck · lint · unit on push/PR to master)
+  gates `deploy.yml` via `workflow_run` (convex deploy → build → wrangler deploy →
+  `scripts/smoke-production.mjs`). Secrets set: `CONVEX_DEPLOY_KEY`,
+  `CLOUDFLARE_API_TOKEN` (scoped, not the global key), `CLOUDFLARE_ACCOUNT_ID`.
+- ✅ **Custom domain, one command**: `scripts/attach-domain.mjs` (Worker custom domain →
+  wait-for-200 → Convex `SITE_URL` → `EMAIL_FROM` once Resend verifies), paired with the
+  existing `scripts/configure-domain.mjs`. Both idempotent; documented in README → Deploy.
 - ⏳ Landing page: really good + simple; CTAs = open source (GitHub), try demo/sign up,
   "Declare the winner" → $10k Stripe checkout link (constant in code; Marko supplies link)
 - ✅ **Documentation (RULES.md 27)** — DONE 2026-08-11: `/docs` with 11 screenshot-led user-guide

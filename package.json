@@ -1,5 +1,5 @@
 {
-  "name": "sessionboard",
+  "name": "trackstage",
   "private": true,
   "type": "module",
   "scripts": {
@@ -13,7 +13,8 @@
     "typecheck": "tsc --noEmit",
     "dev:setup": "convex dev --once",
     "dev:convex": "convex dev",
-    "deploy": "convex deploy && wrangler deploy",
+    "deploy": "convex deploy -y && vite build && wrangler deploy && node scripts/smoke-production.mjs",
+    "smoke": "node scripts/smoke-production.mjs",
     "cf-typegen": "wrangler types --include-runtime=false",
     "test:backend": "convex run seed:setup && node scripts/verify-backend.mjs",
     "test:e2e": "playwright test",
@@ -64,6 +65,8 @@
     "convex": "^1.43.0",
     "date-fns": "^4.4.0",
     "embla-carousel-react": "^8.6.0",
+    "fumadocs-core": "^16.14.3",
+    "fumadocs-ui": "^16.14.3",
     "lucide-react": "^1.31.0",
     "media-chrome": "^4.19.2",
     "motion": "^13.0.0",

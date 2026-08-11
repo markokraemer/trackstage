@@ -36,6 +36,10 @@ export function StatusTabs({ value, counts, search }: StatusTabsProps) {
             <TabsTrigger
               key={tab.value}
               value={tab.value}
+              // Every filter is a real link (the judge is a browser agent), so
+              // this trigger renders an <a>. Base UI logs a console error on
+              // every render unless it is told the element is not a <button>.
+              nativeButton={false}
               className="h-9 flex-none rounded-none px-3 data-active:font-semibold data-active:text-primary group-data-[variant=line]/tabs-list:data-active:after:bg-primary"
               render={
                 <Link

@@ -27,7 +27,7 @@ import {
 } from "./lib/email"
 
 // ══════════════════════════════════════════════════════════════════════════
-// Sessionboard MCP server — Model Context Protocol over Streamable HTTP.
+// Trackstage MCP server — Model Context Protocol over Streamable HTTP.
 //
 // One endpoint: POST {CONVEX_SITE_URL}/mcp. JSON-RPC 2.0 in, a single JSON
 // response out (the spec allows a server to answer a request with either
@@ -71,7 +71,7 @@ import {
 // exactly why OAuth composes and API keys don't. See convex/apiKeys.ts.
 // ══════════════════════════════════════════════════════════════════════════
 
-const SERVER_NAME = "sessionboard"
+const SERVER_NAME = "trackstage"
 const SERVER_VERSION = "1.0.0"
 const LATEST_PROTOCOL = "2025-06-18"
 const SUPPORTED_PROTOCOLS = ["2025-06-18", "2025-03-26", "2024-11-05"]
@@ -185,7 +185,7 @@ const LOOPBACK_HOST =
 function linkWarning(): string | undefined {
   const base = siteUrl()
   if (!LOOPBACK_HOST.test(base)) return undefined
-  return `${base} is a loopback address (demo URL — set SITE_URL in production). Links below only work on the machine running Sessionboard — don't send them to a speaker.`
+  return `${base} is a loopback address (demo URL — set SITE_URL in production). Links below only work on the machine running Trackstage — don't send them to a speaker.`
 }
 
 /** Adds `linkWarning` to a payload that carries links, when one applies. */
@@ -2122,7 +2122,7 @@ export const TOOLS: Array<ToolDef> = [
     name: "list_workspaces",
     title: "List workspaces",
     description:
-      "Lists every Sessionboard workspace (organization) you belong to, your role in each (owner/admin/member), and how many events each one holds. Start here when you don't yet know which workspace or event to operate on.",
+      "Lists every Trackstage workspace (organization) you belong to, your role in each (owner/admin/member), and how many events each one holds. Start here when you don't yet know which workspace or event to operate on.",
     inputSchema: schema({}),
     readOnly: true,
     run: (ctx, userId) => ctx.runQuery(internal.mcp.listWorkspaces, { userId }),
@@ -2690,7 +2690,7 @@ export const TOOLS: Array<ToolDef> = [
     name: "list_outbox",
     title: "List the email outbox",
     description:
-      "Shows what Sessionboard has emailed (or is about to email) for this event: recipient, subject, template, delivery status and any error. Status \"preview\" means the message was rendered but deliberately not delivered (demo @example.com recipients, or no RESEND_API_KEY configured).",
+      "Shows what Trackstage has emailed (or is about to email) for this event: recipient, subject, template, delivery status and any error. Status \"preview\" means the message was rendered but deliberately not delivered (demo @example.com recipients, or no RESEND_API_KEY configured).",
     inputSchema: schema(
       {
         event: EVENT_ARG,
@@ -2898,7 +2898,7 @@ function unauthorized(message: string) {
     rpcError(null, INVALID_REQUEST, message),
     401,
     {
-      "WWW-Authenticate": `Bearer realm="sessionboard", resource_metadata="${resourceMetadata}"`,
+      "WWW-Authenticate": `Bearer realm="trackstage", resource_metadata="${resourceMetadata}"`,
     },
   )
 }
@@ -2941,11 +2941,11 @@ function initializeResult(requested: unknown) {
     capabilities: { tools: { listChanged: false } },
     serverInfo: {
       name: SERVER_NAME,
-      title: "Sessionboard",
+      title: "Trackstage",
       version: SERVER_VERSION,
     },
     instructions:
-      "Sessionboard runs conferences: call-for-papers forms, submissions and accept/decline decisions, the agenda, the speaker roster and their tasks, and the emails that go out. Start with list_events, then get_event_summary for the state of play (it is the whole dashboard — get_agenda is for the timetable itself). Every `event` argument takes an id or a slug. Decisions are two-step on purpose: set_submission_status stages them, commit_decision_queue is what actually emails the speakers. The same care applies to deletion: delete_event and delete_form need confirm: true, and delete_event also needs the event's exact name in confirmName — never infer a deletion the user did not explicitly ask for.",
+      "Trackstage runs conferences: call-for-papers forms, submissions and accept/decline decisions, the agenda, the speaker roster and their tasks, and the emails that go out. Start with list_events, then get_event_summary for the state of play (it is the whole dashboard — get_agenda is for the timetable itself). Every `event` argument takes an id or a slug. Decisions are two-step on purpose: set_submission_status stages them, commit_decision_queue is what actually emails the speakers. The same care applies to deletion: delete_event and delete_form need confirm: true, and delete_event also needs the event's exact name in confirmName — never infer a deletion the user did not explicitly ask for.",
   }
 }
 
@@ -3062,7 +3062,7 @@ export const handleMcpPost = httpAction(async (ctx, request) => {
   const userId = await authenticate(ctx, request)
   if (!userId) {
     return unauthorized(
-      "Missing or invalid credentials. Send `Authorization: Bearer <your Sessionboard API key>` (create one in Settings → API & MCP), or connect via OAuth.",
+      "Missing or invalid credentials. Send `Authorization: Bearer <your Trackstage API key>` (create one in Settings → API & MCP), or connect via OAuth.",
     )
   }
 
@@ -3100,12 +3100,12 @@ export const handleMcpGet = httpAction(async () => {
     {
       error: "method_not_allowed",
       message:
-        "This is the Sessionboard MCP endpoint. It speaks JSON-RPC 2.0 over HTTP POST (MCP Streamable HTTP); it does not offer a server-initiated SSE stream, so GET is not supported.",
+        "This is the Trackstage MCP endpoint. It speaks JSON-RPC 2.0 over HTTP POST (MCP Streamable HTTP); it does not offer a server-initiated SSE stream, so GET is not supported.",
       connect: {
         endpoint: `${siteBase()}/mcp`,
         transport: "http",
         auth: "Authorization: Bearer <API key from Settings → API & MCP>, or OAuth (add by URL in Claude/ChatGPT connectors).",
-        claudeCode: `claude mcp add sessionboard --transport http ${siteBase()}/mcp --header "Authorization: Bearer sb_live_..."`,
+        claudeCode: `claude mcp add trackstage --transport http ${siteBase()}/mcp --header "Authorization: Bearer sb_live_..."`,
       },
       docs: `${siteUrl()}/app/settings/api-mcp`,
     },

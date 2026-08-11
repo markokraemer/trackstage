@@ -24,22 +24,19 @@ export interface PricingProps {
 const OPEN_SOURCE_POINTS = [
   "Every feature. There are no tiers.",
   "MIT licensed — fork it, rename it, sell it",
-  "Your servers, your database, your data",
-  "Support: GitHub issues and other humans",
+  "Your servers, your data",
 ]
 
 const DEMO_POINTS = [
   "Organizer app, speaker portal and CFP form",
   "A pre-loaded event with real-looking data",
-  "No credit card, no sales call, no trial clock",
-  "You're inside it about ten seconds from now",
+  "No credit card, no sales call",
 ]
 
 const WINNER_POINTS = [
-  "One time. Not a subscription. We mean it.",
-  "Includes the source code, which you already have",
+  "One time. Not a subscription.",
   "Bragging rights (non-transferable)",
-  "Roughly three months of what you pay today",
+  "About three months of what you pay today",
 ]
 
 export function Pricing({ stripeCheckoutUrl }: PricingProps) {
@@ -48,16 +45,16 @@ export function Pricing({ stripeCheckoutUrl }: PricingProps) {
       <SectionIntro
         align="center"
         title="Free. Both kinds of free."
-        description="Free as in you keep the source, and free as in there is no invoice. Exactly one card here has a price on it, and it's a joke — mostly."
+        description="Exactly one card here has a price on it, and it's a joke — mostly."
       />
 
       {/* Three flat cells in one bordered container — Attio's plan table. */}
-      <div className="mt-14 grid gap-px overflow-hidden rounded-2xl border border-border bg-border lg:grid-cols-3">
+      <div className="mt-12 grid gap-px overflow-hidden rounded-2xl border border-border bg-border lg:grid-cols-3">
         <PlanCard
           name="Open source"
           price="$0"
           cadence="forever"
-          summary="Clone the repo and run the whole thing yourself. Nothing is held back for a paid tier — there isn't one."
+          summary="Clone the repo and run the whole thing yourself."
           points={OPEN_SOURCE_POINTS}
           action={
             <Button
@@ -79,7 +76,7 @@ export function Pricing({ stripeCheckoutUrl }: PricingProps) {
           name="Cloud demo"
           price="$0"
           cadence="try it now"
-          summary="The hosted demo, loaded with a full event. Click everything — you can't break anything that matters."
+          summary="The hosted demo, loaded with a full event. Click everything."
           points={DEMO_POINTS}
           action={
             <Button
@@ -97,7 +94,7 @@ export function Pricing({ stripeCheckoutUrl }: PricingProps) {
           name="Declare the winner"
           price="$10,000"
           cadence="one time, voluntary"
-          summary="You know who you are. If this actually replaces the $40k-a-year invoice, the prize has a Buy Now button — because of course it does."
+          summary="You know who you are. The prize has a Buy Now button — because of course it does."
           points={WINNER_POINTS}
           action={
             <DeclareWinnerButton
@@ -106,7 +103,7 @@ export function Pricing({ stripeCheckoutUrl }: PricingProps) {
               className="w-full"
             />
           }
-          footnote="Yes: this is the Kill My SaaS prize, wired to a checkout link. Entirely voluntary, wildly appreciated."
+          footnote="The Kill My SaaS prize, wired to a checkout link. Entirely voluntary."
         />
       </div>
     </MarketingSection>

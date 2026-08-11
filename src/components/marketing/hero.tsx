@@ -8,17 +8,12 @@ import { ProductShot } from "@/components/marketing/product-shot"
 import { DISPLAY_HEADING, GridBackdrop } from "@/components/marketing/section"
 import { EXTERNAL_LINK_PROPS, GITHUB_URL } from "@/components/marketing/links"
 
-const PROOF_POINTS = [
-  "MIT licensed",
-  "No credit card, no sales call",
-  "Self-host in minutes",
-]
-
 /**
  * The fold, composed the way Attio composes theirs (docs/memory/RULES.md #25):
- * a small announcement chip, one very large tight-tracked headline, two lines
- * of sub, two buttons, and then the real product filling the width beneath —
- * all sitting on a faint graph-paper wash.
+ * a small announcement chip, one very large tight-tracked headline, ONE line of
+ * sub, two buttons, and then the real product filling the width beneath — all
+ * sitting on a faint graph-paper wash. The old proof-point row said what the
+ * chip and the pricing band already say, so it's gone (trim pass, 2026-08-11).
  *
  * The headline arrives word by word (`TextReveal`) and the primary CTA has
  * press depth (`PepButton`). Nothing else on this page moves on its own.
@@ -35,7 +30,7 @@ export function Hero() {
           <a
             href={GITHUB_URL}
             {...EXTERNAL_LINK_PROPS}
-            className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-3 py-1 text-[13px] font-medium text-muted-foreground outline-none transition-colors hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50"
+            className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-3 py-1 text-[13px] font-medium text-muted-foreground transition-colors outline-none hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50"
           >
             <span className="size-1.5 rounded-full bg-primary" aria-hidden />
             Open source, MIT licensed
@@ -55,9 +50,8 @@ export function Hero() {
           </h1>
 
           <p className="mt-6 max-w-xl text-base leading-relaxed text-pretty text-muted-foreground sm:text-lg">
-            Collect talks, review them as a team, keep speakers on track, build
-            the agenda and send every email — one fast, open-source tool instead
-            of a $40,000 invoice.
+            Collect talks, review them, build the agenda and send every email —
+            one fast, open-source tool instead of a $40,000 invoice.
           </p>
 
           <div className="mt-9 flex w-full flex-col items-stretch justify-center gap-2.5 sm:w-auto sm:flex-row sm:items-center">
@@ -80,20 +74,6 @@ export function Hero() {
               Star on GitHub
             </Button>
           </div>
-
-          <ul className="mt-6 flex flex-col items-center gap-x-5 gap-y-1.5 text-sm text-muted-foreground sm:flex-row sm:flex-wrap sm:justify-center">
-            {PROOF_POINTS.map((point, index) => (
-              <li key={point} className="flex items-center gap-5">
-                {index > 0 ? (
-                  <span
-                    aria-hidden
-                    className="hidden size-1 rounded-full bg-border sm:block"
-                  />
-                ) : null}
-                {point}
-              </li>
-            ))}
-          </ul>
         </div>
 
         {/*

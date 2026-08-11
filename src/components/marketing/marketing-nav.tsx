@@ -19,21 +19,7 @@ import {
   EXTERNAL_LINK_PROPS,
   GITHUB_URL,
   PRODUCT_NAME,
-  SECTION_IDS,
 } from "@/components/marketing/links"
-
-interface NavLink {
-  label: string
-  href: string
-}
-
-const NAV_LINKS: Array<NavLink> = [
-  { label: "Product", href: `#${SECTION_IDS.product}` },
-  { label: "Live demo", href: `#${SECTION_IDS.demos}` },
-  { label: "Developers", href: `#${SECTION_IDS.platform}` },
-  { label: "Open source", href: `#${SECTION_IDS.openSource}` },
-  { label: "Pricing", href: `#${SECTION_IDS.pricing}` },
-]
 
 const NAV_LINK_CLASS =
   "rounded-md px-2.5 py-1.5 text-sm font-medium text-muted-foreground outline-none transition-colors hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50"
@@ -60,9 +46,11 @@ function useScrolledPast(offset: number) {
 }
 
 /**
- * Sticky top bar, Attio-style: logo left with the section links sitting right
- * beside it, the two things people came for on the right. The bar is invisible
- * over the hero and grows a hairline + backdrop the moment the page moves.
+ * Sticky top bar, Attio-style: logo left, and on the right only the things
+ * someone actually leaves the page for — docs, source, sign in, sign up. The
+ * page scrolls, so it carries no anchor links (Marko, 2026-08-11: a nav full of
+ * jump links is slop). The bar is invisible over the hero and grows a hairline
+ * + backdrop the moment the page moves.
  */
 export function MarketingNav() {
   const [open, setOpen] = useState(false)
@@ -85,20 +73,15 @@ export function MarketingNav() {
         <Link
           to="/"
           aria-label={`${PRODUCT_NAME} home`}
-          className="mr-4 rounded-md outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+          className="rounded-md outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
         >
           <Logo size="md" />
         </Link>
 
-        <div className="hidden items-center gap-0.5 md:flex">
-          {NAV_LINKS.map((link) => (
-            <a key={link.href} href={link.href} className={NAV_LINK_CLASS}>
-              {link.label}
-            </a>
-          ))}
-        </div>
-
         <div className="ml-auto flex items-center gap-2">
+          <Link to="/docs" className={cn(NAV_LINK_CLASS, "hidden sm:block")}>
+            Docs
+          </Link>
           <a
             href={GITHUB_URL}
             {...EXTERNAL_LINK_PROPS}
@@ -135,35 +118,22 @@ export function MarketingNav() {
                   <Logo size="sm" />
                 </SheetTitle>
                 <SheetDescription>
-                  Open-source speaker &amp; program management.
+                  Open-source program management.
                 </SheetDescription>
               </SheetHeader>
 
+              {/* Same four destinations as the desktop bar, nothing else. */}
               <div className="flex flex-col gap-1 px-4">
-                {NAV_LINKS.map((link) => (
-                  <SheetClose
-                    key={link.href}
-                    nativeButton={false}
-                    render={
-                      <a
-                        href={link.href}
-                        className="rounded-md px-2 py-2 text-sm font-medium text-foreground outline-none hover:bg-muted focus-visible:ring-3 focus-visible:ring-ring/50"
-                      />
-                    }
-                  >
-                    {link.label}
-                  </SheetClose>
-                ))}
                 <SheetClose
                   nativeButton={false}
                   render={
                     <Link
-                      to="/design-system"
+                      to="/docs"
                       className="rounded-md px-2 py-2 text-sm font-medium text-foreground outline-none hover:bg-muted focus-visible:ring-3 focus-visible:ring-ring/50"
                     />
                   }
                 >
-                  Design system
+                  Docs
                 </SheetClose>
 
                 <Separator className="my-3" />

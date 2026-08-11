@@ -8,6 +8,7 @@ import {
 import {
   RiArrowLeftSLine,
   RiArrowRightSLine,
+  RiExpandDiagonalLine,
   RiGithubFill,
   RiMenu2Line,
 } from "@remixicon/react"
@@ -145,8 +146,7 @@ function DocsLayout() {
         </aside>
 
         <main className="min-w-0 flex-1 py-8 lg:py-10">
-          {/* The API reference embeds a full reader — it gets the whole column. */}
-          <div className={pathname === "/docs/api" ? undefined : "container-reading"}>
+          <div className="container-reading">
             {section && current ? (
               <p className="mb-4 flex items-center gap-1 text-xs text-muted-foreground">
                 <Link to="/docs" className="hover:text-foreground">
@@ -200,7 +200,7 @@ function DocsTree({ pathname }: { pathname: string }) {
                 key={item.to}
                 to={item.to}
                 className={cn(
-                  "flex items-center gap-2 rounded-md px-2 py-1.5 text-[0.8125rem] leading-5 transition-colors",
+                  "group/nav flex items-center gap-2 rounded-md px-2 py-1.5 text-[0.8125rem] leading-5 transition-colors",
                   active
                     ? "bg-primary-surface font-medium text-primary"
                     : "text-muted-foreground hover:bg-muted hover:text-foreground"
@@ -212,6 +212,14 @@ function DocsTree({ pathname }: { pathname: string }) {
                   className={cn("shrink-0", active ? "text-primary" : "text-muted-foreground")}
                 />
                 <span className="truncate">{item.title}</span>
+                {/* Leaves the docs shell for a full-screen reader — say so. */}
+                {item.standalone ? (
+                  <RiExpandDiagonalLine
+                    size={13}
+                    aria-label="opens full screen"
+                    className="ml-auto shrink-0 text-muted-foreground/70"
+                  />
+                ) : null}
               </Link>
             )
           })}

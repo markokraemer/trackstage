@@ -5,6 +5,7 @@ import type { MutationCtx, QueryCtx } from "./_generated/server"
 import { mutation, query } from "./_generated/server"
 import { scheduleAirtableSync } from "./airtable"
 import { randomToken, requireEventAccess } from "./lib/auth"
+import { emitWebhook } from "./webhooks"
 import { enrichUploads } from "./lib/files"
 
 export const STATUSES = [
@@ -146,6 +147,13 @@ export const setStatus = mutation({
     if (!submission) throw new Error("Submission not found")
     await requireEventAccess(ctx, submission.eventId)
     await ctx.db.patch(args.submissionId, { status: args.status })
+    // Outbound webhooks (convex/webhooks.ts) — fire-and-forget, never blocks.
+    await emitWebhook(ctx, submission.eventId, "submission.updated", {
+      id: args.submissionId,
+      title: submission.title,
+      status: args.status,
+      previous_status: submission.status,
+    })
     return null
   },
 })
@@ -166,6 +174,12 @@ export const bulkSetStatus = mutation({
       if (!submission) continue
       await requireEventAccess(ctx, submission.eventId)
       await ctx.db.patch(id, { status: args.status })
+      await emitWebhook(ctx, submission.eventId, "submission.updated", {
+        id,
+        title: submission.title,
+        status: args.status,
+        previous_status: submission.status,
+      })
     }
     return { updated: args.submissionIds.length }
   },
@@ -223,6 +237,14 @@ export const commitQueue = mutation({
     }
     // Decisions change every mirrored row's Status — one debounced sync.
     await scheduleAirtableSync(ctx, args.eventId)
+    await emitWebhook(ctx, args.eventId, "decision.committed", {
+      id: args.eventId,
+      queue: args.queue,
+      decision: accepting ? "accepted" : "declined",
+      committed: staged.length,
+      notified,
+      session_ids: staged.map((submission) => submission._id),
+    })
     return { committed: staged.length, notified }
   },
 })
@@ -371,6 +393,12 @@ export const addManual = mutation({
       }
     }
     await scheduleAirtableSync(ctx, args.eventId)
+    await emitWebhook(
+      ctx,
+      args.eventId,
+      args.kind === "abstract" ? "submission.created" : "session.created",
+      { id: submissionId, title: args.title.trim(), status, kind: args.kind },
+    )
     return submissionId
   },
 })
@@ -397,7 +425,14 @@ export const updateDetails = mutation({
     await ctx.db.patch(args.submissionId, {
       ...rest,
       ...(trackId !== undefined ? { trackId: trackId ?? undefined } : {}),
+      updatedAt: Date.now(),
     })
+    await emitWebhook(
+      ctx,
+      submission.eventId,
+      submission.kind === "abstract" ? "submission.updated" : "session.updated",
+      { id: args.submissionId, title: rest.title ?? submission.title },
+    )
     return null
   },
 })

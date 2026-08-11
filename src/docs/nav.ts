@@ -7,6 +7,7 @@ import {
   RiGlobalLine,
   RiMailSendLine,
   RiRobot2Line,
+  RiServerLine,
   RiShareForwardLine,
   RiSparklingLine,
   RiSurveyLine,
@@ -33,6 +34,12 @@ export interface DocsNavItem {
   /** One line, shown on the /docs index cards and as the sidebar tooltip. */
   summary: string
   icon: RemixiconComponentType
+  /**
+   * The page lives OUTSIDE the docs shell and takes the whole viewport (the
+   * Scalar API reference). The sidebar marks these so a click that swaps the
+   * entire chrome is never a surprise.
+   */
+  standalone?: boolean
 }
 
 export interface DocsNavGroup {
@@ -129,14 +136,22 @@ export const DOCS_NAV: Array<DocsNavGroup> = [
       {
         to: "/docs/api",
         title: "API reference",
-        summary: "Read sessions, speakers and submissions over plain HTTP.",
+        summary:
+          "Read sessions, speakers and submissions over plain HTTP. Opens full screen.",
         icon: RiCodeSSlashLine,
+        standalone: true,
       },
       {
         to: "/docs/mcp",
         title: "MCP server",
         summary: "Connect Claude, ChatGPT or Codex and run the event by chat.",
         icon: RiRobot2Line,
+      },
+      {
+        to: "/docs/self-host",
+        title: "Self-host",
+        summary: "Clone it, provision a free backend, deploy your own.",
+        icon: RiServerLine,
       },
     ],
   },

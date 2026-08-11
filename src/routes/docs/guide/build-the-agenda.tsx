@@ -11,7 +11,7 @@ import {
 
 export const Route = createFileRoute("/docs/guide/build-the-agenda")({
   component: Page,
-  head: () => ({ meta: [{ title: "Build the agenda · Sessionboard docs" }] }),
+  head: () => ({ meta: [{ title: "Build the agenda · Trackstage docs" }] }),
 })
 
 function Page() {

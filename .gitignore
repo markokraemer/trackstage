@@ -16,5 +16,7 @@ todos.json
 
 # convex
 !.env.example
+# Public build-time config for production deploys (no secrets) — see the file header.
+!.env.production
 tests/e2e/.auth/
 tests/e2e/.results/

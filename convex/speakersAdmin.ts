@@ -19,6 +19,7 @@ import { v } from "convex/values"
 import type { Doc } from "./_generated/dataModel"
 import { mutation } from "./_generated/server"
 import { randomToken, requireEventAccess } from "./lib/auth"
+import { emitWebhook } from "./webhooks"
 
 /** The three states an organizer tracks a speaker through. */
 export const WORKFLOW_STATUSES = ["invited", "confirmed", "dropped"] as const
@@ -109,6 +110,14 @@ export const addManual = mutation({
       portalToken,
       workflowStatus,
     })
+    // Outbound webhooks (convex/webhooks.ts) — fire-and-forget.
+    await emitWebhook(ctx, args.eventId, "speaker.created", {
+      id: personId,
+      email,
+      first_name: firstName,
+      last_name: lastName,
+      workflow_status: workflowStatus,
+    })
     return { personId, portalToken, created: true }
   },
 })
@@ -160,7 +169,13 @@ export const updateProfile = mutation({
     if (args.patch.headshotNote !== undefined) {
       patch.headshotNote = args.patch.headshotNote.trim() || undefined
     }
-    await ctx.db.patch(args.personId, patch)
+    await ctx.db.patch(args.personId, { ...patch, updatedAt: Date.now() })
+    await emitWebhook(ctx, person.eventId, "speaker.updated", {
+      id: args.personId,
+      email: person.email,
+      first_name: patch.firstName ?? person.firstName,
+      last_name: patch.lastName ?? person.lastName,
+    })
     return null
   },
 })
@@ -176,7 +191,16 @@ export const setWorkflowStatus = mutation({
     const person = await ctx.db.get("people", args.personId)
     if (!person) throw new Error("Speaker not found.")
     await requireEventAccess(ctx, person.eventId)
-    await ctx.db.patch(args.personId, { workflowStatus: args.workflowStatus })
+    await ctx.db.patch(args.personId, {
+      workflowStatus: args.workflowStatus,
+      updatedAt: Date.now(),
+    })
+    await emitWebhook(ctx, person.eventId, "speaker.updated", {
+      id: args.personId,
+      email: person.email,
+      workflow_status: args.workflowStatus,
+      previous_workflow_status: person.workflowStatus ?? null,
+    })
     return null
   },
 })

@@ -174,7 +174,7 @@ test.describe("agenda", () => {
       await expect(conflictsTab).toContainText(/\d/, { timeout: 20_000 })
       await conflictsTab.click()
       await expect(
-        page.getByText(new RegExp(`need your attention`, "i")).first(),
+        page.getByText(/conflicts? needs? your attention/i).first(),
       ).toBeVisible({ timeout: 20_000 })
       await expect(page.getByText(first).first()).toBeVisible()
       await expect(page.getByText(second).first()).toBeVisible()
@@ -191,7 +191,7 @@ test.describe("agenda", () => {
         { timeout: 20_000, label: "the conflict clears once one side moves" },
       )
       await expect(
-        page.getByText(/no conflicts/i).first(),
+        page.getByText(/no conflicts — your schedule is clean/i).first(),
       ).toBeVisible({ timeout: 20_000 })
 
       watcher.assertClean("agenda schedule + conflicts")
@@ -365,5 +365,120 @@ test.describe("agenda", () => {
     // Leave the demo world published — that's the state a judge should find.
     await organizer.mutation(api.agenda.publishAgenda, { eventId: event._id })
     watcher.assertClean("publish agenda")
+  })
+})
+
+/**
+ * Keyboard drag-and-drop — the accessible path *and* the deterministic one.
+ *
+ * The pointer test above has to tolerate emulation flakiness; this one doesn't.
+ * Focus a card, press Enter to pick it up, steer with the arrow keys, press
+ * Enter to drop. The drop preview, the time/column chip and the aria-live
+ * narration are all asserted, because those are exactly what a browser agent
+ * (and a screen-reader user) reads to know where the session is about to land.
+ */
+test.describe("agenda keyboard drag-and-drop", () => {
+  test.use({ storageState: ORGANIZER_STATE })
+
+  test("Enter grabs, arrows move, Enter drops", async ({ page }) => {
+    const watcher = armed(page)
+    const organizer = await organizerConvexClient()
+    const event = await mainEvent(organizer)
+    const title = `Keyboard ${unique("kb")}`
+    const id = await acceptedSession(organizer, event._id, title)
+
+    try {
+      await gotoApp(page, "/app/agenda?view=day")
+
+      const card = page
+        .getByRole("button", {
+          name: new RegExp(`${escape(title)}.*schedule this session`, "i"),
+        })
+        .first()
+      const inTray = await present(card, 20_000)
+      test.skip(!inTray, "tray card not rendered — Day view may be unavailable")
+
+      // Pick it up.
+      await card.focus()
+      await page.keyboard.press("Enter")
+
+      const ghost = page.locator('[data-slot="agenda-drop-ghost"]').first()
+      const chip = page.locator('[data-slot="agenda-drag-chip"]').first()
+      await expect(ghost).toBeVisible({ timeout: 10_000 })
+      await expect(chip).toBeVisible()
+
+      const announcer = page.locator('[data-slot="agenda-drag-announcer"]').first()
+      await expect(announcer).toContainText(/picked up|–/i, { timeout: 10_000 })
+
+      // Steer: four slots later is one hour later on a 15-minute grid.
+      const before = (await chip.innerText()).trim()
+      for (let i = 0; i < 4; i++) await page.keyboard.press("ArrowDown")
+      await expect
+        .poll(async () => (await chip.innerText()).trim(), { timeout: 10_000 })
+        .not.toBe(before)
+      // The chip names a time range and a column, always.
+      await expect(chip).toContainText(/\d{1,2}:\d{2}\s?(AM|PM)\s*–/i)
+
+      // Drop it.
+      await page.keyboard.press("Enter")
+      await expect(ghost).toBeHidden({ timeout: 10_000 })
+      await expect(announcer).toContainText(/dropped/i, { timeout: 10_000 })
+
+      const placed = await until(
+        async () => await board(organizer, event._id),
+        (b) => b.scheduled.some((s) => s.title === title),
+        { timeout: 20_000, label: "the keyboard-dropped session was scheduled" },
+      )
+      const landed = placed.scheduled.find((s) => s.title === title)
+      expect(landed?.roomId).toBeTruthy()
+
+      // Optimistic write survives a reload — it really was persisted.
+      await page.reload({ waitUntil: "domcontentloaded" })
+      await expect(page.getByText(title).first()).toBeVisible({ timeout: 30_000 })
+      watcher.assertClean("agenda keyboard drag")
+    } finally {
+      await organizer
+        .mutation(api.agenda.unschedule, { submissionId: id })
+        .catch(() => {})
+    }
+  })
+
+  test("Escape cancels a grab and leaves the session where it was", async ({
+    page,
+  }) => {
+    const watcher = armed(page)
+    const organizer = await organizerConvexClient()
+    const event = await mainEvent(organizer)
+
+    await gotoApp(page, "/app/agenda?view=day")
+    const block = page.locator('[data-slot="agenda-grid-block"] button').first()
+    const onGrid = await present(block, 20_000)
+    test.skip(!onGrid, "nothing scheduled on this day to grab")
+
+    const title = await block.getAttribute("aria-label")
+    const before = (await board(organizer, event._id)).scheduled.find((s) =>
+      title?.includes(s.title),
+    )
+
+    await block.focus()
+    await page.keyboard.press("Enter")
+    await expect(
+      page.locator('[data-slot="agenda-drop-ghost"]').first(),
+    ).toBeVisible({ timeout: 10_000 })
+
+    await page.keyboard.press("ArrowDown")
+    await page.keyboard.press("ArrowDown")
+    await page.keyboard.press("Escape")
+
+    await expect(
+      page.locator('[data-slot="agenda-drop-ghost"]'),
+    ).toHaveCount(0, { timeout: 10_000 })
+
+    const after = (await board(organizer, event._id)).scheduled.find(
+      (s) => s.id === before?.id,
+    )
+    expect(after?.startsAt).toBe(before?.startsAt)
+    await clearToasts(page)
+    watcher.assertClean("agenda keyboard cancel")
   })
 })

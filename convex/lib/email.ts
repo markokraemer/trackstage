@@ -1,4 +1,4 @@
-// Email templating for Sessionboard OSS (docs/SPEC.md §4.9).
+// Email templating for Trackstage (docs/SPEC.md §4.9).
 //
 // Templates are plain text/HTML-ish bodies with `{{placeholder}}` tokens. The
 // renderer is intentionally tiny and total: an unknown or missing variable
@@ -53,7 +53,7 @@ export type TemplateDefinition = {
   body: string
 }
 
-/** The template keys Sessionboard seeds for every event. */
+/** The template keys Trackstage seeds for every event. */
 export const TEMPLATE_KEYS = [
   "confirmation",
   "accepted",
@@ -196,7 +196,7 @@ export function portalLinkFor(portalToken: string): string {
 
 /** `From:` header for outbound mail. */
 export function emailFrom(): string {
-  return process.env.EMAIL_FROM ?? "Sessionboard OSS <onboarding@resend.dev>"
+  return process.env.EMAIL_FROM ?? "Trackstage <onboarding@resend.dev>"
 }
 
 /** Bare address extracted from `EMAIL_FROM` — used as the .ics ORGANIZER. */

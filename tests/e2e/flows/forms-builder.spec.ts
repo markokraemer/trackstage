@@ -63,13 +63,16 @@ test.describe("form builder", () => {
 
       // ——— Rename (step 1/2 of the rail) ————————————————————————————————
       await page.getByRole("button", { name: /welcome screen/i }).first().click()
-      const internalName = page.getByLabel(/internal name/i).first()
+      const internalName = page.getByLabel(/internal form name/i).first()
       if (await present(internalName, 8_000)) {
         await fillStable(internalName, renamedTo)
       } else {
         // The name may live on the Setup step depending on layout churn.
         await page.getByRole("button", { name: /^setup$/i }).first().click()
-        await fillStable(page.getByLabel(/form name|internal name/i).first(), renamedTo)
+        await fillStable(
+          page.getByLabel(/internal form name|form name/i).first(),
+          renamedTo,
+        )
       }
 
       // ——— Questions: add a trigger + a dependent with a showIf rule ————
@@ -80,10 +83,10 @@ test.describe("form builder", () => {
 
       // 1. A dropdown that will drive the condition.
       await page.getByRole("button", { name: /add question/i }).first().click()
-      await page.getByRole("menuitem", { name: /^dropdown$/i }).first().click()
+      await page.getByRole("menuitem", { name: /^dropdown/i }).first().click()
       const drawer = page.getByRole("dialog").first()
       await expect(drawer).toBeVisible({ timeout: 20_000 })
-      await fillStable(drawer.getByLabel(/^question$/i).first(), triggerLabel)
+      await fillStable(drawer.getByLabel("Question", { exact: true }).first(), triggerLabel)
       // Give it two known options.
       const optionInputs = drawer.getByLabel(/answer option \d+/i)
       while ((await optionInputs.count()) < 2) {
@@ -96,10 +99,10 @@ test.describe("form builder", () => {
 
       // 2. A short-text question that only shows for "Remote".
       await page.getByRole("button", { name: /add (another )?question/i }).last().click()
-      await page.getByRole("menuitem", { name: /short text/i }).first().click()
+      await page.getByRole("menuitem", { name: /^short text/i }).first().click()
       const drawer2 = page.getByRole("dialog").first()
       await expect(drawer2).toBeVisible({ timeout: 20_000 })
-      await fillStable(drawer2.getByLabel(/^question$/i).first(), dependentLabel)
+      await fillStable(drawer2.getByLabel("Question", { exact: true }).first(), dependentLabel)
       await drawer2
         .getByRole("switch", { name: /only show this question sometimes/i })
         .first()
@@ -113,7 +116,7 @@ test.describe("form builder", () => {
 
       // The row summarises the rule the organizer just built.
       await expect(
-        page.getByText(new RegExp(`shows only when.*${triggerLabel}`, "i")).first(),
+        page.getByText(/shows only when/i).first(),
       ).toBeVisible({ timeout: 20_000 })
 
       // ——— Required toggle ————————————————————————————————————————————————

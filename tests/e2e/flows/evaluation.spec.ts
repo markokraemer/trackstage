@@ -11,7 +11,6 @@ import {
   gotoStable,
   mainEvent,
   organizerConvexClient,
-  present,
   testEmail,
   unique,
   until,
@@ -79,18 +78,12 @@ test.describe("evaluation", () => {
       await fillStable(dialog.locator("#plan-name"), planName)
 
       // Pick exactly our two submissions.
-      const search = dialog.getByPlaceholder(/search titles/i).first()
+      const search = dialog.getByLabel(/search submissions/i).first()
       for (const title of titles) {
         await fillStable(search, title)
-        const option = dialog.getByText(title).first()
-        await expect(option).toBeVisible({ timeout: 20_000 })
-        const checkbox = dialog
-          .getByRole("checkbox")
-          .filter({ has: dialog.locator(":scope") })
-          .first()
-        // The row itself is the click target in every layout we've seen.
-        if (await present(checkbox, 1_500)) await option.click()
-        else await option.click()
+        const include = dialog.getByRole("checkbox", { name: `Include ${title}` })
+        await expect(include).toBeVisible({ timeout: 20_000 })
+        await include.check()
       }
       await fillStable(search, "")
 

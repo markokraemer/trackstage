@@ -24,7 +24,7 @@ import {
 } from "@/components/ui/context-menu"
 
 /**
- * Sessionboard brand mark.
+ * Trackstage brand mark.
  *
  * The logomark is an abstract agenda: a solid time rail on the left with three
  * session blocks of varying length beside it. It is built from four rounded
@@ -33,7 +33,7 @@ import {
  * and it paints in `currentColor` so it inherits the surface it sits on.
  *
  * - `LogoMark` — the mark alone (`plain` or `boxed`).
- * - `Wordmark` — the "Sessionboard" wordmark alone.
+ * - `Wordmark` — the "Trackstage" wordmark alone.
  * - `Logo` — the full lockup (mark + wordmark).
  *
  * Right-clicking any logo opens a small BRAND MENU at the cursor — view the
@@ -96,7 +96,7 @@ function BrandMenu({
           onClick={() =>
             downloadSvg(
               brandSvg(DOWNLOAD_VARIANT, "color", 96),
-              "sessionboard-logo.svg"
+              "trackstage-logo.svg"
             )
           }
         >
@@ -109,7 +109,7 @@ function BrandMenu({
               DOWNLOAD_VARIANT,
               "color",
               DOWNLOAD_PX,
-              `sessionboard-logo-${DOWNLOAD_PX}.png`
+              `trackstage-logo-${DOWNLOAD_PX}.png`
             )
           }}
         >
@@ -153,7 +153,7 @@ export function LogoMark({
       <span
         data-slot="logo-mark"
         role="img"
-        aria-label="Sessionboard"
+        aria-label="Trackstage"
         style={{ width: size, height: size }}
         className={cn(
           "inline-flex shrink-0 items-center justify-center",

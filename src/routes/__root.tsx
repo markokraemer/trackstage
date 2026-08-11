@@ -39,7 +39,7 @@ export const Route = createRootRouteWithContext<RouterContext>()({
         content: "width=device-width, initial-scale=1",
       },
       {
-        title: "Sessionboard OSS",
+        title: "Trackstage",
       },
       {
         name: "description",
@@ -48,8 +48,8 @@ export const Route = createRootRouteWithContext<RouterContext>()({
       },
       { name: "theme-color", content: "#2F5CE0" },
       { property: "og:type", content: "website" },
-      { property: "og:site_name", content: "Sessionboard" },
-      { property: "og:title", content: "Sessionboard" },
+      { property: "og:site_name", content: "Trackstage" },
+      { property: "og:title", content: "Trackstage" },
       {
         property: "og:description",
         content: "Open-source speaker and program management.",
@@ -58,7 +58,7 @@ export const Route = createRootRouteWithContext<RouterContext>()({
       { property: "og:image:width", content: "1200" },
       { property: "og:image:height", content: "630" },
       { name: "twitter:card", content: "summary_large_image" },
-      { name: "twitter:title", content: "Sessionboard" },
+      { name: "twitter:title", content: "Trackstage" },
       {
         name: "twitter:description",
         content: "Open-source speaker and program management.",

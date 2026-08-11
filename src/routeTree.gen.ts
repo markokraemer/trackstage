@@ -24,8 +24,9 @@ import { Route as AppCopilotRouteImport } from './routes/app/copilot'
 import { Route as AppSettingsRouteRouteImport } from './routes/app/settings/route'
 import { Route as AppWorkspaceRouteImport } from './routes/app/workspace'
 import { Route as DocsIndexRouteImport } from './routes/docs/index'
-import { Route as DocsApiRouteImport } from './routes/docs/api'
 import { Route as DocsMcpRouteImport } from './routes/docs/mcp'
+import { Route as DocsSelfHostRouteImport } from './routes/docs/self-host'
+import { Route as DocsApiRouteImport } from './routes/docs_.api'
 import { Route as ESlugRouteRouteImport } from './routes/e/$slug/route'
 import { Route as PortalIndexRouteImport } from './routes/portal/index'
 import { Route as PortalProfileRouteImport } from './routes/portal/profile'
@@ -144,15 +145,20 @@ const DocsIndexRoute = DocsIndexRouteImport.update({
   path: '/',
   getParentRoute: () => DocsRouteRoute,
 } as any)
-const DocsApiRoute = DocsApiRouteImport.update({
-  id: '/api',
-  path: '/api',
-  getParentRoute: () => DocsRouteRoute,
-} as any)
 const DocsMcpRoute = DocsMcpRouteImport.update({
   id: '/mcp',
   path: '/mcp',
   getParentRoute: () => DocsRouteRoute,
+} as any)
+const DocsSelfHostRoute = DocsSelfHostRouteImport.update({
+  id: '/self-host',
+  path: '/self-host',
+  getParentRoute: () => DocsRouteRoute,
+} as any)
+const DocsApiRoute = DocsApiRouteImport.update({
+  id: '/docs_/api',
+  path: '/docs/api',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const ESlugRouteRoute = ESlugRouteRouteImport.update({
   id: '/e/$slug',
@@ -380,8 +386,9 @@ export interface FileRoutesByFullPath {
   '/app/account': typeof AppAccountRoute
   '/app/copilot': typeof AppCopilotRoute
   '/app/workspace': typeof AppWorkspaceRoute
-  '/docs/api': typeof DocsApiRoute
   '/docs/mcp': typeof DocsMcpRoute
+  '/docs/self-host': typeof DocsSelfHostRoute
+  '/docs/api': typeof DocsApiRoute
   '/portal/profile': typeof PortalProfileRoute
   '/portal/submissions': typeof PortalSubmissionsRoute
   '/portal/tasks': typeof PortalTasksRoute
@@ -435,8 +442,9 @@ export interface FileRoutesByTo {
   '/app/account': typeof AppAccountRoute
   '/app/copilot': typeof AppCopilotRoute
   '/app/workspace': typeof AppWorkspaceRoute
-  '/docs/api': typeof DocsApiRoute
   '/docs/mcp': typeof DocsMcpRoute
+  '/docs/self-host': typeof DocsSelfHostRoute
+  '/docs/api': typeof DocsApiRoute
   '/portal/profile': typeof PortalProfileRoute
   '/portal/submissions': typeof PortalSubmissionsRoute
   '/portal/tasks': typeof PortalTasksRoute
@@ -496,8 +504,9 @@ export interface FileRoutesById {
   '/app/account': typeof AppAccountRoute
   '/app/copilot': typeof AppCopilotRoute
   '/app/workspace': typeof AppWorkspaceRoute
-  '/docs/api': typeof DocsApiRoute
   '/docs/mcp': typeof DocsMcpRoute
+  '/docs/self-host': typeof DocsSelfHostRoute
+  '/docs_/api': typeof DocsApiRoute
   '/portal/profile': typeof PortalProfileRoute
   '/portal/submissions': typeof PortalSubmissionsRoute
   '/portal/tasks': typeof PortalTasksRoute
@@ -558,8 +567,9 @@ export interface FileRouteTypes {
     | '/app/account'
     | '/app/copilot'
     | '/app/workspace'
-    | '/docs/api'
     | '/docs/mcp'
+    | '/docs/self-host'
+    | '/docs/api'
     | '/portal/profile'
     | '/portal/submissions'
     | '/portal/tasks'
@@ -613,8 +623,9 @@ export interface FileRouteTypes {
     | '/app/account'
     | '/app/copilot'
     | '/app/workspace'
-    | '/docs/api'
     | '/docs/mcp'
+    | '/docs/self-host'
+    | '/docs/api'
     | '/portal/profile'
     | '/portal/submissions'
     | '/portal/tasks'
@@ -673,8 +684,9 @@ export interface FileRouteTypes {
     | '/app/account'
     | '/app/copilot'
     | '/app/workspace'
-    | '/docs/api'
     | '/docs/mcp'
+    | '/docs/self-host'
+    | '/docs_/api'
     | '/portal/profile'
     | '/portal/submissions'
     | '/portal/tasks'
@@ -730,6 +742,7 @@ export interface RootRouteChildren {
   ESlugRouteRoute: typeof ESlugRouteRouteWithChildren
   DotwellKnownOauthAuthorizationServerRoute: typeof DotwellKnownOauthAuthorizationServerRoute
   ApiChatRoute: typeof ApiChatRoute
+  DocsApiRoute: typeof DocsApiRoute
   ReviewTokenRoute: typeof ReviewTokenRoute
   SubmitSlugRoute: typeof SubmitSlugRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
@@ -842,19 +855,26 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DocsIndexRouteImport
       parentRoute: typeof DocsRouteRoute
     }
-    '/docs/api': {
-      id: '/docs/api'
-      path: '/api'
-      fullPath: '/docs/api'
-      preLoaderRoute: typeof DocsApiRouteImport
-      parentRoute: typeof DocsRouteRoute
-    }
     '/docs/mcp': {
       id: '/docs/mcp'
       path: '/mcp'
       fullPath: '/docs/mcp'
       preLoaderRoute: typeof DocsMcpRouteImport
       parentRoute: typeof DocsRouteRoute
+    }
+    '/docs/self-host': {
+      id: '/docs/self-host'
+      path: '/self-host'
+      fullPath: '/docs/self-host'
+      preLoaderRoute: typeof DocsSelfHostRouteImport
+      parentRoute: typeof DocsRouteRoute
+    }
+    '/docs_/api': {
+      id: '/docs_/api'
+      path: '/docs/api'
+      fullPath: '/docs/api'
+      preLoaderRoute: typeof DocsApiRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/e/$slug': {
       id: '/e/$slug'
@@ -1206,8 +1226,8 @@ const AppRouteRouteWithChildren = AppRouteRoute._addFileChildren(
 )
 
 interface DocsRouteRouteChildren {
-  DocsApiRoute: typeof DocsApiRoute
   DocsMcpRoute: typeof DocsMcpRoute
+  DocsSelfHostRoute: typeof DocsSelfHostRoute
   DocsIndexRoute: typeof DocsIndexRoute
   DocsGuideAiCopilotRoute: typeof DocsGuideAiCopilotRoute
   DocsGuideAirtableSyncRoute: typeof DocsGuideAirtableSyncRoute
@@ -1223,8 +1243,8 @@ interface DocsRouteRouteChildren {
 }
 
 const DocsRouteRouteChildren: DocsRouteRouteChildren = {
-  DocsApiRoute: DocsApiRoute,
   DocsMcpRoute: DocsMcpRoute,
+  DocsSelfHostRoute: DocsSelfHostRoute,
   DocsIndexRoute: DocsIndexRoute,
   DocsGuideAiCopilotRoute: DocsGuideAiCopilotRoute,
   DocsGuideAirtableSyncRoute: DocsGuideAirtableSyncRoute,
@@ -1297,6 +1317,7 @@ const rootRouteChildren: RootRouteChildren = {
   DotwellKnownOauthAuthorizationServerRoute:
     DotwellKnownOauthAuthorizationServerRoute,
   ApiChatRoute: ApiChatRoute,
+  DocsApiRoute: DocsApiRoute,
   ReviewTokenRoute: ReviewTokenRoute,
   SubmitSlugRoute: SubmitSlugRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,

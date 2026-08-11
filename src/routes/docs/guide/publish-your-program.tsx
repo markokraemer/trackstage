@@ -11,7 +11,7 @@ import {
 
 export const Route = createFileRoute("/docs/guide/publish-your-program")({
   component: Page,
-  head: () => ({ meta: [{ title: "Publish your program · Sessionboard docs" }] }),
+  head: () => ({ meta: [{ title: "Publish your program · Trackstage docs" }] }),
 })
 
 function Page() {

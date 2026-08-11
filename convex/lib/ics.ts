@@ -1,6 +1,6 @@
 // RFC 5545 iCalendar generation.
 //
-// Sessionboard attaches a calendar invite to acceptance emails once a session
+// Trackstage attaches a calendar invite to acceptance emails once a session
 // has a slot on the agenda (see docs/SPEC.md §4.9). The output must import
 // cleanly into Google Calendar, Apple Calendar and Outlook, which in practice
 // means: CRLF line endings, folding at 75 octets, escaped TEXT values, and
@@ -32,7 +32,7 @@ export type BuildIcsArgs = {
 }
 
 const CRLF = "\r\n"
-const PRODID = "-//Sessionboard OSS//Sessionboard//EN"
+const PRODID = "-//Trackstage//Trackstage//EN"
 
 /** `20261012T160000Z` — the UTC form, valid everywhere without a VTIMEZONE. */
 export function toIcsUtc(epochMs: number): string {

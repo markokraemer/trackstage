@@ -1,0 +1,57 @@
+name: CI
+
+# Fast, hermetic gate on every push and PR to master: typecheck, lint, unit
+# tests. Everything here runs with no network credentials and no deployment.
+#
+# Deliberately NOT run here:
+#   • `pnpm test:backend` (scripts/verify-backend.mjs) — it drives a LIVE Convex
+#     deployment and mutates seeded data. Running it per-PR would have every
+#     concurrent run fighting over the same prod/dev data.
+#   • `pnpm test:e2e` (Playwright) — it boots `pnpm dev`, which needs a live
+#     Convex deployment plus browser binaries.
+# Both are run against the real deployment by hand (or a future scheduled
+# workflow) — see README "Verify before claiming done".
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: typecheck · lint · unit tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # `convex/_generated/*` is committed, so typecheck needs no deployment.
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Unit tests
+        run: pnpm test

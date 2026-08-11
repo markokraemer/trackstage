@@ -5,6 +5,7 @@ import {
   advance,
   anonConvexClient,
   armed,
+  present,
   expectToast,
   fillStable,
   gotoStable,
@@ -100,14 +101,107 @@ async function answerRequired(
 const heading = (page: Page, name: RegExp) =>
   page.getByRole("heading", { name })
 
+/**
+ * Which step of the public wizard is on screen right now.
+ *
+ * This matters because the form is server-rendered: a Continue click that
+ * lands before React hydrates submits natively, the browser reloads, and the
+ * wizard silently resets to Welcome. Walking the flow as a state machine —
+ * "look at where I am, do the next right thing" — is the only way to drive it
+ * that isn't a coin flip, and it's exactly what a browser agent does too.
+ */
+async function currentStep(page: Page) {
+  const steps = [
+    ["success", /thank you for submitting/i],
+    ["review", /review and submit/i],
+    ["participants", /^participants$/i],
+    ["submission", /your submission/i],
+    ["account", /your email address/i],
+    ["welcome", /.+/],
+  ] as const
+  for (const [name, pattern] of steps.slice(0, -1)) {
+    if (await present(heading(page, pattern), 250)) return name
+  }
+  return "welcome" as const
+}
+
+const ORDER = [
+  "welcome",
+  "account",
+  "submission",
+  "participants",
+  "review",
+  "success",
+] as const
+
+/**
+ * Walk the wizard forward to `target`, re-doing whatever the current step
+ * needs. `fill` is invoked once per step so callers can answer questions.
+ */
+async function walkTo(
+  page: Page,
+  target: (typeof ORDER)[number],
+  {
+    email,
+    onSubmission,
+    onParticipants,
+  }: {
+    email: string
+    onSubmission?: () => Promise<void>
+    onParticipants?: () => Promise<void>
+  },
+) {
+  const targetIndex = ORDER.indexOf(target)
+  const deadline = Date.now() + 90_000
+  while (Date.now() < deadline) {
+    const step = await currentStep(page)
+    if (ORDER.indexOf(step) >= targetIndex) return step
+    switch (step) {
+      case "welcome":
+        await advance(page, /^continue$/i, heading(page, /your email address/i), {
+          timeout: 30_000,
+        })
+        break
+      case "account":
+        await fillStable(page.locator("#submit-email"), email)
+        await advance(page, /^continue$/i, heading(page, /your submission/i), {
+          timeout: 30_000,
+        }).catch(() => {})
+        break
+      case "submission":
+        await onSubmission?.()
+        await advance(page, /^continue$/i, heading(page, /^participants$/i), {
+          timeout: 30_000,
+        })
+        break
+      case "participants":
+        await onParticipants?.()
+        await advance(page, /^continue$/i, heading(page, /review and submit/i), {
+          timeout: 30_000,
+        })
+        break
+      case "review":
+        await advance(
+          page,
+          /^submit$/i,
+          heading(page, /thank you for submitting/i),
+          { timeout: 60_000 },
+        )
+        break
+      default:
+        return step
+    }
+  }
+  throw new Error(`the public form never reached the "${target}" step`)
+}
+
 async function goToAccountStep(page: Page, email: string) {
-  await advance(page, /^continue$/i, heading(page, /your email address/i))
+  await walkTo(page, "account", { email })
   await fillStable(page.locator("#submit-email"), email)
 }
 
 async function goToSubmissionStep(page: Page, email: string) {
-  await goToAccountStep(page, email)
-  await advance(page, /^continue$/i, heading(page, /your submission/i))
+  await walkTo(page, "submission", { email })
 }
 
 test.describe("public CFP submission", () => {
@@ -121,10 +215,12 @@ test.describe("public CFP submission", () => {
     await expect(page.getByRole("heading").first()).toBeVisible({ timeout: 30_000 })
 
     // Welcome carries the two things swyx wanted visible up front.
-    await expect(page.getByText(/submissions will be accepted until/i).first()).toBeVisible()
+    await expect(
+      page.getByText(/submissions will be accepted until/i).first(),
+    ).toBeVisible()
     await expect(page.getByText(/submission limit/i).first()).toBeVisible()
 
-    await goToSubmissionStep(page, email)
+    await walkTo(page, "submission", { email })
 
     // — Negative first: Continue with a blank required field —————————————
     await test.step("blank required field → red outline + toast", async () => {
@@ -180,13 +276,21 @@ test.describe("public CFP submission", () => {
     })
 
     // — Success ——————————————————————————————————————————————————————————————
+    // The success screen auto-redirects after a countdown, so read the link
+    // if it's still there and fall back to wherever we landed.
+    let href: string | null = null
     const portalLink = page.getByRole("link", { name: /continue to portal/i }).first()
-    await expect(portalLink).toBeVisible()
-    const href = await portalLink.getAttribute("href")
+    if (await present(portalLink, 5_000)) {
+      href = await portalLink.getAttribute("href")
+    }
+    if (!href) {
+      await page.waitForURL(/\/portal\/t\//, { timeout: 30_000 })
+      href = page.url()
+    }
     expect(href).toMatch(/\/portal\/t\/[a-z0-9]+/i)
 
     // — Portal shows it as Pending ————————————————————————————————————————
-    await gotoStable(page, href!, "networkidle")
+    await gotoStable(page, href, "networkidle")
     await expect(page.getByText(title).first()).toBeVisible({ timeout: 45_000 })
     const card = page
       .locator("*")
@@ -311,14 +415,18 @@ test.describe("public CFP submission", () => {
 
       for (const attempt of [1, 2]) {
         await gotoStable(page, `/submit/${created.slug}`, "networkidle")
-        await goToSubmissionStep(page, email)
-        await answerRequired(page, form.questions, {
-          values: { title: `Capped ${attempt} ${unique("t")}` },
+        await walkTo(page, "review", {
+          email,
+          onSubmission: async () => {
+            await answerRequired(page, form.questions, {
+              values: { title: `Capped ${attempt} ${unique("t")}` },
+            })
+          },
+          onParticipants: async () => {
+            await fillStable(page.getByLabel(/first name/i).first(), "Cappy")
+            await fillStable(page.getByLabel(/last name/i).first(), "Limit")
+          },
         })
-        await advance(page, /^continue$/i, heading(page, /^participants$/i))
-        await fillStable(page.getByLabel(/first name/i).first(), "Cappy")
-        await fillStable(page.getByLabel(/last name/i).first(), "Limit")
-        await advance(page, /^continue$/i, heading(page, /review and submit/i))
         await page.getByRole("button", { name: /^submit$/i }).first().click()
 
         if (attempt === 1) {

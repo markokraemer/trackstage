@@ -122,7 +122,14 @@ export function DropGhost({
       </div>
 
       {keyboard ? (
-        <div className="absolute -top-1 left-0 z-50 -translate-y-full">
+        // Near the top of the grid there is no room above the ghost — the chip
+        // would sit on the sticky column headers, so it flips underneath.
+        <div
+          className={cn(
+            "absolute left-0 z-50",
+            offset < 72 ? "-bottom-1 translate-y-full" : "-top-1 -translate-y-full"
+          )}
+        >
           <DragChipBody placement={placement} keyboard />
         </div>
       ) : null}

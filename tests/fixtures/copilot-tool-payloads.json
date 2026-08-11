@@ -56,6 +56,32 @@
           "yourRole": "owner"
         },
         {
+          "endsAt": null,
+          "eventId": "j97fhrwczh3mb77rfkyn77tezh8c8b1p",
+          "name": "Copilot Verification Event",
+          "organizationId": "mn7fs8btg5szyhbkqdfhtd4xmn8c8xhg",
+          "organizationName": "AI Engineer",
+          "slug": "copilot-verification-event-4",
+          "startsAt": null,
+          "timezone": "UTC",
+          "type": null,
+          "venue": null,
+          "yourRole": "owner"
+        },
+        {
+          "endsAt": null,
+          "eventId": "j972c4ems4mk1hjgfv814ewjgn8c9tcm",
+          "name": "Copilot Verification Event",
+          "organizationId": "mn7fs8btg5szyhbkqdfhtd4xmn8c8xhg",
+          "organizationName": "AI Engineer",
+          "slug": "copilot-verification-event-5",
+          "startsAt": null,
+          "timezone": "UTC",
+          "type": null,
+          "venue": null,
+          "yourRole": "owner"
+        },
+        {
           "endsAt": "2026-11-05T23:00:00.000Z",
           "eventId": "j974s9qpdjwa6wyaw6z79961a98c9ams",
           "name": "Design Systems Day",
@@ -76,7 +102,7 @@
     "output": {
       "workspaces": [
         {
-          "eventCount": 5,
+          "eventCount": 6,
           "name": "AI Engineer",
           "organizationId": "mn7fs8btg5szyhbkqdfhtd4xmn8c8xhg",
           "slug": "ai-engineer",
@@ -92,99 +118,13 @@
     "output": {
       "agenda": {
         "acceptedNotScheduled": 0,
+        "conflictCount": 0,
         "conflicts": [],
         "scheduled": 9
       },
       "event": {
         "endsAt": "2026-10-14T01:00:00.000Z",
-        "eventId": "j976bgb2tmekbm88g4z3stbybn8c8evn",
-        "name": "AI Engineer Summit 2026",
-        "slug": "ai-summit-2026",
-        "startsAt": "2026-10-12T16:00:00.000Z",
-        "timezone": "America/Los_Angeles",
-        "venue": "Moscone West, San Francisco"
-      },
-      "forms": [
-        {
-          "closesAt": "2026-09-16T06:59:00.000Z",
-          "name": "CFP 2026 — main call",
-          "publicUrl": "http://localhost:3000/submit/cfp",
-          "status": "open"
-        }
-      ],
-      "headline": "AI Engineer Summit 2026 — 19 submission(s): 9 accepted, 4 pending, 1 declined. 9 session(s) scheduled across 1 form(s).",
-      "needsAttention": [
-        "4 submission(s) still pending review",
-        "1 staged in the decline queue",
-        "12 outstanding speaker task(s) — send_reminders will nudge them"
-      ],
-      "speakerTasks": {
-        "completed": 15,
-        "open": 12
-      },
-      "submissions": {
-        "accept_queue": 0,
-        "accepted": 9,
-        "decline_queue": 1,
-        "declined": 1,
-        "draft": 3,
-        "pending": 4,
-        "withdrawn": 1
-      },
-      "upcomingDeadlines": [
-        {
-          "daysAway": -2,
-          "what": "Speaker task \"Upload your headshot\" due",
-          "when": "2026-08-09T02:18:03.981Z"
-        },
-        {
-          "daysAway": 1,
-          "what": "Speaker task \"Confirm your biography\" due",
-          "when": "2026-08-12T02:18:03.981Z"
-        },
-        {
-          "daysAway": 2,
-          "what": "Speaker task \"Upload your slides\" due",
-          "when": "2026-08-13T02:18:03.981Z"
-        },
-        {
-          "daysAway": 2,
-          "what": "Speaker task \"Upload your headshot\" due",
-          "when": "2026-08-13T02:18:03.981Z"
-        },
-        {
-          "daysAway": 3,
-          "what": "Speaker task \"Confirm your biography\" due",
-          "when": "2026-08-14T02:18:03.981Z"
-        },
-        {
-          "daysAway": 20,
-          "what": "Speaker task \"Upload your slides\" due",
-          "when": "2026-08-31T02:18:03.981Z"
-        },
-        {
-          "daysAway": 20,
-          "what": "Speaker task \"Upload your slides\" due",
-          "when": "2026-08-31T02:18:03.981Z"
-        },
-        {
-          "daysAway": 20,
-          "what": "Speaker task \"Upload your slides\" due",
-          "when": "2026-08-31T02:18:03.981Z"
-        }
-      ]
-    }
-  },
-  "get_event_overview": {
-    "input": {
-      "event": "ai-summit-2026"
-    },
-    "output": {
-      "acceptedNotYetScheduled": 0,
-      "agendaConflicts": 0,
-      "event": {
-        "endsAt": "2026-10-14T01:00:00.000Z",
-        "eventId": "j970azkadykc61nytr2cc7nn358c829f",
+        "eventId": "j972cy9qbmve3d3c85p0bjmnzh8c8tv3",
         "name": "AI Engineer Summit 2026",
         "slug": "ai-summit-2026",
         "startsAt": "2026-10-12T16:00:00.000Z",
@@ -194,29 +134,196 @@
       "forms": [
         {
           "closeAt": "2026-09-16T06:59:00.000Z",
-          "formId": "jd70qeexqcjc6pyp60x3509azx8c9bwn",
+          "formId": "jd73phacyyzmagrpmvddn4mge98c80tq",
           "name": "CFP 2026 — main call",
           "publicUrl": "http://localhost:3000/submit/cfp",
           "slug": "cfp",
           "status": "open"
+        },
+        {
+          "closeAt": null,
+          "formId": "jd78remdhhy54d7c8sp5w90j0s8c83qg",
+          "name": "Capped CFP f-mso2hg1a-psaqp",
+          "publicUrl": "http://localhost:3000/submit/capped-cfp-f-mso2hg1a-psaqp",
+          "slug": "capped-cfp-f-mso2hg1a-psaqp",
+          "status": "open"
         }
       ],
-      "openTaskCount": 9,
+      "headline": "AI Engineer Summit 2026 — 20 submission(s): 9 accepted, 5 pending, 1 declined. 9 session(s) scheduled across 2 form(s).",
+      "linkWarning": "http://localhost:3000 is a loopback address (demo URL — set SITE_URL in production). Links below only work on the machine running Sessionboard — don't send them to a speaker.",
+      "needsAttention": [
+        "5 submission(s) still pending review",
+        "1 staged in the decline queue",
+        "10 outstanding speaker task(s) — send_reminders will nudge them"
+      ],
       "outbox": {
-        "preview": 1,
+        "preview": 24,
         "sent": 2
       },
-      "scheduledSessions": 6,
-      "statusCounts": {
-        "accept_queue": 2,
-        "accepted": 6,
+      "speakerTasks": {
+        "completed": 16,
+        "open": 10
+      },
+      "submissions": {
+        "accept_queue": 0,
+        "accepted": 9,
         "decline_queue": 1,
         "declined": 1,
         "draft": 3,
-        "pending": 4,
+        "pending": 5,
         "withdrawn": 1
       },
-      "totalSubmissions": 18
+      "totalSubmissions": 20,
+      "upcomingDeadlines": [
+        {
+          "daysAway": -2,
+          "what": "Speaker task \"Upload your headshot\" due",
+          "when": "2026-08-09T02:51:05.017Z"
+        },
+        {
+          "daysAway": 1,
+          "what": "Speaker task \"Confirm your biography\" due",
+          "when": "2026-08-12T02:51:05.017Z"
+        },
+        {
+          "daysAway": 2,
+          "what": "Speaker task \"Upload your slides\" due",
+          "when": "2026-08-13T02:51:05.017Z"
+        },
+        {
+          "daysAway": 2,
+          "what": "Speaker task \"Upload your headshot\" due",
+          "when": "2026-08-13T02:51:05.017Z"
+        },
+        {
+          "daysAway": 20,
+          "what": "Speaker task \"Upload your slides\" due",
+          "when": "2026-08-31T02:51:05.017Z"
+        },
+        {
+          "daysAway": 20,
+          "what": "Speaker task \"Upload your slides\" due",
+          "when": "2026-08-31T02:51:05.017Z"
+        },
+        {
+          "daysAway": 20,
+          "what": "Speaker task \"Upload your slides\" due",
+          "when": "2026-08-31T02:51:05.017Z"
+        },
+        {
+          "daysAway": 20,
+          "what": "Speaker task \"Upload your slides\" due",
+          "when": "2026-08-31T02:51:05.017Z"
+        }
+      ]
+    }
+  },
+  "get_event_overview": {
+    "input": {
+      "event": "ai-summit-2026"
+    },
+    "output": {
+      "agenda": {
+        "acceptedNotScheduled": 0,
+        "conflictCount": 0,
+        "conflicts": [],
+        "scheduled": 9
+      },
+      "deprecated": "get_event_overview is a deprecated alias of get_event_summary and returns exactly the same payload. Call get_event_summary instead.",
+      "event": {
+        "endsAt": "2026-10-14T01:00:00.000Z",
+        "eventId": "j972cy9qbmve3d3c85p0bjmnzh8c8tv3",
+        "name": "AI Engineer Summit 2026",
+        "slug": "ai-summit-2026",
+        "startsAt": "2026-10-12T16:00:00.000Z",
+        "timezone": "America/Los_Angeles",
+        "venue": "Moscone West, San Francisco"
+      },
+      "forms": [
+        {
+          "closeAt": "2026-09-16T06:59:00.000Z",
+          "formId": "jd73phacyyzmagrpmvddn4mge98c80tq",
+          "name": "CFP 2026 — main call",
+          "publicUrl": "http://localhost:3000/submit/cfp",
+          "slug": "cfp",
+          "status": "open"
+        },
+        {
+          "closeAt": null,
+          "formId": "jd78remdhhy54d7c8sp5w90j0s8c83qg",
+          "name": "Capped CFP f-mso2hg1a-psaqp",
+          "publicUrl": "http://localhost:3000/submit/capped-cfp-f-mso2hg1a-psaqp",
+          "slug": "capped-cfp-f-mso2hg1a-psaqp",
+          "status": "open"
+        }
+      ],
+      "headline": "AI Engineer Summit 2026 — 20 submission(s): 9 accepted, 5 pending, 1 declined. 9 session(s) scheduled across 2 form(s).",
+      "linkWarning": "http://localhost:3000 is a loopback address (demo URL — set SITE_URL in production). Links below only work on the machine running Sessionboard — don't send them to a speaker.",
+      "needsAttention": [
+        "5 submission(s) still pending review",
+        "1 staged in the decline queue",
+        "10 outstanding speaker task(s) — send_reminders will nudge them"
+      ],
+      "outbox": {
+        "preview": 24,
+        "sent": 2
+      },
+      "speakerTasks": {
+        "completed": 16,
+        "open": 10
+      },
+      "submissions": {
+        "accept_queue": 0,
+        "accepted": 9,
+        "decline_queue": 1,
+        "declined": 1,
+        "draft": 3,
+        "pending": 5,
+        "withdrawn": 1
+      },
+      "totalSubmissions": 20,
+      "upcomingDeadlines": [
+        {
+          "daysAway": -2,
+          "what": "Speaker task \"Upload your headshot\" due",
+          "when": "2026-08-09T02:51:05.017Z"
+        },
+        {
+          "daysAway": 1,
+          "what": "Speaker task \"Confirm your biography\" due",
+          "when": "2026-08-12T02:51:05.017Z"
+        },
+        {
+          "daysAway": 2,
+          "what": "Speaker task \"Upload your slides\" due",
+          "when": "2026-08-13T02:51:05.017Z"
+        },
+        {
+          "daysAway": 2,
+          "what": "Speaker task \"Upload your headshot\" due",
+          "when": "2026-08-13T02:51:05.017Z"
+        },
+        {
+          "daysAway": 20,
+          "what": "Speaker task \"Upload your slides\" due",
+          "when": "2026-08-31T02:51:05.017Z"
+        },
+        {
+          "daysAway": 20,
+          "what": "Speaker task \"Upload your slides\" due",
+          "when": "2026-08-31T02:51:05.017Z"
+        },
+        {
+          "daysAway": 20,
+          "what": "Speaker task \"Upload your slides\" due",
+          "when": "2026-08-31T02:51:05.017Z"
+        },
+        {
+          "daysAway": 20,
+          "what": "Speaker task \"Upload your slides\" due",
+          "when": "2026-08-31T02:51:05.017Z"
+        }
+      ]
     }
   },
   "list_forms": {
@@ -224,7 +331,7 @@
       "event": "ai-summit-2026"
     },
     "output": {
-      "formCount": 1,
+      "formCount": 2,
       "forms": [
         {
           "closeAt": "2026-09-16T06:59:00.000Z",
@@ -237,6 +344,18 @@
           "slug": "cfp",
           "status": "open",
           "submissionCount": 15
+        },
+        {
+          "closeAt": null,
+          "draftCount": 0,
+          "externalTitle": "Copilot Verification CFP",
+          "formId": "jd7e3107b4ys2yd78x3z5j2g5x8c8vyn",
+          "kind": "abstract",
+          "name": "Copilot Verification CFP",
+          "publicUrl": "http://localhost:3000/submit/copilot-verification-cfp",
+          "slug": "copilot-verification-cfp",
+          "status": "open",
+          "submissionCount": 0
         }
       ],
       "linkWarning": "http://localhost:3000 is a loopback address (demo URL — set SITE_URL in production). Links below only work on the machine running Sessionboard — don't send them to a speaker."
@@ -244,46 +363,48 @@
   },
   "get_form": {
     "input": {
-      "form": "example-call-for-papers"
+      "form": "jd73phacyyzmagrpmvddn4mge98c80tq"
     },
     "output": {
-      "closeAt": null,
-      "eventId": "j9726nrwb529ang7nfwxjvdms18c8zz4",
-      "externalTitle": "Example Call for Papers",
-      "formId": "jd76g25d9w8y183n8hhjx0pzsx8c8v3y",
+      "closeAt": "2026-09-16T06:59:00.000Z",
+      "eventId": "j972cy9qbmve3d3c85p0bjmnzh8c8tv3",
+      "externalTitle": "Call for Speakers — AI Engineer Summit 2026",
+      "formId": "jd73phacyyzmagrpmvddn4mge98c80tq",
       "kind": "abstract",
       "linkWarning": "http://localhost:3000 is a loopback address (demo URL — set SITE_URL in production). Links below only work on the machine running Sessionboard — don't send them to a speaker.",
-      "name": "Example Call for Papers",
-      "notifyEmails": [],
-      "pageHeading": "Call for Speakers",
+      "name": "CFP 2026 — main call",
+      "notifyEmails": [
+        "organizer@demo.sessionboard.dev"
+      ],
+      "pageHeading": "Submit a talk",
       "participantConfig": {
         "chairpersonEnabled": false,
         "fields": [
           {
             "enabled": true,
             "id": "firstName",
-            "label": "First Name",
+            "label": "First name",
             "locked": true,
             "required": true
           },
           {
             "enabled": true,
             "id": "lastName",
-            "label": "Last Name",
+            "label": "Last name",
             "locked": true,
             "required": true
           },
           {
             "enabled": true,
             "id": "email",
-            "label": "Email",
+            "label": "Email address",
             "locked": true,
             "required": true
           },
           {
             "enabled": true,
             "id": "jobTitle",
-            "label": "Job Title",
+            "label": "Job title",
             "locked": false,
             "required": false
           },
@@ -295,14 +416,8 @@
             "required": false
           },
           {
-            "enabled": false,
-            "id": "phone",
-            "label": "Mobile Phone",
-            "locked": false,
-            "required": false
-          },
-          {
             "enabled": true,
+            "help": "60–100 words. Used in the programme if your talk is accepted.",
             "id": "bio",
             "label": "Biography",
             "locked": false,
@@ -314,20 +429,27 @@
             "label": "Headshot",
             "locked": false,
             "required": false
+          },
+          {
+            "enabled": false,
+            "id": "phone",
+            "label": "Phone number",
+            "locked": false,
+            "required": false
           }
         ],
         "moderatorEnabled": false,
         "sendConfirmationEmail": true,
-        "speakerMax": 4,
+        "speakerMax": 3,
         "speakerMin": 1
       },
-      "publicUrl": "http://localhost:3000/submit/example-call-for-papers",
+      "publicUrl": "http://localhost:3000/submit/cfp",
       "questions": [
         {
           "enabled": true,
           "id": "title",
           "isTrackQuestion": false,
-          "label": "Title",
+          "label": "Session title",
           "locked": true,
           "options": null,
           "required": true,
@@ -338,12 +460,12 @@
           "enabled": true,
           "id": "description",
           "isTrackQuestion": false,
-          "label": "Description",
+          "label": "Session description",
           "locked": true,
           "options": null,
           "required": true,
           "showIf": null,
-          "type": "rich_text"
+          "type": "long_text"
         },
         {
           "enabled": true,
@@ -354,7 +476,7 @@
           "options": [
             "Talk",
             "Workshop",
-            "Lightning Talk"
+            "Lightning talk"
           ],
           "required": true,
           "showIf": null,
@@ -366,7 +488,11 @@
           "isTrackQuestion": true,
           "label": "Track",
           "locked": false,
-          "options": [],
+          "options": [
+            "AI Engineering",
+            "Product",
+            "Infrastructure"
+          ],
           "required": true,
           "showIf": null,
           "type": "dropdown"
@@ -375,14 +501,14 @@
           "enabled": true,
           "id": "level",
           "isTrackQuestion": false,
-          "label": "Level",
+          "label": "Audience level",
           "locked": false,
           "options": [
-            "Introductory",
+            "Beginner",
             "Intermediate",
             "Advanced"
           ],
-          "required": false,
+          "required": true,
           "showIf": null,
           "type": "dropdown"
         },
@@ -393,7 +519,9 @@
           "label": "Language",
           "locked": false,
           "options": [
-            "English"
+            "English",
+            "German",
+            "Spanish"
           ],
           "required": false,
           "showIf": null,
@@ -401,30 +529,44 @@
         },
         {
           "enabled": true,
-          "id": "tags",
+          "id": "workshopDuration",
           "isTrackQuestion": false,
-          "label": "Tags",
+          "label": "Workshop duration",
           "locked": false,
           "options": [
-            "AI",
-            "Infrastructure",
-            "Product",
-            "Open Source"
+            "90 minutes",
+            "Half day",
+            "Full day"
           ],
           "required": false,
+          "showIf": {
+            "equals": "Workshop",
+            "questionId": "format"
+          },
+          "type": "dropdown"
+        },
+        {
+          "enabled": true,
+          "id": "takeaways",
+          "isTrackQuestion": false,
+          "label": "Key takeaways",
+          "locked": false,
+          "options": null,
+          "required": false,
           "showIf": null,
-          "type": "multi_select"
+          "type": "long_text"
         }
       ],
       "settings": {
         "allowDrafts": true,
         "autoRedirectToPortal": true,
+        "limitPerUser": 3,
         "sendReminderEmail": true,
-        "successMessage": "<p>Thank you for submitting to present at our event! We'll review your submission and get back to you soon.</p>"
+        "successMessage": "Thanks — your proposal is in. We'll email you when the programme committee has reviewed it."
       },
-      "slug": "example-call-for-papers",
+      "slug": "cfp",
       "status": "open",
-      "welcomeMessage": "<p>We'd love to hear from you! Tell us about the session you'd like to present.</p>"
+      "welcomeMessage": "We're looking for practitioner talks: things you built, things that broke, and what you learned. You don't need to be a famous speaker — you need a real story and something the audience can use.\n\nThe call closes on 15 September 2026. You may submit up to three proposals, and you can save a draft and come back to it at any time."
     }
   },
   "get_public_form_link": {
@@ -434,7 +576,8 @@
     "output": {
       "acceptingSubmissions": true,
       "closeAt": "2026-09-16T06:59:00.000Z",
-      "formId": "jd7bpwen1xbgwx4k3chmgy2fx58c99yd",
+      "formId": "jd73phacyyzmagrpmvddn4mge98c80tq",
+      "linkWarning": "http://localhost:3000 is a loopback address (demo URL — set SITE_URL in production). Links below only work on the machine running Sessionboard — don't send them to a speaker.",
       "name": "CFP 2026 — main call",
       "note": "Share this link with prospective speakers.",
       "publicUrl": "http://localhost:3000/submit/cfp",
@@ -443,11 +586,14 @@
   },
   "create_form": {
     "input": {
-      "event": "ai-summit-2026",
-      "name": "Copilot Verification CFP"
+      "name": "Copilot Verification CFP",
+      "event": "ai-summit-2026"
     },
     "output": {
-      "formId": "jd78w6pgzdk7efx7jntygrw7ah8c8pzs",
+      "formId": "jd7e3107b4ys2yd78x3z5j2g5x8c8vyn",
+      "kind": "abstract",
+      "linkWarning": "http://localhost:3000 is a loopback address (demo URL — set SITE_URL in production). Links below only work on the machine running Sessionboard — don't send them to a speaker.",
+      "name": "Copilot Verification CFP",
       "publicUrl": "http://localhost:3000/submit/copilot-verification-cfp",
       "slug": "copilot-verification-cfp",
       "status": "open"
@@ -455,12 +601,26 @@
   },
   "list_submissions": {
     "input": {
-      "status": "pending",
-      "event": "ai-summit-2026"
+      "event": "ai-summit-2026",
+      "status": "pending"
     },
     "output": {
-      "returned": 4,
+      "returned": 5,
       "submissions": [
+        {
+          "format": "Talk",
+          "kind": "abstract",
+          "level": "Introductory",
+          "scheduled": null,
+          "speakers": [
+            "Quinn Quiet <verify-quiet-mso2d23a@example.com>"
+          ],
+          "status": "pending",
+          "submissionId": "k574y2n3adb6hh2k831d8p1nkd8c87dh",
+          "tags": [],
+          "title": "Quiet Talk",
+          "track": "AI Engineering"
+        },
         {
           "format": "Talk",
           "kind": "abstract",
@@ -470,7 +630,7 @@
             "Hana Kobayashi <hana.kobayashi@example.com>"
           ],
           "status": "pending",
-          "submissionId": "k577y9smskq0gp9e7zsmdx32rh8c9c1j",
+          "submissionId": "k5788agpvtqzy3d1rf7axbkvcn8c9hh7",
           "tags": [
             "calibration",
             "safety"
@@ -487,7 +647,7 @@
             "Daniel Okonkwo <daniel.okonkwo@example.com>"
           ],
           "status": "pending",
-          "submissionId": "k57bhxjy3ckt2gt9nz4115vrqx8c9jrf",
+          "submissionId": "k571f2h98nn2nxmp5m2pt2c70s8c8qxn",
           "tags": [
             "mlops",
             "compliance"
@@ -504,7 +664,7 @@
             "Jonas Weber <jonas.weber@example.com>"
           ],
           "status": "pending",
-          "submissionId": "k57bgcqmpw9nry4931pew525yn8c9g2x",
+          "submissionId": "k577v576dgfs0cj91jrdkpav8s8c95ya",
           "tags": [
             "retrieval",
             "scale"
@@ -521,7 +681,7 @@
             "Elena Petrova <elena.petrova@example.com>"
           ],
           "status": "pending",
-          "submissionId": "k577a3w41sjzn6pap4sb5ae0z98c9k2r",
+          "submissionId": "k573818ejy52d66k4rxb9w5cb58c9z9c",
           "tags": [
             "latency",
             "product"
@@ -530,57 +690,50 @@
           "track": "Product"
         }
       ],
-      "total": 4
+      "total": 5
     }
   },
   "get_submission": {
     "input": {
-      "submissionId": "k577y9smskq0gp9e7zsmdx32rh8c9c1j"
+      "submissionId": "k574y2n3adb6hh2k831d8p1nkd8c87dh"
     },
     "output": {
       "answers": {
-        "description": "Abstention is a feature. We walk through calibration techniques, uncertainty signals that survive contact with production, and the interface patterns that let a model decline gracefully instead of confidently inventing an answer.",
+        "description": "<p>A talk created by the verify script.</p>",
         "format": "Talk",
         "language": "English",
-        "level": "Advanced",
-        "takeaways": "Practical uncertainty signals and how to surface them in a UI.",
-        "title": "Teaching your model to say “I don't know”",
+        "level": "Introductory",
+        "title": "Quiet Talk",
         "track": "AI Engineering"
       },
       "decidedAt": null,
-      "description": "Abstention is a feature. We walk through calibration techniques, uncertainty signals that survive contact with production, and the interface patterns that let a model decline gracefully instead of confidently inventing an answer.",
+      "description": "<p>A talk created by the verify script.</p>",
       "evaluation": {
-        "averageScore": 5,
-        "comments": [
-          "The best abstract in my batch. Abstention is under-discussed and this proposal treats it as an engineering problem rather than a research curiosity."
-        ],
-        "completedReviews": 1
+        "averageScore": null,
+        "comments": [],
+        "completedReviews": 0
       },
       "formName": "CFP 2026 — main call",
       "format": "Talk",
       "kind": "abstract",
-      "level": "Advanced",
+      "level": "Introductory",
       "notifiedAt": null,
       "participants": [
         {
-          "company": "Institute for Applied ML",
-          "email": "hana.kobayashi@example.com",
-          "name": "Hana Kobayashi",
-          "personId": "m974kv274874q0t7h00bpfhdxx8c8rpd",
+          "email": "verify-quiet-mso2d23a@example.com",
+          "name": "Quinn Quiet",
+          "personId": "m9769znrmd13cdvn02t91gyh6h8c9w8q",
           "role": "speaker"
         }
       ],
       "scheduled": null,
       "speakers": [
-        "Hana Kobayashi <hana.kobayashi@example.com>"
+        "Quinn Quiet <verify-quiet-mso2d23a@example.com>"
       ],
       "status": "pending",
-      "submissionId": "k577y9smskq0gp9e7zsmdx32rh8c9c1j",
-      "tags": [
-        "calibration",
-        "safety"
-      ],
-      "title": "Teaching your model to say “I don't know”",
+      "submissionId": "k574y2n3adb6hh2k831d8p1nkd8c87dh",
+      "tags": [],
+      "title": "Quiet Talk",
       "track": "AI Engineering",
       "uploads": []
     }
@@ -590,6 +743,25 @@
       "event": "ai-summit-2026"
     },
     "output": {
+      "byRoom": [
+        {
+          "capacity": 300,
+          "firstStartsAt": "2026-10-12T09:00:00.000Z",
+          "lastStartsAt": "2026-10-13T23:00:00.000Z",
+          "room": "Main Stage",
+          "roomId": "js7acd45wnyra7fx3n5c26mv9x8c912t",
+          "sessionCount": 7
+        },
+        {
+          "capacity": 80,
+          "firstStartsAt": "2026-10-12T09:00:00.000Z",
+          "lastStartsAt": "2026-10-12T17:00:00.000Z",
+          "room": "Workshop Room",
+          "roomId": "js739pc0h5at27jbpg0j3d5hw58c928r",
+          "sessionCount": 2
+        }
+      ],
+      "conflictCount": 0,
       "conflicts": [],
       "event": {
         "endsAt": "2026-10-14T01:00:00.000Z",
@@ -601,142 +773,132 @@
         {
           "capacity": 300,
           "name": "Main Stage",
-          "roomId": "js7909x456rtggbk9w5s1z27xs8c9944"
+          "roomId": "js7acd45wnyra7fx3n5c26mv9x8c912t"
         },
         {
           "capacity": 80,
           "name": "Workshop Room",
-          "roomId": "js7fyafevn1hrjrtng39vk89zx8c9msw"
+          "roomId": "js739pc0h5at27jbpg0j3d5hw58c928r"
         }
       ],
       "scheduled": [
         {
           "durationMinutes": 45,
           "room": "Main Stage",
-          "roomId": "js7909x456rtggbk9w5s1z27xs8c9944",
+          "roomId": "js7acd45wnyra7fx3n5c26mv9x8c912t",
           "speakers": [
             "Yara Haddad"
           ],
           "startsAt": "2026-10-12T09:00:00.000Z",
-          "submissionId": "k577w0cj51kqs87n309pwe3wbh8c8na1",
+          "submissionId": "k574asz8ghnm6d934twqgpv9md8c9nx6",
           "title": "Structured output without the sadness",
           "track": "AI Engineering"
         },
         {
           "durationMinutes": 45,
           "room": "Workshop Room",
-          "roomId": "js7fyafevn1hrjrtng39vk89zx8c9msw",
+          "roomId": "js739pc0h5at27jbpg0j3d5hw58c928r",
           "speakers": [
             "Noah Blackwood"
           ],
           "startsAt": "2026-10-12T09:00:00.000Z",
-          "submissionId": "k573qf598tg80jrqfnmnxcn5118c81nj",
+          "submissionId": "k57528z7r9pn2ch4s8se4fvam18c8mvs",
           "title": "Cost modelling for inference-heavy products",
           "track": "Product"
         },
         {
           "durationMinutes": 45,
           "room": "Main Stage",
-          "roomId": "js7909x456rtggbk9w5s1z27xs8c9944",
+          "roomId": "js7acd45wnyra7fx3n5c26mv9x8c912t",
           "speakers": [
             "Vera Efftest"
           ],
           "startsAt": "2026-10-12T10:00:00.000Z",
-          "submissionId": "k57b9zm39fh8srjdgk03ccqj1x8c9h97",
-          "title": "Verification Talk (edited)",
-          "track": "AI Engineering"
-        },
-        {
-          "durationMinutes": 45,
-          "room": "Workshop Room",
-          "roomId": "js7fyafevn1hrjrtng39vk89zx8c9msw",
-          "speakers": [
-            "Vera Efftest"
-          ],
-          "startsAt": "2026-10-12T10:00:00.000Z",
-          "submissionId": "k57f9jw4hnc05r1d8953nbcvv18c861c",
+          "submissionId": "k57czh39b0pg0dc3twessgjrmn8c90r3",
           "title": "Verification Talk (edited)",
           "track": "AI Engineering"
         },
         {
           "durationMinutes": 45,
           "room": "Main Stage",
-          "roomId": "js7909x456rtggbk9w5s1z27xs8c9944",
+          "roomId": "js7acd45wnyra7fx3n5c26mv9x8c912t",
           "speakers": [
             "Priya Raghavan"
           ],
           "startsAt": "2026-10-12T16:00:00.000Z",
-          "submissionId": "k571x40vq9yzznyvvqa5jfknrh8c8bct",
+          "submissionId": "k57ebm4ky3gbepjg2f36fdmbgd8c8y3e",
           "title": "Opening keynote: the year AI engineering grew up",
           "track": "AI Engineering"
         },
         {
           "durationMinutes": 60,
           "room": "Main Stage",
-          "roomId": "js7909x456rtggbk9w5s1z27xs8c9944",
+          "roomId": "js7acd45wnyra7fx3n5c26mv9x8c912t",
           "speakers": [
             "Sofia Marchetti",
             "Ava Nakamura"
           ],
           "startsAt": "2026-10-12T17:00:00.000Z",
-          "submissionId": "k57fs24k5rs117zahkhjrkkfe18c9mrk",
+          "submissionId": "k579cpezm9j9ara8rgcdeqs7v58c87wm",
           "title": "Building reliable agents: a practitioner's playbook",
           "track": "AI Engineering"
         },
         {
           "durationMinutes": 45,
           "room": "Workshop Room",
-          "roomId": "js7fyafevn1hrjrtng39vk89zx8c9msw",
+          "roomId": "js739pc0h5at27jbpg0j3d5hw58c928r",
           "speakers": [
             "Tom Beaumont",
             "Hana Kobayashi"
           ],
           "startsAt": "2026-10-12T17:00:00.000Z",
-          "submissionId": "k578etq1phdv9y0e795vj6c3fd8c9ty7",
+          "submissionId": "k57edx26bh7vmc303nwxtse7e18c87sw",
           "title": "Evaluation harnesses for production LLMs",
           "track": "AI Engineering"
         },
         {
           "durationMinutes": 45,
           "room": "Main Stage",
-          "roomId": "js7909x456rtggbk9w5s1z27xs8c9944",
+          "roomId": "js7acd45wnyra7fx3n5c26mv9x8c912t",
           "speakers": [
             "Liam Ferguson"
           ],
           "startsAt": "2026-10-12T18:15:00.000Z",
-          "submissionId": "k57ekc984dhck38bh40v7rpry58c92vr",
+          "submissionId": "k5775v0bs06ngwgt5r36prg3c58c90g1",
           "title": "Serving four hundred models on one GPU fleet",
           "track": "Infrastructure"
         },
         {
           "durationMinutes": 60,
           "room": "Main Stage",
-          "roomId": "js7909x456rtggbk9w5s1z27xs8c9944",
+          "roomId": "js7acd45wnyra7fx3n5c26mv9x8c912t",
           "speakers": [
             "Rafael Duarte",
             "Elena Petrova"
           ],
           "startsAt": "2026-10-13T16:30:00.000Z",
-          "submissionId": "k5769hxk3v8h5j6yypf179gza18c8eyk",
+          "submissionId": "k57c3aqtrb9ry32ycnhphedc3h8c97wx",
           "title": "What users actually do with your AI feature",
           "track": "Product"
         },
         {
           "durationMinutes": 60,
           "room": "Main Stage",
-          "roomId": "js7909x456rtggbk9w5s1z27xs8c9944",
+          "roomId": "js7acd45wnyra7fx3n5c26mv9x8c912t",
           "speakers": [
             "Noah Blackwood",
             "Daniel Okonkwo",
             "Ava Nakamura"
           ],
           "startsAt": "2026-10-13T23:00:00.000Z",
-          "submissionId": "k572xpk0h00pdedkh4wq9w56x18c8wn4",
+          "submissionId": "k57ej1p981dqv6dm5hvcwnt3wn8c81t9",
           "title": "Closing panel: what we got wrong about agents",
           "track": "Product"
         }
       ],
-      "unscheduled": []
+      "scheduledCount": 9,
+      "unscheduled": [],
+      "unscheduledCount": 0
     }
   },
   "list_speakers": {
@@ -754,38 +916,6 @@
       "speakerCount": 7,
       "speakers": [
         {
-          "company": "Orbit Cloud",
-          "email": "liam.ferguson@example.com",
-          "jobTitle": "Staff Site Reliability Engineer",
-          "missingProfileItems": [
-            "bio",
-            "slides"
-          ],
-          "name": "Liam Ferguson",
-          "outstandingReason": [
-            "open_tasks",
-            "incomplete_profile"
-          ],
-          "outstandingTasks": [
-            {
-              "dueAt": "2026-08-14T02:51:05.017Z",
-              "kind": "confirm",
-              "taskId": "k979s0e1m4hpb7mmgtkhyqerz18c9bjz",
-              "title": "Confirm your biography"
-            },
-            {
-              "dueAt": "2026-08-31T02:51:05.017Z",
-              "kind": "upload",
-              "taskId": "k975f6sqm2rymxcktsqmey13fs8c83f5",
-              "title": "Upload your slides"
-            }
-          ],
-          "personId": "m97dcc60qqjywe7tvxxtakncz18c8zc0",
-          "sessions": [
-            "Serving four hundred models on one GPU fleet"
-          ]
-        },
-        {
           "company": "Terrafirma",
           "email": "rafael.duarte@example.com",
           "jobTitle": "Solutions Architect",
@@ -800,16 +930,16 @@
           ],
           "outstandingTasks": [
             {
-              "dueAt": "2026-08-13T02:51:05.017Z",
-              "kind": "headshot",
-              "taskId": "k975j68gcc65qjxnvtdv8e01418c8kqs",
-              "title": "Upload your headshot"
-            },
-            {
               "dueAt": "2026-08-31T02:51:05.017Z",
               "kind": "upload",
               "taskId": "k97bdd4nneqczez6hzmttp9nrh8c8ett",
               "title": "Upload your slides"
+            },
+            {
+              "dueAt": null,
+              "kind": "confirm",
+              "taskId": "k97c5n0xmz7hq43rzk7zcdmhjs8c8sgs",
+              "title": "Copilot verification check"
             }
           ],
           "personId": "m9702hy57p6pbmhysetqw2c2598c80tn",
@@ -908,6 +1038,32 @@
           ]
         },
         {
+          "company": "Orbit Cloud",
+          "email": "liam.ferguson@example.com",
+          "jobTitle": "Staff Site Reliability Engineer",
+          "missingProfileItems": [
+            "bio",
+            "slides"
+          ],
+          "name": "Liam Ferguson",
+          "outstandingReason": [
+            "open_tasks",
+            "incomplete_profile"
+          ],
+          "outstandingTasks": [
+            {
+              "dueAt": "2026-08-31T02:51:05.017Z",
+              "kind": "upload",
+              "taskId": "k975f6sqm2rymxcktsqmey13fs8c83f5",
+              "title": "Upload your slides"
+            }
+          ],
+          "personId": "m97dcc60qqjywe7tvxxtakncz18c8zc0",
+          "sessions": [
+            "Serving four hundred models on one GPU fleet"
+          ]
+        },
+        {
           "company": "Fathom Robotics",
           "email": "noah.blackwood@example.com",
           "jobTitle": "Chief Technology Officer",
@@ -969,14 +1125,15 @@
   "get_speaker_portal_link": {
     "input": {
       "event": "ai-summit-2026",
-      "speaker": "liam.ferguson@example.com"
+      "speaker": "rafael.duarte@example.com"
     },
     "output": {
-      "email": "liam.ferguson@example.com",
-      "name": "Liam Ferguson",
+      "email": "rafael.duarte@example.com",
+      "linkWarning": "http://localhost:3000 is a loopback address (demo URL — set SITE_URL in production). Links below only work on the machine running Sessionboard — don't send them to a speaker.",
+      "name": "Rafael Duarte",
       "note": "A private magic link — it signs this speaker straight into their portal. Share it only with them.",
-      "personId": "m97er2a2dm7qvzzpmkfzc4q4m98c8epy",
-      "portalUrl": "http://localhost:3000/portal/t/demo-liam-ferguson"
+      "personId": "m9702hy57p6pbmhysetqw2c2598c80tn",
+      "portalUrl": "http://localhost:3000/portal/t/demo-rafael-duarte"
     }
   },
   "list_templates": {
@@ -984,38 +1141,49 @@
       "event": "ai-summit-2026"
     },
     "output": {
-      "note": "Placeholders use {{variable}} syntax and are filled in when the email is queued.",
+      "note": "Bodies are previewed to the first 200 characters — call get_template for the full text of one. Placeholders use {{variable}} syntax and are filled in when the email is queued.",
+      "templateCount": 5,
       "templates": [
         {
-          "body": "Hi {{firstName}},\n\nThanks for submitting “{{sessionTitle}}” to {{eventName}}. Your proposal is in and our programme committee will review it alongside the rest of the call for papers.\n\nYou can review or update your submission at any time before the call closes from your speaker portal:\n{{portalLink}}\n\nWe'll be in touch as soon as decisions are made. Thank you for sharing your work with us.\n\n— The {{eventName}} programme team",
+          "bodyLength": 428,
+          "bodyPreview": "Hi {{firstName}},\n\nThanks for submitting “{{sessionTitle}}” to {{eventName}}. Your proposal is in and our programme committee will review it alongside the rest of the call for papers.\n\nYou can review …",
+          "bodyTruncated": true,
           "customized": true,
           "key": "confirmation",
           "name": "Submission received",
           "subject": "We received your submission for {{eventName}}"
         },
         {
-          "body": "Hi {{firstName}},\n\nGreat news: “{{sessionTitle}}” has been accepted for {{eventName}}. We had a strong field this year and we're genuinely excited to have you on the programme.\n\nA few next steps so we can get you ready:\n\n1. Open your speaker portal: {{portalLink}}\n2. Confirm your biography and upload a headshot — both appear on the public programme.\n3. Work through the tasks listed in the portal before their due dates (slides, travel details, and anything else we need from you).\n\nIf your session has already been scheduled you'll find a calendar invite attached to this email, and the exact time and room in the portal.\n\nPlease let us know if anything changes on your side — we'd rather hear early.\n\nWelcome aboard,\nThe {{eventName}} programme team",
+          "bodyLength": 753,
+          "bodyPreview": "Hi {{firstName}},\n\nGreat news: “{{sessionTitle}}” has been accepted for {{eventName}}. We had a strong field this year and we're genuinely excited to have you on the programme.\n\nA few next steps so we…",
+          "bodyTruncated": true,
           "customized": true,
           "key": "accepted",
           "name": "Submission accepted",
           "subject": "Congratulations — “{{sessionTitle}}” is in the {{eventName}} programme"
         },
         {
-          "body": "Hi {{firstName}},\n\nThank you for submitting “{{sessionTitle}}” to {{eventName}}. After careful review by our programme committee, we're not able to include it in this year's programme.\n\nThis was a genuinely difficult round — we received far more strong proposals than we have slots, and a decision not to schedule a talk says much more about the shape of the agenda than about the quality of the work.\n\nWe hope you'll still join us, and we'd very much welcome a submission from you next time. Your submission history stays available in your portal:\n{{portalLink}}\n\nThank you for taking the time to write it up.\n\n— The {{eventName}} programme team",
+          "bodyLength": 646,
+          "bodyPreview": "Hi {{firstName}},\n\nThank you for submitting “{{sessionTitle}}” to {{eventName}}. After careful review by our programme committee, we're not able to include it in this year's programme.\n\nThis was a gen…",
+          "bodyTruncated": true,
           "customized": true,
           "key": "declined",
           "name": "Submission not accepted",
           "subject": "Your submission to {{eventName}}"
         },
         {
-          "body": "Hi {{firstName}},\n\nYour submission “{{sessionTitle}}” made it through review for {{eventName}}, but we've run out of slots in the programme for now — so we've placed it on our waitlist.\n\nThat means: if a slot opens up, yours is one of the first talks we'll reach for. We'll contact you straight away if that happens, and we'll confirm either way before the event.\n\nNothing is needed from you right now. You can check the current status any time in your speaker portal:\n{{portalLink}}\n\nThanks for your patience — and for a proposal we'd genuinely like to find room for.\n\n— The {{eventName}} programme team",
+          "bodyLength": 604,
+          "bodyPreview": "Hi {{firstName}},\n\nYour submission “{{sessionTitle}}” made it through review for {{eventName}}, but we've run out of slots in the programme for now — so we've placed it on our waitlist.\n\nThat means: i…",
+          "bodyTruncated": true,
           "customized": true,
           "key": "waitlisted",
           "name": "Submission waitlisted",
           "subject": "“{{sessionTitle}}” is on the {{eventName}} waitlist"
         },
         {
-          "body": "Hi {{firstName}},\n\nA friendly nudge — you still have a few speaker tasks outstanding for {{eventName}}. They usually take less than ten minutes in total.\n\nOpen your portal to see exactly what's left and complete it inline:\n{{portalLink}}\n\nGetting these in on time lets us publish the programme, print your details correctly and make sure your session runs smoothly on the day.\n\nIf something is blocking you, just reply to this email and we'll help.\n\nThank you,\nThe {{eventName}} programme team",
+          "bodyLength": 493,
+          "bodyPreview": "Hi {{firstName}},\n\nA friendly nudge — you still have a few speaker tasks outstanding for {{eventName}}. They usually take less than ten minutes in total.\n\nOpen your portal to see exactly what's left a…",
+          "bodyTruncated": true,
           "customized": true,
           "key": "reminder",
           "name": "Outstanding tasks reminder",
@@ -1048,7 +1216,7 @@
           "status": "preview",
           "subject": "Venue update for AI Engineer Summit 2026",
           "templateKey": "custom-bulk",
-          "to": "verify-e2e-mso17mas@example.com"
+          "to": "verify-e2e-mso2d0j4@example.com"
         },
         {
           "calendarInviteAttached": false,
@@ -1156,15 +1324,6 @@
           "status": "preview",
           "subject": "A quick reminder: outstanding tasks for AI Engineer Summit 2026",
           "templateKey": "reminder",
-          "to": "verify-e2e-mso17mas@example.com"
-        },
-        {
-          "calendarInviteAttached": false,
-          "error": null,
-          "sentAt": null,
-          "status": "preview",
-          "subject": "A quick reminder: outstanding tasks for AI Engineer Summit 2026",
-          "templateKey": "reminder",
           "to": "noah.blackwood@example.com"
         },
         {
@@ -1228,7 +1387,7 @@
           "status": "preview",
           "subject": "Congratulations — “Verification Talk” is in the AI Engineer Summit 2026 programme",
           "templateKey": "accepted",
-          "to": "verify-e2e-mso17mas@example.com"
+          "to": "verify-e2e-mso2d0j4@example.com"
         },
         {
           "calendarInviteAttached": false,
@@ -1253,6 +1412,15 @@
           "error": null,
           "sentAt": null,
           "status": "preview",
+          "subject": "We received your submission for AI Engineer Summit 2026",
+          "templateKey": "confirmation",
+          "to": "verify-e2e-mso2d0j4@example.com"
+        },
+        {
+          "calendarInviteAttached": false,
+          "error": null,
+          "sentAt": null,
+          "status": "preview",
           "subject": "A quick reminder: outstanding tasks for AI Engineer Summit 2026",
           "templateKey": "reminder",
           "to": "tom.beaumont@example.com"
@@ -1260,7 +1428,7 @@
         {
           "calendarInviteAttached": true,
           "error": null,
-          "sentAt": "2026-08-06T02:18:54.204Z",
+          "sentAt": "2026-08-06T02:51:05.017Z",
           "status": "sent",
           "subject": "Congratulations — “Building reliable agents: a practitioner's playbook” is in the AI Engineer Summit 2026 programme",
           "templateKey": "accepted",
@@ -1276,25 +1444,26 @@
       "event": "ai-summit-2026"
     },
     "output": {
+      "format": null,
       "kind": "session",
       "speakers": [],
       "status": "accepted",
-      "submissionId": "k5737k058av76xd673d3b25nxx8c9y1p",
-      "title": "Copilot Verification Keynote"
+      "submissionId": "k57b3xv1qd153p55150x3x80gs8c8sea",
+      "title": "Copilot Verification Keynote",
+      "track": null
     }
   },
   "assign_task": {
     "input": {
       "speakers": [
-        "liam.ferguson@example.com"
+        "rafael.duarte@example.com"
       ],
-      "kind": "confirm",
       "title": "Copilot verification check",
       "event": "ai-summit-2026"
     },
     "output": {
       "assignedTo": [
-        "liam.ferguson@example.com"
+        "rafael.duarte@example.com"
       ],
       "created": 1,
       "dueAt": null,
@@ -1309,10 +1478,11 @@
       "name": "Copilot Verification Event"
     },
     "output": {
-      "eventId": "j97bjah3m4tyweek9mpqsvzqpx8c8qc5",
+      "eventId": "j972c4ems4mk1hjgfv814ewjgn8c9tcm",
+      "linkWarning": "http://localhost:3000 is a loopback address (demo URL — set SITE_URL in production). Links below only work on the machine running Sessionboard — don't send them to a speaker.",
       "name": "Copilot Verification Event",
       "publicSubmitUrlHint": "http://localhost:3000/submit/<form-slug>",
-      "slug": "copilot-verification-event-2"
+      "slug": "copilot-verification-event-5"
     }
   },
   "update_template": {
@@ -1378,7 +1548,7 @@
   "auto_place_sessions": {
     "input": {},
     "output": {
-      "conflictsAfterwards": 1,
+      "conflictsAfterwards": 0,
       "couldNotFit": 0,
       "note": "Existing scheduled sessions were left untouched; only the unscheduled tray was filled.",
       "placed": 1
@@ -1398,7 +1568,9 @@
     "input": {},
     "output": {
       "closeAt": null,
-      "formId": "jd72159y5t23b1c7ccm40d665d8c9jrj",
+      "formId": "jd72yjkj9sr84k9pfeq58xgtk98c8jhm",
+      "linkWarning": "http://localhost:3000 is a loopback address (demo URL — set SITE_URL in production). Links below only work on the machine running Sessionboard — don't send them to a speaker.",
+      "name": "Copilot Verification CFP",
       "previous": {
         "closeAt": null,
         "settings": {
@@ -1423,7 +1595,7 @@
     "input": {},
     "output": {
       "note": "Moved back to the unscheduled tray.",
-      "submissionId": "k577w0cj51kqs87n309pwe3wbh8c8na1",
+      "submissionId": "k574asz8ghnm6d934twqgpv9md8c9nx6",
       "title": "Structured output without the sadness"
     }
   },
@@ -1446,6 +1618,44 @@
         "eventName",
         "portalLink"
       ]
+    }
+  },
+  "remove_task": {
+    "input": {},
+    "output": {
+      "note": "It has disappeared from that speaker's portal. Re-create it with assign_task if that was a mistake.",
+      "removed": true,
+      "speaker": "rafael.duarte@example.com",
+      "taskId": "k97bdd4nneqczez6hzmttp9nrh8c8ett",
+      "title": "Upload your slides",
+      "wasCompleted": false
+    }
+  },
+  "delete_form": {
+    "input": {},
+    "output": {
+      "deleted": true,
+      "formId": "jd7e3107b4ys2yd78x3z5j2g5x8c8vyn",
+      "name": "Copilot Verification CFP",
+      "note": "The form is gone. Its public URL now 404s.",
+      "slug": "copilot-verification-cfp"
+    }
+  },
+  "delete_event": {
+    "input": {},
+    "output": {
+      "deleted": true,
+      "eventId": "j9726nrwb529ang7nfwxjvdms18c8zz4",
+      "name": "Copilot Verification Event",
+      "note": "The event and everything belonging to it (submissions, speakers, forms, tasks, uploads, emails) are gone. This cannot be undone.",
+      "removed": {
+        "forms": 1,
+        "people": 0,
+        "rooms": 0,
+        "submissions": 0,
+        "tasks": 0
+      },
+      "slug": "copilot-verification-event"
     }
   }
 }

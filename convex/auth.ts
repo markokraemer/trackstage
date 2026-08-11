@@ -11,6 +11,29 @@ import type { DataModel } from "./_generated/dataModel"
 
 const siteUrl = process.env.SITE_URL ?? "http://localhost:3000"
 
+/**
+ * Origins Better Auth accepts requests from. `baseURL` is trusted implicitly;
+ * these are the *other* legitimate front doors the same deployment answers on:
+ * the workers.dev fallback that stays live alongside the custom domain, and
+ * local development. `EXTRA_TRUSTED_ORIGINS` (comma-separated) lets a
+ * deployment add more — e.g. a preview URL — without a code change.
+ */
+const trustedOrigins = Array.from(
+  new Set(
+    [
+      siteUrl,
+      "https://trackstage.app",
+      "https://trackstage.kortix.workers.dev",
+      "http://localhost:3000",
+      ...(process.env.EXTRA_TRUSTED_ORIGINS ?? "")
+        .split(",")
+        .map((o) => o.trim()),
+    ]
+      .filter(Boolean)
+      .map((o) => o.replace(/\/+$/, "")),
+  ),
+)
+
 /** How long a password-reset link stays valid. Mirrored into the email copy. */
 const RESET_PASSWORD_TTL_SECONDS = 60 * 60
 
@@ -19,6 +42,7 @@ export const authComponent = createClient<DataModel>(components.betterAuth)
 export const createAuth = (ctx: GenericCtx<DataModel>) => {
   return betterAuth({
     baseURL: siteUrl,
+    trustedOrigins,
     database: authComponent.adapter(ctx),
     emailAndPassword: {
       enabled: true,

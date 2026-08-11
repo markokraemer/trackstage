@@ -44,9 +44,11 @@ const CONTEXT_OPTS = {
 const args = process.argv.slice(2)
 const MODE = args.includes("--docs")
   ? "docs"
-  : args.includes("--marketing")
-    ? "marketing"
-    : "all"
+  : args.includes("--agenda")
+    ? "agenda"
+    : args.includes("--marketing")
+      ? "marketing"
+      : "all"
 
 const log = (...a) => console.log("·", ...a)
 
@@ -193,6 +195,11 @@ async function main() {
 
   if (MODE === "marketing" || MODE === "all") {
     await captureMarketingShots(page)
+  }
+  // `--agenda` refreshes only the agenda stills + the drag GIF. Useful while
+  // other screens are mid-change: it never overwrites their shots.
+  if (MODE === "agenda") {
+    await captureAgendaShots(page)
   }
   if (MODE === "docs" || MODE === "all") {
     await captureDocsShots(page)
@@ -589,13 +596,32 @@ async function scrollGridToProgramme(page) {
   await page.waitForTimeout(400)
 }
 
+/** Agenda-only refresh: the two stills plus the drag GIF frames. */
+async function captureAgendaShots(page) {
+  await page.goto(`${BASE}/app/agenda`, { waitUntil: "networkidle" })
+  await settle(page)
+  await tryClick(page, page.getByText(/^list$/i), "agenda List view")
+  await shot(page, "agenda-list")
+  await tryClick(page, page.getByText(/^day$/i), "agenda Day view")
+  await settle(page)
+  await scrollGridToProgramme(page)
+  await shot(page, "agenda")
+  await captureAgendaFlow(page)
+}
+
 /**
- * Four frames of a real agenda drag: idle → lifted → moved → dropped.
- * dnd-kit needs a mousedown plus several small moves before it activates.
+ * Six frames of a real agenda drag, showing the whole interaction language:
+ * idle → picked up (ghost + time chip) → moved (chip follows, new slot) →
+ * hovering a clash (ghost and chip go red, and name the session it would
+ * double-book) → back to a free slot → dropped and settled.
+ *
+ * dnd-kit needs a mousedown plus several small moves before it activates, and
+ * each frame waits for the preview to catch up so the GIF shows the ghost and
+ * the chip rather than a blur between them.
  */
 async function captureAgendaFlow(page) {
   await hideDevtools(page)
-  const card = page.locator("[data-session-card], .cursor-grab").first()
+  const card = page.locator('[data-slot="agenda-grid-block"] button, .cursor-grab').first()
   try {
     const box = await card.boundingBox({ timeout: 3000 })
     if (!box) throw new Error("no draggable")
@@ -606,15 +632,36 @@ async function captureAgendaFlow(page) {
     await page.mouse.move(x, y)
     await page.mouse.down()
     for (const dy of [6, 18, 34]) await page.mouse.move(x, y + dy, { steps: 3 })
-    await page.waitForTimeout(250)
+    await page.waitForTimeout(350)
     await page.screenshot({ path: resolve(FRAMES, "f2.png") })
-    for (const dy of [60, 96, 130]) await page.mouse.move(x + 10, y + dy, { steps: 4 })
-    await page.waitForTimeout(250)
+
+    // Sideways into the neighbouring column — the chip renames the room.
+    const columns = await page.locator("[data-room]").all()
+    const neighbour = columns.length > 1 ? await columns[1].boundingBox() : null
+    const nx = neighbour ? neighbour.x + neighbour.width / 2 : x + 10
+    for (const dy of [60, 96, 130]) await page.mouse.move(nx, y + dy, { steps: 4 })
+    await page.waitForTimeout(350)
     await page.screenshot({ path: resolve(FRAMES, "f3.png") })
+
+    // Over an occupied slot: the pre-warning turns everything red.
+    const occupied = page
+      .locator(`[data-room] [data-slot="agenda-grid-block"]`)
+      .filter({ hasNot: page.locator("nothing") })
+    const clash = await occupied.last().boundingBox().catch(() => null)
+    if (clash) {
+      await page.mouse.move(clash.x + clash.width / 2, clash.y + 12, { steps: 8 })
+      await page.waitForTimeout(400)
+      await page.screenshot({ path: resolve(FRAMES, "f4.png") })
+    }
+
+    // Back to open space, then let go — the card springs into the slot.
+    await page.mouse.move(nx, y + 150, { steps: 8 })
+    await page.waitForTimeout(350)
+    await page.screenshot({ path: resolve(FRAMES, clash ? "f5.png" : "f4.png") })
     await page.mouse.up()
     await page.waitForTimeout(900)
-    await page.screenshot({ path: resolve(FRAMES, "f4.png") })
-    log("captured 4 agenda drag frames")
+    await page.screenshot({ path: resolve(FRAMES, clash ? "f6.png" : "f5.png") })
+    log(`captured ${clash ? 6 : 5} agenda drag frames`)
   } catch {
     // Fallback: cycle the view switcher so the GIF still shows real product.
     log("drag frames unavailable — falling back to view-switch frames")

@@ -10,7 +10,7 @@ import {
 
 export const Route = createFileRoute("/docs/guide/review-and-decide")({
   component: Page,
-  head: () => ({ meta: [{ title: "Review & decide · Sessionboard docs" }] }),
+  head: () => ({ meta: [{ title: "Review & decide · Trackstage docs" }] }),
 })
 
 function Page() {
