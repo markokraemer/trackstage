@@ -27,10 +27,17 @@ export const LATENT_SPACE_URL = "https://www.latent.space"
  * Public product surfaces anyone can open without an account. These are real,
  * seeded routes (`convex/seed.ts`) — the landing page never links to a stub.
  */
-export const DEMO_CFP_URL = "/submit/cfp"
 export const DEMO_PORTAL_URL = "/portal"
 export const DEMO_EVENT_SLUG = "ai-summit-2026"
 export const DEMO_PROGRAM_URL = `/e/${DEMO_EVENT_SLUG}`
+/**
+ * The canonical public CFP address is `/submit/:eventSlug/:formSlug` — form
+ * slugs live in a per-event namespace (docs/memory/DECISIONS.md). The legacy
+ * one-segment `/submit/cfp` still redirects here, but nothing we publish
+ * should point at it.
+ */
+export const DEMO_CFP_SLUG = "cfp"
+export const DEMO_CFP_URL = `/submit/${DEMO_EVENT_SLUG}/${DEMO_CFP_SLUG}`
 /**
  * The public REST surface, served by the Convex HTTP router (`convex/http.ts`)
  * on the deployment's `.convex.site` domain. Sessions/speakers/submissions take

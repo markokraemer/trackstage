@@ -116,3 +116,69 @@ Format: date · decision · why · status.
   honestly labelled `is_public: false` on the organizer's own reads. Hardcoding
   `is_public: status === "accepted"` broke both halves at once. The same rule applies per
   speaker via their eye toggle, and `?public=true|false` makes either view explicit. ✅
+- **2026-08-11 · Public URL scheme is hierarchical: form slugs are unique PER EVENT** —
+  Marko created a form called "Call for Speakers" and got `/submit/call-for-speakers`;
+  the next organizer to want that obvious name would have been silently pushed to `-2`,
+  because form slugs lived in ONE GLOBAL namespace across every workspace. The dev
+  database had already grown five `devcon-berlin-call-for-speakers`, `-2`, `-3`, `-4`,
+  `-5` rows in five different events — cross-tenant blocking, exactly what a multi-tenant
+  product must never do. The scheme is now:
+  `/e/:eventSlug` (event, globally unique — one segment) ·
+  `/submit/:eventSlug/:formSlug` (CANONICAL public CFP) ·
+  `/portal/t/:token` (already unique by construction, unchanged).
+  Uniqueness moved to the `forms.by_eventId_slug` index; `by_slug` survives only to
+  resolve legacy links, so nothing that reads it may use `.unique()` any more. Every link
+  producer (form builder, forms list, dashboard, comms `{{formLink}}`, MCP `publicUrl`,
+  seed output, README, docs, e2e) emits the two-segment address, all of them through the
+  single scheme module — `src/lib/public-links.ts` on the client,
+  `convex/lib/publicLinks.ts` on the server. ✅
+- **2026-08-11 · Legacy `/submit/:slug` resolves to the OLDEST claimant, not an
+  "ambiguous link" page** — every one-segment link an organizer ever printed still
+  works: the route resolves the slug across all events and 307s to the canonical
+  address. Several forms may now legitimately share a slug, and the obvious tie-break —
+  refuse to guess, show a "this link is ambiguous" page — was rejected: it would hand
+  every organizer a way to KILL someone else's printed link merely by naming a form the
+  same thing, re-creating the cross-tenant blocking this change exists to remove.
+  Creation-ordered resolution is deterministic and monotonic: the form that held the
+  address when the link was printed keeps it forever, and a newcomer can never take an
+  address it never had — it just uses its own canonical link, which is what every
+  surface in the product now hands it. ✅
+- **2026-08-11 · Event slugs never block; form slugs refuse with a suggestion** — the two
+  levels get deliberately different failure modes. An EVENT slug clash used to throw
+  `An event with the slug "x" already exists.` and stop event creation dead; it now
+  auto-suffixes with a short readable id (`kortix-con` → `kortix-con-x3f2`) and the UI
+  says "that web address was taken — yours is …", because nothing may stand between an
+  organizer and their first event. A FORM slug clash inside one event is refused with
+  `That address is already taken for this event. Try "ds-cfp-2" instead.` — the organizer
+  is looking straight at the link they may already have printed, so silently moving it
+  would be worse than one inline sentence. `events.create`/`events.update` and
+  `forms.update` all return the slug that is actually live so the UI never guesses. ✅
+- **2026-08-11 · Slug inputs tidy on submit, not on every keystroke** — the settings slug
+  field re-slugified on each `onChange`, and `slugify` strips trailing dashes, so typing
+  "ai-summit-2026" produced "aisummit2026", one swallowed dash at a time. `slugifyInput`
+  keeps the dash the user just typed (strips only leading dashes and invalid characters);
+  `slugify` runs on submit, and the server normalises whatever arrives. ✅
+- **2026-08-11 · Typing an email is not proof of owning it — a known address gets a
+  MAILED sign-in link, never a token** (Marko spotted the flaw). `submit.identify`
+  returned the person's `portalToken` for ANY typed address, so entering a real
+  speaker's email opened their portal: submissions, drafts, tasks, files, profile. The
+  fix keeps the no-password UX exactly where it is free of risk and pays for it only
+  where something is at stake. A **new** address (never seen for this event) still gets
+  a token instantly — the account it opens is empty, there is nothing to steal, and the
+  wizard needs the credential to save drafts, so the common path and every fresh-email
+  eval run are unchanged. An address with **any history** — a submission (drafts
+  included), a co-speaker credit, a task, an upload, or a filled-in profile — gets an
+  outbox email ("Continue as {email} on {event}", ≤3/hour) carrying
+  `/submit/{event}/{form}?t={portalToken}`, and the mutation answers with the same
+  payload no matter what is behind the address: no token, no name, no draft list, no
+  submission counts, no cap errors. The page says only "we've sent a secure link to
+  {email}", which is the standard, acceptable disclosure. Three deliberate carve-outs:
+  a caller that PRESENTS the matching token continues straight through (same-browser
+  sessionStorage resume, and the emailed link itself); a bare person row younger than 30
+  minutes with nothing attached counts as new, so re-entering an address mid-wizard is
+  not punished; and `submit.submit` no longer echoes the token back, since the caller
+  had to present it to get there. `submit.resume` (token-authenticated) is what the
+  `?t=` landing reads — the token is consumed into sessionStorage and stripped from the
+  URL immediately, so the credential never lives in an address bar. Rejected: hashing
+  emails, silent "we found nothing" responses (they leak by timing and break resume),
+  and a password wall (the one thing swyx's video was angriest about). ✅

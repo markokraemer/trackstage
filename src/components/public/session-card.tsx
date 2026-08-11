@@ -6,8 +6,9 @@ import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { SpeakerAvatar } from "@/components/public/speaker-avatar"
 import { ShowMore } from "@/components/public/show-more"
-import { MetaChip, TrackChip } from "@/components/public/track-chip"
+import { TrackChip } from "@/components/public/track-chip"
 import { SaveSessionButton } from "@/components/public/save-session-button"
+import { CopyLinkButton } from "@/components/public/copy-link-button"
 import { formatTimeRange, formatWhen } from "@/components/public/format"
 import { ROLE_LABELS } from "@/components/submit/types"
 import type { PublicEvent, PublicSession } from "@/components/public/types"
@@ -50,7 +51,10 @@ export function SessionCard({
   return (
     <Card
       data-slot="session-card"
-      className={cn("gap-3 p-4 sm:p-5", className)}
+      className={cn(
+        "gap-3 p-4 transition-shadow hover:ring-[color-mix(in_oklch,var(--primary)_28%,var(--border))] sm:p-5",
+        className,
+      )}
       {...props}
     >
       <div className="flex items-start justify-between gap-3">
@@ -70,11 +74,16 @@ export function SessionCard({
             </Badge>
           ) : null}
         </div>
-        <SaveSessionButton
-          eventSlug={event.slug}
-          sessionId={session._id}
-          className="shrink-0"
-        />
+        <div className="flex shrink-0 items-center gap-1">
+          <CopyLinkButton
+            display="icon"
+            variant="ghost"
+            what="Link to this session"
+            label="Copy link to this session"
+            url={`/e/${event.slug}/sessions/${session._id}`}
+          />
+          <SaveSessionButton eventSlug={event.slug} sessionId={session._id} />
+        </div>
       </div>
 
       <h3 className="font-heading text-base leading-snug font-semibold text-balance text-foreground sm:text-lg">
@@ -121,7 +130,7 @@ export function SessionCard({
                   name={speaker.name}
                   headshotUrl={speaker.headshotUrl}
                   hideImage={options?.hideImages}
-                  className="size-8"
+                  size="xs"
                 />
                 <div className="min-w-0 text-sm leading-tight">
                   <Link
@@ -157,17 +166,6 @@ export function SessionCard({
           ) : null}
         </div>
       )}
-
-      {session.format || session.track ? (
-        <div className="flex flex-wrap items-center gap-1.5 pt-1">
-          {session.format ? (
-            <MetaChip label="Format" value={session.format} />
-          ) : null}
-          {session.track ? (
-            <MetaChip label="Track" value={session.track.name} />
-          ) : null}
-        </div>
-      ) : null}
     </Card>
   )
 }

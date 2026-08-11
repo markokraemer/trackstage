@@ -2,14 +2,23 @@ import { v } from "convex/values"
 import type { Id } from "./_generated/dataModel"
 import type { MutationCtx } from "./_generated/server"
 import { mutation, query } from "./_generated/server"
-import { myMemberships, requireEventAccess, requireMembership } from "./lib/auth"
+import {
+  memberCanSeeEvent,
+  myMemberships,
+  requireEventAccess,
+  requireMembership,
+} from "./lib/auth"
 import { record as recordAudit } from "./lib/audit"
 import { deleteEventBlobs } from "./lib/files"
+import { uniqueEventSlug } from "./lib/publicLinks"
 
 export const list = query({
   args: {},
   handler: async (ctx) => {
-    // Events across every organization the signed-in user belongs to.
+    // Events across every organization the signed-in user belongs to — minus
+    // any this membership is scoped out of (docs/memory/RULES.md 23). This
+    // query feeds the shell's event switcher, so a scoped member simply never
+    // sees the events they weren't given.
     const memberships = await myMemberships(ctx)
     const rows = []
     for (const membership of memberships) {
@@ -21,6 +30,7 @@ export const list = query({
         )
         .collect()
       for (const event of events) {
+        if (!memberCanSeeEvent(membership, event._id)) continue
         rows.push({
           ...event,
           organizationName: organization?.name ?? "",
@@ -88,14 +98,14 @@ export const create = mutation({
   },
   handler: async (ctx, args) => {
     await requireMembership(ctx, args.organizationId, "admin")
-    const existing = await ctx.db
-      .query("events")
-      .withIndex("by_slug", (q) => q.eq("slug", args.slug))
-      .unique()
-    if (existing) {
-      throw new Error(`An event with the slug "${args.slug}" already exists.`)
-    }
-    return await ctx.db.insert("events", args)
+    // `/e/:eventSlug` is one segment, so event slugs stay globally unique —
+    // but a taken address must NEVER block someone from creating their event.
+    // We suffix with a short readable id and hand the real slug back so the UI
+    // can say "that address was taken — yours is …"
+    // (docs/memory/DECISIONS.md, "Public URL scheme is hierarchical").
+    const slug = await uniqueEventSlug(ctx, args.slug)
+    const eventId = await ctx.db.insert("events", { ...args, slug })
+    return { eventId, slug, slugAdjusted: slug !== args.slug.trim().toLowerCase() }
   },
 })
 
@@ -126,17 +136,43 @@ export const update = mutation({
   },
   handler: async (ctx, args) => {
     const { event } = await requireEventAccess(ctx, args.eventId, "admin")
-    await ctx.db.patch(args.eventId, args.patch)
+
+    // Renaming the public address must never fail on a collision either — the
+    // organizer gets the nearest free address and is told what it became.
+    let slug: string | undefined
+    if (args.patch.slug !== undefined) {
+      const desired = args.patch.slug.trim().toLowerCase()
+      slug =
+        desired === event.slug
+          ? event.slug
+          : await uniqueEventSlug(ctx, desired, args.eventId)
+    }
+    const slugAdjusted =
+      slug !== undefined && slug !== args.patch.slug!.trim().toLowerCase()
+
+    await ctx.db.patch(args.eventId, {
+      ...args.patch,
+      ...(slug !== undefined ? { slug } : {}),
+    })
     const changed = Object.keys(args.patch)
     await recordAudit(ctx, {
       eventId: args.eventId,
       entity: "settings",
       entityId: args.eventId,
       action: "updated",
-      summary: `Event settings updated (${changed.join(", ")}) · ${args.patch.name ?? event.name}`,
-      meta: { fields: changed },
+      summary:
+        slug !== undefined && slug !== event.slug
+          ? `Public address changed to /e/${slug} · ${args.patch.name ?? event.name}`
+          : `Event settings updated (${changed.join(", ")}) · ${args.patch.name ?? event.name}`,
+      meta: {
+        fields: changed,
+        ...(slug !== undefined && slug !== event.slug
+          ? { slug, previousSlug: event.slug }
+          : {}),
+      },
     })
-    return null
+    // The address that is actually live now (see `create`).
+    return { slug: slug ?? event.slug, slugAdjusted }
   },
 })
 

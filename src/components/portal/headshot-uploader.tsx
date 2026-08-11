@@ -56,7 +56,14 @@ export function HeadshotUploader({
 
   return (
     <div className="flex flex-col items-center gap-3 text-center">
-      <div
+      {/* The photo IS the button. On a phone, tapping your own face is the
+          first thing anyone tries; on a desktop you can also drop a file on
+          it. */}
+      <button
+        type="button"
+        disabled={isUploading}
+        aria-label={headshotUrl ? "Replace your headshot" : "Upload a headshot"}
+        onClick={() => inputRef.current?.click()}
         onDragOver={(event) => {
           event.preventDefault()
           setIsOver(true)
@@ -68,8 +75,10 @@ export function HeadshotUploader({
           void handleFile(event.dataTransfer.files[0])
         }}
         className={cn(
-          "rounded-full p-1 transition-colors",
+          "group/headshot relative rounded-full p-1 transition-colors outline-none",
+          "focus-visible:ring-3 focus-visible:ring-ring/50",
           isOver && "bg-primary/10 ring-2 ring-primary",
+          isUploading && "pointer-events-none opacity-70",
         )}
       >
         <Avatar className="size-24 ring-1 ring-border">
@@ -78,7 +87,13 @@ export function HeadshotUploader({
           ) : null}
           <AvatarFallback className="text-xl">{initials}</AvatarFallback>
         </Avatar>
-      </div>
+        <span
+          aria-hidden
+          className="pointer-events-none absolute inset-1 flex items-center justify-center rounded-full bg-foreground/55 text-xs font-medium text-background opacity-0 transition-opacity group-hover/headshot:opacity-100 group-focus-visible/headshot:opacity-100"
+        >
+          {headshotUrl ? "Change" : "Add photo"}
+        </span>
+      </button>
 
       {isUploading ? (
         <Progress
@@ -119,7 +134,7 @@ export function HeadshotUploader({
       </Button>
       <p className="text-xs leading-relaxed text-muted-foreground">
         A square photo, at least 800 × 800 pixels. JPG or PNG, up to{" "}
-        {formatBytes(MAX_BYTES)}. Drag one straight onto the circle if you like.
+        {formatBytes(MAX_BYTES)}. Tap the photo, or drag one straight onto it.
         It appears on the public programme next to your talk.
       </p>
     </div>

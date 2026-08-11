@@ -42,17 +42,6 @@ function PortalSubmissionsPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div>
-        <h1 className="font-heading text-2xl font-semibold tracking-tight text-foreground">
-          Submissions
-        </h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          {total === 0
-            ? "Talks you submit to this event show up here."
-            : "Your talks and their current status. Open one to read it in full — and to edit it, for as long as this event allows changes."}
-        </p>
-      </div>
-
       {total === 0 ? (
         <EmptyState
           icon={RiCalendarEventLine}

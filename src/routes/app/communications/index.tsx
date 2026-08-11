@@ -12,9 +12,14 @@ import { api } from "@convex/_generated/api"
 import type { Id } from "@convex/_generated/dataModel"
 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import { Badge } from "@/components/ui/badge"
 import { Button, buttonVariants } from "@/components/ui/button"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import {
+  Tabs,
+  TabsContent,
+  TabsCount,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs"
 import { TooltipProvider } from "@/components/ui/tooltip"
 import { EmptyState } from "@/components/shared/empty-state"
 import { PageHeader } from "@/components/shared/page-header"
@@ -142,9 +147,7 @@ function CommunicationsPage() {
             <TabsTrigger value="outbox">
               Outbox
               {messages && messages.length > 0 ? (
-                <Badge variant="secondary" className="ml-1.5">
-                  {messages.length}
-                </Badge>
+                <TabsCount>{messages.length}</TabsCount>
               ) : null}
             </TabsTrigger>
           </TabsList>

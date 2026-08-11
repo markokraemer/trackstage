@@ -14,7 +14,7 @@ the evidence (screenshots / forwarded emails) for the judges' manual-checklist p
 
 ## Email egress (real inbox required)
 
-- [ ] Submit a talk at https://trackstage.app/submit/cfp with a real email you
+- [ ] Submit a talk at https://trackstage.app/submit/ai-summit-2026/cfp with a real email you
       control → submission confirmation arrives from hello@trackstage.app.
 - [ ] Organizer → stage that submission to Accept Queue → commit the queue →
       acceptance email arrives, contains the portal link, portal link works.

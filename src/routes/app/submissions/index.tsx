@@ -256,6 +256,25 @@ function SubmissionsPage() {
     safePage * PAGE_SIZE + PAGE_SIZE
   )
 
+  // The table footer describes the filtered view, not the 25 rows on this page
+  // (docs/memory/RULES.md 19 follow-up) — so both numbers are computed here,
+  // where the filtering happens.
+  const tableTotals = useMemo(() => {
+    const scored = scores
+      ? filtered.flatMap((row) => {
+          const avg = row._id in scores ? scores[row._id].avg : null
+          return avg === null ? [] : [avg]
+        })
+      : []
+    return {
+      count: filtered.length,
+      avgScore:
+        scored.length > 0
+          ? scored.reduce((sum, value) => sum + value, 0) / scored.length
+          : null,
+    }
+  }, [filtered, scores])
+
   const acceptStaged = counts?.accept_queue ?? 0
   const declineStaged = counts?.decline_queue ?? 0
 
@@ -627,6 +646,7 @@ function SubmissionsPage() {
             }
             pendingStatus={pendingStatus}
             onDelete={setDeleteTarget}
+            totals={tableTotals}
           />
         )}
 

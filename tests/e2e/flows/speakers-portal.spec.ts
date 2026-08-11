@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test"
+import { readFile } from "node:fs/promises"
 import { fileURLToPath } from "node:url"
 import { dirname, resolve } from "node:path"
 import { api } from "../../../convex/_generated/api.js"
@@ -230,6 +231,86 @@ test.describe("speakers roster + portal", () => {
 
     await portal.close()
     watcher.assertClean("dashboard reactivity")
+  })
+
+  test("a file can be DROPPED on a task, and the tab count moves live", async ({
+    context,
+  }) => {
+    const organizer = await organizerConvexClient()
+    const event = await mainEvent(organizer)
+    const speaker = await freshSpeaker(organizer, event._id, "drop")
+    await organizer.mutation(api.tasksAdmin.create, {
+      eventId: event._id,
+      personIds: [speaker.personId],
+      title: `Send your slides ${unique("dz")}`,
+      kind: "upload",
+      instructions: "PDF please.",
+    })
+
+    const portal = await context.newPage()
+    const watcher = armed(portal)
+    await gotoStable(portal, `/portal/t/${speaker.portalToken}`, "networkidle")
+    await gotoStable(portal, "/portal/tasks", "networkidle")
+
+    // The shell owns the page heading — one PageHeader, not a per-route h1.
+    await expect(
+      portal.getByRole("heading", { level: 1, name: "Tasks" }),
+    ).toBeVisible({ timeout: 30_000 })
+
+    // The tab strip carries the open count.
+    const tasksTab = portal.getByRole("tab", { name: /tasks/i }).first()
+    await expect(tasksTab).toContainText("1", { timeout: 30_000 })
+
+    // ——— Drop the file, rather than clicking through the picker ————————
+    const zone = portal
+      .getByRole("button", { name: /drop your file here/i })
+      .first()
+    await expect(zone).toBeVisible({ timeout: 30_000 })
+    const bytes = Array.from(
+      new Uint8Array(await readFile(FIXTURE)),
+    )
+    const transfer = await portal.evaluateHandle((raw: Array<number>) => {
+      const dt = new DataTransfer()
+      dt.items.add(
+        new File([new Uint8Array(raw)], "slides.png", { type: "image/png" }),
+      )
+      return dt
+    }, bytes)
+    // A real drag is three events, and the middle one is the one that matters:
+    // `dragover` must be prevented or the browser navigates to the file
+    // instead of handing it to the page.
+    await zone.dispatchEvent("dragenter", { dataTransfer: transfer })
+    await zone.dispatchEvent("dragover", { dataTransfer: transfer })
+    await zone.dispatchEvent("drop", { dataTransfer: transfer })
+
+    await expectToast(portal, /organizers will review it/i, 45_000)
+
+    // Attaching a file completes the task: it moves to Completed, the drop
+    // zone folds away behind an explicit "send a new version", and the count
+    // on the tab disappears — all without a reload.
+    await expect(
+      portal.getByRole("button", { name: /send a new version/i }).first(),
+    ).toBeVisible({ timeout: 45_000 })
+    await expect(tasksTab).not.toContainText("1", { timeout: 30_000 })
+
+    watcher.assertClean("portal drag-and-drop upload")
+    await portal.close()
+  })
+
+  test("scheduled times are shown in the event's timezone, not the reader's", async ({
+    context,
+  }) => {
+    // A speaker reading this in Berlin must see the time they are on stage in
+    // San Francisco. The zone abbreviation is what makes it unambiguous.
+    const portal = await context.newPage()
+    const watcher = armed(portal)
+    await gotoStable(portal, "/portal/t/demo-ava-nakamura", "networkidle")
+    await gotoStable(portal, "/portal/submissions", "networkidle")
+    await expect(
+      portal.getByText(/\d{1,2}:\d{2}\s?(AM|PM)\s+[A-Z]{2,5}/).first(),
+    ).toBeVisible({ timeout: 45_000 })
+    watcher.assertClean("portal scheduled time")
+    await portal.close()
   })
 
   test("a bad portal token is refused politely", async ({ page }) => {

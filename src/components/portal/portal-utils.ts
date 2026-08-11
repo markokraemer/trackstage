@@ -1,4 +1,6 @@
 import { format, formatDistanceToNowStrict, isPast, isToday } from "date-fns"
+
+import { formatZonedDateRange } from "@/components/settings/timezone"
 import type { PortalMe, PortalSubmission, PortalTask } from "./portal-context"
 
 /**
@@ -33,14 +35,53 @@ export function formatDate(ms: number): string {
   return format(new Date(ms), "MMM d, yyyy")
 }
 
-/** "Oct 12, 2026 · 2:30 PM" */
+/** "Oct 12, 2026 · 2:30 PM" — local time, for things that happened on this device. */
 export function formatDateTime(ms: number): string {
   return format(new Date(ms), "MMM d, yyyy · h:mm a")
 }
 
-/** "Oct 12 – 14, 2026" for the event header. */
-export function formatEventDates(startsAt?: number, endsAt?: number): string | null {
+/**
+ * "Oct 12, 2026 · 7:00 PM PDT" — a SCHEDULED time, always in the event's own
+ * timezone with the zone spelled out.
+ *
+ * A speaker reading this on a laptop in Berlin must see the time they are
+ * expected on stage in San Francisco, not the same instant translated into
+ * their own clock — that is how people miss their slot. The zone abbreviation
+ * is what makes it unambiguous, so it is never dropped.
+ */
+export function formatEventDateTime(ms: number, timezone?: string): string {
+  if (!timezone) return formatDateTime(ms)
+  try {
+    const date = new Intl.DateTimeFormat("en-US", {
+      timeZone: timezone,
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    }).format(new Date(ms))
+    const time = new Intl.DateTimeFormat("en-US", {
+      timeZone: timezone,
+      hour: "numeric",
+      minute: "2-digit",
+      timeZoneName: "short",
+    }).format(new Date(ms))
+    return `${date} · ${time}`
+  } catch {
+    // An unknown IANA name should degrade to a readable date, never to a crash.
+    return formatDateTime(ms)
+  }
+}
+
+/** "Oct 12 – 14, 2026" for the event header, in the event's timezone. */
+export function formatEventDates(
+  startsAt?: number,
+  endsAt?: number,
+  timezone?: string,
+): string | null {
   if (!startsAt) return null
+  if (timezone) {
+    const zoned = formatZonedDateRange(startsAt, endsAt, timezone)
+    if (zoned) return zoned
+  }
   const start = new Date(startsAt)
   if (!endsAt) return format(start, "MMM d, yyyy")
   const end = new Date(endsAt)

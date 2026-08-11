@@ -82,6 +82,12 @@ export const sendWorkspaceInvite = internalAction({
     workspaceName: v.string(),
     inviterName: v.string(),
     role: v.string(),
+    /**
+     * Human-readable event scope for a limited member, e.g. "AI Engineer
+     * Summit 2026" or "2 events" (docs/memory/RULES.md 23). Omitted ⇒ every
+     * event in the workspace, which is the default.
+     */
+    eventScope: v.optional(v.string()),
   },
   returns: v.object({ sent: v.boolean() }),
   handler: async (_ctx, args) => {
@@ -93,6 +99,9 @@ export const sendWorkspaceInvite = internalAction({
       html: [
         `<p>Hi,</p>`,
         `<p><strong>${args.inviterName}</strong> invited you to join the <strong>${args.workspaceName}</strong> workspace on Trackstage as ${args.role === "admin" ? "an admin" : "a member"}.</p>`,
+        args.eventScope
+          ? `<p>You'll have access to <strong>${args.eventScope}</strong>.</p>`
+          : `<p>You'll have access to every event in the workspace.</p>`,
         `<p>Trackstage is where the team manages the call for speakers, reviews submissions, and builds the event agenda.</p>`,
         emailButton(loginUrl, "Create your account"),
         `<p>Sign up with this email address (${args.toEmail}) and you'll land in the workspace automatically.</p>`,

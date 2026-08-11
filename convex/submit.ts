@@ -1,19 +1,36 @@
 import { v } from "convex/values"
 import { internal } from "./_generated/api"
 import type { Doc, Id } from "./_generated/dataModel"
-import type { MutationCtx } from "./_generated/server"
+import type { MutationCtx, QueryCtx } from "./_generated/server"
 import { mutation, query } from "./_generated/server"
 import { scheduleAirtableSync } from "./airtable"
 import { emitWebhook } from "./webhooks"
+import { queueMessage } from "./comms"
 import { randomToken } from "./lib/auth"
+import { siteUrl } from "./lib/email"
 import { isFormOpen } from "./lib/formWindow"
+import { formPath, resolvePublicForm } from "./lib/publicLinks"
 import { notifySubmissionAdmins } from "./platformEmails"
 
 // ————————————————————————————————————————————————————————————————————————
-// Public CFP submission flow. Token model: the Account step identifies the
-// submitter by email and returns their portalToken (magic auth — no
-// passwords, per docs/memory/DECISIONS.md). All subsequent public calls
-// authenticate with that token.
+// Public CFP submission flow.
+//
+// IDENTITY MODEL (docs/memory/DECISIONS.md, "Typing an email is not proof of
+// owning it"). The portalToken is a bearer credential: whoever holds it reads
+// that speaker's submissions, tasks, files and profile. So the Account step
+// hands one out on exactly two conditions:
+//
+//   1. The email has never been seen for this event → we create the person and
+//      return the token. The account is empty, there is nothing to steal, and
+//      the wizard needs the credential to save drafts. Zero friction, which is
+//      the common case and the one swyx's video was angry about.
+//   2. The caller already proved they hold the token (same browser session, or
+//      the link we emailed them).
+//
+// Anyone else — every email address with any history on this event — gets an
+// emailed sign-in link instead, and a response that says nothing about them:
+// no token, no name, no drafts, no submission counts. Inbox access is the
+// proof of ownership; typing an address is not.
 // ————————————————————————————————————————————————————————————————————————
 
 const participantArg = v.object({
@@ -39,19 +56,61 @@ function visibleQuestions(
   })
 }
 
-export const getForm = query({
+/**
+ * The one public form lookup used by every mutation below. `eventSlug` is the
+ * canonical address (`/submit/:eventSlug/:formSlug`); omitting it takes the
+ * legacy single-segment path, which still resolves (oldest claimant wins — see
+ * `resolvePublicForm`).
+ */
+const publicFormArgs = {
+  slug: v.string(),
+  eventSlug: v.optional(v.string()),
+}
+
+async function requirePublicForm(
+  ctx: MutationCtx,
+  args: { slug: string; eventSlug?: string },
+): Promise<Doc<"forms">> {
+  const resolved = await resolvePublicForm(ctx, args)
+  if (resolved.status === "ok") return resolved.form
+  throw new Error("Form not found")
+}
+
+/**
+ * Resolve a legacy single-segment `/submit/:slug` link to its canonical
+ * two-segment address, for a redirect.
+ *
+ * Every link ever printed has to keep working (docs/memory/DECISIONS.md), and
+ * several events may now share a slug, so the oldest claimant wins — see
+ * `resolvePublicForm` for why that beats an "ambiguous link" page.
+ */
+export const resolveLegacyLink = query({
   args: { slug: v.string() },
   handler: async (ctx, args) => {
-    const form = await ctx.db
-      .query("forms")
-      .withIndex("by_slug", (q) => q.eq("slug", args.slug))
-      .unique()
-    if (!form) return null
-    const event = await ctx.db.get(form.eventId)
-    if (!event) return null
+    const resolved = await resolvePublicForm(ctx, { slug: args.slug })
+    if (resolved.status === "ok") {
+      return {
+        status: "found" as const,
+        eventSlug: resolved.event.slug,
+        formSlug: resolved.form.slug,
+      }
+    }
+    return { status: "missing" as const }
+  },
+})
+
+export const getForm = query({
+  args: publicFormArgs,
+  handler: async (ctx, args) => {
+    const resolved = await resolvePublicForm(ctx, args)
+    if (resolved.status !== "ok") return null
+    const { form, event } = resolved
     const openState = isFormOpen(form)
     return {
       formId: form._id,
+      // The canonical address of this exact form, so any page that resolved it
+      // the legacy way can link onward without rebuilding the URL itself.
+      canonical: { eventSlug: event.slug, formSlug: form.slug },
       event: {
         name: event.name,
         slug: event.slug,
@@ -160,31 +219,267 @@ async function getOrCreatePerson(
   return person
 }
 
-// Account step: identify by email. Returns the portal token (demo-friendly
-// magic auth) plus any drafts so the user can resume.
+// ——— Identity: who is allowed to be handed a portal token ————————————————
+
+/**
+ * How long a still-empty person row counts as "the one this wizard session
+ * just created". Inside the window, re-entering the same address (a second
+ * tab, a cleared sessionStorage, a back button) sails through exactly as it
+ * did the first time — there is provably nothing behind the account to leak.
+ */
+const NEW_ACCOUNT_GRACE_MS = 30 * 60 * 1000
+
+/** Sign-in links per person per hour. Deliberately small and forgiving. */
+const PORTAL_LINK_LIMIT = 3
+const PORTAL_LINK_WINDOW_MS = 60 * 60 * 1000
+/** Outbox key for the "continue as you" email. */
+export const PORTAL_LINK_TEMPLATE_KEY = "portal_link"
+
+/**
+ * Does this person have anything a stranger must not reach?
+ *
+ * "Anything readable" is the test, and it is deliberately generous: a
+ * submission (drafts included), a co-speaker credit — co-speakers DO get portal
+ * access to the sessions they are on — a task, an uploaded file, or a profile
+ * somebody has filled in. Only a bare row created minutes ago by this very
+ * wizard falls through as "new".
+ */
+async function hasSpeakerHistory(
+  ctx: QueryCtx | MutationCtx,
+  person: Doc<"people">,
+): Promise<boolean> {
+  const submitted = await ctx.db
+    .query("submissions")
+    .withIndex("by_submitterId", (q) => q.eq("submitterId", person._id))
+    .first()
+  if (submitted) return true
+
+  const credited = await ctx.db
+    .query("submissionParticipants")
+    .withIndex("by_personId", (q) => q.eq("personId", person._id))
+    .first()
+  if (credited) return true
+
+  const task = await ctx.db
+    .query("tasks")
+    .withIndex("by_personId", (q) => q.eq("personId", person._id))
+    .first()
+  if (task) return true
+
+  const upload = await ctx.db
+    .query("uploads")
+    .withIndex("by_personId", (q) => q.eq("personId", person._id))
+    .first()
+  if (upload) return true
+
+  // A profile is personal data in its own right — a bio and a phone number are
+  // worth protecting even before the first submission lands.
+  const profiled =
+    person.firstName.trim() !== "" ||
+    person.lastName.trim() !== "" ||
+    Boolean(person.bio) ||
+    Boolean(person.jobTitle) ||
+    Boolean(person.company) ||
+    Boolean(person.phone) ||
+    Boolean(person.salutation) ||
+    Boolean(person.pronouns) ||
+    Boolean(person.headshotId) ||
+    Boolean(person.links) ||
+    Boolean(person.logistics) ||
+    person.workflowStatus !== undefined
+  if (profiled) return true
+
+  return person._creationTime < Date.now() - NEW_ACCOUNT_GRACE_MS
+}
+
+/** Drafts this person has in progress ON THIS FORM. Token-holders only. */
+async function draftsFor(
+  ctx: QueryCtx | MutationCtx,
+  person: Doc<"people">,
+  form: Doc<"forms">,
+) {
+  const mine = await ctx.db
+    .query("submissions")
+    .withIndex("by_submitterId", (q) => q.eq("submitterId", person._id))
+    .collect()
+  return mine
+    .filter((s) => s.formId === form._id && s.status === "draft")
+    .map((s) => ({ id: s._id, title: s.title }))
+}
+
+/**
+ * Email the person a link that carries their token — the one way a returning
+ * speaker gets back in without a password.
+ *
+ * It goes through the ordinary speaker outbox (convex/comms.ts), so a demo
+ * `@example.com` address renders as an inspectable "preview" row exactly like
+ * every other email in the product, and a real address goes out over Resend.
+ *
+ * Returns `sent: false` when the hourly cap has been reached; the caller shows
+ * a friendly "check your inbox" instead, never an error.
+ */
+async function sendPortalLink(
+  ctx: MutationCtx,
+  form: Doc<"forms">,
+  person: Doc<"people">,
+): Promise<{ sent: boolean }> {
+  const now = Date.now()
+  const recent = await ctx.db
+    .query("messages")
+    .withIndex("by_personId", (q) => q.eq("personId", person._id))
+    .order("desc")
+    .take(25)
+  const inWindow = recent.filter(
+    (m) =>
+      m.templateKey === PORTAL_LINK_TEMPLATE_KEY &&
+      (m.scheduledAt ?? m._creationTime) > now - PORTAL_LINK_WINDOW_MS,
+  )
+  if (inWindow.length >= PORTAL_LINK_LIMIT) return { sent: false }
+
+  const event = await ctx.db.get(form.eventId)
+  if (!event) return { sent: false }
+  const continueLink = `${siteUrl()}${formPath(event.slug, form.slug)}?t=${person.portalToken}`
+
+  await queueMessage(ctx, {
+    eventId: form.eventId,
+    personId: person._id,
+    templateKey: PORTAL_LINK_TEMPLATE_KEY,
+    extraVars: { submitterEmail: person.email, continueLink },
+    override: {
+      subject: "Continue as {{submitterEmail}} on {{eventName}}",
+      body: [
+        "Hi {{firstName}},",
+        "",
+        "Somebody just entered {{submitterEmail}} on the call for speakers for {{eventName}}. If that was you, open this link to carry on where you left off — it signs you in, with no password to remember:",
+        "",
+        "{{continueLink}}",
+        "",
+        "The same sign-in works for your speaker portal, where your submissions, tasks and profile live:",
+        "",
+        "{{portalLink}}",
+        "",
+        "If it wasn't you, you can ignore this email. Whoever typed your address was shown nothing about you, and nothing changes unless the link above is opened.",
+        "",
+        "— The {{eventName}} programme team",
+      ].join("\n"),
+    },
+  })
+  await ctx.scheduler.runAfter(0, internal.comms.deliverPending, {})
+  return { sent: true }
+}
+
+const identifyResult = v.union(
+  v.object({
+    /** The session may proceed — it now holds this person's portal token. */
+    status: v.literal("ready"),
+    portalToken: v.string(),
+    firstName: v.string(),
+    lastName: v.string(),
+    drafts: v.array(v.object({ id: v.id("submissions"), title: v.string() })),
+  }),
+  v.object({
+    /**
+     * The address has history here. Everything else about it stays private —
+     * this payload is identical whether they have one draft or forty talks.
+     */
+    status: v.literal("link_sent"),
+    email: v.string(),
+    /** False ⇒ hourly cap reached; a link is already in their inbox. */
+    sent: v.boolean(),
+  }),
+)
+
+/**
+ * Account step. New address ⇒ straight through with a token. Known address ⇒
+ * we email a sign-in link and say only that we did.
+ *
+ * `portalToken` is the caller's proof it already holds the credential (the
+ * wizard's sessionStorage, or the `?t=` link we mailed). With it, a returning
+ * speaker never has to check their inbox twice in one sitting.
+ */
 export const identify = mutation({
-  args: { slug: v.string(), email: v.string() },
+  args: {
+    ...publicFormArgs,
+    email: v.string(),
+    portalToken: v.optional(v.string()),
+  },
+  returns: identifyResult,
   handler: async (ctx, args) => {
-    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(args.email.trim())) {
+    const email = args.email.trim().toLowerCase()
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
       throw new Error("Please enter a valid email address.")
     }
-    const form = await ctx.db
-      .query("forms")
-      .withIndex("by_slug", (q) => q.eq("slug", args.slug))
+    const form = await requirePublicForm(ctx, args)
+
+    const existing = await ctx.db
+      .query("people")
+      .withIndex("by_eventId_and_email", (q) =>
+        q.eq("eventId", form.eventId).eq("email", email),
+      )
       .unique()
-    if (!form) throw new Error("Form not found")
-    const person = await getOrCreatePerson(ctx, form.eventId, args.email)
-    const drafts = await ctx.db
-      .query("submissions")
-      .withIndex("by_submitterId", (q) => q.eq("submitterId", person._id))
-      .collect()
+
+    // 1 — Nobody by that name here yet. Create the (empty) account and hand
+    // over its token: there is nothing behind it to protect, and the wizard
+    // needs it to save drafts.
+    if (!existing) {
+      const person = await getOrCreatePerson(ctx, form.eventId, email)
+      return {
+        status: "ready" as const,
+        portalToken: person.portalToken,
+        firstName: person.firstName,
+        lastName: person.lastName,
+        drafts: [],
+      }
+    }
+
+    // 2 — Either the caller already holds the token, or the row is a
+    // seconds-old shell this same wizard session created.
+    const holdsToken = args.portalToken === existing.portalToken
+    if (holdsToken || !(await hasSpeakerHistory(ctx, existing))) {
+      return {
+        status: "ready" as const,
+        portalToken: existing.portalToken,
+        firstName: existing.firstName,
+        lastName: existing.lastName,
+        drafts: await draftsFor(ctx, existing, form),
+      }
+    }
+
+    // 3 — A real speaker. Prove the inbox, then continue.
+    const { sent } = await sendPortalLink(ctx, form, existing)
+    return { status: "link_sent" as const, email, sent }
+  },
+})
+
+/**
+ * Pick a wizard session back up from an emailed link (`?t=…`). Token in, own
+ * data out — the same authentication the speaker portal uses, so this can
+ * safely return the things `identify` no longer will.
+ */
+export const resume = query({
+  args: { ...publicFormArgs, portalToken: v.string() },
+  returns: v.union(
+    v.null(),
+    v.object({
+      email: v.string(),
+      firstName: v.string(),
+      lastName: v.string(),
+      drafts: v.array(v.object({ id: v.id("submissions"), title: v.string() })),
+    }),
+  ),
+  handler: async (ctx, args) => {
+    const resolved = await resolvePublicForm(ctx, args)
+    if (resolved.status !== "ok") return null
+    const person = await ctx.db
+      .query("people")
+      .withIndex("by_portalToken", (q) => q.eq("portalToken", args.portalToken))
+      .unique()
+    if (!person || person.eventId !== resolved.form.eventId) return null
     return {
-      portalToken: person.portalToken,
+      email: person.email,
       firstName: person.firstName,
       lastName: person.lastName,
-      drafts: drafts
-        .filter((s) => s.formId === form._id && s.status === "draft")
-        .map((s) => ({ id: s._id, title: s.title })),
+      drafts: await draftsFor(ctx, person, resolved.form),
     }
   },
 })
@@ -324,7 +619,7 @@ async function upsertParticipants(
 
 export const saveDraft = mutation({
   args: {
-    slug: v.string(),
+    ...publicFormArgs,
     portalToken: v.string(),
     draftId: v.optional(v.id("submissions")),
     title: v.string(),
@@ -332,11 +627,7 @@ export const saveDraft = mutation({
     participants: v.array(participantArg),
   },
   handler: async (ctx, args) => {
-    const form = await ctx.db
-      .query("forms")
-      .withIndex("by_slug", (q) => q.eq("slug", args.slug))
-      .unique()
-    if (!form) throw new Error("Form not found")
+    const form = await requirePublicForm(ctx, args)
     if (!form.settings.allowDrafts) throw new Error("Drafts are not allowed on this form.")
     const openState = isFormOpen(form)
     if (!openState.open) throw new Error(openState.reason)
@@ -386,7 +677,7 @@ export const saveDraft = mutation({
 
 export const submit = mutation({
   args: {
-    slug: v.string(),
+    ...publicFormArgs,
     portalToken: v.string(),
     draftId: v.optional(v.id("submissions")),
     title: v.string(),
@@ -394,11 +685,7 @@ export const submit = mutation({
     participants: v.array(participantArg),
   },
   handler: async (ctx, args) => {
-    const form = await ctx.db
-      .query("forms")
-      .withIndex("by_slug", (q) => q.eq("slug", args.slug))
-      .unique()
-    if (!form) throw new Error("Form not found")
+    const form = await requirePublicForm(ctx, args)
     const openState = isFormOpen(form)
     if (!openState.open) throw new Error(openState.reason)
 
@@ -518,9 +805,10 @@ export const submit = mutation({
         `${person.firstName} ${person.lastName}`.trim() || person.email,
     })
 
+    // Deliberately NOT the portal token: the caller had to present it to get
+    // here, so echoing it back only widens where the credential can leak from.
     return {
       submissionId,
-      portalToken: person.portalToken,
       autoRedirectToPortal: form.settings.autoRedirectToPortal,
       successMessage: form.settings.successMessage,
     }

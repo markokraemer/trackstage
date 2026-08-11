@@ -1,11 +1,9 @@
-import { useState } from "react"
 import { Link, createFileRoute } from "@tanstack/react-router"
 import { useSuspenseQuery } from "@tanstack/react-query"
 import { convexQuery } from "@convex-dev/react-query"
 import { api } from "@convex/_generated/api"
 import { RiGalleryLine, RiListUnordered, RiUserVoiceLine } from "@remixicon/react"
 
-import { cn } from "@/lib/utils"
 import { Button, buttonVariants } from "@/components/ui/button"
 import { EmptyState } from "@/components/shared/empty-state"
 import { DataToolbar } from "@/components/shared/data-toolbar"
@@ -14,7 +12,12 @@ import {
   SpeakerDirectory,
   SpeakerGallery,
 } from "@/components/public/speaker-gallery"
+import { segmentedGroup, segmentedItem } from "@/components/public/segmented"
 import { formatRange } from "@/components/public/format"
+import {
+  useSearchParamWriter,
+  useUrlText,
+} from "@/components/public/use-url-text"
 import type { PublicSpeakerRow } from "@/components/public/types"
 
 /**
@@ -38,7 +41,10 @@ function SpeakersPage() {
   const { data } = useSuspenseQuery(
     convexQuery(api.publicData.speakers, { slug }),
   )
-  const [query, setQuery] = useState(search.q ?? "")
+  const setParams = useSearchParamWriter()
+  const [query, setQuery] = useUrlText(search.q, (value) =>
+    setParams({ q: value }),
+  )
 
   if (!data) return null
   const { event } = data
@@ -74,9 +80,9 @@ function SpeakersPage() {
       <WidgetHeader
         title="Speakers"
         count={formatRange(speakers.length, data.totalResults)}
-        description="Tap a speaker to read their bio and see everything they're presenting."
+        description="Open a speaker to read their bio and see everything they're presenting."
         actions={
-          <div className="flex items-center gap-1 rounded-full border border-border bg-card p-0.5">
+          <div className={segmentedGroup}>
             <ViewPill
               slug={slug}
               view="gallery"
@@ -121,10 +127,20 @@ function SpeakersPage() {
       ) : speakers.length === 0 ? (
         <EmptyState
           icon={RiUserVoiceLine}
-          title={`No speakers match "${query}"`}
+          title={
+            query
+              ? `No speakers match "${query}"`
+              : `No speakers on the ${search.track} track`
+          }
           description="Try part of a name, a company, or clear the search to see everyone."
           action={
-            <Button variant="outline" onClick={() => setQuery("")}>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setQuery("")
+                setParams({ q: undefined, track: undefined })
+              }}
+            >
               Clear search
             </Button>
           }
@@ -155,12 +171,8 @@ function ViewPill({
       to="/e/$slug/speakers"
       params={{ slug }}
       search={(prev) => ({ ...prev, view })}
-      aria-current={active ? "true" : undefined}
-      className={cn(
-        buttonVariants({ variant: "ghost", size: "sm" }),
-        "gap-1.5 rounded-full px-3 text-muted-foreground",
-        active && "bg-accent font-semibold text-accent-foreground",
-      )}
+      data-active={active ? "true" : undefined}
+      className={segmentedItem(active)}
     >
       <Icon size={15} aria-hidden />
       {label}

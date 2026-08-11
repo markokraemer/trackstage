@@ -70,10 +70,11 @@ export const Route = createFileRoute("/app/embeds/")({
 const ALL_TRACKS = "All tracks"
 
 function EmbedsPage() {
-  const { events, event: currentEvent, isEmpty: hasNoEvent } = useCurrentEvent()
-  const [slug, setSlug] = useState<string | null>(null)
-  const activeSlug = slug ?? currentEvent?.slug ?? null
-  const activeEvent = events.find((event) => event.slug === activeSlug)
+  // The event comes from the sidebar switcher, like every other organizer
+  // screen (docs/memory/RULES.md 23a). This page used to carry its own Event
+  // select, which could disagree with the shell.
+  const { event: activeEvent, isEmpty: hasNoEvent } = useCurrentEvent()
+  const activeSlug = activeEvent?.slug ?? null
 
   const [widgetId, setWidgetId] = useState(WIDGET_TYPES[0].id)
   const widget = widgetById(widgetId)
@@ -354,31 +355,6 @@ function EmbedsPage() {
           ) : null
         }
       />
-
-      {events.length > 1 ? (
-        <Field className="max-w-sm">
-          <FieldLabel htmlFor="embed-event">Event</FieldLabel>
-          <Select
-            items={events.map((event) => ({
-              value: event.slug,
-              label: event.name,
-            }))}
-            value={activeSlug ?? ""}
-            onValueChange={(next) => setSlug(String(next))}
-          >
-            <SelectTrigger id="embed-event" className="w-full">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {events.map((event) => (
-                <SelectItem key={event.slug} value={event.slug}>
-                  {event.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </Field>
-      ) : null}
 
       <SavedEmbeds
         embeds={embedsQuery.data}

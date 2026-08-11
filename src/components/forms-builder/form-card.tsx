@@ -46,6 +46,8 @@ export interface FormListRow {
   internalName: string
   externalTitle: string
   slug: string
+  /** The form's event — the first segment of its canonical public link. */
+  eventSlug: string
   kind: string
   status: string
   closeAt?: number
@@ -105,14 +107,18 @@ export function FormCard({
           </div>
           <p className="mt-1 text-sm text-muted-foreground">{meta}</p>
           <p className="mt-0.5 font-mono text-xs text-muted-foreground">
-            {publicFormPath(form.slug)}
+            {publicFormPath(form.eventSlug, form.slug)}
           </p>
         </div>
 
         <div className="flex shrink-0 flex-wrap items-center gap-2">
-          <CopyLinkButton slug={form.slug} size="sm" />
+          <CopyLinkButton
+            eventSlug={form.eventSlug}
+            slug={form.slug}
+            size="sm"
+          />
           <a
-            href={publicFormPath(form.slug)}
+            href={publicFormPath(form.eventSlug, form.slug)}
             target="_blank"
             rel="noreferrer"
             className={buttonVariants({ variant: "outline", size: "sm" })}

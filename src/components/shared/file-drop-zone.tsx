@@ -96,6 +96,14 @@ export function FileDropZone({
 
   return (
     <div className={cn("flex flex-col gap-2", className)}>
+      {/*
+        The input is machinery, not a control: the labelled, focusable,
+        keyboard-operable button is the zone below, and it opens this picker.
+        Left exposed, `<input type="file">` also maps to role="button" with the
+        SAME accessible name, so a screen reader announces the drop zone twice
+        and `getByRole` can't tell them apart. Hidden from the a11y tree and
+        out of the tab order, there is exactly one button here.
+      */}
       <input
         ref={inputRef}
         id={inputId}
@@ -103,7 +111,8 @@ export function FileDropZone({
         className="sr-only"
         accept={imagesOnly ? IMAGE_ACCEPT : FILE_ACCEPT}
         disabled={disabled || busy}
-        aria-label={label ?? defaultLabel}
+        tabIndex={-1}
+        aria-hidden="true"
         onChange={(event) => {
           // Read the File out FIRST. `input.value = ""` empties the very
           // FileList the event still points at (same object), so clearing

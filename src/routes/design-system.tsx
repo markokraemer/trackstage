@@ -84,7 +84,13 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import {
+  Tabs,
+  TabsContent,
+  TabsCount,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs"
 import {
   Dialog,
   DialogClose,
@@ -1252,12 +1258,24 @@ function DesignSystemPage() {
               </Row>
 
               <Row>
-                <Sample label="Tabs">
+                <Sample
+                  label="Tabs"
+                  hint="Counts use TabsCount — “Label N”, never “Label (N)”."
+                >
                   <Tabs defaultValue="all" className="w-full">
                     <TabsList>
-                      <TabsTrigger value="all">All</TabsTrigger>
-                      <TabsTrigger value="accepted">Accepted</TabsTrigger>
-                      <TabsTrigger value="pending">Pending</TabsTrigger>
+                      <TabsTrigger value="all">
+                        All
+                        <TabsCount>128</TabsCount>
+                      </TabsTrigger>
+                      <TabsTrigger value="accepted">
+                        Accepted
+                        <TabsCount>42</TabsCount>
+                      </TabsTrigger>
+                      <TabsTrigger value="pending">
+                        Pending
+                        <TabsCount>9</TabsCount>
+                      </TabsTrigger>
                     </TabsList>
                     <TabsContent
                       value="all"
@@ -1668,15 +1686,19 @@ function Row({ children }: { children: React.ReactNode }) {
 
 function Sample({
   label,
+  hint,
   children,
 }: {
   label: string
+  /** One line of usage law, shown next to the label. */
+  hint?: string
   children: React.ReactNode
 }) {
   return (
     <Card className="gap-0 p-0 py-0">
-      <p className="border-b border-border px-5 py-2.5 text-xs font-medium text-muted-foreground">
+      <p className="flex flex-wrap items-baseline gap-x-2 border-b border-border px-5 py-2.5 text-xs font-medium text-muted-foreground">
         {label}
+        {hint ? <span className="font-normal opacity-70">{hint}</span> : null}
       </p>
       <div className="p-5">{children}</div>
     </Card>

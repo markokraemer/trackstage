@@ -42,14 +42,15 @@ export function WelcomeStep({ form }: WelcomeStepProps) {
 
   return (
     <div className="space-y-6">
-      <div className="space-y-2">
-        <h1 className="font-heading text-2xl font-semibold tracking-tight text-foreground">
-          {form.pageHeading?.trim() || "Welcome!"}
-        </h1>
-        <p className="text-sm text-muted-foreground">
-          {form.externalTitle} · {event.name}
-        </p>
-      </div>
+      {/*
+        Heading only. The event name and the form's public title already sit
+        directly above this card, in the shell header on every step — repeating
+        them here printed the event name twice on the first screen a speaker
+        ever sees (docs/memory/RULES.md 19 follow-up).
+      */}
+      <h1 className="font-heading text-2xl font-semibold tracking-tight text-foreground">
+        {form.pageHeading?.trim() || "Welcome!"}
+      </h1>
 
       <dl className="flex flex-wrap gap-x-6 gap-y-2 text-sm text-muted-foreground">
         {dates ? (

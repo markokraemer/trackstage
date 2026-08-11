@@ -33,7 +33,7 @@ and everything updates live.
 | I want to… | Go to |
 | --- | --- |
 | Run an event (organizer demo) | `/login` — demo credentials shown on the page |
-| Submit a talk (public CFP) | `/submit/cfp` |
+| Submit a talk (public CFP) | `/submit/ai-summit-2026/cfp` |
 | See what speakers see | `/portal` — magic link, no password |
 | Browse a published program | `/e/ai-summit-2026` |
 | Read the docs | `/docs` |

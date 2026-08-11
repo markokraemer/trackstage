@@ -113,12 +113,19 @@ function sortStatuses(rows: Array<Doc<"sessionStatuses">>) {
   return [...rows].sort((a, b) => a.order - b.order || a.name.localeCompare(b.name))
 }
 
+/**
+ * The event's LIVE statuses. Soft-deleted rows (see `remove`) are excluded
+ * everywhere in the product — they exist only so the public API can restore
+ * one, which is how Sessionboard's delete/restore pair behaves.
+ */
 async function listRows(ctx: QueryCtx | MutationCtx, eventId: Id<"events">) {
   return sortStatuses(
-    await ctx.db
-      .query("sessionStatuses")
-      .withIndex("by_eventId", (q) => q.eq("eventId", eventId))
-      .collect(),
+    (
+      await ctx.db
+        .query("sessionStatuses")
+        .withIndex("by_eventId", (q) => q.eq("eventId", eventId))
+        .collect()
+    ).filter((row) => row.deletedAt === undefined),
   )
 }
 
@@ -406,7 +413,10 @@ export const remove = mutation({
       await ctx.db.patch(submission._id, { statusId: undefined })
     }
 
-    await ctx.db.delete(args.statusId)
+    // Soft delete: gone from every screen and every read, but recoverable via
+    // `POST /v1/event/{ref}/statuses/{id}/restore`. Nothing in the product
+    // reads a soft-deleted row (see `listRows`), so this is invisible here.
+    await ctx.db.patch(args.statusId, { deletedAt: Date.now() })
     return { reassigned }
   },
 })

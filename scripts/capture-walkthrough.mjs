@@ -241,7 +241,7 @@ async function main() {
     if (m.type() === "error") consoleErrors.push(m.text())
   })
 
-  const state = { eventSlug: EVENT.slug, formSlug: null, portalUrl: null }
+  const state = { eventSlug: EVENT.slug, formPath: null, portalUrl: null }
 
   if (RESUME) {
     // `--resume <email> <event-slug>` re-shoots only the agenda/publish tail on
@@ -450,9 +450,10 @@ async function buildForm(page, state) {
     .first()
     .getAttribute("href")
     .catch(() => null)
-  state.formSlug = href ? href.replace("/submit/", "") : null
-  if (!state.formSlug) throw new Error("could not read the public form slug")
-  log(`public form: /submit/${state.formSlug}`)
+  // `/submit/:eventSlug/:formSlug` — both segments, kept whole.
+  state.formPath = href
+  if (!state.formPath) throw new Error("could not read the public form link")
+  log(`public form: ${state.formPath}`)
 
   await go(page, `${BASE}/app/forms`)
   await settle(page)
@@ -507,7 +508,7 @@ async function submitATalk(context, state) {
     page.getByRole("button", { name: /^continue$/i }).first().click({ timeout: 6000 })
 
   try {
-    await go(page, `${BASE}/submit/${state.formSlug}`)
+    await go(page, `${BASE}${state.formPath}`)
     await settle(page, 1500)
 
     while (Date.now() < deadline) {

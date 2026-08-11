@@ -2,6 +2,13 @@ import { v } from "convex/values"
 import { mutation, query } from "./_generated/server"
 import { requireEventAccess } from "./lib/auth"
 import { record as recordAudit } from "./lib/audit"
+import {
+  formSlugIsFree,
+  isValidSlug,
+  slugify,
+  suggestFormSlug,
+  uniqueFormSlug,
+} from "./lib/publicLinks"
 
 // Reusable validators mirroring the schema shapes (kept in sync manually —
 // schema.ts is the source of truth).
@@ -82,7 +89,7 @@ function defaultParticipantConfig() {
 export const list = query({
   args: { eventId: v.id("events") },
   handler: async (ctx, args) => {
-    await requireEventAccess(ctx, args.eventId)
+    const { event } = await requireEventAccess(ctx, args.eventId)
     const forms = await ctx.db
       .query("forms")
       .withIndex("by_eventId", (q) => q.eq("eventId", args.eventId))
@@ -100,6 +107,10 @@ export const list = query({
           internalName: form.internalName,
           externalTitle: form.externalTitle,
           slug: form.slug,
+          // The canonical public link is `/submit/:eventSlug/:formSlug`, so
+          // every list row carries its event's slug and no caller ever has to
+          // stitch one together from a second query.
+          eventSlug: event.slug,
           kind: form.kind,
           status: form.status,
           closeAt: form.closeAt,
@@ -116,8 +127,10 @@ export const get = query({
   handler: async (ctx, args) => {
     const form = await ctx.db.get(args.formId)
     if (!form) throw new Error("Form not found")
-    await requireEventAccess(ctx, form.eventId)
-    return form
+    const { event } = await requireEventAccess(ctx, form.eventId)
+    // `eventSlug` rides along so the builder can render the canonical public
+    // URL without a second round trip (docs/memory/DECISIONS.md, URL scheme).
+    return { ...form, eventSlug: event.slug }
   },
 })
 
@@ -144,20 +157,9 @@ export const create = mutation({
         : question,
     )
 
-    const base = args.internalName
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/^-|-$/g, "")
-      .slice(0, 40) || "form"
-    let slug = base
-    for (let i = 2; ; i++) {
-      const clash = await ctx.db
-        .query("forms")
-        .withIndex("by_slug", (q) => q.eq("slug", slug))
-        .unique()
-      if (!clash) break
-      slug = `${base}-${i}`
-    }
+    // Unique WITHIN THIS EVENT — "cfp" is available to every organizer
+    // (docs/memory/DECISIONS.md, "Public URL scheme is hierarchical").
+    const slug = await uniqueFormSlug(ctx, args.eventId, args.internalName)
 
     const formId = await ctx.db.insert("forms", {
       eventId: args.eventId,
@@ -197,6 +199,12 @@ export const update = mutation({
   args: {
     formId: v.id("forms"),
     patch: v.object({
+      /**
+       * The public address, editable (Form builder → Setup → Public link).
+       * Unique per event; a clash is REFUSED with a suggestion rather than
+       * silently re-pointed, because the organizer may already have printed it.
+       */
+      slug: v.optional(v.string()),
       internalName: v.optional(v.string()),
       externalTitle: v.optional(v.string()),
       pageHeading: v.optional(v.string()),
@@ -216,9 +224,37 @@ export const update = mutation({
     if (!form) throw new Error("Form not found")
     await requireEventAccess(ctx, form.eventId)
 
-    const { closeAt, questions, status, ...rest } = args.patch
+    const { closeAt, questions, status, slug, ...rest } = args.patch
     if (status && !["open", "closed"].includes(status)) {
       throw new Error("status must be open or closed")
+    }
+
+    // ——— Public address —————————————————————————————————————————————————
+    // Sent only when the organizer actually edits the link, so an autosave of
+    // the rest of the form can never trip the uniqueness check.
+    let nextSlug: string | undefined
+    if (slug !== undefined) {
+      const cleaned = slugify(slug, "")
+      if (!cleaned || !isValidSlug(cleaned)) {
+        throw new Error(
+          "A web address needs at least one letter or number — use lowercase letters, numbers and dashes.",
+        )
+      }
+      if (cleaned !== form.slug) {
+        const free = await formSlugIsFree(ctx, form.eventId, cleaned, form._id)
+        if (!free) {
+          const suggestion = await suggestFormSlug(
+            ctx,
+            form.eventId,
+            cleaned,
+            form._id,
+          )
+          throw new Error(
+            `That address is already taken for this event. Try “${suggestion}” instead.`,
+          )
+        }
+        nextSlug = cleaned
+      }
     }
     if (questions) {
       // Locked questions can be edited but never removed or disabled.
@@ -243,6 +279,7 @@ export const update = mutation({
 
     await ctx.db.patch(args.formId, {
       ...rest,
+      ...(nextSlug ? { slug: nextSlug } : {}),
       ...(status ? { status } : {}),
       ...(questions ? { questions } : {}),
       ...(closeAt !== undefined ? { closeAt: closeAt ?? undefined } : {}),
@@ -255,9 +292,11 @@ export const update = mutation({
     const headline =
       status && status !== form.status
         ? `Form ${status === "open" ? "opened" : "closed"} · ${form.internalName}`
-        : closeAt !== undefined && (closeAt ?? undefined) !== form.closeAt
-          ? `Close date ${closeAt ? "set" : "cleared"} · ${form.internalName}`
-          : `Form updated (${changed.join(", ")}) · ${form.internalName}`
+        : nextSlug
+          ? `Public link changed to /${nextSlug} · ${form.internalName}`
+          : closeAt !== undefined && (closeAt ?? undefined) !== form.closeAt
+            ? `Close date ${closeAt ? "set" : "cleared"} · ${form.internalName}`
+            : `Form updated (${changed.join(", ")}) · ${form.internalName}`
     await recordAudit(ctx, {
       eventId: form.eventId,
       entity: "form",
@@ -267,10 +306,13 @@ export const update = mutation({
       meta: {
         fields: changed,
         ...(status ? { status, previousStatus: form.status } : {}),
+        ...(nextSlug ? { slug: nextSlug, previousSlug: form.slug } : {}),
         ...(closeAt !== undefined ? { closeAt: closeAt ?? "cleared" } : {}),
       },
     })
-    return null
+    // The slug that is actually live now, so the builder can echo the canonical
+    // URL back without waiting for the reactive query to land.
+    return { slug: nextSlug ?? form.slug }
   },
 })
 
@@ -281,15 +323,8 @@ export const duplicate = mutation({
     if (!form) throw new Error("Form not found")
     await requireEventAccess(ctx, form.eventId)
     const { _id, _creationTime, slug, internalName, ...rest } = form
-    let copySlug = `${slug}-copy`
-    for (let i = 2; ; i++) {
-      const clash = await ctx.db
-        .query("forms")
-        .withIndex("by_slug", (q) => q.eq("slug", copySlug))
-        .unique()
-      if (!clash) break
-      copySlug = `${slug}-copy-${i}`
-    }
+    // Per-event namespace, same as create.
+    const copySlug = await uniqueFormSlug(ctx, form.eventId, `${slug}-copy`)
     const copyId = await ctx.db.insert("forms", {
       ...rest,
       slug: copySlug,

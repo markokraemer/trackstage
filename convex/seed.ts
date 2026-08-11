@@ -26,6 +26,7 @@ import type {MutationCtx} from "./_generated/server";
 import { requireUser } from "./lib/auth"
 import { createAuth } from "./auth"
 import { DEFAULT_TEMPLATES, portalLinkFor, renderTemplate } from "./lib/email"
+import { formPath } from "./lib/publicLinks"
 import { ensureDefaultStatuses } from "./sessionStatuses"
 
 // ——— Demo constants ———————————————————————————————————————————————————————
@@ -1082,6 +1083,13 @@ const seedSummaryValidator = v.object({
   eventSlug: v.string(),
   secondEventId: v.id("events"),
   secondEventSlug: v.string(),
+  /**
+   * The canonical public CFP addresses, printed so whoever ran the seed can
+   * paste them straight into a browser. Form slugs are per-event, which is why
+   * both events can (and do) keep a short, human slug of their own.
+   */
+  cfpPath: v.string(),
+  secondCfpPath: v.string(),
   organizerEmail: v.string(),
   organizerPassword: v.string(),
   counts: v.object({
@@ -1234,7 +1242,9 @@ export const run = internalMutation({
       status: "open",
       closeAt: pt(2026, 9, 15, 23, 59),
       internalName: "CFP 2026 — main call",
-      externalTitle: "Call for Speakers — AI Engineer Summit 2026",
+      // The public form title, NOT the event name — the public form frames it
+      // with the event above it, so repeating it here reads twice.
+      externalTitle: "Call for Speakers",
       pageHeading: "Submit a talk",
       welcomeMessage:
         "We're looking for practitioner talks: things you built, things that broke, and what you learned. You don't need to be a famous speaker — you need a real story and something the audience can use.\n\nThe call closes on 15 September 2026. You may submit up to three proposals, and you can save a draft and come back to it at any time.",
@@ -1615,6 +1625,8 @@ export const run = internalMutation({
       eventSlug: DEMO_EVENT_SLUG,
       secondEventId,
       secondEventSlug: DEMO_SECOND_EVENT_SLUG,
+      cfpPath: formPath(DEMO_EVENT_SLUG, "cfp"),
+      secondCfpPath: formPath(DEMO_SECOND_EVENT_SLUG, "ds-cfp"),
       organizerEmail: DEMO_ORGANIZER_EMAIL,
       organizerPassword: DEMO_ORGANIZER_PASSWORD,
       counts: {
@@ -1757,7 +1769,7 @@ async function seedSecondEvent(
     status: "closed",
     closeAt: now - 20 * DAY,
     internalName: "Design Systems Day — call for talks",
-    externalTitle: "Call for Speakers — Design Systems Day",
+    externalTitle: "Call for Speakers",
     pageHeading: "Submit a talk",
     welcomeMessage: "This call is now closed. Thank you to everyone who submitted.",
     showWelcomeMessage: true,

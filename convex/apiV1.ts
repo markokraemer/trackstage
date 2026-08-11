@@ -4,9 +4,18 @@ import { internalMutation, internalQuery } from "./_generated/server"
 import type { MutationCtx, QueryCtx } from "./_generated/server"
 import type { Doc, Id } from "./_generated/dataModel"
 import { emitWebhook, generateWebhookSecret, maskSecret } from "./webhooks"
-import { membershipFor } from "./lib/auth"
+import { eventAccessFor, memberCanSeeEvent, membershipFor } from "./lib/auth"
 import { recordWorkspace } from "./lib/audit"
 import { computeConflicts } from "./agenda"
+import { deleteEventCascade } from "./events"
+import { deleteUploadRow } from "./lib/files"
+import { uniqueEventSlug, uniqueFormSlug } from "./lib/publicLinks"
+import {
+  DEFAULT_SESSION_STATUSES,
+  STATUS_CATEGORIES,
+  ensureDefaultStatuses,
+} from "./sessionStatuses"
+import type { StatusCategory, StatusColor } from "./sessionStatuses"
 
 // ————————————————————————————————————————————————————————————————————————
 // Public REST API — data layer (convex/apiHttp.ts is the routing/serialization
@@ -59,8 +68,10 @@ async function authorizeEvent(
   minRole: "member" | "admin" | "owner" = "member",
 ): Promise<void> {
   if (userId === null) return
-  if (!event.organizationId) throw new Error("Event not found.")
-  await membershipFor(ctx, userId, event.organizationId, minRole)
+  // eventAccessFor, not membershipFor: it also enforces per-member event
+  // scoping (docs/memory/RULES.md 23), so an API key belonging to a scoped
+  // member reaches exactly the events that member's browser session does.
+  await eventAccessFor(ctx, userId, event._id, minRole)
 }
 
 function iso(ms: number | undefined | null): string | null {
@@ -451,8 +462,20 @@ async function eventShape(
     starts_at: iso(event.startsAt),
     ends_at: iso(event.endsAt),
     logo_url: event.logoId ? await ctx.storage.getUrl(event.logoId) : null,
+    background_url: event.backgroundId
+      ? await ctx.storage.getUrl(event.backgroundId)
+      : null,
     agenda_published_at: iso(event.agendaPublishedAt),
     created_at: iso(event._creationTime),
+    // The workspace the event belongs to — what `POST /v1/events` takes as
+    // `organization_id`, so a client can round-trip create-from-read.
+    organization_id: event.organizationId ?? null,
+    public_url: `/e/${event.slug}`,
+    portal_settings: {
+      always_show_tasks: event.portalSettings?.alwaysShowTasks ?? false,
+      allow_submission_edits: event.portalSettings?.allowSubmissionEdits ?? true,
+      extend_task_deadlines: event.portalSettings?.extendTaskDeadlines ?? true,
+    },
     features: { translated_fields: false, custom_fields: true, webhooks: true },
     // Legacy names.
     _id: event._id,
@@ -607,7 +630,9 @@ export const listEvents = internalQuery({
             q.eq("organizationId", membership.organizationId),
           )
           .take(MAX_ROWS)
-        events.push(...rows)
+        events.push(
+          ...rows.filter((row) => memberCanSeeEvent(membership, row._id)),
+        )
       }
     }
     events.sort((a, b) => (b.startsAt ?? 0) - (a.startsAt ?? 0))
@@ -1397,6 +1422,138 @@ export const writeSpeaker = internalMutation({
  * honest mapping — it keeps the form builder and the API as one source of
  * truth instead of two that drift.
  */
+// ——— Session statuses ————————————————————————————————————————————————————
+//
+// Sessionboard models statuses as per-event rows with a delete/restore pair;
+// so do we (convex/sessionStatuses.ts). The one thing we do NOT do is let a
+// custom status invent behaviour: every row is bound to a pipeline value
+// (`pipeline_status`), which is what `submissions.status` actually stores and
+// what `?status=` filters on. That keeps the organizer and speaker UIs saying
+// the same word — an explicit requirement — while still allowing "Waitlist"
+// to be the name an organizer sees.
+
+/**
+ * `id` stays the pipeline value for the seven built-ins, because that is what
+ * this endpoint has always returned and what a client filtering sessions by
+ * status needs. Custom rows are addressed by row id. `status_id` is always the
+ * row id, so a client that wants one addressing scheme has one.
+ */
+function statusShape(row: Doc<"sessionStatuses">): Record<string, unknown> {
+  return {
+    id: row.systemKey ?? row._id,
+    status_id: row._id,
+    name: row.name,
+    value: row.pipelineStatus,
+    pipeline_status: row.pipelineStatus,
+    category: row.category,
+    color: row.color,
+    order: row.order,
+    system: row.systemKey !== undefined,
+    system_key: row.systemKey ?? null,
+    created_by: row.createdBy ?? null,
+    created_at: row.systemKey ? null : iso(row._creationTime),
+    updated_at: null,
+    deleted_at: iso(row.deletedAt),
+  }
+}
+
+async function statusList(
+  ctx: QueryCtx,
+  eventId: Id<"events">,
+  includeDeleted: boolean,
+): Promise<Array<Record<string, unknown>>> {
+  const rows = await ctx.db
+    .query("sessionStatuses")
+    .withIndex("by_eventId", (q) => q.eq("eventId", eventId))
+    .take(MAX_ROWS)
+  // An event that has never opened Settings → Statuses has no rows yet; the
+  // seven built-ins are still its statuses, so report them rather than an
+  // empty list a client would read as "this event has no statuses".
+  if (rows.length === 0)
+    return DEFAULT_SESSION_STATUSES.map((preset) => ({
+      id: preset.systemKey,
+      status_id: null,
+      name: preset.name,
+      value: preset.pipelineStatus,
+      pipeline_status: preset.pipelineStatus,
+      category: preset.category,
+      color: preset.color,
+      order: preset.order,
+      system: true,
+      system_key: preset.systemKey,
+      created_by: null,
+      created_at: null,
+      updated_at: null,
+      deleted_at: null,
+    }))
+  return rows
+    .filter((row) => includeDeleted || row.deletedAt === undefined)
+    .sort((a, b) => a.order - b.order || a.name.localeCompare(b.name))
+    .map(statusShape)
+}
+
+/** Resolves `{id}` on a status route: a row id, or a built-in's system key. */
+async function findStatusRow(
+  ctx: QueryCtx,
+  eventId: Id<"events">,
+  ref: string,
+): Promise<Doc<"sessionStatuses"> | null> {
+  const rows = await ctx.db
+    .query("sessionStatuses")
+    .withIndex("by_eventId", (q) => q.eq("eventId", eventId))
+    .take(MAX_ROWS)
+  const asId = ctx.db.normalizeId("sessionStatuses", ref)
+  if (asId) {
+    const row = rows.find((candidate) => candidate._id === asId)
+    if (row) return row
+  }
+  return (
+    rows.find((row) => row.systemKey === ref) ??
+    rows.find((row) => row.name.toLowerCase() === ref.toLowerCase()) ??
+    null
+  )
+}
+
+const STATUS_COLOR_ALIASES: Record<string, string> = {
+  green: "green",
+  amber: "amber",
+  yellow: "amber",
+  orange: "amber",
+  red: "red",
+  gray: "gray",
+  grey: "gray",
+  blue: "blue",
+}
+
+/** Their `color` is free-form; ours is a design token. Map, or say why not. */
+function readStatusColor(value: string | undefined): StatusColor | undefined {
+  if (value === undefined) return undefined
+  const mapped = STATUS_COLOR_ALIASES[value.trim().toLowerCase()]
+  if (!mapped)
+    throw new Error(
+      `Unknown status colour "${value}". Use one of: green, amber, red, gray, blue.`,
+    )
+  return mapped as StatusColor
+}
+
+function readStatusCategory(value: string | undefined): StatusCategory | undefined {
+  if (value === undefined) return undefined
+  const trimmed = value.trim().toLowerCase()
+  if (!(STATUS_CATEGORIES as ReadonlyArray<string>).includes(trimmed))
+    throw new Error(
+      `Unknown status category "${value}". Use one of: ${STATUS_CATEGORIES.join(", ")}.`,
+    )
+  return trimmed as StatusCategory
+}
+
+const CATEGORY_PIPELINE: Record<StatusCategory, string> = {
+  draft: "draft",
+  pending: "pending",
+  accepted: "accepted",
+  declined: "declined",
+  withdrawn: "withdrawn",
+}
+
 const VALUE_LIST_QUESTION: Record<string, string> = {
   tags: "tags",
   formats: "format",
@@ -1448,6 +1605,7 @@ export const listSettings = internalQuery({
     userId: v.union(v.string(), v.null()),
     resource: v.string(),
     search: v.optional(v.string()),
+    includeDeleted: v.optional(v.boolean()),
     ...pagingArgs,
   },
   returns: v.any(),
@@ -1491,16 +1649,7 @@ export const listSettings = internalQuery({
           updated_at: iso(track._creationTime),
         }))
     } else if (args.resource === "statuses") {
-      // Our pipeline is a fixed system enum — see docs/reference/api-parity.md
-      // for why custom statuses are deliberately not mirrored.
-      items = VALID_STATUSES.map((name, index) => ({
-        id: name,
-        name,
-        order: index,
-        system: true,
-        created_at: null,
-        updated_at: null,
-      }))
+      items = await statusList(ctx, event._id, args.includeDeleted === true)
     } else if (VALUE_LIST_QUESTION[args.resource]) {
       items = await valueList(ctx, event._id, args.resource)
     } else {
@@ -1524,12 +1673,16 @@ export const writeMetadata = internalMutation({
     eventRef: v.string(),
     userId: v.string(),
     resource: v.string(),
-    action: v.string(), // create | update | delete
+    action: v.string(), // create | update | delete | restore
     id: v.optional(v.string()),
     name: v.optional(v.string()),
     color: v.optional(v.string()),
     capacity: v.optional(v.number()),
     order: v.optional(v.number()),
+    /** Statuses only: their behavioural bucket. */
+    category: v.optional(v.string()),
+    /** Statuses only: where submissions carrying a deleted label should land. */
+    reassignTo: v.optional(v.string()),
   },
   returns: v.any(),
   handler: async (ctx, args) => {
@@ -1538,9 +1691,130 @@ export const writeMetadata = internalMutation({
     await authorizeEvent(ctx, event, args.userId)
 
     if (args.resource === "statuses") {
-      throw new Error(
-        "Session statuses are system-defined in Trackstage (draft → pending → accept_queue/decline_queue → accepted/declined, plus withdrawn) and cannot be created or renamed.",
-      )
+      // The seven built-ins must exist before anything can be added beside
+      // them, or a custom status would silently orphan the pipeline labels.
+      await ensureDefaultStatuses(ctx, event._id)
+
+      if (args.action === "create") {
+        const name = (args.name ?? "").trim()
+        if (!name) throw new Error("`name` is required.")
+        if (name.length > 60)
+          throw new Error("Status names are limited to 60 characters.")
+        const category = readStatusCategory(args.category) ?? "pending"
+        const color = readStatusColor(args.color) ?? "gray"
+        const rows = await ctx.db
+          .query("sessionStatuses")
+          .withIndex("by_eventId", (q) => q.eq("eventId", event._id))
+          .take(MAX_ROWS)
+        const live = rows.filter((row) => row.deletedAt === undefined)
+        if (live.some((row) => row.name.toLowerCase() === name.toLowerCase()))
+          throw new Error(`You already have a status called “${name}”.`)
+        const order =
+          args.order ??
+          live.reduce((max, row) => Math.max(max, row.order), 0) + 10
+        const id = await ctx.db.insert("sessionStatuses", {
+          eventId: event._id,
+          name,
+          category,
+          pipelineStatus: CATEGORY_PIPELINE[category] as Doc<"sessionStatuses">["pipelineStatus"],
+          color,
+          order,
+          createdBy: "API",
+        })
+        const row = await ctx.db.get(id)
+        return { data: statusShape(row as Doc<"sessionStatuses">) }
+      }
+
+      const row = await findStatusRow(ctx, event._id, args.id ?? "")
+      if (!row) return { notFound: true }
+
+      if (args.action === "restore") {
+        if (row.deletedAt === undefined)
+          return { data: statusShape(row), restored: false }
+        const live = (
+          await ctx.db
+            .query("sessionStatuses")
+            .withIndex("by_eventId", (q) => q.eq("eventId", event._id))
+            .take(MAX_ROWS)
+        ).filter((other) => other.deletedAt === undefined)
+        if (live.some((other) => other.name.toLowerCase() === row.name.toLowerCase()))
+          throw new Error(
+            `A status called “${row.name}” exists again — rename that one before restoring this.`,
+          )
+        await ctx.db.patch(row._id, { deletedAt: undefined })
+        const fresh = await ctx.db.get(row._id)
+        return { data: statusShape(fresh as Doc<"sessionStatuses">), restored: true }
+      }
+
+      if (args.action === "delete") {
+        if (row.systemKey)
+          throw new Error(
+            `“${row.name}” is a built-in status the pipeline needs. You can rename or recolour it, but not delete it.`,
+          )
+        if (row.deletedAt !== undefined) return { deleted: true, reassigned: 0 }
+        const submissions = await ctx.db
+          .query("submissions")
+          .withIndex("by_eventId", (q) => q.eq("eventId", event._id))
+          .take(MAX_ROWS)
+        const labelled = submissions.filter((s) => s.statusId === row._id)
+        const inUse = labelled.filter((s) => s.status === row.pipelineStatus)
+        const stale = labelled.filter((s) => s.status !== row.pipelineStatus)
+        let target: Doc<"sessionStatuses"> | null = null
+        if (args.reassignTo) {
+          target = await findStatusRow(ctx, event._id, args.reassignTo)
+          if (!target || target._id === row._id)
+            throw new Error("Pick a different status from this event to move them to.")
+        }
+        if (inUse.length > 0 && !target)
+          throw new Error(
+            `${inUse.length} submission${inUse.length === 1 ? " is" : "s are"} set to “${row.name}”. Pass \`reassign_to\` with the status to move ${inUse.length === 1 ? "it" : "them"} to.`,
+          )
+        let reassigned = 0
+        for (const submission of inUse) {
+          await ctx.db.patch(submission._id, {
+            statusId: (target as Doc<"sessionStatuses">)._id,
+            status: (target as Doc<"sessionStatuses">).pipelineStatus,
+          })
+          reassigned++
+        }
+        for (const submission of stale)
+          await ctx.db.patch(submission._id, { statusId: undefined })
+        await ctx.db.patch(row._id, { deletedAt: Date.now() })
+        return { deleted: true, reassigned }
+      }
+
+      // update
+      const patch: Record<string, unknown> = {}
+      if (args.name !== undefined) {
+        const name = args.name.trim()
+        if (!name) throw new Error("A status needs a name.")
+        if (name.length > 60)
+          throw new Error("Status names are limited to 60 characters.")
+        const live = (
+          await ctx.db
+            .query("sessionStatuses")
+            .withIndex("by_eventId", (q) => q.eq("eventId", event._id))
+            .take(MAX_ROWS)
+        ).filter((other) => other.deletedAt === undefined && other._id !== row._id)
+        if (live.some((other) => other.name.toLowerCase() === name.toLowerCase()))
+          throw new Error(`You already have a status called “${name}”.`)
+        patch.name = name
+      }
+      const color = readStatusColor(args.color)
+      if (color !== undefined) patch.color = color
+      if (args.order !== undefined) patch.order = args.order
+      const category = readStatusCategory(args.category)
+      if (category !== undefined && category !== row.category) {
+        if (row.systemKey)
+          throw new Error(
+            "Built-in statuses keep their category — it's what the accept/decline pipeline runs on. Rename or recolour it instead.",
+          )
+        patch.category = category
+        patch.pipelineStatus = CATEGORY_PIPELINE[category]
+      }
+      await ctx.db.patch(row._id, patch)
+      const fresh = await ctx.db.get(row._id)
+      return { data: statusShape(fresh as Doc<"sessionStatuses">) }
     }
 
     if (args.resource === "rooms") {
@@ -2162,6 +2436,1697 @@ export const setAgendaPublished = internalMutation({
     if (args.published)
       await emitWebhook(ctx, event._id, "agenda.published", shaped)
     return { data: shaped }
+  },
+})
+
+// ══════════════════════════════════════════════════════════════════════════
+// Events — full CRUD
+//
+// Sessionboard's public API reads events and nothing else: no create, no
+// update, no delete. An event is the container everything else in this API
+// hangs off, so "list only" means an integration can never stand an event up
+// end to end. These four complete it, on the product's own authorization:
+// creating needs the admin role in the workspace, updating and deleting need
+// the admin role on the event, and deleting runs the same cascade the
+// organizer's own "Delete event" dialog runs.
+// ══════════════════════════════════════════════════════════════════════════
+
+export const getEvent = internalQuery({
+  args: { eventRef: v.string(), userId: v.union(v.string(), v.null()) },
+  returns: v.any(),
+  handler: async (ctx, args) => {
+    const event = await resolveEvent(ctx, args.eventRef)
+    if (!event) return null
+    await authorizeEvent(ctx, event, args.userId)
+    const [rooms, tracks, forms, submissions] = [
+      await ctx.db
+        .query("rooms")
+        .withIndex("by_eventId", (q) => q.eq("eventId", event._id))
+        .take(MAX_ROWS),
+      await ctx.db
+        .query("tracks")
+        .withIndex("by_eventId", (q) => q.eq("eventId", event._id))
+        .take(MAX_ROWS),
+      await ctx.db
+        .query("forms")
+        .withIndex("by_eventId", (q) => q.eq("eventId", event._id))
+        .take(MAX_ROWS),
+      await ctx.db
+        .query("submissions")
+        .withIndex("by_eventId", (q) => q.eq("eventId", event._id))
+        .take(MAX_ROWS),
+    ]
+    const live = submissions.filter((row) => row.deletedAt === undefined)
+    return {
+      data: {
+        ...(await eventShape(ctx, event)),
+        // Counts, so "did my import land?" is one call rather than five.
+        totals: {
+          rooms: rooms.length,
+          tracks: tracks.length,
+          forms: forms.length,
+          sessions: live.filter((s) => s.kind !== "abstract").length,
+          abstracts: live.filter((s) => s.kind === "abstract").length,
+          accepted: live.filter((s) => s.status === "accepted").length,
+          scheduled: live.filter((s) => s.startsAt !== undefined).length,
+        },
+      },
+    }
+  },
+})
+
+const eventWriteValidator = v.object({
+  name: v.optional(v.string()),
+  slug: v.optional(v.string()),
+  timezone: v.optional(v.string()),
+  type: v.optional(v.string()),
+  website_url: v.optional(v.string()),
+  description: v.optional(v.string()),
+  venue: v.optional(v.string()),
+  starts_at: v.optional(v.number()),
+  ends_at: v.optional(v.number()),
+  organization_id: v.optional(v.string()),
+  always_show_tasks: v.optional(v.boolean()),
+  allow_submission_edits: v.optional(v.boolean()),
+  extend_task_deadlines: v.optional(v.boolean()),
+})
+
+export const writeEvent = internalMutation({
+  args: {
+    userId: v.string(),
+    action: v.string(), // create | update | delete
+    eventRef: v.optional(v.string()),
+    input: eventWriteValidator,
+  },
+  returns: v.any(),
+  handler: async (ctx, args) => {
+    const input = args.input
+
+    if (args.action === "create") {
+      const name = (input.name ?? "").trim()
+      if (!name) throw new Error("`name` is required to create an event.")
+      const timezone = (input.timezone ?? "").trim() || "UTC"
+      // Which workspace? Named explicitly, or — the common case — the only one
+      // this credential's owner is an admin of. Ambiguity is answered with the
+      // actual choices rather than a guess.
+      const memberships = await ctx.db
+        .query("members")
+        .withIndex("by_userId", (q) => q.eq("userId", args.userId))
+        .collect()
+      const admin = memberships.filter(
+        (member) => member.role === "admin" || member.role === "owner",
+      )
+      let organizationId: Id<"organizations">
+      if (input.organization_id) {
+        const normalized = ctx.db.normalizeId(
+          "organizations",
+          input.organization_id,
+        )
+        if (!normalized) throw new Error("That workspace id isn't valid.")
+        await membershipFor(ctx, args.userId, normalized, "admin")
+        organizationId = normalized
+      } else if (admin.length === 1) {
+        organizationId = admin[0].organizationId
+      } else if (admin.length === 0) {
+        throw new Error(
+          "You need to be an admin of a workspace to create an event.",
+        )
+      } else {
+        const names: Array<string> = []
+        for (const member of admin) {
+          const org = await ctx.db.get(member.organizationId)
+          names.push(`${member.organizationId} (${org?.name ?? "workspace"})`)
+        }
+        throw new Error(
+          `You belong to more than one workspace — pass \`organization_id\`: ${names.join(", ")}.`,
+        )
+      }
+      const slug = await uniqueEventSlug(ctx, input.slug ?? name)
+      const eventId = await ctx.db.insert("events", {
+        organizationId,
+        name,
+        slug,
+        timezone,
+        type: input.type,
+        websiteUrl: input.website_url,
+        description: input.description,
+        venue: input.venue,
+        startsAt: input.starts_at,
+        endsAt: input.ends_at,
+      })
+      const fresh = await ctx.db.get(eventId)
+      await recordWorkspace(ctx, {
+        organizationId,
+        entity: "settings",
+        entityId: eventId,
+        action: "created",
+        summary: `Event created via the API · ${name}`,
+        meta: { slug },
+      })
+      return {
+        data: await eventShape(ctx, fresh as Doc<"events">),
+        // The address that is actually live — `slug` may have been suffixed.
+        slug_adjusted: slug !== (input.slug ?? name).trim().toLowerCase(),
+      }
+    }
+
+    const event = await resolveEvent(ctx, args.eventRef ?? "")
+    if (!event) return null
+    await authorizeEvent(ctx, event, args.userId, "admin")
+
+    if (args.action === "delete") {
+      const name = event.name
+      const organizationId = event.organizationId
+      await deleteEventCascade(ctx, event._id)
+      if (organizationId)
+        await recordWorkspace(ctx, {
+          organizationId,
+          entity: "settings",
+          entityId: event._id,
+          action: "deleted",
+          summary: `Event deleted via the API · ${name}`,
+        })
+      return { deleted: true }
+    }
+
+    const patch: Record<string, unknown> = {}
+    if (input.name !== undefined) {
+      const name = input.name.trim()
+      if (!name) throw new Error("`name` cannot be empty.")
+      patch.name = name
+    }
+    let slugAdjusted = false
+    if (input.slug !== undefined) {
+      const desired = input.slug.trim().toLowerCase()
+      const slug =
+        desired === event.slug
+          ? event.slug
+          : await uniqueEventSlug(ctx, desired, event._id)
+      slugAdjusted = slug !== desired
+      patch.slug = slug
+    }
+    if (input.timezone !== undefined) patch.timezone = input.timezone
+    if (input.type !== undefined) patch.type = input.type
+    if (input.website_url !== undefined) patch.websiteUrl = input.website_url
+    if (input.description !== undefined) patch.description = input.description
+    if (input.venue !== undefined) patch.venue = input.venue
+    if (input.starts_at !== undefined) patch.startsAt = input.starts_at
+    if (input.ends_at !== undefined) patch.endsAt = input.ends_at
+    // `portalSettings` is replaced wholesale by ctx.db.patch, so unspecified
+    // flags are carried across rather than silently reset.
+    if (
+      input.always_show_tasks !== undefined ||
+      input.allow_submission_edits !== undefined ||
+      input.extend_task_deadlines !== undefined
+    ) {
+      patch.portalSettings = {
+        alwaysShowTasks:
+          input.always_show_tasks ?? event.portalSettings?.alwaysShowTasks,
+        allowSubmissionEdits:
+          input.allow_submission_edits ??
+          event.portalSettings?.allowSubmissionEdits,
+        extendTaskDeadlines:
+          input.extend_task_deadlines ??
+          event.portalSettings?.extendTaskDeadlines,
+      }
+    }
+    await ctx.db.patch(event._id, patch)
+    const fresh = await ctx.db.get(event._id)
+    return {
+      data: await eventShape(ctx, fresh as Doc<"events">),
+      slug_adjusted: slugAdjusted,
+    }
+  },
+})
+
+// ══════════════════════════════════════════════════════════════════════════
+// Session participants
+//
+// Their API fires `session.speaker.attached` / `.detached` webhooks but ships
+// no endpoint that causes them — the only way to change a line-up is their UI.
+// These three make the line-up writable, and are what finally emit those two
+// event types.
+// ══════════════════════════════════════════════════════════════════════════
+
+const PARTICIPANT_ROLES = ["speaker", "chairperson", "moderator"]
+
+export const listSessionParticipants = internalQuery({
+  args: {
+    eventRef: v.string(),
+    userId: v.union(v.string(), v.null()),
+    sessionId: v.string(),
+  },
+  returns: v.any(),
+  handler: async (ctx, args) => {
+    const event = await resolveEvent(ctx, args.eventRef)
+    if (!event) return null
+    await authorizeEvent(ctx, event, args.userId)
+    const id = ctx.db.normalizeId("submissions", args.sessionId)
+    const submission = id ? await ctx.db.get(id) : null
+    if (!submission || submission.eventId !== event._id) return { notFound: true }
+    const rows = await ctx.db
+      .query("submissionParticipants")
+      .withIndex("by_submissionId", (q) => q.eq("submissionId", submission._id))
+      .take(64)
+    rows.sort((a, b) => a.order - b.order)
+    const data = []
+    for (const row of rows) {
+      const person = await ctx.db.get(row.personId)
+      if (!person) continue
+      data.push({
+        ...(await speakerShape(ctx, person, row.role)),
+        participant_id: row._id,
+        role: row.role,
+        order: row.order,
+        session_id: submission._id,
+      })
+    }
+    return { data, results: data }
+  },
+})
+
+export const writeSessionParticipant = internalMutation({
+  args: {
+    eventRef: v.string(),
+    userId: v.string(),
+    sessionId: v.string(),
+    action: v.string(), // add | remove
+    speakerId: v.optional(v.string()),
+    email: v.optional(v.string()),
+    firstName: v.optional(v.string()),
+    lastName: v.optional(v.string()),
+    role: v.optional(v.string()),
+  },
+  returns: v.any(),
+  handler: async (ctx, args) => {
+    const event = await resolveEvent(ctx, args.eventRef)
+    if (!event) return null
+    await authorizeEvent(ctx, event, args.userId)
+    const id = ctx.db.normalizeId("submissions", args.sessionId)
+    const submission = id ? await ctx.db.get(id) : null
+    if (!submission || submission.eventId !== event._id) return { notFound: true }
+
+    const rows = await ctx.db
+      .query("submissionParticipants")
+      .withIndex("by_submissionId", (q) => q.eq("submissionId", submission._id))
+      .take(64)
+
+    if (args.action === "remove") {
+      const personId = args.speakerId
+        ? ctx.db.normalizeId("people", args.speakerId)
+        : null
+      const row =
+        rows.find((candidate) => candidate._id === ctx.db.normalizeId("submissionParticipants", args.speakerId ?? "")) ??
+        rows.find((candidate) => candidate.personId === personId)
+      if (!row) return { participantNotFound: true }
+      const person = await ctx.db.get(row.personId)
+      await ctx.db.delete(row._id)
+      await ctx.db.patch(submission._id, { updatedAt: Date.now() })
+      await emitWebhook(ctx, event._id, "session.speaker.detached", {
+        id: submission._id,
+        session_id: submission._id,
+        title: submission.title,
+        speaker_id: row.personId,
+        email: person?.email ?? null,
+        role: row.role,
+      })
+      return { deleted: true }
+    }
+
+    const role = (args.role ?? "speaker").trim().toLowerCase()
+    if (!PARTICIPANT_ROLES.includes(role))
+      throw new Error(
+        `Unknown role "${role}". Valid: ${PARTICIPANT_ROLES.join(", ")}.`,
+      )
+
+    let person: Doc<"people"> | null = null
+    if (args.speakerId) {
+      const personId = ctx.db.normalizeId("people", args.speakerId)
+      person = personId ? await ctx.db.get(personId) : null
+      if (!person || person.eventId !== event._id)
+        return { participantNotFound: true }
+    } else {
+      const email = (args.email ?? "").trim().toLowerCase()
+      if (!email)
+        throw new Error("Pass `speaker_id`, or an `email` to attach someone new.")
+      person = await ctx.db
+        .query("people")
+        .withIndex("by_eventId_and_email", (q) =>
+          q.eq("eventId", event._id).eq("email", email),
+        )
+        .unique()
+      if (!person) {
+        const firstName = (args.firstName ?? "").trim()
+        if (!firstName)
+          throw new Error("Add a `first_name` for someone new to this event.")
+        const personId = await ctx.db.insert("people", {
+          eventId: event._id,
+          email,
+          firstName,
+          lastName: (args.lastName ?? "").trim(),
+          portalToken: crypto.randomUUID().replace(/-/g, ""),
+          updatedAt: Date.now(),
+        })
+        person = await ctx.db.get(personId)
+        await emitWebhook(ctx, event._id, "speaker.created", {
+          id: personId,
+          email,
+          first_name: firstName,
+          last_name: (args.lastName ?? "").trim(),
+          source: "api-participant",
+        })
+      }
+    }
+    const target = person as Doc<"people">
+    const already = rows.find((row) => row.personId === target._id)
+    if (already) {
+      // Idempotent: re-adding with a different role moves them to it rather
+      // than failing a sync that ran twice.
+      if (already.role !== role) await ctx.db.patch(already._id, { role })
+      return {
+        data: {
+          ...(await speakerShape(ctx, target, role)),
+          participant_id: already._id,
+          role,
+          session_id: submission._id,
+        },
+        created: false,
+      }
+    }
+    const participantId = await ctx.db.insert("submissionParticipants", {
+      submissionId: submission._id,
+      eventId: event._id,
+      personId: target._id,
+      role,
+      order: rows.reduce((max, row) => Math.max(max, row.order), -1) + 1,
+    })
+    await ctx.db.patch(submission._id, { updatedAt: Date.now() })
+    const shaped = {
+      ...(await speakerShape(ctx, target, role)),
+      participant_id: participantId,
+      role,
+      session_id: submission._id,
+    }
+    await emitWebhook(ctx, event._id, "session.speaker.attached", {
+      id: submission._id,
+      session_id: submission._id,
+      title: submission.title,
+      speaker_id: target._id,
+      email: target.email,
+      role,
+    })
+    return { data: shaped, created: true }
+  },
+})
+
+/**
+ * Remove someone from the roster outright. Mirrors the organizer UI's rule
+ * exactly (convex/speakersAdmin.removePerson): refused while they are still on
+ * a live submission, because deleting them there would silently orphan a talk.
+ */
+export const deleteSpeaker = internalMutation({
+  args: { eventRef: v.string(), userId: v.string(), personId: v.string() },
+  returns: v.any(),
+  handler: async (ctx, args) => {
+    const event = await resolveEvent(ctx, args.eventRef)
+    if (!event) return null
+    await authorizeEvent(ctx, event, args.userId)
+    const id = ctx.db.normalizeId("people", args.personId)
+    const person = id ? await ctx.db.get(id) : null
+    if (!person || person.eventId !== event._id) return { notFound: true }
+    const name = personName(person)
+
+    const participations = await ctx.db
+      .query("submissionParticipants")
+      .withIndex("by_personId", (q) => q.eq("personId", person._id))
+      .take(MAX_ROWS)
+    const submitted = await ctx.db
+      .query("submissions")
+      .withIndex("by_submitterId", (q) => q.eq("submitterId", person._id))
+      .take(MAX_ROWS)
+    const live = new Set<Id<"submissions">>()
+    for (const submission of submitted)
+      if (submission.deletedAt === undefined) live.add(submission._id)
+    for (const row of participations) {
+      const submission = await ctx.db.get(row.submissionId)
+      if (submission && submission.deletedAt === undefined) live.add(submission._id)
+    }
+    if (live.size > 0)
+      throw new Error(
+        `${name} is on ${live.size} submission${live.size === 1 ? "" : "s"}. Remove them from those sessions first (DELETE …/sessions/{id}/participants/{speakerId}).`,
+      )
+
+    const tasks = await ctx.db
+      .query("tasks")
+      .withIndex("by_personId", (q) => q.eq("personId", person._id))
+      .take(MAX_ROWS)
+    for (const task of tasks) await ctx.db.delete(task._id)
+    const uploads = await ctx.db
+      .query("uploads")
+      .withIndex("by_personId", (q) => q.eq("personId", person._id))
+      .take(MAX_ROWS)
+    for (const upload of uploads) await deleteUploadRow(ctx, upload)
+    for (const row of participations) await ctx.db.delete(row._id)
+    await ctx.db.delete(person._id)
+    await emitWebhook(ctx, event._id, "speaker.updated", {
+      id: person._id,
+      email: person.email,
+      deleted: true,
+    })
+    return { deleted: true }
+  },
+})
+
+// ══════════════════════════════════════════════════════════════════════════
+// Forms (the CFP itself)
+//
+// Sessionboard's API has no forms endpoint at all: its custom fields are
+// module definitions, and the form builder is a separate system. Here a form
+// IS the field definitions, so reading and writing one is reading and writing
+// the public submission page.
+// ══════════════════════════════════════════════════════════════════════════
+
+async function formShape(
+  ctx: QueryCtx,
+  form: Doc<"forms">,
+  eventSlug: string,
+): Promise<Record<string, unknown>> {
+  const submissions = await ctx.db
+    .query("submissions")
+    .withIndex("by_formId", (q) => q.eq("formId", form._id))
+    .take(MAX_ROWS)
+  const live = submissions.filter((row) => row.deletedAt === undefined)
+  return {
+    id: form._id,
+    slug: form.slug,
+    kind: form.kind,
+    status: form.status,
+    is_open: form.status === "open" && (form.closeAt ?? Infinity) > Date.now(),
+    close_at: iso(form.closeAt),
+    internal_name: form.internalName,
+    external_title: form.externalTitle,
+    page_heading: form.pageHeading ?? null,
+    welcome_message: form.welcomeMessage ?? null,
+    show_welcome_message: form.showWelcomeMessage,
+    notify_emails: form.notifyEmails,
+    // The canonical public address — the link an organizer actually shares.
+    public_url: `/submit/${eventSlug}/${form.slug}`,
+    questions: form.questions.map((question, index) => ({
+      id: question.id,
+      // Same vocabulary as GET /fields, so one object has one name here.
+      internal_name: question.id,
+      public_name: question.label,
+      label: question.label,
+      field_type: question.type,
+      type: question.type,
+      required: question.required,
+      enabled: question.enabled,
+      locked: question.locked,
+      help: question.help ?? null,
+      placeholder: question.placeholder ?? null,
+      options: question.options ?? null,
+      max_chars: question.maxChars ?? null,
+      show_if: question.showIf ?? null,
+      is_track_question: question.isTrackQuestion === true,
+      order: index,
+    })),
+    participant_config: {
+      speaker_min: form.participantConfig.speakerMin,
+      speaker_max: form.participantConfig.speakerMax,
+      chairperson_enabled: form.participantConfig.chairpersonEnabled,
+      moderator_enabled: form.participantConfig.moderatorEnabled,
+      send_confirmation_email: form.participantConfig.sendConfirmationEmail,
+      fields: form.participantConfig.fields.map((field) => ({
+        id: field.id,
+        internal_name: `participant.${field.id}`,
+        label: field.label,
+        required: field.required,
+        enabled: field.enabled,
+        locked: field.locked,
+        help: field.help ?? null,
+      })),
+    },
+    settings: {
+      limit_per_user: form.settings.limitPerUser ?? null,
+      allow_drafts: form.settings.allowDrafts,
+      success_message: form.settings.successMessage ?? null,
+      auto_redirect_to_portal: form.settings.autoRedirectToPortal,
+      send_reminder_email: form.settings.sendReminderEmail,
+    },
+    submission_count: live.filter((row) => row.status !== "draft").length,
+    draft_count: live.filter((row) => row.status === "draft").length,
+    created_at: iso(form._creationTime),
+    updated_at: iso(form._creationTime),
+  }
+}
+
+export const listForms = internalQuery({
+  args: {
+    eventRef: v.string(),
+    userId: v.union(v.string(), v.null()),
+    search: v.optional(v.string()),
+    status: v.optional(v.string()),
+    ...pagingArgs,
+  },
+  returns: v.any(),
+  handler: async (ctx, args) => {
+    const event = await resolveEvent(ctx, args.eventRef)
+    if (!event) return null
+    await authorizeEvent(ctx, event, args.userId)
+    const forms = await ctx.db
+      .query("forms")
+      .withIndex("by_eventId", (q) => q.eq("eventId", event._id))
+      .take(MAX_ROWS)
+    let shaped = []
+    for (const form of forms.sort((a, b) => a._creationTime - b._creationTime))
+      shaped.push(await formShape(ctx, form, event.slug))
+    if (args.status)
+      shaped = shaped.filter((form) => form.status === args.status)
+    if (args.search) {
+      const needle = args.search.toLowerCase()
+      shaped = shaped.filter((form) =>
+        `${form.internal_name} ${form.external_title} ${form.slug}`
+          .toLowerCase()
+          .includes(needle),
+      )
+    }
+    return paginate(shaped, args.page, args.pageSize)
+  },
+})
+
+export const getForm = internalQuery({
+  args: {
+    eventRef: v.string(),
+    userId: v.union(v.string(), v.null()),
+    formRef: v.string(),
+  },
+  returns: v.any(),
+  handler: async (ctx, args) => {
+    const event = await resolveEvent(ctx, args.eventRef)
+    if (!event) return null
+    await authorizeEvent(ctx, event, args.userId)
+    const form = await findForm(ctx, event._id, args.formRef)
+    if (!form) return { notFound: true }
+    return { data: await formShape(ctx, form, event.slug) }
+  },
+})
+
+/** Forms are addressable by id or by their public slug, like events. */
+async function findForm(
+  ctx: QueryCtx,
+  eventId: Id<"events">,
+  ref: string,
+): Promise<Doc<"forms"> | null> {
+  const asId = ctx.db.normalizeId("forms", ref)
+  if (asId) {
+    const form = await ctx.db.get(asId)
+    if (form && form.eventId === eventId) return form
+  }
+  return await ctx.db
+    .query("forms")
+    .withIndex("by_eventId_slug", (q) => q.eq("eventId", eventId).eq("slug", ref))
+    .unique()
+}
+
+type IncomingQuestion = {
+  id: string
+  label: string
+  type: string
+  required: boolean
+  enabled: boolean
+  locked: boolean
+  help?: string
+  placeholder?: string
+  options?: Array<string>
+  maxChars?: number
+  showIf?: { questionId: string; equals: string }
+  isTrackQuestion?: boolean
+}
+
+const incomingQuestionValidator = v.object({
+  id: v.string(),
+  label: v.string(),
+  type: v.string(),
+  required: v.boolean(),
+  enabled: v.boolean(),
+  locked: v.boolean(),
+  help: v.optional(v.string()),
+  placeholder: v.optional(v.string()),
+  options: v.optional(v.array(v.string())),
+  maxChars: v.optional(v.number()),
+  showIf: v.optional(v.object({ questionId: v.string(), equals: v.string() })),
+  isTrackQuestion: v.optional(v.boolean()),
+})
+
+const incomingParticipantFieldValidator = v.object({
+  id: v.string(),
+  label: v.string(),
+  required: v.boolean(),
+  enabled: v.boolean(),
+  locked: v.boolean(),
+  help: v.optional(v.string()),
+})
+
+export const writeForm = internalMutation({
+  args: {
+    eventRef: v.string(),
+    userId: v.string(),
+    action: v.string(), // create | update | delete
+    formRef: v.optional(v.string()),
+    input: v.object({
+      internal_name: v.optional(v.string()),
+      external_title: v.optional(v.string()),
+      kind: v.optional(v.string()),
+      slug: v.optional(v.string()),
+      status: v.optional(v.string()),
+      close_at: v.optional(v.number()),
+      page_heading: v.optional(v.string()),
+      welcome_message: v.optional(v.string()),
+      show_welcome_message: v.optional(v.boolean()),
+      notify_emails: v.optional(v.array(v.string())),
+      questions: v.optional(v.array(incomingQuestionValidator)),
+      participant_config: v.optional(
+        v.object({
+          speaker_min: v.optional(v.number()),
+          speaker_max: v.optional(v.number()),
+          chairperson_enabled: v.optional(v.boolean()),
+          moderator_enabled: v.optional(v.boolean()),
+          send_confirmation_email: v.optional(v.boolean()),
+          fields: v.optional(v.array(incomingParticipantFieldValidator)),
+        }),
+      ),
+      settings: v.optional(
+        v.object({
+          limit_per_user: v.optional(v.number()),
+          allow_drafts: v.optional(v.boolean()),
+          success_message: v.optional(v.string()),
+          auto_redirect_to_portal: v.optional(v.boolean()),
+          send_reminder_email: v.optional(v.boolean()),
+        }),
+      ),
+    }),
+  },
+  returns: v.any(),
+  handler: async (ctx, args) => {
+    const event = await resolveEvent(ctx, args.eventRef)
+    if (!event) return null
+    const input = args.input
+
+    if (args.action === "create") {
+      await authorizeEvent(ctx, event, args.userId)
+      const internalName = (input.internal_name ?? "").trim()
+      if (!internalName)
+        throw new Error("`internal_name` is required to create a form.")
+      const kind = (input.kind ?? "abstract").trim()
+      if (!["abstract", "session"].includes(kind))
+        throw new Error("`kind` must be `abstract` or `session`.")
+      const tracks = await ctx.db
+        .query("tracks")
+        .withIndex("by_eventId", (q) => q.eq("eventId", event._id))
+        .take(MAX_ROWS)
+      const trackNames = tracks
+        .sort((a, b) => a.order - b.order)
+        .map((track) => track.name)
+      const questions: Array<IncomingQuestion> =
+        input.questions ?? defaultFormQuestions(trackNames)
+      const slug = await uniqueFormSlug(ctx, event._id, input.slug ?? internalName)
+      const formId = await ctx.db.insert("forms", {
+        eventId: event._id,
+        slug,
+        kind,
+        status: input.status === "closed" ? "closed" : "open",
+        closeAt: input.close_at,
+        internalName,
+        externalTitle: input.external_title ?? internalName,
+        pageHeading: input.page_heading ?? "Call for Speakers",
+        welcomeMessage: input.welcome_message,
+        showWelcomeMessage: input.show_welcome_message ?? true,
+        questions,
+        participantConfig: mergeParticipantConfig(
+          defaultFormParticipantConfig(),
+          input.participant_config,
+        ),
+        settings: mergeFormSettings(defaultFormSettings(), input.settings),
+        notifyEmails: input.notify_emails ?? [],
+      })
+      const form = await ctx.db.get(formId)
+      return { data: await formShape(ctx, form as Doc<"forms">, event.slug) }
+    }
+
+    const form = await findForm(ctx, event._id, args.formRef ?? "")
+    if (!form) {
+      await authorizeEvent(ctx, event, args.userId)
+      return { notFound: true }
+    }
+
+    if (args.action === "delete") {
+      // Deleting configuration a whole event ran on is an admin act — and a
+      // form with submissions is never deletable, because the submissions
+      // point at it.
+      await authorizeEvent(ctx, event, args.userId, "admin")
+      const existing = await ctx.db
+        .query("submissions")
+        .withIndex("by_formId", (q) => q.eq("formId", form._id))
+        .first()
+      if (existing)
+        throw new Error(
+          "This form has submissions. Close it instead of deleting it (PUT with `status: \"closed\"`).",
+        )
+      await ctx.db.delete(form._id)
+      return { deleted: true }
+    }
+
+    await authorizeEvent(ctx, event, args.userId)
+    const patch: Record<string, unknown> = {}
+    if (input.internal_name !== undefined) {
+      const name = input.internal_name.trim()
+      if (!name) throw new Error("`internal_name` cannot be empty.")
+      patch.internalName = name
+    }
+    if (input.external_title !== undefined)
+      patch.externalTitle = input.external_title
+    if (input.kind !== undefined) {
+      if (!["abstract", "session"].includes(input.kind))
+        throw new Error("`kind` must be `abstract` or `session`.")
+      patch.kind = input.kind
+    }
+    if (input.slug !== undefined) {
+      const desired = input.slug.trim().toLowerCase()
+      patch.slug =
+        desired === form.slug
+          ? form.slug
+          : await uniqueFormSlug(ctx, event._id, desired, form._id)
+    }
+    if (input.status !== undefined) {
+      if (!["open", "closed"].includes(input.status))
+        throw new Error("`status` must be `open` or `closed`.")
+      patch.status = input.status
+    }
+    if (input.close_at !== undefined) patch.closeAt = input.close_at
+    if (input.page_heading !== undefined) patch.pageHeading = input.page_heading
+    if (input.welcome_message !== undefined)
+      patch.welcomeMessage = input.welcome_message
+    if (input.show_welcome_message !== undefined)
+      patch.showWelcomeMessage = input.show_welcome_message
+    if (input.notify_emails !== undefined) patch.notifyEmails = input.notify_emails
+    if (input.questions !== undefined) {
+      // The three locked system questions are the contract the submission flow
+      // and the speaker portal are written against; dropping one over the API
+      // would break the public form silently.
+      for (const locked of form.questions.filter((question) => question.locked))
+        if (!input.questions.some((question) => question.id === locked.id))
+          throw new Error(
+            `"${locked.label}" is a system question and has to stay on the form.`,
+          )
+      patch.questions = input.questions
+    }
+    if (input.participant_config !== undefined)
+      patch.participantConfig = mergeParticipantConfig(
+        form.participantConfig,
+        input.participant_config,
+      )
+    if (input.settings !== undefined)
+      patch.settings = mergeFormSettings(form.settings, input.settings)
+    await ctx.db.patch(form._id, patch)
+    const fresh = await ctx.db.get(form._id)
+    return { data: await formShape(ctx, fresh as Doc<"forms">, event.slug) }
+  },
+})
+
+/** Kept in step with convex/forms.ts — the builder's own starting point. */
+function defaultFormQuestions(trackNames: Array<string>): Array<IncomingQuestion> {
+  return [
+    { id: "title", label: "Title", type: "short_text", required: true, enabled: true, locked: true, maxChars: 200 },
+    { id: "description", label: "Description", type: "rich_text", required: true, enabled: true, locked: true, maxChars: 5000 },
+    { id: "format", label: "Format", type: "dropdown", required: true, enabled: true, locked: false, options: ["Talk", "Workshop", "Lightning Talk"] },
+    { id: "track", label: "Track", type: "dropdown", required: true, enabled: true, locked: false, options: trackNames, isTrackQuestion: true },
+    { id: "level", label: "Level", type: "dropdown", required: false, enabled: true, locked: false, options: ["Introductory", "Intermediate", "Advanced"] },
+    { id: "language", label: "Language", type: "dropdown", required: false, enabled: true, locked: false, options: ["English"] },
+    { id: "tags", label: "Tags", type: "multi_select", required: false, enabled: true, locked: false, options: ["AI", "Infrastructure", "Product", "Open Source"] },
+  ]
+}
+
+function defaultFormParticipantConfig(): Doc<"forms">["participantConfig"] {
+  return {
+    speakerMin: 1,
+    speakerMax: 4,
+    chairpersonEnabled: false,
+    moderatorEnabled: false,
+    sendConfirmationEmail: true,
+    fields: [
+      { id: "firstName", label: "First Name", required: true, enabled: true, locked: true },
+      { id: "lastName", label: "Last Name", required: true, enabled: true, locked: true },
+      { id: "email", label: "Email", required: true, enabled: true, locked: true },
+      { id: "jobTitle", label: "Job Title", required: false, enabled: true, locked: false },
+      { id: "company", label: "Company", required: false, enabled: true, locked: false },
+      { id: "phone", label: "Mobile Phone", required: false, enabled: false, locked: false },
+      { id: "bio", label: "Biography", required: false, enabled: true, locked: false },
+      { id: "headshot", label: "Headshot", required: false, enabled: true, locked: false },
+    ],
+  }
+}
+
+function defaultFormSettings(): Doc<"forms">["settings"] {
+  return {
+    allowDrafts: true,
+    autoRedirectToPortal: true,
+    sendReminderEmail: true,
+    successMessage:
+      "<p>Thank you for submitting to present at our event! We'll review your submission and get back to you soon.</p>",
+  }
+}
+
+function mergeParticipantConfig(
+  base: Doc<"forms">["participantConfig"],
+  patch:
+    | {
+        speaker_min?: number
+        speaker_max?: number
+        chairperson_enabled?: boolean
+        moderator_enabled?: boolean
+        send_confirmation_email?: boolean
+        fields?: Array<{
+          id: string
+          label: string
+          required: boolean
+          enabled: boolean
+          locked: boolean
+          help?: string
+        }>
+      }
+    | undefined,
+): Doc<"forms">["participantConfig"] {
+  if (!patch) return base
+  return {
+    speakerMin: patch.speaker_min ?? base.speakerMin,
+    speakerMax: patch.speaker_max ?? base.speakerMax,
+    chairpersonEnabled: patch.chairperson_enabled ?? base.chairpersonEnabled,
+    moderatorEnabled: patch.moderator_enabled ?? base.moderatorEnabled,
+    sendConfirmationEmail:
+      patch.send_confirmation_email ?? base.sendConfirmationEmail,
+    fields: patch.fields ?? base.fields,
+  }
+}
+
+function mergeFormSettings(
+  base: Doc<"forms">["settings"],
+  patch:
+    | {
+        limit_per_user?: number
+        allow_drafts?: boolean
+        success_message?: string
+        auto_redirect_to_portal?: boolean
+        send_reminder_email?: boolean
+      }
+    | undefined,
+): Doc<"forms">["settings"] {
+  if (!patch) return base
+  return {
+    limitPerUser: patch.limit_per_user ?? base.limitPerUser,
+    allowDrafts: patch.allow_drafts ?? base.allowDrafts,
+    successMessage: patch.success_message ?? base.successMessage,
+    autoRedirectToPortal:
+      patch.auto_redirect_to_portal ?? base.autoRedirectToPortal,
+    sendReminderEmail: patch.send_reminder_email ?? base.sendReminderEmail,
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// Speaker tasks
+//
+// The outstanding-tasks dashboard is a headline requirement of the brief, and
+// until now it was reachable only through the browser app. These five make it
+// automatable: "everyone with an accepted talk owes me a headshot by Friday"
+// is one POST per speaker, and a nightly script can read what is still open.
+// ══════════════════════════════════════════════════════════════════════════
+
+const TASK_KINDS = ["profile", "headshot", "upload", "form", "confirm"]
+
+async function taskShape(
+  ctx: QueryCtx,
+  task: Doc<"tasks">,
+): Promise<Record<string, unknown>> {
+  const person = await ctx.db.get(task.personId)
+  const submission = task.submissionId ? await ctx.db.get(task.submissionId) : null
+  return {
+    id: task._id,
+    title: task.title,
+    instructions: task.instructions ?? null,
+    kind: task.kind,
+    due_at: iso(task.dueAt),
+    completed_at: iso(task.completedAt),
+    is_complete: task.completedAt !== undefined,
+    is_overdue:
+      task.completedAt === undefined &&
+      task.dueAt !== undefined &&
+      task.dueAt < Date.now(),
+    speaker_id: task.personId,
+    speaker: person
+      ? {
+          id: person._id,
+          full_name: personName(person),
+          email: person.email,
+        }
+      : null,
+    session_id: task.submissionId ?? null,
+    session_title: submission?.title ?? null,
+    form_id: task.formId ?? null,
+    created_at: iso(task._creationTime),
+  }
+}
+
+export const listTasks = internalQuery({
+  args: {
+    eventRef: v.string(),
+    userId: v.union(v.string(), v.null()),
+    speakerId: v.optional(v.string()),
+    sessionId: v.optional(v.string()),
+    status: v.optional(v.string()), // open | completed | overdue
+    search: v.optional(v.string()),
+    ...pagingArgs,
+  },
+  returns: v.any(),
+  handler: async (ctx, args) => {
+    const event = await resolveEvent(ctx, args.eventRef)
+    if (!event) return null
+    await authorizeEvent(ctx, event, args.userId)
+    const tasks = await ctx.db
+      .query("tasks")
+      .withIndex("by_eventId", (q) => q.eq("eventId", event._id))
+      .take(MAX_ROWS)
+    let rows = tasks.sort((a, b) => b._creationTime - a._creationTime)
+    if (args.speakerId) {
+      const personId = ctx.db.normalizeId("people", args.speakerId)
+      rows = rows.filter((task) => task.personId === personId)
+    }
+    if (args.sessionId) {
+      const submissionId = ctx.db.normalizeId("submissions", args.sessionId)
+      rows = rows.filter((task) => task.submissionId === submissionId)
+    }
+    if (args.status === "completed")
+      rows = rows.filter((task) => task.completedAt !== undefined)
+    else if (args.status === "open")
+      rows = rows.filter((task) => task.completedAt === undefined)
+    else if (args.status === "overdue")
+      rows = rows.filter(
+        (task) =>
+          task.completedAt === undefined &&
+          task.dueAt !== undefined &&
+          task.dueAt < Date.now(),
+      )
+    if (args.search) {
+      const needle = args.search.toLowerCase()
+      rows = rows.filter((task) =>
+        `${task.title} ${task.instructions ?? ""}`.toLowerCase().includes(needle),
+      )
+    }
+    const shaped = []
+    for (const task of rows) shaped.push(await taskShape(ctx, task))
+    return paginate(shaped, args.page, args.pageSize)
+  },
+})
+
+export const getTask = internalQuery({
+  args: {
+    eventRef: v.string(),
+    userId: v.union(v.string(), v.null()),
+    taskId: v.string(),
+  },
+  returns: v.any(),
+  handler: async (ctx, args) => {
+    const event = await resolveEvent(ctx, args.eventRef)
+    if (!event) return null
+    await authorizeEvent(ctx, event, args.userId)
+    const id = ctx.db.normalizeId("tasks", args.taskId)
+    const task = id ? await ctx.db.get(id) : null
+    if (!task || task.eventId !== event._id) return { notFound: true }
+    return { data: await taskShape(ctx, task) }
+  },
+})
+
+export const writeTask = internalMutation({
+  args: {
+    eventRef: v.string(),
+    userId: v.string(),
+    action: v.string(), // create | update | delete
+    taskId: v.optional(v.string()),
+    input: v.object({
+      title: v.optional(v.string()),
+      instructions: v.optional(v.string()),
+      kind: v.optional(v.string()),
+      due_at: v.optional(v.number()),
+      completed: v.optional(v.boolean()),
+      session_id: v.optional(v.string()),
+      speaker_ids: v.optional(v.array(v.string())),
+      speaker_emails: v.optional(v.array(v.string())),
+    }),
+  },
+  returns: v.any(),
+  handler: async (ctx, args) => {
+    const event = await resolveEvent(ctx, args.eventRef)
+    if (!event) return null
+    const input = args.input
+
+    if (args.action === "create") {
+      await authorizeEvent(ctx, event, args.userId)
+      const title = (input.title ?? "").trim()
+      if (!title) throw new Error("`title` is required.")
+      const kind = (input.kind ?? "upload").trim()
+      if (!TASK_KINDS.includes(kind))
+        throw new Error(
+          `Unknown task kind "${kind}". Valid: ${TASK_KINDS.join(", ")}.`,
+        )
+      let submissionId: Id<"submissions"> | undefined
+      if (input.session_id) {
+        const normalized = ctx.db.normalizeId("submissions", input.session_id)
+        const submission = normalized ? await ctx.db.get(normalized) : null
+        if (!submission || submission.eventId !== event._id)
+          throw new Error("That session doesn't belong to this event.")
+        submissionId = submission._id
+      }
+
+      // Who it goes to: ids, emails, or both. Emails are how a script that
+      // only knows the speaker's address assigns without a lookup first.
+      const people: Array<Doc<"people">> = []
+      for (const ref of input.speaker_ids ?? []) {
+        const personId = ctx.db.normalizeId("people", ref)
+        const person = personId ? await ctx.db.get(personId) : null
+        if (!person || person.eventId !== event._id)
+          throw new Error(`No speaker "${ref}" in this event.`)
+        people.push(person)
+      }
+      for (const email of input.speaker_emails ?? []) {
+        const person = await ctx.db
+          .query("people")
+          .withIndex("by_eventId_and_email", (q) =>
+            q.eq("eventId", event._id).eq("email", email.trim().toLowerCase()),
+          )
+          .unique()
+        if (!person) throw new Error(`Nobody in this event has the email ${email}.`)
+        people.push(person)
+      }
+      if (people.length === 0)
+        throw new Error(
+          "Assign the task to at least one speaker (`speaker_ids` or `speaker_emails`).",
+        )
+
+      const created = []
+      const seen = new Set<string>()
+      for (const person of people) {
+        if (seen.has(person._id)) continue
+        seen.add(person._id)
+        const taskId = await ctx.db.insert("tasks", {
+          eventId: event._id,
+          personId: person._id,
+          title,
+          instructions: input.instructions?.trim() || undefined,
+          kind,
+          submissionId,
+          dueAt: input.due_at,
+        })
+        const task = await ctx.db.get(taskId)
+        created.push(await taskShape(ctx, task as Doc<"tasks">))
+      }
+      // One task per speaker, so the response is a list — `data` is the first
+      // for a single-speaker call, which is the common case.
+      return { data: created[0], results: created, created: created.length }
+    }
+
+    const id = args.taskId ? ctx.db.normalizeId("tasks", args.taskId) : null
+    const task = id ? await ctx.db.get(id) : null
+    if (!task || task.eventId !== event._id) {
+      await authorizeEvent(ctx, event, args.userId)
+      return { notFound: true }
+    }
+
+    if (args.action === "delete") {
+      await authorizeEvent(ctx, event, args.userId, "admin")
+      await ctx.db.delete(task._id)
+      return { deleted: true }
+    }
+
+    await authorizeEvent(ctx, event, args.userId)
+    const patch: Record<string, unknown> = {}
+    if (input.title !== undefined) {
+      const title = input.title.trim()
+      if (!title) throw new Error("`title` cannot be empty.")
+      patch.title = title
+    }
+    if (input.instructions !== undefined)
+      patch.instructions = input.instructions.trim() || undefined
+    if (input.kind !== undefined) {
+      if (!TASK_KINDS.includes(input.kind))
+        throw new Error(
+          `Unknown task kind "${input.kind}". Valid: ${TASK_KINDS.join(", ")}.`,
+        )
+      patch.kind = input.kind
+    }
+    if (input.due_at !== undefined) patch.dueAt = input.due_at
+    if (input.completed !== undefined)
+      patch.completedAt = input.completed ? Date.now() : undefined
+    await ctx.db.patch(task._id, patch)
+    const fresh = await ctx.db.get(task._id)
+    return { data: await taskShape(ctx, fresh as Doc<"tasks">) }
+  },
+})
+
+// ══════════════════════════════════════════════════════════════════════════
+// Evaluation — plans, evaluators, scores
+//
+// Multi-round evaluation with evaluator assignment is a headline requirement
+// of the brief and has no counterpart anywhere in Sessionboard's public API.
+// Reads let a chair build their own scoring report; writes let a plan be
+// stood up from a spreadsheet instead of by hand.
+// ══════════════════════════════════════════════════════════════════════════
+
+function planAssignments(
+  evaluator: Doc<"evaluators">,
+  plan: Doc<"evaluationPlans">,
+): Array<Id<"submissions">> {
+  return evaluator.assignedSubmissionIds ?? plan.submissionIds
+}
+
+function planShape(
+  plan: Doc<"evaluationPlans">,
+  evaluators: Array<Doc<"evaluators">>,
+  evaluations: Array<Doc<"evaluations">>,
+): Record<string, unknown> {
+  const expected = evaluators.reduce(
+    (total, evaluator) => total + planAssignments(evaluator, plan).length,
+    0,
+  )
+  const completed = evaluations.filter((row) => row.completedAt !== undefined)
+  // Weighted mean over numeric criteria only — recusals never reach an average.
+  const weights = new Map<string, number>()
+  for (const criterion of plan.criteria)
+    if ((criterion.type ?? "numeric") === "numeric")
+      weights.set(criterion.id, criterion.weight ?? 1)
+  let weightedTotal = 0
+  let weightSum = 0
+  let scored = 0
+  for (const row of completed) {
+    if (row.recusedAt !== undefined) continue
+    let rowTotal = 0
+    let rowWeight = 0
+    for (const [criterionId, weight] of weights) {
+      const score = row.scores[criterionId]
+      if (typeof score !== "number") continue
+      rowTotal += score * weight
+      rowWeight += weight
+    }
+    if (rowWeight === 0) continue
+    weightedTotal += rowTotal
+    weightSum += rowWeight
+    scored++
+  }
+  return {
+    id: plan._id,
+    name: plan.name,
+    round: plan.round,
+    status: plan.status,
+    blind: plan.blind === true,
+    opens_at: iso(plan.opensAt),
+    due_at: iso(plan.dueAt),
+    criteria: plan.criteria.map((criterion) => ({
+      id: criterion.id,
+      label: criterion.label,
+      type: criterion.type ?? "numeric",
+      options: criterion.options ?? null,
+      weight: criterion.weight ?? 1,
+    })),
+    submission_ids: plan.submissionIds,
+    submission_count: plan.submissionIds.length,
+    evaluator_count: evaluators.length,
+    assigned_count: expected,
+    completed_count: completed.length,
+    outstanding_count: Math.max(expected - completed.length, 0),
+    completion_pct:
+      expected === 0 ? 0 : Math.round((completed.length / expected) * 100),
+    recused_count: completed.filter((row) => row.recusedAt !== undefined).length,
+    scored_count: scored,
+    average_score: weightSum === 0 ? null : Math.round((weightedTotal / weightSum) * 100) / 100,
+    created_at: iso(plan._creationTime),
+  }
+}
+
+function evaluatorShape(
+  evaluator: Doc<"evaluators">,
+  plan: Doc<"evaluationPlans">,
+  evaluations: Array<Doc<"evaluations">>,
+): Record<string, unknown> {
+  const assigned = planAssignments(evaluator, plan)
+  const assignedSet = new Set<string>(assigned)
+  const mine = evaluations.filter((row) => row.evaluatorId === evaluator._id)
+  const done = mine.filter(
+    (row) => row.completedAt !== undefined && assignedSet.has(row.submissionId),
+  ).length
+  return {
+    id: evaluator._id,
+    plan_id: evaluator.planId,
+    email: evaluator.email,
+    name: evaluator.name ?? null,
+    // The magic review link. Organizer-only surface — the same value the
+    // Evaluation drawer shows so a chair can copy it.
+    token: evaluator.token,
+    review_path: `/review/${evaluator.token}`,
+    assigned_submission_ids: assigned,
+    custom_assignment: evaluator.assignedSubmissionIds !== undefined,
+    completed_count: done,
+    assigned_count: assigned.length,
+    outstanding_count: Math.max(assigned.length - done, 0),
+    recused_count: mine.filter((row) => row.recusedAt !== undefined).length,
+    last_reminded_at: iso(evaluator.lastRemindedAt),
+    created_at: iso(evaluator._creationTime),
+  }
+}
+
+async function plansOf(ctx: QueryCtx, eventId: Id<"events">) {
+  return await ctx.db
+    .query("evaluationPlans")
+    .withIndex("by_eventId", (q) => q.eq("eventId", eventId))
+    .take(MAX_ROWS)
+}
+
+async function evaluatorsOf(ctx: QueryCtx, planId: Id<"evaluationPlans">) {
+  return await ctx.db
+    .query("evaluators")
+    .withIndex("by_planId", (q) => q.eq("planId", planId))
+    .take(MAX_ROWS)
+}
+
+async function evaluationsOf(ctx: QueryCtx, planId: Id<"evaluationPlans">) {
+  return await ctx.db
+    .query("evaluations")
+    .withIndex("by_planId", (q) => q.eq("planId", planId))
+    .take(MAX_ROWS)
+}
+
+export const listEvaluationPlans = internalQuery({
+  args: {
+    eventRef: v.string(),
+    userId: v.union(v.string(), v.null()),
+    status: v.optional(v.string()),
+    ...pagingArgs,
+  },
+  returns: v.any(),
+  handler: async (ctx, args) => {
+    const event = await resolveEvent(ctx, args.eventRef)
+    if (!event) return null
+    await authorizeEvent(ctx, event, args.userId)
+    const plans = (await plansOf(ctx, event._id)).sort(
+      (a, b) => a.round - b.round || a._creationTime - b._creationTime,
+    )
+    const shaped = []
+    for (const plan of plans) {
+      if (args.status && plan.status !== args.status) continue
+      shaped.push(
+        planShape(
+          plan,
+          await evaluatorsOf(ctx, plan._id),
+          await evaluationsOf(ctx, plan._id),
+        ),
+      )
+    }
+    return paginate(shaped, args.page, args.pageSize)
+  },
+})
+
+export const getEvaluationPlan = internalQuery({
+  args: {
+    eventRef: v.string(),
+    userId: v.union(v.string(), v.null()),
+    planId: v.string(),
+  },
+  returns: v.any(),
+  handler: async (ctx, args) => {
+    const event = await resolveEvent(ctx, args.eventRef)
+    if (!event) return null
+    await authorizeEvent(ctx, event, args.userId)
+    const id = ctx.db.normalizeId("evaluationPlans", args.planId)
+    const plan = id ? await ctx.db.get(id) : null
+    if (!plan || plan.eventId !== event._id) return { notFound: true }
+    const evaluators = await evaluatorsOf(ctx, plan._id)
+    const evaluations = await evaluationsOf(ctx, plan._id)
+    const submissions = []
+    for (const submissionId of plan.submissionIds) {
+      const submission = await ctx.db.get(submissionId)
+      if (!submission) continue
+      const forSubmission = evaluations.filter(
+        (row) => row.submissionId === submissionId && row.completedAt !== undefined,
+      )
+      const numeric = forSubmission.filter((row) => row.recusedAt === undefined)
+      let total = 0
+      let count = 0
+      for (const row of numeric)
+        for (const score of Object.values(row.scores)) {
+          total += score
+          count++
+        }
+      submissions.push({
+        id: submission._id,
+        title: submission.title,
+        status: submission.status,
+        completed_count: forSubmission.length,
+        recused_count: forSubmission.length - numeric.length,
+        average_score: count === 0 ? null : Math.round((total / count) * 100) / 100,
+      })
+    }
+    return {
+      data: {
+        ...planShape(plan, evaluators, evaluations),
+        evaluators: evaluators
+          .sort((a, b) => a.email.localeCompare(b.email))
+          .map((evaluator) => evaluatorShape(evaluator, plan, evaluations)),
+        submissions,
+      },
+    }
+  },
+})
+
+export const writeEvaluationPlan = internalMutation({
+  args: {
+    eventRef: v.string(),
+    userId: v.string(),
+    action: v.string(), // create | update | delete
+    planId: v.optional(v.string()),
+    input: v.object({
+      name: v.optional(v.string()),
+      round: v.optional(v.number()),
+      status: v.optional(v.string()),
+      blind: v.optional(v.boolean()),
+      opens_at: v.optional(v.number()),
+      due_at: v.optional(v.number()),
+      submission_ids: v.optional(v.array(v.string())),
+      criteria: v.optional(
+        v.array(
+          v.object({
+            id: v.optional(v.string()),
+            label: v.string(),
+            type: v.optional(v.string()),
+            options: v.optional(v.array(v.string())),
+            weight: v.optional(v.number()),
+          }),
+        ),
+      ),
+    }),
+  },
+  returns: v.any(),
+  handler: async (ctx, args) => {
+    const event = await resolveEvent(ctx, args.eventRef)
+    if (!event) return null
+    await authorizeEvent(ctx, event, args.userId)
+    const input = args.input
+
+    const readCriteria = () =>
+      (input.criteria ?? []).map((criterion, index) => {
+        const type = criterion.type ?? "numeric"
+        if (!["numeric", "select", "text"].includes(type))
+          throw new Error(
+            `Unknown criterion type "${type}". Valid: numeric, select, text.`,
+          )
+        const slug =
+          criterion.id ??
+          criterion.label
+            .toLowerCase()
+            .replace(/[^a-z0-9]+/g, "_")
+            .replace(/^_+|_+$/g, "")
+        return {
+          id: slug || `criterion_${index + 1}`,
+          label: criterion.label,
+          type: type as "numeric" | "select" | "text",
+          options: criterion.options,
+          weight: criterion.weight,
+        }
+      })
+
+    const readSubmissionIds = async () => {
+      const ids: Array<Id<"submissions">> = []
+      for (const ref of input.submission_ids ?? []) {
+        const id = ctx.db.normalizeId("submissions", ref)
+        const submission = id ? await ctx.db.get(id) : null
+        if (!submission || submission.eventId !== event._id)
+          throw new Error(`No session "${ref}" in this event.`)
+        if (!ids.includes(submission._id)) ids.push(submission._id)
+      }
+      return ids
+    }
+
+    if (args.action === "create") {
+      const name = (input.name ?? "").trim()
+      if (!name) throw new Error("`name` is required.")
+      const criteria = readCriteria()
+      if (criteria.length === 0)
+        throw new Error(
+          "Give the plan at least one criterion (`criteria: [{ label: \"Relevance\" }]`).",
+        )
+      const planId = await ctx.db.insert("evaluationPlans", {
+        eventId: event._id,
+        name,
+        round: input.round ?? 1,
+        criteria,
+        submissionIds: await readSubmissionIds(),
+        opensAt: input.opens_at,
+        dueAt: input.due_at,
+        status: input.status === "closed" ? "closed" : "open",
+        blind: input.blind,
+      })
+      const plan = await ctx.db.get(planId)
+      return { data: planShape(plan as Doc<"evaluationPlans">, [], []) }
+    }
+
+    const id = args.planId ? ctx.db.normalizeId("evaluationPlans", args.planId) : null
+    const plan = id ? await ctx.db.get(id) : null
+    if (!plan || plan.eventId !== event._id) return { notFound: true }
+
+    if (args.action === "delete") {
+      for (const row of await evaluationsOf(ctx, plan._id))
+        await ctx.db.delete(row._id)
+      for (const evaluator of await evaluatorsOf(ctx, plan._id))
+        await ctx.db.delete(evaluator._id)
+      await ctx.db.delete(plan._id)
+      return { deleted: true }
+    }
+
+    const patch: Record<string, unknown> = {}
+    if (input.name !== undefined) {
+      const name = input.name.trim()
+      if (!name) throw new Error("`name` cannot be empty.")
+      patch.name = name
+    }
+    if (input.round !== undefined) patch.round = input.round
+    if (input.status !== undefined) {
+      if (!["open", "closed"].includes(input.status))
+        throw new Error("`status` must be `open` or `closed`.")
+      patch.status = input.status
+    }
+    if (input.blind !== undefined) patch.blind = input.blind
+    if (input.opens_at !== undefined) patch.opensAt = input.opens_at
+    if (input.due_at !== undefined) patch.dueAt = input.due_at
+    if (input.submission_ids !== undefined)
+      patch.submissionIds = await readSubmissionIds()
+    if (input.criteria !== undefined) patch.criteria = readCriteria()
+    await ctx.db.patch(plan._id, patch)
+    const fresh = (await ctx.db.get(plan._id)) as Doc<"evaluationPlans">
+    return {
+      data: planShape(
+        fresh,
+        await evaluatorsOf(ctx, plan._id),
+        await evaluationsOf(ctx, plan._id),
+      ),
+    }
+  },
+})
+
+export const listEvaluators = internalQuery({
+  args: {
+    eventRef: v.string(),
+    userId: v.union(v.string(), v.null()),
+    planId: v.optional(v.string()),
+    ...pagingArgs,
+  },
+  returns: v.any(),
+  handler: async (ctx, args) => {
+    const event = await resolveEvent(ctx, args.eventRef)
+    if (!event) return null
+    await authorizeEvent(ctx, event, args.userId)
+    const wanted = args.planId
+      ? ctx.db.normalizeId("evaluationPlans", args.planId)
+      : null
+    const shaped: Array<Record<string, unknown>> = []
+    for (const plan of await plansOf(ctx, event._id)) {
+      if (wanted && plan._id !== wanted) continue
+      const evaluations = await evaluationsOf(ctx, plan._id)
+      for (const evaluator of await evaluatorsOf(ctx, plan._id))
+        shaped.push({
+          ...evaluatorShape(evaluator, plan, evaluations),
+          plan_name: plan.name,
+          plan_round: plan.round,
+        })
+    }
+    shaped.sort((a, b) => String(a.email).localeCompare(String(b.email)))
+    return paginate(shaped, args.page, args.pageSize)
+  },
+})
+
+export const writeEvaluator = internalMutation({
+  args: {
+    eventRef: v.string(),
+    userId: v.string(),
+    action: v.string(), // create | update | delete
+    evaluatorId: v.optional(v.string()),
+    input: v.object({
+      plan_id: v.optional(v.string()),
+      email: v.optional(v.string()),
+      name: v.optional(v.string()),
+      assigned_submission_ids: v.optional(v.array(v.string())),
+    }),
+  },
+  returns: v.any(),
+  handler: async (ctx, args) => {
+    const event = await resolveEvent(ctx, args.eventRef)
+    if (!event) return null
+    await authorizeEvent(ctx, event, args.userId)
+    const input = args.input
+
+    const readAssignments = async (plan: Doc<"evaluationPlans">) => {
+      if (input.assigned_submission_ids === undefined) return undefined
+      const ids: Array<Id<"submissions">> = []
+      for (const ref of input.assigned_submission_ids) {
+        const id = ctx.db.normalizeId("submissions", ref)
+        if (!id || !plan.submissionIds.includes(id))
+          throw new Error(`Session "${ref}" is not in this plan's pool.`)
+        if (!ids.includes(id)) ids.push(id)
+      }
+      return ids
+    }
+
+    if (args.action === "create") {
+      const planId = input.plan_id
+        ? ctx.db.normalizeId("evaluationPlans", input.plan_id)
+        : null
+      const plan = planId ? await ctx.db.get(planId) : null
+      if (!plan || plan.eventId !== event._id)
+        throw new Error("`plan_id` must name an evaluation plan on this event.")
+      const email = (input.email ?? "").trim().toLowerCase()
+      if (!email) throw new Error("`email` is required.")
+      const existing = (await evaluatorsOf(ctx, plan._id)).find(
+        (row) => row.email === email,
+      )
+      if (existing) {
+        // Idempotent, like every other create on this API.
+        const assignments = await readAssignments(plan)
+        await ctx.db.patch(existing._id, {
+          name: input.name ?? existing.name,
+          ...(assignments !== undefined
+            ? { assignedSubmissionIds: assignments }
+            : {}),
+        })
+        const fresh = (await ctx.db.get(existing._id)) as Doc<"evaluators">
+        return {
+          data: evaluatorShape(fresh, plan, await evaluationsOf(ctx, plan._id)),
+          created: false,
+        }
+      }
+      const evaluatorId = await ctx.db.insert("evaluators", {
+        planId: plan._id,
+        eventId: event._id,
+        email,
+        name: input.name,
+        token: crypto.randomUUID().replace(/-/g, ""),
+        assignedSubmissionIds: await readAssignments(plan),
+      })
+      const evaluator = (await ctx.db.get(evaluatorId)) as Doc<"evaluators">
+      return {
+        data: evaluatorShape(evaluator, plan, await evaluationsOf(ctx, plan._id)),
+        created: true,
+      }
+    }
+
+    const id = args.evaluatorId
+      ? ctx.db.normalizeId("evaluators", args.evaluatorId)
+      : null
+    const evaluator = id ? await ctx.db.get(id) : null
+    if (!evaluator || evaluator.eventId !== event._id) return { notFound: true }
+    const plan = await ctx.db.get(evaluator.planId)
+    if (!plan) return { notFound: true }
+
+    if (args.action === "delete") {
+      // Their scores go with them — an evaluator who was removed by mistake is
+      // re-added and re-scores, which is honest; leaving orphan rows in the
+      // averages is not.
+      for (const row of await evaluationsOf(ctx, plan._id))
+        if (row.evaluatorId === evaluator._id) await ctx.db.delete(row._id)
+      await ctx.db.delete(evaluator._id)
+      return { deleted: true }
+    }
+
+    const assignments = await readAssignments(plan)
+    await ctx.db.patch(evaluator._id, {
+      name: input.name ?? evaluator.name,
+      ...(assignments !== undefined ? { assignedSubmissionIds: assignments } : {}),
+    })
+    const fresh = (await ctx.db.get(evaluator._id)) as Doc<"evaluators">
+    return {
+      data: evaluatorShape(fresh, plan, await evaluationsOf(ctx, plan._id)),
+    }
+  },
+})
+
+export const listEvaluations = internalQuery({
+  args: {
+    eventRef: v.string(),
+    userId: v.union(v.string(), v.null()),
+    planId: v.optional(v.string()),
+    sessionId: v.optional(v.string()),
+    evaluatorId: v.optional(v.string()),
+    ...pagingArgs,
+  },
+  returns: v.any(),
+  handler: async (ctx, args) => {
+    const event = await resolveEvent(ctx, args.eventRef)
+    if (!event) return null
+    await authorizeEvent(ctx, event, args.userId)
+    const wantedPlan = args.planId
+      ? ctx.db.normalizeId("evaluationPlans", args.planId)
+      : null
+    const wantedSession = args.sessionId
+      ? ctx.db.normalizeId("submissions", args.sessionId)
+      : null
+    const wantedEvaluator = args.evaluatorId
+      ? ctx.db.normalizeId("evaluators", args.evaluatorId)
+      : null
+    const shaped = []
+    for (const plan of await plansOf(ctx, event._id)) {
+      if (wantedPlan && plan._id !== wantedPlan) continue
+      const evaluators = new Map(
+        (await evaluatorsOf(ctx, plan._id)).map((row) => [row._id, row]),
+      )
+      for (const row of await evaluationsOf(ctx, plan._id)) {
+        if (wantedSession && row.submissionId !== wantedSession) continue
+        if (wantedEvaluator && row.evaluatorId !== wantedEvaluator) continue
+        const evaluator = evaluators.get(row.evaluatorId)
+        const submission = await ctx.db.get(row.submissionId)
+        shaped.push({
+          id: row._id,
+          plan_id: row.planId,
+          plan_name: plan.name,
+          round: plan.round,
+          session_id: row.submissionId,
+          session_title: submission?.title ?? null,
+          evaluator_id: row.evaluatorId,
+          evaluator_email: evaluator?.email ?? null,
+          scores: row.scores,
+          values: row.values ?? {},
+          comment: row.comment ?? null,
+          recused: row.recusedAt !== undefined,
+          recusal_reason: row.recusalReason ?? null,
+          completed_at: iso(row.completedAt),
+          created_at: iso(row._creationTime),
+        })
+      }
+    }
+    shaped.sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)))
+    return paginate(shaped, args.page, args.pageSize)
   },
 })
 

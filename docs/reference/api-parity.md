@@ -6,14 +6,29 @@ later extended: their API reference is also a **feature census**, so this docume
 with a [UI implications](#ui-implications--the-feature-census) section that turns every
 endpoint into a product-surface verdict.
 
-**Their source of truth:** `https://apidocs.sessionboard.com/api-reference/openapi.yaml`
-(OpenAPI 3.1, 131 paths / 177 operations, crawled 2026-08-11). Base URLs
-`https://public-api.sessionboard.com` (US) and `…-eu` (EU).
+**Their source of truth:** `https://sessionboard.mintlify.app/api-reference/openapi.yaml`
+(byte-identical to `https://apidocs.sessionboard.com/api-reference/openapi.yaml`) — OpenAPI
+3.1, **131 paths / 177 operations**, re-crawled 2026-08-11 and diffed operation-by-operation
+against ours. Base URLs `https://public-api.sessionboard.com` (US) and `…-eu` (EU).
 
 **Ours:** `convex/apiRoutes.ts` (manifest) → `convex/apiHttp.ts` (routing/auth) →
-`convex/apiV1.ts` (data) → `public/docs/api/openapi.json` (generated, 80 operations).
+`convex/apiV1.ts` (data) → `public/docs/api/openapi.json` (generated, **109 operations**).
 Regenerate with `pnpm openapi:regen`; `pnpm openapi:verify` probes every documented route
 against the live deployment.
+
+## Score
+
+| | Count |
+| --- | --- |
+| Their operations | **177** |
+| In scope for us | **61** |
+| Of those, **matched** | **61 (100%)** |
+| Deliberately out of scope | **112** (+ 4 OAuth served differently) |
+| Ours in total | **109** |
+| Ours with no counterpart in theirs | **48** |
+
+The last gap closed on 2026-08-11: `POST /v1/event/{id}/statuses/{id}/restore`. Every other
+in-scope operation of theirs had already been matched.
 
 ---
 
@@ -42,7 +57,7 @@ against the live deployment.
 | GDPR | 2 | ❌ | Out. |
 | OAuth | 4 | ✅ (already had it) | We ship OAuth 2.1 + PKCE for MCP via Better Auth at `/.well-known/oauth-protected-resource`. |
 
-**In-scope operations: 61 of their 177.** We serve **80**.
+**In-scope operations: 61 of their 177 — all 61 matched.** We serve **109**.
 
 ---
 
@@ -55,7 +70,16 @@ differences listed · **OURS-BETTER** = we do more · **N/A** = deliberately not
 
 | Theirs | Ours | Verdict |
 | --- | --- | --- |
-| `GET /v1/events` | `GET /v1/events` | **MATCH.** Theirs returns `{results, pagination}` with integer event ids; ours returns `{data, results, pagination}` with string ids plus `slug`, `venue`, `timezone`, `agenda_published_at`, `features`. |
+| `GET /v1/events` | `GET /v1/events` | **MATCH.** Theirs returns `{results, pagination}` with integer event ids; ours returns `{data, results, pagination}` with string ids plus `slug`, `venue`, `timezone`, `agenda_published_at`, `organization_id`, `public_url`, `portal_settings`, `features`. |
+| — | `GET /v1/events/{ref}` | **OURS-BETTER.** One event, plus `totals` (rooms, tracks, forms, sessions, abstracts, accepted, scheduled) so "did my import land?" is one call. |
+| — | `POST /v1/events` | **OURS-BETTER.** Creates the event. `organization_id` is optional when the caller administers exactly one workspace; ambiguity answers 400 **listing the workspaces**. A taken address is suffixed rather than rejected, and the response says what the address actually became (`slug_adjusted`). |
+| — | `PUT /v1/events/{ref}` | **OURS-BETTER.** Details, dates, venue, and speaker-portal behaviour. Admin only. |
+| — | `DELETE /v1/events/{ref}` | **OURS-BETTER.** Runs `events.deleteEventCascade` — the same cascade the organizer's own delete dialog runs, blobs included. Admin only, and the one delete on this API that is not recoverable. |
+
+Their public API reads events and nothing else — an integration cannot stand an
+event up end to end against Sessionboard. Marko's question ("where is full CRUD?")
+was about exactly this tag, and it is the tag the reference now opens on with five
+operations in CRUD order.
 
 ### Sessions (read)
 
@@ -116,6 +140,8 @@ the legacy epoch-millisecond aliases (`startTime`, `endTime`, `durationMinutes`,
 | `GET /v1/event/{id}/speakers/{cid}` | same | **MATCH**, and ours embeds the speaker's full sessions rather than ids. |
 | — | `GET /v1/event/{ref}/speakers` | **OURS-BETTER.** A plain list form; theirs is POST-only. |
 | — | `POST /speakers/create`, `PUT /speakers/{id}` | **OURS-BETTER.** Theirs puts speaker writes under Contact Writes (`write:contacts`) in the CRM half we excluded. Speakers are program-side, so we ship program-scoped speaker writes (idempotent on email). |
+| — | `DELETE /speakers/{id}` | **OURS-BETTER.** Completes speaker CRUD. Deletes the person, their tasks and their files (blobs included), and **refuses with a 400 while they are still on a live session** — the same guard `speakersAdmin.removePerson` enforces in the UI, so a delete can never orphan a talk. |
+| — | `GET /sessions/{id}/participants`, `POST` (attach), `DELETE .../{speakerId}` (detach) | **OURS-BETTER, and a hole in theirs.** Sessionboard *fires* `session.speaker.attached` / `.detached` webhooks but ships no endpoint that causes them — a line-up is only editable in their UI. Ours attaches by `speaker_id` or by `email` (creating a person new to the event), is idempotent (re-attaching with a different role moves them to it), and is what finally emits those two event types. |
 
 Speaker shape: their `Contact` has ~40 CRM fields (`ethnicity`, `annual_revenue`,
 `speaker_fee`, `headcount`, `past_companies`, …). We return the program-relevant subset —
@@ -130,9 +156,38 @@ equivalent of, plus the camelCase legacy aliases.
 | --- | --- | --- |
 | `GET`/`POST /fields` | same | **MATCH.** See below. |
 | `GET`/`POST` for tags, tracks, rooms, formats, levels, languages | same 6 × 2 | **MATCH.** |
-| `GET /statuses`, `POST /session-statuses` | same | **PARTIAL.** Ours returns the fixed pipeline with `system: true`. Custom statuses are not mirrored (below). |
+| `GET /statuses`, `POST /session-statuses` | same | **MATCH** (closed 2026-08-11). Reads the event's real `sessionStatuses` rows — the seven built-ins plus any custom labels — with `?include_deleted=true` for archived ones. |
 | `POST /fields/create`, `PUT`/`DELETE /fields/{id}` | same | **MATCH.** |
-| `POST /{resource}/create`, `PUT`/`DELETE /{resource}/{id}` × 7 | same 21 | **MATCH** for rooms and tracks (real tables). **PARTIAL** for tags/formats/levels/languages — see below. **N/A** for statuses (documented 400). |
+| `POST /{resource}/create`, `PUT`/`DELETE /{resource}/{id}` × 7 | same 21 | **MATCH** for rooms and tracks (real tables). **PARTIAL** for tags/formats/levels/languages — see below. **MATCH** for statuses, as of 2026-08-11. |
+| `POST /statuses/{id}/restore` | same | **MATCH** — *their last unmatched in-scope endpoint, closed 2026-08-11.* |
+
+**Session statuses — the model.** Their statuses are per-event rows with a
+soft delete and a restore. So are ours (`convex/sessionStatuses.ts`), with one
+deliberate constraint: a custom status is a **label bound to a pipeline
+category**, not a new behaviour. Picking "Waitlist" (category `pending`) writes
+`status: "pending"` and remembers the label — so the accept/decline queues, the
+decision emails, portal masking and agenda visibility keep running on the fixed
+enum the brief and the eval kit are written in, while the organizer sees their
+own word. The seven built-ins can be renamed, recoloured and reordered but never
+deleted or re-categorised, because the pipeline needs them.
+
+The API mirrors that exactly:
+
+- `GET /statuses` — `id` is the pipeline value for a built-in (`accepted`,
+  `pending`, …) and the row id for a custom status, so **nothing that read this
+  endpoint before changed**; `status_id` is always the row id; `pipeline_status`
+  is always the value `?status=` filters on. `name` is now the organizer's label
+  ("Accepted") rather than the raw enum — strictly more informative.
+- `POST /statuses/create` takes `name`, `category`, `color` (a token: green,
+  amber, red, gray, blue — an unknown colour answers 400 listing the five).
+- `DELETE /statuses/{id}` **archives**. Submissions still carrying the label must
+  be sent somewhere via `reassign_to`, or the call answers 400 with how many.
+- `POST /statuses/{id}/restore` un-archives, refusing with a 400 if a live status
+  has since taken the name.
+- Built-ins refuse deletion and re-categorisation, each with a sentence saying why.
+
+This required one additive schema field (`sessionStatuses.deletedAt`) and made
+the organizer UI's own delete recoverable as a side effect.
 
 **Custom fields — the model.** Their `Field` is a definition on an event "module"; the
 values ride on a session as `custom_fields[]` keyed by `internal_name`. Ours maps onto
@@ -234,12 +289,12 @@ Our event catalogue adds `submission.created/updated`, `session.scheduled/unsche
    trip would make the fast thing slow to match a feature that exists because their board
    is not fast. If scenario planning is wanted later it should be designed for our
    interaction model, not ported.
-2. **Custom session statuses.** Our pipeline (`draft → pending → accept_queue /
-   decline_queue → accepted / declined`, plus `withdrawn`) is the domain language the
-   brief and the eval kit are written in, and identical wording in the organizer and
-   speaker UIs is an explicit requirement. Arbitrary statuses would break that contract.
-   `GET /statuses` returns the pipeline with `system: true`; writes answer 400 with the
-   reason rather than pretending.
+2. **Custom session *behaviours*.** Custom statuses themselves ARE mirrored now (create,
+   update, delete, restore — see above); what is not mirrored is a custom status inventing
+   behaviour of its own. Every status is bound to one of the five pipeline categories,
+   because identical wording in the organizer and speaker UIs — and a decision pipeline the
+   eval kit is written against — is an explicit requirement. This is a semantic difference,
+   stated rather than hidden: `category` and `pipeline_status` are on every status row.
 3. **Media upload + transcriptions + recordings (22 ops).** Video/audio ingestion,
    multipart-to-S3, automatic transcription, summaries, topic extraction, translations,
    content documents. This is a media-processing product bolted onto an event product.
@@ -250,6 +305,28 @@ Our event catalogue adds `submission.created/updated`, `session.scheduled/unsche
 5. **`translated_fields`.** Multi-locale events.
 6. **CRM (contacts), sponsors, exhibitors, GDPR requests, Insights/SbQL, dashboards,
    saved reports.** Explicitly struck from scope.
+
+---
+
+## Ours with no counterpart in theirs (48 operations)
+
+Parity was the floor. These exist because the brief asks for them and their API
+simply has no equivalent — an integrator moving from Sessionboard gains them.
+
+| Ours | Ops | Why it exists |
+| --- | --- | --- |
+| **Events CRUD** (`GET /events/{ref}`, `POST`, `PUT`, `DELETE`) | 4 | Their API reads events only. |
+| **Forms** (`GET /forms`, `GET /forms/{id}`, `POST /forms/create`, `PUT`, `DELETE`) | 5 | A form IS the event's custom-field definitions here, so this reads and writes the public submission page. Theirs keeps fields and the form builder as separate systems, and exposes neither as a form. Forms are addressable by slug (`/forms/cfp`). Locked system questions cannot be dropped (400); a form with submissions cannot be deleted (400 — close it). |
+| **Tasks** (`GET /tasks`, `GET /tasks/{id}`, `POST /tasks/create`, `PUT`, `DELETE`) | 5 | The outstanding-speaker-tasks dashboard is a headline requirement of the brief. `GET /tasks?status=open\|completed\|overdue` is that dashboard as an API call. Create assigns to many speakers at once, by id **or** by email, returning one row per speaker. |
+| **Evaluation** (plans ×5, evaluators ×4, `GET /evaluations`) | 10 | Multi-round scoring with per-evaluator assignment — also a headline requirement, also absent from their API. Plans carry criteria (`numeric` with weights, `select`, `text`), a pool, a window and a blind flag; evaluators carry their magic review link and their own progress; `GET /evaluations` is the raw scorecard data behind every average, including recusals. |
+| **Session participants** (list, attach, detach) | 3 | Their webhooks announce line-up changes their API cannot make. |
+| **Speaker delete** | 1 | Completes speaker CRUD, with the live-session guard. |
+| **Agenda** (`GET /agenda`, publish, unpublish) | 3 | Rooms, tracks, placements, everything unscheduled and the live conflict list in one read; plus the public go-live gate. |
+| **Webhooks** (7 endpoints) | 7 | Sessionboard has webhooks but manages them only in Settings — no API at all. Ours are API-managed, HMAC-signed and have a readable delivery log. |
+| **`POST /v1/_echo`** | 1 | A signature-verifying sink, so "my webhook works" is provable rather than hopeful. |
+| **`GET /schedule.ics`** | 1 | The public calendar subscription feed. |
+| **`GET /submissions`** | 1 | The pre-parity feed, preserved verbatim. |
+| **Search forms of the settings reads** | 6 | Their `POST` search bodies, on resources they only expose as `GET`. |
 
 ---
 
@@ -304,7 +381,7 @@ things that talk to other systems.
 
 ## Verification
 
-`scripts/verify-backend.mjs` → section **API parity**: ~70 live assertions covering every
+`scripts/verify-backend.mjs` → section **API parity**: ~145 live assertions covering every
 endpoint above — auth model (both headers, demo-token read-only, scoped-key narrowing),
 error envelope, pagination in both spellings, session search/filters/sort, create → read →
 update → 409 → soft-delete → 404 → restore, custom-field definitions + values + lossless
@@ -312,5 +389,29 @@ update → 409 → soft-delete → 404 → restore, custom-field definitions + v
 mixed success/failure, agenda, and a **real signed webhook delivery** verified end to end
 (the echo sink answers 200 only when the HMAC verifies, and a forged signature is rejected).
 
-`pnpm openapi:verify` probes all 80 documented routes against the live deployment and
+The 2026-08-11 completion pass added **75 assertions** — at least one happy path per new
+route and an auth refusal for every new write — covering event CRUD (including the
+never-blocked slug and the full cascade delete), forms (including the locked-question and
+has-submissions refusals), participants (attach by email, idempotent role move, detach),
+speaker delete (including the live-session refusal), tasks (assign by email, the
+`?status=open` dashboard, complete, delete), evaluation (plans, criteria derivation,
+evaluators, the outside-the-pool refusal, scorecards) and statuses (create, rename,
+built-in refusals, archive, `include_deleted`, restore). All 75 pass against dev.
+
+`pnpm openapi:verify` probes all **109** documented routes against the live deployment and
 fails on any route the server does not serve.
+
+## The published reference
+
+`public/docs/api/openapi.json` is generated by `scripts/generate-openapi.mjs` from the route
+manifest — never hand-edited — and rendered by Scalar at `/docs/api`. As of 2026-08-11 it
+carries **109 operations, 83 schemas, 28 shared parameters**, a request example on every
+operation that takes a body, a response example on **all 91** operations that return one,
+per-operation `security` + `x-required-scope` + `x-rate-limit-bucket`, and an
+`info.description` that is a real getting-started: base URL, where keys come from, a curl
+quickstart in both header forms, the scope table, the pagination envelope, the error-code
+table, the rate-limit buckets and headers, time formats, optimistic concurrency, soft
+deletes, the webhook signature-verification snippet, both upload flows step by step, the
+`.ics` feed, and a migrating-from-Sessionboard note. Response examples are captured from
+the live deployment and derived for writes from the reads they mirror, so they cannot rot.
+Screenshots of the rendered page: `docs/verification/api-docs-completion/`.

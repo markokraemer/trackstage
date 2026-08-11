@@ -37,27 +37,3 @@ export function TrackChip({
     </Badge>
   )
 }
-
-/** Neutral "Field: value" chip (Format, Level, Language, Room). */
-export function MetaChip({
-  label,
-  value,
-  className,
-  ...props
-}: Omit<React.ComponentProps<typeof Badge>, "children"> & {
-  label: string
-  value: string
-}) {
-  return (
-    <Badge
-      variant="outline"
-      className={cn(
-        "h-6 bg-card px-2 text-xs font-normal text-muted-foreground",
-        className,
-      )}
-      {...props}
-    >
-      <span className="font-medium text-foreground">{label}:</span>&nbsp;{value}
-    </Badge>
-  )
-}

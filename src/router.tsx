@@ -25,6 +25,17 @@ export function getRouter() {
       queries: {
         queryKeyHashFn: convexQueryClient.hashFn(),
         queryFn: convexQueryClient.queryFn(),
+        // `convexQuery()` already pins `staleTime: Infinity` — Convex pushes
+        // updates, so cached data is never stale. What decides whether a
+        // *return* to a page is instant is `gcTime`: when React Query evicts
+        // the entry, ConvexQueryClient drops the subscription with it and the
+        // next visit starts from nothing. The default 5 minutes is shorter
+        // than an organizer spends on the agenda before going back to the
+        // dashboard, so hold the whole session's worth. A handful of live
+        // subscriptions is exactly what the websocket is for.
+        gcTime: 60 * 60 * 1000,
+        // A dropped websocket frame should not cost a screenful of skeletons.
+        retry: 2,
       },
     },
   })
@@ -38,8 +49,21 @@ export function getRouter() {
       convexClient: convexQueryClient.convexClient,
     },
     scrollRestoration: true,
+    // Hovering (or focusing, or touching) a link starts fetching its route
+    // chunk, so the click has nothing left to wait for.
     defaultPreload: "intent",
+    // Convex owns freshness; React Query's cache decides what a preload
+    // reuses. Zero here means "ask the query cache", which is what we want —
+    // it is NOT a re-fetch, because `convexQuery` data is never stale.
     defaultPreloadStaleTime: 0,
+    // Default is 50ms of hover before preloading. A deliberate move to a
+    // sidebar item is obvious well before that.
+    defaultPreloadDelay: 20,
+    // Nothing pending may appear for a switch that is about to finish anyway:
+    // wait 200ms before showing any pending UI, and once shown keep it up long
+    // enough (300ms) that it reads as a state rather than a flicker.
+    defaultPendingMs: 200,
+    defaultPendingMinMs: 300,
   })
 
   setupRouterSsrQueryIntegration({ router, queryClient })

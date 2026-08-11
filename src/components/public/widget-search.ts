@@ -19,6 +19,9 @@ export interface WidgetSearch {
   hideSearch?: true
   /** Content filter: only show sessions on this track (by name). */
   track?: string
+  /** Sessions catalog facets, by display name — linkable like every filter. */
+  format?: string
+  room?: string
   /** Per-page view mode: `time` | `rooms` (schedule), `gallery` | `list`. */
   view?: string
   /** Selected day on the schedule, as `YYYY-MM-DD`. */
@@ -55,6 +58,8 @@ export function validateWidgetSearch(
     hideImages: flag(search.hideImages),
     hideSearch: flag(search.hideSearch),
     track: text(search.track),
+    format: text(search.format),
+    room: text(search.room),
     view: text(search.view),
     day: text(search.day),
     q: text(search.q),

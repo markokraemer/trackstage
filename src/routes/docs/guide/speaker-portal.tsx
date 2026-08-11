@@ -28,6 +28,17 @@ function Page() {
           />
         </Step>
 
+        <Step title="Lost the link? They enter their email on your call-for-speakers page and we send a fresh one.">
+          <p className="doc-prose">
+            The link is the whole login, so it is also the whole security model:
+            an address that already has submissions, tasks or a profile behind it
+            never opens from the form itself — we email a new sign-in link to
+            that address and show nothing about the account until it is opened.
+            Up to three links an hour, and every one of them shows up in your
+            Communications outbox as “Sign-in link”, so you can see it was sent.
+          </p>
+        </Step>
+
         <Step title="Tasks is their to-do list from you: confirm the slot, upload slides, send a headshot.">
           <Shot
             src="walkthrough/26-speaker-tasks.png"

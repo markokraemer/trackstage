@@ -16,6 +16,7 @@ import { StatusPill } from "@/components/shared/status-pill"
 import { EmptyState } from "@/components/shared/empty-state"
 import { CopyLinkButton } from "@/components/dashboard/copy-link-button"
 import { APP_ROUTES, formLinkFor } from "@/components/dashboard/app-routes"
+import { formPath } from "@/lib/public-links"
 import { closesLabel } from "@/components/dashboard/format"
 
 export interface DashboardFormRow {
@@ -31,6 +32,8 @@ export interface DashboardFormRow {
 
 export interface FormsCardProps {
   forms: Array<DashboardFormRow>
+  /** The event in context — the first segment of every public form link. */
+  eventSlug: string
   className?: string
 }
 
@@ -39,7 +42,7 @@ export interface FormsCardProps {
  * status, how many submissions it has pulled in, and — front and centre — the
  * public link, ready to copy.
  */
-export function FormsCard({ forms, className }: FormsCardProps) {
+export function FormsCard({ forms, eventSlug, className }: FormsCardProps) {
   return (
     <Card className={cn("gap-4", className)}>
       <CardHeader>
@@ -94,12 +97,12 @@ export function FormsCard({ forms, className }: FormsCardProps) {
                 </p>
                 <div className="mt-auto flex flex-wrap items-center gap-2">
                   <CopyLinkButton
-                    url={formLinkFor(form.slug)}
+                    url={formLinkFor(eventSlug, form.slug)}
                     label="Copy link"
                     toastMessage={`Public link for "${form.name}" copied`}
                   />
                   <a
-                    href={`/submit/${form.slug}`}
+                    href={formPath(eventSlug, form.slug)}
                     target="_blank"
                     rel="noreferrer"
                     className={buttonVariants({ variant: "ghost", size: "sm" })}

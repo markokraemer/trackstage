@@ -1,5 +1,4 @@
 import { useId } from "react"
-import { RiExternalLinkLine } from "@remixicon/react"
 
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import {
@@ -9,10 +8,9 @@ import {
   FieldLabel,
   FieldTitle,
 } from "@/components/ui/field"
-import { buttonVariants } from "@/components/ui/button"
 import { InfoNote, SectionHeading, StepIntro } from "../builder-controls"
-import { CopyLinkButton } from "../copy-link-button"
-import { FORM_KINDS, publicFormPath } from "../model"
+import { PublicLinkCard } from "../public-link-card"
+import { FORM_KINDS } from "../model"
 import type { FormDraft } from "../use-form-draft"
 
 /**
@@ -21,10 +19,15 @@ import type { FormDraft } from "../use-form-draft"
  */
 export function SetupStep({
   draft,
+  formId,
+  eventSlug,
   slug,
   patch,
 }: {
   draft: FormDraft
+  formId: string
+  /** Form slugs are unique per event, so the link needs both segments. */
+  eventSlug: string
   slug: string
   patch: (values: Partial<FormDraft>) => void
 }) {
@@ -72,27 +75,7 @@ export function SetupStep({
         start submitting.
       </InfoNote>
 
-      <div className="rounded-xl border border-border bg-card p-4">
-        <SectionHeading
-          title="Public link"
-          description="Share this anywhere — no account needed to open it."
-        />
-        <p className="mt-3 rounded-lg border border-dashed border-border bg-muted/50 px-3 py-2 font-mono text-sm break-all text-foreground">
-          {publicFormPath(slug)}
-        </p>
-        <div className="mt-3 flex flex-wrap gap-2">
-          <CopyLinkButton slug={slug} />
-          <a
-            href={publicFormPath(slug)}
-            target="_blank"
-            rel="noreferrer"
-            className={buttonVariants({ variant: "outline" })}
-          >
-            <RiExternalLinkLine aria-hidden />
-            View form
-          </a>
-        </div>
-      </div>
+      <PublicLinkCard formId={formId} eventSlug={eventSlug} slug={slug} />
     </div>
   )
 }

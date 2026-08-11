@@ -180,7 +180,7 @@ function ActionFeedback() {
         use="Public CFP link, portal link, evaluator magic links, API keys."
       >
         <div className="flex justify-center">
-          <CopyButton value="https://trackstage.app/submit/ai-engineer-2026" />
+          <CopyButton value="https://trackstage.app/submit/ai-engineer-2026/cfp" />
         </div>
       </Demo>
 

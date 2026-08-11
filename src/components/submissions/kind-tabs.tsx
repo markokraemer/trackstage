@@ -1,7 +1,6 @@
 import { Link } from "@tanstack/react-router"
 
-import { cn } from "@/lib/utils"
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Tabs, TabsCount, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Skeleton } from "@/components/ui/skeleton"
 import type { StatusTabValue } from "@/components/submissions/constants"
 
@@ -69,7 +68,6 @@ export function KindTabs({ value, counts, search }: KindTabsProps) {
     <Tabs value={value}>
       <TabsList aria-label="Filter by abstracts or sessions">
         {SUBMISSION_KINDS.map((kind) => {
-          const active = kind.value === value
           return (
             <TabsTrigger
               key={kind.value}
@@ -94,16 +92,9 @@ export function KindTabs({ value, counts, search }: KindTabsProps) {
               {counts === undefined ? (
                 <Skeleton className="h-4 w-5 rounded-full" />
               ) : (
-                <span
-                  className={cn(
-                    "inline-flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-[11px] font-medium tabular-nums",
-                    active
-                      ? "bg-primary/10 text-primary"
-                      : "bg-background/70 text-muted-foreground"
-                  )}
-                >
+                <TabsCount className="bg-background/70">
                   {counts[kind.value]}
-                </span>
+                </TabsCount>
               )}
             </TabsTrigger>
           )

@@ -70,7 +70,7 @@ test.describe("multi-tenancy", () => {
       // The switcher is the only route to another tenant's events.
       await fresh.getByRole("button", { name: /switch event/i }).first().click()
       await expect(
-        fresh.getByText(/haven't created an event yet/i).first(),
+        fresh.getByText(/no events yet — create one/i).first(),
       ).toBeVisible()
       await expect(
         fresh.getByRole("menuitem", { name: new RegExp(MAIN_EVENT_NAME, "i") }),
@@ -114,15 +114,17 @@ test.describe("multi-tenancy", () => {
       ).toBeVisible({ timeout: 30_000 })
 
       // The organizer may belong to several workspaces after earlier runs —
-      // make sure we are inviting into the demo one.
-      const picker = org.getByLabel("Workspace", { exact: true })
-      if ((await picker.count()) > 0) {
-        await picker.first().click()
-        const option = org.getByRole("option", {
-          name: new RegExp(DEMO_WORKSPACE_NAME, "i"),
-        })
-        if ((await option.count()) > 0) await option.first().click()
-        else await org.keyboard.press("Escape")
+      // the hub's "Your workspaces" card switches to the demo one if needed.
+      const switchToDemo = org.getByRole("button", {
+        name: `Switch to ${DEMO_WORKSPACE_NAME}`,
+      })
+      if ((await switchToDemo.count()) > 0) {
+        await switchToDemo.first().click()
+        await expect(
+          org.getByRole("heading", {
+            name: new RegExp(`workspace settings — ${DEMO_WORKSPACE_NAME}`, "i"),
+          }).first(),
+        ).toBeVisible({ timeout: 20_000 })
       }
 
       await org.getByRole("button", { name: /invite teammate/i }).first().click()
@@ -308,6 +310,270 @@ test.describe("multi-tenancy", () => {
           memberId: row._id,
         })
       }
+      await context.close()
+    }
+  })
+
+  /**
+   * Marko: "proper UI to see all workspaces you're part of & also a workspace
+   * switcher etc. E2E ensure that works perfectly."
+   *
+   * One user, four workspaces (two with an event, one empty, one created from
+   * the switcher itself). Everything is asserted through the real chrome: the
+   * sidebar's two-level picker, the avatar menu's workspace list and the
+   * workspace hub's "Your workspaces" card — the three surfaces that must never
+   * disagree about which workspace you are in.
+   */
+  test("belongs to several workspaces: switcher lists them and switching flips the app", async ({
+    browser,
+  }) => {
+    const email = testEmail("multiws")
+    const alphaEventName = `Alpha Summit ${unique("a")}`
+    const betaName = `Beta Collective ${unique("b")}`
+    const betaEventName = `Beta Kickoff ${unique("bk")}`
+    const emptyName = `Empty Studio ${unique("e")}`
+    const createdName = `Created Live ${unique("c")}`
+
+    const context = await browser.newContext()
+    const page = await context.newPage()
+    const watcher = armed(page)
+
+    try {
+      await uiSignUp(page, "Multi Workspace", email, PASSWORD)
+      await waitForShell(page)
+
+      // ——— Setup: two workspaces with an event, one without ————————————————
+      const client = await clientFor(email, PASSWORD)
+      await client.mutation(api.workspaces.ensure, {})
+      const own = (await client.query(api.workspaces.mine, {}))[0]
+      expect(own, "signup must create a workspace").toBeTruthy()
+      await client.mutation(api.events.create, {
+        organizationId: own.id,
+        name: alphaEventName,
+        slug: unique("alpha"),
+        timezone: "UTC",
+      })
+      const beta = await client.mutation(api.workspaces.create, {
+        name: betaName,
+      })
+      await client.mutation(api.events.create, {
+        organizationId: beta.organizationId,
+        name: betaEventName,
+        slug: unique("beta"),
+        timezone: "UTC",
+      })
+      await client.mutation(api.workspaces.create, { name: emptyName })
+
+      await gotoStable(page, "/app")
+      await waitForShell(page)
+
+      const switcher = page.getByRole("button", { name: /switch event/i }).first()
+      // A closed Base UI popup lingers in the DOM, so every menu assertion is
+      // scoped to the menu that is actually on screen.
+      const openMenu = page.locator('[role="menu"]:visible')
+      const menuItem = (name: string | RegExp) =>
+        openMenu.getByRole("menuitem", { name })
+
+      // One click: the picker lists workspaces AND events in the same popover.
+      // A menu that is still fading out would double every menuitem match, so
+      // wait for the previous one to be gone first.
+      const openPicker = async () => {
+        await expect(page.locator('[role="menu"]')).toHaveCount(0, {
+          timeout: 10_000,
+        })
+        await switcher.click()
+        await expect(menuItem(`Switch to ${betaName}`)).toBeVisible({
+          timeout: 10_000,
+        })
+      }
+
+      await test.step("the picker lists every workspace with its role", async () => {
+        await expect(switcher).toContainText(alphaEventName, { timeout: 30_000 })
+        await openPicker()
+
+        for (const name of [own.name, betaName, emptyName]) {
+          const row = menuItem(`Switch to ${name}`)
+          await expect(row).toBeVisible()
+          await expect(row).toContainText(/owner/i)
+        }
+        // Event counts come from the events you can actually reach.
+        await expect(menuItem(`Switch to ${betaName}`)).toContainText(
+          /1 event/i,
+        )
+        await expect(menuItem(`Switch to ${emptyName}`)).toContainText(
+          /0 events/i,
+        )
+        await page.keyboard.press("Escape")
+      })
+
+      await test.step("switching flips the sidebar events and the dashboard", async () => {
+        await openPicker()
+        await menuItem(`Switch to ${betaName}`).click()
+
+        await expect(switcher).toContainText(betaEventName, { timeout: 20_000 })
+        await expect(page.locator("main")).toContainText(betaEventName, {
+          timeout: 20_000,
+        })
+        await expect(page.locator("main")).not.toContainText(alphaEventName)
+
+        // Level two now lists ONLY this workspace's events.
+        await switcher.click()
+        await expect(menuItem(new RegExp(betaEventName, "i"))).toBeVisible()
+        await expect(menuItem(new RegExp(alphaEventName, "i"))).toHaveCount(0)
+        await page.keyboard.press("Escape")
+      })
+
+      await test.step("an empty workspace lands on the hub", async () => {
+        await openPicker()
+        await menuItem(`Switch to ${emptyName}`).click()
+
+        await expect(page).toHaveURL(/\/app\/workspace/, { timeout: 20_000 })
+        await expect(
+          page.getByRole("heading", {
+            name: new RegExp(`workspace settings — ${emptyName}`, "i"),
+          }).first(),
+        ).toBeVisible({ timeout: 20_000 })
+        await expect(switcher).toContainText(/no event yet/i)
+        await expect(
+          page.getByText(/no events in this workspace yet/i).first(),
+        ).toBeVisible()
+      })
+
+      await test.step('the hub lists every workspace under "Your workspaces"', async () => {
+        for (const name of [own.name, betaName, emptyName]) {
+          await expect(
+            page.getByText(name, { exact: true }).first(),
+          ).toBeVisible()
+        }
+        // The one in context is marked, the others offer a switch.
+        await expect(page.getByText("Current", { exact: true }).first()).toBeVisible()
+        await page
+          .getByRole("button", { name: `Switch to ${betaName}` })
+          .click()
+        await expect(switcher).toContainText(betaEventName, { timeout: 20_000 })
+      })
+
+      await test.step("the avatar menu switches workspace too", async () => {
+        await page.getByRole("button", { name: /account menu/i }).click()
+        const alphaRow = menuItem(`Switch to ${own.name}`)
+        await expect(alphaRow).toBeVisible({ timeout: 10_000 })
+        await expect(alphaRow).toContainText(/owner/i)
+        await alphaRow.click()
+        await expect(switcher).toContainText(alphaEventName, { timeout: 20_000 })
+      })
+
+      await test.step("create workspace from the switcher", async () => {
+        await openPicker()
+        await menuItem(/create workspace/i).click()
+        // Scope to the dialog: the hub behind it has its own "Workspace name".
+        const dialog = page.getByRole("dialog")
+        await expect(
+          dialog.getByRole("heading", { name: /create a workspace/i }),
+        ).toBeVisible({ timeout: 10_000 })
+        await fillStable(dialog.getByLabel(/workspace name/i), createdName)
+        await dialog
+          .getByRole("button", { name: /^create workspace$/i })
+          .click()
+
+        // Brand new and empty — context moves there and lands on its hub.
+        await expect(page).toHaveURL(/\/app\/workspace/, { timeout: 20_000 })
+        await expect(
+          page.getByRole("heading", {
+            name: new RegExp(`workspace settings — ${createdName}`, "i"),
+          }).first(),
+        ).toBeVisible({ timeout: 20_000 })
+      })
+
+      await test.step("the choice survives a reload", async () => {
+        await gotoStable(page, "/app/workspace")
+        await expect(
+          page.getByRole("heading", {
+            name: new RegExp(`workspace settings — ${createdName}`, "i"),
+          }).first(),
+        ).toBeVisible({ timeout: 30_000 })
+        watcher.assertClean("workspace switching")
+      })
+    } finally {
+      await context.close()
+    }
+  })
+
+  /**
+   * Event settings → Team (docs/memory/RULES.md 23, refinement 3): who can open
+   * THIS event, and a two-click path to inviting someone into just this one.
+   */
+  test("event settings names who can open the event and pre-scopes the invite", async ({
+    browser,
+  }) => {
+    const email = testEmail("eventteam")
+    const eventName = `Scoped Event ${unique("se")}`
+
+    const context = await browser.newContext()
+    const page = await context.newPage()
+    const watcher = armed(page)
+
+    try {
+      await uiSignUp(page, "Event Team", email, PASSWORD)
+      await waitForShell(page)
+
+      const client = await clientFor(email, PASSWORD)
+      await client.mutation(api.workspaces.ensure, {})
+      const own = (await client.query(api.workspaces.mine, {}))[0]
+      await client.mutation(api.events.create, {
+        organizationId: own.id,
+        name: eventName,
+        slug: unique("scoped"),
+        timezone: "UTC",
+      })
+
+      await gotoStable(page, "/app/settings")
+      await waitForShell(page)
+      await expect(
+        page.getByRole("button", { name: /switch event/i }).first(),
+      ).toContainText(eventName, { timeout: 30_000 })
+
+      await test.step("the Team card names who can open this event", async () => {
+        await expect(page.getByText(email).first()).toBeVisible({
+          timeout: 20_000,
+        })
+        await expect(
+          page.getByText(/who can open/i).first(),
+        ).toBeVisible()
+      })
+
+      await test.step("Invite to this event opens the invite pre-scoped", async () => {
+        await page
+          .getByRole("link", { name: /invite to this event/i })
+          .click()
+        await expect(page).toHaveURL(/invite=/, { timeout: 20_000 })
+        await expect(
+          page.getByRole("heading", { name: /invite a teammate/i }).first(),
+        ).toBeVisible({ timeout: 20_000 })
+
+        // Role is Member and the scope is already this event only.
+        await expect(
+          page.getByRole("radio", { name: /only selected events/i }),
+        ).toBeChecked()
+        await expect(
+          page.getByRole("checkbox", { name: new RegExp(eventName, "i") }),
+        ).toBeChecked()
+
+        const invitee = testEmail("scopedmate")
+        await fillStable(page.getByLabel(/email address/i).first(), invitee)
+        await page.getByRole("button", { name: /send invite/i }).first().click()
+        await expectToast(page, /invite email sent/i)
+
+        // The membership really is limited to this one event.
+        const members = await client.query(api.workspaces.members, {
+          organizationId: own.id,
+        })
+        const row = members.find((m) => m.email === invitee)
+        expect(row?.role).toBe("member")
+        expect(row?.eventIds?.length).toBe(1)
+      })
+
+      watcher.assertClean("event team card")
+    } finally {
       await context.close()
     }
   })

@@ -34,6 +34,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { MissingPills } from "@/components/dashboard/missing-pills"
+import { ProgramStatusPill } from "@/components/dashboard/program-status"
+import type { ProgramCounts } from "@/components/dashboard/program-status"
 import { SpeakerWorkflowSelect } from "@/components/dashboard/speaker-workflow-select"
 import { dueLabel, initialsOf } from "@/components/dashboard/format"
 import { portalLinkFor } from "@/components/dashboard/app-routes"
@@ -43,6 +45,10 @@ export interface SpeakerRosterSession {
   title: string
   startsAt?: number
   role: string
+  /** The submission's pipeline status — accepted, pending, accept_queue… */
+  status: string
+  /** abstract (came through a form) | session (added by hand). */
+  kind: string
 }
 
 export interface SpeakerRosterRow {
@@ -62,7 +68,14 @@ export interface SpeakerRosterRow {
   hasHeadshot: boolean
   headshotUrl: string | null
   portalToken: string
+  /** Every non-draft submission/session they're on, accepted or not. */
   sessions: Array<SpeakerRosterSession>
+  /**
+   * Why they're on the roster: confirmed (≥1 accepted session), in_review,
+   * closed (everything declined/withdrawn) or manual (added by hand).
+   */
+  programStatus: string
+  programCounts: ProgramCounts
   tasks: { done: number; total: number }
   openTasks: Array<{ _id: string; title: string; kind: string; dueAt?: number }>
   uploadCount: number
@@ -83,9 +96,11 @@ export interface SpeakersTableProps {
 }
 
 /**
- * Accepted-speaker roster (docs/SPEC.md §4.8): who is speaking, what they owe
- * you, and one click to chase them. Reactive — task progress and missing bits
- * update the moment a speaker acts in their portal.
+ * Speaker roster (docs/SPEC.md §4.8): everyone attached to the programme —
+ * accepted or still in review — why they're here, what they owe you, and one
+ * click to chase them. Reactive: a person shows up the instant they're put on
+ * a session, and task progress and missing bits update the moment a speaker
+ * acts in their portal.
  *
  * Built on the shadcn `Table` primitive inside a `Card`.
  */
@@ -141,7 +156,7 @@ export function SpeakersTable({
             <TableHead>Speaker</TableHead>
             <TableHead>Status</TableHead>
             <TableHead>Company</TableHead>
-            <TableHead>Sessions</TableHead>
+            <TableHead>In the program</TableHead>
             <TableHead>Tasks</TableHead>
             <TableHead>Still needed</TableHead>
             <TableHead className="sticky right-0 z-20 w-10 bg-card pr-4 text-right">
@@ -213,10 +228,16 @@ export function SpeakersTable({
                   ) : null}
                 </TableCell>
 
+                {/*
+                  Why this person is on the roster. Acceptance is a facet, not
+                  a gate: someone on a queued or pending session is here too,
+                  and this cell is where that reads.
+                */}
                 <TableCell className="text-muted-foreground">
-                  <span className="font-medium text-foreground tabular-nums">
-                    {row.sessions.length}
-                  </span>
+                  <ProgramStatusPill
+                    status={row.programStatus}
+                    counts={row.programCounts}
+                  />
                   {row.sessions[0] ? (
                     <span className="block max-w-[220px] truncate text-xs">
                       {row.sessions[0].title}

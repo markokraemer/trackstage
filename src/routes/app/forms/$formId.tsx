@@ -124,7 +124,8 @@ function FormEditor({
   trackNames,
   timezone,
 }: {
-  form: Doc<"forms">
+  /** The form doc plus its event's slug — see `api.forms.get`. */
+  form: Doc<"forms"> & { eventSlug: string }
   trackNames: Array<string>
   timezone?: string
 }) {
@@ -169,14 +170,14 @@ function FormEditor({
           <span className="flex flex-wrap items-center gap-2">
             <StatusPill status={draft.status} size="sm" />
             <span className="text-muted-foreground">
-              {publicFormPath(form.slug)}
+              {publicFormPath(form.eventSlug, form.slug)}
             </span>
           </span>
         }
         actions={
           <>
             <a
-              href={publicFormPath(form.slug)}
+              href={publicFormPath(form.eventSlug, form.slug)}
               target="_blank"
               rel="noreferrer"
               className={buttonVariants({ variant: "outline" })}
@@ -184,7 +185,11 @@ function FormEditor({
               <RiExternalLinkLine aria-hidden />
               View form
             </a>
-            <CopyLinkButton slug={form.slug} label="Copy link" />
+            <CopyLinkButton
+              eventSlug={form.eventSlug}
+              slug={form.slug}
+              label="Copy link"
+            />
             <Button
               onClick={() =>
                 void save().then((ok) => {
@@ -214,7 +219,13 @@ function FormEditor({
         footerLeft={<SaveIndicator state={saveState} />}
       >
         {stepId === "setup" ? (
-          <SetupStep draft={draft} slug={form.slug} patch={patch} />
+          <SetupStep
+            draft={draft}
+            formId={form._id}
+            eventSlug={form.eventSlug}
+            slug={form.slug}
+            patch={patch}
+          />
         ) : null}
         {stepId === "welcome" ? (
           <WelcomeStep draft={draft} patch={patch} />

@@ -164,10 +164,19 @@ trail visible).
     REFINEMENT 2 (Marko): WORKSPACE settings page acts as the org hub — shows all
     events belonging to the workspace; clicking an event drills into that event's
     settings. Clean visual separation across the hierarchy.
-    REFINEMENT (Marko): ACCOUNT settings render as a little MODAL (user-settings
-    profile modal from the avatar menu — tabs: Profile / Security / API & MCP, which
-    also resolves the api-mcp relocation); WORKSPACE and EVENT settings stay separate
-    regular pages — more visual separation between the personal and org/event levels.
+    ~~REFINEMENT (Marko): ACCOUNT settings render as a little MODAL…~~
+    **REVERSED 2026-08-11 (Marko: "move the settings inline again in page — as they
+    were before"): ALL THREE LEVELS ARE PAGES.** `/app/account` (tabs Profile /
+    Security / API & MCP, `?tab=` deep-linkable), `/app/workspace`, `/app/settings`,
+    each with the same SettingsLevelNav → PageHeader → tabs chrome and a header that
+    names WHICH thing it edits ("Account settings — {email}" / "Workspace settings —
+    {org}" / "Event settings — {event}"). No account-settings modal, no `?account=`.
+    REFINEMENT 3 (Marko, 2026-08-11): **per-member EVENT ACCESS SCOPING** — a member
+    can be limited to specific events; owners and admins always have all of them.
+    `members.eventIds` (absent ⇒ all), enforced in ONE place (`convex/lib/auth.ts`
+    `eventAccessFor`, before the role check) so browser, API-key and MCP paths agree;
+    a scoped member gets "Event not found." — the same words a stranger gets, never a
+    hint that the event exists.
 24. **AI copilot chat — the MCP's home** ("do whatever the fuck you want" surface):
     full AI chat built with the Vercel AI SDK + shadcn AI Elements chat components
     (state of the art), using OUR MCP server as its tool source — new session per

@@ -139,7 +139,7 @@ const SHAPES: Record<string, Payload> = {
       eventId: "ev2",
       slug: "copilot-verification-event",
       name: "Copilot Verification Event",
-      publicSubmitUrlHint: "http://localhost:3000/submit/<form-slug>",
+      publicSubmitUrlHint: "http://localhost:3000/submit/ai-summit-2026/<form-slug>",
     },
   },
   get_event_overview: {
@@ -176,7 +176,7 @@ const SHAPES: Record<string, Payload> = {
           slug: "main-cfp-2026",
           status: "open",
           closeAt: "2026-08-01T00:00:00.000Z",
-          publicUrl: "http://localhost:3000/submit/main-cfp-2026",
+          publicUrl: "http://localhost:3000/submit/ai-summit-2026/main-cfp-2026",
         },
       ],
     },
@@ -214,7 +214,7 @@ const SHAPES: Record<string, Payload> = {
         {
           name: "Main CFP 2026",
           status: "open",
-          publicUrl: "http://localhost:3000/submit/main-cfp-2026",
+          publicUrl: "http://localhost:3000/submit/ai-summit-2026/main-cfp-2026",
           closesAt: "2026-08-01T00:00:00.000Z",
         },
       ],
@@ -248,7 +248,7 @@ const SHAPES: Record<string, Payload> = {
           kind: "abstract",
           status: "open",
           closeAt: "2026-08-01T00:00:00.000Z",
-          publicUrl: "http://localhost:3000/submit/main-cfp-2026",
+          publicUrl: "http://localhost:3000/submit/ai-summit-2026/main-cfp-2026",
           submissionCount: 23,
           draftCount: 1,
         },
@@ -268,7 +268,7 @@ const SHAPES: Record<string, Payload> = {
       kind: "abstract",
       status: "open",
       closeAt: "2026-08-01T00:00:00.000Z",
-      publicUrl: "http://localhost:3000/submit/main-cfp-2026",
+      publicUrl: "http://localhost:3000/submit/ai-summit-2026/main-cfp-2026",
       questions: [
         {
           id: "title",
@@ -337,7 +337,7 @@ const SHAPES: Record<string, Payload> = {
     output: {
       formId: "form2",
       slug: "copilot-verification-cfp",
-      publicUrl: "http://localhost:3000/submit/copilot-verification-cfp",
+      publicUrl: "http://localhost:3000/submit/ai-summit-2026/copilot-verification-cfp",
       status: "open",
     },
   },
@@ -347,7 +347,7 @@ const SHAPES: Record<string, Payload> = {
       formId: "form2",
       status: "closed",
       closeAt: null,
-      publicUrl: "http://localhost:3000/submit/copilot-verification-cfp",
+      publicUrl: "http://localhost:3000/submit/ai-summit-2026/copilot-verification-cfp",
       settings: { allowDrafts: true, sendReminderEmail: true },
       previous: {
         status: "open",
@@ -361,7 +361,7 @@ const SHAPES: Record<string, Payload> = {
     output: {
       formId: "form1",
       name: "Main CFP 2026",
-      publicUrl: "http://localhost:3000/submit/main-cfp-2026",
+      publicUrl: "http://localhost:3000/submit/ai-summit-2026/main-cfp-2026",
       status: "open",
       closeAt: "2026-08-01T00:00:00.000Z",
       acceptingSubmissions: true,
@@ -919,7 +919,7 @@ describe("what each view actually says", () => {
   it("create_form gives the public link a copy button and both next steps", () => {
     const { container } = renderTool("create_form", SHAPES.create_form)
     expect(container.textContent).toContain(
-      "http://localhost:3000/submit/copilot-verification-cfp"
+      "http://localhost:3000/submit/ai-summit-2026/copilot-verification-cfp"
     )
     expect(screen.getByRole("button", { name: /copy/i })).toBeTruthy()
     const builder = screen.getByText(/edit in form builder/i).closest("a")
@@ -934,7 +934,7 @@ describe("what each view actually says", () => {
       SHAPES.get_public_form_link
     )
     expect(container.querySelector("code")?.textContent).toContain(
-      "/submit/main-cfp-2026"
+      "/submit/ai-summit-2026/main-cfp-2026"
     )
     expect(screen.getByRole("button", { name: /copy/i })).toBeTruthy()
   })

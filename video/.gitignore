@@ -1,0 +1,17 @@
+node_modules
+dist
+.DS_Store
+.env
+
+# Ignore the output video from Git but not videos you import into src/.
+out
+
+# Capture workspace artifacts (recordings are reproducible via capture/*.mjs)
+capture/raw/
+capture/.auth.json
+capture/state.json
+capture/marks.json
+capture/fr_*.png
+capture/probe.mjs
+capture/chk*.mjs
+capture/recon*.mjs

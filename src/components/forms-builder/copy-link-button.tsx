@@ -10,11 +10,14 @@ import { publicFormUrl } from "./model"
  * the editor header (docs/SPEC.md §2.8 — never hide this behind a menu).
  */
 export function CopyLinkButton({
+  eventSlug,
   slug,
   variant = "outline",
   size = "default",
   label = "Copy public link",
 }: {
+  /** The event the form belongs to — form slugs are only unique inside one. */
+  eventSlug: string
   slug: string
   variant?: React.ComponentProps<typeof Button>["variant"]
   size?: React.ComponentProps<typeof Button>["size"]
@@ -23,7 +26,7 @@ export function CopyLinkButton({
   const [copied, setCopied] = useState(false)
 
   async function copy() {
-    const url = publicFormUrl(slug)
+    const url = publicFormUrl(eventSlug, slug)
     try {
       await navigator.clipboard.writeText(url)
       setCopied(true)

@@ -7,6 +7,11 @@ import {
 } from "@convex-dev/react-query"
 import { api } from "@convex/_generated/api"
 import type { Id } from "@convex/_generated/dataModel"
+import {
+  REQUIRED_SCOPES,
+  normalizeBaseId,
+  normalizeToken,
+} from "@convex/lib/airtable"
 import type { FunctionReturnType } from "convex/server"
 import { formatDistanceToNow } from "date-fns"
 import { toast } from "sonner"
@@ -56,12 +61,7 @@ import { ConfirmDeleteButton } from "@/components/settings/confirm-delete-button
 import { errorMessage } from "@/components/settings/errors"
 
 const TOKEN_HELP_URL = "https://airtable.com/create/tokens"
-const SCOPES = [
-  "data.records:read",
-  "data.records:write",
-  "schema.bases:read",
-  "schema.bases:write",
-]
+const SCOPES = REQUIRED_SCOPES
 
 /**
  * Settings → Integrations → Airtable (docs/memory/RULES.md 15).
@@ -376,20 +376,33 @@ function ConnectDialog({
     mutationFn: useConvexAction(api.airtable.connect),
   })
 
+  // What we'd actually send. Nobody looks up "the base ID" — they copy the
+  // address bar — so we accept the whole URL, "appX/tblY", or the bare id, and
+  // show what we understood instead of rejecting the paste.
+  const understoodBaseId = normalizeBaseId(baseId)
+  // Sticky: set when we rewrite the field on blur, so the confirmation stays
+  // visible after the value in the input has already become the clean id.
+  const [baseIdWasCleaned, setBaseIdWasCleaned] = useState(false)
+
   function reset() {
     setToken("")
     setBaseId("")
     setError(null)
+    setBaseIdWasCleaned(false)
   }
 
   async function submit(event: React.FormEvent) {
     event.preventDefault()
     setError(null)
+    // Normalize on submit as well as on blur: a paste + Enter never blurs.
+    if (understoodBaseId && understoodBaseId !== baseId) {
+      setBaseId(understoodBaseId)
+    }
     try {
       const result = await connect.mutateAsync({
         eventId,
-        token: token.trim(),
-        baseId: baseId.trim(),
+        token: normalizeToken(token),
+        baseId: understoodBaseId ?? baseId.trim(),
       })
       onOpenChange(false)
       reset()
@@ -469,19 +482,30 @@ function ConnectDialog({
               spellCheck={false}
               placeholder="patXXXXXXXXXXXXXX.xxxxxxxx…"
               onChange={(event) => setToken(event.target.value)}
+              // A token never contains whitespace, so a wrapped paste is
+              // silently repaired rather than bounced back at the organizer.
+              onBlur={() => setToken(normalizeToken(token))}
             />
           </LabeledField>
 
           <LabeledField
-            label="Base ID"
+            label="Base ID or link"
             htmlFor="airtable-base"
             required
-            description="Open the base in Airtable — the ID is in the address bar, right after airtable.com/ and starting with “app”."
+            description="Open the base in Airtable and paste the address bar — we'll pick the base ID out of it."
             footer={
-              <span className="font-mono text-[11px]">
-                airtable.com/<b className="text-foreground">appAbC123XyZ</b>
-                /tblXXXX/viwXXXX
-              </span>
+              baseIdWasCleaned && understoodBaseId ? (
+                <span className="inline-flex items-center gap-1 text-primary">
+                  <RiCheckboxCircleFill size={13} aria-hidden />
+                  Read that as base{" "}
+                  <b className="font-mono">{understoodBaseId}</b>
+                </span>
+              ) : (
+                <span className="font-mono text-[11px]">
+                  airtable.com/<b className="text-foreground">appAbC123XyZ</b>
+                  /tblXXXX/viwXXXX
+                </span>
+              )
             }
           >
             <Input
@@ -489,8 +513,16 @@ function ConnectDialog({
               value={baseId}
               autoComplete="off"
               spellCheck={false}
-              placeholder="appAbC123XyZ"
-              onChange={(event) => setBaseId(event.target.value)}
+              placeholder="https://airtable.com/appAbC123XyZ/tbl… or appAbC123XyZ"
+              onChange={(event) => {
+                setBaseId(event.target.value)
+                setBaseIdWasCleaned(false)
+              }}
+              onBlur={() => {
+                if (!understoodBaseId) return
+                setBaseIdWasCleaned(understoodBaseId !== baseId.trim())
+                setBaseId(understoodBaseId)
+              }}
             />
           </LabeledField>
 

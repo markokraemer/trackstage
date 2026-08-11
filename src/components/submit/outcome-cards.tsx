@@ -20,6 +20,11 @@ import type { SubmitForm } from "@/components/submit/types"
 export interface SuccessCardProps {
   form: SubmitForm
   email: string
+  /**
+   * The token THIS session holds. Empty is not an error state to shout about —
+   * it just means we have no proof of who is looking, so the portal door stays
+   * shut and the confirmation points at their inbox instead.
+   */
   portalToken: string
   /** Offer another proposal when the form allows more than one. */
   onSubmitAnother?: () => void
@@ -34,16 +39,16 @@ export function SuccessCard({
   portalToken,
   onSubmitAnother,
 }: SuccessCardProps) {
-  const portalHref = `/portal/t/${portalToken}`
+  const portalHref = portalToken ? `/portal/t/${portalToken}` : null
   // The organizer's "take them straight to the portal" toggle
   // (`forms.settings.autoRedirectToPortal`). Counts down out loud and can be
   // cancelled — a redirect that fires with no warning reads as a bug.
   const [secondsLeft, setSecondsLeft] = React.useState<number | null>(
-    form.autoRedirectToPortal ? AUTO_REDIRECT_SECONDS : null,
+    form.autoRedirectToPortal && portalToken ? AUTO_REDIRECT_SECONDS : null,
   )
 
   React.useEffect(() => {
-    if (secondsLeft === null) return
+    if (secondsLeft === null || !portalHref) return
     if (secondsLeft <= 0) {
       window.location.href = portalHref
       return
@@ -88,13 +93,21 @@ export function SuccessCard({
         <div className="flex flex-col items-center gap-3">
           {/* A plain link: the portal is a separate, token-authenticated
               surface, so this is a full navigation rather than a client-side
-              route transition. */}
-          <a href={portalHref} className={buttonVariants({ size: "lg" })}>
-            {secondsLeft !== null && secondsLeft > 0
-              ? `Continue to portal — ${secondsLeft}s`
-              : "Continue to portal"}
-            <RiArrowRightLine aria-hidden />
-          </a>
+              route transition. Only ever rendered when this session actually
+              holds the token — we never mint portal access from a screen. */}
+          {portalHref ? (
+            <a href={portalHref} className={buttonVariants({ size: "lg" })}>
+              {secondsLeft !== null && secondsLeft > 0
+                ? `Continue to portal — ${secondsLeft}s`
+                : "Continue to portal"}
+              <RiArrowRightLine aria-hidden />
+            </a>
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              Your speaker portal link is in the confirmation email we just sent
+              you.
+            </p>
+          )}
 
           {secondsLeft !== null ? (
             <p

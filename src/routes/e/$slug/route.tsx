@@ -50,7 +50,7 @@ function PublicEventLayout() {
 
   if (!event) {
     return (
-      <div className="flex min-h-svh items-center justify-center bg-background p-6">
+      <main className="flex min-h-svh items-center justify-center bg-background p-6">
         <EmptyState
           icon={RiCalendarEventLine}
           title="We couldn't find that event"
@@ -62,7 +62,7 @@ function PublicEventLayout() {
           }
           className="max-w-lg"
         />
-      </div>
+      </main>
     )
   }
 

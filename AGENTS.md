@@ -102,6 +102,27 @@ portal accounts are nice-to-have. Airtable read-only is fine (bonus, not core).
    Notifications) with per-field Required/Enabled toggles, locked system fields
    (First/Last/Email), participant-role min/max, close date, submission limits.
 
+### Speaker identity — how a portal token is earned (security-critical)
+
+The `portalToken` is a bearer credential: whoever holds it reads that speaker's
+submissions, drafts, tasks, files and profile. No passwords, ever — but **typing an email
+address is not proof of owning it**, so `submit.identify` hands a token to exactly two
+callers:
+
+- a **brand-new address** for that event (nothing behind it to steal — this is the common
+  path and it is unchanged: straight through, no inbox trip); or
+- a caller that **already presents the matching token** (same-browser sessionStorage
+  resume, or the emailed link).
+
+Everything else — any address with a submission, a co-speaker credit, a task, an upload or
+a filled-in profile — gets a sign-in link mailed to it through the ordinary outbox
+(`portal_link`, ≤3/hour, `/submit/{event}/{form}?t={token}`), and the response says
+*nothing* else: no token, no name, no drafts, no counts, no cap errors. The wizard shows
+"we've sent a secure link to {email}" with resend + use-a-different-address. `?t=` is
+consumed into sessionStorage and stripped from the URL on arrival; `/portal/t/{token}`
+works as it always has. Full reasoning in `docs/memory/DECISIONS.md` ("Typing an email is
+not proof of owning it"); the code comment lives at the top of `convex/submit.ts`.
+
 ## Design system (from screenshots + video)
 
 Light mode only. Primary blue `#2F5CE0`, page bg `#F8FAFC`, cards white with `1px`

@@ -6,19 +6,21 @@ import { RiArrowLeftLine, RiCalendarEventLine } from "@remixicon/react"
 
 import { Card } from "@/components/ui/card"
 import { buttonVariants } from "@/components/ui/button"
-import { Separator } from "@/components/ui/separator"
 import { EmptyState } from "@/components/shared/empty-state"
 import { WidgetHeader } from "@/components/public/public-shell"
 import { SessionCard } from "@/components/public/session-card"
 import { SpeakerAvatar } from "@/components/public/speaker-avatar"
 import { AddToCalendarButton } from "@/components/public/add-to-calendar-button"
+import { CopyLinkButton } from "@/components/public/copy-link-button"
 
 /**
- * Schedule itinerary for one person (sbek EMB-09).
+ * A speaker's public page (sbek EMB-09).
  *
- * A speaker's personal run-of-show: every session they're on, in time order,
- * grouped by day with rooms — plus a single `.ics` download so they (or an
- * attendee following them) can drop the whole thing into a calendar.
+ * Who they are plus their personal run-of-show: every session they're on, in
+ * time order, grouped by day with rooms — and a single `.ics` so they (or an
+ * attendee following them around the venue) can drop the lot into a calendar.
+ * This is the drill-down target from the gallery, the directory, every session
+ * card and every session detail page, which is why it is a real URL.
  */
 export const Route = createFileRoute("/e/$slug/itinerary/$personId")({
   loader: async ({ context, params }) =>
@@ -28,6 +30,23 @@ export const Route = createFileRoute("/e/$slug/itinerary/$personId")({
         personId: params.personId,
       }),
     ),
+  head: ({ loaderData }) => {
+    const speaker = loaderData?.speaker
+    if (!speaker) return {}
+    const role = [speaker.jobTitle, speaker.company].filter(Boolean).join(", ")
+    return {
+      meta: [
+        { title: `${speaker.name} — ${loaderData.event.name}` },
+        {
+          name: "description",
+          content:
+            speaker.bio?.slice(0, 200) ||
+            role ||
+            `Speaking at ${loaderData.event.name}.`,
+        },
+      ],
+    }
+  },
   component: ItineraryPage,
 })
 
@@ -65,6 +84,16 @@ function ItineraryPage() {
           icon={RiCalendarEventLine}
           title="We couldn't find that speaker"
           description="They may not be part of the published program. Browse everyone who is speaking instead."
+          action={
+            <Link
+              to="/e/$slug/speakers"
+              params={{ slug }}
+              search={(prev) => prev}
+              className={buttonVariants({ variant: "outline" })}
+            >
+              See all speakers
+            </Link>
+          }
         />
       </div>
     )
@@ -76,39 +105,47 @@ function ItineraryPage() {
     <div className="flex flex-col gap-5">
       {backLink}
 
-      <Card className="gap-4 p-5">
-        <div className="flex items-start gap-4">
-          <SpeakerAvatar
-            name={speaker.name}
-            headshotUrl={speaker.headshotUrl}
-            className="size-16 sm:size-20"
-          />
-          <div className="min-w-0 flex-1">
-            <h2 className="font-heading text-xl font-semibold tracking-tight text-foreground">
-              {speaker.name}
-            </h2>
-            {speaker.jobTitle ? (
-              <p className="text-sm text-muted-foreground">
-                {speaker.jobTitle}
-              </p>
-            ) : null}
-            {speaker.company ? (
-              <p className="text-sm font-medium text-foreground/80">
-                {speaker.company}
-              </p>
-            ) : null}
+      <Card className="gap-4 p-5 sm:p-6">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div className="flex min-w-0 items-start gap-4">
+            <SpeakerAvatar
+              name={speaker.name}
+              headshotUrl={speaker.headshotUrl}
+              size="lg"
+              eager
+            />
+            <div className="min-w-0 flex-1">
+              <h2 className="font-heading text-xl leading-tight font-semibold tracking-tight text-balance text-foreground sm:text-2xl">
+                {speaker.name}
+              </h2>
+              {speaker.jobTitle ? (
+                <p className="mt-0.5 text-sm text-muted-foreground">
+                  {speaker.jobTitle}
+                </p>
+              ) : null}
+              {speaker.company ? (
+                <p className="text-sm font-medium text-foreground/80">
+                  {speaker.company}
+                </p>
+              ) : null}
+            </div>
           </div>
+          <CopyLinkButton
+            what="Link to this speaker"
+            size="sm"
+            className="shrink-0"
+          />
         </div>
         {speaker.bio ? (
-          <p className="text-sm leading-relaxed whitespace-pre-line text-muted-foreground">
+          <p className="max-w-(--container-reading) text-sm leading-relaxed whitespace-pre-line text-muted-foreground">
             {speaker.bio}
           </p>
         ) : null}
       </Card>
 
       <WidgetHeader
-        title="Their schedule"
-        count={`${sessions.length} ${sessions.length === 1 ? "session" : "sessions"}`}
+        title={sessions.length === 1 ? "Their session" : "Their sessions"}
+        count={`${sessions.length}`}
         actions={
           sessions.length > 0 ? (
             <AddToCalendarButton
@@ -143,15 +180,15 @@ function ItineraryPage() {
           }
         />
       ) : (
-        <div className="flex flex-col gap-6">
+        <div className="flex flex-col">
           {days.map((day) => (
-            <section key={day.date} className="flex flex-col gap-3">
-              <div className="flex items-center gap-3">
-                <h3 className="text-sm font-semibold text-foreground">
-                  {day.label}
-                </h3>
-                <Separator className="flex-1" />
-              </div>
+            <section
+              key={day.date}
+              className="flex flex-col gap-3 border-t border-border py-5 first:border-t-0 first:pt-0"
+            >
+              <h3 className="text-sm font-semibold text-foreground">
+                {day.label}
+              </h3>
               {day.sessions.map((session) => (
                 <SessionCard
                   key={session._id}
@@ -165,13 +202,10 @@ function ItineraryPage() {
           ))}
 
           {unscheduled.length > 0 ? (
-            <section className="flex flex-col gap-3">
-              <div className="flex items-center gap-3">
-                <h3 className="text-sm font-semibold text-foreground">
-                  Times to be announced
-                </h3>
-                <Separator className="flex-1" />
-              </div>
+            <section className="flex flex-col gap-3 border-t border-border py-5 first:border-t-0 first:pt-0">
+              <h3 className="text-sm font-semibold text-foreground">
+                Times to be announced
+              </h3>
               {unscheduled.map((session) => (
                 <SessionCard
                   key={session._id}

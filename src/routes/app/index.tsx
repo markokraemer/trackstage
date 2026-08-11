@@ -1,4 +1,3 @@
-import { useState } from "react"
 import { Link, createFileRoute } from "@tanstack/react-router"
 import { useQuery } from "@tanstack/react-query"
 import { convexQuery } from "@convex-dev/react-query"
@@ -47,6 +46,19 @@ export const Route = createFileRoute("/app/")({
 })
 
 /**
+ * "Now" for this tab — frozen once, and to the minute.
+ *
+ * It is a *query argument*, so its value is part of the cache key. Taking a
+ * fresh `Date.now()` on every mount meant every return to the dashboard was a
+ * key nobody had ever asked for: the whole page rebuilt itself from skeletons
+ * on a screen the organizer had just been looking at (measured ~400ms of
+ * skeletons per visit). Nothing it feeds — the greeting, days-to-event, the
+ * 21-day pacing window — moves within a session. Rounding to the minute also
+ * keeps the server's render and the client's hydration on the same value.
+ */
+const NOW = Math.floor(Date.now() / 60_000) * 60_000
+
+/**
  * Organizer dashboard (docs/SPEC.md §4.8) — answers "who do I need to chase?"
  * in one glance, live. Everything on this page comes from a single reactive
  * Convex query, so counts move the moment a speaker acts in their portal.
@@ -55,9 +67,7 @@ function DashboardPage() {
   const { session } = useSession()
   const { event, isLoading: eventLoading, isEmpty } = useCurrentEvent()
 
-  // Frozen at first client render: keeps the query result cacheable and the
-  // greeting stable while the page is open.
-  const [now] = useState(() => Date.now())
+  const now = NOW
 
   const { data } = useQuery(
     convexQuery(
@@ -235,7 +245,11 @@ function DashboardPage() {
       </div>
 
       {/* ——— Your forms ——— */}
-      {data ? <FormsCard forms={data.forms} /> : <FormsCardSkeleton />}
+      {data ? (
+        <FormsCard forms={data.forms} eventSlug={data.event.slug} />
+      ) : (
+        <FormsCardSkeleton />
+      )}
     </div>
   )
 }

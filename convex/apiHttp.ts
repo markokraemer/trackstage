@@ -591,19 +591,9 @@ export const handleApiRequest = httpAction(async (ctx, req) => {
       : null
 
   try {
-    // ——— GET /v1/events ———
-    if (rest[0] === "events" && rest.length === 1) {
-      if (method !== "GET") return errorResponse("Only GET is supported here.", 405)
-      if (!hasScope(credential, "read:events"))
-        return errorResponse("This token lacks the `read:events` scope.", 403)
-      const paging = readPaging(url, null)
-      if ("error" in paging) return errorResponse(paging.error, 400)
-      const result = await ctx.runQuery(internal.apiV1.listEvents, {
-        userId: credential.userId,
-        page: paging.page,
-        pageSize: paging.pageSize,
-      })
-      return jsonResponse(result)
+    // ——— /v1/events… (full CRUD) ———
+    if (rest[0] === "events") {
+      return await handleEvents(ctx, req, url, method, rest, credential, denyDemoWrite)
     }
 
     // ——— /v1/webhooks… ———
@@ -629,6 +619,157 @@ export const handleApiRequest = httpAction(async (ctx, req) => {
     return mapThrown(e)
   }
 })
+
+// ——— Events ————————————————————————————————————————————————————————————
+
+/** Event payloads accept both snake_case (theirs) and camelCase. */
+function readEventInput(body: Record<string, unknown>): Record<string, unknown> {
+  const get = (...names: Array<string>): unknown => {
+    for (const name of names) if (body[name] !== undefined) return body[name]
+    return undefined
+  }
+  const input: Record<string, unknown> = {}
+  const strings: Array<[string, Array<string>]> = [
+    ["name", ["name", "title"]],
+    ["slug", ["slug"]],
+    ["timezone", ["timezone", "time_zone", "timeZone"]],
+    ["type", ["type", "event_type"]],
+    ["website_url", ["website_url", "websiteUrl", "website"]],
+    ["description", ["description"]],
+    ["venue", ["venue", "location"]],
+    ["organization_id", ["organization_id", "organizationId", "workspace_id"]],
+  ]
+  for (const [target, sources] of strings) {
+    const value = str(get(...sources))
+    if (value !== undefined) input[target] = value
+  }
+  const startsAt = readTime(get("starts_at", "startsAt", "startTime"))
+  if (startsAt !== undefined) input.starts_at = startsAt
+  const endsAt = readTime(get("ends_at", "endsAt", "endTime"))
+  if (endsAt !== undefined) input.ends_at = endsAt
+  const portal =
+    get("portal_settings", "portalSettings") &&
+    typeof get("portal_settings", "portalSettings") === "object"
+      ? (get("portal_settings", "portalSettings") as Record<string, unknown>)
+      : {}
+  const flags: Array<[string, Array<string>]> = [
+    ["always_show_tasks", ["always_show_tasks", "alwaysShowTasks"]],
+    ["allow_submission_edits", ["allow_submission_edits", "allowSubmissionEdits"]],
+    ["extend_task_deadlines", ["extend_task_deadlines", "extendTaskDeadlines"]],
+  ]
+  for (const [target, sources] of flags) {
+    const value = readBool(
+      get(...sources) ?? sources.map((name) => portal[name]).find((v) => v !== undefined),
+    )
+    if (value !== undefined) input[target] = value
+  }
+  return input
+}
+
+async function handleEvents(
+  ctx: ActionCtx,
+  req: Request,
+  url: URL,
+  method: string,
+  rest: Array<string>,
+  credential: Credential,
+  denyDemoWrite: () => Response | null,
+): Promise<Response> {
+  const body = (await readJsonBody(req)) ?? {}
+
+  // GET /v1/events · POST /v1/events
+  if (rest.length === 1) {
+    if (method === "GET") {
+      if (!hasScope(credential, "read:events"))
+        return errorResponse("This token lacks the `read:events` scope.", 403)
+      const paging = readPaging(url, null)
+      if ("error" in paging) return errorResponse(paging.error, 400)
+      const result = await ctx.runQuery(internal.apiV1.listEvents, {
+        userId: credential.userId,
+        page: paging.page,
+        pageSize: paging.pageSize,
+      })
+      return jsonResponse(result)
+    }
+    if (method === "POST") {
+      const denied = denyDemoWrite()
+      if (denied) return denied
+      if (!hasScope(credential, "write:events"))
+        return errorResponse("This token lacks the `write:events` scope.", 403)
+      const gate = await enforceRateLimit(ctx, credential, "event_writes")
+      if (gate.limited) return gate.limited
+      const result = await ctx.runMutation(internal.apiV1.writeEvent, {
+        userId: credential.userId as string,
+        action: "create",
+        input: readEventInput(body),
+      })
+      await auditApiWrite(ctx, credential, {
+        eventRef: String(
+          (result as { data?: { id?: string } }).data?.id ?? "",
+        ),
+        method: "POST /events",
+        entity: "settings",
+        entityId: String((result as { data?: { id?: string } }).data?.id ?? ""),
+        action: "created",
+        summary: `Event created via the API · ${str(body.name) ?? "untitled"}`,
+      })
+      return jsonResponse(result, 201, gate.headers)
+    }
+    return errorResponse("Only GET and POST are supported here.", 405)
+  }
+
+  const eventRef = rest[1]
+  if (rest.length !== 2)
+    return errorResponse(`Unknown endpoint ${method} ${url.pathname}.`, 404)
+
+  if (method === "GET") {
+    if (!hasScope(credential, "read:events"))
+      return errorResponse("This token lacks the `read:events` scope.", 403)
+    const gate = await enforceRateLimit(ctx, credential, "entity_reads")
+    if (gate.limited) return gate.limited
+    const result = await ctx.runQuery(internal.apiV1.getEvent, {
+      eventRef,
+      userId: credential.userId,
+    })
+    if (result === null) return errorResponse(`No event with slug "${eventRef}".`, 404)
+    return jsonResponse(result, 200, gate.headers)
+  }
+
+  if (method === "PUT" || method === "DELETE") {
+    const denied = denyDemoWrite()
+    if (denied) return denied
+    if (!hasScope(credential, "write:events"))
+      return errorResponse("This token lacks the `write:events` scope.", 403)
+    const gate = await enforceRateLimit(ctx, credential, "event_writes")
+    if (gate.limited) return gate.limited
+    const result = await ctx.runMutation(internal.apiV1.writeEvent, {
+      userId: credential.userId as string,
+      action: method === "DELETE" ? "delete" : "update",
+      eventRef,
+      input: method === "DELETE" ? {} : readEventInput(body),
+    })
+    if (result === null) return errorResponse(`No event with slug "${eventRef}".`, 404)
+    await auditApiWrite(ctx, credential, {
+      eventRef,
+      method: `${method} /events/{ref}`,
+      entity: "settings",
+      entityId: eventRef,
+      action: method === "DELETE" ? "deleted" : "updated",
+      summary:
+        method === "DELETE"
+          ? "Event and everything in it deleted via the API"
+          : "Event settings updated via the API",
+    })
+    if (method === "DELETE")
+      return new Response(null, {
+        status: 204,
+        headers: { ...CORS_HEADERS, ...gate.headers },
+      })
+    return jsonResponse(result, 200, gate.headers)
+  }
+
+  return errorResponse("Only GET, PUT and DELETE are supported here.", 405)
+}
 
 // ——— Webhook management ————————————————————————————————————————————————
 
@@ -1058,6 +1199,81 @@ async function handleEventScoped(
       return jsonResponse(result, 200, gate.headers)
     }
 
+    // GET/POST /sessions/{id}/participants · DELETE …/participants/{speakerId}
+    if (tail.length >= 2 && tail[1] === "participants") {
+      if (tail.length === 2 && method === "GET") {
+        if (!hasScope(credential, "read:contacts"))
+          return errorResponse("This token lacks the `read:contacts` scope.", 403)
+        const gate = await enforceRateLimit(ctx, credential, "entity_reads")
+        if (gate.limited) return gate.limited
+        const result = await ctx.runQuery(internal.apiV1.listSessionParticipants, {
+          eventRef,
+          userId: credential.userId,
+          sessionId,
+        })
+        if (result === null)
+          return errorResponse(`No event with slug "${eventRef}".`, 404)
+        if (result.notFound) return errorResponse("Session not found.", 404)
+        return jsonResponse(result, 200, gate.headers)
+      }
+      if (
+        (tail.length === 2 && method === "POST") ||
+        (tail.length === 3 && method === "DELETE")
+      ) {
+        const denied = denyDemoWrite()
+        if (denied) return denied
+        if (!hasScope(credential, "write:sessions"))
+          return errorResponse("This token lacks the `write:sessions` scope.", 403)
+        const gate = await enforceRateLimit(ctx, credential, "session_writes")
+        if (gate.limited) return gate.limited
+        const result = await ctx.runMutation(
+          internal.apiV1.writeSessionParticipant,
+          {
+            eventRef,
+            userId: credential.userId as string,
+            sessionId,
+            action: method === "DELETE" ? "remove" : "add",
+            speakerId:
+              method === "DELETE"
+                ? tail[2]
+                : (str(body.speaker_id) ?? str(body.speakerId) ?? str(body.person_id)),
+            email: str(body.email),
+            firstName: str(body.first_name) ?? str(body.firstName),
+            lastName: str(body.last_name) ?? str(body.lastName),
+            role: str(body.role),
+          },
+        )
+        if (result === null)
+          return errorResponse(`No event with slug "${eventRef}".`, 404)
+        if (result.notFound) return errorResponse("Session not found.", 404)
+        if (result.participantNotFound)
+          return errorResponse(
+            method === "DELETE"
+              ? "That person isn't on this session."
+              : "Speaker not found.",
+            404,
+          )
+        await auditApiWrite(ctx, credential, {
+          eventRef,
+          method: `${method} /sessions/{id}/participants`,
+          entity: "session",
+          entityId: sessionId,
+          action: method === "DELETE" ? "participant_removed" : "participant_added",
+          summary: `Session line-up ${method === "DELETE" ? "trimmed" : "extended"} via the API`,
+        })
+        if (method === "DELETE")
+          return new Response(null, {
+            status: 204,
+            headers: { ...CORS_HEADERS, ...gate.headers },
+          })
+        return jsonResponse(result, 201, gate.headers)
+      }
+      return errorResponse(
+        "Only GET and POST on /participants, DELETE on /participants/{speakerId}.",
+        405,
+      )
+    }
+
     return errorResponse(`Unknown session endpoint ${method} ${url.pathname}.`, 404)
   }
 
@@ -1163,8 +1379,325 @@ async function handleEventScoped(
         })
         return jsonResponse(result, 200, gate.headers)
       }
-      return errorResponse("Only GET and PUT are supported here.", 405)
+      if (method === "DELETE") {
+        const denied = denyDemoWrite()
+        if (denied) return denied
+        if (!hasScope(credential, "write:contacts"))
+          return errorResponse("This token lacks the `write:contacts` scope.", 403)
+        const gate = await enforceRateLimit(ctx, credential, "session_writes")
+        if (gate.limited) return gate.limited
+        const result = await ctx.runMutation(internal.apiV1.deleteSpeaker, {
+          eventRef,
+          userId: credential.userId as string,
+          personId: tail[0],
+        })
+        if (result === null)
+          return errorResponse(`No event with slug "${eventRef}".`, 404)
+        if (result.notFound) return errorResponse("Speaker not found.", 404)
+        await auditApiWrite(ctx, credential, {
+          eventRef,
+          method: "DELETE /speakers/{id}",
+          entity: "speaker",
+          entityId: tail[0],
+          action: "deleted",
+          summary: "Speaker removed from the roster via the API",
+        })
+        return new Response(null, {
+          status: 204,
+          headers: { ...CORS_HEADERS, ...gate.headers },
+        })
+      }
+      return errorResponse("Only GET, PUT and DELETE are supported here.", 405)
     }
+  }
+
+  // ——— Forms (the CFP) ———
+  if (resource === "forms") {
+    if (tail.length === 0 && method === "GET") {
+      if (!hasScope(credential, "read:events"))
+        return errorResponse("This token lacks the `read:events` scope.", 403)
+      const result = await ctx.runQuery(internal.apiV1.listForms, {
+        eventRef,
+        userId: credential.userId,
+        search: url.searchParams.get("search") ?? undefined,
+        status: url.searchParams.get("status") ?? undefined,
+        page: paging.page,
+        pageSize: paging.pageSize,
+      })
+      if (result === null)
+        return errorResponse(`No event with slug "${eventRef}".`, 404)
+      return jsonResponse(result)
+    }
+    if (tail.length === 1 && tail[0] !== "create" && method === "GET") {
+      if (!hasScope(credential, "read:events"))
+        return errorResponse("This token lacks the `read:events` scope.", 403)
+      const gate = await enforceRateLimit(ctx, credential, "entity_reads")
+      if (gate.limited) return gate.limited
+      const result = await ctx.runQuery(internal.apiV1.getForm, {
+        eventRef,
+        userId: credential.userId,
+        formRef: tail[0],
+      })
+      if (result === null)
+        return errorResponse(`No event with slug "${eventRef}".`, 404)
+      if (result.notFound) return errorResponse("Form not found.", 404)
+      return jsonResponse(result, 200, gate.headers)
+    }
+    const isCreate = tail.length === 1 && tail[0] === "create" && method === "POST"
+    const isMutate = tail.length === 1 && (method === "PUT" || method === "DELETE")
+    if (isCreate || isMutate) {
+      const denied = denyDemoWrite()
+      if (denied) return denied
+      if (!hasScope(credential, "write:fields"))
+        return errorResponse("This token lacks the `write:fields` scope.", 403)
+      const gate = await enforceRateLimit(ctx, credential, "field_writes")
+      if (gate.limited) return gate.limited
+      const result = await ctx.runMutation(internal.apiV1.writeForm, {
+        eventRef,
+        userId: credential.userId as string,
+        action: isCreate ? "create" : method === "DELETE" ? "delete" : "update",
+        formRef: isCreate ? undefined : tail[0],
+        input: readFormInput(body),
+      })
+      if (result === null)
+        return errorResponse(`No event with slug "${eventRef}".`, 404)
+      if (result.notFound) return errorResponse("Form not found.", 404)
+      await auditApiWrite(ctx, credential, {
+        eventRef,
+        method: `${isCreate ? "POST" : method} /forms`,
+        entity: "form",
+        entityId: isCreate ? undefined : tail[0],
+        action: isCreate ? "created" : method === "DELETE" ? "deleted" : "updated",
+        summary: `Form ${isCreate ? "created" : method === "DELETE" ? "deleted" : "updated"} via the API`,
+      })
+      if (method === "DELETE")
+        return new Response(null, {
+          status: 204,
+          headers: { ...CORS_HEADERS, ...gate.headers },
+        })
+      return jsonResponse(result, isCreate ? 201 : 200, gate.headers)
+    }
+    return errorResponse(`Unknown form endpoint ${method} ${url.pathname}.`, 404)
+  }
+
+  // ——— Speaker tasks ———
+  if (resource === "tasks") {
+    if (tail.length === 0 && method === "GET") {
+      if (!hasScope(credential, "read:events"))
+        return errorResponse("This token lacks the `read:events` scope.", 403)
+      const result = await ctx.runQuery(internal.apiV1.listTasks, {
+        eventRef,
+        userId: credential.userId,
+        speakerId: url.searchParams.get("speaker_id") ?? undefined,
+        sessionId: url.searchParams.get("session_id") ?? undefined,
+        status: url.searchParams.get("status") ?? undefined,
+        search: url.searchParams.get("search") ?? undefined,
+        page: paging.page,
+        pageSize: paging.pageSize,
+      })
+      if (result === null)
+        return errorResponse(`No event with slug "${eventRef}".`, 404)
+      return jsonResponse(result)
+    }
+    if (tail.length === 1 && tail[0] !== "create" && method === "GET") {
+      if (!hasScope(credential, "read:events"))
+        return errorResponse("This token lacks the `read:events` scope.", 403)
+      const gate = await enforceRateLimit(ctx, credential, "entity_reads")
+      if (gate.limited) return gate.limited
+      const result = await ctx.runQuery(internal.apiV1.getTask, {
+        eventRef,
+        userId: credential.userId,
+        taskId: tail[0],
+      })
+      if (result === null)
+        return errorResponse(`No event with slug "${eventRef}".`, 404)
+      if (result.notFound) return errorResponse("Task not found.", 404)
+      return jsonResponse(result, 200, gate.headers)
+    }
+    const isCreate = tail.length === 1 && tail[0] === "create" && method === "POST"
+    const isMutate = tail.length === 1 && (method === "PUT" || method === "DELETE")
+    if (isCreate || isMutate) {
+      const denied = denyDemoWrite()
+      if (denied) return denied
+      if (!hasScope(credential, "write:events"))
+        return errorResponse("This token lacks the `write:events` scope.", 403)
+      const gate = await enforceRateLimit(ctx, credential, "event_writes")
+      if (gate.limited) return gate.limited
+      const result = await ctx.runMutation(internal.apiV1.writeTask, {
+        eventRef,
+        userId: credential.userId as string,
+        action: isCreate ? "create" : method === "DELETE" ? "delete" : "update",
+        taskId: isCreate ? undefined : tail[0],
+        input: readTaskInput(body),
+      })
+      if (result === null)
+        return errorResponse(`No event with slug "${eventRef}".`, 404)
+      if (result.notFound) return errorResponse("Task not found.", 404)
+      await auditApiWrite(ctx, credential, {
+        eventRef,
+        method: `${isCreate ? "POST" : method} /tasks`,
+        entity: "speaker",
+        entityId: isCreate ? undefined : tail[0],
+        action: isCreate ? "task_created" : method === "DELETE" ? "task_deleted" : "task_updated",
+        summary: `Speaker task ${isCreate ? "assigned" : method === "DELETE" ? "deleted" : "updated"} via the API${str(body.title) ? ` · ${str(body.title)}` : ""}`,
+      })
+      if (method === "DELETE")
+        return new Response(null, {
+          status: 204,
+          headers: { ...CORS_HEADERS, ...gate.headers },
+        })
+      return jsonResponse(result, isCreate ? 201 : 200, gate.headers)
+    }
+    return errorResponse(`Unknown task endpoint ${method} ${url.pathname}.`, 404)
+  }
+
+  // ——— Evaluation: plans, evaluators, scores ———
+  if (resource === "evaluation-plans") {
+    if (tail.length === 0 && method === "GET") {
+      if (!hasScope(credential, "read:sessions"))
+        return errorResponse("This token lacks the `read:sessions` scope.", 403)
+      const result = await ctx.runQuery(internal.apiV1.listEvaluationPlans, {
+        eventRef,
+        userId: credential.userId,
+        status: url.searchParams.get("status") ?? undefined,
+        page: paging.page,
+        pageSize: paging.pageSize,
+      })
+      if (result === null)
+        return errorResponse(`No event with slug "${eventRef}".`, 404)
+      return jsonResponse(result)
+    }
+    if (tail.length === 1 && tail[0] !== "create" && method === "GET") {
+      if (!hasScope(credential, "read:sessions"))
+        return errorResponse("This token lacks the `read:sessions` scope.", 403)
+      const gate = await enforceRateLimit(ctx, credential, "entity_reads")
+      if (gate.limited) return gate.limited
+      const result = await ctx.runQuery(internal.apiV1.getEvaluationPlan, {
+        eventRef,
+        userId: credential.userId,
+        planId: tail[0],
+      })
+      if (result === null)
+        return errorResponse(`No event with slug "${eventRef}".`, 404)
+      if (result.notFound) return errorResponse("Evaluation plan not found.", 404)
+      return jsonResponse(result, 200, gate.headers)
+    }
+    const isCreate = tail.length === 1 && tail[0] === "create" && method === "POST"
+    const isMutate = tail.length === 1 && (method === "PUT" || method === "DELETE")
+    if (isCreate || isMutate) {
+      const denied = denyDemoWrite()
+      if (denied) return denied
+      if (!hasScope(credential, "write:sessions"))
+        return errorResponse("This token lacks the `write:sessions` scope.", 403)
+      const gate = await enforceRateLimit(ctx, credential, "event_writes")
+      if (gate.limited) return gate.limited
+      const result = await ctx.runMutation(internal.apiV1.writeEvaluationPlan, {
+        eventRef,
+        userId: credential.userId as string,
+        action: isCreate ? "create" : method === "DELETE" ? "delete" : "update",
+        planId: isCreate ? undefined : tail[0],
+        input: readPlanInput(body),
+      })
+      if (result === null)
+        return errorResponse(`No event with slug "${eventRef}".`, 404)
+      if (result.notFound) return errorResponse("Evaluation plan not found.", 404)
+      await auditApiWrite(ctx, credential, {
+        eventRef,
+        method: `${isCreate ? "POST" : method} /evaluation-plans`,
+        entity: "settings",
+        entityId: isCreate ? undefined : tail[0],
+        action: isCreate ? "created" : method === "DELETE" ? "deleted" : "updated",
+        summary: `Evaluation plan ${isCreate ? "created" : method === "DELETE" ? "deleted" : "updated"} via the API${str(body.name) ? ` · ${str(body.name)}` : ""}`,
+      })
+      if (method === "DELETE")
+        return new Response(null, {
+          status: 204,
+          headers: { ...CORS_HEADERS, ...gate.headers },
+        })
+      return jsonResponse(result, isCreate ? 201 : 200, gate.headers)
+    }
+    return errorResponse(
+      `Unknown evaluation endpoint ${method} ${url.pathname}.`,
+      404,
+    )
+  }
+
+  if (resource === "evaluators") {
+    if (tail.length === 0 && method === "GET") {
+      if (!hasScope(credential, "read:contacts"))
+        return errorResponse("This token lacks the `read:contacts` scope.", 403)
+      const result = await ctx.runQuery(internal.apiV1.listEvaluators, {
+        eventRef,
+        userId: credential.userId,
+        planId: url.searchParams.get("plan_id") ?? undefined,
+        page: paging.page,
+        pageSize: paging.pageSize,
+      })
+      if (result === null)
+        return errorResponse(`No event with slug "${eventRef}".`, 404)
+      return jsonResponse(result)
+    }
+    const isCreate = tail.length === 1 && tail[0] === "create" && method === "POST"
+    const isMutate = tail.length === 1 && (method === "PUT" || method === "DELETE")
+    if (isCreate || isMutate) {
+      const denied = denyDemoWrite()
+      if (denied) return denied
+      if (!hasScope(credential, "write:contacts"))
+        return errorResponse("This token lacks the `write:contacts` scope.", 403)
+      const gate = await enforceRateLimit(ctx, credential, "event_writes")
+      if (gate.limited) return gate.limited
+      const assigned = body.assigned_submission_ids ?? body.assignedSubmissionIds
+      const result = await ctx.runMutation(internal.apiV1.writeEvaluator, {
+        eventRef,
+        userId: credential.userId as string,
+        action: isCreate ? "create" : method === "DELETE" ? "delete" : "update",
+        evaluatorId: isCreate ? undefined : tail[0],
+        input: {
+          plan_id: str(body.plan_id) ?? str(body.planId),
+          email: str(body.email),
+          name: str(body.name),
+          assigned_submission_ids: Array.isArray(assigned)
+            ? assigned.filter((id): id is string => typeof id === "string")
+            : undefined,
+        },
+      })
+      if (result === null)
+        return errorResponse(`No event with slug "${eventRef}".`, 404)
+      if (result.notFound) return errorResponse("Evaluator not found.", 404)
+      await auditApiWrite(ctx, credential, {
+        eventRef,
+        method: `${isCreate ? "POST" : method} /evaluators`,
+        entity: "settings",
+        entityId: isCreate ? undefined : tail[0],
+        action: isCreate ? "created" : method === "DELETE" ? "deleted" : "updated",
+        summary: `Evaluator ${isCreate ? "added" : method === "DELETE" ? "removed" : "updated"} via the API${str(body.email) ? ` · ${str(body.email)}` : ""}`,
+      })
+      if (method === "DELETE")
+        return new Response(null, {
+          status: 204,
+          headers: { ...CORS_HEADERS, ...gate.headers },
+        })
+      return jsonResponse(result, isCreate ? 201 : 200, gate.headers)
+    }
+    return errorResponse(`Unknown evaluator endpoint ${method} ${url.pathname}.`, 404)
+  }
+
+  if (resource === "evaluations" && tail.length === 0) {
+    if (method !== "GET") return errorResponse("Only GET is supported here.", 405)
+    if (!hasScope(credential, "read:sessions"))
+      return errorResponse("This token lacks the `read:sessions` scope.", 403)
+    const result = await ctx.runQuery(internal.apiV1.listEvaluations, {
+      eventRef,
+      userId: credential.userId,
+      planId: url.searchParams.get("plan_id") ?? undefined,
+      sessionId: url.searchParams.get("session_id") ?? undefined,
+      evaluatorId: url.searchParams.get("evaluator_id") ?? undefined,
+      page: paging.page,
+      pageSize: paging.pageSize,
+    })
+    if (result === null)
+      return errorResponse(`No event with slug "${eventRef}".`, 404)
+    return jsonResponse(result)
   }
 
   // ——— Submissions (our name for abstracts; predates parity) ———
@@ -1243,6 +1776,11 @@ async function handleEventScoped(
         userId: credential.userId,
         resource: normalized,
         search: url.searchParams.get("search") ?? str(filters.search),
+        // Statuses are soft-deleted, so a client reconciling a mirror can ask
+        // for the archived ones (each carrying `deleted_at`).
+        includeDeleted: readBool(
+          url.searchParams.get("include_deleted") ?? filters.includeDeleted,
+        ),
         page: paging.page,
         pageSize: paging.pageSize,
       })
@@ -1334,15 +1872,30 @@ async function handleEventScoped(
       const isCreate = tail.length === 1 && tail[0] === "create" && method === "POST"
       const isMutate =
         tail.length === 1 && (method === "PUT" || method === "DELETE")
-      if (isCreate || isMutate) {
+      // Statuses are soft-deleted, so they carry a restore leg — the one
+      // Sessionboard operation we had no equivalent of.
+      const isRestore =
+        normalized === "statuses" &&
+        tail.length === 2 &&
+        tail[1] === "restore" &&
+        method === "POST"
+      if (isCreate || isMutate || isRestore) {
         const result = await ctx.runMutation(internal.apiV1.writeMetadata, {
           eventRef,
           userId: credential.userId as string,
           resource: normalized,
-          action: isCreate ? "create" : method === "DELETE" ? "delete" : "update",
+          action: isCreate
+            ? "create"
+            : isRestore
+              ? "restore"
+              : method === "DELETE"
+                ? "delete"
+                : "update",
           id: isCreate ? undefined : tail[0],
           name: str(body.name),
           color: str(body.color),
+          category: str(body.category),
+          reassignTo: str(body.reassign_to) ?? str(body.reassignTo),
           capacity:
             typeof body.capacity === "number" ? body.capacity : undefined,
           order: typeof body.order === "number" ? body.order : undefined,
@@ -1374,9 +1927,217 @@ async function handleEventScoped(
   }
 
   return errorResponse(
-    `Unknown resource "${resource}". Supported: sessions, speakers, submissions, agenda, fields, tags, tracks, rooms, formats, levels, languages, statuses, schedule.ics.`,
+    `Unknown resource "${resource}". Supported: sessions, speakers, submissions, forms, tasks, evaluation-plans, evaluators, evaluations, agenda, fields, tags, tracks, rooms, formats, levels, languages, statuses, schedule.ics.`,
     404,
   )
+}
+
+/**
+ * Form payloads. Questions come through as-is (they are the field definitions
+ * `GET /fields` returns), coerced to the exact shape the schema declares so a
+ * missing `enabled` is a sensible default rather than a validator error.
+ */
+function readFormInput(body: Record<string, unknown>): Record<string, unknown> {
+  const get = (...names: Array<string>): unknown => {
+    for (const name of names) if (body[name] !== undefined) return body[name]
+    return undefined
+  }
+  const input: Record<string, unknown> = {}
+  const strings: Array<[string, Array<string>]> = [
+    ["internal_name", ["internal_name", "internalName", "name"]],
+    ["external_title", ["external_title", "externalTitle", "title"]],
+    ["kind", ["kind"]],
+    ["slug", ["slug"]],
+    ["status", ["status"]],
+    ["page_heading", ["page_heading", "pageHeading"]],
+    ["welcome_message", ["welcome_message", "welcomeMessage"]],
+  ]
+  for (const [target, sources] of strings) {
+    const value = str(get(...sources))
+    if (value !== undefined) input[target] = value
+  }
+  const showWelcome = readBool(get("show_welcome_message", "showWelcomeMessage"))
+  if (showWelcome !== undefined) input.show_welcome_message = showWelcome
+  const closeAt = readTime(get("close_at", "closeAt"))
+  if (closeAt !== undefined) input.close_at = closeAt
+  const notify = get("notify_emails", "notifyEmails")
+  if (Array.isArray(notify))
+    input.notify_emails = notify.filter((e): e is string => typeof e === "string")
+
+  const questions = get("questions")
+  if (Array.isArray(questions))
+    input.questions = questions.map((raw) => {
+      const q = (raw ?? {}) as Record<string, unknown>
+      const id = str(q.id) ?? str(q.internal_name)
+      const label = str(q.label) ?? str(q.public_name) ?? id ?? "Question"
+      const slug =
+        id ??
+        label
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, "_")
+          .replace(/^_+|_+$/g, "")
+      const options = Array.isArray(q.options)
+        ? q.options.filter((o): o is string => typeof o === "string")
+        : undefined
+      const showIf =
+        q.show_if && typeof q.show_if === "object"
+          ? (q.show_if as Record<string, unknown>)
+          : q.showIf && typeof q.showIf === "object"
+            ? (q.showIf as Record<string, unknown>)
+            : undefined
+      return {
+        id: slug || "question",
+        label,
+        type: str(q.type) ?? str(q.field_type) ?? "short_text",
+        required: readBool(q.required) ?? false,
+        enabled: readBool(q.enabled) ?? true,
+        locked: readBool(q.locked) ?? false,
+        help: str(q.help),
+        placeholder: str(q.placeholder),
+        options,
+        maxChars:
+          typeof q.max_chars === "number"
+            ? q.max_chars
+            : typeof q.maxChars === "number"
+              ? q.maxChars
+              : undefined,
+        showIf:
+          showIf && str(showIf.questionId ?? showIf.question_id) && str(showIf.equals)
+            ? {
+                questionId: str(showIf.questionId ?? showIf.question_id) as string,
+                equals: str(showIf.equals) as string,
+              }
+            : undefined,
+        isTrackQuestion:
+          readBool(q.is_track_question ?? q.isTrackQuestion) ?? undefined,
+      }
+    })
+
+  const participants = get("participant_config", "participantConfig")
+  if (participants && typeof participants === "object") {
+    const p = participants as Record<string, unknown>
+    const fields = p.fields
+    input.participant_config = {
+      speaker_min:
+        typeof (p.speaker_min ?? p.speakerMin) === "number"
+          ? (p.speaker_min ?? p.speakerMin)
+          : undefined,
+      speaker_max:
+        typeof (p.speaker_max ?? p.speakerMax) === "number"
+          ? (p.speaker_max ?? p.speakerMax)
+          : undefined,
+      chairperson_enabled: readBool(p.chairperson_enabled ?? p.chairpersonEnabled),
+      moderator_enabled: readBool(p.moderator_enabled ?? p.moderatorEnabled),
+      send_confirmation_email: readBool(
+        p.send_confirmation_email ?? p.sendConfirmationEmail,
+      ),
+      fields: Array.isArray(fields)
+        ? fields.map((raw) => {
+            const f = (raw ?? {}) as Record<string, unknown>
+            return {
+              id: str(f.id) ?? "field",
+              label: str(f.label) ?? str(f.id) ?? "Field",
+              required: readBool(f.required) ?? false,
+              enabled: readBool(f.enabled) ?? true,
+              locked: readBool(f.locked) ?? false,
+              help: str(f.help),
+            }
+          })
+        : undefined,
+    }
+  }
+
+  const settings = get("settings")
+  if (settings && typeof settings === "object") {
+    const s = settings as Record<string, unknown>
+    input.settings = {
+      limit_per_user:
+        typeof (s.limit_per_user ?? s.limitPerUser) === "number"
+          ? (s.limit_per_user ?? s.limitPerUser)
+          : undefined,
+      allow_drafts: readBool(s.allow_drafts ?? s.allowDrafts),
+      success_message: str(s.success_message ?? s.successMessage),
+      auto_redirect_to_portal: readBool(
+        s.auto_redirect_to_portal ?? s.autoRedirectToPortal,
+      ),
+      send_reminder_email: readBool(s.send_reminder_email ?? s.sendReminderEmail),
+    }
+  }
+  return input
+}
+
+function readTaskInput(body: Record<string, unknown>): Record<string, unknown> {
+  const get = (...names: Array<string>): unknown => {
+    for (const name of names) if (body[name] !== undefined) return body[name]
+    return undefined
+  }
+  const input: Record<string, unknown> = {}
+  const title = str(get("title", "name"))
+  if (title !== undefined) input.title = title
+  const instructions = str(get("instructions", "description"))
+  if (instructions !== undefined) input.instructions = instructions
+  const kind = str(get("kind", "type"))
+  if (kind !== undefined) input.kind = kind
+  const dueAt = readTime(get("due_at", "dueAt", "due"))
+  if (dueAt !== undefined) input.due_at = dueAt
+  const completed = readBool(get("completed", "is_complete", "done"))
+  if (completed !== undefined) input.completed = completed
+  const sessionId = str(get("session_id", "sessionId", "submission_id"))
+  if (sessionId !== undefined) input.session_id = sessionId
+  const ids = get("speaker_ids", "speakerIds", "person_ids")
+  if (Array.isArray(ids))
+    input.speaker_ids = ids.filter((id): id is string => typeof id === "string")
+  const single = str(get("speaker_id", "speakerId", "person_id"))
+  if (single !== undefined)
+    input.speaker_ids = [...((input.speaker_ids as Array<string> | undefined) ?? []), single]
+  const emails = get("speaker_emails", "speakerEmails", "emails")
+  if (Array.isArray(emails))
+    input.speaker_emails = emails.filter((e): e is string => typeof e === "string")
+  const email = str(get("speaker_email", "email"))
+  if (email !== undefined)
+    input.speaker_emails = [
+      ...((input.speaker_emails as Array<string> | undefined) ?? []),
+      email,
+    ]
+  return input
+}
+
+function readPlanInput(body: Record<string, unknown>): Record<string, unknown> {
+  const get = (...names: Array<string>): unknown => {
+    for (const name of names) if (body[name] !== undefined) return body[name]
+    return undefined
+  }
+  const input: Record<string, unknown> = {}
+  const name = str(get("name", "title"))
+  if (name !== undefined) input.name = name
+  const round = get("round")
+  if (typeof round === "number") input.round = round
+  const status = str(get("status"))
+  if (status !== undefined) input.status = status
+  const blind = readBool(get("blind", "is_blind"))
+  if (blind !== undefined) input.blind = blind
+  const opensAt = readTime(get("opens_at", "opensAt"))
+  if (opensAt !== undefined) input.opens_at = opensAt
+  const dueAt = readTime(get("due_at", "dueAt"))
+  if (dueAt !== undefined) input.due_at = dueAt
+  const ids = get("submission_ids", "session_ids", "submissionIds")
+  if (Array.isArray(ids))
+    input.submission_ids = ids.filter((id): id is string => typeof id === "string")
+  const criteria = get("criteria")
+  if (Array.isArray(criteria))
+    input.criteria = criteria.map((raw) => {
+      const c = (raw ?? {}) as Record<string, unknown>
+      return {
+        id: str(c.id),
+        label: str(c.label) ?? str(c.name) ?? "Criterion",
+        type: str(c.type),
+        options: Array.isArray(c.options)
+          ? c.options.filter((o): o is string => typeof o === "string")
+          : undefined,
+        weight: typeof c.weight === "number" ? c.weight : undefined,
+      }
+    })
+  return input
 }
 
 function readSpeakerInput(body: Record<string, unknown>): Record<string, unknown> {

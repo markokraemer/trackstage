@@ -12,7 +12,7 @@ import { DataToolbar } from "@/components/shared/data-toolbar"
 import { buttonVariants } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Card } from "@/components/ui/card"
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Tabs, TabsCount, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useCurrentEvent } from "@/lib/current-event"
 import { FormCard } from "@/components/forms-builder/form-card"
 import { friendlyError } from "@/components/forms-builder/model"
@@ -119,9 +119,18 @@ function FormsListPage() {
             onValueChange={(value) => setStatus(String(value) as StatusFilter)}
           >
             <TabsList>
-              <TabsTrigger value="all">All {counts.all}</TabsTrigger>
-              <TabsTrigger value="open">Open {counts.open}</TabsTrigger>
-              <TabsTrigger value="closed">Closed {counts.closed}</TabsTrigger>
+              <TabsTrigger value="all">
+                All
+                <TabsCount>{counts.all}</TabsCount>
+              </TabsTrigger>
+              <TabsTrigger value="open">
+                Open
+                <TabsCount>{counts.open}</TabsCount>
+              </TabsTrigger>
+              <TabsTrigger value="closed">
+                Closed
+                <TabsCount>{counts.closed}</TabsCount>
+              </TabsTrigger>
             </TabsList>
           </Tabs>
         }
@@ -166,6 +175,7 @@ function FormsListPage() {
                 internalName: form.internalName,
                 externalTitle: form.externalTitle,
                 slug: form.slug,
+                eventSlug: form.eventSlug,
                 kind: form.kind,
                 status: form.status,
                 closeAt: form.closeAt,

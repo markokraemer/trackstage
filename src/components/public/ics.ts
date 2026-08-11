@@ -88,6 +88,24 @@ export function buildIcs(calendarName: string, events: Array<IcsEvent>): string 
   return lines.map(fold).join(CRLF) + CRLF
 }
 
+/**
+ * The event's live calendar feed — the same public endpoint `/app/embeds`
+ * hands organizers (`convex/apiHttp.ts`, `/v1/event/{slug}/schedule.ics`).
+ * Unlike the browser-built file above this one keeps updating: a visitor who
+ * subscribes sees room and time changes without doing anything.
+ */
+export function icsFeedUrl(slug: string): string | null {
+  const convexUrl = import.meta.env.VITE_CONVEX_URL as string | undefined
+  if (!convexUrl || !slug) return null
+  return `${convexUrl.replace(".convex.cloud", ".convex.site")}/v1/event/${slug}/schedule.ics`
+}
+
+/** `webcal://` form — one click subscribes in Apple/Outlook/Google Calendar. */
+export function webcalFeedUrl(slug: string): string | null {
+  const url = icsFeedUrl(slug)
+  return url ? url.replace(/^https?:/, "webcal:") : null
+}
+
 /** "keynote-opening-remarks" — safe, readable download filenames. */
 export function slugifyFilename(value: string): string {
   const slug = value

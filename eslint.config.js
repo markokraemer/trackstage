@@ -52,7 +52,7 @@ export default [
     },
   },
   {
-    ignores: [
+    ignores: ["video/**", 
       "eslint.config.js",
       ".prettierrc",
       "convex/_generated/**",

@@ -40,7 +40,7 @@ import {
   canEdit,
   canWithdraw,
   formatDate,
-  formatDateTime,
+  formatEventDateTime,
   humanizeKey,
 } from "./portal-utils"
 
@@ -82,9 +82,49 @@ export function SubmissionDrawer({
   open,
   onOpenChange,
 }: SubmissionDrawerProps) {
-  const { portalToken } = usePortal()
-  const updateSubmission = useConvexMutation(api.portal.updateSubmission)
-  const withdrawSubmission = useConvexMutation(api.portal.withdrawSubmission)
+  const { portalToken, home } = usePortal()
+  // Optimistic on both (docs/memory/RULES.md #26): the speaker's own text is
+  // already on their screen, so the list behind the drawer must not lag a
+  // round-trip behind it. A rejected save rolls back and the toast says why.
+  const updateSubmission = useConvexMutation(
+    api.portal.updateSubmission,
+  ).withOptimisticUpdate((localStore, args) => {
+    const current = localStore.getQuery(api.portal.home, { portalToken })
+    if (!current) return
+    localStore.setQuery(
+      api.portal.home,
+      { portalToken },
+      {
+        ...current,
+        submissions: current.submissions.map((s) =>
+          s.id === args.submissionId
+            ? {
+                ...s,
+                title: args.patch.title ?? s.title,
+                description: args.patch.description ?? s.description,
+                answers: args.patch.answers ?? s.answers,
+              }
+            : s,
+        ),
+      },
+    )
+  })
+  const withdrawSubmission = useConvexMutation(
+    api.portal.withdrawSubmission,
+  ).withOptimisticUpdate((localStore, args) => {
+    const current = localStore.getQuery(api.portal.home, { portalToken })
+    if (!current) return
+    localStore.setQuery(
+      api.portal.home,
+      { portalToken },
+      {
+        ...current,
+        submissions: current.submissions.map((s) =>
+          s.id === args.submissionId ? { ...s, status: "withdrawn" } : s,
+        ),
+      },
+    )
+  })
 
   // One server-computed verdict (convex/portal.ts editLockFor): a decided
   // status, the organizer's "allow submission edits" switch, or the CFP's own
@@ -224,14 +264,21 @@ export function SubmissionDrawer({
               <RiCalendarEventLine aria-hidden />
               <AlertTitle>You're on the schedule</AlertTitle>
               <AlertDescription>
-                {formatDateTime(submission.scheduled.startsAt)} ·{" "}
-                {submission.scheduled.durationMinutes} minutes
-                {submission.scheduled.room ? (
-                  <span className="inline-flex items-center gap-1">
-                    <RiMapPin2Line size={14} aria-hidden />
-                    {submission.scheduled.room}
-                  </span>
-                ) : null}
+                <span className="block font-medium text-foreground">
+                  {formatEventDateTime(
+                    submission.scheduled.startsAt,
+                    home.event.timezone,
+                  )}
+                </span>
+                <span className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                  <span>{submission.scheduled.durationMinutes} minutes</span>
+                  {submission.scheduled.room ? (
+                    <span className="inline-flex items-center gap-1.5">
+                      <RiMapPin2Line size={14} aria-hidden />
+                      {submission.scheduled.room}
+                    </span>
+                  ) : null}
+                </span>
               </AlertDescription>
             </Alert>
           ) : null}

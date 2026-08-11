@@ -214,7 +214,9 @@ test.describe("hierarchy", () => {
     watcher.assertClean("/app/account via menu")
   })
 
-  test("account settings renders profile and password", async ({ page }) => {
+  test("account settings renders profile, security and API tabs", async ({
+    page,
+  }) => {
     const watcher = watchConsole(page)
     await page.goto("/app/account")
     await expect(
@@ -222,19 +224,45 @@ test.describe("hierarchy", () => {
     ).toBeVisible({ timeout: 15_000 })
     await expect(page.getByText(/your profile/i).first()).toBeVisible()
     await expect(page.getByLabel(/full name/i).first()).toBeVisible()
+
+    // Password lives on Security; API keys on API & MCP (personal, not
+    // event-level — docs/memory/RULES.md 23b).
+    await page.getByRole("tab", { name: /security/i }).first().click()
     await expect(page.getByLabel(/current password/i).first()).toBeVisible()
+
+    await page.getByRole("tab", { name: /api & mcp/i }).first().click()
+    await expect(page.getByText(/api keys/i).first()).toBeVisible()
+
     await assertNoErrorBoundary(page, "/app/account")
     watcher.assertClean("/app/account")
   })
 
-  test("workspace settings renders name and members", async ({ page }) => {
+  test("the old event-level api-mcp link lands on account settings", async ({
+    page,
+  }) => {
+    const watcher = watchConsole(page)
+    await page.goto("/app/settings/api-mcp")
+    await expect(page).toHaveURL(/\/app\/account\?tab=api-mcp/)
+    await expect(page.getByText(/api keys/i).first()).toBeVisible({
+      timeout: 15_000,
+    })
+    watcher.assertClean("/app/settings/api-mcp redirect")
+  })
+
+  test("workspace hub renders name, events and team", async ({ page }) => {
     const watcher = watchConsole(page)
     await page.goto("/app/workspace")
     await expect(
       page.getByRole("heading", { name: /workspace settings/i }).first(),
     ).toBeVisible({ timeout: 15_000 })
     await expect(page.getByLabel(/workspace name/i).first()).toBeVisible()
-    await expect(page.getByText(/members/i).first()).toBeVisible()
+    // The hub lists the events this workspace owns, then the people who run
+    // them, with each member's event access (docs/memory/RULES.md 23).
+    await expect(page.getByText(/^Events$/).first()).toBeVisible()
+    await expect(page.getByText(/^Team$/).first()).toBeVisible()
+    await expect(
+      page.getByRole("columnheader", { name: /event access/i }).first(),
+    ).toBeVisible()
     await expect(
       page.getByRole("button", { name: /invite teammate/i }).first(),
     ).toBeVisible()

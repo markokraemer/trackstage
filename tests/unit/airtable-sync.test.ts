@@ -1,4 +1,13 @@
 import { describe, expect, it } from "vitest"
+import { ConvexError } from "convex/values"
+import {
+  AirtableError,
+  humanAirtableError,
+  normalizeBaseId,
+  normalizeCredentials,
+  normalizeToken,
+} from "../../convex/lib/airtable"
+import { errorMessage } from "../../src/components/settings/errors"
 import {
   INBOUND_REASON_TEXT,
   INBOUND_STATUSES,
@@ -113,7 +122,7 @@ describe("shouldApplyInbound", () => {
       shouldApplyInbound({
         airtableValue: "Accepted",
         currentStatus: "pending",
-      }).reason,
+      }).reason
     ).toBe("no_baseline")
   })
 
@@ -215,5 +224,124 @@ describe("modifiedSinceFormula", () => {
 
   it("never produces a negative instant", () => {
     expect(modifiedSinceFormula(0)).toContain(new Date(0).toISOString())
+  })
+})
+
+// ——— Forgiving input + plain-English errors ————————————————————————————
+// Both of these are regressions from a real production failure (BUILD-LOG,
+// 2026-08-11): Marko pasted "appcLLu7HlngMfKLW/tblZhfJ2nbaQmVVvC" — the base
+// id and table id together, exactly as Airtable's address bar shows them — and
+// got back "[CONVEX A(airtable:connect)] [Request ID: …] Server Error".
+
+describe("normalizeBaseId", () => {
+  it("takes the base id straight out of whatever a human pasted", () => {
+    const id = "appcLLu7HlngMfKLW"
+    expect(normalizeBaseId(id)).toBe(id)
+    // THE production paste: base id + table id, address-bar style.
+    expect(normalizeBaseId(`${id}/tblZhfJ2nbaQmVVvC`)).toBe(id)
+    expect(normalizeBaseId(`https://airtable.com/${id}/tblAbc/viwXyz`)).toBe(id)
+    expect(
+      normalizeBaseId(`https://airtable.com/${id}/tblAbc?blocks=hide`)
+    ).toBe(id)
+    expect(normalizeBaseId(`  ${id}\n`)).toBe(id)
+    expect(
+      normalizeBaseId(`https://api.airtable.com/v0/${id}/Submissions`)
+    ).toBe(id)
+  })
+
+  it("returns null rather than guessing when there is no id in there", () => {
+    expect(normalizeBaseId("my airtable thing")).toBeNull()
+    expect(normalizeBaseId("")).toBeNull()
+    expect(normalizeBaseId(null)).toBeNull()
+    expect(normalizeBaseId("tblZhfJ2nbaQmVVvC")).toBeNull()
+  })
+})
+
+describe("normalizeToken", () => {
+  it("repairs a clipboard rather than bouncing it back", () => {
+    expect(normalizeToken("  patABC.def  ")).toBe("patABC.def")
+    expect(normalizeToken("patABC.\ndef")).toBe("patABC.def")
+    expect(normalizeToken("Bearer patABC.def")).toBe("patABC.def")
+  })
+})
+
+describe("normalizeCredentials", () => {
+  it("hands back the cleaned pair", () => {
+    expect(
+      normalizeCredentials(
+        " patABC.def ",
+        "https://airtable.com/appcLLu7HlngMfKLW/tblX"
+      )
+    ).toEqual({ token: "patABC.def", baseId: "appcLLu7HlngMfKLW" })
+  })
+
+  it("explains, in one sentence, what to do instead", () => {
+    expect(() =>
+      normalizeCredentials("keyOLDSTYLE", "appcLLu7HlngMfKLW")
+    ).toThrow(/personal access tokens start with/i)
+    expect(() => normalizeCredentials("patABC.def", "nonsense")).toThrow(
+      /couldn't find a base ID/i
+    )
+  })
+
+  it("throws ConvexError, the only kind whose message survives production", () => {
+    // An ordinary Error here reaches the organizer as "Server Error" — that is
+    // precisely the bug this file guards.
+    try {
+      normalizeCredentials("", "appcLLu7HlngMfKLW")
+      expect.unreachable()
+    } catch (error) {
+      expect(error).toBeInstanceOf(ConvexError)
+      expect(typeof (error as ConvexError<string>).data).toBe("string")
+    }
+  })
+})
+
+describe("humanAirtableError", () => {
+  it("keeps our own sentence", () => {
+    expect(
+      humanAirtableError(new AirtableError("Airtable said no.", 403))
+    ).toBe("Airtable said no.")
+  })
+
+  it("turns a network failure into something actionable", () => {
+    expect(humanAirtableError(new TypeError("fetch failed"))).toMatch(
+      /couldn't reach airtable/i
+    )
+  })
+
+  it("never hands back a bare stack", () => {
+    const message = humanAirtableError(new Error("boom\n  at somewhere"))
+    expect(message).not.toContain("  at ")
+  })
+})
+
+describe("errorMessage (what the Integrations card renders)", () => {
+  it("prefers the ConvexError payload over Convex's decorated message", () => {
+    const error = new ConvexError("The token can't see this base.")
+    // Convex rewrites `.message` on the way to the client; `.data` survives.
+    error.message =
+      "[CONVEX A(airtable:connect)] [Request ID: abc123] Server Error"
+    expect(errorMessage(error, "fallback")).toBe(
+      "The token can't see this base."
+    )
+  })
+
+  it("falls back rather than showing Convex's redaction placeholder", () => {
+    const error = new Error(
+      "[CONVEX A(airtable:connect)] [Request ID: abc123] Server Error"
+    )
+    expect(errorMessage(error, "Couldn't connect to Airtable.")).toBe(
+      "Couldn't connect to Airtable."
+    )
+  })
+
+  it("still reads a dev deployment's uncaught message", () => {
+    const error = new Error(
+      "[Request ID: abc] Server Error\nUncaught AirtableError: Create one at airtable.com/create/tokens\n    at handler"
+    )
+    expect(errorMessage(error, "fallback")).toBe(
+      "Create one at airtable.com/create/tokens"
+    )
   })
 })

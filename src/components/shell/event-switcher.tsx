@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react"
+import { useState } from "react"
 import { Link } from "@tanstack/react-router"
 import {
   RiAddLine,
@@ -17,51 +17,38 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import { Skeleton } from "@/components/ui/skeleton"
 import { NewEventDialog } from "@/components/settings/new-event-dialog"
+import { NewWorkspaceDialog } from "@/components/workspace/new-workspace-dialog"
 import { formatZonedDateRange } from "@/components/settings/timezone"
+import {
+  WorkspaceMenuSection,
+  useWorkspaceSwitcher,
+} from "@/components/shell/workspace-switcher"
 import { useCurrentEvent } from "@/lib/current-event"
-import type { EventSummary } from "@/lib/current-event"
 
 /**
- * Event switcher — the sidebar's event-context block IS the control
- * (docs/memory/RULES.md 23a). Clicking it lists every event you can reach,
- * grouped by the workspace that owns it, so the hierarchy
- * workspace → events is visible at the moment you switch.
+ * The sidebar context picker — the event-context block IS the control
+ * (docs/memory/RULES.md 23a). It reads top-down as the hierarchy itself:
+ *
+ *   level 1  the WORKSPACE you're in → every workspace you belong to
+ *   level 2  the EVENTS that workspace owns → the one you're working on
+ *
+ * Events are listed for the current workspace only. Showing every event of
+ * every workspace in one flat list (as this used to) quietly denied that
+ * workspaces are separate tenants — and got unreadable the moment someone was
+ * invited into a second team.
  *
  * Mirrors Sessionboard's own two-level model (an event workspace you can leave
  * via "Back to organization"): "All events" is our organization dashboard.
  */
 export function ShellEventSwitcher() {
-  const { events, event, workspaces, selectEvent, isLoading } = useCurrentEvent()
-  const [creating, setCreating] = useState(false)
+  const { workspaceEvents, event, selectEvent, isLoading } = useCurrentEvent()
+  const { workspaceOptions, workspace, switchTo, creating, setCreating } =
+    useWorkspaceSwitcher()
+  const [creatingEvent, setCreatingEvent] = useState(false)
 
-  // Group by workspace, keeping the workspace order the user knows from the
-  // account menu, and tolerating an event whose workspace hasn't loaded yet.
-  const groups = useMemo(() => {
-    const byWorkspace = new Map<string, Array<EventSummary>>()
-    for (const row of events) {
-      const key = row.organizationId as string
-      const list = byWorkspace.get(key)
-      if (list) list.push(row)
-      else byWorkspace.set(key, [row])
-    }
-    const ordered: Array<{ id: string; name: string; events: Array<EventSummary> }> =
-      []
-    for (const workspace of workspaces) {
-      const rows = byWorkspace.get(workspace.id)
-      if (!rows) continue
-      ordered.push({ id: workspace.id, name: workspace.name, events: rows })
-      byWorkspace.delete(workspace.id)
-    }
-    for (const [id, rows] of byWorkspace) {
-      ordered.push({
-        id,
-        name: rows[0]?.organizationName || "Workspace",
-        events: rows,
-      })
-    }
-    return ordered
-  }, [events, workspaces])
+  const currentOption = workspaceOptions.find((row) => row.isCurrent)
 
   const dates = event
     ? (formatZonedDateRange(event.startsAt, event.endsAt, event.timezone) ??
@@ -92,12 +79,26 @@ export function ShellEventSwitcher() {
             size={26}
           />
           <span className="min-w-0 flex-1 max-md:sr-only">
-            <span className="block truncate text-sm font-semibold text-foreground">
-              {event?.name ?? (isLoading ? "Loading…" : "No event yet")}
-            </span>
-            <span className="block truncate text-xs text-muted-foreground">
-              {event ? dates : "Create your first event"}
-            </span>
+            {/* While the event list is in flight this is a shape, not words:
+                "Loading… / Create your first event" told an organizer with six
+                events that they had none. Two lines of exactly this height, so
+                the real name replaces them without moving anything. */}
+            {!event && isLoading ? (
+              <>
+                <Skeleton className="my-0.5 block h-4 w-32 max-w-full" />
+                <Skeleton className="my-0.5 block h-3 w-24 max-w-full" />
+                <span className="sr-only">Loading your events…</span>
+              </>
+            ) : (
+              <>
+                <span className="block truncate text-sm font-semibold text-foreground">
+                  {event?.name ?? "No event yet"}
+                </span>
+                <span className="block truncate text-xs text-muted-foreground">
+                  {event ? dates : "Create your first event"}
+                </span>
+              </>
+            )}
           </span>
           <RiExpandUpDownLine
             size={15}
@@ -107,52 +108,61 @@ export function ShellEventSwitcher() {
         </DropdownMenuTrigger>
 
         <DropdownMenuContent align="start" className="w-72">
-          {groups.length === 0 ? (
-            <p className="px-2 py-1.5 text-sm text-muted-foreground">
-              {isLoading
-                ? "Loading your events…"
-                : "You haven't created an event yet."}
-            </p>
-          ) : (
-            groups.map((group) => (
-              <DropdownMenuGroup key={group.id}>
-                <DropdownMenuLabel className="text-muted-foreground">
-                  {group.name}
-                </DropdownMenuLabel>
-                {group.events.map((row) => (
-                  <DropdownMenuItem
-                    key={row._id}
-                    onClick={() => selectEvent(row._id)}
-                  >
-                    <EventTile
-                      name={row.name}
-                      logoUrl={row.logoUrl ?? undefined}
-                      size={22}
-                    />
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate font-medium">
-                        {row.name}
-                      </span>
-                      <span className="block truncate text-xs text-muted-foreground">
-                        {formatZonedDateRange(
-                          row.startsAt,
-                          row.endsAt,
-                          row.timezone,
-                        ) ?? "Dates not set"}
-                      </span>
+          {/* Level 1 — which workspace am I in? */}
+          <WorkspaceMenuSection
+            workspaces={workspaceOptions}
+            current={currentOption}
+            onSelect={switchTo}
+            onCreate={() => setCreating(true)}
+          />
+
+          <DropdownMenuSeparator />
+
+          {/* Level 2 — which of ITS events am I working on? */}
+          <DropdownMenuGroup>
+            <DropdownMenuLabel>
+              Events{workspace ? ` in ${workspace.name}` : ""}
+            </DropdownMenuLabel>
+            {workspaceEvents.length === 0 ? (
+              <p className="px-2 pb-1.5 text-sm text-muted-foreground">
+                {isLoading
+                  ? "Loading your events…"
+                  : "No events yet — create one to get started."}
+              </p>
+            ) : (
+              workspaceEvents.map((row) => (
+                <DropdownMenuItem
+                  key={row._id}
+                  onClick={() => selectEvent(row._id)}
+                >
+                  <EventTile
+                    name={row.name}
+                    logoUrl={row.logoUrl ?? undefined}
+                    size={22}
+                  />
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate font-medium">
+                      {row.name}
                     </span>
-                    {row._id === event?._id ? (
-                      <RiCheckLine
-                        size={15}
-                        aria-hidden
-                        className="text-primary"
-                      />
-                    ) : null}
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuGroup>
-            ))
-          )}
+                    <span className="block truncate text-xs text-muted-foreground">
+                      {formatZonedDateRange(
+                        row.startsAt,
+                        row.endsAt,
+                        row.timezone,
+                      ) ?? "Dates not set"}
+                    </span>
+                  </span>
+                  {row._id === event?._id ? (
+                    <RiCheckLine
+                      size={15}
+                      aria-hidden
+                      className="text-primary"
+                    />
+                  ) : null}
+                </DropdownMenuItem>
+              ))
+            )}
+          </DropdownMenuGroup>
 
           <DropdownMenuSeparator />
           <DropdownMenuItem
@@ -162,14 +172,28 @@ export function ShellEventSwitcher() {
             <RiCalendarEventLine size={15} aria-hidden />
             All events
           </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => setCreating(true)}>
+          <DropdownMenuItem onClick={() => setCreatingEvent(true)}>
             <RiAddLine size={15} aria-hidden />
             New event
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
 
-      <NewEventDialog hideTrigger open={creating} onOpenChange={setCreating} />
+      <NewEventDialog
+        hideTrigger
+        open={creatingEvent}
+        onOpenChange={setCreatingEvent}
+      />
+      {/*
+        Both dialogs live OUTSIDE the menu: a dialog rendered inside
+        DropdownMenuContent unmounts the instant the menu closes.
+      */}
+      <NewWorkspaceDialog
+        hideTrigger
+        open={creating}
+        onOpenChange={setCreating}
+        onCreated={switchTo}
+      />
     </>
   )
 }

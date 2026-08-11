@@ -12,7 +12,12 @@ import {
 } from "./_generated/server"
 import { internal } from "./_generated/api"
 import { createAuth } from "./auth"
-import { eventAccessFor, membershipFor, randomToken } from "./lib/auth"
+import {
+  eventAccessFor,
+  memberCanSeeEvent,
+  membershipFor,
+  randomToken,
+} from "./lib/auth"
 import { hashApiKey, keyPrefix } from "./apiKeys"
 import { autoPlaceCore, computeConflicts } from "./agenda"
 import { deleteEventCascade } from "./events"
@@ -25,6 +30,7 @@ import {
   portalLinkFor,
   siteUrl,
 } from "./lib/email"
+import { formPath, uniqueEventSlug, uniqueFormSlug } from "./lib/publicLinks"
 
 // ══════════════════════════════════════════════════════════════════════════
 // Trackstage MCP server — Model Context Protocol over Streamable HTTP.
@@ -164,8 +170,22 @@ function iso(ms: number | undefined | null): string | null {
   return ms === undefined || ms === null ? null : new Date(ms).toISOString()
 }
 
-function publicFormUrl(slug: string): string {
-  return `${siteUrl()}/submit/${slug}`
+/**
+ * The canonical public CFP link, `/submit/:eventSlug/:formSlug` — form slugs
+ * are unique per event, so the event segment is not optional
+ * (docs/memory/DECISIONS.md, "Public URL scheme is hierarchical").
+ */
+function publicFormUrl(eventSlug: string, formSlug: string): string {
+  return `${siteUrl()}${formPath(eventSlug, formSlug)}`
+}
+
+/** Same link, when the caller holds the form but not its event. */
+async function formPublicUrl(
+  ctx: QueryCtx | MutationCtx,
+  form: Doc<"forms">,
+): Promise<string> {
+  const event = await ctx.db.get(form.eventId)
+  return publicFormUrl(event?.slug ?? "", form.slug)
 }
 
 /**
@@ -240,12 +260,15 @@ export const listWorkspaces = internalQuery({
           q.eq("organizationId", org._id),
         )
         .collect()
+      const visible = events.filter((row) =>
+        memberCanSeeEvent(membership, row._id),
+      )
       rows.push({
         organizationId: org._id,
         name: org.name,
         slug: org.slug,
         yourRole: membership.role,
-        eventCount: events.length,
+        eventCount: visible.length,
       })
     }
     return { workspaces: rows }
@@ -270,6 +293,7 @@ export const listEvents = internalQuery({
         )
         .collect()
       for (const event of events) {
+        if (!memberCanSeeEvent(membership, event._id)) continue
         rows.push({
           eventId: event._id,
           slug: event.slug,
@@ -330,22 +354,7 @@ export const createEvent = internalMutation({
     }
     await membershipFor(ctx, args.userId, organizationId, "admin")
 
-    const base =
-      (args.slug ?? name)
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, "-")
-        .replace(/^-|-$/g, "")
-        .slice(0, 40) || "event"
-    let slug = base
-    let n = 2
-    while (
-      await ctx.db
-        .query("events")
-        .withIndex("by_slug", (q) => q.eq("slug", slug))
-        .unique()
-    ) {
-      slug = `${base}-${n++}`
-    }
+    const slug = await uniqueEventSlug(ctx, args.slug ?? name)
 
     const eventId = await ctx.db.insert("events", {
       organizationId,
@@ -363,7 +372,7 @@ export const createEvent = internalMutation({
       eventId,
       slug,
       name,
-      publicSubmitUrlHint: `${siteUrl()}/submit/<form-slug>`,
+      publicSubmitUrlHint: `${siteUrl()}${formPath(slug, "<form-slug>")}`,
     })
   },
 })
@@ -461,7 +470,7 @@ export const listForms = internalQuery({
         kind: form.kind,
         status: form.status,
         closeAt: iso(form.closeAt),
-        publicUrl: publicFormUrl(form.slug),
+        publicUrl: publicFormUrl(event.slug, form.slug),
         submissionCount: submissions.filter((s) => s.status !== "draft").length,
         draftCount: submissions.filter((s) => s.status === "draft").length,
       })
@@ -470,7 +479,15 @@ export const listForms = internalQuery({
   },
 })
 
-/** The one form lookup: takes a form id, or a form slug, or an event ref. */
+/**
+ * The one form lookup: takes a form id, or a form slug.
+ *
+ * Form slugs are unique PER EVENT, so a bare slug like "cfp" can legitimately
+ * match several events now. We keep the slug shorthand (an LLM caller reaches
+ * for the slug it just read out of `list_forms`) but resolve it against the
+ * forms this user may actually see, and ask for the id when that is still
+ * ambiguous — a silent pick would edit the wrong organizer's form.
+ */
 async function resolveForm(
   ctx: QueryCtx | MutationCtx,
   userId: string,
@@ -479,20 +496,34 @@ async function resolveForm(
 ): Promise<Doc<"forms">> {
   const trimmed = ref.trim()
   const asId = ctx.db.normalizeId("forms", trimmed)
-  let form = asId ? await ctx.db.get(asId) : null
-  if (!form) {
-    form = await ctx.db
-      .query("forms")
-      .withIndex("by_slug", (q) => q.eq("slug", trimmed))
-      .unique()
+  const byId = asId ? await ctx.db.get(asId) : null
+  if (byId) {
+    await eventAccessFor(ctx, userId, byId.eventId, minRole)
+    return byId
   }
-  if (!form) {
+
+  const candidates = await ctx.db
+    .query("forms")
+    .withIndex("by_slug", (q) => q.eq("slug", trimmed.toLowerCase()))
+    .take(20)
+  const visible: Array<Doc<"forms">> = []
+  for (const candidate of candidates) {
+    try {
+      await eventAccessFor(ctx, userId, candidate.eventId, minRole)
+      visible.push(candidate)
+    } catch {
+      // Not this caller's form — indistinguishable from "does not exist".
+    }
+  }
+  if (visible.length === 1) return visible[0]
+  if (visible.length > 1) {
     throw new Error(
-      `No form matches "${ref}". Call list_forms to see the form ids and slugs.`,
+      `"${ref}" is the slug of ${visible.length} forms across different events. Pass the formId (see list_forms) so the right one is edited.`,
     )
   }
-  await eventAccessFor(ctx, userId, form.eventId, minRole)
-  return form
+  throw new Error(
+    `No form matches "${ref}". Call list_forms to see the form ids and slugs.`,
+  )
 }
 
 export const getForm = internalQuery({
@@ -511,7 +542,7 @@ export const getForm = internalQuery({
       kind: form.kind,
       status: form.status,
       closeAt: iso(form.closeAt),
-      publicUrl: publicFormUrl(form.slug),
+      publicUrl: await formPublicUrl(ctx, form),
       questions: form.questions.map((question) => {
         // A tag or country dropdown can carry hundreds of options; the whole
         // payload then gets lossily compressed by the model before the user
@@ -578,22 +609,8 @@ export const createForm = internalMutation({
       { id: "tags", label: "Tags", type: "multi_select", required: false, enabled: true, locked: false, options: ["AI", "Infrastructure", "Product", "Open Source"] },
     ]
 
-    const base =
-      name
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, "-")
-        .replace(/^-|-$/g, "")
-        .slice(0, 40) || "form"
-    let slug = base
-    let n = 2
-    while (
-      await ctx.db
-        .query("forms")
-        .withIndex("by_slug", (q) => q.eq("slug", slug))
-        .unique()
-    ) {
-      slug = `${base}-${n++}`
-    }
+    // Unique within this event only — see convex/lib/publicLinks.ts.
+    const slug = await uniqueFormSlug(ctx, event._id, name)
 
     const formId = await ctx.db.insert("forms", {
       eventId: event._id,
@@ -640,7 +657,7 @@ export const createForm = internalMutation({
       name,
       kind,
       slug,
-      publicUrl: publicFormUrl(slug),
+      publicUrl: publicFormUrl(event.slug, slug),
       status: "open",
     })
   },
@@ -707,7 +724,7 @@ export const updateFormSettings = internalMutation({
       name: form.internalName,
       status: updated?.status,
       closeAt: iso(updated?.closeAt),
-      publicUrl: publicFormUrl(form.slug),
+      publicUrl: await formPublicUrl(ctx, form),
       settings: updated?.settings,
       previous,
     })
@@ -725,7 +742,7 @@ export const publicFormLink = internalQuery({
     return withLinkWarning({
       formId: form._id,
       name: form.internalName,
-      publicUrl: publicFormUrl(form.slug),
+      publicUrl: await formPublicUrl(ctx, form),
       status: form.status,
       closeAt: iso(form.closeAt),
       acceptingSubmissions: !closed,
@@ -2000,7 +2017,7 @@ async function eventSummaryPayload(ctx: QueryCtx, event: Doc<"events">) {
       slug: form.slug,
       status: form.status,
       closeAt: iso(form.closeAt),
-      publicUrl: publicFormUrl(form.slug),
+      publicUrl: publicFormUrl(event.slug, form.slug),
     })),
     needsAttention:
       needsAttention.length > 0

@@ -43,6 +43,18 @@ function Page() {
           />
         </Step>
 
+        <Step title="If that address has already been used for your event, we email them a secure link instead of letting them straight in.">
+          <p className="doc-prose">
+            First time? They go straight through. But once an address has a
+            submission, a draft, a task or a co-speaker credit, anyone who typed
+            it would be looking at somebody else&rsquo;s proposals — so we send a
+            one-click sign-in link to the address itself and show a &ldquo;check
+            your email&rdquo; screen. Opening the link carries on exactly where
+            they were. Still no password, and nothing about the account is shown
+            until the link is opened.
+          </p>
+        </Step>
+
         <Step title="Then the proposal itself: your questions, in your order, with the tracks you set up.">
           <Shot
             src="walkthrough/15-submit-talk.png"

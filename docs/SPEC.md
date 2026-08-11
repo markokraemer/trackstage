@@ -40,7 +40,7 @@ Program
   Forms              (CFP form builder)
   Evaluation         (plans, evaluators, my evaluations)
   Agenda             (List | Day | Rooms | Conflicts views)
-Speakers             (accepted-speaker roster + outstanding tasks)
+Speakers             (people roster — accepted or in review + outstanding tasks)
 Communications       (templates, outbox, reminders)
 Settings             (event details, rooms & tracks, portal)
 ```
@@ -49,7 +49,10 @@ Header: event name + dates · "View public page" outline button · avatar menu.
 `Collect & Review` nesting into the 7 items above — this is the master.md guidance.)
 
 ### Public (de-chromed, centered card on `#F8FAFC`)
-- `/submit/:formSlug` — 5-step tracker: Welcome → Account → Submission → Participants → Review.
+- `/submit/:eventSlug/:formSlug` — 5-step tracker: Welcome → Account → Submission →
+  Participants → Review. Form slugs are unique **per event**, so `cfp` is available to
+  every organizer. The legacy one-segment `/submit/:formSlug` still resolves and redirects
+  here (docs/memory/DECISIONS.md, "Public URL scheme is hierarchical").
 - `/e/:eventSlug` — public schedule + speaker gallery (also serves as "embed" surface; struck
   as a requirement, keep minimal).
 
@@ -94,7 +97,12 @@ sbek can complete the resulting public form.
 ### 4.3 Public submission flow
 Step tracker exactly: Welcome! → Account → Submission → Participants → Review.
 - Welcome: event branding, deadline + per-user cap callout, rich welcome, Continue.
-- Account: email only → magic code shown inline in demo mode / emailed otherwise. No passwords.
+- Account: email only, no passwords. A **new** address for this event continues
+  immediately (empty account, nothing to protect). An address with any history —
+  submission, draft, co-speaker credit, task, upload, profile — gets a sign-in link
+  emailed to it (`/submit/{event}/{form}?t=…`, ≤3/hour) and the step shows "Check your
+  email" with resend / use-a-different-address, revealing nothing about the account.
+  See DECISIONS.md, "Typing an email is not proof of owning it".
 - Submission: the built questions, conditional logic live, validation with red outlines +
   toast "Missing required fields…".
 - Participants: "Participant 1 (You)" prefilled from account; `+ Add speaker` up to max.
@@ -150,8 +158,12 @@ Accept: speaker (via magic link) uploads headshot, fills bio, completes a task; 
 dashboard reflects it in real time.
 
 ### 4.8 Speakers + outstanding-tasks dashboard (core requirement)
-Speakers page: roster of accepted speakers — avatar, name, company, sessions, task
-progress (2/3), missing-bits pills (no bio / no headshot / no slides).
+Speakers page: ONE roster of everyone attached to the program — anyone on a submission
+or session at any status (drafts aside), plus anyone added by hand. Avatar, name,
+company, why they're here ("1 accepted session" / "1 in review" / "Added manually"),
+task progress (2/3), missing-bits pills (no bio / no headshot / no slides). Acceptance
+is a facet with a filter (All · Confirmed · In review), never a gate on who exists;
+the public gallery stays accepted-and-visible only.
 Dashboard: greeting, metric cards (Submissions, Accepted speakers, Outstanding tasks),
 status pill bar, insight banner "N accepted speakers are missing a bio or headshot →
 View speakers", "Top speakers by outstanding tasks" list, submission pacing chart

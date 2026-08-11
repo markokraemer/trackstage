@@ -39,7 +39,12 @@ import { LabeledField } from "@/components/settings/labeled-field"
 import { TimezoneSelect } from "@/components/settings/timezone-select"
 import { DateTimePicker } from "@/components/settings/date-time-picker"
 import { CopyLinkButton } from "@/components/settings/copy-link-button"
-import { isValidSlug, publicEventUrl, slugify } from "@/components/settings/slug"
+import {
+  isValidSlug,
+  publicEventUrl,
+  slugify,
+  slugifyInput,
+} from "@/components/settings/slug"
 import type { EventSummary } from "@/lib/current-event"
 
 /** Plain-English event types — the select in docs/ux/01 image25. */
@@ -89,9 +94,9 @@ function validate(draft: EventDraft): Partial<Record<FieldKey, string>> {
   if (!draft.name.trim()) {
     errors.name = "Give your event a name."
   }
-  if (!draft.slug.trim()) {
+  if (!slugify(draft.slug)) {
     errors.slug = "The slug is your public web address — it can't be empty."
-  } else if (!isValidSlug(draft.slug)) {
+  } else if (!isValidSlug(slugify(draft.slug))) {
     errors.slug = "Use lowercase letters, numbers and dashes only."
   }
   if (!draft.timezone) {
@@ -153,11 +158,11 @@ export function EventDetailsForm({ event }: { event: EventSummary }) {
     }
 
     try {
-      await save.mutateAsync({
+      const result = await save.mutateAsync({
         eventId: event._id,
         patch: {
           name: draft.name.trim(),
-          slug: draft.slug.trim(),
+          slug: slugify(draft.slug),
           type: draft.type || undefined,
           websiteUrl: draft.websiteUrl.trim() || undefined,
           timezone: draft.timezone,
@@ -167,11 +172,21 @@ export function EventDetailsForm({ event }: { event: EventSummary }) {
           endsAt: draft.endsAt,
         },
       })
+      // A taken address never blocks the save — the server hands back the
+      // address that is actually live, we snap the field to it, and we say so
+      // (docs/memory/DECISIONS.md, "Public URL scheme is hierarchical").
       // New object identity so `isDirty` recomputes and the guard stands down.
-      const saved = { ...draft }
+      const saved = { ...draft, slug: result.slug }
       initial.current = saved
       setDraft(saved)
-      toast.success("Event settings saved")
+      if (result.slugAdjusted) {
+        toast.success("Event settings saved", {
+          description: `That web address was taken — yours is ${publicEventUrl(result.slug)}`,
+          duration: 10_000,
+        })
+      } else {
+        toast.success("Event settings saved")
+      }
     } catch (error) {
       toast.error(
         error instanceof Error
@@ -238,7 +253,7 @@ export function EventDetailsForm({ event }: { event: EventSummary }) {
                   value={draft.slug}
                   aria-invalid={errors.slug ? true : undefined}
                   placeholder="ai-engineer-sandbox-event"
-                  onChange={(e) => set("slug", slugify(e.target.value))}
+                  onChange={(e) => set("slug", slugifyInput(e.target.value))}
                 />
               </LabeledField>
 

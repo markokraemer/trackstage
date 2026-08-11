@@ -18,11 +18,13 @@
 // "Trackstage ID" column, so the same run twice is the same result.
 //
 // EXPERIMENTAL TWO-WAY (HISTORY.md 61): opt-in per connection. When on, each
-// sync also PULLS the Status column back — one field, enum-validated, guarded
+// sync first PULLS the Status column back — one field, enum-validated, guarded
 // against echo loops by the status we last pushed, and our DB wins every
 // genuine conflict (the losing Airtable edit is written to the audit log, not
 // swallowed). The guard itself is pure and unit-tested in
 // convex/lib/airtableInbound.ts + tests/unit/airtable-sync.test.ts.
+// PULL BEFORE PUSH is not a preference: the push rewrites every Status cell,
+// so pushing first destroys the very edit the pull exists to collect.
 //
 // DEMO MODE: with AIRTABLE_DEMO_MODE=1 on the deployment, `connect` skips
 // live validation and `syncEvent` counts rows without talking to Airtable.
@@ -30,7 +32,7 @@
 // scripts/verify-backend.mjs) without an Airtable account.
 // ————————————————————————————————————————————————————————————————————————
 
-import { v } from "convex/values"
+import { ConvexError, v } from "convex/values"
 import { internal } from "./_generated/api"
 import type { Doc, Id } from "./_generated/dataModel"
 import type { ActionCtx, MutationCtx, QueryCtx } from "./_generated/server"
@@ -46,16 +48,17 @@ import { requireEventAccess } from "./lib/auth"
 import { siteUrl } from "./lib/email"
 import {
   AirtableClient,
-  AirtableError,
   EXTERNAL_ID_FIELD,
   TABLE_KEYS,
   TABLE_NAMES,
   ensureTables,
+  humanAirtableError,
   maskToken,
+  normalizeBaseId,
+  normalizeCredentials,
   sessionFields,
   speakerFields,
   submissionFields,
-  validateCredentials,
 } from "./lib/airtable"
 import type { AirtableRecordPayload } from "./lib/airtable"
 import {
@@ -83,6 +86,18 @@ const MAX_CONNECTIONS_PER_RUN = 25
 
 function demoMode(): boolean {
   return process.env.AIRTABLE_DEMO_MODE === "1"
+}
+
+/**
+ * The authorization layer throws ordinary `Error`s with human sentences —
+ * fine everywhere else, but Convex strips those on production. Inside an
+ * action the real message is still readable (redaction happens at the client
+ * boundary), so we keep the sentence and re-throw it as a ConvexError.
+ */
+function authMessage(error: unknown): string {
+  const raw = error instanceof Error ? error.message.split("\n")[0]?.trim() : ""
+  if (raw && raw.length < 200 && !/^Server Error/i.test(raw)) return raw
+  return "You need to be an admin of this workspace to connect Airtable."
 }
 
 function connectionQuery(ctx: QueryCtx | MutationCtx, eventId: Id<"events">) {
@@ -158,8 +173,18 @@ export const status = query({
  * credentials against the live API before anything is stored — a connection
  * that only fails later is worse than no connection at all.
  *
- * Order matters: authorize → validate shape → prove the token/base → make
- * the tables → save → kick off the first full sync.
+ * Order matters: authorize → normalize + validate shape → prove the
+ * token/base → make the tables → save → kick off the first full sync.
+ *
+ * `baseId` is deliberately forgiving: the organizer pastes their address bar
+ * ("appX/tblY", or the whole https:// URL) and we dig the base id out. The UI
+ * does the same normalization on blur so they can see what we understood, but
+ * this is the boundary that has to hold — an API client, or a tab that
+ * predates the UI fix, must get the same treatment.
+ *
+ * EVERY throw out of here is a ConvexError carrying a sentence. Convex hides
+ * ordinary exception messages on production deployments ("Server Error"), so
+ * an unwrapped throw here is, from the organizer's seat, no message at all.
  */
 export const connect = action({
   args: {
@@ -169,33 +194,50 @@ export const connect = action({
   },
   returns: v.object({
     mode: v.union(v.literal("live"), v.literal("demo")),
+    baseId: v.string(),
     createdTables: v.array(v.string()),
     warnings: v.array(v.string()),
   }),
   handler: async (ctx, args) => {
-    await ctx.runQuery(internal.airtable.assertAdmin, { eventId: args.eventId })
-
-    const token = args.token.trim()
-    const baseId = args.baseId.trim()
+    try {
+      await ctx.runQuery(internal.airtable.assertAdmin, {
+        eventId: args.eventId,
+      })
+    } catch (error) {
+      throw new ConvexError(authMessage(error))
+    }
 
     if (demoMode()) {
+      const demoBaseId =
+        (normalizeBaseId(args.baseId) ?? args.baseId.trim()) ||
+        "appDemoBase000000"
       await ctx.runMutation(internal.airtable.saveConnection, {
         eventId: args.eventId,
-        token: token || "pat-demo-token",
-        baseId: baseId || "appDemoBase000000",
+        token: args.token.trim() || "pat-demo-token",
+        baseId: demoBaseId,
         demo: true,
       })
       await ctx.scheduler.runAfter(0, internal.airtable.syncEvent, {
         eventId: args.eventId,
       })
-      return { mode: "demo" as const, createdTables: [], warnings: [] }
+      return {
+        mode: "demo" as const,
+        baseId: demoBaseId,
+        createdTables: [],
+        warnings: [],
+      }
     }
 
-    validateCredentials(token, baseId)
+    const { token, baseId } = normalizeCredentials(args.token, args.baseId)
 
-    const client = new AirtableClient(token, baseId)
-    const schema = await client.getBaseSchema()
-    const ensured = await ensureTables(client, schema)
+    let ensured
+    try {
+      const client = new AirtableClient(token, baseId)
+      const schema = await client.getBaseSchema()
+      ensured = await ensureTables(client, schema)
+    } catch (error) {
+      throw new ConvexError(humanAirtableError(error))
+    }
 
     await ctx.runMutation(internal.airtable.saveConnection, {
       eventId: args.eventId,
@@ -209,6 +251,7 @@ export const connect = action({
 
     return {
       mode: "live" as const,
+      baseId,
       createdTables: ensured.createdTables,
       warnings: ensured.warnings,
     }
@@ -246,7 +289,8 @@ export const setTwoWaySync = mutation({
   handler: async (ctx, args) => {
     await requireEventAccess(ctx, args.eventId, "admin")
     const connection = await connectionQuery(ctx, args.eventId)
-    if (!connection) throw new Error("Airtable isn't connected for this event.")
+    if (!connection)
+      throw new ConvexError("Airtable isn't connected for this event.")
     await ctx.db.patch(connection._id, { twoWaySync: args.enabled })
     await recordAudit(ctx, {
       eventId: args.eventId,
@@ -271,7 +315,8 @@ export const syncNow = mutation({
   handler: async (ctx, args) => {
     await requireEventAccess(ctx, args.eventId)
     const connection = await connectionQuery(ctx, args.eventId)
-    if (!connection) throw new Error("Airtable isn't connected for this event.")
+    if (!connection)
+      throw new ConvexError("Airtable isn't connected for this event.")
     await ctx.db.patch(connection._id, { syncScheduled: false })
     await ctx.scheduler.runAfter(0, internal.airtable.syncEvent, {
       eventId: args.eventId,
@@ -767,24 +812,28 @@ export const finishPull = internalMutation({
 export const pullEvent = internalAction({
   args: { eventId: v.id("events") },
   returns: inboundSummaryValidator,
-  handler: async (ctx, args) => await pullCore(ctx, args.eventId),
+  handler: async (ctx, args) => (await pullCore(ctx, args.eventId)).summary,
 })
 
 /**
  * The pull itself as a plain function, so `syncEvent` runs it inline instead
  * of paying for a nested action call (the two never cross runtimes).
+ *
+ * Returns the error rather than recording it: only `syncEvent` knows whether
+ * the run as a whole failed, and it has to decide whether pushing is still
+ * safe (it isn't — see there).
  */
 async function pullCore(
   ctx: ActionCtx,
   eventId: Id<"events">
-): Promise<InboundSummary> {
+): Promise<{ summary: InboundSummary; error?: string }> {
   const context = await ctx.runQuery(internal.airtable.pullContext, {
     eventId,
   })
-  if (!context) return emptySummary()
+  if (!context) return { summary: emptySummary() }
   // Demo mode never talks to Airtable; the suite drives `applyInbound`
   // directly with fabricated rows to exercise the same guards.
-  if (context.demo || demoMode()) return emptySummary()
+  if (context.demo || demoMode()) return { summary: emptySummary() }
 
   const client = new AirtableClient(context.token, context.baseId)
   let records: Array<{ id: string; fields: Record<string, unknown> }>
@@ -795,15 +844,7 @@ async function pullCore(
       maxRecords: MAX_ROWS,
     })
   } catch (error) {
-    const message =
-      error instanceof AirtableError
-        ? error.message
-        : `Couldn't read changes back from Airtable: ${error instanceof Error ? error.message : String(error)}`
-    await ctx.runMutation(internal.airtable.finishSync, {
-      eventId,
-      error: message,
-    })
-    return emptySummary()
+    return { summary: emptySummary(), error: humanAirtableError(error) }
   }
 
   const candidates = records
@@ -833,7 +874,7 @@ async function pullCore(
     eventId,
     summary,
   })
-  return summary
+  return { summary }
 }
 
 /**
@@ -843,6 +884,14 @@ async function pullCore(
  *
  * A failure is recorded on the connection rather than thrown away: the
  * Integrations card shows the organizer exactly what Airtable said.
+ *
+ * PULL THEN PUSH, always in that order, and the order is load-bearing.
+ * The push rewrites every mirrored cell — including Status — so a push that
+ * ran first would overwrite the organizer's Airtable edit before the pull
+ * could ever read it, and the pull would then see nothing but our own value.
+ * (It did exactly that until 2026-08-11; the inbound half was quietly a
+ * no-op for real edits.) Reading first means the payload we mirror out
+ * already contains anything we just accepted, so one run settles both sides.
  */
 export const syncEvent = internalAction({
   args: { eventId: v.id("events") },
@@ -851,6 +900,20 @@ export const syncEvent = internalAction({
     await ctx.runMutation(internal.airtable.beginSync, {
       eventId: args.eventId,
     })
+
+    // INBOUND FIRST. A no-op — one indexed read — unless the connection has
+    // two-way sync switched on.
+    const inbound = await pullCore(ctx, args.eventId)
+    if (inbound.error) {
+      // We could not read their side, so we must not write over it: an
+      // unread Airtable edit is exactly what the push would destroy. Record
+      // the reason and let the next sync (cron, 5 minutes) try again.
+      await ctx.runMutation(internal.airtable.finishSync, {
+        eventId: args.eventId,
+        error: inbound.error,
+      })
+      return null
+    }
 
     const payload = await ctx.runQuery(internal.airtable.syncPayload, {
       eventId: args.eventId,
@@ -882,7 +945,6 @@ export const syncEvent = internalAction({
         eventId: args.eventId,
         counts,
       })
-      await maybePull(ctx, args.eventId)
       return null
     }
 
@@ -908,26 +970,21 @@ export const syncEvent = internalAction({
         await client.upsert(name, records)
       }
     } catch (error) {
-      const message =
-        error instanceof AirtableError
-          ? error.message
-          : `Sync failed: ${error instanceof Error ? error.message : String(error)}`
       await ctx.runMutation(internal.airtable.finishSync, {
         eventId: args.eventId,
-        error: message,
+        error: humanAirtableError(error),
       })
       return null
     }
 
+    // The baseline moves last, once the mirror really holds these values —
+    // that is what lets the NEXT pull tell an organizer's edit apart from our
+    // own write coming back.
     await recordPushed(ctx, args.eventId, statusRows)
     await ctx.runMutation(internal.airtable.finishSync, {
       eventId: args.eventId,
       counts,
     })
-    // PUSH THEN PULL, always in that order: the push refreshes the baseline,
-    // so the pull that follows can tell an organizer's Airtable edit from the
-    // value we just wrote there ourselves.
-    await maybePull(ctx, args.eventId)
     return null
   },
 })
@@ -947,32 +1004,38 @@ async function recordPushed(
 }
 
 /**
- * Runs the inbound half when — and only when — the connection opted in.
- * `pullEvent` re-checks the flag itself, so this is a cheap guard rather than
- * the security boundary.
- */
-async function maybePull(ctx: ActionCtx, eventId: Id<"events">): Promise<void> {
-  await pullCore(ctx, eventId)
-}
-
-/**
  * Cron entry point (every 5 minutes). Catches everything the on-write hook
  * can't see cheaply — status changes, agenda moves, profile edits — and is
  * free when nothing changed, because an upsert of unchanged rows is a no-op
  * on Airtable's side.
+ *
+ * It also sweeps ORPHANS. A connection row holds a live Airtable token; if the
+ * event it belongs to is gone, that token is both useless and a secret we have
+ * no reason to keep, so the row goes with the event. (Deleting an event cannot
+ * reach every child table by hand — this is the backstop, and it is the only
+ * place that ever deletes a connection the organizer didn't disconnect.)
  */
 export const syncAllConnected = internalMutation({
   args: {},
-  returns: v.object({ scheduled: v.number() }),
+  returns: v.object({ scheduled: v.number(), orphansRemoved: v.number() }),
   handler: async (ctx) => {
     const connections = await ctx.db
       .query("airtableConnections")
       .take(MAX_CONNECTIONS_PER_RUN)
+    let scheduled = 0
+    let orphansRemoved = 0
     for (const connection of connections) {
+      const event = await ctx.db.get(connection.eventId)
+      if (!event) {
+        await ctx.db.delete(connection._id)
+        orphansRemoved++
+        continue
+      }
       await ctx.scheduler.runAfter(0, internal.airtable.syncEvent, {
         eventId: connection.eventId,
       })
+      scheduled++
     }
-    return { scheduled: connections.length }
+    return { scheduled, orphansRemoved }
   },
 })

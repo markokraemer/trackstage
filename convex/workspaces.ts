@@ -1,7 +1,14 @@
 import { v } from "convex/values"
 import { internal } from "./_generated/api"
+import type { Id } from "./_generated/dataModel"
+import type { MutationCtx } from "./_generated/server"
 import { mutation, query } from "./_generated/server"
-import { myMemberships, requireMembership, requireUser } from "./lib/auth"
+import {
+  isWorkspaceWideRole,
+  myMemberships,
+  requireMembership,
+  requireUser,
+} from "./lib/auth"
 
 // Organizations ("workspaces") — the multi-tenancy root. Every event belongs
 // to exactly one organization; users see only their organizations' data.
@@ -79,18 +86,52 @@ export const members = query({
   },
 })
 
-// Add a teammate who has already signed up, by email. (Pending email invites
-// are a stretch goal — tracked in TODO.md.)
+/**
+ * Narrows a caller-supplied list of event ids to events that really belong to
+ * this workspace — otherwise an admin could pin a member to an event in
+ * someone else's workspace, and the scope check would silently never match.
+ */
+async function checkedEventIds(
+  ctx: MutationCtx,
+  organizationId: Id<"organizations">,
+  eventIds: Array<Id<"events">>,
+): Promise<Array<Id<"events">>> {
+  const unique = [...new Set(eventIds)]
+  for (const eventId of unique) {
+    const event = await ctx.db.get(eventId)
+    if (!event || event.organizationId !== organizationId) {
+      throw new Error("That event isn't part of this workspace.")
+    }
+  }
+  return unique
+}
+
+// Add a teammate by email. The membership row is created straight away with an
+// empty userId and linked on their first sign-in (see `ensure` above), so the
+// access scope chosen here is already in force the moment they arrive.
 export const addMember = mutation({
   args: {
     organizationId: v.id("organizations"),
     email: v.string(),
     role: v.string(), // admin | member
+    /**
+     * Optional per-event scope for a `member` invite (docs/memory/RULES.md 23).
+     * Omitted ⇒ every event in the workspace. Ignored for admins, who always
+     * have the whole workspace.
+     */
+    eventIds: v.optional(v.array(v.id("events"))),
   },
   handler: async (ctx, args) => {
     const { user } = await requireMembership(ctx, args.organizationId, "admin")
     if (!["admin", "member"].includes(args.role)) {
       throw new Error("Role must be admin or member.")
+    }
+    const scoped =
+      args.role === "member" && args.eventIds !== undefined
+        ? await checkedEventIds(ctx, args.organizationId, args.eventIds)
+        : undefined
+    if (scoped !== undefined && scoped.length === 0) {
+      throw new Error("Pick at least one event, or give them all events.")
     }
     const email = args.email.toLowerCase().trim()
     const existing = await ctx.db
@@ -110,14 +151,24 @@ export const addMember = mutation({
       userId: "",
       email,
       role: args.role,
+      ...(scoped !== undefined ? { eventIds: scoped } : {}),
     })
     // Invite email (Resend) — linked automatically when they sign up.
     const org = await ctx.db.get(args.organizationId)
+    let eventScope: string | undefined
+    if (scoped !== undefined) {
+      if (scoped.length === 1) {
+        eventScope = (await ctx.db.get(scoped[0]))?.name ?? "1 event"
+      } else {
+        eventScope = `${scoped.length} events`
+      }
+    }
     await ctx.scheduler.runAfter(0, internal.platformEmails.sendWorkspaceInvite, {
       toEmail: email,
       workspaceName: org?.name ?? "your team's workspace",
       inviterName: user.name ?? user.email,
       role: args.role,
+      ...(eventScope ? { eventScope } : {}),
     })
     return null
   },
@@ -154,7 +205,52 @@ export const updateMemberRole = mutation({
       throw new Error("Role must be admin or member.")
     }
     if (target.role === "owner") throw new Error("Owners keep the owner role.")
-    await ctx.db.patch(args.memberId, { role: args.role })
+    await ctx.db.patch(args.memberId, {
+      role: args.role,
+      // Promoting to admin unlocks the whole workspace — an admin is never
+      // event-scoped (docs/memory/RULES.md 23), so drop any scope they had.
+      ...(args.role === "admin" ? { eventIds: undefined } : {}),
+    })
+    return null
+  },
+})
+
+/**
+ * Which events a member may work on (docs/memory/RULES.md 23).
+ *
+ * `eventIds: null` ⇒ all events, now and in future (the default). A list ⇒
+ * only those events; everything else in the workspace becomes invisible to
+ * them, right down to "Event not found." on a direct link. Owners and admins
+ * can't be scoped — they run the workspace by definition.
+ */
+export const setMemberEventAccess = mutation({
+  args: {
+    memberId: v.id("members"),
+    eventIds: v.union(v.array(v.id("events")), v.null()),
+  },
+  handler: async (ctx, args) => {
+    const target = await ctx.db.get(args.memberId)
+    if (!target) throw new Error("Member not found.")
+    await requireMembership(ctx, target.organizationId, "admin")
+
+    if (args.eventIds === null) {
+      await ctx.db.patch(args.memberId, { eventIds: undefined })
+      return null
+    }
+    if (isWorkspaceWideRole(target.role)) {
+      throw new Error(
+        `${target.role === "owner" ? "Owners" : "Admins"} always have access to every event. Change their role to Member first if you want to limit them.`,
+      )
+    }
+    const eventIds = await checkedEventIds(
+      ctx,
+      target.organizationId,
+      args.eventIds,
+    )
+    if (eventIds.length === 0) {
+      throw new Error("Pick at least one event, or give them all events.")
+    }
+    await ctx.db.patch(args.memberId, { eventIds })
     return null
   },
 })

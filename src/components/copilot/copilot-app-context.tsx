@@ -39,11 +39,10 @@ const PAGE_NAMES: Array<[RegExp, string]> = [
   [/^\/app\/embeds/, "Embeds and public widgets"],
   [/^\/app\/events/, "All events"],
   [/^\/app\/settings\/rooms-and-tracks/, "Event settings — rooms and tracks"],
-  [/^\/app\/settings\/api-mcp/, "Event settings — API and MCP"],
   [/^\/app\/settings\/integrations/, "Event settings — integrations"],
   [/^\/app\/settings/, "Event settings"],
-  [/^\/app\/workspace/, "Workspace settings"],
-  [/^\/app\/account/, "Account settings"],
+  [/^\/app\/workspace/, "Workspace settings — the team and its events"],
+  [/^\/app\/account/, "Account settings — your own profile, password and API keys"],
   [/^\/app\/copilot/, "the copilot's own full-page chat"],
 ]
 

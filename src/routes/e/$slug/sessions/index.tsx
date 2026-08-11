@@ -1,4 +1,3 @@
-import { useState } from "react"
 import { Link, createFileRoute } from "@tanstack/react-router"
 import { useSuspenseQuery } from "@tanstack/react-query"
 import { convexQuery } from "@convex-dev/react-query"
@@ -18,6 +17,10 @@ import { DataToolbar } from "@/components/shared/data-toolbar"
 import { WidgetHeader } from "@/components/public/public-shell"
 import { SessionCard } from "@/components/public/session-card"
 import { formatRange } from "@/components/public/format"
+import {
+  useSearchParamWriter,
+  useUrlText,
+} from "@/components/public/use-url-text"
 import type { PublicSession } from "@/components/public/types"
 
 /**
@@ -27,6 +30,10 @@ import type { PublicSession } from "@/components/public/types"
  * session titles AND speaker names — attendees look for both. Filters are real
  * dropdowns (Track / Format / Room), and the result count updates in place so
  * it is always obvious how much the filters removed.
+ *
+ * Every filter lives in the URL (`?q=&track=&format=&room=`): a filtered view
+ * is a link you can send someone, the back button undoes one filter at a time,
+ * and the organizer's embed builder can pre-seed any of them.
  */
 export const Route = createFileRoute("/e/$slug/sessions/")({
   loader: async ({ context, params }) =>
@@ -46,19 +53,26 @@ function SessionsPage() {
   const { data } = useSuspenseQuery(
     convexQuery(api.publicData.sessionsList, { slug }),
   )
-  const [query, setQuery] = useState(search.q ?? "")
-  const [track, setTrack] = useState(search.track ?? ALL_TRACKS)
-  const [format, setFormat] = useState(ALL_FORMATS)
-  const [room, setRoom] = useState(ALL_ROOMS)
+  const setParams = useSearchParamWriter()
+  const [query, setQuery] = useUrlText(search.q, (value) =>
+    setParams({ q: value }),
+  )
 
   if (!data) return null
   const { event, facets } = data
 
+  const track = search.track ?? ALL_TRACKS
+  const format = search.format ?? ALL_FORMATS
+  const room = search.room ?? ALL_ROOMS
+
   const needle = query.trim().toLowerCase()
+  const eq = (a: string | undefined | null, b: string) =>
+    (a ?? "").toLowerCase() === b.toLowerCase()
+
   const sessions = data.sessions.filter((session: PublicSession) => {
-    if (track !== ALL_TRACKS && session.track?.name !== track) return false
-    if (format !== ALL_FORMATS && session.format !== format) return false
-    if (room !== ALL_ROOMS && session.room?.name !== room) return false
+    if (track !== ALL_TRACKS && !eq(session.track?.name, track)) return false
+    if (format !== ALL_FORMATS && !eq(session.format, format)) return false
+    if (room !== ALL_ROOMS && !eq(session.room?.name, room)) return false
     if (!needle) return true
     const haystack = [
       session.title,
@@ -86,9 +100,7 @@ function SessionsPage() {
 
   const resetFilters = () => {
     setQuery("")
-    setTrack(ALL_TRACKS)
-    setFormat(ALL_FORMATS)
-    setRoom(ALL_ROOMS)
+    setParams({ q: undefined, track: undefined, format: undefined, room: undefined })
   }
 
   return (
@@ -100,50 +112,58 @@ function SessionsPage() {
       />
 
       {search.hideSearch ? null : (
-        <div className="flex flex-col gap-2">
-          <DataToolbar
-            value={query}
-            onValueChange={setQuery}
-            placeholder="Search by speaker details or session title"
-            searchLabel="Search sessions"
-            filters={
-              <>
-                {facets.tracks.length > 0 ? (
-                  <FacetSelect
-                    label="Track"
-                    value={track}
-                    onChange={setTrack}
-                    allLabel={ALL_TRACKS}
-                    options={facets.tracks.map((item) => item.name)}
-                  />
-                ) : null}
-                {facets.formats.length > 0 ? (
-                  <FacetSelect
-                    label="Format"
-                    value={format}
-                    onChange={setFormat}
-                    allLabel={ALL_FORMATS}
-                    options={facets.formats}
-                  />
-                ) : null}
-                {facets.rooms.length > 0 ? (
-                  <FacetSelect
-                    label="Room"
-                    value={room}
-                    onChange={setRoom}
-                    allLabel={ALL_ROOMS}
-                    options={facets.rooms}
-                  />
-                ) : null}
-                {filtered ? (
-                  <Button variant="ghost" size="sm" onClick={resetFilters}>
-                    Clear filters
-                  </Button>
-                ) : null}
-              </>
-            }
-          />
-        </div>
+        <DataToolbar
+          value={query}
+          onValueChange={setQuery}
+          placeholder="Search by speaker details or session title"
+          searchLabel="Search sessions"
+          filters={
+            <>
+              {facets.tracks.length > 0 ? (
+                <FacetSelect
+                  label="Track"
+                  value={track}
+                  onChange={(value) =>
+                    setParams({
+                      track: value === ALL_TRACKS ? undefined : value,
+                    })
+                  }
+                  allLabel={ALL_TRACKS}
+                  options={facets.tracks.map((item) => item.name)}
+                />
+              ) : null}
+              {facets.formats.length > 0 ? (
+                <FacetSelect
+                  label="Format"
+                  value={format}
+                  onChange={(value) =>
+                    setParams({
+                      format: value === ALL_FORMATS ? undefined : value,
+                    })
+                  }
+                  allLabel={ALL_FORMATS}
+                  options={facets.formats}
+                />
+              ) : null}
+              {facets.rooms.length > 0 ? (
+                <FacetSelect
+                  label="Room"
+                  value={room}
+                  onChange={(value) =>
+                    setParams({ room: value === ALL_ROOMS ? undefined : value })
+                  }
+                  allLabel={ALL_ROOMS}
+                  options={facets.rooms}
+                />
+              ) : null}
+              {filtered ? (
+                <Button variant="ghost" size="sm" onClick={resetFilters}>
+                  Clear filters
+                </Button>
+              ) : null}
+            </>
+          }
+        />
       )}
 
       {data.totalResults === 0 ? (
@@ -181,11 +201,7 @@ function SessionsPage() {
         <ul className="flex flex-col gap-3">
           {sessions.map((session) => (
             <li key={session._id}>
-              <SessionCard
-                event={event}
-                session={session}
-                options={search}
-              />
+              <SessionCard event={event} session={session} options={search} />
             </li>
           ))}
         </ul>
@@ -197,7 +213,8 @@ function SessionsPage() {
 /**
  * A faceted filter dropdown built on the shadcn `Select`. Option values are
  * the display strings themselves, including the "All …" sentinel, so the
- * trigger always reads as plain English.
+ * trigger always reads as plain English — and so the value round-trips
+ * through the URL unchanged.
  */
 function FacetSelect({
   label,
@@ -212,10 +229,14 @@ function FacetSelect({
   allLabel: string
   options: Array<string>
 }) {
-  const items = [allLabel, ...options].map((option) => ({
-    value: option,
-    label: option,
-  }))
+  // A URL can name a track that no longer exists; show it rather than
+  // silently rendering an empty trigger.
+  const known = [allLabel, ...options]
+  const items = (
+    known.some((option) => option.toLowerCase() === value.toLowerCase())
+      ? known
+      : [...known, value]
+  ).map((option) => ({ value: option, label: option }))
 
   return (
     <Select

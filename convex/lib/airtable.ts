@@ -22,6 +22,8 @@
 // lets the cron and the on-write hook overlap harmlessly.
 // ————————————————————————————————————————————————————————————————————————
 
+import { ConvexError } from "convex/values"
+
 const AIRTABLE_API = "https://api.airtable.com"
 
 /** Airtable allows at most 10 records per create/update request. */
@@ -92,7 +94,7 @@ export const TABLE_SPECS: Record<
           "Decline queue",
           "Accepted",
           "Declined",
-          "Withdrawn",
+          "Withdrawn"
         ),
       },
       {
@@ -290,8 +292,7 @@ export function sessionFields(row: SessionRow): AirtableFields {
     Track: text(row.track),
     Room: text(row.room),
     "Starts At": iso(row.startsAt),
-    "Ends At":
-      duration !== null ? iso(row.startsAt + duration * 60_000) : null,
+    "Ends At": duration !== null ? iso(row.startsAt + duration * 60_000) : null,
     "Duration (min)": duration,
     Speakers: list(row.speakers),
     Status: statusLabel(row.status),
@@ -301,7 +302,10 @@ export function sessionFields(row: SessionRow): AirtableFields {
 
 // ——— Batching ——————————————————————————————————————————————————————————
 
-export function chunk<T>(items: readonly T[], size: number = BATCH_SIZE): T[][] {
+export function chunk<T>(
+  items: readonly T[],
+  size: number = BATCH_SIZE
+): T[][] {
   if (size < 1) throw new Error("chunk size must be >= 1")
   const out: T[][] = []
   for (let i = 0; i < items.length; i += size) {
@@ -312,7 +316,18 @@ export function chunk<T>(items: readonly T[], size: number = BATCH_SIZE): T[][] 
 
 // ——— Client ————————————————————————————————————————————————————————————
 
-export class AirtableError extends Error {
+/**
+ * Extends ConvexError, NOT Error — and that is the whole point.
+ *
+ * Convex REDACTS the message of any ordinary exception thrown by a deployed
+ * function: the client sees `[CONVEX A(airtable:connect)] [Request ID: …]
+ * Server Error` and nothing else. Only `ConvexError` data crosses that
+ * boundary. Every sentence in this file is written for an event organizer to
+ * act on, so every one of them has to travel — hence the base class.
+ * (Locally the message leaks through anyway, which is exactly why this bug
+ * only showed up on production.)
+ */
+export class AirtableError extends ConvexError<string> {
   readonly status: number
   readonly airtableType?: string
 
@@ -324,37 +339,94 @@ export class AirtableError extends Error {
   }
 }
 
+/**
+ * Turn ANY failure from the integration into one sentence an organizer can
+ * act on. Used at every boundary that can surface to a human — the connect
+ * action, the sync's `lastError`, the inbound pull — so nothing anywhere can
+ * degrade into a stack trace or a raw fetch message.
+ */
+export function humanAirtableError(error: unknown): string {
+  if (error instanceof AirtableError) return error.message
+  if (error instanceof ConvexError) {
+    return typeof error.data === "string" ? error.data : error.message
+  }
+  const raw = error instanceof Error ? error.message : String(error)
+  // `fetch failed` / `Failed to fetch` / DNS + TLS noise — all the same story
+  // to the person reading it.
+  if (/fetch|network|ENOTFOUND|ECONNRESET|ETIMEDOUT|socket/i.test(raw)) {
+    return "Couldn't reach Airtable just now — check your connection and try again in a moment."
+  }
+  return `Something went wrong talking to Airtable: ${raw.split("\n")[0]?.slice(0, 200)}`
+}
+
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
+// ——— Forgiving input ————————————————————————————————————————————————————
+// Nobody looks up "the base ID". They copy the address bar. So accept every
+// shape that address bar can produce and dig the id out ourselves — the same
+// way in the browser (so the organizer SEES what we understood) and again on
+// the server (so an API caller, or a stale tab, gets the same forgiveness).
+
+/** Airtable ids are a 3-letter prefix + 14 chars. Anchored where we can. */
+const BASE_ID_EXACT = /app[A-Za-z0-9]{14}(?![A-Za-z0-9])/
+const BASE_ID_LOOSE = /app[A-Za-z0-9]{10,}/
+
 /**
- * Shape checks before we spend a round-trip. Airtable ids are stable and
- * prefixed, so a typo can be caught with a sentence the organizer can act on
- * instead of a raw 404.
+ * Pull the base id out of whatever a human pasted:
+ *   · `appcLLu7HlngMfKLW`                                    → as-is
+ *   · `appcLLu7HlngMfKLW/tblZhfJ2nbaQmVVvC`                  → the app part
+ *   · `https://airtable.com/appX/tblY/viwZ?blocks=hide`      → the app part
+ *   · `  app cLLu…  ` (a stray newline from the clipboard)   → whitespace gone
+ * Returns null when there is no `app…` id in there at all.
  */
-export function validateCredentials(token: string, baseId: string): void {
-  if (!token) {
+export function normalizeBaseId(
+  input: string | null | undefined
+): string | null {
+  const cleaned = (input ?? "").replace(/\s+/g, "")
+  if (!cleaned) return null
+  return (
+    BASE_ID_EXACT.exec(cleaned)?.[0] ?? BASE_ID_LOOSE.exec(cleaned)?.[0] ?? null
+  )
+}
+
+/**
+ * Tokens never contain whitespace, so any that survived the clipboard is
+ * noise (a wrapped line, a trailing newline). `Bearer ` is stripped too —
+ * people paste straight out of a curl example.
+ */
+export function normalizeToken(input: string | null | undefined): string {
+  return (input ?? "").replace(/\s+/g, "").replace(/^Bearer/i, "")
+}
+
+/**
+ * Shape checks before we spend a round-trip, returning the CLEANED values.
+ * Airtable ids are stable and prefixed, so a typo can be caught with a
+ * sentence the organizer can act on instead of a raw 404.
+ */
+export function normalizeCredentials(
+  token: string,
+  baseId: string
+): { token: string; baseId: string } {
+  const cleanToken = normalizeToken(token)
+  if (!cleanToken) {
     throw new AirtableError("Paste your Airtable personal access token.", 400)
   }
-  if (/\s/.test(token)) {
-    throw new AirtableError(
-      "That token contains a space — copy the whole value from Airtable without line breaks.",
-      400,
-    )
-  }
-  if (!token.startsWith("pat")) {
+  if (!cleanToken.startsWith("pat")) {
     throw new AirtableError(
       "Airtable personal access tokens start with “pat”. Create one at airtable.com/create/tokens — the older API keys (“key…”) no longer work.",
-      400,
+      400
     )
   }
-  if (!baseId.startsWith("app")) {
+  const cleanBaseId = normalizeBaseId(baseId)
+  if (!cleanBaseId) {
     throw new AirtableError(
-      "A base ID starts with “app”. Open your base in Airtable and copy the part of the URL right after airtable.com/ — for example airtable.com/appAbC123…/tbl…",
-      400,
+      "We couldn't find a base ID in that. Open your base in Airtable and paste the address bar — anything from “appAbC123XyZ” to the full https://airtable.com/appAbC123XyZ/tbl…/viw… link works.",
+      400
     )
   }
+  return { token: cleanToken, baseId: cleanBaseId }
 }
 
 type AirtableErrorBody = {
@@ -377,33 +449,34 @@ function readError(status: number, body: string): AirtableError {
   }
 
   const suffix = detail ? ` (${detail})` : ""
+  const scopeList = REQUIRED_SCOPES.join(", ")
   let message: string
   switch (status) {
     case 401:
       message =
-        "Airtable rejected that token. Check you pasted the whole value and that the token hasn't been deleted."
+        "Airtable rejected the token — it's invalid, expired or has been deleted. Create a new personal access token at airtable.com/create/tokens and paste the whole value (it's only shown once)."
       break
     case 403:
       message =
         type === "INVALID_PERMISSIONS_OR_MODEL_NOT_FOUND"
-          ? "That token can't see this base. In Airtable, edit the token and add this base under “Access”."
-          : `Your Airtable token is missing a permission it needs${suffix}.`
+          ? `The token can't see this base. In Airtable, edit the token, add this base under “Access”, and tick all four scopes: ${scopeList}.`
+          : `The token is missing a permission it needs — it must have all four scopes: ${scopeList}${suffix}.`
       break
     case 404:
       message =
-        "Airtable couldn't find that base. Double-check the base ID (it starts with “app”)."
+        "Airtable couldn't find that base. Open the base in Airtable and paste the address bar again — the ID is the part starting with “app”. If the ID is right, the token probably doesn't have this base under “Access”."
       break
     case 422:
       message = `Airtable rejected the data${suffix}.`
       break
     case 429:
       message =
-        "Airtable is rate-limiting this base right now. We'll retry on the next sync."
+        "Airtable is rate-limiting this base right now (too many requests). Nothing is lost — we'll retry on the next sync in a few minutes."
       break
     default:
       message =
         status >= 500
-          ? "Airtable is having trouble right now. We'll retry on the next sync."
+          ? "Airtable is having trouble right now. Nothing is lost — we'll retry on the next sync."
           : `Airtable returned an unexpected error (${status})${suffix}.`
   }
   return new AirtableError(message, status, type)
@@ -435,13 +508,13 @@ export class AirtableClient {
   constructor(
     private readonly token: string,
     readonly baseId: string,
-    private readonly fetchImpl: typeof fetch = fetch,
+    private readonly fetchImpl: typeof fetch = fetch
   ) {}
 
   private async request<T>(
     method: string,
     path: string,
-    body?: unknown,
+    body?: unknown
   ): Promise<T> {
     for (let attempt = 0; ; attempt++) {
       const wait = this.lastRequestAt + MIN_REQUEST_INTERVAL_MS - Date.now()
@@ -452,9 +525,7 @@ export class AirtableClient {
         method,
         headers: {
           Authorization: `Bearer ${this.token}`,
-          ...(body === undefined
-            ? {}
-            : { "Content-Type": "application/json" }),
+          ...(body === undefined ? {} : { "Content-Type": "application/json" }),
         },
         body: body === undefined ? undefined : JSON.stringify(body),
       })
@@ -475,7 +546,7 @@ export class AirtableClient {
   async getBaseSchema(): Promise<BaseSchema> {
     return await this.request<BaseSchema>(
       "GET",
-      `/v0/meta/bases/${this.baseId}/tables`,
+      `/v0/meta/bases/${this.baseId}/tables`
     )
   }
 
@@ -496,7 +567,7 @@ export class AirtableClient {
       filterByFormula?: string
       maxRecords?: number
       pageSize?: number
-    } = {},
+    } = {}
   ): Promise<Array<{ id: string; fields: Record<string, unknown> }>> {
     const maxRecords = options.maxRecords ?? 1_000
     const out: Array<{ id: string; fields: Record<string, unknown> }> = []
@@ -516,7 +587,7 @@ export class AirtableClient {
         offset?: string
       }>(
         "GET",
-        `/v0/${this.baseId}/${encodeURIComponent(tableName)}?${params.toString()}`,
+        `/v0/${this.baseId}/${encodeURIComponent(tableName)}?${params.toString()}`
       )
 
       for (const record of page.records ?? []) {
@@ -537,18 +608,18 @@ export class AirtableClient {
     return await this.request<{ id: string; name: string }>(
       "POST",
       `/v0/meta/bases/${this.baseId}/tables`,
-      spec,
+      spec
     )
   }
 
   async createField(
     tableId: string,
-    field: AirtableFieldSpec,
+    field: AirtableFieldSpec
   ): Promise<{ id: string; name: string }> {
     return await this.request<{ id: string; name: string }>(
       "POST",
       `/v0/meta/bases/${this.baseId}/tables/${tableId}/fields`,
-      field,
+      field
     )
   }
 
@@ -566,7 +637,7 @@ export class AirtableClient {
    */
   async upsert(
     tableName: string,
-    records: AirtableRecordPayload[],
+    records: AirtableRecordPayload[]
   ): Promise<{ created: number; updated: number; droppedFields: string[] }> {
     let created = 0
     let updated = 0
@@ -625,7 +696,7 @@ export type EnsureTablesResult = {
  */
 export async function ensureTables(
   client: AirtableClient,
-  schema: BaseSchema,
+  schema: BaseSchema
 ): Promise<EnsureTablesResult> {
   const result: EnsureTablesResult = {
     createdTables: [],
@@ -636,7 +707,7 @@ export async function ensureTables(
   for (const key of TABLE_KEYS) {
     const spec = TABLE_SPECS[key]
     const existing = schema.tables.find(
-      (table) => table.name.toLowerCase() === spec.name.toLowerCase(),
+      (table) => table.name.toLowerCase() === spec.name.toLowerCase()
     )
 
     if (!existing) {
@@ -655,13 +726,17 @@ export async function ensureTables(
             result.createdFields.push(`${spec.name}.${field.name}`)
           } catch {
             result.warnings.push(
-              `Couldn't add the “${field.name}” column to ${spec.name} — add it manually if you need it.`,
+              `Couldn't add the “${field.name}” column to ${spec.name} — add it manually if you need it.`
             )
           }
         }
       } catch (error) {
         if (error instanceof AirtableError && error.status === 403) {
-          throw new AirtableError(missingSchemaScopeMessage(), 403, error.airtableType)
+          throw new AirtableError(
+            missingSchemaScopeMessage(),
+            403,
+            error.airtableType
+          )
         }
         throw error
       }
@@ -672,7 +747,7 @@ export async function ensureTables(
     if (!present.has(EXTERNAL_ID_FIELD.toLowerCase())) {
       throw new AirtableError(
         `Your “${spec.name}” table has no “${EXTERNAL_ID_FIELD}” column. That column is how we match rows on every sync — add it as a single line text field (ideally the first one), or rename the table and let us create a fresh one.`,
-        422,
+        422
       )
     }
     for (const field of spec.fields.slice(1)) {
@@ -682,7 +757,7 @@ export async function ensureTables(
         result.createdFields.push(`${spec.name}.${field.name}`)
       } catch {
         result.warnings.push(
-          `“${spec.name}” has no “${field.name}” column and we couldn't add it — that value won't be mirrored.`,
+          `“${spec.name}” has no “${field.name}” column and we couldn't add it — that value won't be mirrored.`
         )
       }
     }
@@ -715,5 +790,7 @@ export const REQUIRED_SCOPES = [
 
 /** Masked form for the UI — never return the token itself from a query. */
 export function maskToken(token: string): string {
-  return token.length <= 10 ? "pat••••" : `${token.slice(0, 7)}…${token.slice(-4)}`
+  return token.length <= 10
+    ? "pat••••"
+    : `${token.slice(0, 7)}…${token.slice(-4)}`
 }

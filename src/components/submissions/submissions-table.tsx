@@ -81,6 +81,14 @@ export interface SubmissionsTableProps {
   pendingStatus?: Partial<Record<string, StatusChoice>>
   /** Opens the delete confirmation. Omit and the row menu hides the action. */
   onDelete?: (row: SubmissionRow) => void
+  /**
+   * Footer aggregation over the WHOLE filtered set, not just the page of rows
+   * this table renders. `rows` is one 25-row page, so deriving the footer from
+   * it would tell an organizer looking at 60 filtered submissions that there
+   * are 25 (docs/memory/RULES.md 19 follow-up). The page owns the filtering,
+   * so it owns the totals; omit and the footer falls back to this page.
+   */
+  totals?: { count: number; avgScore: number | null }
 }
 
 export function SubmissionsTable({
@@ -95,6 +103,7 @@ export function SubmissionsTable({
   onSortChange,
   pendingStatus = {},
   onDelete,
+  totals,
 }: SubmissionsTableProps) {
   // Status wording follows Settings → Statuses, so a renamed built-in reads
   // the same in the row menu as it does in the pill.
@@ -105,18 +114,20 @@ export function SubmissionsTable({
   const someSelected = rows.some((row) => selected.has(row._id))
 
   // Column-footer aggregation (docs/reference/design-references.md — Attio's
-  // column-footer register): average of whatever scores are loaded for the
-  // rows currently rendered, so the number always matches what's on screen.
+  // column-footer register). It describes the filtered view as a whole, which
+  // the caller passes in; without it, fall back to the rows on screen.
   const scoredValues = scores
     ? rows.flatMap((row) => {
         const avg = row._id in scores ? scores[row._id].avg : null
         return avg === null ? [] : [avg]
       })
     : []
-  const avgScore =
+  const pageAvgScore =
     scoredValues.length > 0
       ? scoredValues.reduce((sum, value) => sum + value, 0) / scoredValues.length
       : null
+  const totalCount = totals?.count ?? rows.length
+  const avgScore = totals ? totals.avgScore : pageAvgScore
 
   if (loading) {
     return (
@@ -395,7 +406,7 @@ export function SubmissionsTable({
             <TableCell className="pl-4" />
             <TableCell />
             <TableCell className="font-normal text-xs text-muted-foreground">
-              {rows.length} submission{rows.length === 1 ? "" : "s"}
+              {totalCount} submission{totalCount === 1 ? "" : "s"}
               {selectedIds.length > 0
                 ? ` · ${selectedIds.length} selected`
                 : ""}

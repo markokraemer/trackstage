@@ -36,14 +36,12 @@ export function linkSearch(search: Record<string, string>) {
   return search as never
 }
 
-/** Public speaker-portal magic link for a person's `portalToken`. */
-export function portalLinkFor(token: string): string {
-  const origin = typeof window === "undefined" ? "" : window.location.origin
-  return `${origin}/portal/t/${token}`
-}
-
-/** Public submission form link for a form slug. */
-export function formLinkFor(slug: string): string {
-  const origin = typeof window === "undefined" ? "" : window.location.origin
-  return `${origin}/submit/${slug}`
-}
+/**
+ * Public links. Both are re-exports of `src/lib/public-links.ts`, which owns
+ * the URL scheme — the dashboard never builds a public URL by hand.
+ *
+ * Portal tokens are already globally unique by construction, so `/portal/t/…`
+ * needs no hierarchy. Form links do: a form slug is only unique inside its
+ * event (docs/memory/DECISIONS.md, "Public URL scheme is hierarchical").
+ */
+export { portalUrl as portalLinkFor, formUrl as formLinkFor } from "@/lib/public-links"

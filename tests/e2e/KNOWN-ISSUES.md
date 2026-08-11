@@ -79,7 +79,7 @@ Cannot read properties of null (reading 'useRef')      (or 'useContext')
 and renders a bare `Loading…` shell for one request.
 
 **Evidence it is churn, not a defect:** it never reproduces against a settled
-server. `curl` on `/e/:slug`, `/submit/cfp`, `/login` and `/design-system`
+server. `curl` on `/e/:slug`, `/submit/:eventSlug/:formSlug`, `/login` and `/design-system`
 while nothing is being saved returns fully server-rendered HTML with zero
 `Loading…` placeholders. It appears only when a `src/` file is written during
 the request, which is constant while the build fleet is running — Vite's SSR

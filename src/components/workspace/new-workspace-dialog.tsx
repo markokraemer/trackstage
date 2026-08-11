@@ -27,12 +27,21 @@ export function NewWorkspaceDialog({
   onCreated,
   size = "sm",
   variant = "outline",
+  hideTrigger = false,
+  open: controlledOpen,
+  onOpenChange,
 }: {
   onCreated?: (organizationId: string) => void
   size?: React.ComponentProps<typeof Button>["size"]
   variant?: React.ComponentProps<typeof Button>["variant"]
+  /** Render the dialog only — drive it from a menu item, like the switcher. */
+  hideTrigger?: boolean
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
 }) {
-  const [open, setOpen] = useState(false)
+  const [uncontrolledOpen, setUncontrolledOpen] = useState(false)
+  const open = controlledOpen ?? uncontrolledOpen
+  const setOpen = onOpenChange ?? setUncontrolledOpen
   const [name, setName] = useState("")
   const [error, setError] = useState<string | undefined>()
 
@@ -62,15 +71,17 @@ export function NewWorkspaceDialog({
 
   return (
     <>
-      <Button
-        type="button"
-        variant={variant}
-        size={size}
-        onClick={() => setOpen(true)}
-      >
-        <RiAddLine size={15} aria-hidden />
-        New workspace
-      </Button>
+      {hideTrigger ? null : (
+        <Button
+          type="button"
+          variant={variant}
+          size={size}
+          onClick={() => setOpen(true)}
+        >
+          <RiAddLine size={15} aria-hidden />
+          New workspace
+        </Button>
+      )}
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent>

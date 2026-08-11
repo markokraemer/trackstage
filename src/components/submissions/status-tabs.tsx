@@ -1,7 +1,6 @@
 import { Link } from "@tanstack/react-router"
 
-import { cn } from "@/lib/utils"
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Tabs, TabsCount, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Skeleton } from "@/components/ui/skeleton"
 import { STATUS_TABS } from "@/components/submissions/constants"
 import type { StatusTabValue } from "@/components/submissions/constants"
@@ -49,7 +48,6 @@ export function StatusTabs({ value, counts, search }: StatusTabsProps) {
       >
         {STATUS_TABS.map((tab) => {
           const count = counts?.[tab.countKey]
-          const active = tab.value === value
           return (
             <TabsTrigger
               key={tab.value}
@@ -75,16 +73,7 @@ export function StatusTabs({ value, counts, search }: StatusTabsProps) {
               {counts === undefined ? (
                 <Skeleton className="h-4 w-6 rounded-full" />
               ) : (
-                <span
-                  className={cn(
-                    "inline-flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-[11px] font-medium tabular-nums",
-                    active
-                      ? "bg-primary/10 text-primary"
-                      : "bg-muted text-muted-foreground"
-                  )}
-                >
-                  {count ?? 0}
-                </span>
+                <TabsCount>{count ?? 0}</TabsCount>
               )}
             </TabsTrigger>
           )

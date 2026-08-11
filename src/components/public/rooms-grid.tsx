@@ -144,7 +144,10 @@ export function RoomsGrid({
           ))}
         </div>
 
-        <div className="flex">
+        {/* The last hour label is centred on the final grid line, so it needs
+            half a line-height of room below the grid or it gets clipped by the
+            scroll container. */}
+        <div className="flex pb-3">
           <div
             className="relative shrink-0"
             style={{ width: GUTTER_WIDTH, height }}

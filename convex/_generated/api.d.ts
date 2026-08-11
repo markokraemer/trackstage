@@ -35,6 +35,7 @@ import type * as lib_evaluation from "../lib/evaluation.js";
 import type * as lib_files from "../lib/files.js";
 import type * as lib_formWindow from "../lib/formWindow.js";
 import type * as lib_ics from "../lib/ics.js";
+import type * as lib_publicLinks from "../lib/publicLinks.js";
 import type * as lib_taskVars from "../lib/taskVars.js";
 import type * as lib_uploadComments from "../lib/uploadComments.js";
 import type * as mcp from "../mcp.js";
@@ -88,6 +89,7 @@ declare const fullApi: ApiFromModules<{
   "lib/files": typeof lib_files;
   "lib/formWindow": typeof lib_formWindow;
   "lib/ics": typeof lib_ics;
+  "lib/publicLinks": typeof lib_publicLinks;
   "lib/taskVars": typeof lib_taskVars;
   "lib/uploadComments": typeof lib_uploadComments;
   mcp: typeof mcp;

@@ -29,10 +29,15 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Skeleton } from "@/components/ui/skeleton"
-import { LogoMark } from "@/components/brand/logo"
+import { LogoMark, Wordmark } from "@/components/brand/logo"
+import { PageHeader } from "@/components/shared/page-header"
 import { PortalProvider } from "@/components/portal/portal-context"
 import { PortalSignedOut } from "@/components/portal/portal-signed-out"
-import { PortalTabs, activePortalTab } from "@/components/portal/portal-tabs"
+import {
+  PortalTabs,
+  activePortalTab,
+  portalTabMeta,
+} from "@/components/portal/portal-tabs"
 import {
   PORTAL_TOKEN_EVENT,
   clearPortalToken,
@@ -128,11 +133,13 @@ function PortalLayout() {
 
   const { event, me, tasks, portal } = contextValue.home
   const openTasks = tasks.filter((task) => !task.completedAt).length
-  const dates = formatEventDates(event.startsAt, event.endsAt)
+  const dates = formatEventDates(event.startsAt, event.endsAt, event.timezone)
+  const activeTab = activePortalTab(location.pathname)
+  const tab = portalTabMeta(activeTab)
 
   return (
     <PortalProvider value={contextValue}>
-      <div className="min-h-svh bg-background">
+      <div className="flex min-h-svh flex-col bg-background">
         {/* Event-branded header — the speaker should always know whose event
             this is, and who they are signed in as. */}
         <header className="sticky top-0 z-40 border-b border-border bg-card">
@@ -162,6 +169,24 @@ function PortalLayout() {
                 </span>
               </span>
             </Link>
+
+            {/* Event context lives next to the event's own name on a wide
+                screen; on a phone it moves under the page header, where there
+                is room to read it. */}
+            <div className="ml-4 hidden min-w-0 items-center gap-4 text-sm text-muted-foreground lg:flex">
+              {dates ? (
+                <span className="inline-flex shrink-0 items-center gap-1.5">
+                  <RiCalendarLine size={15} aria-hidden />
+                  {dates}
+                </span>
+              ) : null}
+              {event.venue ? (
+                <span className="inline-flex min-w-0 items-center gap-1.5">
+                  <RiMapPin2Line size={15} aria-hidden className="shrink-0" />
+                  <span className="truncate">{event.venue}</span>
+                </span>
+              ) : null}
+            </div>
 
             <div className="ml-auto flex shrink-0 items-center gap-2">
               <DropdownMenu>
@@ -221,35 +246,78 @@ function PortalLayout() {
           </div>
         </header>
 
-        <div className="container-page pt-5 pb-16">
-          {/* Event context strip */}
-          <div className="mb-4 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
-            {dates ? (
-              <span className="inline-flex items-center gap-1.5">
-                <RiCalendarLine size={15} aria-hidden />
-                {dates}
-              </span>
+        <div className="container-page flex-1 pt-6 pb-14">
+          {/*
+            One page header for the whole portal — same component, same 20px
+            heading and same hairline as every organizer screen. The tab strip
+            hangs off it exactly like Settings → Account → Workspace do, so a
+            speaker who has also used the organizer app is never re-learning a
+            layout.
+          */}
+          <PageHeader title={tab.heading} description={tab.blurb}>
+            {/* The phone's copy of the event context (hidden in the header
+                above at this width). */}
+            {dates || event.venue ? (
+              <p className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground lg:hidden">
+                {dates ? (
+                  <span className="inline-flex items-center gap-1.5">
+                    <RiCalendarLine size={15} aria-hidden />
+                    {dates}
+                  </span>
+                ) : null}
+                {event.venue ? (
+                  <span className="inline-flex items-center gap-1.5">
+                    <RiMapPin2Line size={15} aria-hidden />
+                    {event.venue}
+                  </span>
+                ) : null}
+              </p>
             ) : null}
-            {event.venue ? (
-              <span className="inline-flex items-center gap-1.5">
-                <RiMapPin2Line size={15} aria-hidden />
-                {event.venue}
-              </span>
-            ) : null}
-          </div>
 
-          <PortalTabs
-            active={activePortalTab(location.pathname)}
-            openTaskCount={openTasks}
-            showTasks={portal.tasksVisible}
-          />
+            <PortalTabs
+              active={activeTab}
+              openTaskCount={openTasks}
+              showTasks={portal.tasksVisible}
+            />
+          </PageHeader>
 
           <div className="mt-6">
             <Outlet />
           </div>
         </div>
+
+        <PortalFooter />
       </div>
     </PortalProvider>
+  )
+}
+
+/**
+ * Quiet close to the page. Speakers get stuck and need to know who to ask —
+ * that sentence matters more here than any link, so it leads.
+ */
+function PortalFooter() {
+  return (
+    <footer className="border-t border-border bg-card">
+      <div className="container-page flex flex-col gap-3 py-6 sm:flex-row sm:items-center sm:justify-between">
+        <p className="text-sm text-muted-foreground">
+          Stuck, or something looks wrong? Reply to any email from the event
+          organizers — a real person reads it.
+        </p>
+        <div className="flex items-center gap-4 text-sm">
+          <Link
+            to="/docs/guide/speaker-portal"
+            className="inline-flex min-h-9 items-center text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+          >
+            How this works
+          </Link>
+          <span className="inline-flex items-center gap-1.5 text-muted-foreground">
+            <span className="text-xs">Powered by</span>
+            <Wordmark size="sm" className="text-foreground/70" />
+          </span>
+        </div>
+      </div>
+    </footer>
   )
 }
 
@@ -258,9 +326,15 @@ function PortalSkeleton() {
   return (
     <div className="min-h-svh bg-background">
       <div className="h-14 border-b border-border bg-card" />
-      <div className="container-page pt-5">
-        <Skeleton className="h-4 w-52" />
-        <Skeleton className="mt-4 h-11 w-full max-w-md rounded-xl" />
+      <div className="container-page pt-6">
+        <div className="flex flex-col gap-4 border-b border-border pb-4">
+          <div className="space-y-2">
+            <Skeleton className="h-6 w-32" />
+            <Skeleton className="h-4 w-full max-w-md" />
+          </div>
+          <Skeleton className="h-4 w-52" />
+          <Skeleton className="h-8 w-full max-w-sm" />
+        </div>
         <div className="mt-6 grid gap-4 lg:grid-cols-[1.2fr_1fr]">
           <Skeleton className="h-64 rounded-xl" />
           <Skeleton className="h-64 rounded-xl" />

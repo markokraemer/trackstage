@@ -307,14 +307,13 @@ export function friendlyError(error: unknown, fallback: string): string {
   return message.length > 0 && message.length < 240 ? message : fallback
 }
 
-/** Public submission URL for a form slug. */
-export function publicFormPath(slug: string): string {
-  return `/submit/${slug}`
-}
-
-export function publicFormUrl(slug: string): string {
-  if (typeof window === "undefined") return publicFormPath(slug)
-  return `${window.location.origin}${publicFormPath(slug)}`
-}
+/**
+ * The canonical public submission link, `/submit/:eventSlug/:formSlug`.
+ *
+ * Re-exported from `src/lib/public-links.ts` so the form builder keeps its
+ * familiar names while the URL scheme itself is defined in exactly one place
+ * (docs/memory/DECISIONS.md, "Public URL scheme is hierarchical").
+ */
+export { formPath as publicFormPath, formUrl as publicFormUrl } from "@/lib/public-links"
 
 export const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/

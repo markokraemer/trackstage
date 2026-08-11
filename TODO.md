@@ -93,9 +93,11 @@ Source of truth for everything Marko asked + build status. Update continuously.
   Button-wrapped links (34 files) became plain `<Link>/<a>` + `buttonVariants`; only
   TabsTrigger/DropdownMenuItem render-links remain (correct roles)
 - ⏳ /app intermittent SSR error "null useRef" from copilot/ai-elements dependency — investigate
-- ✅ /app/settings/api-mcp relocated — DONE at reconciliation: account settings is now a
-  MODAL (avatar menu; Profile / Security / API & MCP tabs; `?account=` deep-linkable from
-  any /app page; old URLs redirect). API & MCP removed from event-settings nav
+- ✅ /app/settings/api-mcp relocated — account settings owns API & MCP now. **The modal
+  experiment is REVERSED (Marko, 2026-08-11): account settings is an inline PAGE again**
+  at `/app/account` (Profile / Security / API & MCP tabs, `?tab=` deep-linkable;
+  `/app/settings/api-mcp` → `/app/account?tab=api-mcp`). `?account=` search param,
+  `AccountSettingsDialog` and its shell wiring are deleted
 - ✅ Dev deployment collects agent/e2e artifacts — `seed:setup` now purges them (agent
   events by name, e2e fixtures by the `unique()` marker on any event). Reseed before
   demos: see the RELEASE GATE line under **Ship**
@@ -146,10 +148,18 @@ Source of truth for everything Marko asked + build status. Update continuously.
   (refuses while on live submissions, else cascades) · dashboard "Unscheduled" card ·
   cold-load shell skeleton instead of "Loading…" · copilot approval tiles → bg-primary/10 ·
   forms row Edit → outline (one primary per view) · dead publicData queries deleted
-- ⏳ Follow-ups filed: workspace page should LIST events with click-through (rule 23
-  refinement 2, only a count today) · submissions footer count = page slice (pass
-  totalCount) · eval tab count style "(2)" vs plain-number tabs · noUncheckedIndexedAccess
-  = 316 errors, needs its own wave
+- ✅ Follow-ups CLOSED (2026-08-11, settings-architecture pass): workspace page LISTS its
+  events with click-through · submissions footer counts the filtered set (`totals` prop) ·
+  one `TabsCount` component for every tab strip (no more "Plans (2)") · portal/kind/status
+  tabs adopted it · embeds' duplicate Event select removed (sidebar switcher is the one
+  source) · CFP welcome no longer prints the event name twice
+- ⏳ Still open: noUncheckedIndexedAccess = 316 errors, needs its own wave
+- ✅ **Per-member event access scoping** (rule 23, Marko 2026-08-11): `members.eventIds`
+  (absent ⇒ all events), enforced in `convex/lib/auth.ts` `eventAccessFor` for browser,
+  API-key and MCP paths alike — a scoped member gets "Event not found.", the same words a
+  stranger gets. `events.list`, `apiV1.listEvents`, `mcp.listEvents/listWorkspaces` filter
+  by it; `workspaces.setMemberEventAccess` + optional `eventIds` on invites; Team table has
+  an Event access column with an optimistic edit dialog
 
 ## Quality / hill-climb
 - ⏳ First full pass review vs screenshots + video (UX 1:1 check), then vs SPEC acceptance

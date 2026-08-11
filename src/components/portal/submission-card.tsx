@@ -7,8 +7,9 @@ import {
 
 import { cn } from "@/lib/utils"
 import { StatusPill } from "@/components/shared/status-pill"
+import { usePortal } from "./portal-context"
 import type { PortalSubmission } from "./portal-context"
-import { formatDateTime } from "./portal-utils"
+import { formatEventDateTime } from "./portal-utils"
 
 /** Small colored dot + name for the submission's track. */
 export function TrackDot({
@@ -40,6 +41,11 @@ export interface SubmissionCardProps {
   action?: React.ReactNode
   /** Show the abstract excerpt and scheduling line. */
   detailed?: boolean
+  /**
+   * Drop the card chrome — used inside a PanelCard on Home, where a bordered
+   * card inside a bordered card reads as clutter on a phone.
+   */
+  bare?: boolean
   className?: string
 }
 
@@ -53,13 +59,17 @@ export function SubmissionCard({
   code,
   action,
   detailed = false,
+  bare = false,
   className,
 }: SubmissionCardProps) {
+  const { home } = usePortal()
   const participants = submission.participants
   return (
     <article
       className={cn(
-        "rounded-lg border border-border bg-card p-4 transition-colors",
+        bare
+          ? "px-6 py-4"
+          : "rounded-lg border border-border bg-card p-4 transition-colors",
         className,
       )}
     >
@@ -101,7 +111,10 @@ export function SubmissionCard({
         <p className="mt-2.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs font-medium text-foreground">
           <span className="inline-flex items-center gap-1.5">
             <RiCalendarEventLine size={14} aria-hidden />
-            {formatDateTime(submission.scheduled.startsAt)}
+            {formatEventDateTime(
+              submission.scheduled.startsAt,
+              home.event.timezone,
+            )}
           </span>
           <span className="text-muted-foreground">
             {submission.scheduled.durationMinutes} min

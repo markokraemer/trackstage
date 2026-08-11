@@ -18,7 +18,13 @@ import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import {
+  Tabs,
+  TabsContent,
+  TabsCount,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs"
 import { PageHeader } from "@/components/shared/page-header"
 import { EmptyState } from "@/components/shared/empty-state"
 import { DataToolbar } from "@/components/shared/data-toolbar"
@@ -178,10 +184,12 @@ function EvaluationPage() {
         <TabsList>
           <TabsTrigger value="summary">Summary</TabsTrigger>
           <TabsTrigger value="plans">
-            Plans{plans ? ` (${plans.length})` : ""}
+            Plans
+            {plans ? <TabsCount>{plans.length}</TabsCount> : null}
           </TabsTrigger>
           <TabsTrigger value="evaluators">
-            Evaluators{evaluators ? ` (${evaluators.length})` : ""}
+            Evaluators
+            {evaluators ? <TabsCount>{evaluators.length}</TabsCount> : null}
           </TabsTrigger>
         </TabsList>
 

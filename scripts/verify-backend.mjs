@@ -145,7 +145,8 @@ ok("public form loads with questions", pubForm.questions.length >= 5)
 ok("speaker min is 1 (no trap)", pubForm.participantConfig.speakerMin === 1)
 const verifyEmail = `verify-e2e-${Date.now().toString(36)}@example.com`
 const ident = await client.mutation(api.submit.identify, { slug: "cfp", email: verifyEmail })
-ok("identify returns portal token", typeof ident.portalToken === "string")
+ok("a never-seen email goes straight through with a token",
+  ident.status === "ready" && typeof ident.portalToken === "string", JSON.stringify(ident))
 const PT = ident.portalToken
 await throws("bad email rejected", () =>
   client.mutation(api.submit.identify, { slug: "cfp", email: "not-an-email" }), "valid email")
@@ -228,6 +229,64 @@ ok("alert scheduling never fails the submission",
 ok("every submission on a notified form raises an alert",
   newAlerts.some((n) => n.submissionTitle === "Quiet Talk"),
   `quiet submission ${quietSubmission.submissionId}`)
+
+// ————— Identity: typing an email is not proof of owning it —————
+// The flaw this section exists for: `identify` used to hand back the portal
+// token for ANY typed address, so entering a real speaker's email opened their
+// submissions, tasks and profile. Now only a never-seen address (nothing to
+// steal) or a caller that already holds the token gets one; everybody else
+// gets a sign-in link mailed to the address itself.
+section("Portal sign-in links")
+
+// `verifyEmail` submitted a talk above, so it is now a real speaker.
+const returning = await client.mutation(api.submit.identify, { slug: "cfp", email: verifyEmail })
+ok("a known speaker's email never yields a token", returning.status === "link_sent",
+  JSON.stringify(returning))
+ok("and the payload says nothing else about them",
+  !("portalToken" in returning) && !("drafts" in returning) &&
+    !("firstName" in returning) && !("lastName" in returning),
+  JSON.stringify(returning))
+
+const linkOutbox = await client.query(api.comms.listMessages, { eventId: main._id, limit: 500 })
+const linkMail = linkOutbox.find(
+  (m) => m.templateKey === "portal_link" && m.toEmail === verifyEmail,
+)
+ok("a sign-in link lands in the outbox (preview, demo recipient)",
+  !!linkMail && ["preview", "scheduled", "sending"].includes(linkMail.status),
+  linkMail?.status)
+ok("the email names the address it is for and the event",
+  Boolean(linkMail) && linkMail.subject.includes(verifyEmail) &&
+    !linkMail.body.includes("{{"),
+  linkMail?.subject)
+
+/** Follow the emailed link exactly as a speaker would: read the token out of it. */
+function tokenFromSignInEmail(body) {
+  const fromContinue = body.match(/[?&]t=([A-Za-z0-9._-]+)/)
+  const fromPortal = body.match(/\/portal\/t\/([A-Za-z0-9._-]+)/)
+  return (fromContinue ?? fromPortal)?.[1] ?? null
+}
+const mailedToken = tokenFromSignInEmail(linkMail?.body ?? "")
+ok("the link carries a working sign-in token", mailedToken === PT)
+const viaLink = await client.query(api.portal.home, { portalToken: mailedToken })
+ok("opening it reaches that speaker's own portal", viaLink.me.email === verifyEmail)
+
+// A session that already holds the token (same browser, or the link just
+// opened) continues without a second trip to the inbox.
+const holdingToken = await client.mutation(api.submit.identify, {
+  slug: "cfp", email: verifyEmail, portalToken: PT,
+})
+ok("a session that proves it holds the token continues straight through",
+  holdingToken.status === "ready" && holdingToken.portalToken === PT)
+const wrongToken = await client.mutation(api.submit.identify, {
+  slug: "cfp", email: verifyEmail, portalToken: "not-their-token",
+})
+ok("a guessed token does not open the door", wrongToken.status === "link_sent")
+
+// Rate limit: three links an hour, then a friendly "check your inbox".
+await client.mutation(api.submit.identify, { slug: "cfp", email: verifyEmail })
+const throttled = await client.mutation(api.submit.identify, { slug: "cfp", email: verifyEmail })
+ok("no more than 3 sign-in links an hour",
+  throttled.status === "link_sent" && throttled.sent === false, JSON.stringify(throttled))
 
 // ————— Organizer pipeline: queues + commit —————
 section("Submissions pipeline")
@@ -804,6 +863,19 @@ ok("chase list present", Array.isArray(overview.topSpeakersByOutstandingTasks))
 const roster = await client.query(api.dashboard.speakersRoster, { eventId: main._id })
 ok("roster includes our speaker w/ portal token", roster.some((s) => s.email === verifyEmail && s.portalToken))
 ok("roster rows carry a workflow status", roster.every((s) => ["invited", "confirmed", "dropped"].includes(s.workflowStatus)))
+// The roster is the people graph, not an acceptance list: every row says WHY
+// it is there, and acceptance is one of the four answers.
+ok("every roster row carries a program facet",
+  roster.every((s) => ["confirmed", "in_review", "closed", "manual"].includes(s.programStatus)))
+ok("the facet agrees with the counts behind it",
+  roster.every((s) =>
+    (s.programStatus === "confirmed") === (s.programCounts.accepted > 0) &&
+    (s.programStatus === "manual") === (s.sessions.length === 0)))
+ok("the roster is wider than the accepted-speaker count (acceptance is not a gate)",
+  roster.length >= overview.acceptedSpeakerCount, `${roster.length} rows vs ${overview.acceptedSpeakerCount} accepted`)
+ok("the dashboard chase list stays scoped to accepted speakers",
+  overview.topSpeakersByOutstandingTasks.every((c) =>
+    roster.find((s) => String(s.personId) === String(c.personId))?.programCounts.accepted > 0))
 
 // ————— Speakers admin: manual add, profile edit, workflow status —————
 section("Speakers admin")
@@ -840,6 +912,51 @@ await client.mutation(api.speakersAdmin.setWorkflowStatus, {
 const rosterAfterStatus = await client.query(api.dashboard.speakersRoster, { eventId: main._id })
 ok("workflow status change persists (SPK-04)",
   rosterAfterStatus.find((s) => s.email === manualEmail)?.workflowStatus === "confirmed")
+
+// ————— One source of truth: a queued session's speaker is a speaker —————
+// The regression this guards: a session added by hand and left in the Accept
+// Queue used to leave its speaker invisible on the roster, because the roster
+// was derived from ACCEPTED submissions only. There is one people graph now —
+// being on a programme item is what puts you on the roster, and the decision
+// is a facet on the row.
+const queuedEmail = `queued-speaker-${Date.now().toString(36)}@example.com`
+const rosterBeforeQueued = await client.query(api.dashboard.speakersRoster, { eventId: main._id })
+const queuedSessionId = await client.mutation(api.submissions.addManual, {
+  eventId: main._id, kind: "session", title: "Verification Keynote (queued)",
+  status: "accept_queue",
+  speakerEmails: [{ email: queuedEmail, firstName: "Quinn", lastName: "Queued" }],
+})
+const rosterQueued = await client.query(api.dashboard.speakersRoster, { eventId: main._id })
+const queuedRow = rosterQueued.find((s) => s.email === queuedEmail)
+ok("a queued session's speaker is on the roster immediately", !!queuedRow,
+  `roster went ${rosterBeforeQueued.length} → ${rosterQueued.length}`)
+ok("…faceted as in review, not confirmed",
+  queuedRow?.programStatus === "in_review" && queuedRow?.programCounts.inReview === 1 &&
+    queuedRow?.programCounts.accepted === 0)
+ok("…with the session they're on, decision and all",
+  queuedRow?.sessions.length === 1 && queuedRow?.sessions[0].status === "accept_queue" &&
+    queuedRow?.sessions[0].kind === "session")
+ok("…and an untouched workflow status reads Invited, never Confirmed",
+  queuedRow?.workflowStatus === "invited")
+ok("an in-review speaker is NOT on the public gallery",
+  !(await client.query(api.publicData.speakers, { slug: "ai-summit-2026" }))
+    .speakers.some((s) => s.name === "Quinn Queued"))
+await client.mutation(api.submissions.setStatus, {
+  submissionId: queuedSessionId, status: "accepted",
+})
+const rosterAccepted = await client.query(api.dashboard.speakersRoster, { eventId: main._id })
+const acceptedRow = rosterAccepted.find((s) => s.email === queuedEmail)
+ok("accepting the session flips the facet to confirmed",
+  acceptedRow?.programStatus === "confirmed" && acceptedRow?.programCounts.accepted === 1)
+ok("the public gallery only shows them once accepted",
+  (await client.query(api.publicData.speakers, { slug: "ai-summit-2026" }))
+    .speakers.some((s) => s.name === "Quinn Queued"))
+// Put the roster back exactly as we found it (the session itself lands in the
+// deleted-submissions tray, which is what a soft delete is for).
+await client.mutation(api.submissions.remove, { submissionId: queuedSessionId })
+await client.mutation(api.speakersAdmin.removePerson, { personId: acceptedRow.personId })
+ok("cleanup leaves the roster where it started",
+  (await client.query(api.dashboard.speakersRoster, { eventId: main._id })).length === rosterBeforeQueued.length)
 
 // ————— Public widgets data —————
 section("Public data")
@@ -1671,6 +1788,309 @@ if (SITE_URL) {
   const strangerKeyOwner = await call("GET", `/event/design-systems-day/sessions`)
   ok("a member's key reads their other event", strangerKeyOwner.status === 200)
 
+  // ——————————————————————————————————————————————————————————————————————
+  // The 2026-08-11 completion pass: full event CRUD, forms, tasks, evaluation,
+  // session participants, and real custom session statuses with restore.
+  // Every new route gets a happy path here; every new WRITE also gets an auth
+  // refusal, because a write nobody can be refused from is not authorized.
+  // ——————————————————————————————————————————————————————————————————————
+
+  // ——— Events: full CRUD ———
+  const eventDetail = await call("GET", `/events/${EV}`)
+  ok("GET /v1/events/{ref} returns one event with totals",
+    eventDetail.status === 200 && eventDetail.json.data.slug === EV &&
+    typeof eventDetail.json.data.totals.sessions === "number", JSON.stringify(eventDetail.json).slice(0, 160))
+  ok("event carries organization_id + portal_settings + public_url",
+    eventDetail.json.data.organization_id && eventDetail.json.data.public_url === `/e/${EV}` &&
+    typeof eventDetail.json.data.portal_settings.allow_submission_edits === "boolean")
+  ok("GET /v1/events/{ref} refuses the demo token on a private event…",
+    [200, 403, 404].includes((await call("GET", `/events/${EV}`, { key: "demo-api-token" })).status))
+
+  // The workspace comes straight back off the read — create-from-read round-trips.
+  const orgId = eventDetail.json.data.organization_id
+  const ambiguous = await call("POST", "/events", { body: { name: "Parity API Ambiguity Probe" } })
+  ok("omitting organization_id either creates or names the workspaces to choose from",
+    ambiguous.status === 201 ||
+      (ambiguous.status === 400 && /organization_id/.test(ambiguous.json.error) && ambiguous.json.error.includes(orgId)),
+    JSON.stringify(ambiguous.json).slice(0, 200))
+  if (ambiguous.status === 201) await call("DELETE", `/events/${ambiguous.json.data.slug}`)
+
+  const newEvent = await call("POST", "/events", {
+    body: {
+      name: "Parity API Event",
+      slug: "parity-api-event",
+      timezone: "UTC",
+      type: "Conference",
+      venue: "Nowhere",
+      organization_id: orgId,
+    },
+  })
+  ok("POST /v1/events creates an event (201)",
+    newEvent.status === 201 && newEvent.json.data?.id, JSON.stringify(newEvent.json).slice(0, 200))
+  const newEventRef = newEvent.json.data?.slug
+  ok("the created event reports the address it actually got",
+    typeof newEventRef === "string" && newEventRef.startsWith("parity-api-event") &&
+    newEvent.json.slug_adjusted === false, `${newEventRef} adjusted=${newEvent.json.slug_adjusted}`)
+  ok("POST /v1/events is refused for the read-only demo token",
+    (await call("POST", "/events", { key: "demo-api-token", body: { name: "nope" } })).status === 403)
+  ok("POST /v1/events is refused for a key without write:events",
+    (await call("POST", "/events", { key: scoped, body: { name: "nope" } })).status === 403)
+
+  const eventUpdated = await call("PUT", `/events/${newEventRef}`, {
+    body: { venue: "Somewhere Else", portal_settings: { allow_submission_edits: false } },
+  })
+  ok("PUT /v1/events/{ref} updates the event",
+    eventUpdated.status === 200 && eventUpdated.json.data.venue === "Somewhere Else" &&
+    eventUpdated.json.data.portal_settings.allow_submission_edits === false)
+  ok("PUT /v1/events/{ref} is refused for the demo token",
+    (await call("PUT", `/events/${newEventRef}`, { key: "demo-api-token", body: { venue: "nope" } })).status === 403)
+
+  // ——— Forms, on the throwaway event so nothing real is touched ———
+  const formsPage = await call("GET", `/event/${EV}/forms`)
+  ok("GET /forms lists the event's CFP forms with public URLs",
+    formsPage.status === 200 && formsPage.json.results.some((f) => f.slug === "cfp" && f.public_url === `/submit/${EV}/cfp`),
+    JSON.stringify(formsPage.json).slice(0, 200))
+  const formBySlug = await call("GET", `/event/${EV}/forms/cfp`)
+  ok("GET /forms/{slug} reads a form by its public slug, with questions",
+    formBySlug.status === 200 && formBySlug.json.data.questions.length >= 5 &&
+    formBySlug.json.data.questions.some((q) => q.internal_name === "title" && q.locked === true))
+  ok("form questions carry the same vocabulary as GET /fields",
+    formBySlug.json.data.questions.every((q) => "internal_name" in q && "public_name" in q && "field_type" in q))
+
+  const newForm = await call("POST", `/event/${newEventRef}/forms/create`, {
+    body: { internal_name: "Parity CFP", kind: "abstract", slug: "parity-cfp" },
+  })
+  ok("POST /forms/create creates a form with default questions (201)",
+    newForm.status === 201 && newForm.json.data.slug === "parity-cfp" && newForm.json.data.questions.length >= 5,
+    JSON.stringify(newForm.json).slice(0, 200))
+  const formId = newForm.json.data?.id
+  ok("POST /forms/create is refused for the demo token",
+    (await call("POST", `/event/${newEventRef}/forms/create`, { key: "demo-api-token", body: { internal_name: "nope" } })).status === 403)
+  const formClosed = await call("PUT", `/event/${newEventRef}/forms/${formId}`, { body: { status: "closed" } })
+  ok("PUT /forms/{id} closes the form", formClosed.status === 200 && formClosed.json.data.status === "closed" && formClosed.json.data.is_open === false)
+  const strippedLocked = await call("PUT", `/event/${newEventRef}/forms/${formId}`, {
+    body: { questions: [{ id: "extra", label: "Extra", type: "short_text", required: false, enabled: true, locked: false }] },
+  })
+  ok("PUT /forms/{id} refuses to drop a locked system question (400)",
+    strippedLocked.status === 400 && /system question/i.test(strippedLocked.json.error), JSON.stringify(strippedLocked.json))
+  ok("PUT /forms/{id} is refused for the demo token",
+    (await call("PUT", `/event/${newEventRef}/forms/${formId}`, { key: "demo-api-token", body: { status: "open" } })).status === 403)
+  ok("DELETE /forms/{id} removes a form with no submissions (204)",
+    (await call("DELETE", `/event/${newEventRef}/forms/${formId}`)).status === 204)
+  ok("DELETE /forms/{id} is refused for the demo token",
+    (await call("DELETE", `/event/${EV}/forms/cfp`, { key: "demo-api-token" })).status === 403)
+
+  // ——— Session participants (the endpoints their webhooks imply) ———
+  const participantSession = await call("POST", `/event/${EV}/sessions/create`, {
+    body: { title: "Parity participants session", status: "pending" },
+  })
+  const psid = participantSession.json.data.id
+  const participants0 = await call("GET", `/event/${EV}/sessions/${psid}/participants`)
+  ok("GET /sessions/{id}/participants lists the line-up",
+    participants0.status === 200 && Array.isArray(participants0.json.data), JSON.stringify(participants0.json).slice(0, 160))
+  const attached = await call("POST", `/event/${EV}/sessions/${psid}/participants`, {
+    body: { email: `parity-participant-${Date.now().toString(36)}@example.com`, first_name: "Parity", last_name: "Tester", role: "moderator" },
+  })
+  ok("POST /participants attaches a brand-new person (201)",
+    attached.status === 201 && attached.json.data.participant_id && attached.json.data.role === "moderator",
+    JSON.stringify(attached.json).slice(0, 200))
+  const attachedId = attached.json.data.id
+  const reAttached = await call("POST", `/event/${EV}/sessions/${psid}/participants`, {
+    body: { speaker_id: attachedId, role: "speaker" },
+  })
+  ok("re-attaching the same person moves their role instead of failing",
+    reAttached.status === 201 && reAttached.json.created === false && reAttached.json.data.role === "speaker")
+  ok("POST /participants is refused for the demo token",
+    (await call("POST", `/event/${EV}/sessions/${psid}/participants`, { key: "demo-api-token", body: { email: "nope@example.com" } })).status === 403)
+  ok("DELETE /participants/{speakerId} detaches them (204)",
+    (await call("DELETE", `/event/${EV}/sessions/${psid}/participants/${attachedId}`)).status === 204)
+  ok("DELETE /participants is refused for the demo token",
+    (await call("DELETE", `/event/${EV}/sessions/${psid}/participants/${attachedId}`, { key: "demo-api-token" })).status === 403)
+
+  // ——— Speaker delete, with the guard that makes it safe ———
+  const throwaway = await call("POST", `/event/${EV}/speakers/create`, {
+    body: { email: `parity-delete-${Date.now().toString(36)}@example.com`, first_name: "Parity", last_name: "Delete" },
+  })
+  const throwawayId = throwaway.json.data.id
+  ok("DELETE /speakers/{id} is refused for the demo token",
+    (await call("DELETE", `/event/${EV}/speakers/${throwawayId}`, { key: "demo-api-token" })).status === 403)
+  ok("DELETE /speakers/{id} removes someone off every session (204)",
+    (await call("DELETE", `/event/${EV}/speakers/${throwawayId}`)).status === 204)
+  const speakerOnSession = await call("GET", `/event/${EV}/sessions/${psid}`)
+  const stillOn = speakerOnSession.json.data.participants[0]?.id
+  if (stillOn) {
+    const refused = await call("DELETE", `/event/${EV}/speakers/${stillOn}`)
+    ok("DELETE /speakers/{id} refuses while they are still on a live session",
+      refused.status === 400 && /submission/i.test(refused.json.error), JSON.stringify(refused.json))
+  } else {
+    ok("DELETE /speakers/{id} refuses while they are still on a live session", false, "no participant to test with")
+  }
+
+  // ——— Tasks ———
+  const taskSpeakerEmail = `parity-task-${Date.now().toString(36)}@example.com`
+  await call("POST", `/event/${EV}/speakers/create`, { body: { email: taskSpeakerEmail, first_name: "Task", last_name: "Owner" } })
+  const newTask = await call("POST", `/event/${EV}/tasks/create`, {
+    body: { title: "Parity API task", kind: "upload", instructions: "suite", due_at: Date.now() + 86400000, speaker_emails: [taskSpeakerEmail] },
+  })
+  ok("POST /tasks/create assigns a task by speaker email (201)",
+    newTask.status === 201 && newTask.json.created === 1 && newTask.json.data.title === "Parity API task",
+    JSON.stringify(newTask.json).slice(0, 200))
+  const taskId = newTask.json.data?.id
+  ok("POST /tasks/create is refused for the demo token",
+    (await call("POST", `/event/${EV}/tasks/create`, { key: "demo-api-token", body: { title: "nope", speaker_emails: [taskSpeakerEmail] } })).status === 403)
+  const tasksOpen = await call("GET", `/event/${EV}/tasks?status=open`)
+  ok("GET /tasks?status=open is the outstanding-tasks dashboard",
+    tasksOpen.status === 200 && tasksOpen.json.results.every((t) => t.is_complete === false) &&
+    tasksOpen.json.results.some((t) => t.id === taskId), JSON.stringify(tasksOpen.json).slice(0, 160))
+  const taskDetail = await call("GET", `/event/${EV}/tasks/${taskId}`)
+  ok("GET /tasks/{id} returns the task with its speaker",
+    taskDetail.status === 200 && taskDetail.json.data.speaker.email === taskSpeakerEmail)
+  const taskDone = await call("PUT", `/event/${EV}/tasks/${taskId}`, { body: { completed: true } })
+  ok("PUT /tasks/{id} ticks a task off", taskDone.status === 200 && taskDone.json.data.is_complete === true)
+  ok("PUT /tasks/{id} is refused for the demo token",
+    (await call("PUT", `/event/${EV}/tasks/${taskId}`, { key: "demo-api-token", body: { completed: false } })).status === 403)
+  ok("completed tasks leave ?status=open",
+    !(await call("GET", `/event/${EV}/tasks?status=open`)).json.results.some((t) => t.id === taskId))
+  ok("DELETE /tasks/{id} is refused for the demo token",
+    (await call("DELETE", `/event/${EV}/tasks/${taskId}`, { key: "demo-api-token" })).status === 403)
+  ok("DELETE /tasks/{id} removes it (204)", (await call("DELETE", `/event/${EV}/tasks/${taskId}`)).status === 204)
+
+  // ——— Evaluation ———
+  const planSessions = (await call("GET", `/event/${EV}/sessions?status=pending&pageSize=2`)).json.results.map((s) => s.id)
+  const newPlan = await call("POST", `/event/${EV}/evaluation-plans/create`, {
+    body: {
+      name: "Parity API round",
+      round: 9,
+      blind: true,
+      submission_ids: planSessions,
+      criteria: [{ label: "Relevance", weight: 2 }, { label: "Recommendation", type: "select", options: ["Accept", "Decline"] }],
+    },
+  })
+  ok("POST /evaluation-plans/create creates a round (201)",
+    newPlan.status === 201 && newPlan.json.data.round === 9 && newPlan.json.data.criteria.length === 2,
+    JSON.stringify(newPlan.json).slice(0, 200))
+  const planId = newPlan.json.data?.id
+  ok("criteria ids are derived from labels and types default to numeric",
+    newPlan.json.data.criteria[0].id === "relevance" && newPlan.json.data.criteria[0].type === "numeric" &&
+    newPlan.json.data.criteria[0].weight === 2 && newPlan.json.data.criteria[1].type === "select")
+  ok("POST /evaluation-plans/create is refused for the demo token",
+    (await call("POST", `/event/${EV}/evaluation-plans/create`, { key: "demo-api-token", body: { name: "nope" } })).status === 403)
+  const planCriteriaMissing = await call("POST", `/event/${EV}/evaluation-plans/create`, { body: { name: "No criteria" } })
+  ok("a plan with no criteria is refused in plain English (400)",
+    planCriteriaMissing.status === 400 && /criterion/i.test(planCriteriaMissing.json.error), JSON.stringify(planCriteriaMissing.json))
+
+  const plansPage = await call("GET", `/event/${EV}/evaluation-plans`)
+  ok("GET /evaluation-plans lists rounds with progress",
+    plansPage.status === 200 && plansPage.json.results.some((p) => p.id === planId && typeof p.completion_pct === "number"))
+  const newEvaluator = await call("POST", `/event/${EV}/evaluators/create`, {
+    body: { plan_id: planId, email: "parity-reviewer@example.com", name: "Parity Reviewer", assigned_submission_ids: planSessions.slice(0, 1) },
+  })
+  ok("POST /evaluators/create adds a reviewer and mints their review link (201)",
+    newEvaluator.status === 201 && newEvaluator.json.data.review_path.startsWith("/review/") &&
+    newEvaluator.json.data.assigned_count === 1, JSON.stringify(newEvaluator.json).slice(0, 200))
+  const evaluatorId = newEvaluator.json.data?.id
+  ok("POST /evaluators/create is refused for the demo token",
+    (await call("POST", `/event/${EV}/evaluators/create`, { key: "demo-api-token", body: { plan_id: planId, email: "nope@example.com" } })).status === 403)
+  // Created AFTER the plan, so it is definitively outside its pool.
+  const outsidePool = await call("POST", `/event/${EV}/sessions/create`, {
+    body: { title: "Parity outside-the-pool session", status: "pending" },
+  })
+  const offPool = await call("POST", `/event/${EV}/evaluators/create`, {
+    body: {
+      plan_id: planId,
+      email: "parity-offpool@example.com",
+      assigned_submission_ids: [outsidePool.json.data.id],
+    },
+  })
+  ok("assigning a session outside the plan's pool is refused (400)",
+    offPool.status === 400 && /pool/i.test(offPool.json.error), JSON.stringify(offPool.json))
+  const evaluatorsPage = await call("GET", `/event/${EV}/evaluators?plan_id=${planId}`)
+  ok("GET /evaluators lists reviewers with their outstanding counts",
+    evaluatorsPage.status === 200 && evaluatorsPage.json.results.some((e) => e.id === evaluatorId && e.outstanding_count === 1))
+  const planDetail = await call("GET", `/event/${EV}/evaluation-plans/${planId}`)
+  ok("GET /evaluation-plans/{id} embeds evaluators and the scored pool",
+    planDetail.status === 200 && planDetail.json.data.evaluators.length >= 1 &&
+    planDetail.json.data.submissions.length === planSessions.length)
+  const evaluatorRecut = await call("PUT", `/event/${EV}/evaluators/${evaluatorId}`, { body: { assigned_submission_ids: planSessions } })
+  ok("PUT /evaluators/{id} re-cuts their queue",
+    evaluatorRecut.status === 200 && evaluatorRecut.json.data.assigned_count === planSessions.length)
+  ok("PUT /evaluators/{id} is refused for the demo token",
+    (await call("PUT", `/event/${EV}/evaluators/${evaluatorId}`, { key: "demo-api-token", body: { name: "nope" } })).status === 403)
+  const evaluationsPage = await call("GET", `/event/${EV}/evaluations?plan_id=${planId}`)
+  ok("GET /evaluations returns the scorecards (empty until anyone scores)",
+    evaluationsPage.status === 200 && Array.isArray(evaluationsPage.json.results))
+  const planClosed = await call("PUT", `/event/${EV}/evaluation-plans/${planId}`, { body: { status: "closed" } })
+  ok("PUT /evaluation-plans/{id} closes the round", planClosed.status === 200 && planClosed.json.data.status === "closed")
+  ok("PUT /evaluation-plans/{id} is refused for the demo token",
+    (await call("PUT", `/event/${EV}/evaluation-plans/${planId}`, { key: "demo-api-token", body: { status: "open" } })).status === 403)
+  ok("DELETE /evaluators/{id} is refused for the demo token",
+    (await call("DELETE", `/event/${EV}/evaluators/${evaluatorId}`, { key: "demo-api-token" })).status === 403)
+  ok("DELETE /evaluators/{id} removes the reviewer (204)",
+    (await call("DELETE", `/event/${EV}/evaluators/${evaluatorId}`)).status === 204)
+  ok("DELETE /evaluation-plans/{id} is refused for the demo token",
+    (await call("DELETE", `/event/${EV}/evaluation-plans/${planId}`, { key: "demo-api-token" })).status === 403)
+  ok("DELETE /evaluation-plans/{id} removes the round (204)",
+    (await call("DELETE", `/event/${EV}/evaluation-plans/${planId}`)).status === 204)
+
+  // ——— Session statuses: real CRUD + the restore leg (their last endpoint) ———
+  const statusList = await call("GET", `/event/${EV}/statuses`)
+  ok("GET /statuses returns the seven built-ins, ids unchanged",
+    statusList.status === 200 && statusList.json.results.some((s) => s.id === "accepted" && s.system === true),
+    JSON.stringify(statusList.json).slice(0, 200))
+  ok("statuses carry the pipeline value AND the organizer's label",
+    statusList.json.results.every((s) => typeof s.pipeline_status === "string" && typeof s.name === "string"))
+  const newStatus = await call("POST", `/event/${EV}/statuses/create`, {
+    body: { name: "Parity Waitlist", category: "pending", color: "amber" },
+  })
+  ok("POST /statuses/create creates a custom status (201)",
+    newStatus.status === 201 && newStatus.json.data.name === "Parity Waitlist" &&
+    newStatus.json.data.pipeline_status === "pending" && newStatus.json.data.system === false,
+    JSON.stringify(newStatus.json).slice(0, 200))
+  const statusId = newStatus.json.data?.status_id
+  ok("POST /statuses/create is refused for the demo token",
+    (await call("POST", `/event/${EV}/statuses/create`, { key: "demo-api-token", body: { name: "nope" } })).status === 403)
+  const badColor = await call("POST", `/event/${EV}/statuses/create`, { body: { name: "Bad", color: "octarine" } })
+  ok("an unknown status colour is refused with the valid list (400)",
+    badColor.status === 400 && /green, amber, red, gray, blue/.test(badColor.json.error), JSON.stringify(badColor.json))
+  const statusRenamed = await call("PUT", `/event/${EV}/statuses/${statusId}`, { body: { name: "Parity Waitlisted" } })
+  ok("PUT /statuses/{id} renames a custom status", statusRenamed.status === 200 && statusRenamed.json.data.name === "Parity Waitlisted")
+  const systemRecategorised = await call("PUT", `/event/${EV}/statuses/accepted`, { body: { category: "declined" } })
+  ok("a built-in status refuses re-categorisation (400)",
+    systemRecategorised.status === 400 && /Built-in/i.test(systemRecategorised.json.error), JSON.stringify(systemRecategorised.json))
+  const systemDeleted = await call("DELETE", `/event/${EV}/statuses/accepted`)
+  ok("a built-in status refuses deletion (400)",
+    systemDeleted.status === 400 && /built-in/i.test(systemDeleted.json.error), JSON.stringify(systemDeleted.json))
+  ok("PUT /statuses/{id} is refused for the demo token",
+    (await call("PUT", `/event/${EV}/statuses/${statusId}`, { key: "demo-api-token", body: { name: "nope" } })).status === 403)
+  ok("DELETE /statuses/{id} is refused for the demo token",
+    (await call("DELETE", `/event/${EV}/statuses/${statusId}`, { key: "demo-api-token" })).status === 403)
+  ok("DELETE /statuses/{id} archives a custom status (204)",
+    (await call("DELETE", `/event/${EV}/statuses/${statusId}`)).status === 204)
+  ok("the archived status leaves GET /statuses",
+    !(await call("GET", `/event/${EV}/statuses`)).json.results.some((s) => s.status_id === statusId))
+  const archived = await call("GET", `/event/${EV}/statuses?include_deleted=true`)
+  ok("…but comes back with ?include_deleted=true, carrying deleted_at",
+    archived.json.results.some((s) => s.status_id === statusId && s.deleted_at !== null))
+  ok("POST /statuses/{id}/restore is refused for the demo token",
+    (await call("POST", `/event/${EV}/statuses/${statusId}/restore`, { key: "demo-api-token" })).status === 403)
+  const restored = await call("POST", `/event/${EV}/statuses/${statusId}/restore`)
+  ok("POST /statuses/{id}/restore brings it back (their last unmatched endpoint)",
+    restored.status === 200 && restored.json.data.deleted_at === null && restored.json.restored === true,
+    JSON.stringify(restored.json).slice(0, 200))
+  ok("the restored status is listed again",
+    (await call("GET", `/event/${EV}/statuses`)).json.results.some((s) => s.status_id === statusId))
+
+  // ——— Cleanup of the completion-pass fixtures ———
+  await call("DELETE", `/event/${EV}/statuses/${statusId}`)
+  await call("DELETE", `/event/${EV}/sessions/${psid}`)
+  await call("DELETE", `/event/${EV}/sessions/${outsidePool.json.data.id}`)
+  ok("DELETE /v1/events/{ref} is refused for the demo token",
+    (await call("DELETE", `/events/${newEventRef}`, { key: "demo-api-token" })).status === 403)
+  ok("DELETE /v1/events/{ref} deletes the event and everything in it (204)",
+    (await call("DELETE", `/events/${newEventRef}`)).status === 204)
+  ok("the deleted event is gone from GET /v1/events",
+    !(await call("GET", "/events?pageSize=100")).json.results.some((e) => e.slug === newEventRef))
+
   // ——— Cleanup so later sections see a clean deployment ———
   await call("DELETE", `/webhooks/${hookId}`)
   ok("DELETE /v1/webhooks/{id} removes the endpoint",
@@ -2008,7 +2428,21 @@ await submitNaming({
   firstName: "Casey", lastName: "Cospeaker", email: coEmail, role: "speaker",
   bio: "First bio — written by the co-speaker themselves.",
 }, "A")
-const coIdent = await client.mutation(api.submit.identify, { slug: "cfp", email: coEmail })
+// Casey is now a real contact (credited on a submission somebody else made),
+// so `identify` refuses to hand her token to whoever types her address — the
+// way back in is the emailed link, and that is what this follows.
+async function tokenViaEmailedLink(personEmail) {
+  const asked = await client.mutation(api.submit.identify, { slug: "cfp", email: personEmail })
+  ok(`identify emails a link instead of a token (${personEmail})`,
+    asked.status === "link_sent" && !("portalToken" in asked), JSON.stringify(asked))
+  const outbox = await client.query(api.comms.listMessages, { eventId: main._id, limit: 500 })
+  const mail = outbox.find((m) => m.templateKey === "portal_link" && m.toEmail === personEmail)
+  const token = mail ? tokenFromSignInEmail(mail.body) : null
+  ok(`the emailed link is followable (${personEmail})`, typeof token === "string", mail?.subject)
+  return token
+}
+const coToken = await tokenViaEmailedLink(coEmail)
+const coIdent = { portalToken: coToken }
 const coHome1 = await client.query(api.portal.home, { portalToken: coIdent.portalToken })
 ok("a named co-speaker gets a profile from the first submission",
   coHome1.me.bio?.startsWith("First bio"), coHome1.me.bio)

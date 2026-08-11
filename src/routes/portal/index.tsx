@@ -3,19 +3,19 @@ import {
   RiArrowRightLine,
   RiBriefcase4Line,
   RiCalendarEventLine,
-  RiCheckLine,
   RiUser3Line,
 } from "@remixicon/react"
 
 import { cn } from "@/lib/utils"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { buttonVariants } from "@/components/ui/button"
-import { Progress } from "@/components/ui/progress"
+import { EmptyState } from "@/components/shared/empty-state"
+import { DueChip } from "@/components/portal/due-chip"
 import { PanelCard } from "@/components/portal/panel-card"
+import { ProfileMeter } from "@/components/portal/profile-meter"
 import { SubmissionCard } from "@/components/portal/submission-card"
 import { usePortal } from "@/components/portal/portal-context"
 import {
-  dueInfo,
   fullName,
   initialsOf,
   profileCompleteness,
@@ -40,73 +40,68 @@ function PortalHomePage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div>
-        <h1 className="font-heading text-2xl font-semibold tracking-tight text-foreground">
-          Home
-        </h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Your submissions, your speaker profile, and anything the organizers
-          still need from you.
-        </p>
-      </div>
-
-      <div className="grid gap-4 lg:grid-cols-[1.2fr_1fr]">
+      <div className="grid gap-4 lg:grid-cols-[1.2fr_1fr] lg:items-start">
         <PanelCard
           icon={RiCalendarEventLine}
-          title={`My Submissions (${total})`}
+          title="My submissions"
+          count={total}
           action={
             total > 0 ? (
               <Link
                 to="/portal/submissions"
-                className="font-medium text-primary-foreground/90 underline-offset-4 hover:underline"
+                className="inline-flex min-h-9 items-center text-sm font-medium text-primary underline-offset-4 hover:underline"
               >
-                View All
+                View all
               </Link>
             ) : null
           }
+          flush
+          bodyClassName="gap-0"
         >
           {total === 0 ? (
-            <div className="py-6 text-center">
-              <p className="text-sm font-medium text-foreground">
-                No submissions yet
-              </p>
-              <p className="mx-auto mt-1 max-w-sm text-sm text-muted-foreground">
-                When you submit a talk to this event it will appear here, with
-                its status, from first review through to the final decision.
-              </p>
-            </div>
+            <EmptyState
+              variant="plain"
+              icon={RiCalendarEventLine}
+              title="No submissions yet"
+              description="When you submit a talk to this event it will appear here, with its status, from first review through to the final decision."
+              className="px-6 py-6"
+            />
           ) : (
-            submissions.slice(0, 3).map((submission, index) => (
-              <SubmissionCard
-                key={submission.id}
-                submission={submission}
-                code={submissionCode(index, total)}
-                action={
-                  <Link
-                    to="/portal/submissions"
-                    search={{ open: submission.id }}
-                    className={cn(
-                      buttonVariants({ variant: "outline", size: "sm" }),
-                    )}
-                  >
-                    View details
-                    <RiArrowRightLine aria-hidden />
-                  </Link>
-                }
-              />
-            ))
+            <ul className="divide-y divide-border">
+              {submissions.slice(0, 3).map((submission, index) => (
+                <li key={submission.id}>
+                  <SubmissionCard
+                    submission={submission}
+                    code={submissionCode(index, total)}
+                    bare
+                    action={
+                      <Link
+                        to="/portal/submissions"
+                        search={{ open: submission.id }}
+                        className={cn(
+                          buttonVariants({ variant: "outline", size: "sm" }),
+                        )}
+                      >
+                        View details
+                        <RiArrowRightLine aria-hidden />
+                      </Link>
+                    }
+                  />
+                </li>
+              ))}
+            </ul>
           )}
           {total > 3 ? (
             <Link
               to="/portal/submissions"
-              className="text-sm font-medium text-primary underline-offset-4 hover:underline"
+              className="border-t border-border px-6 py-3 text-sm font-medium text-primary underline-offset-4 hover:underline"
             >
               View all {total} submissions
             </Link>
           ) : null}
         </PanelCard>
 
-        <PanelCard icon={RiUser3Line} title="My Profile">
+        <PanelCard icon={RiUser3Line} title="My profile">
           <div className="flex items-center gap-3">
             <Avatar className="size-12">
               {me.headshotUrl ? <AvatarImage src={me.headshotUrl} alt="" /> : null}
@@ -129,47 +124,7 @@ function PortalHomePage() {
             </div>
           </div>
 
-          <div className="mt-1">
-            <div className="flex items-center justify-between text-xs">
-              <span className="font-medium text-foreground">
-                Profile {completeness.percent}% complete
-              </span>
-              <span className="text-muted-foreground">
-                {completeness.done} of {completeness.total}
-              </span>
-            </div>
-            <Progress
-              value={completeness.percent}
-              className="mt-1.5"
-              aria-label="Profile completeness"
-            />
-            <ul className="mt-3 grid gap-1.5">
-              {completeness.items.map((item) => (
-                <li
-                  key={item.key}
-                  className="flex items-center gap-2 text-sm text-muted-foreground"
-                >
-                  <span
-                    aria-hidden
-                    className={cn(
-                      "flex size-4 items-center justify-center rounded-full",
-                      item.done
-                        ? "bg-status-green-bg text-status-green-fg"
-                        : "border border-dashed border-border",
-                    )}
-                  >
-                    {item.done ? <RiCheckLine size={11} /> : null}
-                  </span>
-                  <span className={cn(item.done && "text-foreground")}>
-                    {item.label}
-                  </span>
-                  <span className="sr-only">
-                    {item.done ? "added" : "still missing"}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          </div>
+          <ProfileMeter me={me} className="mt-1" />
 
           <Link
             to="/portal/profile"
@@ -196,12 +151,14 @@ function PortalHomePage() {
         icon={RiBriefcase4Line}
         title="Tasks"
         action={
-          <Link
-            to="/portal/tasks"
-            className="font-medium text-primary-foreground/90 underline-offset-4 hover:underline"
-          >
-            View All
-          </Link>
+          tasks.length > 0 ? (
+            <Link
+              to="/portal/tasks"
+              className="inline-flex min-h-9 items-center text-sm font-medium text-primary underline-offset-4 hover:underline"
+            >
+              View all
+            </Link>
+          ) : null
         }
       >
         <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
@@ -226,35 +183,26 @@ function PortalHomePage() {
             now.
           </p>
         ) : (
-          <ul className="divide-y divide-border rounded-lg border border-border">
-            {openTasks.slice(0, 4).map((task) => {
-              const due = dueInfo(task.dueAt)
-              return (
-                <li
-                  key={task.id}
-                  className="flex flex-wrap items-center gap-x-3 gap-y-1 px-3 py-2.5"
+          <ul className="divide-y divide-border overflow-hidden rounded-lg border border-border">
+            {openTasks.slice(0, 4).map((task) => (
+              <li key={task.id}>
+                {/* The whole row is the tap target — 44px tall, which is what
+                    a thumb needs. */}
+                <Link
+                  to="/portal/tasks"
+                  className="flex min-h-11 flex-wrap items-center gap-x-3 gap-y-1 px-3 py-2.5 transition-colors hover:bg-muted/50 focus-visible:bg-muted/50 focus-visible:outline-none"
                 >
-                  <span className="size-4 shrink-0 rounded-full border border-dashed border-border" />
+                  <span
+                    aria-hidden
+                    className="size-4 shrink-0 rounded-full border border-dashed border-muted-foreground/50"
+                  />
                   <span className="min-w-0 flex-1 text-sm font-medium text-foreground">
                     {task.title}
                   </span>
-                  {due ? (
-                    <span
-                      className={cn(
-                        "text-xs font-medium",
-                        due.tone === "overdue"
-                          ? "text-destructive"
-                          : due.tone === "soon"
-                            ? "text-status-amber-fg"
-                            : "text-muted-foreground",
-                      )}
-                    >
-                      {due.label}
-                    </span>
-                  ) : null}
-                </li>
-              )
-            })}
+                  <DueChip dueAt={task.dueAt} locked={task.locked} />
+                </Link>
+              </li>
+            ))}
           </ul>
         )}
 

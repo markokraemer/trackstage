@@ -12,25 +12,30 @@ import {
 
 import { cn } from "@/lib/utils"
 import { Button, buttonVariants } from "@/components/ui/button"
-import { Separator } from "@/components/ui/separator"
 import { EmptyState } from "@/components/shared/empty-state"
 import { WidgetHeader } from "@/components/public/public-shell"
 import { SessionCard } from "@/components/public/session-card"
 import { RoomsGrid } from "@/components/public/rooms-grid"
 import { AddToCalendarButton } from "@/components/public/add-to-calendar-button"
-import { formatDayShort, formatTime } from "@/components/public/format"
+import { segmentedGroup, segmentedItem } from "@/components/public/segmented"
+import {
+  formatDayShort,
+  formatTime,
+  formatTimeZoneLabel,
+} from "@/components/public/format"
 import type { PublicDay, PublicSession } from "@/components/public/types"
 
 /**
  * Schedule / Agenda widget (sbek EMB-06/07/09).
  *
  * One day at a time, two ways to read it:
- * - **By time** — the chronological itinerary: time headers with full session
- *   cards underneath. This is the mobile-first default.
+ * - **By time** — the chronological itinerary: a time gutter down the left
+ *   with the sessions that start at each time beside it, so the shape of the
+ *   day is legible before a single title is read. This is the default.
  * - **By room** — the wall-planner grid: rooms across, time down.
  *
- * Day selection and view mode live in the URL, so a day is linkable and an
- * embed can be pinned to one day or one view.
+ * Day, view mode and track filter all live in the URL, so any of them is
+ * linkable and an embed can be pinned to one day, one view or one track.
  */
 export const Route = createFileRoute("/e/$slug/")({
   loader: async ({ context, params }) =>
@@ -67,6 +72,13 @@ function SchedulePage() {
   const view = search.view === "rooms" ? "rooms" : "time"
 
   const allSessions = data.days.flatMap((day) => day.sessions)
+  const firstStart = allSessions.find(
+    (session) => session.startsAt !== undefined,
+  )?.startsAt
+  const zoneLabel =
+    firstStart === undefined
+      ? null
+      : formatTimeZoneLabel(firstStart, event.timezone)
 
   return (
     <div className="flex flex-col gap-5">
@@ -79,7 +91,7 @@ function SchedulePage() {
         }
         description={
           days.length > 0
-            ? "Pick a day to see what's on, then tap a session for the full description."
+            ? "Pick a day to see what's on, then open a session for the full description."
             : undefined
         }
         actions={
@@ -87,13 +99,65 @@ function SchedulePage() {
             <AddToCalendarButton
               event={event}
               sessions={allSessions}
-              label="Add all to calendar"
+              label="Download the whole program"
               filename={`${event.slug}-schedule`}
               size="sm"
             />
           ) : null
         }
       />
+
+      {/* Track filter — the one content filter this surface needs, as chips
+          rather than a dropdown because a schedule has a handful of tracks and
+          seeing them all *is* the overview. */}
+      {tracks.length > 1 && !search.hideSearch ? (
+        <div
+          role="group"
+          aria-label="Filter by track"
+          className="flex flex-wrap items-center gap-1.5"
+        >
+          <Link
+            to="/e/$slug"
+            params={{ slug }}
+            search={(prev) => ({ ...prev, track: undefined })}
+            data-active={!search.track ? "true" : undefined}
+            className={cn(
+              buttonVariants({ variant: "outline", size: "sm" }),
+              "rounded-full px-3",
+              !search.track &&
+                "border-transparent bg-secondary text-secondary-foreground",
+            )}
+          >
+            All tracks
+          </Link>
+          {tracks.map((track) => {
+            const active =
+              search.track?.toLowerCase() === track.name.toLowerCase()
+            return (
+              <Link
+                key={track._id}
+                to="/e/$slug"
+                params={{ slug }}
+                search={(prev) => ({ ...prev, track: track.name })}
+                data-active={active ? "true" : undefined}
+                className={cn(
+                  buttonVariants({ variant: "outline", size: "sm" }),
+                  "gap-1.5 rounded-full px-3",
+                  active &&
+                    "border-transparent bg-secondary text-secondary-foreground",
+                )}
+              >
+                <span
+                  aria-hidden
+                  className="size-2 shrink-0 rounded-full"
+                  style={{ backgroundColor: track.color }}
+                />
+                {track.name}
+              </Link>
+            )
+          })}
+        </div>
+      ) : null}
 
       {days.length === 0 ? (
         <EmptyState
@@ -107,22 +171,33 @@ function SchedulePage() {
                 : "Sessions appear here as soon as the organizer accepts them and gives them a time slot. Check back soon."
           }
           action={
-            <Link
-              to="/e/$slug/speakers"
-              params={{ slug }}
-              search={(prev) => prev}
-              className={buttonVariants({ variant: "outline" })}
-            >
-              Meet the speakers
-            </Link>
+            search.track ? (
+              <Link
+                to="/e/$slug"
+                params={{ slug }}
+                search={(prev) => ({ ...prev, track: undefined })}
+                className={buttonVariants({ variant: "outline" })}
+              >
+                Show all tracks
+              </Link>
+            ) : (
+              <Link
+                to="/e/$slug/speakers"
+                params={{ slug }}
+                search={(prev) => prev}
+                className={buttonVariants({ variant: "outline" })}
+              >
+                Meet the speakers
+              </Link>
+            )
           }
         />
       ) : (
         <>
           {/* Day selector — pills plus prev/next for multi-day events. */}
-          <div className="flex flex-wrap items-center gap-2">
-            {days.length > 1 ? (
-              activeIndex === 0 ? (
+          {days.length > 1 ? (
+            <div className="flex items-center gap-2">
+              {activeIndex === 0 ? (
                 <Button
                   variant="outline"
                   size="icon-sm"
@@ -140,41 +215,52 @@ function SchedulePage() {
                     day: days[activeIndex - 1].date,
                   })}
                   aria-label="Previous day"
-                  className={buttonVariants({ variant: "outline", size: "icon-sm" })}
+                  className={buttonVariants({
+                    variant: "outline",
+                    size: "icon-sm",
+                  })}
                 >
                   <RiArrowLeftSLine aria-hidden />
                 </Link>
-              )
-            ) : null}
+              )}
 
-            <div className="-mx-1 flex flex-1 gap-1.5 overflow-x-auto px-1 py-0.5">
-              {days.map((day) => {
-                const active = day.date === activeDay?.date
-                return (
-                  <Link
-                    key={day.date}
-                    to="/e/$slug"
-                    params={{ slug }}
-                    search={(prev) => ({ ...prev, day: day.date })}
-                    aria-current={active ? "page" : undefined}
-                    className={cn(
-                      buttonVariants({
-                        variant: active ? "default" : "outline",
-                        size: "sm",
-                      }),
-                      "shrink-0 rounded-full px-3.5",
-                    )}
-                  >
-                    {day.sessions[0].startsAt !== undefined
-                      ? formatDayShort(day.sessions[0].startsAt, event.timezone)
-                      : day.label}
-                  </Link>
-                )
-              })}
-            </div>
+              <div
+                role="group"
+                aria-label="Event day"
+                // Not `flex-1`: with two days the arrows would sit a third of
+                // the page apart. `min-w-0` still lets it shrink and scroll
+                // once a long conference overflows the row.
+                className="-mx-1 flex min-w-0 gap-1.5 overflow-x-auto px-1 py-0.5 [&::-webkit-scrollbar]:hidden"
+              >
+                {days.map((day) => {
+                  const active = day.date === activeDay?.date
+                  return (
+                    <Link
+                      key={day.date}
+                      to="/e/$slug"
+                      params={{ slug }}
+                      search={(prev) => ({ ...prev, day: day.date })}
+                      data-active={active ? "true" : undefined}
+                      className={cn(
+                        buttonVariants({
+                          variant: active ? "default" : "outline",
+                          size: "sm",
+                        }),
+                        "shrink-0 rounded-full px-3.5",
+                      )}
+                    >
+                      {day.sessions[0].startsAt !== undefined
+                        ? formatDayShort(
+                            day.sessions[0].startsAt,
+                            event.timezone,
+                          )
+                        : day.label}
+                    </Link>
+                  )
+                })}
+              </div>
 
-            {days.length > 1 ? (
-              activeIndex >= days.length - 1 ? (
+              {activeIndex >= days.length - 1 ? (
                 <Button
                   variant="outline"
                   size="icon-sm"
@@ -192,27 +278,31 @@ function SchedulePage() {
                     day: days[activeIndex + 1].date,
                   })}
                   aria-label="Next day"
-                  className={buttonVariants({ variant: "outline", size: "icon-sm" })}
+                  className={buttonVariants({
+                    variant: "outline",
+                    size: "icon-sm",
+                  })}
                 >
                   <RiArrowRightSLine aria-hidden />
                 </Link>
-              )
-            ) : null}
-          </div>
+              )}
+            </div>
+          ) : null}
 
           {activeDay ? (
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div>
-                <h3 className="font-heading text-base font-semibold text-foreground">
+            <div className="flex flex-wrap items-end justify-between gap-3">
+              <div className="min-w-0">
+                <h3 className="font-heading text-base font-semibold text-foreground sm:text-lg">
                   {activeDay.label}
                 </h3>
                 <p className="text-sm text-muted-foreground">
                   {activeDay.sessions.length}{" "}
                   {activeDay.sessions.length === 1 ? "session" : "sessions"}
                   {search.track ? ` on the ${search.track} track` : ""}
+                  {zoneLabel ? ` · all times ${zoneLabel}` : ""}
                 </p>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <AddToCalendarButton
                   event={event}
                   sessions={activeDay.sessions}
@@ -220,7 +310,7 @@ function SchedulePage() {
                   filename={`${event.slug}-${activeDay.date}`}
                   size="sm"
                 />
-                <div className="flex items-center gap-1 rounded-full border border-border bg-card p-0.5">
+                <div className={segmentedGroup}>
                   <ViewPill
                     slug={slug}
                     view="time"
@@ -247,25 +337,30 @@ function SchedulePage() {
           ) : null}
 
           {activeDay && view === "time" ? (
-            <div className="flex flex-col gap-6">
+            <div className="flex flex-col">
               {groupByStartTime(activeDay.sessions, event.timezone).map(
                 (group) => (
-                  <section key={group.label} className="flex flex-col gap-3">
-                    <div className="flex items-center gap-3">
-                      <h4 className="text-sm font-semibold text-foreground">
-                        {group.label}
-                      </h4>
-                      <Separator className="flex-1" />
+                  <section
+                    key={group.label}
+                    aria-label={group.label}
+                    className="grid gap-3 border-t border-border py-5 first:border-t-0 first:pt-0 sm:grid-cols-[6.5rem_minmax(0,1fr)] sm:gap-x-6"
+                  >
+                    {/* Optically aligned with the chip row inside the first
+                        card (20px card padding + half a 24px chip). */}
+                    <h4 className="text-sm font-semibold tabular-nums text-foreground sm:pt-[1.375rem] sm:text-right">
+                      {group.label}
+                    </h4>
+                    <div className="flex flex-col gap-3">
+                      {group.sessions.map((session) => (
+                        <SessionCard
+                          key={session._id}
+                          event={event}
+                          session={session}
+                          options={search}
+                          showDate={false}
+                        />
+                      ))}
                     </div>
-                    {group.sessions.map((session) => (
-                      <SessionCard
-                        key={session._id}
-                        event={event}
-                        session={session}
-                        options={search}
-                        showDate={false}
-                      />
-                    ))}
                   </section>
                 ),
               )}
@@ -275,13 +370,10 @@ function SchedulePage() {
       )}
 
       {unscheduled.length > 0 ? (
-        <section className="flex flex-col gap-3 pt-2">
-          <div className="flex items-center gap-3">
-            <h4 className="text-sm font-semibold text-foreground">
-              Times to be announced
-            </h4>
-            <Separator className="flex-1" />
-          </div>
+        <section className="flex flex-col gap-3 border-t border-border pt-5">
+          <h4 className="text-sm font-semibold text-foreground">
+            Times to be announced
+          </h4>
           {unscheduled.map((session) => (
             <SessionCard
               key={session._id}
@@ -291,25 +383,6 @@ function SchedulePage() {
             />
           ))}
         </section>
-      ) : null}
-
-      {tracks.length > 0 && !search.embed ? (
-        <p className="pt-2 text-xs text-muted-foreground">
-          Tracks:{" "}
-          {tracks.map((track, index) => (
-            <span key={track._id}>
-              {index > 0 ? " · " : ""}
-              <Link
-                to="/e/$slug/sessions"
-                params={{ slug }}
-                search={(prev) => ({ ...prev, track: track.name })}
-                className="rounded-sm underline-offset-2 outline-none hover:text-foreground hover:underline focus-visible:ring-3 focus-visible:ring-ring/50"
-              >
-                {track.name}
-              </Link>
-            </span>
-          ))}
-        </p>
       ) : null}
     </div>
   )
@@ -332,12 +405,8 @@ function ViewPill({
       to="/e/$slug"
       params={{ slug }}
       search={(prev) => ({ ...prev, view })}
-      aria-current={active ? "true" : undefined}
-      className={cn(
-        buttonVariants({ variant: "ghost", size: "sm" }),
-        "gap-1.5 rounded-full px-3 text-muted-foreground",
-        active && "bg-accent font-semibold text-accent-foreground",
-      )}
+      data-active={active ? "true" : undefined}
+      className={segmentedItem(active)}
     >
       <Icon size={15} aria-hidden />
       {label}

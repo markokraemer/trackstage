@@ -5,7 +5,6 @@ import { api } from "@convex/_generated/api"
 import { RiBookmarkLine } from "@remixicon/react"
 
 import { Button, buttonVariants } from "@/components/ui/button"
-import { Separator } from "@/components/ui/separator"
 import { EmptyState } from "@/components/shared/empty-state"
 import { WidgetHeader } from "@/components/public/public-shell"
 import { SessionCard } from "@/components/public/session-card"
@@ -109,15 +108,15 @@ function MySchedulePage() {
           }
         />
       ) : (
-        <div className="flex flex-col gap-6">
+        <div className="flex flex-col">
           {days.map((day) => (
-            <section key={day.date} className="flex flex-col gap-3">
-              <div className="flex items-center gap-3">
-                <h3 className="text-sm font-semibold text-foreground">
-                  {day.label}
-                </h3>
-                <Separator className="flex-1" />
-              </div>
+            <section
+              key={day.date}
+              className="flex flex-col gap-3 border-t border-border py-5 first:border-t-0 first:pt-0"
+            >
+              <h3 className="text-sm font-semibold text-foreground">
+                {day.label}
+              </h3>
               {day.sessions.map((session) => (
                 <SessionCard
                   key={session._id}
@@ -131,13 +130,10 @@ function MySchedulePage() {
           ))}
 
           {unscheduled.length > 0 ? (
-            <section className="flex flex-col gap-3">
-              <div className="flex items-center gap-3">
-                <h3 className="text-sm font-semibold text-foreground">
-                  Times to be announced
-                </h3>
-                <Separator className="flex-1" />
-              </div>
+            <section className="flex flex-col gap-3 border-t border-border py-5 first:border-t-0 first:pt-0">
+              <h3 className="text-sm font-semibold text-foreground">
+                Times to be announced
+              </h3>
               {unscheduled.map((session) => (
                 <SessionCard
                   key={session._id}

@@ -15,6 +15,29 @@ import { authComponent } from "../auth"
 
 const ROLE_RANK: Record<string, number> = { member: 0, admin: 1, owner: 2 }
 
+/** Roles that always run the whole workspace — never event-scoped. */
+export function isWorkspaceWideRole(role: string): boolean {
+  return role === "admin" || role === "owner"
+}
+
+/**
+ * Per-member event scoping (docs/memory/RULES.md 23): `member.eventIds` lists
+ * the events a plain member may work on. Absent ⇒ all events; owners and
+ * admins are never scoped.
+ *
+ * A member who is scoped out of an event must be told exactly what a stranger
+ * is told — "Event not found." — so the scoping never leaks the existence of
+ * events they can't see.
+ */
+export function memberCanSeeEvent(
+  member: Doc<"members">,
+  eventId: Id<"events">,
+): boolean {
+  if (isWorkspaceWideRole(member.role)) return true
+  if (member.eventIds === undefined) return true
+  return member.eventIds.includes(eventId)
+}
+
 export type AuthedUser = { userId: string; email: string; name?: string }
 
 export async function requireUser(
@@ -23,6 +46,31 @@ export async function requireUser(
   // getAuthUser throws when unauthenticated (typed non-null).
   const user = await authComponent.getAuthUser(ctx)
   return { userId: user._id, email: user.email, name: user.name || undefined }
+}
+
+/** The member row, or null. No role check — callers decide what to say. */
+async function findMembership(
+  ctx: QueryCtx | MutationCtx,
+  userId: string,
+  organizationId: Id<"organizations">,
+): Promise<Doc<"members"> | null> {
+  return await ctx.db
+    .query("members")
+    .withIndex("by_organizationId_and_userId", (q) =>
+      q.eq("organizationId", organizationId).eq("userId", userId),
+    )
+    .unique()
+}
+
+function assertRole(
+  member: Doc<"members">,
+  minRole: "member" | "admin" | "owner",
+): void {
+  if ((ROLE_RANK[member.role] ?? -1) < ROLE_RANK[minRole]) {
+    throw new Error(
+      `This action requires the ${minRole} role (you are ${member.role}).`,
+    )
+  }
 }
 
 /**
@@ -38,24 +86,23 @@ export async function membershipFor(
   organizationId: Id<"organizations">,
   minRole: "member" | "admin" | "owner" = "member",
 ): Promise<Doc<"members">> {
-  const member = await ctx.db
-    .query("members")
-    .withIndex("by_organizationId_and_userId", (q) =>
-      q.eq("organizationId", organizationId).eq("userId", userId),
-    )
-    .unique()
+  const member = await findMembership(ctx, userId, organizationId)
   if (!member) {
     throw new Error("You don't have access to this workspace.")
   }
-  if ((ROLE_RANK[member.role] ?? -1) < ROLE_RANK[minRole]) {
-    throw new Error(
-      `This action requires the ${minRole} role (you are ${member.role}).`,
-    )
-  }
+  assertRole(member, minRole)
   return member
 }
 
-/** Same, but resolving the organization from an event (explicit user id). */
+/**
+ * Same, but resolving the organization from an event (explicit user id) — and
+ * this is where per-member event scoping is enforced, for browser sessions,
+ * API keys and MCP alike.
+ *
+ * Order matters: the scope check runs BEFORE the role check, so a scoped
+ * member asking for an event they can't see gets "Event not found." rather
+ * than a role error that would confirm the event exists.
+ */
 export async function eventAccessFor(
   ctx: QueryCtx | MutationCtx,
   userId: string,
@@ -63,13 +110,12 @@ export async function eventAccessFor(
   minRole: "member" | "admin" | "owner" = "member",
 ): Promise<{ member: Doc<"members">; event: Doc<"events"> }> {
   const event = await ctx.db.get(eventId)
+  // `!organizationId` = legacy pre-multi-tenancy row awaiting purge (seed.run).
   if (!event || !event.organizationId) throw new Error("Event not found.")
-  const member = await membershipFor(
-    ctx,
-    userId,
-    event.organizationId,
-    minRole,
-  )
+  const member = await findMembership(ctx, userId, event.organizationId)
+  if (!member) throw new Error("You don't have access to this workspace.")
+  if (!memberCanSeeEvent(member, eventId)) throw new Error("Event not found.")
+  assertRole(member, minRole)
   return { member, event }
 }
 
@@ -93,15 +139,11 @@ export async function requireEventAccess(
   eventId: Id<"events">,
   minRole: "member" | "admin" | "owner" = "member",
 ): Promise<{ user: AuthedUser; member: Doc<"members">; event: Doc<"events"> }> {
-  const event = await ctx.db.get(eventId)
-  if (!event) throw new Error("Event not found.")
-  if (!event.organizationId) {
-    // Legacy pre-multi-tenancy row awaiting purge (see seed.run).
-    throw new Error("Event not found.")
-  }
-  const { user, member } = await requireMembership(
+  const user = await requireUser(ctx)
+  const { member, event } = await eventAccessFor(
     ctx,
-    event.organizationId,
+    user.userId,
+    eventId,
     minRole,
   )
   return { user, member, event }

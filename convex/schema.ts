@@ -52,6 +52,14 @@ export default defineSchema({
     userId: v.string(),
     email: v.string(),
     role: v.string(), // owner | admin | member
+    /**
+     * Per-member event scoping (docs/memory/RULES.md 23): which events in this
+     * workspace this person may see. ABSENT ⇒ every event, now and in future —
+     * that is the default for everyone, and the only possible value for owners
+     * and admins, who always run the whole workspace. Meaningful only for the
+     * `member` role; `convex/lib/auth.ts` is the single place it is enforced.
+     */
+    eventIds: v.optional(v.array(v.id("events"))),
   })
     .index("by_organizationId", ["organizationId"])
     .index("by_userId", ["userId"])
@@ -220,6 +228,11 @@ export default defineSchema({
     // audit label, not a live reference, so it must survive the member leaving.
     // (`Created At` needs no field — Convex gives every row `_creationTime`.)
     createdBy: v.optional(v.string()),
+    // Soft delete. Deleting a custom status hides it everywhere but keeps the
+    // row, so `POST /v1/event/{ref}/statuses/{id}/restore` can bring it back —
+    // Sessionboard's own delete/restore pair for statuses, and the reason an
+    // organizer who deletes the wrong label is not stuck with retyping it.
+    deletedAt: v.optional(v.number()),
   }).index("by_eventId", ["eventId"]),
 
   // ——— CFP forms ————————————————————————————————————————————————————————
@@ -253,7 +266,14 @@ export default defineSchema({
     notifyEmails: v.array(v.string()),
   })
     .index("by_eventId", ["eventId"])
-    .index("by_slug", ["slug"]),
+    // Form slugs are unique PER EVENT, not globally (docs/memory/DECISIONS.md —
+    // "Public URL scheme"). `by_eventId_slug` is the uniqueness index and the
+    // canonical `/submit/:eventSlug/:formSlug` lookup. `by_slug` survives only
+    // to resolve legacy single-segment `/submit/:formSlug` links, where several
+    // events may now legitimately answer to the same slug — so every read
+    // through it must tolerate multiple rows (never `.unique()`).
+    .index("by_slug", ["slug"])
+    .index("by_eventId_slug", ["eventId", "slug"]),
 
   // ——— People (speakers, submitters, co-speakers — unified) —————————————
   people: defineTable({

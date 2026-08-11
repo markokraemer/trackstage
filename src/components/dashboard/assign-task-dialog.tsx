@@ -454,8 +454,8 @@ export function AssignTaskDialog({
 
               {speakers.length === 0 ? (
                 <p className="rounded-lg border border-dashed border-border px-3 py-6 text-center text-sm text-muted-foreground">
-                  No accepted speakers yet. Accept a submission first — its
-                  speakers land here automatically.
+                  Nobody on your roster yet. Everyone on a submission or session
+                  lands here automatically — or add a speaker by hand.
                 </p>
               ) : (
                 <div className="flex flex-col gap-2">

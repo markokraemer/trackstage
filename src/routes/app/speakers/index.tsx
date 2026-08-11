@@ -20,7 +20,7 @@ import { EmptyState } from "@/components/shared/empty-state"
 import { DataToolbar } from "@/components/shared/data-toolbar"
 import { Button, buttonVariants } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Tabs, TabsCount, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
   Select,
   SelectContent,
@@ -69,7 +69,18 @@ export const Route = createFileRoute("/app/speakers/")({
   component: SpeakersPage,
 })
 
-type FilterTab = "all" | "attention" | "ready" | "hidden"
+/**
+ * Primary axis of the roster: why someone is here. `all` is the default —
+ * acceptance is a facet, never a gate on who exists (see
+ * `convex/dashboard.ts` → speakersRoster).
+ */
+type FilterTab = "all" | "confirmed" | "in_review"
+
+const TAB_LABELS: Record<FilterTab, string> = {
+  all: "All speakers",
+  confirmed: "Confirmed",
+  in_review: "In review",
+}
 
 /** Sentinel for "don't filter by workflow status" (sbek SPK-04 filterable). */
 const ALL_WORKFLOW = "all"
@@ -79,24 +90,34 @@ const WORKFLOW_FILTER_OPTIONS = [
   ...WORKFLOW_OPTIONS,
 ]
 
-const TAB_LABELS: Record<FilterTab, string> = {
-  all: "All speakers",
-  attention: "Needs attention",
-  ready: "All set",
-  // sbek CNT-12: who is deliberately kept off the public pages right now.
-  hidden: "Hidden publicly",
-}
+/**
+ * Second axis: what's outstanding, plus who is kept off the public pages
+ * (sbek CNT-12). Composes with the tabs — "Confirmed" + "Needs attention" is
+ * the chase view.
+ */
+type ProfileView = "all" | "attention" | "ready" | "hidden"
+
+const PROFILE_VIEW_OPTIONS: Array<{ value: ProfileView; label: string }> = [
+  { value: "all", label: "Any profile" },
+  { value: "attention", label: "Needs attention" },
+  { value: "ready", label: "All set" },
+  { value: "hidden", label: "Hidden publicly" },
+]
 
 /**
- * Speakers roster (docs/SPEC.md §4.8) — every accepted speaker, what they still
- * owe you, and the actions that chase them: copy their portal link, assign a
- * task, or remind everyone who is behind. Reactive: the table updates the
- * instant a speaker uploads a headshot or ticks off a task.
+ * Speakers roster (docs/SPEC.md §4.8) — ONE source of truth for the people
+ * attached to this event: everyone on a submission or session, accepted or
+ * still in review, plus anyone added by hand. Each row says why they're here,
+ * what they still owe you, and carries the actions that chase them: copy their
+ * portal link, assign a task, or remind everyone who is behind. Reactive: a
+ * speaker appears the instant they're put on a session, and the table updates
+ * the moment they upload a headshot or tick off a task.
  */
 function SpeakersPage() {
   const { event, isEmpty } = useCurrentEvent()
   const [search, setSearch] = useState("")
   const [tab, setTab] = useState<FilterTab>("all")
+  const [profileView, setProfileView] = useState<ProfileView>("all")
   const [workflow, setWorkflow] = useState<string>(ALL_WORKFLOW)
   const [selected, setSelected] = useState<Array<string>>([])
   const [assignOpen, setAssignOpen] = useState(false)
@@ -157,26 +178,27 @@ function SpeakersPage() {
 
   const counts = useMemo(() => {
     const all = rows ?? []
-    const attention = all.filter(
-      (row) =>
-        row.missing.length > 0 || row.tasks.done < row.tasks.total,
-    ).length
     return {
       all: all.length,
-      attention,
-      ready: all.length - attention,
-      hidden: all.filter((row) => hidden.has(String(row.personId))).length,
+      confirmed: all.filter((row) => row.programStatus === "confirmed").length,
+      in_review: all.filter((row) => row.programStatus === "in_review").length,
+      attention: all.filter(
+        (row) => row.missing.length > 0 || row.tasks.done < row.tasks.total,
+      ).length,
     }
-  }, [rows, hidden])
+  }, [rows])
 
   const visible = useMemo(() => {
     const term = search.trim().toLowerCase()
     return (rows ?? []).filter((row) => {
+      if (tab !== "all" && row.programStatus !== tab) return false
       const needsAttention =
         row.missing.length > 0 || row.tasks.done < row.tasks.total
-      if (tab === "attention" && !needsAttention) return false
-      if (tab === "ready" && needsAttention) return false
-      if (tab === "hidden" && !hidden.has(String(row.personId))) return false
+      if (profileView === "attention" && !needsAttention) return false
+      if (profileView === "ready" && needsAttention) return false
+      if (profileView === "hidden" && !hidden.has(String(row.personId))) {
+        return false
+      }
       if (workflow !== ALL_WORKFLOW && row.workflowStatus !== workflow) {
         return false
       }
@@ -190,7 +212,7 @@ function SpeakersPage() {
         )
       )
     })
-  }, [rows, search, tab, workflow, hidden])
+  }, [rows, search, tab, profileView, workflow, hidden])
 
   const speakerOptions = useMemo(
     () =>
@@ -255,12 +277,12 @@ function SpeakersPage() {
       <div className="flex flex-col gap-6">
         <PageHeader
           title="Speakers"
-          description="Everyone speaking at your event, and what they still owe you."
+          description="Everyone attached to your program — accepted or still in review — and what they still owe you."
         />
         <EmptyState
           icon={RiSettings3Line}
           title="Create your event first"
-          description="Speakers appear here once you've set up an event and accepted your first submission."
+          description="Speakers appear here as soon as you've set up an event and someone lands on a submission or session."
           action={
             <Link to={APP_ROUTES.settings} className={buttonVariants()}>
               Go to settings
@@ -275,7 +297,7 @@ function SpeakersPage() {
     <div className="flex flex-col gap-6">
       <PageHeader
         title="Speakers"
-        description="Everyone speaking at your event, and what they still owe you."
+        description="Everyone attached to your program — accepted or still in review — and what they still owe you."
         actions={
           event ? (
             <>
@@ -324,13 +346,34 @@ function SpeakersPage() {
                 {(Object.keys(TAB_LABELS) as Array<FilterTab>).map((key) => (
                   <TabsTrigger key={key} value={key}>
                     {TAB_LABELS[key]}
-                    <span className="ml-1.5 tabular-nums opacity-60">
-                      {counts[key]}
-                    </span>
+                    <TabsCount>{counts[key]}</TabsCount>
                   </TabsTrigger>
                 ))}
               </TabsList>
             </Tabs>
+
+            <Select
+              items={PROFILE_VIEW_OPTIONS}
+              value={profileView}
+              onValueChange={(value) =>
+                setProfileView(String(value) as ProfileView)
+              }
+            >
+              <SelectTrigger
+                size="sm"
+                aria-label="Filter by profile and visibility"
+                className="w-40"
+              >
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {PROFILE_VIEW_OPTIONS.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
 
             <Select
               items={WORKFLOW_FILTER_OPTIONS}
@@ -407,7 +450,7 @@ function SpeakersPage() {
         <EmptyState
           icon={RiUserVoiceLine}
           title="No speakers yet"
-          description="Speakers land here automatically the moment you accept a submission — or add a keynote, sponsor or moderator by hand. Then you can assign them tasks, copy their portal link, and track what's missing."
+          description="Everyone attached to your program lands here the moment they're on a submission or session — accepted or still in review. Add a keynote, sponsor or moderator by hand, import a CSV, or open your form for submissions."
           action={
             <div className="flex flex-wrap items-center justify-center gap-2">
               <Button onClick={() => setAddOpen(true)}>
@@ -438,6 +481,8 @@ function SpeakersPage() {
               onClick={() => {
                 setSearch("")
                 setTab("all")
+                setProfileView("all")
+                setWorkflow(ALL_WORKFLOW)
               }}
             >
               Clear filters

@@ -88,7 +88,27 @@ function draftFrom(me: PortalMe): Draft {
 export function ProfileEditor() {
   const { portalToken, home } = usePortal()
   const me = home.me
-  const updateProfile = useConvexMutation(api.portal.updateProfile)
+  // Optimistic (docs/memory/RULES.md #26): the completeness meter, the header
+  // avatar and the name in the account menu all read from `portal.home`, so
+  // they must move the moment a field is left — not when the round-trip lands.
+  const updateProfile = useConvexMutation(
+    api.portal.updateProfile,
+  ).withOptimisticUpdate((localStore, args) => {
+    const current = localStore.getQuery(api.portal.home, { portalToken })
+    if (!current) return
+    localStore.setQuery(
+      api.portal.home,
+      { portalToken },
+      {
+        ...current,
+        me: {
+          ...current.me,
+          ...args.patch,
+          links: args.patch.links ?? current.me.links,
+        },
+      },
+    )
+  })
 
   const [draft, setDraft] = useState<Draft>(() => draftFrom(me))
   const savedRef = useRef<Draft>(draftFrom(me))
@@ -153,8 +173,15 @@ export function ProfileEditor() {
 
   return (
     <div className="grid gap-4 lg:grid-cols-[1.6fr_1fr] lg:items-start">
-      <PanelCard icon={RiUser3Line} title="General" bodyClassName="gap-5 p-4">
-        <Field>
+      <PanelCard
+        icon={RiUser3Line}
+        title="General"
+        description="Your name as it should appear in the programme, and the bio the host reads out."
+        bodyClassName="gap-5"
+      >
+        {/* `scroll-mt` clears the sticky portal header when the completeness
+            meter links straight to the missing field. */}
+        <Field id="bio" className="scroll-mt-24">
           <FieldLabel htmlFor="profile-bio">Biography</FieldLabel>
           <FieldDescription>
             A short introduction in the third person — this is what the host
@@ -175,7 +202,10 @@ export function ProfileEditor() {
           </p>
         </Field>
 
-        <div className="grid gap-4 border-t border-border pt-5 sm:grid-cols-3">
+        <div
+          id="details"
+          className="grid scroll-mt-24 gap-4 border-t border-border pt-5 sm:grid-cols-3"
+        >
           <Field>
             <FieldLabel htmlFor="profile-salutation">Salutation</FieldLabel>
             <Select
@@ -264,7 +294,7 @@ export function ProfileEditor() {
             />
           </Field>
 
-          <Field className="sm:col-span-2">
+          <Field className="sm:col-span-1">
             <FieldLabel htmlFor="profile-phone">Phone number</FieldLabel>
             <FieldDescription>
               Only used by the on-site team on the day of your talk.
@@ -278,7 +308,9 @@ export function ProfileEditor() {
             />
           </Field>
 
-          <Field className="sm:col-span-1">
+          {/* Two columns, because a truncated email address is worse than an
+              extra-wide field. */}
+          <Field className="sm:col-span-2">
             <FieldLabel htmlFor="profile-email">Email address</FieldLabel>
             <FieldDescription>
               Ask the organizers to change this.
@@ -297,14 +329,26 @@ export function ProfileEditor() {
       </PanelCard>
 
       <div className="flex flex-col gap-4">
-        <PanelCard icon={RiImageLine} title="Headshot" bodyClassName="p-4">
+        <PanelCard
+          id="headshot"
+          icon={RiImageLine}
+          title="Headshot"
+          className="scroll-mt-24"
+        >
           <HeadshotUploader
             headshotUrl={me.headshotUrl}
             initials={initialsOf(me.firstName, me.lastName)}
           />
         </PanelCard>
 
-        <PanelCard icon={RiLinksLine} title="My Links" bodyClassName="gap-4 p-4">
+        <PanelCard
+          id="links"
+          icon={RiLinksLine}
+          title="My links"
+          description="Optional — shown next to your talk so people can find you afterwards."
+          className="scroll-mt-24"
+          bodyClassName="gap-4"
+        >
           <Field>
             <FieldLabel htmlFor="profile-linkedin">LinkedIn URL</FieldLabel>
             <Input

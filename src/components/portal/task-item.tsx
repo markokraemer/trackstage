@@ -4,7 +4,13 @@ import { convexQuery, useConvexMutation } from "@convex-dev/react-query"
 import { api } from "@convex/_generated/api"
 import type { Id } from "@convex/_generated/dataModel"
 import { toast } from "sonner"
-import { RiAlertLine, RiChat1Line, RiCheckLine } from "@remixicon/react"
+import {
+  RiAlertLine,
+  RiChat1Line,
+  RiCheckLine,
+  RiLockLine,
+  RiUpload2Line,
+} from "@remixicon/react"
 
 import { cn } from "@/lib/utils"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
@@ -13,10 +19,11 @@ import { FileDropZone } from "@/components/shared/file-drop-zone"
 import { FileComments } from "@/components/shared/file-comments"
 import { FileList, FileRow } from "@/components/shared/file-row"
 import { MAX_IMAGE_BYTES, MAX_UPLOAD_BYTES } from "@/lib/files"
+import { DueChip } from "./due-chip"
 import { usePortal } from "./portal-context"
 import type { PortalTask, PortalUpload } from "./portal-context"
 import { usePortalUpload } from "./use-portal-upload"
-import { TASK_KIND_LABEL, dueInfo, formatDate } from "./portal-utils"
+import { TASK_KIND_LABEL, formatDate } from "./portal-utils"
 
 export interface TaskItemProps {
   task: PortalTask
@@ -32,12 +39,31 @@ export interface TaskItemProps {
  */
 export function TaskItem({ task, uploads }: TaskItemProps) {
   const { portalToken } = usePortal()
-  const completeTask = useConvexMutation(api.portal.completeTask)
+  // Optimistic (docs/memory/RULES.md #26): ticking a task moves the row, the
+  // counters and the tab badge on the same frame as the tap. The server
+  // confirms a moment later; if it refuses, Convex rolls the local value back
+  // and the toast explains why.
+  const completeTask = useConvexMutation(
+    api.portal.completeTask,
+  ).withOptimisticUpdate((localStore, args) => {
+    const current = localStore.getQuery(api.portal.home, { portalToken })
+    if (!current) return
+    localStore.setQuery(
+      api.portal.home,
+      { portalToken },
+      {
+        ...current,
+        tasks: current.tasks.map((t) =>
+          t.id === args.taskId ? { ...t, completedAt: Date.now() } : t,
+        ),
+      },
+    )
+  })
   const { upload } = usePortalUpload()
   const [isCompleting, setIsCompleting] = useState(false)
+  const [showReplace, setShowReplace] = useState(false)
 
   const done = Boolean(task.completedAt)
-  const due = dueInfo(task.dueAt)
   // Past due AND the organizer doesn't accept late work (Settings → Event
   // details → Speaker portal). The task stays on the list — you should see
   // what you missed — but nothing on it can be actioned.
@@ -47,6 +73,10 @@ export function TaskItem({ task, uploads }: TaskItemProps) {
     (task.kind === "confirm" || task.kind === "profile") && !locked
   const latest: PortalUpload | undefined = uploads.length > 0 ? uploads[0] : undefined
   const needsChanges = latest?.approvalStatus === "changes_requested"
+  // A finished file task keeps its drop zone folded away: the file is the
+  // answer, and a big dashed rectangle under a ticked-off task reads as
+  // unfinished work. One tap unfolds it to send a new version.
+  const showDropZone = isFileTask && (!done || showReplace || needsChanges)
 
   async function handleComplete() {
     setIsCompleting(true)
@@ -80,6 +110,7 @@ export function TaskItem({ task, uploads }: TaskItemProps) {
       },
       onProgress,
     )
+    setShowReplace(false)
     toast.success(
       uploads.length > 0
         ? "New version uploaded — the organizers will review it."
@@ -88,7 +119,7 @@ export function TaskItem({ task, uploads }: TaskItemProps) {
   }
 
   return (
-    <li className="flex gap-3 px-4 py-4">
+    <li className="flex gap-3 px-6 py-4">
       <span
         aria-hidden
         className={cn(
@@ -97,15 +128,18 @@ export function TaskItem({ task, uploads }: TaskItemProps) {
             ? "bg-status-green-bg text-status-green-fg"
             : needsChanges
               ? "bg-status-red-bg text-status-red-fg"
-              : "border border-dashed border-muted-foreground/50",
+              : locked
+                ? "bg-muted text-muted-foreground"
+                : "border border-dashed border-muted-foreground/50",
         )}
       >
         {done ? <RiCheckLine size={13} /> : null}
         {!done && needsChanges ? <RiAlertLine size={12} /> : null}
+        {!done && !needsChanges && locked ? <RiLockLine size={11} /> : null}
       </span>
 
       <div className="min-w-0 flex-1">
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+        <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
           <p
             className={cn(
               "text-sm font-medium text-foreground",
@@ -121,21 +155,9 @@ export function TaskItem({ task, uploads }: TaskItemProps) {
             <span className="text-xs font-medium text-status-green-fg">
               Completed{task.completedAt ? ` ${formatDate(task.completedAt)}` : ""}
             </span>
-          ) : due ? (
-            <span
-              className={cn(
-                "text-xs font-medium",
-                due.tone === "overdue"
-                  ? "text-destructive"
-                  : due.tone === "soon"
-                    ? "text-status-amber-fg"
-                    : "text-muted-foreground",
-              )}
-            >
-              {due.label}
-              {locked ? " · closed" : ""}
-            </span>
-          ) : null}
+          ) : (
+            <DueChip dueAt={task.dueAt} locked={locked} />
+          )}
         </div>
 
         {task.instructions ? (
@@ -166,7 +188,7 @@ export function TaskItem({ task, uploads }: TaskItemProps) {
           </FileList>
         ) : null}
 
-        {isFileTask ? (
+        {showDropZone ? (
           <FileDropZone
             size="sm"
             className="mt-3"
@@ -176,14 +198,24 @@ export function TaskItem({ task, uploads }: TaskItemProps) {
             }
             label={
               uploads.length > 0
-                ? "Drop a new version here, or click to choose one"
+                ? "Drop a new version here, or tap to choose one"
                 : task.kind === "headshot"
-                  ? "Drop your headshot here, or click to choose one"
-                  : "Drop your file here, or click to choose one"
+                  ? "Drop your headshot here, or tap to choose one"
+                  : "Drop your file here, or tap to choose one"
             }
             onUpload={handleUpload}
             onError={(message) => toast.error(message)}
           />
+        ) : isFileTask && done ? (
+          <Button
+            variant="outline"
+            size="sm"
+            className="mt-3"
+            onClick={() => setShowReplace(true)}
+          >
+            <RiUpload2Line aria-hidden />
+            Send a new version
+          </Button>
         ) : null}
 
         {!done && locked ? (

@@ -36,6 +36,10 @@ export const TEMPLATE_META: Record<string, TemplateMeta | undefined> = {
     label: "Task reminder",
     when: "Sent by “Remind incomplete speakers”, and once a day automatically for tasks coming due.",
   },
+  portal_link: {
+    label: "Sign-in link",
+    when: "Sent automatically when somebody enters an email address that already has speaker history on your event. It proves they own the inbox before anything of theirs is shown — nothing for you to configure.",
+  },
   deadline_reminder: {
     label: "Draft deadline reminder",
     when: "Sent once, automatically, in the three days before a form closes — to anyone still holding an unfinished draft. Turn it on per form in the form builder’s Settings step.",
@@ -79,7 +83,7 @@ const PLACEHOLDER_COPY: Record<
   },
   formLink: {
     label: "Submission form link (deadline reminders)",
-    sample: "https://trackstage.app/submit/cfp",
+    sample: "https://trackstage.app/submit/ai-summit-2026/cfp",
   },
 }
 

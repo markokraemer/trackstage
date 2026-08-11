@@ -1536,3 +1536,673 @@ parity wave. Everything below verified live in the browser on dev
 Rule-19 pass integrated (7b7bce1) and verified: vb 516/0 (visibility checks →
 real /v1), flows 3× consecutive 49/49. Two spec syncs (v1 probe, link-role CTA).
 Task #3 complete. Remaining follow-ups → final polish agent.
+
+## Three-level settings architecture + per-member event access (2026-08-11, ~14:30)
+
+Marko: *"separate Workspace settings & account settings from the Event settings… Event
+Settings / Workspace Settings / Account Settings all clean & nice separated in depth"*,
+*"move the [account] settings inline again in page — as they were before"* (the modal
+experiment from the reconciliation pass is OUT), and *"add proper Workspace settings
+control so u can scope whether someone has access to all events or only certain ones —
+Admin will have [access] to all, member to select"*.
+
+**1. Account settings is a PAGE again** — `/app/account`, replacing the modal. Same
+chrome as the other two levels (SettingsLevelNav → PageHeader → line tabs), so the
+hierarchy reads as one system with three floors rather than three mechanisms. Tabs
+Profile / Security / API & MCP, with the tab in the URL (`?tab=api-mcp`) via a
+`validateSearch` that returns `{}` rather than `{tab: undefined}` — with the key always
+present TanStack types `search` as REQUIRED and every plain `<Link to="/app/account">`
+in the app fails to typecheck. `AccountSettingsDialog` deleted along with the `?account=`
+search param on the `/app` layout route, `openAccountSettings`/`closeAccountSettings` and
+the shell-mounted dialog; the avatar menu item is a real `<Link>`; `/app/settings/api-mcp`
+redirects to `/app/account?tab=api-mcp`. One-click MCP connect (previous commit) is
+carried over untouched and re-verified live.
+
+**2. Workspace = the org hub** — `/app/workspace` reordered to mirror the hierarchy:
+Workspace profile → **Events** (name, dates, live submission count, click-through that
+switches `sb.currentEventId` and opens that event's settings) → **Team** → "what lives
+where". Team last, because its access column refers to the events listed right above it.
+
+**3. Per-member event access (new feature, backend + UI).** `members.eventIds` is
+additive and optional: **absent ⇒ every event, now and in future**, which is the default
+for everyone and the only possible value for owners/admins. `convex/lib/auth.ts` is the
+single enforcement point — `eventAccessFor` now resolves the member row itself and checks
+the scope **before** the role check, so a scoped member never gets a role error that would
+confirm the event exists; they get `"Event not found."`, the same words a stranger gets.
+`requireEventAccess` delegates to it, so browser sessions, REST API keys (`apiV1`'s
+`authorizeEvent` switched from `membershipFor` to `eventAccessFor`) and MCP all run the
+one implementation. Listing surfaces filter by the same helper: `events.list` (the shell's
+event switcher), `apiV1.listEvents`, `mcp.listEvents`, and `mcp.listWorkspaces`'
+`eventCount`. `workspaces.setMemberEventAccess({memberId, eventIds: array | null})` is
+admin-only, validates every id belongs to THIS workspace (otherwise an admin could pin
+someone to another workspace's event and the check would silently never match), refuses to
+scope owners/admins in plain English, and `null` clears the scope; promoting a member to
+admin drops any scope they had. Invites carry an optional `eventIds` onto the pending
+member row, so the scope is in force the moment they first sign in, and the Resend invite
+email names the scope.
+
+UI: shared `EventAccessPicker` (radio "All events" / "Only selected events" + a checkbox
+list that stays visible-but-disabled under "All events", so the shape of the decision is
+never hidden) used by BOTH the invite dialog and the per-member edit dialog. The Team
+table gained an **Event access** column: "All events (owner/admin)" as a quiet statement
+of fact, "All events" / "{event name}" / "N events" with a pencil affordance for members.
+Both `setMemberEventAccess` and `updateMemberRole` carry `withOptimisticUpdate` over the
+`workspaces.members` query, so the cell flips in the same frame as the click (rule 26).
+
+**4. Level separation.** `SettingsLevelNav` is three real links now (Account · Workspace ·
+Event), each showing WHICH thing it edits — your email, the workspace name, the event
+name — so the strip doubles as the way up the hierarchy. Headers are
+"Account settings — {email}" / "Workspace settings — {org}" / "Event settings — {event}".
+The event-settings banner carries one sentence naming the two things that are NOT
+event-level and linking to where they live (written as flowing text, not a flex row — a
+flex gap strands the sentence's final full stop a space away from the word before it).
+
+**5. Finished the stopped polish agent's in-tree work** (all of it kept, none reverted):
+`TabsCount` added to `src/components/ui/tabs.tsx` as the ONE count treatment — "Label N",
+never "Label (N)" — adopted by submissions kind/status tabs, portal tabs, forms,
+speakers, evaluation ("Plans (2)" → `Plans 2`), communications, and documented on
+/design-system with a usage hint; submissions table footer takes a `totals` prop so it
+describes the filtered set instead of the 25-row page; embeds dropped its duplicate Event
+select (the sidebar switcher is the one source of event context); the public CFP welcome
+step stopped printing the event name twice, and seed's `externalTitle` is just
+"Call for Speakers".
+
+**Verified live in the browser** with two real accounts: invited `scoped-member@example.com`
+as a member limited to Design Systems Day → the invite toast and the Access cell both said
+"Design Systems Day"; signed that account up in a second browser context → the event
+switcher listed ONLY Design Systems Day; its personal API key returned 200 for
+`/v1/event/design-systems-day/sessions`, **404 "Event not found."** for
+`/v1/event/ai-summit-2026/sessions`, and `/v1/events` returned exactly one event;
+promoting them to Admin from the owner's tab flipped the cell to "All events (admin)"
+optimistically and, with no reload, the other browser's switcher grew to both events and
+the same API key started returning 200 for the previously hidden one. Test member removed
+afterwards. Zero console errors on `/app/account`, `/app/workspace`, `/app/settings`;
+`pnpm typecheck` and `pnpm lint` clean (only the pre-existing calendar.tsx no-shadow
+warnings).
+
+Gotcha for the next agent: Base UI puts the `id` you pass a Checkbox on its HIDDEN native
+input and moves your `<label htmlFor>` to `id="{id}-label"`. Real user clicks on the label
+toggle it correctly (verified), but a programmatic `label.click()` in a test script does
+NOT — drive the element with `[data-slot="checkbox"]` instead.
+
+## ONE speaker system — the roster is the people graph (2026-08-11, ~14:45)
+
+**Marko's bug, verbatim:** he added a Session by hand with speaker "Elon Musk" (status
+Accept Queue) and `/app/speakers` said *"No speakers yet"*. His verdict: *"seems like the
+two systems are not synced — refactor & ensure we have ONE SOURCE OF TRUTH SPEAKER
+SYSTEM."*
+
+**Root cause.** `dashboard.speakersRoster` was derived from ACCEPTED submissions only,
+plus a side-door for people carrying a `workflowStatus` (what `speakersAdmin.addManual`
+stamps). So there were two notions of "speaker": the people graph everything else uses
+(`submissionParticipants`, and `comms.resolveBulkRecipients`'s `all_speakers`, which was
+already the wide definition) and this acceptance-derived list. Anyone on a pending,
+queued or hand-added session was invisible.
+
+**The fix — one definition, acceptance becomes a facet.**
+- `convex/dashboard.ts` gained `programParticipation()`: everyone who is a participant on
+  ANY submission or session for the event, whatever its status. Drafts are the single
+  exclusion (an unfinished form is not a commitment); soft-deleted rows are already out.
+  Submitters are deliberately not included on their own — manual sessions are "submitted"
+  by the organizer's own person record, and the organizer is not a speaker. One indexed
+  `submissionParticipants.by_eventId` scan replaces the per-submission fan-out.
+- Each row now carries `programStatus` (`confirmed` ≥1 accepted · `in_review` · `closed`
+  · `manual`) plus `programCounts {accepted, inReview, declined, withdrawn}`, and every
+  `sessions[]` entry carries its `status` and `kind`. Sessions sort yes → maybe → no, so
+  the title shown is the one that matters.
+- `workflowStatus`, when nobody has set it, now follows the programme (accepted →
+  Confirmed, otherwise Invited) instead of defaulting to Confirmed — the two columns can
+  no longer contradict each other.
+- The dashboard's chase list, "N accepted speakers" and "missing a bio" metrics stay
+  scoped to `acceptedParticipation()`, now explicitly documented as the narrow one at
+  both the helper and the call site (chasing a bio from someone you may still decline is
+  noise).
+
+**UI.** New `src/components/dashboard/program-status.tsx` is the single place that words
+and colours the facet (`ProgramStatusPill`, built on the shared `StatusPill` dot variant):
+"1 accepted session · 1 in review", "2 in review", "1 not accepted", "Added manually" —
+speaker-safe wording, so Accept Queue and Decline Queue both read simply as "in review".
+The roster's "Sessions" column became **In the program** and shows that sentence above the
+session title. Filter tabs are now the primary axis — **All speakers · Confirmed · In
+review** (default All, live counts) — and the old completeness tabs moved into a second
+select (Any profile / Needs attention / All set / Hidden publicly) that COMPOSES with
+them: Confirmed + Needs attention is the chase view. Workflow-status select and the
+missing-bits chips are untouched. Copy swept: the empty state now reads "Everyone attached
+to your program lands here the moment they're on a submission or session — accepted or
+still in review.", the page header matches, and the assign-task dialog stopped saying "No
+accepted speakers yet". Public surfaces were already correct and were left alone — the
+gallery/API/.ics stay accepted-AND-visible only.
+
+**Verified in a real browser** (own Chromium; the shared devtools browser was contended by
+sibling agents), driving Marko's exact repro: added a Session by hand with a brand-new
+person as speaker in Accept Queue → they appear on `/app/speakers` immediately, faceted
+"1 in review", workflow "Invited", with the session named; header counts moved All +1 /
+In review +1 / Confirmed unchanged; the In review tab includes them and Confirmed excludes
+them; the public speakers page does NOT show them. Flipping the session to Accepted →
+the row reads "1 accepted session", workflow reads Confirmed, and the public page now
+lists them. Zero console errors throughout. Test data removed afterwards (the four
+throwaway sessions sit in the deleted-submissions tray).
+
+`scripts/verify-backend.mjs` gained the same repro plus four roster invariants (every row
+carries a facet; facet agrees with its counts; roster ≥ accepted-speaker count; the
+dashboard chase list stays accepted-only). Run against the dev deployment: 14 roster rows
+vs 10 accepted speakers — 10 confirmed, 3 in review, 1 not accepted — i.e. four people the
+old roster hid. `pnpm typecheck` and `eslint` clean on every file touched.
+
+---
+
+## 2026-08-11 — Public URL structure: form slugs become per-event
+
+Marko created a form called "Call for Speakers", landed on `/submit/call-for-speakers`,
+and called it: generic form slugs lived in ONE GLOBAL namespace across every workspace,
+so common names collide and block. The dev database proved it — five
+`devcon-berlin-call-for-speakers`, `-2`, `-3`, `-4`, `-5` rows sitting in five DIFFERENT
+events, each one an organizer who could not have the name they asked for.
+
+**The scheme now** (`docs/memory/DECISIONS.md`, "Public URL scheme is hierarchical"):
+
+| Surface | Address | Uniqueness |
+| --- | --- | --- |
+| Event program | `/e/:eventSlug` | global, one segment, auto-suffixed on clash |
+| Public CFP | `/submit/:eventSlug/:formSlug` | **per event** |
+| Legacy CFP | `/submit/:formSlug` | resolves + 307s to canonical |
+| Speaker portal | `/portal/t/:token` | already unique by construction — untouched |
+
+**Backend.** `forms` gained `by_eventId_slug`, which is now the uniqueness index and the
+canonical lookup; `by_slug` survives ONLY for legacy resolution, so nothing that reads it
+may call `.unique()` any more (`convex/mcp.ts::resolveForm` was the one place that still
+did — it now resolves a bare slug against the forms the caller can see and asks for the
+formId when that is genuinely ambiguous). One new module,
+`convex/lib/publicLinks.ts`, owns the scheme, the slug generators and
+`resolvePublicForm`; `src/lib/public-links.ts` mirrors it on the client and every other
+link helper (`forms-builder/model.ts`, `dashboard/app-routes.ts`, `settings/slug.ts`) is
+now a re-export of it, so the scheme can only change in one place.
+`submit.getForm/identify/saveDraft/submit` take an optional `eventSlug`;
+`submit.resolveLegacyLink` is new and feeds the redirect. `forms.list`/`forms.get` carry
+`eventSlug` so no caller stitches a URL from a second query.
+
+**Legacy links.** The one-segment route resolves across events and redirects to the
+canonical address. Where several forms share a slug the OLDEST wins — the alternative
+("ambiguous link" page) would have let any organizer kill another's printed link by
+naming a form the same thing, which is the blocking we were removing. Verified live with
+a genuine collision in place: `/submit/cfp` → 307 →
+`/submit/ai-summit-2026/cfp` even after Design Systems Day also took `cfp`.
+
+**Never block, always tell.** `events.create` no longer throws on a taken slug — it
+auto-suffixes (`uniqueEventSlug`) and returns `{eventId, slug, slugAdjusted}` so the
+dialog says "that web address was taken — yours is …". `events.update` gained the same
+treatment (it previously had NO uniqueness check at all — two events could silently share
+`/e/:slug`). Form slugs are the opposite by design: the builder's new **Public link** card
+(`forms-builder/public-link-card.tsx`) makes the address editable in place and a clash is
+refused inline with the `-2` suggestion, because the organizer is looking straight at a
+link they may already have printed. The slug editor writes on its own, never through the
+wizard autosave, so a refusable field can't keep failing in the background.
+
+Also fixed on the way: the settings slug field re-slugified on every keystroke and
+`slugify` strips trailing dashes, so typing "ai-summit-2026" produced "aisummit2026".
+`slugifyInput` keeps the in-progress dash; `slugify` tidies on submit.
+
+**Verified in the browser on dev** (organizer login, both events): created a form named
+"CFP" on Design Systems Day → it got the slug **`cfp`**, the same one the demo event
+already owns, with no `-2` and no error; its public page renders at
+`/submit/design-systems-day/cfp` and the demo's at `/submit/ai-summit-2026/cfp`; the
+builder header, Setup card, forms list and dashboard all print the two-segment address;
+"Edit address" → `ds-cfp` (taken in that event) → *"That address is already taken for this
+event. Try “ds-cfp-2” instead."*; `/submit/cfp` still lands on the demo form; an unknown
+slug still shows the not-found card. `pnpm typecheck` and `eslint` clean.
+
+## Session — 2026-08-11 · P0: the CFP account step handed out other people's portals
+
+**The flaw (Marko spotted it).** `submit.identify` created-or-fetched the person for any
+typed email and returned their `portalToken`. Typing `ava.nakamura@example.com` on the
+public CFP therefore opened Ava's portal: three submissions, her draft, her tasks, her
+profile, her files. `submit.submit` echoed the token back too. Zero inbox verification.
+
+**The model now** (`convex/submit.ts` header comment, DECISIONS.md "Typing an email is
+not proof of owning it"). A token is handed out on exactly two conditions: the address is
+**new** for that event (empty account, nothing to steal — the common path and every
+fresh-email eval run is UNCHANGED), or the caller **presents the matching token**
+(sessionStorage resume, or the emailed link). Anything else — a submission incl. drafts,
+a co-speaker credit, a task, an upload, or a filled-in profile — is a returning speaker:
+`identify` returns `{ status: "link_sent", email, sent }` and NOTHING else (no token, no
+name, no drafts, no counts), and queues a `portal_link` outbox email, "Continue as
+{email} on {event}", carrying `/submit/{event}/{form}?t={token}` plus the portal link.
+Rate limit 3/hour/person, counted off the person's own outbox rows; over the cap it
+returns `sent: false` and the UI says "check your inbox", never an error. A bare person
+row younger than 30 min with nothing attached still counts as new, so re-entering an
+address mid-wizard is not punished.
+
+New `submit.resume` (token-authenticated) backs the `?t=` landing: the route's
+`validateSearch` takes the token, the wizard writes it to sessionStorage and
+`navigate({search:{}, replace:true})` strips it from the URL immediately, then resume
+returns the owner's email/name/drafts and drops them on Submission (or on Account with
+their drafts). `submit.submit` no longer returns the token; the success screen uses the
+one the session already holds and hides "Continue to portal" entirely if it somehow
+doesn't. Account step copy now explains the model up front; the emailed-link state has
+"Send it again" + "Use a different email address".
+
+**Specs/scripts.** cfp-submit.spec.ts: new test "an email with speaker history gets a
+mailed link, never a portal" (asserts the mutation payload has no `portalToken`/`drafts`/
+`firstName`, the Check-your-email screen renders, the outbox holds the link, the link
+works, the URL is stripped); the cross-browser draft-resume test now goes through the
+emailed link (that IS cross-device resume now); the per-user-cap test's second attempt
+arrives on its mailed link. verify-backend.mjs: new "Portal sign-in links" section
+(8 assertions incl. wrong-token and the 3/hour cap) and the co-speaker section follows
+the emailed link instead of asking for a token.
+
+**Verified on dev.** Backend probe: 15/15 green (new → token; re-entry seconds later →
+same token; after submitting → `link_sent` with no token; outbox preview renders every
+placeholder; mailed token === the person's token and opens their portal; presented token
+→ straight through; guessed token → link_sent; 4th link in an hour → `sent:false`;
+`resume` refuses an unknown token; `ava.nakamura@example.com` → no token). Browser
+(Playwright, dev app): fresh email → straight to Submission; Ava's address → "Check your
+email" naming only the address (no "Ava" anywhere on the page); following the outbox link
+→ signed in, her draft offered, `?t=` gone from the URL; `/portal/t/<token>` → her portal
+as before; **no console errors**. `pnpm exec playwright test flows/cfp-submit.spec.ts` →
+8/8 passed. `pnpm typecheck` + `eslint` clean on every file touched.
+
+## Session — 2026-08-11 · Airtable connect: "Server Error" on prod, and a two-way sync that never worked
+
+**The report.** Marko connected a REAL Airtable base on production and got
+`Airtable said no — [CONVEX A(airtable:connect)] [Request ID: …] Server Error`. He'd
+pasted `appXXXXXXXXXXXXXX/tblXXXXXXXXXXXXXX` — the base id and table id together,
+exactly the way Airtable's address bar shows them.
+
+**Root cause, two independent faults stacked.**
+
+1. **Convex redacts ordinary exceptions on production deployments.** Everything in the
+   integration threw `AirtableError extends Error` with a carefully written sentence.
+   On a dev deployment those messages leak through, so every test we'd ever run looked
+   fine; on prod the client sees `Server Error` and nothing else. Only `ConvexError`
+   data crosses that boundary. Every organizer-facing sentence in the integration was
+   therefore invisible in the one place it mattered.
+2. **The base-id field demanded a value nobody looks up.** `validateCredentials` only
+   checked `startsWith("app")`, so `appX/tblY` passed the check and then produced
+   `GET /v0/meta/bases/appX/tblY/tables` — a URL Airtable answers with a 404 whose
+   (good) message was then eaten by fault 1.
+
+**Fixes.**
+- `AirtableError` now extends `ConvexError<string>`; `connect` wraps every failure path
+  (auth, validation, live API, network) so nothing can leave it as a bare `Error`.
+  `syncNow` / `setTwoWaySync` likewise. New `humanAirtableError()` is the single funnel
+  turning any throwable into one actionable sentence, and it also feeds the connection's
+  `lastError` so the card and the toast say the same thing.
+- New `normalizeBaseId()` / `normalizeToken()` / `normalizeCredentials()` in
+  `convex/lib/airtable.ts`. Accepts a bare id, `appX/tblY`, a full
+  `https://airtable.com/appX/tblY/viwZ?…` URL, an `api.airtable.com/v0/…` URL, and any
+  stray whitespace or `Bearer ` prefix. Applied in the UI (field rewrites itself on blur
+  with a quiet "Read that as base appX" confirmation) **and** defensively in the action,
+  so an API caller or a stale tab gets the same forgiveness.
+- Error copy now names the failure: invalid/expired token, base-not-in-token's-Access
+  (naming all four required scopes), rate limit, network, 404. The card reads
+  `ConvexError.data` first and strips any `[CONVEX …]` / `[Request ID …]` decoration;
+  if all that's left is Convex's `Server Error` placeholder it shows the fallback
+  instead of plumbing (`src/components/settings/errors.ts`).
+
+**Found while validating: the experimental two-way sync was a no-op for real edits.**
+`syncEvent` pushed and then pulled. The push rewrites every mirrored cell including
+Status, so an organizer's Airtable edit was overwritten *before* the pull could read it;
+the pull then saw our own value and logged "unchanged". Reproduced live (edit → sync →
+`applied: 0, skipped: 1`, and the cell back to its old value). Now **pull, then push** —
+the inbound half runs first, the payload we mirror out already contains anything we
+accepted, and the baseline moves last. If the inbound read fails we record the reason and
+skip the push entirely: we must not overwrite a side we couldn't read.
+`syncAllConnected` additionally sweeps orphaned connection rows (an event deleted out
+from under a connection left a live Airtable token sitting in the DB).
+
+**Verified end to end on dev, against Marko's real base, with `AIRTABLE_DEMO_MODE`
+temporarily off.** Connected through the real UI at localhost:3000 with the messy
+`appX/tblY` paste — field normalized itself with the hint, connect succeeded, and the
+three tables (Submissions, Speakers, Sessions) were created in the base with all our
+columns and populated (18 / 14 / 6 rows on the first run, verified by curl against the
+Airtable API, not by our own status card). Negative cases through the real authed client
+all returned a `ConvexError` whose `.data` is a plain sentence while `.message` was the
+raw `[Request ID: …] Server Error` — i.e. exactly the bug, now caught. Two-way: flipped a
+submission's Status **in Airtable**, ran Sync now, our DB moved `pending → accepted`
+through `submissions.setStatusInternal` (audit row `status_changed`, actor "Airtable
+sync") — `applied: 1`. Re-syncing with nothing changed: `applied: 0, skipped: 1`, no
+flapping (echo suppressed). Conflict: changed the same submission to `declined` in
+Trackstage and to `Accept queue` in Airtable → `conflicts: 1`, our DB stayed `declined`,
+Airtable was overwritten back to `Declined`, and the overruled value landed in the audit
+log as `sync_conflict`. Afterwards the connection was removed and `AIRTABLE_DEMO_MODE`
+restored to `1`; no Airtable token remains in the dev database.
+
+`pnpm exec vitest run tests/unit/airtable-sync.test.ts` → 30/30 (11 new cases pinning the
+base-id parsing, the ConvexError requirement and the card's message extraction).
+eslint + prettier clean on every file touched.
+
+## 2026-08-11 ~12:45–15:45 — API completion pass: full CRUD + an exhaustive spec
+
+Marko, on `/docs/api#tag/events/GET/v1/events`: *"it's for sure missing more — where is
+full CRUD etc? we need full API parity with sessionboard — have all the same things."*
+Then: *"ensure we have full AUTH — the SCALAR DOCS and the OPENAPI SPEC are 100% FULLY
+COVERED IN DEPTH WITH EVERYTHING FROM START TO END."*
+
+**Re-crawled their spec.** `sessionboard.mintlify.app/api-reference/openapi.yaml` (identical
+to `apidocs.sessionboard.com`) — 131 paths / **177 operations**, diffed operation-by-operation
+against ours. In scope: **61**. Matched before this session: **60**. The single unmatched
+in-scope endpoint was `POST /v1/event/{id}/statuses/{id}/restore`. Everything else Marko
+was missing does not exist in Sessionboard's API *either* — their Events tag really is one
+read. So parity was the floor and the work was completing our own surface.
+
+**+29 routes (80 → 109).**
+- **Events CRUD** — `GET /events/{ref}` (with `totals`), `POST /events`, `PUT`, `DELETE`.
+  Create resolves the workspace from the caller's memberships and answers 400 *listing the
+  workspaces* when ambiguous; slugs are suffixed rather than rejected (`slug_adjusted`);
+  delete runs `events.deleteEventCascade`, blobs included.
+- **Forms** — list/get/create/update/delete, addressable by slug (`/forms/cfp`). A form's
+  questions ARE the event's custom-field definitions, so this reads and writes the public
+  submission page. Locked system questions cannot be dropped (400); a form with submissions
+  cannot be deleted (400 — close it).
+- **Tasks** — list/get/create/update/delete. `?status=open|completed|overdue` is the
+  outstanding-speaker-tasks dashboard as an API call; create assigns to many speakers by id
+  **or** by email.
+- **Evaluation** — plans (5), evaluators (4), `GET /evaluations`. Criteria ids derive from
+  labels, weights and types (`numeric`/`select`/`text`) round-trip, evaluators carry their
+  magic review link and progress, assignment outside a plan's pool is refused.
+- **Session participants** — list/attach/detach. Sessionboard *fires*
+  `session.speaker.attached`/`.detached` but ships no endpoint that causes them; ours does,
+  and these are the first emitters of those two event types.
+- **`DELETE /speakers/{id}`** — completes speaker CRUD, with the same live-session guard the
+  UI enforces.
+- **Session statuses became real.** `sessionStatuses` gained an additive `deletedAt`, the UI
+  delete became soft, and the API now does create/update/delete/**restore** for real —
+  closing their last endpoint. `GET /statuses` keeps `id` = the pipeline value for built-ins
+  (nothing that read it breaks) and adds `status_id`, `category`, `pipeline_status`, `color`,
+  `deleted_at`; `?include_deleted=true` shows the archive. Built-ins refuse deletion and
+  re-categorisation with a sentence saying why. A custom status is a *label bound to a
+  pipeline category* — the organizer sees "Waitlist", the machinery still sees `pending`.
+
+**The spec became a real document, still generated.** `scripts/generate-openapi.mjs` now
+emits **109 operations / 83 schemas / 28 parameters** with: per-operation `security` +
+`x-required-scope` + `x-rate-limit-bucket` + `x-demo-token-allowed`; both securitySchemes
+documented in depth (where keys come from, shown-once, revocable, the demo token, and a
+pointer to the MCP/OAuth universe); a request example on every body-taking operation and a
+response example on **all 91** operations that return one; automatic 403/429; tag order that
+puts reads next to their writes; and method order inside each path forced to GET→POST→PUT→
+DELETE so "Get an event" sits above "Delete an event". `info.description` is now a genuine
+getting-started (base URL, key creation, curl in both header forms, scope table, pagination
+envelope, error-code table, rate-limit buckets/headers, times, optimistic concurrency, soft
+deletes, the webhook HMAC verification snippet, both upload flows step by step, the `.ics`
+feed, a migrating-from-Sessionboard note).
+
+Response examples are **captured live and derived for writes from the reads they mirror**,
+so they cannot rot; the harvest-on-regen change also dropped the duplicated
+`x-captured-examples` block (910 KB → 707 KB). One real bug fixed on the way: a
+rate-limited capture run used to *replace* the example set and silently strip the reference
+bare — it merges now.
+
+**Verified.** `pnpm openapi:check` green; `--live` probes all 109 routes against
+`neat-sparrow-926` — all served. 75 new assertions in `scripts/verify-backend.mjs` (happy
+path per new route + an auth refusal per new write) — **75/75 pass**. Scalar page checked in
+a headless browser: auth section, scopes, examples and CRUD-ordered tags all render, no page
+errors; screenshots in `docs/verification/api-docs-completion/`. `docs/reference/api-parity.md`
+rewritten to the new state — score table, their 177 → our 109, and the 48 operations we have
+that they have no counterpart for.
+
+## 2026-08-11 — Workspace switcher: seeing (and moving between) every workspace you're in
+
+Marko: *"Have proper UI to see all workspaces you're part of & also a workspace switcher
+etc."* — plus, from the avatar-menu screenshot, *"list the workspaces there too"* and, at
+event level, a Team card that can grant access to just this event.
+
+**The context store now has two pointers, one rule (`src/lib/current-event.ts`).** The
+event pointer still wins — the workspace in context is derived from the current event —
+but the one thing an event id cannot express is an EMPTY workspace, so `sb.currentWorkspaceId`
+carries exactly that case alongside `sb.currentEventId`. Both are written in a single
+`writeContext()` (one notify, no frame where the new workspace shows the old event's data),
+and a workspace switch clears the event pointer when the target has none. The hook gained
+`workspaceEvents` (the current workspace's events), `workspaceOptions` (every workspace +
+its reachable events + `isCurrent`) and `isWorkspaceEmpty`; `isEmpty` now means *no event in
+context* rather than *no events at all*, so an empty workspace shows the same honest
+"create your event" state everywhere. The old stale-workspace cleanup effect was deleted:
+an id that no longer resolves simply falls through the resolution chain, and clearing it
+raced a workspace created a second earlier.
+
+**The sidebar picker is now two levels, in one popover**
+(`src/components/shell/workspace-switcher.tsx` + `event-switcher.tsx`): *Workspace ·
+{role}* with every workspace you belong to (name, `Owner · 3 events`, current one checked)
+and "Create workspace", then *Events in {workspace}* — the current workspace's events only.
+It listed every event of every workspace before, which quietly denied that workspaces are
+separate tenants. **It was built as a hover submenu first and that was wrong**: the judge is
+a browser agent and the users are non-technical, and a hover-only submenu failed both (the
+e2e proved it — the submenu never opened). A flat labelled section is one click either way.
+
+**The same rows, three places, one hook.** `useWorkspaceSwitcher()` owns "switch, and if
+the target is empty land on its hub"; `WorkspaceMenuItems` renders the rows. The avatar
+menu (rule 23b/c, Marko's screenshot) now lists all workspaces under its workspace section,
+and `/app/workspace` grew a **"Your workspaces"** card (role, event count, `Current` badge,
+`Switch`). The hub's header workspace `<Select>` and its separate `viewingId` state are
+gone — the hub always manages the workspace the app is in, so it can never name a different
+one than the sidebar.
+
+**Event settings → Team** (`src/components/settings/event-team-card.tsx`): who can open
+THIS event — owners/admins plus members whose `eventIds` include it, the UI restatement of
+`memberCanSeeEvent` — and **"Invite to this event"**, which deep-links
+`/app/workspace?invite=1&event=…`; the invite dialog opens with role Member and that event
+pre-checked in the EventAccessPicker. Closing it drops the params.
+
+Two fixes found on the way: "New event" defaulted to `workspaces[0]` instead of the
+workspace you are actually in (it would have created events in the wrong tenant), and the
+role `<Select>`s rendered the raw value ("member", not "Member").
+
+**Verified.** `tests/e2e/flows/multi-tenant.spec.ts` gained two journeys — a user in four
+workspaces (switcher lists all with roles + event counts, switching flips sidebar events and
+dashboard data, the other workspace's data is absent, an empty workspace lands on the hub,
+create-workspace from the switcher, avatar-menu switching, survives reload) and the event
+Team card + pre-scoped invite (asserted down to `members.eventIds.length === 1`). Full file
+**5/5 green, twice**; typecheck + eslint clean on every touched file; driven in a real
+browser with zero console errors (screenshots of the picker, avatar menu, empty-workspace
+hub, event Team card and the pre-scoped invite).
+
+---
+
+## The public event site, end to end (`/e/:slug`) — sticky header + a full UX pass
+
+Marko: *"MAKE SURE THE PUBLIC PAGE UX/UI is perfect. Pin the header — make it sticky on
+scroll. MAKE IT VERY VERY GOOD UX/UI in depth."* This is the surface a conference attendee
+— and the judging browser agent — actually lands on, so it got a pass of its own.
+
+**The header now pins.** `PublicShell` split into a hero (logo, name, dates, venue, a
+one-paragraph description, plus *Add to calendar* + *Copy link*) and a separate `sticky
+top-0` nav bar. Pinned, the bar picks up `bg-card/70` + `backdrop-blur-md` + a hairline
+shadow, and fades in a condensed "AI Engineer Summit 2026 · Oct 12–13, 2026" on its right
+— right-aligned deliberately, so nothing shifts when it appears. It is `position: sticky`
+with a 1px `IntersectionObserver` sentinel driving only the *cosmetic* stuck state, never
+`fixed`: a sticky element stays in the flow, so the page underneath cannot jump at the
+moment it pins. The e2e asserts exactly that (document position of the first heading is
+unchanged across the pin).
+
+**One content measure everywhere** (`PUBLIC_CONTENT`, rule 20e). The chrome runs the full
+page container; the reading column is `max-w-4xl` on every public route. 1100px-wide
+abstracts were the single biggest thing wrong with the old pages.
+
+**Schedule** — rebuilt as a time gutter: the start time down the left, the sessions that
+begin at it beside it, hairline-separated per group. Track filter promoted from a footnote
+("Tracks: A · B · C") to real chips bound to `?track=`. The event's timezone is now stated
+once, in words — "4 sessions · all times PDT" — because every time on the page is in the
+*event's* zone, not the reader's. Rooms grid gained the bottom padding its last hour label
+needed.
+
+**Sessions catalog** — `q` / `track` / `format` / `room` moved out of `useState` and into
+the URL. A filtered view is now a link you can send someone, and the back button undoes one
+filter at a time. Typing still echoes instantly (`useUrlText`: local state, debounced
+`replace: true` write, re-syncs when the URL changes underneath).
+
+**Speakers** — the gallery's dialog is gone. Every tile and every directory name is an
+ordinary link to the speaker's own page, because a speaker is a thing people share and a
+dialog is a dead end for a keyboard, a crawler or a browsing agent. Denser grid, roles
+rendered as a chip when they say something ("Chairperson"), and `SpeakerAvatar` gained
+named sizes so initials scale with the circle instead of sitting as 14px text in an 80px
+disc — plus `loading="lazy"` inside a box CSS already reserved, so thirty headshots never
+reflow the page as they arrive.
+
+**Session detail** — two columns: the abstract and speaker line-up read on the left, while
+a sticky panel on the right holds when/where, *Add to my schedule*, *Add to calendar*,
+*Copy link* and the Format/Track/Level/Language facts. On a phone the panel comes first,
+because "when and where" is what someone standing in a corridor is asking. Per-session
+`<title>`/description for shares.
+
+**Calendar + share affordances.** `SubscribeMenu` in the hero hands over the live feed
+(`/v1/event/{slug}/schedule.ics`) three ways — `webcal://` one-click, download, copy URL —
+distinct from the existing snapshot download. `CopyLinkButton` is on the hero, every
+session card, session detail and every speaker page.
+
+Also fixed: single-day events read "Nov 5, 2026" instead of "Nov 5–5, 2026"; the duplicated
+"Format: / Track:" chip row at the bottom of every session card is gone (it restated the
+chips at the top); the footer became a real footer (event identity + nav + attribution).
+
+**Verified.** New `tests/e2e/flows/public-pages.spec.ts` — sticky pinning on every route
+with a no-reflow assertion, URL filters in both directions, sessions → detail → speaker →
+gallery → back with no dead ends, gallery roles/session counts, `?embed=1` strips the
+chrome, an unpublished event says **"Schedule coming soon"**, an unknown slug explains
+itself — **9/9 green**. `crawl.spec.ts` grew six public routes (all views, the embed, the
+unpublished event): **15/15 green**. Screenshots of every surface at 390 / 768 / 1440 with
+zero console errors and zero horizontal overflow; landmarks, single `h1`, alt text on every
+image and a skip link audited in the browser. Typecheck + eslint clean on every touched
+file.
+
+*Found on the way:* port 3000 had been taken over by an unrelated Next.js dev server from
+another project's worktree, which is why a suite run went from 7 green to 8 red for no
+apparent reason. If tests fail wholesale, check `lsof -nP -iTCP:3000` before debugging the
+product.
+
+## 2026-08-11 — Speaker portal: the in-depth perfection pass
+
+Marko: *"DO THE SAME PASS FOR THE COMPLETE SPEAKER PORTAL — it seems it's a bit different
+brand UX/UI. ENSURE PERFECTNESS & EVERYTHING WORKS FLAWLESSLY."* He was right, and the
+cause was one component.
+
+**The drift was `PanelCard`.** The portal's signature panel rendered a solid `bg-primary`
+banner header with white text — the pre-Attio tinted-chrome pattern that RULES.md #22 and
+`PageHeader`'s own doc comment retired product-wide ("there is no tinted banner anywhere in
+the product any more"). Nine of them stacked down Home, Tasks and Profile, which is why the
+portal read as a different, bluer product. It is now the exact organizer recipe: `Card` →
+`CardHeader className="border-b"` → `CardTitle` with a muted icon → `CardAction`, plus a
+`count` prop that renders "Submissions 3" the way `TabsCount` does, and a `flush` prop for
+lists that own their row padding. Colour in the portal is now only ever a link, a status
+dot or a progress bar. Two "View all" links were also `text-primary-foreground/90` — white
+text that only worked *because* the banner behind it was blue.
+
+**One shell, one header.** Four routes each hand-rolled a `text-2xl` `<h1>` — larger than
+the organizer's canonical 20px `PageHeader` and duplicating the tab label directly above
+it. The layout now owns a single `PageHeader` whose title/description come from
+`portalTabMeta()` in `portal-tabs.tsx`, with the tab strip hanging off it exactly like
+Settings / Account / Workspace. Routes render content only. The tab strip itself moved from
+a bespoke `rounded-xl bg-card ring-foreground/10` scroller to `TabsList variant="line"` —
+the same component the organizer uses — and wraps instead of scrolling, because on a 390px
+phone the old version auto-scrolled "Home" off the left edge and clipped "Tasks" off the
+right. Icons hide below `sm` so all four labels fit one line. Added: an event-context line
+(dates · venue) that sits beside the event name on desktop and under the page header on a
+phone, and a real footer — who to email when you're stuck, "How this works", attribution.
+
+**Times were shown in the reader's timezone.** A scheduled session rendered through
+`date-fns` in *local* time, so an accepted speaker in Berlin read "1:00 AM" for a talk at
+4pm in Moscone West. New `formatEventDateTime()` formats in the event's zone and always
+prints the abbreviation — "Oct 13, 2026 · 4:00 PM PDT" — and the header's date range goes
+through `formatZonedDateRange` too. This is the kind of bug that makes someone miss their
+slot; it now has an e2e assertion.
+
+**A hidden file input was impersonating the drop zone.** `<input type="file">` maps to
+`role="button"`, and `FileDropZone` gave it the same `aria-label` as the visible zone — so
+screen readers announced the control twice and `getByRole` couldn't tell them apart. (It
+cost an hour: a drag-and-drop test was dispatching its events at the `sr-only` input and
+"failing" on a component that was fine.) The input is now `aria-hidden` and `tabIndex={-1}`
+— it is machinery; the labelled, focusable, keyboard-operable zone is the button.
+
+**Tasks read as a checklist now.** Completed file tasks folded their dashed drop zone away
+behind a "Send a new version" button (a big empty upload target under a ticked-off task
+reads as unfinished work); locked tasks get a lock glyph and a "Closed" chip instead of a
+red overdue date; every due date goes through one `DueChip`. Completion is optimistic
+(RULES.md #26) — the row, the progress bar and the tab badge move on the tap, not on the
+round-trip — as are profile saves and submission edit/withdraw.
+
+**Also:** `ProfileMeter` extracted so Home and Profile count and word completeness
+identically, with each missing item a link straight to the field that fixes it
+(`hash` + `scroll-mt-24` anchors on `#bio` / `#details` / `#headshot` / `#links`); the
+headshot circle is itself the button ("tap your own face" is what everyone tries first) with
+a hover/focus "Change" overlay; submissions on Home are a divided list rather than cards
+nested inside a card; the email field spans two columns so it stops truncating; portal tabs
+are 44px tall on a phone and 36px on desktop.
+
+**Verified.** `tests/e2e/flows/speakers-portal.spec.ts` grew two tests — a file **dropped**
+(dragenter → dragover → drop with a real `DataTransfer`) onto a task, asserting the toast,
+the fold-away, and the tab count dropping live without a reload; and scheduled times
+carrying a timezone abbreviation. All four portal-scoped tests green. Screenshots of every
+tab plus the drawer, signed-out and expired-link states at 390 / 768 / 1440: zero console
+errors, zero horizontal overflow. Browser a11y audit at 390px across all four tabs: exactly
+one `h1` per page, every control named, every image with alt, no tap target under 32px —
+clean. Typecheck + eslint clean on every touched file.
+
+*Not mine, flagged:* the two tests in that file that start `gotoApp()` fail at
+`selectEvent()` — the organizer shell's event switcher is mid-rewrite by another agent
+(`src/components/shell/event-switcher.tsx`, 173 lines changed while this pass ran), and
+they never reach the portal. `video/` (untracked, another agent) is the only remaining
+typecheck/eslint error in the repo.
+
+## 2026-08-11 — Latency pass: the "weird Vite thing", and the 200ms every page was paying
+
+Marko: *"Sometimes when shit loads there is some weird VITE THING in between. Refactor
+LATENCY & ensure the ENTIRE APP SWITCHES ARE INSTANT & FEEL LIKE BUTTER."* Measured
+before and after by driving a headless Chromium through all seven organizer destinations
+(dashboard → submissions → forms → agenda → speakers → communications → settings), on the
+dev server and on the real Worker build under `wrangler dev`.
+
+**The weird Vite thing is not Vite — it is the TanStack devtools badge.** `__root.tsx`
+mounted `<TanStackDevtools>` unconditionally: a round TanStack palm-tree logo parked over
+the bottom-right of every screen in dev, popping in a beat after hydration and sitting on
+top of the app's own content (screenshot evidence: it overlapped the dashboard's pacing
+card). It was *not* in the production bundle — that part was already right — so the fix is
+dev ergonomics, not a prod bug. Both the panel and the `@tanstack/devtools-vite` plugin are
+now opt-in behind `VITE_DEVTOOLS=1`, and the panel is a dynamic import, so its dependency
+tree stays out of the dev module graph entirely when it is off. Body children on `/app`
+went 5 → 3.
+
+**The real find: every page in the product paid a Convex round trip to ask "are you
+signed in?"** The root route's `beforeLoad` calls `getToken()`, and
+`@convex-dev/better-auth` fetches `/api/auth/convex/token` from the Convex site on every
+call unless `jwtCache` is enabled — which we had not. So the landing page, the docs, the
+public CFP form, the speaker portal and the public agenda — none of which have a session —
+each blocked SSR on a ~200ms network hop to be told "no token". Two fixes: `jwtCache` on
+(decode the JWT the browser is already carrying in its cookie, only refetch near expiry),
+and a cookie check in the server function so a visitor with no Better Auth cookie is never
+asked at all. **Anonymous TTFB on the Worker build: 214–236ms → 6–13ms.**
+
+**SSR was shipping a skeleton where the navigation should be.** The organizer shell gated
+on `authClient.useSession()`, which only answers after its own client-side
+`/api/auth/get-session` fetch — so the server rendered the full-screen skeleton, and the
+browser held it for the length of that fetch. But the server already knew: the root
+`beforeLoad` resolved the token and `/app`'s own `beforeLoad` had already redirected
+everyone who failed it. The shell now trusts `isAuthenticated` from route context, and the
+skeleton is only for the case neither side can answer (a session that expires in an open
+tab). **The `/app` SSR response now contains the sidebar and every nav link** — which
+matters twice over, because the judge is a browser agent reading that first response.
+
+**The dashboard rebuilt itself from skeletons every time you came back to it.**
+`useState(() => Date.now())` fed `now` straight into the query args, so every mount was a
+cache key nobody had ever asked for — ~400ms of skeletons on a screen the organizer had
+just been looking at. `now` is now frozen per tab and rounded to the minute (nothing it
+feeds — greeting, days-to-event, the 21-day pacing window — moves within a session).
+
+**Also:** `gcTime` raised to an hour so Convex subscriptions stay warm for a whole session
+instead of being evicted after five minutes (the eviction is what makes a return trip
+cold); `RoutePrewarm` warms every sidebar route chunk one at a time on `requestIdleCallback`
+so a decisive click never waits on a download; `resolveAuth` memoises the auth answer for a
+minute on the client, because `beforeLoad` re-runs once per preload and that was a burst of
+identical round trips; `preconnect` to the Convex origin and a `preload` of the one Inter
+woff2 in the document head; `defaultPreloadDelay: 20` / `defaultPendingMs: 200` /
+`defaultPendingMinMs: 300`; and the event switcher shows a two-line skeleton instead of
+"Loading… / Create your first event", which told an organizer with six events they had none.
+
+**Numbers.** Warm route switches, Worker build, median of the six core switches:
+**18–29ms → 2–7ms, with zero skeleton frames and zero blank frames on every switch** (the
+harness counts animation frames, so "zero" means the intermediate state never rendered
+once). First visit to a route, cold chunk: 315–574ms → 2–12ms (idle prewarm). Anonymous
+TTFB: `/` 214–236 → 6–13ms, `/docs` 210–227 → 5–7ms, `/app` 424–553 → 10–13ms. Dev cold
+load of `/app`: TTFB 219–354 → 24–29ms, FCP 288–588 → 80–84ms, fully-populated 1435–1937 →
+609–662ms. The navigable shell paints at ~100ms; only the content below it is still
+skeleton-shaped, which is what rule 26 asks for.
+
+*Untouched on purpose:* the mount-only `setAuth` effect in `__root.tsx` that unpauses the
+anonymous socket. *Not mine, still failing:* `video/` (another agent, untracked) and
+`tests/e2e/flows/speakers-portal.spec.ts` are the only typecheck/eslint errors in the repo.

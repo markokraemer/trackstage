@@ -33,7 +33,6 @@ import { Route as PortalProfileRouteImport } from './routes/portal/profile'
 import { Route as PortalSubmissionsRouteImport } from './routes/portal/submissions'
 import { Route as PortalTasksRouteImport } from './routes/portal/tasks'
 import { Route as ReviewTokenRouteImport } from './routes/review/$token'
-import { Route as SubmitSlugRouteImport } from './routes/submit/$slug'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as AppAgendaIndexRouteImport } from './routes/app/agenda/index'
 import { Route as AppCommunicationsIndexRouteImport } from './routes/app/communications/index'
@@ -69,6 +68,8 @@ import { Route as ESlugIndexRouteImport } from './routes/e/$slug/index'
 import { Route as ESlugMyScheduleRouteImport } from './routes/e/$slug/my-schedule'
 import { Route as ESlugSpeakersRouteImport } from './routes/e/$slug/speakers'
 import { Route as PortalTTokenRouteImport } from './routes/portal/t.$token'
+import { Route as SubmitEventSlugIndexRouteImport } from './routes/submit/$eventSlug/index'
+import { Route as SubmitEventSlugFormSlugRouteImport } from './routes/submit/$eventSlug/$formSlug'
 import { Route as ESlugItineraryPersonIdRouteImport } from './routes/e/$slug/itinerary/$personId'
 import { Route as ESlugSessionsIndexRouteImport } from './routes/e/$slug/sessions/index'
 import { Route as ESlugSessionsSessionIdRouteImport } from './routes/e/$slug/sessions/$sessionId'
@@ -192,11 +193,6 @@ const PortalTasksRoute = PortalTasksRouteImport.update({
 const ReviewTokenRoute = ReviewTokenRouteImport.update({
   id: '/review/$token',
   path: '/review/$token',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const SubmitSlugRoute = SubmitSlugRouteImport.update({
-  id: '/submit/$slug',
-  path: '/submit/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
@@ -380,6 +376,16 @@ const PortalTTokenRoute = PortalTTokenRouteImport.update({
   path: '/t/$token',
   getParentRoute: () => PortalRouteRoute,
 } as any)
+const SubmitEventSlugIndexRoute = SubmitEventSlugIndexRouteImport.update({
+  id: '/submit/$eventSlug/',
+  path: '/submit/$eventSlug/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SubmitEventSlugFormSlugRoute = SubmitEventSlugFormSlugRouteImport.update({
+  id: '/submit/$eventSlug/$formSlug',
+  path: '/submit/$eventSlug/$formSlug',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ESlugItineraryPersonIdRoute = ESlugItineraryPersonIdRouteImport.update({
   id: '/itinerary/$personId',
   path: '/itinerary/$personId',
@@ -418,7 +424,6 @@ export interface FileRoutesByFullPath {
   '/portal/submissions': typeof PortalSubmissionsRoute
   '/portal/tasks': typeof PortalTasksRoute
   '/review/$token': typeof ReviewTokenRoute
-  '/submit/$slug': typeof SubmitSlugRoute
   '/app/': typeof AppIndexRoute
   '/docs/': typeof DocsIndexRoute
   '/portal/': typeof PortalIndexRoute
@@ -446,6 +451,7 @@ export interface FileRoutesByFullPath {
   '/e/$slug/my-schedule': typeof ESlugMyScheduleRoute
   '/e/$slug/speakers': typeof ESlugSpeakersRoute
   '/portal/t/$token': typeof PortalTTokenRoute
+  '/submit/$eventSlug/$formSlug': typeof SubmitEventSlugFormSlugRoute
   '/app/agenda/': typeof AppAgendaIndexRoute
   '/app/communications/': typeof AppCommunicationsIndexRoute
   '/app/embeds/': typeof AppEmbedsIndexRoute
@@ -457,6 +463,7 @@ export interface FileRoutesByFullPath {
   '/app/speakers/': typeof AppSpeakersIndexRoute
   '/app/submissions/': typeof AppSubmissionsIndexRoute
   '/e/$slug/': typeof ESlugIndexRoute
+  '/submit/$eventSlug/': typeof SubmitEventSlugIndexRoute
   '/e/$slug/itinerary/$personId': typeof ESlugItineraryPersonIdRoute
   '/e/$slug/sessions/$sessionId': typeof ESlugSessionsSessionIdRoute
   '/e/$slug/sessions/': typeof ESlugSessionsIndexRoute
@@ -478,7 +485,6 @@ export interface FileRoutesByTo {
   '/portal/submissions': typeof PortalSubmissionsRoute
   '/portal/tasks': typeof PortalTasksRoute
   '/review/$token': typeof ReviewTokenRoute
-  '/submit/$slug': typeof SubmitSlugRoute
   '/app': typeof AppIndexRoute
   '/docs': typeof DocsIndexRoute
   '/portal': typeof PortalIndexRoute
@@ -506,6 +512,7 @@ export interface FileRoutesByTo {
   '/e/$slug/my-schedule': typeof ESlugMyScheduleRoute
   '/e/$slug/speakers': typeof ESlugSpeakersRoute
   '/portal/t/$token': typeof PortalTTokenRoute
+  '/submit/$eventSlug/$formSlug': typeof SubmitEventSlugFormSlugRoute
   '/app/agenda': typeof AppAgendaIndexRoute
   '/app/communications': typeof AppCommunicationsIndexRoute
   '/app/embeds': typeof AppEmbedsIndexRoute
@@ -517,6 +524,7 @@ export interface FileRoutesByTo {
   '/app/speakers': typeof AppSpeakersIndexRoute
   '/app/submissions': typeof AppSubmissionsIndexRoute
   '/e/$slug': typeof ESlugIndexRoute
+  '/submit/$eventSlug': typeof SubmitEventSlugIndexRoute
   '/e/$slug/itinerary/$personId': typeof ESlugItineraryPersonIdRoute
   '/e/$slug/sessions/$sessionId': typeof ESlugSessionsSessionIdRoute
   '/e/$slug/sessions': typeof ESlugSessionsIndexRoute
@@ -544,7 +552,6 @@ export interface FileRoutesById {
   '/portal/submissions': typeof PortalSubmissionsRoute
   '/portal/tasks': typeof PortalTasksRoute
   '/review/$token': typeof ReviewTokenRoute
-  '/submit/$slug': typeof SubmitSlugRoute
   '/app/': typeof AppIndexRoute
   '/docs/': typeof DocsIndexRoute
   '/portal/': typeof PortalIndexRoute
@@ -572,6 +579,7 @@ export interface FileRoutesById {
   '/e/$slug/my-schedule': typeof ESlugMyScheduleRoute
   '/e/$slug/speakers': typeof ESlugSpeakersRoute
   '/portal/t/$token': typeof PortalTTokenRoute
+  '/submit/$eventSlug/$formSlug': typeof SubmitEventSlugFormSlugRoute
   '/app/agenda/': typeof AppAgendaIndexRoute
   '/app/communications/': typeof AppCommunicationsIndexRoute
   '/app/embeds/': typeof AppEmbedsIndexRoute
@@ -583,6 +591,7 @@ export interface FileRoutesById {
   '/app/speakers/': typeof AppSpeakersIndexRoute
   '/app/submissions/': typeof AppSubmissionsIndexRoute
   '/e/$slug/': typeof ESlugIndexRoute
+  '/submit/$eventSlug/': typeof SubmitEventSlugIndexRoute
   '/e/$slug/itinerary/$personId': typeof ESlugItineraryPersonIdRoute
   '/e/$slug/sessions/$sessionId': typeof ESlugSessionsSessionIdRoute
   '/e/$slug/sessions/': typeof ESlugSessionsIndexRoute
@@ -611,7 +620,6 @@ export interface FileRouteTypes {
     | '/portal/submissions'
     | '/portal/tasks'
     | '/review/$token'
-    | '/submit/$slug'
     | '/app/'
     | '/docs/'
     | '/portal/'
@@ -639,6 +647,7 @@ export interface FileRouteTypes {
     | '/e/$slug/my-schedule'
     | '/e/$slug/speakers'
     | '/portal/t/$token'
+    | '/submit/$eventSlug/$formSlug'
     | '/app/agenda/'
     | '/app/communications/'
     | '/app/embeds/'
@@ -650,6 +659,7 @@ export interface FileRouteTypes {
     | '/app/speakers/'
     | '/app/submissions/'
     | '/e/$slug/'
+    | '/submit/$eventSlug/'
     | '/e/$slug/itinerary/$personId'
     | '/e/$slug/sessions/$sessionId'
     | '/e/$slug/sessions/'
@@ -671,7 +681,6 @@ export interface FileRouteTypes {
     | '/portal/submissions'
     | '/portal/tasks'
     | '/review/$token'
-    | '/submit/$slug'
     | '/app'
     | '/docs'
     | '/portal'
@@ -699,6 +708,7 @@ export interface FileRouteTypes {
     | '/e/$slug/my-schedule'
     | '/e/$slug/speakers'
     | '/portal/t/$token'
+    | '/submit/$eventSlug/$formSlug'
     | '/app/agenda'
     | '/app/communications'
     | '/app/embeds'
@@ -710,6 +720,7 @@ export interface FileRouteTypes {
     | '/app/speakers'
     | '/app/submissions'
     | '/e/$slug'
+    | '/submit/$eventSlug'
     | '/e/$slug/itinerary/$personId'
     | '/e/$slug/sessions/$sessionId'
     | '/e/$slug/sessions'
@@ -736,7 +747,6 @@ export interface FileRouteTypes {
     | '/portal/submissions'
     | '/portal/tasks'
     | '/review/$token'
-    | '/submit/$slug'
     | '/app/'
     | '/docs/'
     | '/portal/'
@@ -764,6 +774,7 @@ export interface FileRouteTypes {
     | '/e/$slug/my-schedule'
     | '/e/$slug/speakers'
     | '/portal/t/$token'
+    | '/submit/$eventSlug/$formSlug'
     | '/app/agenda/'
     | '/app/communications/'
     | '/app/embeds/'
@@ -775,6 +786,7 @@ export interface FileRouteTypes {
     | '/app/speakers/'
     | '/app/submissions/'
     | '/e/$slug/'
+    | '/submit/$eventSlug/'
     | '/e/$slug/itinerary/$personId'
     | '/e/$slug/sessions/$sessionId'
     | '/e/$slug/sessions/'
@@ -793,8 +805,9 @@ export interface RootRouteChildren {
   ApiChatRoute: typeof ApiChatRoute
   DocsApiRoute: typeof DocsApiRoute
   ReviewTokenRoute: typeof ReviewTokenRoute
-  SubmitSlugRoute: typeof SubmitSlugRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
+  SubmitEventSlugFormSlugRoute: typeof SubmitEventSlugFormSlugRoute
+  SubmitEventSlugIndexRoute: typeof SubmitEventSlugIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -965,13 +978,6 @@ declare module '@tanstack/react-router' {
       path: '/review/$token'
       fullPath: '/review/$token'
       preLoaderRoute: typeof ReviewTokenRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/submit/$slug': {
-      id: '/submit/$slug'
-      path: '/submit/$slug'
-      fullPath: '/submit/$slug'
-      preLoaderRoute: typeof SubmitSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/auth/$': {
@@ -1219,6 +1225,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PortalTTokenRouteImport
       parentRoute: typeof PortalRouteRoute
     }
+    '/submit/$eventSlug/': {
+      id: '/submit/$eventSlug/'
+      path: '/submit/$eventSlug'
+      fullPath: '/submit/$eventSlug/'
+      preLoaderRoute: typeof SubmitEventSlugIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/submit/$eventSlug/$formSlug': {
+      id: '/submit/$eventSlug/$formSlug'
+      path: '/submit/$eventSlug/$formSlug'
+      fullPath: '/submit/$eventSlug/$formSlug'
+      preLoaderRoute: typeof SubmitEventSlugFormSlugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/e/$slug/itinerary/$personId': {
       id: '/e/$slug/itinerary/$personId'
       path: '/itinerary/$personId'
@@ -1404,8 +1424,9 @@ const rootRouteChildren: RootRouteChildren = {
   ApiChatRoute: ApiChatRoute,
   DocsApiRoute: DocsApiRoute,
   ReviewTokenRoute: ReviewTokenRoute,
-  SubmitSlugRoute: SubmitSlugRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
+  SubmitEventSlugFormSlugRoute: SubmitEventSlugFormSlugRoute,
+  SubmitEventSlugIndexRoute: SubmitEventSlugIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

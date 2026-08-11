@@ -50,7 +50,6 @@ const TABS = [
  * sidebar changes which event these tabs are editing.
  */
 function SettingsLayout() {
-  const navigate = Route.useNavigate()
   const { event, isLoading } = useCurrentEvent()
   const pathname = useRouterState({ select: (state) => state.location.pathname })
 
@@ -65,14 +64,7 @@ function SettingsLayout() {
   return (
     <TooltipProvider>
       <div className="flex flex-col gap-6">
-        <SettingsLevelNav
-          level="event"
-          onOpenAccountSettings={() =>
-            void navigate({
-              search: (prev) => ({ ...prev, account: "profile" }),
-            })
-          }
-        />
+        <SettingsLevelNav level="event" />
 
         <PageHeader
           title={event ? `Event settings — ${event.name}` : "Event settings"}
@@ -102,17 +94,37 @@ function SettingsLayout() {
             </TabsList>
           </Tabs>
 
-          <p className="flex flex-wrap items-center gap-1.5 text-xs text-foreground/70">
-            <RiBuilding2Line size={14} aria-hidden />
-            Teammates, roles and invites moved to
+          {/*
+            The one line that keeps the three levels straight from the deepest
+            one (docs/memory/RULES.md 23): everything on these tabs belongs to
+            this event alone, and the two things that DON'T are named with a
+            link to where they actually live.
+          */}
+          {/* Plain text flow, not a flex row: a flex gap would strand the
+              sentence's punctuation a space away from the word before it. */}
+          <p className="text-xs text-foreground/70">
+            <RiBuilding2Line
+              size={14}
+              aria-hidden
+              className="mr-1.5 inline-block align-text-bottom"
+            />
+            These tabs change this event only. Teammates and roles live in{" "}
             <Link
               to="/app/workspace"
               className="font-medium text-primary underline-offset-4 hover:underline"
             >
               Workspace settings
             </Link>
-            — they apply to every event
-            {event?.organizationName ? ` in ${event.organizationName}` : ""}.
+            {event?.organizationName ? ` (${event.organizationName})` : ""}; your
+            API keys and MCP connection live in{" "}
+            <Link
+              to="/app/account"
+              search={{ tab: "api-mcp" }}
+              className="font-medium text-primary underline-offset-4 hover:underline"
+            >
+              Account settings
+            </Link>
+            .
           </p>
         </PageHeader>
 

@@ -61,6 +61,23 @@ export function formatDayShort(ms: number, timeZone: string): string {
   }).format(new Date(ms))
 }
 
+/**
+ * "PDT" — the event's timezone abbreviation at a given instant.
+ *
+ * Public pages render every time in the *event's* zone, so the abbreviation
+ * has to be stated once, visibly, or a remote attendee reads "09:00 AM" as
+ * their own morning. Returns `null` when the runtime can't name the zone.
+ */
+export function formatTimeZoneLabel(
+  ms: number,
+  timeZone: string,
+): string | null {
+  const parts = dtf(timeZone, { timeZoneName: "short" }).formatToParts(
+    new Date(ms),
+  )
+  return parts.find((part) => part.type === "timeZoneName")?.value ?? null
+}
+
 /** "Friday, December 15: 04:00 PM - 05:00 PM" — the canonical session line. */
 export function formatWhen(
   startsAt: number | undefined,
@@ -87,6 +104,11 @@ export function formatEventDates(
   }
   if (year(startsAt) === year(endsAt)) {
     if (month(startsAt) === month(endsAt)) {
+      // A one-day event stores a start and an end on the same date; printing
+      // it as "Nov 5–5" is nonsense, so collapse the range.
+      if (day(startsAt) === day(endsAt)) {
+        return `${month(startsAt)} ${day(startsAt)}, ${year(startsAt)}`
+      }
       return `${month(startsAt)} ${day(startsAt)}–${day(endsAt)}, ${year(endsAt)}`
     }
     return `${month(startsAt)} ${day(startsAt)} – ${month(endsAt)} ${day(endsAt)}, ${year(endsAt)}`

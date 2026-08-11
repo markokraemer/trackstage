@@ -28,8 +28,13 @@ import {
 import { LabeledField } from "@/components/settings/labeled-field"
 import { TimezoneSelect } from "@/components/settings/timezone-select"
 import { browserTimezone } from "@/components/settings/timezone"
-import { isValidSlug, publicEventUrl, slugify } from "@/components/settings/slug"
-import { setCurrentEventId } from "@/lib/current-event"
+import {
+  isValidSlug,
+  publicEventUrl,
+  slugify,
+  slugifyInput,
+} from "@/components/settings/slug"
+import { setCurrentEventId, useCurrentEvent } from "@/lib/current-event"
 import { errorMessage } from "@/components/settings/errors"
 
 /**
@@ -59,6 +64,9 @@ export function NewEventDialog({
 
   const navigate = useNavigate()
   const { data: workspaces } = useQuery(convexQuery(api.workspaces.mine, {}))
+  // The event lands in the workspace you are actually working in — not
+  // whichever one happened to come back first (src/lib/current-event.ts).
+  const { workspace: currentWorkspace } = useCurrentEvent()
   const create = useMutation({ mutationFn: useConvexMutation(api.events.create) })
 
   const [name, setName] = useState("")
@@ -68,7 +76,8 @@ export function NewEventDialog({
   const [organizationId, setOrganizationId] = useState<string | undefined>()
   const [errors, setErrors] = useState<{ name?: string; slug?: string }>({})
 
-  const workspaceId = organizationId ?? workspaces?.[0]?.id
+  const workspaceId =
+    organizationId ?? currentWorkspace?.id ?? workspaces?.[0]?.id
 
   function handleName(value: string) {
     setName(value)
@@ -79,9 +88,11 @@ export function NewEventDialog({
     event.preventDefault()
     const nextErrors: { name?: string; slug?: string } = {}
     if (!name.trim()) nextErrors.name = "Give your event a name."
-    if (!slug.trim()) {
+    // Tidy the in-progress value (a trailing dash is legal while typing).
+    const cleanSlug = slugify(slug)
+    if (!cleanSlug) {
       nextErrors.slug = "We need a short name for the public web address."
-    } else if (!isValidSlug(slug)) {
+    } else if (!isValidSlug(cleanSlug)) {
       nextErrors.slug = "Use lowercase letters, numbers and dashes only."
     }
     setErrors(nextErrors)
@@ -93,14 +104,24 @@ export function NewEventDialog({
     }
 
     try {
-      const eventId = await create.mutateAsync({
+      const created = await create.mutateAsync({
         organizationId: workspaceId as Id<"organizations">,
         name: name.trim(),
-        slug: slug.trim(),
+        slug: cleanSlug,
         timezone,
       })
-      setCurrentEventId(eventId)
-      toast.success(`“${name.trim()}” created — you're now working on it`)
+      setCurrentEventId(created.eventId, workspaceId)
+      // A taken address never blocks the create — the server picks the nearest
+      // free one and we say exactly what it became, so nobody prints the wrong
+      // link (docs/memory/DECISIONS.md, "Public URL scheme is hierarchical").
+      if (created.slugAdjusted) {
+        toast.success(`“${name.trim()}” created`, {
+          description: `That web address was taken — yours is ${publicEventUrl(created.slug)}`,
+          duration: 10_000,
+        })
+      } else {
+        toast.success(`“${name.trim()}” created — you're now working on it`)
+      }
       setOpen(false)
       setName("")
       setSlug("")
@@ -180,7 +201,7 @@ export function NewEventDialog({
                 placeholder="ai-engineer-summit-2027"
                 onChange={(event) => {
                   setSlugTouched(true)
-                  setSlug(slugify(event.target.value))
+                  setSlug(slugifyInput(event.target.value))
                 }}
               />
             </LabeledField>

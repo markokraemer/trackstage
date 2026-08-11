@@ -5,6 +5,7 @@ import { convexQuery } from "@convex-dev/react-query"
 import { api } from "@convex/_generated/api"
 import { RiBriefcase4Line, RiCheckDoubleLine } from "@remixicon/react"
 
+import { Card, CardContent } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
 import { Skeleton } from "@/components/ui/skeleton"
 import { EmptyState } from "@/components/shared/empty-state"
@@ -50,16 +51,6 @@ function PortalTasksPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div>
-        <h1 className="font-heading text-2xl font-semibold tracking-tight text-foreground">
-          Tasks
-        </h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Everything the organizers need from you before the event, with the
-          date they need it by.
-        </p>
-      </div>
-
       {!tasksVisible ? (
         // The tab is hidden in this case, but the URL is still reachable —
         // explain rather than showing an empty list.
@@ -76,23 +67,25 @@ function PortalTasksPage() {
         />
       ) : (
         <>
-          <div className="rounded-xl border border-border bg-card p-4">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <p className="text-sm font-medium text-foreground">
-                {done.length} of {tasks.length} complete
-              </p>
-              <p className="text-sm text-muted-foreground">
-                {open.length === 0
-                  ? "You're all caught up."
-                  : `${open.length} still to do`}
-              </p>
-            </div>
-            <Progress
-              value={percent}
-              className="mt-2"
-              aria-label="Task completion"
-            />
-          </div>
+          <Card size="sm">
+            <CardContent>
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <p className="text-sm font-medium text-foreground">
+                  {open.length === 0
+                    ? "You're all caught up"
+                    : `${open.length} still to do`}
+                </p>
+                <p className="text-sm text-muted-foreground tabular-nums">
+                  {done.length} of {tasks.length} complete
+                </p>
+              </div>
+              <Progress
+                value={percent}
+                className="mt-2"
+                aria-label={`${done.length} of ${tasks.length} tasks complete`}
+              />
+            </CardContent>
+          </Card>
 
           {isPending ? (
             <Skeleton className="h-40 rounded-xl" />
@@ -100,11 +93,13 @@ function PortalTasksPage() {
             <>
               <PanelCard
                 icon={RiBriefcase4Line}
-                title={`To do (${open.length})`}
-                bodyClassName="p-0"
+                title="To do"
+                count={open.length}
+                flush
+                bodyClassName="gap-0"
               >
                 {open.length === 0 ? (
-                  <p className="px-4 py-6 text-center text-sm text-muted-foreground">
+                  <p className="px-6 py-6 text-center text-sm text-muted-foreground">
                     Every task is done. Nothing is waiting on you.
                   </p>
                 ) : (
@@ -123,8 +118,10 @@ function PortalTasksPage() {
               {done.length > 0 ? (
                 <PanelCard
                   icon={RiCheckDoubleLine}
-                  title={`Completed (${done.length})`}
-                  bodyClassName="p-0"
+                  title="Completed"
+                  count={done.length}
+                  flush
+                  bodyClassName="gap-0"
                 >
                   <ul className="divide-y divide-border">
                     {done.map((task) => (

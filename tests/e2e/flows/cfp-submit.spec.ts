@@ -2,6 +2,7 @@ import { expect, test } from "@playwright/test"
 import type { Page } from "@playwright/test"
 import { api } from "../../../convex/_generated/api.js"
 import {
+  MAIN_EVENT_SLUG,
   advance,
   anonConvexClient,
   armed,
@@ -41,8 +42,19 @@ type Question = {
   isTrackQuestion?: boolean
 }
 
-async function publicForm(slug: string) {
-  const form = await anonConvexClient().query(api.submit.getForm, { slug })
+/**
+ * The canonical public address of a form (docs/memory/DECISIONS.md, "Public URL
+ * scheme is hierarchical"). Form slugs are unique per EVENT, so both segments
+ * name one — `/submit/cfp` alone is the legacy shape, asserted separately.
+ */
+const submitPath = (formSlug: string, eventSlug = MAIN_EVENT_SLUG) =>
+  `/submit/${eventSlug}/${formSlug}`
+
+async function publicForm(slug: string, eventSlug = MAIN_EVENT_SLUG) {
+  const form = await anonConvexClient().query(api.submit.getForm, {
+    slug,
+    eventSlug,
+  })
   return form as {
     questions: Array<Question>
     open: boolean
@@ -54,6 +66,42 @@ async function publicForm(slug: string) {
 
 const field = (page: Page, questionId: string) =>
   page.locator(`#question-${questionId}`)
+
+/**
+ * The sign-in link the server mailed to `email`, read back out of the outbox.
+ *
+ * Test addresses end in `@example.com`, which never leaves the deployment —
+ * `deliverPending` files them as fully rendered "preview" rows instead — so the
+ * outbox IS the inbox here. Returns a same-origin path so `gotoStable` can use
+ * the test's baseURL rather than whatever `SITE_URL` the backend was built with.
+ */
+async function signInLinkFor(email: string) {
+  const organizer = await organizerConvexClient()
+  const event = await mainEvent(organizer)
+  const rows = await until(
+    async () =>
+      (await organizer.query(api.comms.listMessages, {
+        eventId: event._id,
+        limit: 500,
+      })) as Array<{ templateKey?: string; toEmail: string; body: string }>,
+    (messages) =>
+      messages.some((m) => m.templateKey === "portal_link" && m.toEmail === email),
+    { label: `a sign-in link emailed to ${email}` },
+  )
+  const mail = rows.find(
+    (m) => m.templateKey === "portal_link" && m.toEmail === email,
+  )!
+  const link = mail.body.match(/\/submit\/[^\s]+\?t=[A-Za-z0-9._-]+/)?.[0]
+  if (!link) {
+    throw new Error(`the sign-in email carried no usable link: ${mail.body}`)
+  }
+  return link
+}
+
+/** The portal token behind an address, for tests that need to arrive signed in. */
+async function portalTokenFor(email: string) {
+  return (await signInLinkFor(email)).split("?t=")[1]
+}
 
 /** Answer one question through its real control. */
 async function answer(page: Page, question: Question, value?: string) {
@@ -278,7 +326,7 @@ test.describe("public CFP submission", () => {
     const email = testEmail("cfp")
     const title = `E2E Proposal ${unique("t")}`
 
-    await gotoStable(page, "/submit/cfp", "networkidle")
+    await gotoStable(page, submitPath("cfp"), "networkidle")
     await expect(page.getByRole("heading").first()).toBeVisible({ timeout: 30_000 })
 
     // Welcome carries the two things swyx wanted visible up front.
@@ -389,22 +437,27 @@ test.describe("public CFP submission", () => {
     const email = testEmail("cfp-draft")
     const title = `Draft Proposal ${unique("t")}`
 
-    await gotoStable(page, "/submit/cfp", "networkidle")
+    await gotoStable(page, submitPath("cfp"), "networkidle")
     await goToSubmissionStep(page, email)
     await answerRequired(page, form.questions, { values: { title } })
     await page.getByRole("button", { name: /save as draft/i }).first().click()
     await expectToast(page, /draft saved/i, 30_000)
 
     // Come back cold — a genuinely new browser, same email. The wizard keeps
-    // in-progress answers in sessionStorage (see src/routes/submit/$slug.tsx),
+    // in-progress answers in sessionStorage (see src/routes/submit/$eventSlug/$formSlug.tsx),
     // so clearing cookies and reloading is NOT a cold return: the same context
     // resumes straight back onto the Submission step. Only a fresh context
     // exercises "I came back tomorrow on a different machine", which is the
     // case the draft feature exists for.
+    //
+    // That address now has a draft behind it, so typing it in a strange browser
+    // no longer opens anything: the server emails a sign-in link instead
+    // (convex/submit.ts, "IDENTITY MODEL"). Following that link is the real
+    // cross-device resume, and it is what this walks.
     const coldContext = await browser.newContext()
     const cold = await coldContext.newPage()
     const coldWatcher = armed(cold)
-    await gotoStable(cold, "/submit/cfp", "networkidle")
+    await gotoStable(cold, submitPath("cfp"), "networkidle")
     await goToAccountStep(cold, email)
     // One click, then wait — see the note in `walkTo`: Continue is disabled
     // while `identify` runs, so re-clicking guarantees the step never settles.
@@ -412,9 +465,21 @@ test.describe("public CFP submission", () => {
       .getByRole("button", { name: /^continue$/i })
       .first()
       .click({ timeout: 10_000 })
+    await expect(cold.getByRole("heading", { name: /check your email/i })).toBeVisible({
+      timeout: 45_000,
+    })
+    await expect(cold.getByText(email).first()).toBeVisible()
+    // Nothing about the account leaks into the page while it is unproven.
+    await expect(cold.getByText(/you have a saved draft/i)).toHaveCount(0)
+    await expect(cold.getByText(title)).toHaveCount(0)
+
+    const link = await signInLinkFor(email)
+    await gotoStable(cold, link, "networkidle")
     await expect(cold.getByText(/you have a saved draft/i).first()).toBeVisible({
       timeout: 45_000,
     })
+    // The token is consumed into the session, never left in the address bar.
+    await expect(cold).not.toHaveURL(/[?&]t=/)
     await advance(cold, /resume draft/i, heading(cold, /your submission/i), {
       timeout: 60_000,
     })
@@ -423,6 +488,89 @@ test.describe("public CFP submission", () => {
     coldWatcher.assertClean("draft resume in a fresh browser")
     await coldContext.close()
     watcher.assertClean("draft save + resume")
+  })
+
+  /**
+   * The flaw this test exists for: `submit.identify` used to hand back the
+   * portal token for ANY typed address, so anyone could enter a speaker's email
+   * and walk into their submissions, tasks and profile. A known address now
+   * gets a mailed link and a response that says nothing else.
+   */
+  test("an email with speaker history gets a mailed link, never a portal", async ({
+    page,
+  }) => {
+    const watcher = armed(page)
+    const form = await publicForm("cfp")
+    const email = testEmail("cfp-known")
+
+    // Give the address a history the honest way — one real submission.
+    const anon = anonConvexClient()
+    const first = (await anon.mutation(api.submit.identify, {
+      slug: "cfp",
+      eventSlug: MAIN_EVENT_SLUG,
+      email,
+    })) as { status: string; portalToken?: string }
+    expect(first.status, "a brand-new address still sails straight through").toBe(
+      "ready",
+    )
+    const trackQuestion = form.questions.find((q) => q.isTrackQuestion)
+    await anon.mutation(api.submit.submit, {
+      slug: "cfp",
+      eventSlug: MAIN_EVENT_SLUG,
+      portalToken: first.portalToken!,
+      title: `Known Speaker ${unique("t")}`,
+      answers: Object.fromEntries(
+        form.questions
+          .filter((q) => q.enabled && q.required && !q.showIf)
+          .map((q) => [
+            q.id,
+            q.options?.[0] ?? `${q.label} answer ${unique("a")}`,
+          ]),
+      ),
+      participants: [
+        { firstName: "Nona", lastName: "Known", email, role: "speaker" },
+      ],
+    })
+    expect(trackQuestion, "the seeded CFP routes on a track question").toBeTruthy()
+
+    // — The mutation itself must not hand the token over ————————————————
+    const second = (await anon.mutation(api.submit.identify, {
+      slug: "cfp",
+      eventSlug: MAIN_EVENT_SLUG,
+      email,
+    })) as Record<string, unknown>
+    expect(second.status).toBe("link_sent")
+    expect(second).not.toHaveProperty("portalToken")
+    expect(second).not.toHaveProperty("drafts")
+    expect(second).not.toHaveProperty("firstName")
+
+    // — …and the page says exactly that much, no more —————————————————
+    await gotoStable(page, submitPath("cfp"), "networkidle")
+    await goToAccountStep(page, email)
+    await page.getByRole("button", { name: /^continue$/i }).first().click()
+    await expect(page.getByRole("heading", { name: /check your email/i })).toBeVisible({
+      timeout: 45_000,
+    })
+    await expect(page.getByText(email).first()).toBeVisible()
+    await expect(
+      page.getByRole("button", { name: /send it again/i }).first(),
+    ).toBeVisible()
+    await expect(
+      page.getByRole("button", { name: /use a different email/i }).first(),
+    ).toBeVisible()
+    // No way forward from here without the inbox.
+    await expect(page.getByRole("button", { name: /^continue$/i })).toHaveCount(0)
+
+    // — The link really is in the outbox, and it really works ——————————
+    const link = await signInLinkFor(email)
+    expect(link).toMatch(/\/submit\/.+\?t=[A-Za-z0-9._-]+/)
+    await gotoStable(page, link, "networkidle")
+    await expect(heading(page, /your submission/i).first()).toBeVisible({
+      timeout: 45_000,
+    })
+    await expect(page).not.toHaveURL(/[?&]t=/)
+
+    watcher.assertClean("known email → mailed sign-in link")
   })
 
   test("a closed form tells people it is closed instead of 404ing", async ({
@@ -443,7 +591,7 @@ test.describe("public CFP submission", () => {
         formId,
         patch: { status: "closed" },
       })
-      await gotoStable(page, `/submit/${created.slug}`, "networkidle")
+      await gotoStable(page, submitPath(created.slug), "networkidle")
       await expect(
         page.getByRole("heading", { name: /this call for speakers is closed/i }).first(),
       ).toBeVisible({ timeout: 30_000 })
@@ -460,11 +608,30 @@ test.describe("public CFP submission", () => {
 
   test("an unknown form slug explains itself", async ({ page }) => {
     const watcher = armed(page)
-    await gotoStable(page, `/submit/${unique("nope")}`, "networkidle")
+    await gotoStable(page, submitPath(unique("nope")), "networkidle")
     await expect(
       page.getByRole("heading", { name: /couldn.t find that call for speakers/i }).first(),
     ).toBeVisible({ timeout: 30_000 })
     watcher.assertClean("unknown form slug")
+  })
+
+  /**
+   * The old one-segment address. Slugs became per-event
+   * (docs/memory/DECISIONS.md, "Public URL scheme is hierarchical"), and every
+   * link an organizer ever printed still has to land on the same form.
+   */
+  test("the legacy /submit/:slug link still reaches the same form", async ({
+    page,
+  }) => {
+    const watcher = armed(page)
+    await gotoStable(page, "/submit/cfp", "networkidle")
+    await expect(page).toHaveURL(new RegExp(`${submitPath("cfp")}$`), {
+      timeout: 30_000,
+    })
+    await expect(
+      page.getByText(/submissions will be accepted until/i).first(),
+    ).toBeVisible({ timeout: 30_000 })
+    watcher.assertClean("legacy submit link")
   })
 
   test("hitting the per-user limit shows a friendly error, not a crash", async ({
@@ -499,7 +666,32 @@ test.describe("public CFP submission", () => {
         const page = await context.newPage()
         const watcher = armed(page)
         try {
-          await gotoStable(page, `/submit/${created.slug}`, "networkidle")
+          // The second visit is a returning speaker, and typing the address is
+          // no longer enough to be one (convex/submit.ts, "IDENTITY MODEL") —
+          // they arrive on the sign-in link we mailed them after attempt 1.
+          // The cap is what is under test here; the mailed-link flow itself is
+          // covered by its own test above.
+          if (attempt === 1) {
+            await gotoStable(page, submitPath(created.slug), "networkidle")
+          } else {
+            const asked = (await anonConvexClient().mutation(api.submit.identify, {
+              slug: created.slug,
+              eventSlug: MAIN_EVENT_SLUG,
+              email,
+            })) as { status: string }
+            expect(asked.status, "a returning speaker gets a mailed link").toBe(
+              "link_sent",
+            )
+            const token = await portalTokenFor(email)
+            await gotoStable(
+              page,
+              `${submitPath(created.slug)}?t=${token}`,
+              "networkidle",
+            )
+            await expect(heading(page, /your submission/i).first()).toBeVisible({
+              timeout: 45_000,
+            })
+          }
           await walkTo(page, "review", {
             email,
             onSubmission: async () => {

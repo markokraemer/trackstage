@@ -23,7 +23,7 @@ import {
  * The form builder is the centrepiece: build a working CFP with a conditional
  * question in one pass, then prove the PUBLIC form actually behaves the way the
  * builder promised. A builder that saves state nobody can see is worthless, so
- * every assertion here ends on `/submit/:slug`, not in the editor.
+ * every assertion here ends on `/submit/:eventSlug/:formSlug`, not in the editor.
  *
  * Covers: create → rename → add a question → conditional rule → required
  * toggle → close date → save → public form renders the new question and the
@@ -208,11 +208,14 @@ test.describe("form builder", () => {
         { label: "the builder's edits persisted" },
       )
       const slug = saved.slug
+      // The canonical public address — form slugs are per-event now
+      // (docs/memory/DECISIONS.md, "Public URL scheme is hierarchical").
+      const publicPath = `/submit/${saved.eventSlug}/${slug}`
 
       // ——— The public form is the real proof ————————————————————————————
       const publicPage = await context.newPage()
       const publicWatcher = armed(publicPage)
-      await gotoStable(publicPage, `/submit/${slug}`, "networkidle")
+      await gotoStable(publicPage, publicPath, "networkidle")
       await advance(
         publicPage,
         /^continue$/i,
@@ -227,6 +230,7 @@ test.describe("form builder", () => {
 
       const publicForm = (await anonConvexClient().query(api.submit.getForm, {
         slug,
+        eventSlug: saved.eventSlug,
       })) as { questions: Array<{ id: string; label: string }> }
       const triggerId = publicForm.questions.find((q) => q.label === triggerLabel)!.id
       const dependentId = publicForm.questions.find((q) => q.label === dependentLabel)!.id
@@ -250,14 +254,14 @@ test.describe("form builder", () => {
       await expect(publicPage.locator(`#question-${dependentId}`)).toBeVisible({
         timeout: 15_000,
       })
-      publicWatcher.assertClean(`/submit/${slug}`)
+      publicWatcher.assertClean(publicPath)
 
       // ——— Copy public link (swyx hunted for this — it must be one click) —
       await context.grantPermissions(["clipboard-read", "clipboard-write"])
       await gotoApp(page, "/app/forms")
       // Scope to OUR card. The forms list also holds the seeded CFP, and an
       // unscoped "Copy public link" copies whichever card renders first — the
-      // assertion below then compares our slug against /submit/cfp.
+      // assertion below then compares our slug against the seeded CFP's.
       const card = page
         .locator("div")
         .filter({ has: page.getByRole("button", { name: `More actions for ${renamedTo}` }) })
@@ -269,7 +273,7 @@ test.describe("form builder", () => {
       // step runs after several earlier toasts).
       await expect(async () => {
         const clipboard = await page.evaluate(() => navigator.clipboard.readText())
-        expect(clipboard).toContain(`/submit/${slug}`)
+        expect(clipboard).toContain(publicPath)
       }).toPass({ timeout: 20_000 })
       await clearToasts(page)
 
@@ -285,7 +289,7 @@ test.describe("form builder", () => {
       // closed notice. A first-time visitor is the case that matters.
       const closedContext = await context.browser()!.newContext()
       const closedPage = await closedContext.newPage()
-      await gotoStable(closedPage, `/submit/${slug}`, "networkidle")
+      await gotoStable(closedPage, publicPath, "networkidle")
       await expect(
         closedPage
           .getByRole("heading", { name: /this call for speakers is closed/i })

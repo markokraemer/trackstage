@@ -21,10 +21,20 @@ const PUBLIC_LIVE = [
   "/",
   "/login",
   "/design-system",
+  // Canonical public CFP address, plus the legacy one-segment link it
+  // redirects from (docs/memory/DECISIONS.md, "Public URL scheme").
+  "/submit/ai-summit-2026/cfp",
   "/submit/cfp",
   "/e/ai-summit-2026",
   "/e/ai-summit-2026/speakers",
+  "/e/ai-summit-2026/speakers?view=list",
   "/e/ai-summit-2026/sessions",
+  "/e/ai-summit-2026/my-schedule",
+  "/e/ai-summit-2026?view=rooms",
+  // The same pages as embeddable widgets, and an event whose programme is
+  // still a draft (must read "Schedule coming soon", not crash).
+  "/e/ai-summit-2026/sessions?embed=true",
+  "/e/design-systems-day",
   "/portal",
 ]
 const PUBLIC_PENDING: string[] = []

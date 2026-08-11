@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react"
-import { createFileRoute } from "@tanstack/react-router"
+import { createFileRoute, useNavigate } from "@tanstack/react-router"
 import { useQuery, useSuspenseQuery } from "@tanstack/react-query"
 import { convexQuery, useConvexMutation } from "@convex-dev/react-query"
 import { api } from "@convex/_generated/api"
@@ -42,18 +42,40 @@ import type {
 } from "@/components/submit/types"
 
 /**
- * `/submit/:slug` — the public call-for-speakers flow (docs/SPEC.md §4.3).
+ * `/submit/:eventSlug/:formSlug` — the public call-for-speakers flow, and the
+ * CANONICAL public address of a form (docs/SPEC.md §4.3,
+ * docs/memory/DECISIONS.md "Public URL scheme is hierarchical").
+ *
+ * Form slugs are unique per EVENT, so both segments are needed to name one.
+ * The one-segment `/submit/:slug` of old still resolves — it redirects here
+ * (see `src/routes/submit/$eventSlug/index.tsx`).
  *
  * Five steps, no login wall: Welcome → Account → Submission → Participants →
- * Review. Auth is the portal token `submit.identify` hands back for an email
- * address; it is kept in sessionStorage alongside the in-progress answers so a
- * reload, a phone call, or a closed tab never costs a speaker their work.
+ * Review. Auth is the portal token, kept in sessionStorage alongside the
+ * in-progress answers so a reload, a phone call, or a closed tab never costs a
+ * speaker their work.
+ *
+ * Where that token comes from is the security-relevant part (convex/submit.ts,
+ * "IDENTITY MODEL"): a brand-new email address gets one immediately, while an
+ * address with speaker history here gets a link emailed to it and this page
+ * shows the "check your inbox" state instead. `?t=…` is that emailed link
+ * coming back — it is consumed into sessionStorage and stripped from the URL
+ * straight away, so the credential never sits in the address bar, in a
+ * screenshot, or in a shared link.
  */
 
-export const Route = createFileRoute("/submit/$slug")({
+export const Route = createFileRoute("/submit/$eventSlug/$formSlug")({
+  /** `?t=<portalToken>` — the sign-in link we emailed a returning speaker. */
+  validateSearch: (search: Record<string, unknown>): { t?: string } => {
+    const token = typeof search.t === "string" ? search.t.trim() : ""
+    return token ? { t: token } : {}
+  },
   loader: async ({ context, params }) => {
     await context.queryClient.ensureQueryData(
-      convexQuery(api.submit.getForm, { slug: params.slug }),
+      convexQuery(api.submit.getForm, {
+        slug: params.formSlug,
+        eventSlug: params.eventSlug,
+      }),
     )
   },
   pendingComponent: SubmitSkeleton,
@@ -62,8 +84,8 @@ export const Route = createFileRoute("/submit/$slug")({
 
 const VALIDATION_TOAST = "Missing required fields. Complete the highlighted fields below."
 
-function storageKey(slug: string) {
-  return `sessionboard:submit:${slug}`
+function storageKey(eventSlug: string, formSlug: string) {
+  return `sessionboard:submit:${eventSlug}/${formSlug}`
 }
 
 interface StoredProgress {
@@ -76,17 +98,35 @@ interface StoredProgress {
 }
 
 function PublicSubmitPage() {
-  const { slug } = Route.useParams()
+  const { eventSlug, formSlug } = Route.useParams()
   const { data: form } = useSuspenseQuery(
-    convexQuery(api.submit.getForm, { slug }),
+    convexQuery(api.submit.getForm, { slug: formSlug, eventSlug }),
   )
 
-  if (!form) return <NotFoundCard slug={slug} />
+  if (!form) return <NotFoundCard slug={`${eventSlug}/${formSlug}`} />
   if (!form.open) return <ClosedCard form={form} />
-  return <SubmitFlow key={slug} slug={slug} form={form} />
+  return (
+    <SubmitFlow
+      key={`${eventSlug}/${formSlug}`}
+      eventSlug={eventSlug}
+      slug={formSlug}
+      form={form}
+    />
+  )
 }
 
-function SubmitFlow({ slug, form }: { slug: string; form: SubmitForm }) {
+function SubmitFlow({
+  eventSlug,
+  slug,
+  form,
+}: {
+  eventSlug: string
+  slug: string
+  form: SubmitForm
+}) {
+  const search = Route.useSearch()
+  const navigate = useNavigate()
+
   const [stepIndex, setStepIndex] = useState(0)
   const [reachedIndex, setReachedIndex] = useState(0)
 
@@ -110,6 +150,13 @@ function SubmitFlow({ slug, form }: { slug: string; form: SubmitForm }) {
   const [emailInvalid, setEmailInvalid] = useState(false)
   const [accountError, setAccountError] = useState<string | null>(null)
   const [identifying, setIdentifying] = useState(false)
+  // Set when the address already has speaker history here: we emailed a
+  // sign-in link and this page is waiting for them to open it.
+  const [linkSent, setLinkSent] = useState<{
+    email: string
+    /** False ⇒ hourly cap; a link is already sitting in their inbox. */
+    sent: boolean
+  } | null>(null)
   const [savingDraft, setSavingDraft] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [submitted, setSubmitted] = useState<{
@@ -137,7 +184,7 @@ function SubmitFlow({ slug, form }: { slug: string; form: SubmitForm }) {
     if (restored.current) return
     restored.current = true
     if (typeof window === "undefined") return
-    const raw = window.sessionStorage.getItem(storageKey(slug))
+    const raw = window.sessionStorage.getItem(storageKey(eventSlug, slug))
     if (!raw) return
     try {
       const saved = JSON.parse(raw) as Partial<StoredProgress>
@@ -150,9 +197,9 @@ function SubmitFlow({ slug, form }: { slug: string; form: SubmitForm }) {
       setStepIndex(step)
       setReachedIndex(step)
     } catch {
-      window.sessionStorage.removeItem(storageKey(slug))
+      window.sessionStorage.removeItem(storageKey(eventSlug, slug))
     }
-  }, [slug])
+  }, [eventSlug, slug])
 
   useEffect(() => {
     if (typeof window === "undefined" || !restored.current) return
@@ -165,8 +212,12 @@ function SubmitFlow({ slug, form }: { slug: string; form: SubmitForm }) {
       participants,
       draftId,
     }
-    window.sessionStorage.setItem(storageKey(slug), JSON.stringify(payload))
+    window.sessionStorage.setItem(
+      storageKey(eventSlug, slug),
+      JSON.stringify(payload),
+    )
   }, [
+    eventSlug,
     slug,
     stepIndex,
     email,
@@ -195,6 +246,70 @@ function SubmitFlow({ slug, form }: { slug: string; form: SubmitForm }) {
       if (node instanceof HTMLElement) node.focus({ preventScroll: true })
     })
   }, [])
+
+  // ——— The emailed sign-in link (`?t=…`) ————————————————————————————————
+  // Take the token out of the URL and into this session immediately: a link in
+  // an address bar gets screenshotted, pasted into chat, and logged by every
+  // proxy on the way. Then ask the server who it belongs to — that query is
+  // authenticated by the token itself, so it can safely hand back the email
+  // address and drafts `identify` deliberately no longer will.
+  const [linkToken, setLinkToken] = useState<string | null>(null)
+  const consumedLink = useRef(false)
+  useEffect(() => {
+    if (consumedLink.current || !search.t) return
+    consumedLink.current = true
+    setPortalToken(search.t)
+    setLinkToken(search.t)
+    void navigate({
+      to: "/submit/$eventSlug/$formSlug",
+      params: { eventSlug, formSlug: slug },
+      search: {},
+      replace: true,
+    })
+  }, [eventSlug, navigate, search.t, slug])
+
+  const linkResume = useQuery({
+    ...convexQuery(
+      api.submit.resume,
+      linkToken ? { slug, eventSlug, portalToken: linkToken } : "skip",
+    ),
+    retry: false,
+  })
+
+  useEffect(() => {
+    if (!linkToken || linkResume.data === undefined) return
+    setLinkToken(null)
+    const me = linkResume.data
+    if (!me) {
+      setPortalToken("")
+      goTo(STEP_INDEX.account)
+      toast.error(
+        "That link has expired. Enter your email address and we'll send a new one.",
+      )
+      return
+    }
+    setLinkSent(null)
+    setEmail(me.email)
+    setParticipants((current) =>
+      current.map((participant, index) =>
+        index === 0
+          ? {
+              ...participant,
+              email: me.email,
+              firstName: participant.firstName || me.firstName,
+              lastName: participant.lastName || me.lastName,
+            }
+          : participant,
+      ),
+    )
+    setDrafts(me.drafts)
+    if (me.drafts.length === 0) {
+      goTo(STEP_INDEX.submission)
+      toast.success(`Signed in as ${me.email}.`)
+    } else {
+      goTo(STEP_INDEX.account)
+    }
+  }, [goTo, linkResume.data, linkToken])
 
   // ——— Field updates ————————————————————————————————————————————————
   const setAnswer = useCallback((questionId: string, value: AnswerValue) => {
@@ -241,7 +356,31 @@ function SubmitFlow({ slug, form }: { slug: string; form: SubmitForm }) {
     setAccountError(null)
     setIdentifying(true)
     try {
-      const result = await identify({ slug, email: trimmed })
+      // The token we already hold, if any: it is this session's proof that the
+      // address is really ours, and it saves a returning speaker a second trip
+      // to their inbox in the same sitting.
+      const result = await identify({
+        slug,
+        eventSlug,
+        email: trimmed,
+        portalToken: portalToken || undefined,
+      })
+
+      // Known address, unproven session: the server emailed a sign-in link and
+      // told us nothing else about them. Say so and stop here.
+      if (result.status === "link_sent") {
+        setLinkSent({ email: result.email, sent: result.sent })
+        // Nothing of theirs may show while the address is unproven. The token
+        // this session may already hold is deliberately NOT thrown away: it
+        // belongs to whoever typed their own address earlier, and dropping it
+        // over a typo would cost them a draft. The step tracker is clamped to
+        // this step below, so it cannot be used to walk forward as somebody
+        // else either.
+        setDrafts([])
+        return
+      }
+
+      setLinkSent(null)
       setPortalToken(result.portalToken)
       setParticipants((current) =>
         current.map((participant, index) =>
@@ -274,7 +413,40 @@ function SubmitFlow({ slug, form }: { slug: string; form: SubmitForm }) {
     } finally {
       setIdentifying(false)
     }
-  }, [email, focusFirstInvalid, goTo, identify, slug])
+  }, [
+    email,
+    eventSlug,
+    focusFirstInvalid,
+    goTo,
+    identify,
+    portalToken,
+    slug,
+  ])
+
+  /** "Send it again" from the check-your-inbox state — same hourly cap. */
+  const handleResendLink = useCallback(async () => {
+    if (!linkSent) return
+    setIdentifying(true)
+    try {
+      const result = await identify({ slug, eventSlug, email: linkSent.email })
+      if (result.status === "link_sent") {
+        setLinkSent({ email: result.email, sent: result.sent })
+        toast[result.sent ? "success" : "message"](
+          result.sent
+            ? `New link sent to ${result.email}.`
+            : "We've already sent a few links to that address in the last hour — check your inbox and spam folder.",
+        )
+      }
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "We couldn't send that link. Please try again.",
+      )
+    } finally {
+      setIdentifying(false)
+    }
+  }, [eventSlug, identify, linkSent, slug])
 
   const applyDraft = useCallback(
     (submission: {
@@ -400,6 +572,7 @@ function SubmitFlow({ slug, form }: { slug: string; form: SubmitForm }) {
     try {
       const result = await saveDraft({
         slug,
+        eventSlug,
         portalToken,
         draftId: draftId as Id<"submissions"> | undefined,
         title: resolveTitle(form.questions, answers),
@@ -420,6 +593,7 @@ function SubmitFlow({ slug, form }: { slug: string; form: SubmitForm }) {
   }, [
     answers,
     draftId,
+    eventSlug,
     form.questions,
     goTo,
     participantPayload,
@@ -443,8 +617,9 @@ function SubmitFlow({ slug, form }: { slug: string; form: SubmitForm }) {
     }
     setSubmitting(true)
     try {
-      const result = await submit({
+      await submit({
         slug,
+        eventSlug,
         portalToken,
         draftId: draftId as Id<"submissions"> | undefined,
         title: resolveTitle(form.questions, answers),
@@ -452,10 +627,12 @@ function SubmitFlow({ slug, form }: { slug: string; form: SubmitForm }) {
         participants: participantPayload(true),
       })
       if (typeof window !== "undefined") {
-        window.sessionStorage.removeItem(storageKey(slug))
+        window.sessionStorage.removeItem(storageKey(eventSlug, slug))
         window.scrollTo({ top: 0 })
       }
-      setSubmitted({ portalToken: result.portalToken, email: email.trim() })
+      // The token this session already holds — `submit` no longer echoes it
+      // back, and a session that got this far necessarily has it.
+      setSubmitted({ portalToken, email: email.trim() })
     } catch (error) {
       toast.error(
         error instanceof Error
@@ -469,6 +646,7 @@ function SubmitFlow({ slug, form }: { slug: string; form: SubmitForm }) {
     answers,
     draftId,
     email,
+    eventSlug,
     form.questions,
     goTo,
     participantPayload,
@@ -527,16 +705,21 @@ function SubmitFlow({ slug, form }: { slug: string; form: SubmitForm }) {
           </SubmitFooterActions>
         )
       case STEP_INDEX.account:
+        // While a sign-in link is in flight there is nothing to continue TO —
+        // the next move is in their inbox, and the card offers resend and
+        // "use a different address" instead.
         return (
           <SubmitFooterActions left={backButton}>
-            <Button
-              type="button"
-              disabled={identifying}
-              onClick={() => void handleIdentify()}
-            >
-              {identifying ? "Checking…" : "Continue"}
-              <RiArrowRightLine aria-hidden />
-            </Button>
+            {linkSent ? null : (
+              <Button
+                type="button"
+                disabled={identifying}
+                onClick={() => void handleIdentify()}
+              >
+                {identifying ? "Checking…" : "Continue"}
+                <RiArrowRightLine aria-hidden />
+              </Button>
+            )}
           </SubmitFooterActions>
         )
       case STEP_INDEX.submission:
@@ -608,7 +791,12 @@ function SubmitFlow({ slug, form }: { slug: string; form: SubmitForm }) {
       tracker={
         <StepTracker
           currentIndex={stepIndex}
-          reachedIndex={reachedIndex}
+          // Waiting on a sign-in link means the identity of this session is
+          // unsettled — the tracker must not offer a way past the Account step
+          // until it is, whatever was reached earlier.
+          reachedIndex={
+            linkSent ? Math.min(reachedIndex, STEP_INDEX.account) : reachedIndex
+          }
           onSelect={goTo}
         />
       }
@@ -623,6 +811,7 @@ function SubmitFlow({ slug, form }: { slug: string; form: SubmitForm }) {
             setEmail(value)
             setEmailInvalid(false)
             setAccountError(null)
+            setLinkSent(null)
           }}
           onSubmit={() => void handleIdentify()}
           pending={identifying}
@@ -632,6 +821,13 @@ function SubmitFlow({ slug, form }: { slug: string; form: SubmitForm }) {
           onResume={handleResume}
           onStartNew={() => goTo(STEP_INDEX.submission)}
           resumingDraftId={resumingDraftId}
+          linkSent={linkSent}
+          onResendLink={() => void handleResendLink()}
+          onUseDifferentEmail={() => {
+            setLinkSent(null)
+            setEmail("")
+            focusFirstInvalid("submit-email")
+          }}
         />
       ) : null}
 

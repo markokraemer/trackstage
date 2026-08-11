@@ -82,21 +82,32 @@ function expandSettingsRoutes(readResources, writeResources, labels) {
       .map((part, index) => (index === 0 ? part : part[0].toUpperCase() + part.slice(1)))
       .join("")
     const isFields = resource === "fields"
+    const isStatuses = resource === "statuses" || resource === "session-statuses"
+    const pageSchema = isFields
+      ? "FieldsPage"
+      : isStatuses
+        ? "StatusesPage"
+        : "MetadataPage"
+    const readDescription = isFields
+      ? "Every field definition on the event — the CFP form's questions plus its participant fields. These are the `internal_name`s you write through `PUT /sessions/{id}/fields`."
+      : isStatuses
+        ? "Every status a session can be in: the seven built-ins every event ships with, plus any custom labels this event added. `id` is the pipeline value for a built-in and the row id for a custom status; `pipeline_status` is always the value `?status=` filters on. Pass `include_deleted=true` to see archived ones."
+        : `Every ${label} configured on the event.`
     routes.push({
       method: "GET",
       path: `/v1/event/{eventRef}/${resource}`,
       operationId: `list${camel[0].toUpperCase()}${camel.slice(1)}`,
       tag: "Event Settings",
       summary: `List ${plural}`,
-      description: isFields
-        ? "Every field definition on the event — the CFP form's questions plus its participant fields. These are the `internal_name`s you write through `PUT /sessions/{id}/fields`."
-        : `Every ${label} configured on the event.`,
+      description: readDescription,
       scope: "read:events",
       bucket: "entity_reads",
       requestBody: null,
-      responses: [[200, isFields ? "FieldsPage" : "MetadataPage"]],
+      responses: [[200, pageSchema]],
       errors: [429],
-      query: ["page", "pageSize", "search"],
+      query: isStatuses
+        ? ["page", "pageSize", "search", "include_deleted"]
+        : ["page", "pageSize", "search"],
       open: false,
       bodyKind: "none",
     })
@@ -110,7 +121,7 @@ function expandSettingsRoutes(readResources, writeResources, labels) {
       scope: "read:events",
       bucket: "entity_reads",
       requestBody: "MetadataSearchBody",
-      responses: [[200, isFields ? "FieldsPage" : "MetadataPage"]],
+      responses: [[200, pageSchema]],
       errors: [400, 429],
       query: ["page", "pageSize"],
       open: false,
@@ -176,9 +187,10 @@ function expandSettingsRoutes(readResources, writeResources, labels) {
   for (const resource of writeResources) {
     const label = labels[resource] ?? resource
     const camel = resource[0].toUpperCase() + resource.slice(1, -1)
-    const systemOwned = resource === "statuses"
-    const note = systemOwned
-      ? " Session statuses are system-defined in this product, so this always answers 400 with an explanation — the pipeline (draft → pending → accept/decline queue → accepted/declined, plus withdrawn) is fixed."
+    const isStatuses = resource === "statuses"
+    const envelopeName = isStatuses ? "StatusEnvelope" : "MetadataEnvelope"
+    const note = isStatuses
+      ? " A custom status is a LABEL bound to one of the five pipeline categories (`category`), so “Waitlist” can be the word an organizer sees while the accept/decline machinery, the decision emails and the speaker portal all keep running on `pending`. The seven built-ins can be renamed, recoloured and reordered but never deleted or re-categorised."
       : ["formats", "levels", "languages", "tags"].includes(resource)
         ? ` ${label[0].toUpperCase()}${label.slice(1)}s have no table of their own: they are the options on the CFP form's \`${resource === "formats" ? "format" : resource === "levels" ? "level" : resource === "languages" ? "language" : "tags"}\` question, so this edits that question and the form builder shows the change immediately.`
         : ""
@@ -193,7 +205,7 @@ function expandSettingsRoutes(readResources, writeResources, labels) {
         scope: "write:metadata",
         bucket: "metadata_writes",
         requestBody: "MetadataWriteBody",
-        responses: systemOwned ? [] : [[201, "MetadataEnvelope"]],
+        responses: [[201, envelopeName]],
         errors: [400, 429],
         query: [],
         open: false,
@@ -209,7 +221,7 @@ function expandSettingsRoutes(readResources, writeResources, labels) {
         scope: "write:metadata",
         bucket: "metadata_writes",
         requestBody: "MetadataWriteBody",
-        responses: systemOwned ? [] : [[200, "MetadataEnvelope"]],
+        responses: [[200, envelopeName]],
         errors: [400, 429],
         query: [],
         open: false,
@@ -226,15 +238,17 @@ function expandSettingsRoutes(readResources, writeResources, labels) {
             ? "Deletes the room and unschedules anything standing in it, so the agenda never points at a room that no longer exists."
             : resource === "tracks"
               ? "Deletes the track and clears it from every session that referenced it."
-              : `Removes the ${label}.${note}`,
+              : isStatuses
+                ? "Archives a custom status — soft, so `POST /statuses/{id}/restore` brings it back. Submissions still carrying the label must be sent somewhere with `reassign_to`, or the call answers 400 with how many. Built-in statuses refuse deletion."
+                : `Removes the ${label}.${note}`,
         scope: "write:metadata",
         bucket: "metadata_writes",
-        requestBody: null,
-        responses: systemOwned ? [] : [[204, null]],
+        requestBody: isStatuses ? "MetadataWriteBody" : null,
+        responses: [[204, null]],
         errors: [400, 429],
         query: [],
         open: false,
-        bodyKind: "none",
+        bodyKind: isStatuses ? "json" : "none",
       },
     )
   }
@@ -369,6 +383,54 @@ const SCHEMAS = {
       updated_at: ts("Last write."),
     },
   },
+  SessionStatus: {
+    type: "object",
+    description:
+      "A status an organizer can put a session in. The seven built-ins ship with every event and cannot be deleted or re-categorised; custom ones are labels bound to a pipeline value, so the accept/decline machinery and the wording the speaker sees never disagree.",
+    properties: {
+      id: {
+        type: "string",
+        description:
+          "The pipeline value for a built-in (`accepted`, `pending`, …), the row id for a custom status. This is what has always been returned here.",
+        examples: ["accepted"],
+      },
+      status_id: {
+        type: "string",
+        nullable: true,
+        description:
+          "Always the row id. `null` on an event that has never edited its statuses and is still running on the built-in defaults.",
+      },
+      name: { type: "string", examples: ["Accepted"] },
+      value: {
+        type: "string",
+        description: "The value `submissions.status` holds — what `?status=` filters on.",
+      },
+      pipeline_status: {
+        type: "string",
+        enum: [
+          "draft",
+          "pending",
+          "accept_queue",
+          "decline_queue",
+          "accepted",
+          "declined",
+          "withdrawn",
+        ],
+      },
+      category: {
+        type: "string",
+        enum: ["draft", "pending", "accepted", "declined", "withdrawn"],
+      },
+      color: { type: "string", enum: ["green", "amber", "red", "gray", "blue"] },
+      order: { type: "integer" },
+      system: { type: "boolean", description: "A built-in the pipeline needs." },
+      system_key: { type: "string", nullable: true },
+      created_by: { type: "string", nullable: true, description: "`null` reads as “System”." },
+      created_at: ts("Creation time; null for built-ins."),
+      updated_at: ts("Last write."),
+      deleted_at: ts("Set when archived — restore it with POST /statuses/{id}/restore."),
+    },
+  },
   SessionFile: {
     type: "object",
     properties: {
@@ -501,8 +563,24 @@ const SCHEMAS = {
       starts_at: ts("Event start."),
       ends_at: ts("Event end."),
       logo_url: { type: "string", nullable: true },
+      background_url: { type: "string", nullable: true },
       agenda_published_at: ts("Set once the public programme is live."),
       created_at: ts("Creation time."),
+      organization_id: {
+        type: "string",
+        nullable: true,
+        description: "The workspace this event belongs to.",
+      },
+      public_url: { type: "string", examples: ["/e/ai-summit-2026"] },
+      portal_settings: {
+        type: "object",
+        description: "How the speaker portal behaves for this event.",
+        properties: {
+          always_show_tasks: { type: "boolean" },
+          allow_submission_edits: { type: "boolean" },
+          extend_task_deadlines: { type: "boolean" },
+        },
+      },
       features: {
         type: "object",
         properties: {
@@ -945,9 +1023,454 @@ const SCHEMAS = {
     type: "object",
     properties: {
       name: { type: "string" },
-      color: { type: "string", description: "Tracks only.", examples: ["#0F6E70"] },
+      color: {
+        type: "string",
+        description:
+          "Tracks: any hex. Statuses: one of `green`, `amber`, `red`, `gray`, `blue`.",
+        examples: ["#0F6E70"],
+      },
       capacity: { type: "integer", description: "Rooms only." },
       order: { type: "integer" },
+      category: {
+        type: "string",
+        enum: ["draft", "pending", "accepted", "declined", "withdrawn"],
+        description:
+          "Statuses only — the pipeline behaviour the label inherits. Defaults to `pending`. Built-in statuses refuse a category change.",
+      },
+      reassign_to: {
+        type: "string",
+        description:
+          "Statuses only, on DELETE — where submissions carrying this label should land. Required when any still do.",
+      },
+    },
+  },
+  Form: {
+    type: "object",
+    description:
+      "A call-for-speakers form. Its `questions[]` ARE the event's custom-field definitions, so this is the same object `GET /fields` describes, seen from the form's side.",
+    properties: {
+      id: { type: "string" },
+      slug: { type: "string", examples: ["cfp"] },
+      kind: { type: "string", enum: ["abstract", "session"] },
+      status: { type: "string", enum: ["open", "closed"] },
+      is_open: {
+        type: "boolean",
+        description: "Status is open AND the close date has not passed.",
+      },
+      close_at: ts("When the CFP closes."),
+      internal_name: { type: "string" },
+      external_title: { type: "string" },
+      page_heading: { type: "string", nullable: true },
+      welcome_message: { type: "string", nullable: true },
+      show_welcome_message: { type: "boolean" },
+      notify_emails: { type: "array", items: { type: "string" } },
+      public_url: {
+        type: "string",
+        examples: ["/submit/ai-summit-2026/cfp"],
+        description: "The canonical link an organizer shares.",
+      },
+      questions: { type: "array", items: { $ref: "#/components/schemas/FormQuestion" } },
+      participant_config: {
+        type: "object",
+        properties: {
+          speaker_min: { type: "integer" },
+          speaker_max: { type: "integer" },
+          chairperson_enabled: { type: "boolean" },
+          moderator_enabled: { type: "boolean" },
+          send_confirmation_email: { type: "boolean" },
+          fields: {
+            type: "array",
+            items: {
+              type: "object",
+              properties: {
+                id: { type: "string" },
+                internal_name: { type: "string", examples: ["participant.email"] },
+                label: { type: "string" },
+                required: { type: "boolean" },
+                enabled: { type: "boolean" },
+                locked: { type: "boolean" },
+                help: { type: "string", nullable: true },
+              },
+            },
+          },
+        },
+      },
+      settings: {
+        type: "object",
+        properties: {
+          limit_per_user: { type: "integer", nullable: true },
+          allow_drafts: { type: "boolean" },
+          success_message: { type: "string", nullable: true },
+          auto_redirect_to_portal: { type: "boolean" },
+          send_reminder_email: { type: "boolean" },
+        },
+      },
+      submission_count: { type: "integer" },
+      draft_count: { type: "integer" },
+      created_at: ts("Creation time."),
+      updated_at: ts("Last change."),
+    },
+  },
+  FormQuestion: {
+    type: "object",
+    description:
+      "One question on the form — the same object as a custom-field definition. `id`/`internal_name` is the key its answers are stored under.",
+    properties: {
+      id: { type: "string", examples: ["format"] },
+      internal_name: { type: "string", examples: ["format"] },
+      public_name: { type: "string", examples: ["Format"] },
+      label: { type: "string", examples: ["Format"] },
+      field_type: { type: "string", examples: ["dropdown"] },
+      type: { type: "string", examples: ["dropdown"] },
+      required: { type: "boolean" },
+      enabled: { type: "boolean" },
+      locked: {
+        type: "boolean",
+        description: "System questions the public flow depends on; they cannot be removed.",
+      },
+      help: { type: "string", nullable: true },
+      placeholder: { type: "string", nullable: true },
+      options: { type: "array", items: { type: "string" }, nullable: true },
+      max_chars: { type: "integer", nullable: true },
+      show_if: {
+        type: "object",
+        nullable: true,
+        description: "Conditional logic — show this question only when another answered a value.",
+        properties: {
+          questionId: { type: "string" },
+          equals: { type: "string" },
+        },
+      },
+      is_track_question: {
+        type: "boolean",
+        description: "The answer to this question routes the submission to a track.",
+      },
+      order: { type: "integer" },
+    },
+  },
+  Task: {
+    type: "object",
+    description: "One thing a speaker owes the organizer.",
+    properties: {
+      id: { type: "string" },
+      title: { type: "string", examples: ["Upload your slides"] },
+      instructions: { type: "string", nullable: true },
+      kind: {
+        type: "string",
+        enum: ["profile", "headshot", "upload", "form", "confirm"],
+      },
+      due_at: ts("Deadline."),
+      completed_at: ts("When the speaker ticked it off."),
+      is_complete: { type: "boolean" },
+      is_overdue: { type: "boolean" },
+      speaker_id: { type: "string" },
+      speaker: {
+        type: "object",
+        nullable: true,
+        properties: {
+          id: { type: "string" },
+          full_name: { type: "string" },
+          email: { type: "string" },
+        },
+      },
+      session_id: { type: "string", nullable: true },
+      session_title: { type: "string", nullable: true },
+      form_id: { type: "string", nullable: true },
+      created_at: ts("Creation time."),
+    },
+  },
+  EvaluationCriterion: {
+    type: "object",
+    properties: {
+      id: { type: "string" },
+      label: { type: "string", examples: ["Relevance"] },
+      type: { type: "string", enum: ["numeric", "select", "text"] },
+      options: { type: "array", items: { type: "string" }, nullable: true },
+      weight: {
+        type: "number",
+        description: "Relative importance in the weighted average. Numeric criteria only.",
+      },
+    },
+  },
+  EvaluationPlan: {
+    type: "object",
+    description: "One review round: criteria, a pool of submissions, and evaluators.",
+    properties: {
+      id: { type: "string" },
+      name: { type: "string", examples: ["Round 1 — technical review"] },
+      round: { type: "integer" },
+      status: { type: "string", enum: ["open", "closed"] },
+      blind: {
+        type: "boolean",
+        description: "Evaluators see the submissions without speaker identities.",
+      },
+      opens_at: ts("When the round opens."),
+      due_at: ts("When the round closes."),
+      criteria: {
+        type: "array",
+        items: { $ref: "#/components/schemas/EvaluationCriterion" },
+      },
+      submission_ids: { type: "array", items: { type: "string" } },
+      submission_count: { type: "integer" },
+      evaluator_count: { type: "integer" },
+      assigned_count: { type: "integer", description: "Evaluations expected in total." },
+      completed_count: { type: "integer" },
+      outstanding_count: { type: "integer" },
+      completion_pct: { type: "integer" },
+      recused_count: { type: "integer" },
+      scored_count: { type: "integer" },
+      average_score: {
+        type: "number",
+        nullable: true,
+        description: "Weighted mean over numeric criteria. Recusals never reach it.",
+      },
+      created_at: ts("Creation time."),
+      evaluators: {
+        type: "array",
+        items: { $ref: "#/components/schemas/Evaluator" },
+        description: "Only on the detail read.",
+      },
+      submissions: {
+        type: "array",
+        description: "Only on the detail read — the pool with per-submission averages.",
+        items: {
+          type: "object",
+          properties: {
+            id: { type: "string" },
+            title: { type: "string" },
+            status: { type: "string" },
+            completed_count: { type: "integer" },
+            recused_count: { type: "integer" },
+            average_score: { type: "number", nullable: true },
+          },
+        },
+      },
+    },
+  },
+  Evaluator: {
+    type: "object",
+    properties: {
+      id: { type: "string" },
+      plan_id: { type: "string" },
+      plan_name: { type: "string", description: "Only on the event-wide list." },
+      plan_round: { type: "integer", description: "Only on the event-wide list." },
+      email: { type: "string" },
+      name: { type: "string", nullable: true },
+      token: {
+        type: "string",
+        description: "Their magic review link's token. Organizer-only — never publish it.",
+      },
+      review_path: { type: "string", examples: ["/review/6f2c…"] },
+      assigned_submission_ids: { type: "array", items: { type: "string" } },
+      custom_assignment: {
+        type: "boolean",
+        description: "True when the queue was hand-picked rather than the whole pool.",
+      },
+      completed_count: { type: "integer" },
+      assigned_count: { type: "integer" },
+      outstanding_count: { type: "integer" },
+      recused_count: { type: "integer" },
+      last_reminded_at: ts("Last nudge."),
+      created_at: ts("Creation time."),
+    },
+  },
+  Evaluation: {
+    type: "object",
+    description: "One evaluator's scorecard for one submission.",
+    properties: {
+      id: { type: "string" },
+      plan_id: { type: "string" },
+      plan_name: { type: "string" },
+      round: { type: "integer" },
+      session_id: { type: "string" },
+      session_title: { type: "string", nullable: true },
+      evaluator_id: { type: "string" },
+      evaluator_email: { type: "string", nullable: true },
+      scores: {
+        type: "object",
+        additionalProperties: { type: "number" },
+        description: "criterion id → 1–5. Numeric criteria only.",
+      },
+      values: {
+        type: "object",
+        additionalProperties: { type: "string" },
+        description: "criterion id → chosen option or free text.",
+      },
+      comment: { type: "string", nullable: true },
+      recused: { type: "boolean" },
+      recusal_reason: { type: "string", nullable: true },
+      completed_at: ts("When it was submitted."),
+      created_at: ts("Creation time."),
+    },
+  },
+  EventWriteBody: {
+    type: "object",
+    properties: {
+      name: { type: "string", examples: ["AI Summit 2026"] },
+      slug: {
+        type: "string",
+        description:
+          "The public address. Derived from the name when omitted; suffixed rather than rejected if taken.",
+      },
+      timezone: { type: "string", examples: ["America/Los_Angeles"], default: "UTC" },
+      type: { type: "string", examples: ["Conference"] },
+      website_url: { type: "string" },
+      description: { type: "string" },
+      venue: { type: "string" },
+      starts_at: {
+        type: "string",
+        description: "ISO-8601 or epoch milliseconds.",
+        examples: ["2026-09-14T09:00:00.000Z"],
+      },
+      ends_at: { type: "string", description: "ISO-8601 or epoch milliseconds." },
+      organization_id: {
+        type: "string",
+        description:
+          "Workspace to create the event in. Optional when you administer exactly one — otherwise the 400 lists your choices.",
+      },
+      portal_settings: {
+        type: "object",
+        description: "Speaker-portal behaviour. Unspecified flags keep their current value.",
+        properties: {
+          always_show_tasks: { type: "boolean" },
+          allow_submission_edits: { type: "boolean" },
+          extend_task_deadlines: { type: "boolean" },
+        },
+      },
+    },
+  },
+  ParticipantWriteBody: {
+    type: "object",
+    description:
+      "Name an existing person with `speaker_id`, or an `email` — a person this event has never seen is created, which needs `first_name`.",
+    properties: {
+      speaker_id: { type: "string" },
+      email: { type: "string", format: "email" },
+      first_name: { type: "string" },
+      last_name: { type: "string" },
+      role: {
+        type: "string",
+        enum: ["speaker", "chairperson", "moderator"],
+        default: "speaker",
+      },
+    },
+  },
+  FormWriteBody: {
+    type: "object",
+    properties: {
+      internal_name: { type: "string", description: "Required on create." },
+      external_title: { type: "string", description: "What the public form is titled." },
+      kind: { type: "string", enum: ["abstract", "session"], default: "abstract" },
+      slug: { type: "string", description: "Public address inside the event." },
+      status: { type: "string", enum: ["open", "closed"] },
+      close_at: { type: "string", description: "ISO-8601 or epoch milliseconds." },
+      page_heading: { type: "string" },
+      welcome_message: { type: "string" },
+      show_welcome_message: { type: "boolean" },
+      notify_emails: {
+        type: "array",
+        items: { type: "string" },
+        description: "Who gets told when a submission arrives.",
+      },
+      questions: {
+        type: "array",
+        items: { $ref: "#/components/schemas/FormQuestion" },
+        description:
+          "Replaces the question set wholesale. Locked system questions must be included.",
+      },
+      participant_config: {
+        type: "object",
+        properties: {
+          speaker_min: { type: "integer" },
+          speaker_max: { type: "integer" },
+          chairperson_enabled: { type: "boolean" },
+          moderator_enabled: { type: "boolean" },
+          send_confirmation_email: { type: "boolean" },
+          fields: { type: "array", items: { type: "object", additionalProperties: true } },
+        },
+      },
+      settings: {
+        type: "object",
+        properties: {
+          limit_per_user: { type: "integer" },
+          allow_drafts: { type: "boolean" },
+          success_message: { type: "string" },
+          auto_redirect_to_portal: { type: "boolean" },
+          send_reminder_email: { type: "boolean" },
+        },
+      },
+    },
+  },
+  TaskWriteBody: {
+    type: "object",
+    properties: {
+      title: { type: "string", examples: ["Upload your slides"] },
+      instructions: { type: "string" },
+      kind: {
+        type: "string",
+        enum: ["profile", "headshot", "upload", "form", "confirm"],
+        default: "upload",
+      },
+      due_at: { type: "string", description: "ISO-8601 or epoch milliseconds." },
+      completed: {
+        type: "boolean",
+        description: "Update only — tick the task off (or reopen it) on the speaker's behalf.",
+      },
+      session_id: {
+        type: "string",
+        description: "Bind the task to a session, so files uploaded into it land on that session.",
+      },
+      speaker_ids: { type: "array", items: { type: "string" } },
+      speaker_emails: {
+        type: "array",
+        items: { type: "string" },
+        description: "Assign by address without looking ids up first.",
+      },
+    },
+  },
+  EvaluationPlanWriteBody: {
+    type: "object",
+    properties: {
+      name: { type: "string", description: "Required on create." },
+      round: { type: "integer", default: 1 },
+      status: { type: "string", enum: ["open", "closed"] },
+      blind: { type: "boolean" },
+      opens_at: { type: "string", description: "ISO-8601 or epoch milliseconds." },
+      due_at: { type: "string", description: "ISO-8601 or epoch milliseconds." },
+      submission_ids: {
+        type: "array",
+        items: { type: "string" },
+        description: "The pool. Replaces the current pool wholesale.",
+      },
+      criteria: {
+        type: "array",
+        description: "At least one is required on create. Replaces the criteria wholesale.",
+        items: {
+          type: "object",
+          required: ["label"],
+          properties: {
+            id: { type: "string", description: "Derived from the label when omitted." },
+            label: { type: "string" },
+            type: { type: "string", enum: ["numeric", "select", "text"], default: "numeric" },
+            options: { type: "array", items: { type: "string" } },
+            weight: { type: "number", default: 1 },
+          },
+        },
+      },
+    },
+  },
+  EvaluatorWriteBody: {
+    type: "object",
+    properties: {
+      plan_id: { type: "string", description: "Required on create." },
+      email: { type: "string", format: "email", description: "Required on create." },
+      name: { type: "string" },
+      assigned_submission_ids: {
+        type: "array",
+        items: { type: "string" },
+        description:
+          "Hand-picked queue. Must be a subset of the plan's pool. Omit for the whole pool.",
+      },
     },
   },
   WebhookWriteBody: {
@@ -1098,6 +1621,74 @@ const DERIVED = {
       results: { type: "array", items: { $ref: "#/components/schemas/WebhookDelivery" } },
     },
   },
+  EventDetailEnvelope: envelope("Event", {
+    allOf: [
+      { $ref: "#/components/schemas/Event" },
+      {
+        type: "object",
+        properties: {
+          totals: {
+            type: "object",
+            description: "Row counts for the event, so one call answers “did my import land?”.",
+            properties: {
+              rooms: { type: "integer" },
+              tracks: { type: "integer" },
+              forms: { type: "integer" },
+              sessions: { type: "integer" },
+              abstracts: { type: "integer" },
+              accepted: { type: "integer" },
+              scheduled: { type: "integer" },
+            },
+          },
+        },
+      },
+    ],
+  }),
+  FormEnvelope: envelope("Form", { $ref: "#/components/schemas/Form" }),
+  TaskEnvelope: envelope("Task", { $ref: "#/components/schemas/Task" }),
+  TaskCreateEnvelope: {
+    type: "object",
+    description:
+      "One task row per speaker. `data` is the first (the single-speaker case); `results` is all of them.",
+    properties: {
+      data: { $ref: "#/components/schemas/Task" },
+      results: { type: "array", items: { $ref: "#/components/schemas/Task" } },
+      created: { type: "integer" },
+    },
+  },
+  EvaluationPlanEnvelope: envelope("EvaluationPlan", {
+    $ref: "#/components/schemas/EvaluationPlan",
+  }),
+  EvaluatorEnvelope: envelope("Evaluator", { $ref: "#/components/schemas/Evaluator" }),
+  StatusEnvelope: envelope("SessionStatus", {
+    $ref: "#/components/schemas/SessionStatus",
+  }),
+  ParticipantEnvelope: envelope("Participant", {
+    allOf: [
+      { $ref: "#/components/schemas/Speaker" },
+      {
+        type: "object",
+        properties: {
+          participant_id: { type: "string" },
+          role: { type: "string", enum: ["speaker", "chairperson", "moderator"] },
+          session_id: { type: "string" },
+        },
+      },
+    ],
+  }),
+  ParticipantListEnvelope: {
+    type: "object",
+    properties: {
+      data: { type: "array", items: { $ref: "#/components/schemas/Speaker" } },
+      results: { type: "array", items: { $ref: "#/components/schemas/Speaker" } },
+    },
+  },
+  FormsPage: page("Forms", "Form"),
+  TasksPage: page("Tasks", "Task"),
+  EvaluationPlansPage: page("EvaluationPlans", "EvaluationPlan"),
+  EvaluatorsPage: page("Evaluators", "Evaluator"),
+  EvaluationsPage: page("Evaluations", "Evaluation"),
+  StatusesPage: page("Statuses", "SessionStatus"),
   SessionsPage: page("Sessions", "Session", {
     event: { $ref: "#/components/schemas/Event" },
   }),
@@ -1158,6 +1749,59 @@ const PARAMETERS = {
     schema: { type: "string" },
     description: "The webhook endpoint id.",
   },
+  formId: {
+    name: "formId",
+    in: "path",
+    required: true,
+    schema: { type: "string" },
+    description: "The form's id, or its public slug (e.g. `cfp`). Both work.",
+    example: "cfp",
+  },
+  taskId: {
+    name: "taskId",
+    in: "path",
+    required: true,
+    schema: { type: "string" },
+    description: "The task id.",
+  },
+  planId: {
+    name: "planId",
+    in: "path",
+    required: true,
+    schema: { type: "string" },
+    description: "The evaluation plan id.",
+  },
+  evaluatorId: {
+    name: "evaluatorId",
+    in: "path",
+    required: true,
+    schema: { type: "string" },
+    description: "The evaluator id.",
+  },
+  speaker_id: {
+    name: "speaker_id",
+    in: "query",
+    schema: { type: "string" },
+    description: "Restrict to one speaker.",
+  },
+  session_id: {
+    name: "session_id",
+    in: "query",
+    schema: { type: "string" },
+    description: "Restrict to one session.",
+  },
+  plan_id: {
+    name: "plan_id",
+    in: "query",
+    schema: { type: "string" },
+    description: "Restrict to one evaluation plan.",
+  },
+  evaluator_id: {
+    name: "evaluator_id",
+    in: "query",
+    schema: { type: "string" },
+    description: "Restrict to one evaluator.",
+  },
   id: {
     name: "id",
     in: "path",
@@ -1188,7 +1832,8 @@ const PARAMETERS = {
     name: "status",
     in: "query",
     schema: { type: "string" },
-    description: "Filter by status. Passing this opts out of the accepted-only default.",
+    description:
+      "Filter by status. On `/sessions` this is the pipeline status and passing it opts out of the accepted-only default; on `/forms` it is `open` or `closed`; on `/tasks` it is `open`, `completed` or `overdue`; on `/evaluation-plans` it is `open` or `closed`.",
   },
   is_abstract: {
     name: "is_abstract",
@@ -1202,7 +1847,8 @@ const PARAMETERS = {
     name: "include_deleted",
     in: "query",
     schema: { type: "boolean" },
-    description: "Include soft-deleted sessions.",
+    description:
+      "Include soft-deleted rows — sessions on `/sessions`, archived statuses on `/statuses`. Each carries `deleted_at`.",
   },
   expand: {
     name: "expand",
@@ -1267,9 +1913,200 @@ const RATE_LIMIT_HEADERS = {
   },
 }
 
+// ——— Request examples ————————————————————————————————————————————————————
+//
+// One realistic request body per operation that takes one, keyed by
+// operationId. Hand-written rather than captured: a request example has to be
+// something you could paste into a terminal and have work.
+
+const REQUEST_EXAMPLES = {
+  createEvent: {
+    name: "AI Summit 2026",
+    slug: "ai-summit-2026",
+    timezone: "America/Los_Angeles",
+    type: "Conference",
+    venue: "Moscone West, San Francisco",
+    starts_at: "2026-09-14T09:00:00.000Z",
+    ends_at: "2026-09-16T18:00:00.000Z",
+    website_url: "https://aisummit.example.com",
+  },
+  updateEvent: {
+    venue: "Moscone Center, Hall B",
+    ends_at: "2026-09-17T18:00:00.000Z",
+    portal_settings: { allow_submission_edits: false },
+  },
+  searchSessions: {
+    filters: { status: "accepted", isAbstract: false, search: "agents" },
+    sort: { order: "startsAt", sort: "asc" },
+    expand: ["files"],
+  },
+  searchSessionsByStatus: {
+    filters: { updatedAt: { after: "2026-08-01T00:00:00.000Z" } },
+  },
+  createSession: {
+    title: "Designing agent workflows that survive contact with users",
+    description: "<p>What we learned shipping agents to 40k organizers.</p>",
+    status: "pending",
+    is_abstract: false,
+    format: "Talk",
+    level: "Intermediate",
+    language: "English",
+    tag_ids: ["AI", "Product"],
+    starts_at: "2026-09-14T15:00:00.000Z",
+    ends_at: "2026-09-14T15:45:00.000Z",
+    submitter_email: "ada@example.com",
+    submitter_first_name: "Ada",
+    submitter_last_name: "Lovelace",
+    custom_fields: { takeaways: "Three patterns and one anti-pattern." },
+  },
+  updateSession: {
+    title: "Designing agent workflows (revised)",
+    status: "accepted",
+    room_id: "k17abc…",
+    updated_at: "2026-08-11T09:12:44.001Z",
+  },
+  bulkSessions: {
+    operations: [
+      { action: "create", data: { title: "Sponsor keynote", status: "accepted" } },
+      { action: "update", id: "k17abc…", data: { level: "Advanced" } },
+      { action: "delete", id: "k17def…" },
+    ],
+  },
+  updateSessionFields: {
+    custom_fields: {
+      takeaways: "Three patterns and one anti-pattern.",
+      prior_talks: ["SREcon 2025", "KubeCon 2024"],
+    },
+  },
+  addSessionParticipant: {
+    email: "grace@example.com",
+    first_name: "Grace",
+    last_name: "Hopper",
+    role: "speaker",
+  },
+  searchSpeakers: {
+    filters: { search: "hopper", workflowStatus: "confirmed" },
+    sort: { sort: "asc" },
+  },
+  createSpeaker: {
+    email: "grace@example.com",
+    first_name: "Grace",
+    last_name: "Hopper",
+    title: "Distinguished Engineer",
+    company_name: "Example Corp",
+    about: "Compilers, and why they matter.",
+    workflow_status: "invited",
+  },
+  updateSpeaker: { workflow_status: "confirmed", is_public: true },
+  initiateSessionFileUpload: {
+    filename: "keynote-slides.pptx",
+    content_type:
+      "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+    size_bytes: 184320000,
+    title: "Keynote deck (final)",
+  },
+  replaceSessionFile: {
+    filename: "keynote-slides-v2.pptx",
+    content_type:
+      "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+  },
+  updateSessionFile: {
+    title: "Keynote deck (final)",
+    assigned_participant_id: "k57abc…",
+  },
+  createField: {
+    name: "Key takeaways",
+    type: "long_text",
+    required: true,
+    help: "Three bullets an attendee should leave with.",
+  },
+  updateField: { name: "Key takeaways", required: false },
+  createForm: {
+    internal_name: "Main CFP 2026",
+    external_title: "Call for Speakers — AI Summit 2026",
+    kind: "abstract",
+    slug: "cfp",
+    page_heading: "Speak at AI Summit 2026",
+    notify_emails: ["program@aisummit.example.com"],
+  },
+  updateForm: {
+    status: "closed",
+    close_at: "2026-08-31T23:59:00.000Z",
+    settings: { allow_drafts: true, send_reminder_email: true },
+  },
+  createTask: {
+    title: "Upload your slides",
+    instructions: "16:9, PDF or PPTX, under 50 MB please.",
+    kind: "upload",
+    due_at: "2026-09-01T17:00:00.000Z",
+    speaker_emails: ["grace@example.com", "ada@example.com"],
+  },
+  updateTask: { due_at: "2026-09-05T17:00:00.000Z", completed: true },
+  createEvaluationPlan: {
+    name: "Round 1 — technical review",
+    round: 1,
+    blind: true,
+    due_at: "2026-07-01T23:59:00.000Z",
+    criteria: [
+      { label: "Relevance", type: "numeric", weight: 2 },
+      { label: "Speaker experience", type: "numeric" },
+      { label: "Recommendation", type: "select", options: ["Accept", "Waitlist", "Decline"] },
+    ],
+    submission_ids: ["k17abc…", "k17def…"],
+  },
+  updateEvaluationPlan: { status: "closed" },
+  createEvaluator: {
+    plan_id: "k37abc…",
+    email: "reviewer@example.com",
+    name: "Alan Turing",
+    assigned_submission_ids: ["k17abc…"],
+  },
+  updateEvaluator: { assigned_submission_ids: ["k17abc…", "k17def…"] },
+  createWebhook: {
+    url: "https://hooks.example.com/trackstage",
+    events: ["session.created", "session.updated", "decision.committed"],
+    description: "Programme mirror",
+    event: "ai-summit-2026",
+  },
+  updateWebhook: { events: ["*"], enabled: true },
+  // The settings resources share one body schema; their examples differ enough
+  // to be worth spelling out per resource.
+  createTrack: { name: "Applied AI", color: "#0F6E70", order: 10 },
+  updateTrack: { name: "Applied AI & Agents" },
+  createRoom: { name: "Hall B", capacity: 450, order: 20 },
+  updateRoom: { capacity: 500 },
+  createTag: { name: "Open Source" },
+  updateTag: { name: "Open source" },
+  createFormat: { name: "Lightning Talk" },
+  updateFormat: { name: "Lightning talk (10 min)" },
+  createLevel: { name: "Advanced" },
+  updateLevel: { name: "Advanced / deep dive" },
+  createLanguage: { name: "Spanish" },
+  updateLanguage: { name: "Español" },
+  createStatu: { name: "Waitlist", category: "pending", color: "amber" },
+  updateStatu: { name: "Waitlisted", color: "amber" },
+  deleteStatu: { reassign_to: "pending" },
+  searchFields: { filters: { search: "takeaways" } },
+  searchTags: { filters: { search: "open" } },
+  searchTracks: { filters: { search: "ai" } },
+  searchRooms: { filters: { search: "hall" } },
+  searchFormats: { filters: { search: "talk" } },
+  searchLevels: { filters: { search: "adv" } },
+  searchLanguages: { filters: { search: "eng" } },
+  searchStatuses: { filters: { search: "accept" } },
+  searchSessionStatuses: { filters: { search: "accept" } },
+  echoWebhookDelivery: {
+    data: { id: "k17abc…", title: "Designing agent workflows" },
+    metadata: { action: "session.updated", event_id: "k97abc…" },
+  },
+}
+
 // ——— Spec assembly ————————————————————————————————————————————————————————
 
 function buildOperation(route, examples) {
+  // "Write" here means "changes data", which POST alone cannot tell you on
+  // this API — POST is also the search verb. The scope is what disambiguates.
+  const isWrite = route.scope !== null && route.scope.startsWith("write:")
   const pathParams = [...route.path.matchAll(/\{(\w+)\}/g)].map((m) => m[1])
   const parameters = [
     ...pathParams.map((name) => ({ $ref: `#/components/parameters/${name}` })),
@@ -1308,8 +2145,12 @@ function buildOperation(route, examples) {
   const failures = new Set(route.errors)
   if (!route.open) {
     failures.add(401)
-    if (route.scope) failures.add(403)
+    // 403 is reachable on every authenticated route: a scoped key missing the
+    // scope, the demo token attempting a write, or a member without the role.
+    failures.add(403)
   }
+  // Anything rate limited can answer 429, whether or not the row spelled it out.
+  if (route.bucket) failures.add(429)
   failures.add(404)
   // Shared, not inlined: 80 operations × five failure statuses would otherwise
   // be most of the file, and the reference page downloads all of it.
@@ -1336,55 +2177,121 @@ function buildOperation(route, examples) {
       },
     }
   } else if (route.requestBody) {
+    const example = REQUEST_EXAMPLES[route.operationId]
     requestBody = {
-      required: route.method !== "POST" || !route.path.endsWith("/sessions"),
+      // Optional where the body only carries extras: the search POST on
+      // /sessions, and DELETE /statuses/{id} whose `reassign_to` is only
+      // needed when submissions still carry the label.
+      required:
+        route.method !== "DELETE" &&
+        (route.method !== "POST" || !route.path.endsWith("/sessions")),
       content: {
         "application/json": {
           schema: { $ref: `#/components/schemas/${route.requestBody}` },
+          ...(example ? { example } : {}),
         },
       },
     }
   }
 
   const notes = []
-  if (route.scope)
+  if (route.open) {
     notes.push(
-      `**Scope** \`${route.scope}\` — enforced only when the presenting key declares a scope set; an unscoped key acts with its owner's workspace permissions.`,
+      "**Authentication** — none required. This endpoint is deliberately open (see the description above); sending a key anyway is harmless.",
     )
+  } else {
+    notes.push(
+      [
+        "**Authentication** — send a personal API key as `x-access-token: sb_live_…` **or** `Authorization: Bearer sb_live_…`. Both headers are first-class.",
+        route.scope
+          ? `**Scope** \`${route.scope}\` — enforced only when the presenting key declares a scope set; an unscoped key acts with exactly its owner's workspace permissions, and declaring scopes can only narrow that. A 403 names the missing scope.`
+          : null,
+        isWrite
+          ? "**Write** — the read-only demo token (`demo-api-token`) answers 403 here."
+          : "The read-only demo token can call this.",
+      ]
+        .filter(Boolean)
+        .join("\n\n"),
+    )
+  }
   if (route.bucket)
-    notes.push(`**Rate limit** 100 requests / 15 minutes in the \`${route.bucket}\` bucket.`)
-  if (route.open) notes.push("**No credential required.**")
+    notes.push(
+      `**Rate limit** 100 requests / 15 minutes per key in the \`${route.bucket}\` bucket. Every response carries \`RateLimit-Limit\`, \`RateLimit-Remaining\` and \`RateLimit-Reset\`; a 429 adds \`Retry-After\`.`,
+    )
 
   return {
     operationId: route.operationId,
     tags: [route.tag],
     summary: route.summary,
     description: [route.description, ...notes].join("\n\n"),
+    // Machine-readable companions to the prose above, so a generated client or
+    // an agent can reason about auth without parsing markdown.
+    ...(route.scope ? { "x-required-scope": route.scope } : {}),
+    ...(route.bucket ? { "x-rate-limit-bucket": route.bucket } : {}),
+    "x-demo-token-allowed": route.open ? true : !isWrite,
     ...(parameters.length > 0 ? { parameters } : {}),
     ...(requestBody ? { requestBody } : {}),
     responses,
-    ...(route.open ? { security: [] } : {}),
+    // Declared per operation, not just globally, so the reference shows the
+    // accepted credentials on every endpoint rather than once at the top.
+    security: route.open ? [] : [{ ApiKeyHeader: [] }, { BearerToken: [] }],
   }
 }
 
+/**
+ * Tag order IS the sidebar order in the reference. Reads and their writes sit
+ * next to each other so the full CRUD for one object is visible at a glance
+ * (`Sessions` then `Session Writes`, `Event Settings` then `Field Writes` then
+ * `Metadata Writes`). Where Sessionboard has no equivalent tag — Forms, Tasks,
+ * Evaluation — reads and writes share one tag, because splitting them buys
+ * nothing but a second click.
+ */
 const TAGS = [
-  { name: "Events", description: "The events a credential can reach." },
-  { name: "Sessions", description: "Read sessions, abstracts and submissions." },
+  {
+    name: "Events",
+    description:
+      "Full CRUD over the event itself: list, read, create, update, delete. Sessionboard's API reads events only — everything but `GET /v1/events` is ours.",
+  },
+  {
+    name: "Sessions",
+    description:
+      "Read sessions, abstracts and submissions, and read a session's line-up. Writes are in **Session Writes** below.",
+  },
   {
     name: "Session Writes",
     description:
-      "Create, update, soft-delete, restore and bulk-edit sessions. Requires `write:sessions`.",
+      "Create, update, soft-delete, restore and bulk-edit sessions, and attach or detach speakers. Requires `write:sessions`.",
   },
   {
     name: "Session Files",
     description:
-      "Attachments on a session — slides, handouts, anything a speaker uploads. Requires `write:sessions` to change.",
+      "Attachments on a session — slides, handouts, anything a speaker uploads. Reads need `read:sessions`; every write needs `write:sessions`.",
   },
-  { name: "Speakers", description: "The event's people and their sessions." },
+  {
+    name: "Speakers",
+    description:
+      "The event's people and the sessions they are on. Reads need `read:contacts`, writes `write:contacts`.",
+  },
+  {
+    name: "Forms",
+    description:
+      "The call-for-speakers forms themselves — list, read, create, update, delete. A form's questions ARE this event's custom-field definitions, so editing one here changes the public submission page. Requires `write:fields` to change.",
+  },
+  {
+    name: "Tasks",
+    description:
+      "What each speaker still owes the organizer: headshots, slides, profile completion. `GET /tasks?status=open` is the outstanding-tasks dashboard as an API call. Requires `write:events` to change.",
+  },
+  {
+    name: "Evaluation",
+    description:
+      "Multi-round review: plans (criteria + pool), evaluators (with their magic review links and per-evaluator assignment), and the individual scorecards behind every average.",
+  },
+  { name: "Agenda", description: "The timetable, its conflicts, and the publish gate." },
   {
     name: "Event Settings",
     description:
-      "Field definitions and the value lists a session's metadata comes from: tracks, rooms, tags, formats, levels, languages, statuses.",
+      "Read the field definitions and the value lists a session's metadata comes from: tracks, rooms, tags, formats, levels, languages, statuses. Writes are in the two tags below.",
   },
   {
     name: "Field Writes",
@@ -1393,9 +2300,9 @@ const TAGS = [
   },
   {
     name: "Metadata Writes",
-    description: "Create, rename and delete tracks, rooms and value lists. Requires `write:metadata`.",
+    description:
+      "Create, rename, delete and restore tracks, rooms, value lists and session statuses. Requires `write:metadata`.",
   },
-  { name: "Agenda", description: "The timetable, its conflicts, and the publish gate." },
   {
     name: "Webhooks",
     description:
@@ -1422,11 +2329,26 @@ const WEBHOOK_EVENT_TABLE = [
   ["webhook.test", "A test delivery you triggered yourself."],
 ]
 
+/**
+ * Reference readers render a path's operations in key order, so the keys are
+ * written in CRUD order rather than the alphabetical order an object literal
+ * would otherwise fall into (delete, get, put). "Get an event" belongs above
+ * "Delete an event", always.
+ */
+const METHOD_ORDER = ["get", "post", "put", "delete"]
+
 function buildSpec(routes, examples, siteUrl) {
   const paths = {}
   for (const route of routes) {
     paths[route.path] ??= {}
     paths[route.path][route.method.toLowerCase()] = buildOperation(route, examples)
+  }
+  for (const [path, item] of Object.entries(paths)) {
+    const ordered = {}
+    for (const method of METHOD_ORDER) if (item[method]) ordered[method] = item[method]
+    for (const [method, operation] of Object.entries(item))
+      if (!ordered[method]) ordered[method] = operation
+    paths[path] = ordered
   }
 
   const eventRows = WEBHOOK_EVENT_TABLE.map(([name, desc]) => `| \`${name}\` | ${desc} |`).join("\n")
@@ -1439,29 +2361,165 @@ function buildSpec(routes, examples, siteUrl) {
       summary:
         "Read and write your event's programme, speakers, submissions, custom fields and agenda — and get webhooks when any of it changes.",
       description: [
-        "A complete REST API over an event: sessions and abstracts, speakers, custom fields, session files, the agenda, and signed outbound webhooks.",
+        "A complete REST API over an event: the event itself, sessions and abstracts, speakers and line-ups, CFP forms, custom fields, session files, speaker tasks, multi-round evaluation, the agenda, and signed outbound webhooks.",
         "",
-        "### Authentication",
+        "Everything an organizer can do in the browser app, an integration can do here — and every response carries both this API's original field names and the names a Sessionboard client expects, so a migration is a base-URL change.",
         "",
-        "Send a personal API key from **Settings → API & MCP** as either header — both are first-class:",
+        "---",
+        "",
+        "## Getting started",
+        "",
+        "### 1. Base URL",
+        "",
+        `Every path below is relative to your deployment's Convex site URL — the one server, no regions to choose between:`,
         "",
         "```",
-        "x-access-token: sb_live_…",
-        "Authorization: Bearer sb_live_…",
+        `${siteUrl ?? "https://your-deployment.convex.site"}`,
         "```",
         "",
-        "A key resolves to a user, and every request re-runs the same workspace-membership authorization the app itself uses, so a key can never reach an event its owner cannot. Keys may optionally declare **scopes** (`read:events`, `read:sessions`, `read:contacts`, `write:sessions`, `write:contacts`, `write:fields`, `write:metadata`, `write:events`); a key without scopes is unrestricted within its owner's permissions, and declaring scopes can only narrow that.",
+        "### 2. Get a key",
         "",
-        "The demo token `demo-api-token` is read-only and exists so the API can be explored without signing up. `schedule.ics` needs no credential at all — calendar clients cannot send headers.",
+        "**Account settings → API & MCP → Create key.** The key (`sb_live_…`) is shown **once**, at creation — copy it then. Keys are revocable from that same screen, and a revoked key stops working immediately. Optionally pick a scope set when you create it (see below); a key created without one is unrestricted within its owner's own permissions.",
         "",
-        "### Conventions",
+        "### 3. Make a call",
         "",
-        "- **Events are addressed by slug or id.** `/v1/event/ai-summit-2026/sessions` and `/v1/event/{id}/sessions` are the same endpoint.",
-        "- **Paginated responses carry `data` and `results`** — the same array under both names — plus a `pagination` object with camelCase *and* snake_case keys. Default page size 25, maximum 100.",
-        "- **Times** are ISO-8601 in responses. Requests accept ISO-8601 or epoch milliseconds. Legacy epoch-millisecond fields (`startTime`, `submittedAt`, …) are still returned alongside.",
-        "- **Errors** are `{ error, code, message, status }`; `error` and `message` are the same human sentence.",
-        "- **Optimistic concurrency**: send the `updated_at` you last read on `PUT /sessions/{id}` and a concurrent edit answers `409` instead of silently winning.",
-        "- **Rate limits** are 100 requests / 15 minutes per key per category, reported on every rate-limited response via `RateLimit-Limit`, `RateLimit-Remaining` and `RateLimit-Reset`.",
+        "```bash",
+        `curl -s "${siteUrl ?? "https://your-deployment.convex.site"}/v1/events" \\`,
+        '  -H "Authorization: Bearer sb_live_…"',
+        "```",
+        "",
+        "Or, byte-for-byte compatible with a Sessionboard client:",
+        "",
+        "```bash",
+        `curl -s "${siteUrl ?? "https://your-deployment.convex.site"}/v1/event/ai-summit-2026/sessions" \\`,
+        '  -H "x-access-token: sb_live_…"',
+        "```",
+        "",
+        "Prefer to look before you sign up? The token `demo-api-token` reads the demo events and answers **403** on every write.",
+        "",
+        "---",
+        "",
+        "## Authentication",
+        "",
+        "Two header forms are accepted, interchangeably, on every authenticated endpoint:",
+        "",
+        "| Header | Form | Notes |",
+        "| --- | --- | --- |",
+        "| `Authorization` | `Bearer sb_live_…` | The scheme this API has always used. |",
+        "| `x-access-token` | `sb_live_…` | Sessionboard's header, so their clients work unchanged. |",
+        "",
+        "A key resolves to a **user**, and every request re-runs the same workspace-membership authorization the browser app runs — including per-member event scoping. A key can therefore never reach an event its owner cannot, and a leaked key is bounded by a real permission model rather than by an organization boundary.",
+        "",
+        "**Roles.** Some operations need more than membership: publishing or unpublishing the agenda, deleting or restoring a session, deleting an event, a form or a task, and every webhook write require the **admin** role on the event. A member without it gets a 403 that says so.",
+        "",
+        "### Scopes",
+        "",
+        "A key may declare a scope set. Unset means *unrestricted within the owner's permissions*; setting scopes can only ever **narrow** that, never widen it. Each operation below names the scope it enforces, both in prose and as an `x-required-scope` extension.",
+        "",
+        "| Scope | Grants |",
+        "| --- | --- |",
+        "| `read:events` | Events, agenda, settings, forms, tasks, webhooks. |",
+        "| `read:sessions` | Sessions, abstracts, submissions, session files, evaluation. |",
+        "| `read:contacts` | Speakers, session line-ups, evaluators. |",
+        "| `write:sessions` | Session create/update/delete/restore/bulk, files, participants, evaluation plans. |",
+        "| `write:contacts` | Speaker create/update/delete, evaluator management. |",
+        "| `write:fields` | Custom-field definitions and CFP forms. |",
+        "| `write:metadata` | Tracks, rooms, tags, formats, levels, languages, statuses. |",
+        "| `write:events` | Event CRUD, agenda publish/unpublish, tasks, webhooks. |",
+        "",
+        "A 403 always names the missing scope, e.g. `This token lacks the \\`write:sessions\\` scope.`",
+        "",
+        "### Endpoints that need no credential",
+        "",
+        "- `GET /v1/event/{eventRef}/schedule.ics` — calendar clients subscribe by URL and cannot send headers.",
+        "- `POST /v1/_echo` — the signature-verifying test sink.",
+        "",
+        "### AI agents: MCP and OAuth",
+        "",
+        "This is the REST surface. Agents have a second, separate one: a full **MCP server at `/mcp`**, authenticated with **OAuth 2.1 + PKCE** (discovery at `/.well-known/oauth-protected-resource`) rather than with an API key — connect it from Claude, Cursor or any MCP client and the same authorization rules apply. An `sb_live_…` key also works there as a bearer token for non-interactive clients. See [the MCP reference](/docs/mcp).",
+        "",
+        "---",
+        "",
+        "## Conventions",
+        "",
+        "### Addressing an event",
+        "",
+        "`{eventRef}` accepts the event's **slug** or its **id**, everywhere. `/v1/event/ai-summit-2026/sessions` and `/v1/event/k97abc…/sessions` are the same endpoint — the slug form is the one you want in a shell history. Forms take their slug too (`/forms/cfp`).",
+        "",
+        "### Pagination",
+        "",
+        "Every list takes `page` (1-based) and `pageSize` (default 25, max 100; `page_size` is accepted as an alias). Every paginated response carries the same array under **both** `data` and `results`, and pagination counts in **both** spellings:",
+        "",
+        "```json",
+        "{",
+        '  "data": [ … ],',
+        '  "results": [ … ],',
+        '  "pagination": {',
+        '    "currentPage": 1, "pageSize": 25, "totalPages": 4, "totalResults": 87,',
+        '    "current_page": 1, "page_size": 25, "total_pages": 4, "total_results": 87',
+        "  }",
+        "}",
+        "```",
+        "",
+        "So a client written against either convention works, and no endpoint makes you check which one you are on. Single-resource responses are `{ \"data\": { … } }`.",
+        "",
+        "### Errors",
+        "",
+        "Every failure has the same shape:",
+        "",
+        "```json",
+        "{",
+        '  "error": "This session changed since you fetched it (now 2026-08-11T09:12:44.001Z). Re-fetch and retry.",',
+        '  "code": "ConflictError",',
+        '  "message": "This session changed since you fetched it (now 2026-08-11T09:12:44.001Z). Re-fetch and retry.",',
+        '  "status": 409',
+        "}",
+        "```",
+        "",
+        "`error` and `message` are the same organizer-readable sentence — `error` is where this API has always put it, `message` is where Sessionboard clients look. `code` is the machine-readable name:",
+        "",
+        "| Status | `code` | When |",
+        "| --- | --- | --- |",
+        "| 400 | `BadRequestError` | The body or parameters are invalid; the message says what. |",
+        "| 401 | `UnauthorizedError` | Missing or invalid key. |",
+        "| 403 | `ForbiddenError` | Valid key, but missing scope, role, or workspace access — including the read-only demo token attempting a write. |",
+        "| 404 | `NotFoundError` | No such event, resource or endpoint. A mistyped path answers with the nearest real routes. |",
+        "| 405 | `MethodNotAllowedError` | Right path, wrong verb. |",
+        "| 409 | `ConflictError` | Stale `updated_at` — someone else edited first. |",
+        "| 413 | `PayloadTooLargeError` | Over the 50 MB simple-upload ceiling. |",
+        "| 429 | `TooManyRequestsError` | Rate limited; wait `Retry-After` seconds. |",
+        "| 500 | `InternalServerError` | Ours, not yours. |",
+        "",
+        "Messages are written for the person reading them, never stack traces.",
+        "",
+        "### Rate limits",
+        "",
+        "100 requests / 15 minutes **per key, per bucket**. The buckets are `entity_reads`, `session_writes`, `field_writes`, `metadata_writes` and `event_writes`, so a bulk import cannot starve your dashboard's reads. Each operation names its bucket below (and carries it as `x-rate-limit-bucket`).",
+        "",
+        "| Header | Meaning |",
+        "| --- | --- |",
+        "| `RateLimit-Limit` | Requests allowed in the window. |",
+        "| `RateLimit-Remaining` | Requests left. |",
+        "| `RateLimit-Reset` | Unix seconds at which the window resets. |",
+        "| `Retry-After` | On a 429 only: seconds to wait. |",
+        "",
+        "### Times",
+        "",
+        "ISO-8601 in responses. Requests accept ISO-8601 **or** epoch milliseconds, anywhere a time is taken. Legacy epoch-millisecond fields (`startTime`, `endTime`, `submittedAt`, `decidedAt`, …) are still returned alongside the ISO ones and will not be removed.",
+        "",
+        "### Optimistic concurrency",
+        "",
+        "Send the `updated_at` you last read on `PUT /sessions/{id}`. If someone edited the session in between, the call answers **409** with the current value instead of silently clobbering their work; re-read and retry.",
+        "",
+        "### `expand`",
+        "",
+        "Comma-separated on session reads: `expand=files` inlines the session's attachments, `expand=deleted` lets a soft-deleted session be read.",
+        "",
+        "### Soft deletes",
+        "",
+        "`DELETE /sessions/{id}` and `DELETE /statuses/{id}` archive rather than destroy — the row leaves every listing, reads 404, and comes back intact via the matching `/restore`. `DELETE /events/{ref}` is the one exception: it runs the full cascade and is not recoverable.",
+        "",
+        "---",
         "",
         "### Custom fields",
         "",
@@ -1477,7 +2535,27 @@ function buildSpec(routes, examples, siteUrl) {
         "| `Trackstage-Event` | The event type. |",
         "| `Trackstage-Delivery` | Unique delivery id, for idempotency. |",
         "",
-        "Verify the signature before trusting a payload, and reject timestamps outside your tolerance to prevent replay. Failed deliveries retry five times with exponential backoff (1s, 5s, 25s, 125s) and the full attempt log is readable at `GET /v1/webhooks/{webhookId}/deliveries`.",
+        "Verify the signature before trusting a payload, and reject timestamps outside your tolerance to prevent replay. Failed deliveries retry five times with exponential backoff (1s, 5s, 25s, 125s) and the full attempt log — including the exact signed body — is readable at `GET /v1/webhooks/{webhookId}/deliveries`.",
+        "",
+        "**Verifying a delivery** (Node, no dependencies):",
+        "",
+        "```js",
+        "import { createHmac, timingSafeEqual } from \"node:crypto\"",
+        "",
+        "export function verify(rawBody, header, secret, toleranceSeconds = 300) {",
+        "  const m = /t=(\\d+),v1=([0-9a-f]+)/.exec(header ?? \"\")",
+        "  if (!m) return false",
+        "  const [, t, signature] = m",
+        "  if (Math.abs(Date.now() / 1000 - Number(t)) > toleranceSeconds) return false // replay",
+        "  const expected = createHmac(\"sha256\", secret).update(`${t}.${rawBody}`).digest(\"hex\")",
+        "  const a = Buffer.from(expected), b = Buffer.from(signature)",
+        "  return a.length === b.length && timingSafeEqual(a, b)",
+        "}",
+        "```",
+        "",
+        "Sign over the **raw body bytes**, before any JSON parsing — re-serialising changes the bytes and the signature will not match.",
+        "",
+        "Not sure your receiver is right? Point a webhook at `POST /v1/_echo?secret=whsec_…`. That sink recomputes the HMAC itself and answers 200 **only** when the signature verifies, so a green delivery in the log is proof, not a guess.",
         "",
         "**Event types**",
         "",
@@ -1485,11 +2563,44 @@ function buildSpec(routes, examples, siteUrl) {
         "| --- | --- |",
         eventRows,
         "",
-        "Subscribe to `[\"*\"]` for all of them.",
+        "Subscribe to `[\"*\"]` for all of them. Scope an endpoint to one event with `\"event\": \"ai-summit-2026\"`, or omit it for every event in the workspace.",
         "",
-        "### MCP",
+        "---",
         "",
-        "Everything here is also available to AI agents over MCP at `/mcp` — see [the MCP reference](/docs/mcp).",
+        "### Uploading session files",
+        "",
+        "Two flows, same resource. Use the simple one until you hit its ceiling.",
+        "",
+        "**Simple — one request, up to 50 MB.** `multipart/form-data`, field name `file`:",
+        "",
+        "```bash",
+        "curl -X POST \"$BASE/v1/event/ai-summit-2026/sessions/$SID/files/upload\" \\",
+        "  -H \"Authorization: Bearer sb_live_…\" \\",
+        "  -F \"file=@keynote-slides.pptx\" \\",
+        "  -F \"title=Keynote deck (final)\"",
+        "```",
+        "",
+        "Size and MIME type are read from the bytes. Over 50 MB answers **413** and tells you to use the two-phase flow.",
+        "",
+        "**Two-phase — for anything larger.** Three calls:",
+        "",
+        "1. `POST …/sessions/{sessionId}/files` with `{ \"filename\": \"…\" }` → returns an id and an `upload` block (`url`, `method`, `headers`).",
+        "2. `PUT` the raw bytes to that `upload.url`. Unlike a presigned S3 URL this leg is authenticated with **your ordinary API key**, so no credential is ever embedded in a URL that can leak through logs or referrers. Re-PUTting replaces the pending bytes.",
+        "3. `POST …/files/{fileId}/complete` → promotes the blob into a real attachment and returns it. Completing with no bytes received answers 400.",
+        "",
+        "**Replacing a file** is the same three steps starting from `POST …/files/{fileId}/replace`; the file group's version is bumped and the previous version retired when the replacement completes. `PUT …/files/{fileId}` changes the title or the participant it is assigned to without touching bytes, and `DELETE` soft-deletes.",
+        "",
+        "---",
+        "",
+        "### The calendar feed",
+        "",
+        "`GET /v1/event/{eventRef}/schedule.ics` is an RFC 5545 feed of the published programme — accepted, scheduled sessions of an event whose agenda has been published. It takes **no credential**, because calendar clients subscribe by URL and cannot send headers; paste it into Google Calendar, Apple Calendar or Outlook as a subscription and it stays in step with the board.",
+        "",
+        "---",
+        "",
+        "### Migrating from Sessionboard",
+        "",
+        "Change the base URL and the event id, and keep your code. Their paths, their `x-access-token` header, their `filters`/`sort`/`expand` search bodies, their `results` + `pagination` envelope, their status enum, their `custom_fields[]` shape and their 4xx codes are all served as-is. What is additive on our side: `data` alongside `results`, snake_case *and* camelCase pagination, `value_raw` on every custom field, slugs as event references, and the endpoints their API does not have at all — event CRUD, forms, tasks, evaluation, participants and API-managed webhooks.",
       ].join("\n"),
       license: { name: "MIT", identifier: "MIT" },
       contact: {
@@ -1560,12 +2671,27 @@ function buildSpec(routes, examples, siteUrl) {
           type: "apiKey",
           in: "header",
           name: "x-access-token",
-          description: "Personal API key from Settings → API & MCP.",
+          description: [
+            "A personal API key (`sb_live_…`), sent in Sessionboard's header so their clients work against this API unchanged.",
+            "",
+            "**Where to get one:** Account settings → **API & MCP** → *Create key*. The key is shown once, at creation — copy it then; it is stored only as a hash and cannot be shown again. Keys are revocable from the same screen and stop working immediately.",
+            "",
+            "**What it can reach:** the key resolves to a user, and every request re-runs the same workspace-membership and per-member event scoping the browser app runs. It can never reach an event its owner cannot.",
+            "",
+            "**Scopes:** optional. Unset means unrestricted within the owner's permissions; setting them can only narrow. Each operation names the scope it enforces (`x-required-scope`).",
+            "",
+            "**Exploring without an account:** `demo-api-token` reads the demo events and answers 403 on every write.",
+          ].join("\n"),
         },
         BearerToken: {
           type: "http",
           scheme: "bearer",
-          description: "The same key, sent as `Authorization: Bearer sb_live_…`.",
+          bearerFormat: "sb_live_…",
+          description: [
+            "The same personal API key, sent as `Authorization: Bearer sb_live_…`. Interchangeable with `x-access-token` on every endpoint — pick whichever your HTTP client makes easier.",
+            "",
+            "AI agents have a separate door: the MCP server at `/mcp` speaks OAuth 2.1 + PKCE (discovery at `/.well-known/oauth-protected-resource`), and also accepts an `sb_live_…` key as a bearer token for non-interactive clients. See [the MCP reference](/docs/mcp).",
+          ].join("\n"),
         },
       },
       parameters: PARAMETERS,
@@ -1762,6 +2888,21 @@ async function captureExamples(siteUrl, token) {
     ["GET /v1/event/{eventRef}/agenda 200", "/v1/event/ai-summit-2026/agenda", null],
     ["GET /v1/webhooks 200", "/v1/webhooks", trim],
     ["GET /v1/event/{eventRef}/schedule.ics 200", "/v1/event/ai-summit-2026/schedule.ics", null],
+    ["GET /v1/events/{eventRef} 200", "/v1/events/ai-summit-2026", null],
+    ["GET /v1/event/{eventRef}/forms 200", "/v1/event/ai-summit-2026/forms?pageSize=1", trim],
+    ["GET /v1/event/{eventRef}/forms/{formId} 200", "/v1/event/ai-summit-2026/forms/cfp", null],
+    ["GET /v1/event/{eventRef}/tasks 200", "/v1/event/ai-summit-2026/tasks?pageSize=1", trim],
+    [
+      "GET /v1/event/{eventRef}/evaluation-plans 200",
+      "/v1/event/ai-summit-2026/evaluation-plans?pageSize=1",
+      trim,
+    ],
+    ["GET /v1/event/{eventRef}/evaluators 200", "/v1/event/ai-summit-2026/evaluators?pageSize=1", trim],
+    [
+      "GET /v1/event/{eventRef}/evaluations 200",
+      "/v1/event/ai-summit-2026/evaluations?pageSize=1",
+      trim,
+    ],
   ]
 
   for (const [key, path, shrink] of captures) {
@@ -1775,7 +2916,7 @@ async function captureExamples(siteUrl, token) {
     // Agenda + session shapes get deep; cap the size so the reference stays
     // readable rather than becoming a data dump.
     const payload = cap(shrink ? shrink(result.json) : result.json)
-    if (JSON.stringify(payload).length > 12000) continue
+    if (JSON.stringify(payload).length > 24000) continue
     examples[key] = payload
   }
 
@@ -1785,8 +2926,39 @@ async function captureExamples(siteUrl, token) {
   if (first?.id) {
     const detail = await get(`/v1/event/ai-summit-2026/sessions/${first.id}`)
     const capped = detail.status === 200 ? cap(detail.json, 1) : null
-    if (capped && JSON.stringify(capped).length < 12000)
+    if (capped && JSON.stringify(capped).length < 24000)
       examples["GET /v1/event/{eventRef}/sessions/{sessionId} 200"] = capped
+  }
+
+  // Detail + sub-resource reads need a real id, so they follow their list.
+  const firstIdOf = (key, path) => {
+    const rows = examples[key]
+    void path
+    const row = rows?.data?.[0] ?? rows?.results?.[0]
+    return typeof row?.id === "string" ? row.id : null
+  }
+  const taskId = firstIdOf("GET /v1/event/{eventRef}/tasks 200")
+  if (taskId) {
+    const detail = await get(`/v1/event/ai-summit-2026/tasks/${taskId}`)
+    if (detail.status === 200)
+      examples["GET /v1/event/{eventRef}/tasks/{taskId} 200"] = cap(detail.json, 1)
+  }
+  const planId = firstIdOf("GET /v1/event/{eventRef}/evaluation-plans 200")
+  if (planId) {
+    const detail = await get(`/v1/event/ai-summit-2026/evaluation-plans/${planId}`)
+    if (detail.status === 200 && JSON.stringify(detail.json).length < 24000)
+      examples["GET /v1/event/{eventRef}/evaluation-plans/{planId} 200"] = cap(
+        detail.json,
+        1,
+      )
+  }
+  if (first?.id) {
+    const participants = await get(
+      `/v1/event/ai-summit-2026/sessions/${first.id}/participants`,
+    )
+    if (participants.status === 200)
+      examples["GET /v1/event/{eventRef}/sessions/{sessionId}/participants 200"] =
+        cap(trim(participants.json))
   }
 
   // A real webhook payload, straight out of the delivery log if one exists.
@@ -1803,6 +2975,328 @@ async function captureExamples(siteUrl, token) {
       }
     }
   }
+  return examples
+}
+
+/**
+ * Response examples for the WRITE operations, derived from the reads we just
+ * captured. A create returns the same resource its list returns, so the
+ * honest example is a real row wrapped in the single-resource envelope —
+ * which is both accurate and impossible to let rot.
+ */
+const DERIVED_EXAMPLES = [
+  // [target, source list, extra keys merged onto the envelope]
+  ["POST /v1/event/{eventRef}/sessions/create 201", "GET /v1/event/{eventRef}/sessions 200"],
+  ["PUT /v1/event/{eventRef}/sessions/{sessionId} 200", "GET /v1/event/{eventRef}/sessions 200"],
+  [
+    "POST /v1/event/{eventRef}/sessions/{sessionId}/restore 200",
+    "GET /v1/event/{eventRef}/sessions 200",
+  ],
+  [
+    "PUT /v1/event/{eventRef}/sessions/{sessionId}/fields 200",
+    "GET /v1/event/{eventRef}/sessions 200",
+  ],
+  ["POST /v1/event/{eventRef}/speakers/create 201", "GET /v1/event/{eventRef}/speakers 200"],
+  ["PUT /v1/event/{eventRef}/speakers/{speakerId} 200", "GET /v1/event/{eventRef}/speakers 200"],
+  ["POST /v1/events 201", "GET /v1/events 200", { slug_adjusted: false }],
+  ["PUT /v1/events/{eventRef} 200", "GET /v1/events 200", { slug_adjusted: false }],
+  ["POST /v1/event/{eventRef}/agenda/publish 200", "GET /v1/events 200"],
+  ["POST /v1/event/{eventRef}/agenda/unpublish 200", "GET /v1/events 200"],
+  ["POST /v1/event/{eventRef}/forms/create 201", "GET /v1/event/{eventRef}/forms 200"],
+  ["PUT /v1/event/{eventRef}/forms/{formId} 200", "GET /v1/event/{eventRef}/forms 200"],
+  ["PUT /v1/event/{eventRef}/tasks/{taskId} 200", "GET /v1/event/{eventRef}/tasks 200"],
+  [
+    "POST /v1/event/{eventRef}/evaluation-plans/create 201",
+    "GET /v1/event/{eventRef}/evaluation-plans 200",
+  ],
+  [
+    "PUT /v1/event/{eventRef}/evaluation-plans/{planId} 200",
+    "GET /v1/event/{eventRef}/evaluation-plans 200",
+  ],
+  ["POST /v1/event/{eventRef}/evaluators/create 201", "GET /v1/event/{eventRef}/evaluators 200"],
+  ["PUT /v1/event/{eventRef}/evaluators/{evaluatorId} 200", "GET /v1/event/{eventRef}/evaluators 200"],
+  ["POST /v1/event/{eventRef}/fields/create 201", "GET /v1/event/{eventRef}/fields 200"],
+  ["PUT /v1/event/{eventRef}/fields/{fieldId} 200", "GET /v1/event/{eventRef}/fields 200"],
+  ["POST /v1/event/{eventRef}/tracks/create 201", "GET /v1/event/{eventRef}/tracks 200"],
+  ["PUT /v1/event/{eventRef}/tracks/{id} 200", "GET /v1/event/{eventRef}/tracks 200"],
+  ["POST /v1/event/{eventRef}/rooms/create 201", "GET /v1/event/{eventRef}/rooms 200"],
+  ["PUT /v1/event/{eventRef}/rooms/{id} 200", "GET /v1/event/{eventRef}/rooms 200"],
+  ["POST /v1/event/{eventRef}/tags/create 201", "GET /v1/event/{eventRef}/tags 200"],
+  ["PUT /v1/event/{eventRef}/tags/{id} 200", "GET /v1/event/{eventRef}/tags 200"],
+  ["POST /v1/event/{eventRef}/formats/create 201", "GET /v1/event/{eventRef}/formats 200"],
+  ["PUT /v1/event/{eventRef}/formats/{id} 200", "GET /v1/event/{eventRef}/formats 200"],
+  ["POST /v1/event/{eventRef}/levels/create 201", "GET /v1/event/{eventRef}/levels 200"],
+  ["PUT /v1/event/{eventRef}/levels/{id} 200", "GET /v1/event/{eventRef}/levels 200"],
+  ["POST /v1/event/{eventRef}/languages/create 201", "GET /v1/event/{eventRef}/languages 200"],
+  ["PUT /v1/event/{eventRef}/languages/{id} 200", "GET /v1/event/{eventRef}/languages 200"],
+  ["POST /v1/event/{eventRef}/statuses/create 201", "GET /v1/event/{eventRef}/statuses 200"],
+  ["PUT /v1/event/{eventRef}/statuses/{id} 200", "GET /v1/event/{eventRef}/statuses 200"],
+  [
+    "POST /v1/event/{eventRef}/statuses/{id}/restore 200",
+    "GET /v1/event/{eventRef}/statuses 200",
+  ],
+  [
+    "POST /v1/event/{eventRef}/sessions/{sessionId}/participants 201",
+    "GET /v1/event/{eventRef}/sessions/{sessionId}/participants 200",
+  ],
+  ["GET /v1/event/{eventRef}/speakers/{speakerId} 200", "GET /v1/event/{eventRef}/speakers 200"],
+  // The POST search forms return exactly what their GET list returns, so they
+  // copy the whole captured page rather than one row.
+  ["POST /v1/event/{eventRef}/sessions 200", "GET /v1/event/{eventRef}/sessions 200", "page"],
+  ["POST /v1/event/{eventRef}/speakers 200", "GET /v1/event/{eventRef}/speakers 200", "page"],
+  ["POST /v1/event/{eventRef}/fields 200", "GET /v1/event/{eventRef}/fields 200", "page"],
+  ["POST /v1/event/{eventRef}/tags 200", "GET /v1/event/{eventRef}/tags 200", "page"],
+  ["POST /v1/event/{eventRef}/tracks 200", "GET /v1/event/{eventRef}/tracks 200", "page"],
+  ["POST /v1/event/{eventRef}/rooms 200", "GET /v1/event/{eventRef}/rooms 200", "page"],
+  ["POST /v1/event/{eventRef}/formats 200", "GET /v1/event/{eventRef}/formats 200", "page"],
+  ["POST /v1/event/{eventRef}/levels 200", "GET /v1/event/{eventRef}/levels 200", "page"],
+  ["POST /v1/event/{eventRef}/languages 200", "GET /v1/event/{eventRef}/languages 200", "page"],
+  ["POST /v1/event/{eventRef}/statuses 200", "GET /v1/event/{eventRef}/statuses 200", "page"],
+  [
+    "POST /v1/event/{eventRef}/session-statuses 200",
+    "GET /v1/event/{eventRef}/session-statuses 200",
+    "page",
+  ],
+]
+
+const SESSION_FILE_EXAMPLE = {
+  id: "k67abc…",
+  url: "https://your-deployment.convex.site/api/storage/9f2c…",
+  title: "Keynote deck",
+  filename: "keynote-slides.pptx",
+  size: 18432000,
+  mimetype:
+    "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+  version: 2,
+  approval_status: "approved",
+  review_note: null,
+  session_id: "k17abc…",
+  assigned_participant_id: "k57abc…",
+  assigned_participant_email: "grace@example.com",
+  assigned_participant_name: "Grace Hopper",
+  created_at: "2026-08-09T14:22:07.311Z",
+  updated_at: "2026-08-09T14:22:07.311Z",
+}
+
+const WEBHOOK_EXAMPLE = {
+  id: "k77abc…",
+  url: "https://hooks.example.com/trackstage",
+  events: ["session.created", "session.updated", "decision.committed"],
+  description: "Programme mirror",
+  enabled: true,
+  event_id: "k97abc…",
+  secret_masked: "whsec_9c1f4…0513",
+  created_at: "2026-07-28T08:15:00.000Z",
+  updated_at: "2026-08-11T09:12:44.001Z",
+  last_delivery_at: "2026-08-11T09:12:45.220Z",
+  last_status: 200,
+}
+
+const WEBHOOK_DELIVERY_EXAMPLE = {
+  id: "k87abc…",
+  webhook_id: "k77abc…",
+  event: "session.updated",
+  status: "succeeded",
+  attempts: 1,
+  response_status: 200,
+  error: null,
+  payload:
+    '{"data":{"id":"k17abc…","title":"Designing agent workflows","sourceOfChange":"api"},"metadata":{"action":"session.updated","event_id":"k97abc…","version":"1"}}',
+  created_at: "2026-08-11T09:12:45.001Z",
+  delivered_at: "2026-08-11T09:12:45.220Z",
+}
+
+/** Examples we can write exactly, because their shape is fixed. */
+const STATIC_EXAMPLES = {
+  "POST /v1/event/{eventRef}/tasks/create 201": {
+    data: {
+      id: "k47abc…",
+      title: "Upload your slides",
+      instructions: "16:9, PDF or PPTX, under 50 MB please.",
+      kind: "upload",
+      due_at: "2026-09-01T17:00:00.000Z",
+      completed_at: null,
+      is_complete: false,
+      is_overdue: false,
+      speaker_id: "k57abc…",
+      speaker: { id: "k57abc…", full_name: "Grace Hopper", email: "grace@example.com" },
+      session_id: null,
+      session_title: null,
+      form_id: null,
+      created_at: "2026-08-11T09:12:44.001Z",
+    },
+    results: [{ id: "k47abc…", title: "Upload your slides", speaker_id: "k57abc…" }],
+    created: 2,
+  },
+  "POST /v1/event/{eventRef}/sessions/bulk 200": {
+    batch_id: "batch_9f2c…",
+    results: [
+      { index: 0, action: "create", status: "created", id: "k17ghi…" },
+      { index: 1, action: "update", status: "updated", id: "k17abc…" },
+      {
+        index: 2,
+        action: "delete",
+        status: "failed",
+        error: { code: "NotFoundError", message: "Session not found." },
+      },
+    ],
+    stats: { total: 3, succeeded: 2, failed: 1 },
+  },
+  "POST /v1/event/{eventRef}/sessions/{sessionId}/files 201": {
+    data: {
+      id: "k67abc…",
+      filename: "keynote-slides.pptx",
+      title: "Keynote deck (final)",
+      upload: {
+        url: "https://your-deployment.convex.site/v1/event/ai-summit-2026/sessions/k17abc…/files/k67abc…/bytes",
+        method: "PUT",
+        headers: {
+          "Content-Type":
+            "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+          Authorization: "Bearer <your API key>",
+        },
+      },
+    },
+  },
+  "PUT /v1/event/{eventRef}/sessions/{sessionId}/files/{fileId}/bytes 200": {
+    data: { id: "k67abc…", size: 184320000, received: true },
+  },
+  "POST /v1/_echo 200": {
+    received: true,
+    verified: true,
+    event: "session.updated",
+    delivery: "k87abc…",
+  },
+  "POST /v1/event/{eventRef}/sessions/status 200": {
+    data: [
+      {
+        id: "k17abc…",
+        friendly_id: "SESS-73041",
+        friendly_id_raw: 73041,
+        status: "accepted",
+        is_abstract: false,
+        deleted_at: null,
+        created_at: "2026-06-02T11:03:12.884Z",
+        updated_at: "2026-08-11T09:12:44.001Z",
+        subsessions: [],
+      },
+    ],
+    results: [
+      {
+        id: "k17abc…",
+        friendly_id: "SESS-73041",
+        friendly_id_raw: 73041,
+        status: "accepted",
+        is_abstract: false,
+        deleted_at: null,
+        created_at: "2026-06-02T11:03:12.884Z",
+        updated_at: "2026-08-11T09:12:44.001Z",
+        subsessions: [],
+      },
+    ],
+    pagination: {
+      currentPage: 1,
+      pageSize: 25,
+      totalPages: 1,
+      totalResults: 1,
+      current_page: 1,
+      page_size: 25,
+      total_pages: 1,
+      total_results: 1,
+    },
+  },
+  // Session files. The demo token cannot write, so these are written out
+  // rather than captured — the shapes are `SessionFile` verbatim.
+  "GET /v1/event/{eventRef}/sessions/{sessionId}/files 200": {
+    data: [SESSION_FILE_EXAMPLE],
+  },
+  "POST /v1/event/{eventRef}/sessions/{sessionId}/files/upload 201": {
+    data: SESSION_FILE_EXAMPLE,
+  },
+  "POST /v1/event/{eventRef}/sessions/{sessionId}/files/{fileId}/complete 201": {
+    data: SESSION_FILE_EXAMPLE,
+  },
+  "PUT /v1/event/{eventRef}/sessions/{sessionId}/files/{fileId} 200": {
+    data: { ...SESSION_FILE_EXAMPLE, title: "Keynote deck (final)" },
+  },
+  "POST /v1/event/{eventRef}/sessions/{sessionId}/files/{fileId}/replace 201": {
+    data: {
+      id: "k67def…",
+      replaces: "k67abc…",
+      upload: {
+        url: "https://your-deployment.convex.site/v1/event/ai-summit-2026/sessions/k17abc…/files/k67def…/bytes",
+        method: "PUT",
+        headers: {
+          "Content-Type":
+            "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+        },
+      },
+    },
+  },
+  // Webhooks. Not capturable either: they belong to a workspace, and the
+  // read-only demo token the generator authenticates with has none.
+  "GET /v1/webhooks 200": { data: [WEBHOOK_EXAMPLE], results: [WEBHOOK_EXAMPLE] },
+  "POST /v1/webhooks 201": {
+    data: {
+      ...WEBHOOK_EXAMPLE,
+      secret: "whsec_9c1f4a7e2b8d0356f1a9c4e7b2d80513",
+      secret_masked: "whsec_9c1f4…0513",
+    },
+  },
+  "GET /v1/webhooks/{webhookId} 200": {
+    data: { ...WEBHOOK_EXAMPLE, deliveries: [WEBHOOK_DELIVERY_EXAMPLE] },
+  },
+  "PUT /v1/webhooks/{webhookId} 200": { data: WEBHOOK_EXAMPLE },
+  "POST /v1/webhooks/{webhookId}/test 200": {
+    data: { delivery_id: "k87abc…", status: "queued" },
+  },
+  "POST /v1/webhooks/{webhookId}/rotate 200": {
+    data: {
+      ...WEBHOOK_EXAMPLE,
+      secret: "whsec_4e7b2d805139c1f4a7e2b8d0356f1a9c",
+      secret_masked: "whsec_4e7b2…1a9c",
+    },
+  },
+  "GET /v1/webhooks/{webhookId}/deliveries 200": {
+    data: [WEBHOOK_DELIVERY_EXAMPLE],
+    results: [WEBHOOK_DELIVERY_EXAMPLE],
+  },
+}
+
+/**
+ * Pulls every example back out of a previously generated spec, so a run
+ * without a deployment keeps the real ones instead of publishing a bare
+ * reference. The inverse of what buildSpec does with them.
+ */
+function harvestExamples(spec) {
+  const examples = {}
+  for (const [path, item] of Object.entries(spec.paths ?? {}))
+    for (const [method, operation] of Object.entries(item))
+      for (const [status, response] of Object.entries(operation.responses ?? {}))
+        for (const media of Object.values(response.content ?? {}))
+          if (media.example !== undefined)
+            examples[`${method.toUpperCase()} ${path} ${status}`] = media.example
+  const payload =
+    spec.webhooks?.delivery?.post?.requestBody?.content?.["application/json"]?.example
+  if (payload !== undefined) examples["WEBHOOK_PAYLOAD"] = payload
+  return examples
+}
+
+function deriveWriteExamples(examples) {
+  for (const [target, source, extra] of DERIVED_EXAMPLES) {
+    if (examples[target]) continue
+    const page = examples[source]
+    if (!page) continue
+    if (extra === "page") {
+      examples[target] = page
+      continue
+    }
+    const row = page?.data?.[0] ?? page?.results?.[0] ?? page?.data ?? null
+    if (!row || typeof row !== "object" || Array.isArray(row)) continue
+    examples[target] = { data: row, ...(extra ?? {}) }
+  }
+  for (const [key, value] of Object.entries(STATIC_EXAMPLES))
+    if (!examples[key]) examples[key] = value
   return examples
 }
 
@@ -1882,23 +3376,30 @@ async function main() {
   }
 
   // Reuse the examples already in the file unless we can capture fresh ones,
-  // so running without a deployment never strips the reference bare.
+  // so running without a deployment never strips the reference bare. They are
+  // harvested back out of the spec rather than kept in a duplicate block —
+  // the spec IS the store, which keeps the published file half the size.
   let examples = {}
   try {
-    const existing = JSON.parse(current)
-    examples = existing["x-captured-examples"] ?? {}
+    examples = harvestExamples(JSON.parse(current))
   } catch {
     /* first run */
   }
   if (siteUrl) {
     const captured = await captureExamples(siteUrl, token)
-    if (Object.keys(captured).length > 0) examples = captured
-    console.log(`· captured ${Object.keys(examples).length} live examples`)
+    // MERGE, never replace: a capture that came back short (a rate-limited
+    // run, an endpoint with no rows yet) must not strip examples the file
+    // already had. Fresh where we got it, kept everywhere else.
+    examples = { ...examples, ...captured }
+    console.log(
+      `· captured ${Object.keys(captured).length} live examples (${Object.keys(examples).length} total)`,
+    )
   }
+  // Writes return what their reads return, so their examples come from the
+  // captured rows rather than from a second, drifting set of fixtures.
+  examples = deriveWriteExamples(examples)
 
   const spec = buildSpec(routes, examples, siteUrl)
-  // Kept so a regeneration without a deployment reuses real examples.
-  spec["x-captured-examples"] = examples
   await mkdir(dirname(OUT), { recursive: true })
   await writeFile(OUT, `${JSON.stringify(spec, null, 2)}\n`)
   console.log(

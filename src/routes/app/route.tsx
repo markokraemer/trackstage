@@ -1,18 +1,13 @@
 import { useEffect } from "react"
-import {
-  Link,
-  Outlet,
-  createFileRoute,
-  useNavigate,
-} from "@tanstack/react-router"
+import { Link, Outlet, createFileRoute } from "@tanstack/react-router"
 import { useConvexMutation } from "@convex-dev/react-query"
 import { api } from "@convex/_generated/api"
 import {
+  RiAddLine,
   RiArrowDownSLine,
   RiBookOpenLine,
   RiBuilding2Line,
   RiCalendarScheduleLine,
-  RiCheckLine,
   RiCodeSSlashLine,
   RiDashboardLine,
   RiExternalLinkLine,
@@ -43,9 +38,6 @@ import {
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
-  DropdownMenuSub,
-  DropdownMenuSubContent,
-  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Logo } from "@/components/brand/logo"
@@ -55,29 +47,17 @@ import {
   CopilotTriggerButton,
 } from "@/components/copilot/copilot-panel"
 import { ShellEventSwitcher } from "@/components/shell/event-switcher"
-import { GlobalSearch } from "@/components/shell/global-search"
+import { RoutePrewarm } from "@/components/shell/route-prewarm"
 import {
-  AccountSettingsDialog,
-  isAccountSettingsTab,
-} from "@/components/shell/account-settings-dialog"
-import type { AccountSettingsTab } from "@/components/shell/account-settings-dialog"
+  WorkspaceMenuItems,
+  useWorkspaceSwitcher,
+} from "@/components/shell/workspace-switcher"
+import { NewWorkspaceDialog } from "@/components/workspace/new-workspace-dialog"
+import { GlobalSearch } from "@/components/shell/global-search"
 import { requireAuthed, useSession } from "@/lib/session"
 import { useCurrentEvent } from "@/lib/current-event"
 
-interface AppSearch {
-  /**
-   * Which account-settings tab is open, if any (undefined ⇒ dialog closed).
-   * Declared on this layout route rather than a leaf route so it survives
-   * navigation between `/app/*` pages and keeps the modal deep-linkable —
-   * e.g. `/app/submissions?account=api-mcp` opens the modal over Submissions.
-   */
-  account?: AccountSettingsTab
-}
-
 export const Route = createFileRoute("/app")({
-  validateSearch: (search: Record<string, unknown>): AppSearch => ({
-    account: isAccountSettingsTab(search.account) ? search.account : undefined,
-  }),
   beforeLoad: ({ context, location }) => {
     requireAuthed(context.isAuthenticated, location.href)
   },
@@ -142,27 +122,22 @@ const NAV_GROUPS: Array<NavGroup> = [
   },
 ]
 
+/** Every sidebar destination, warmed at idle (route-prewarm.tsx). */
+const PREWARM_ROUTES: ReadonlyArray<string> = NAV_GROUPS.flatMap((group) =>
+  group.items.map((item) => item.to),
+)
+
 function OrganizerLayout() {
   const navigate = Route.useNavigate()
-  const routerNavigate = useNavigate()
   const { session, status, signOut } = useSession()
-  const { account: accountTab } = Route.useSearch()
-
-  // `to: "."` = stay on the CURRENT page (submissions, agenda, …) and only
-  // touch the `account` search param — Route.useNavigate() would resolve a
-  // search-only update against `/app` and yank the user to the dashboard.
-  function openAccountSettings(tab: AccountSettingsTab) {
-    void routerNavigate({
-      to: ".",
-      search: (prev) => ({ ...prev, account: tab }),
-    })
-  }
-  function closeAccountSettings() {
-    void routerNavigate({
-      to: ".",
-      search: (prev) => ({ ...prev, account: undefined }),
-    })
-  }
+  // The server already resolved auth in the root route's `beforeLoad`, and
+  // `/app`'s own `beforeLoad` redirected everyone who failed it — so if this
+  // component is rendering at all, the visitor IS signed in. `useSession()`
+  // only knows that after its own `/api/auth/get-session` round trip, and
+  // gating the shell on it meant SSR emitted the skeleton and the browser
+  // held it for the length of that fetch: a full-screen skeleton on every
+  // cold load of a page we could have painted immediately.
+  const { isAuthenticated: authedOnServer } = Route.useRouteContext()
 
   // beforeLoad guards SSR + client navigations; this covers a session that
   // expires while the tab is open.
@@ -181,13 +156,18 @@ function OrganizerLayout() {
   }, [status, ensureWorkspace])
 
   // "Which event am I looking at?" is app-wide state (src/lib/current-event).
-  const { event, workspace, workspaces, selectWorkspace } = useCurrentEvent()
+  const { event, workspace } = useCurrentEvent()
+  // …and "which workspace?" switches from two places (sidebar picker + this
+  // avatar menu) through one hook, so both stay in step.
+  const { workspaceOptions, switchTo, creating, setCreating } =
+    useWorkspaceSwitcher()
 
-  if (status !== "authenticated") {
-    // Cold-load fallback while the session resolves: a shell-shaped skeleton
-    // (top bar + sidebar + content blocks) instead of a bare "Loading…" page,
-    // so the app appears to paint instantly (rule 26 — skeletons shaped like
-    // their content, never a spinner or a blank screen).
+  if (!authedOnServer && status !== "authenticated") {
+    // Only reachable when the server could not answer either — a session that
+    // expired in an open tab, or a client-side landing with no SSR context.
+    // A shell-shaped skeleton (top bar + sidebar + content blocks) rather than
+    // a bare "Loading…" page (rule 26 — skeletons shaped like their content,
+    // never a spinner or a blank screen).
     return (
       <div className="min-h-svh bg-background" aria-busy="true">
         <div className="container-app relative flex h-14 items-center gap-3 border-b border-border bg-card">
@@ -301,7 +281,9 @@ function OrganizerLayout() {
             >
               <Avatar className="size-6">
                 <AvatarFallback className="text-[10px]">
-                  {initials(session?.name || session?.email || "?")}
+                  {/* Empty, not "?", until the session lands: an empty circle
+                      filling in reads as loading; "?" → "DO" reads as a bug. */}
+                  {session ? initials(session.name || session.email) : ""}
                 </AvatarFallback>
               </Avatar>
               <RiArrowDownSLine
@@ -320,7 +302,8 @@ function OrganizerLayout() {
                   </span>
                 </DropdownMenuLabel>
                 <DropdownMenuItem
-                  onClick={() => openAccountSettings("profile")}
+                  nativeButton={false}
+                  render={<Link to="/app/account" />}
                 >
                   <RiUserSettingsLine aria-hidden />
                   Account settings
@@ -329,6 +312,14 @@ function OrganizerLayout() {
 
               <DropdownMenuSeparator />
 
+              {/*
+                Workspace section (Marko's avatar-menu screenshot): the
+                workspace you're in, its settings, and — because a user can
+                belong to several teams — every workspace you belong to, with
+                your role, switchable right here. Same store switch and same
+                rows as the sidebar picker
+                (src/components/shell/workspace-switcher.tsx).
+              */}
               <DropdownMenuGroup>
                 <DropdownMenuLabel className="text-muted-foreground">
                   {workspace?.name ?? "Workspace"}
@@ -340,33 +331,24 @@ function OrganizerLayout() {
                   <RiBuilding2Line aria-hidden />
                   Workspace settings
                 </DropdownMenuItem>
-                {workspaces.length > 1 ? (
-                  <DropdownMenuSub>
-                    <DropdownMenuSubTrigger>
-                      <RiArrowDownSLine aria-hidden className="-rotate-90" />
-                      Switch workspace
-                    </DropdownMenuSubTrigger>
-                    <DropdownMenuSubContent className="w-56">
-                      {workspaces.map((row) => (
-                        <DropdownMenuItem
-                          key={row.id}
-                          onClick={() => {
-                            if (!selectWorkspace(row.id)) {
-                              void navigate({ to: "/app/events" })
-                            }
-                          }}
-                        >
-                          <span className="min-w-0 flex-1 truncate">
-                            {row.name}
-                          </span>
-                          {row.id === workspace?.id ? (
-                            <RiCheckLine aria-hidden className="text-primary" />
-                          ) : null}
-                        </DropdownMenuItem>
-                      ))}
-                    </DropdownMenuSubContent>
-                  </DropdownMenuSub>
-                ) : null}
+              </DropdownMenuGroup>
+
+              <DropdownMenuSeparator />
+
+              <DropdownMenuGroup>
+                <DropdownMenuLabel>
+                  {workspaceOptions.length > 1
+                    ? "Switch workspace"
+                    : "Your workspaces"}
+                </DropdownMenuLabel>
+                <WorkspaceMenuItems
+                  workspaces={workspaceOptions}
+                  onSelect={switchTo}
+                />
+                <DropdownMenuItem onClick={() => setCreating(true)}>
+                  <RiAddLine aria-hidden />
+                  Create workspace
+                </DropdownMenuItem>
               </DropdownMenuGroup>
 
               <DropdownMenuSeparator />
@@ -439,15 +421,16 @@ function OrganizerLayout() {
       {/* Mounted at the shell so the conversation survives navigation. */}
       <CopilotPanel />
 
-      {/* Mounted at the shell (not a route) so it opens over whatever page
-          you were on — its tab lives in the URL via ?account=, above. */}
-      <AccountSettingsDialog
-        open={accountTab !== undefined}
-        tab={accountTab ?? "profile"}
-        onOpenChange={(nextOpen) => {
-          if (!nextOpen) closeAccountSettings()
-        }}
-        onTabChange={openAccountSettings}
+      {/* Every sidebar destination in memory before it is clicked. */}
+      <RoutePrewarm to={PREWARM_ROUTES} />
+
+      {/* Driven by the avatar menu's "Create workspace" — a dialog inside the
+          menu would unmount the moment the menu closes. */}
+      <NewWorkspaceDialog
+        hideTrigger
+        open={creating}
+        onOpenChange={setCreating}
+        onCreated={switchTo}
       />
     </div>
   )
