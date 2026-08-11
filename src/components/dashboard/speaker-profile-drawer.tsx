@@ -28,6 +28,7 @@ import {
 } from "@remixicon/react"
 import { toast } from "sonner"
 
+import { portalLinkFor } from "@/components/dashboard/app-routes"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button, buttonVariants } from "@/components/ui/button"
 import {
@@ -57,6 +58,8 @@ export interface SpeakerProfileDrawerProps {
   onOpenChange: (open: boolean) => void
   /** Whether this speaker currently appears on the public pages (CNT-12). */
   publicVisible?: boolean
+  /** Opens the assign-task dialog preselected to this person. */
+  onAssignTask?: (personId: Id<"people">) => void
 }
 
 export function SpeakerProfileDrawer({
@@ -64,6 +67,7 @@ export function SpeakerProfileDrawer({
   open,
   onOpenChange,
   publicVisible = true,
+  onAssignTask,
 }: SpeakerProfileDrawerProps) {
   // Renamed: `event` is the DOM event in every input handler below.
   const { event: currentEvent } = useCurrentEvent()
@@ -489,6 +493,33 @@ export function SpeakerProfileDrawer({
               <RiExternalLinkLine aria-hidden />
               Open their portal
             </a>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                void navigator.clipboard
+                  .writeText(portalLinkFor(speaker.portalToken))
+                  .then(() =>
+                    toast.success("Portal link copied", {
+                      description: `Send it to ${speaker.name} — it signs them straight in.`,
+                    }),
+                  )
+                  .catch(() => toast.error("Couldn't copy the link"))
+              }}
+            >
+              Copy portal link
+            </Button>
+            {onAssignTask ? (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => onAssignTask(speaker.personId)}
+              >
+                Assign a task
+              </Button>
+            ) : null}
             {speaker.missing.length > 0 ? (
               <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
                 <RiImageLine size={14} aria-hidden />

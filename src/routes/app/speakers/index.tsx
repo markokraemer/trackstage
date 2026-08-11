@@ -526,6 +526,10 @@ function SpeakersPage() {
       <SpeakerProfileDrawer
         speaker={editing}
         publicVisible={editing ? !hidden.has(String(editing.personId)) : true}
+        onAssignTask={(personId) => {
+          setEditing(null)
+          openAssign([personId])
+        }}
         open={editing !== null}
         onOpenChange={(next) => {
           if (!next) setEditing(null)

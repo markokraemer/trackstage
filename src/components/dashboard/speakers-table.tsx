@@ -174,8 +174,21 @@ export function SpeakersTable({
             return (
               <TableRow
                 key={id}
-                className="group"
+                className={onEditProfile ? "group cursor-pointer" : "group"}
                 data-state={selected.includes(id) ? "selected" : undefined}
+                onClick={(e) => {
+                  // The whole row opens the editor (Marko, 2026-08-11) — but
+                  // never when the click was really for a control inside it.
+                  if (!onEditProfile) return
+                  const target = e.target as HTMLElement
+                  if (
+                    target.closest(
+                      "button, a, input, label, [role='combobox'], [role='menu'], [role='menuitem'], [role='checkbox'], [role='listbox'], [role='option']",
+                    )
+                  )
+                    return
+                  onEditProfile(row)
+                }}
               >
                 <TableCell>
                   <Checkbox
