@@ -49,7 +49,21 @@ http.route({ path: "/mcp", method: "OPTIONS", handler: handleMcpOptions })
 // after a 401, which is what turns "add connector by URL" into a real login.
 const protectedResourceMetadata = httpAction(async (ctx, request) => {
   const auth = createAuth(ctx)
-  return await oAuthProtectedResourceMetadata(auth)(request)
+  const response = await oAuthProtectedResourceMetadata(auth)(request)
+  // better-auth's mcp() plugin advertises `<app>/api/auth/mcp/jwks`, a route it
+  // never registers (that path belongs to its jwt() plugin, which we don't
+  // mount). Point clients at the convex() plugin's live RS256 key set instead —
+  // the same set the app-origin authorization-server metadata advertises.
+  try {
+    const body = await response.json()
+    body.jwks_uri = `${process.env.CONVEX_SITE_URL}/api/auth/convex/jwks`
+    return new Response(JSON.stringify(body), {
+      status: response.status,
+      headers: response.headers,
+    })
+  } catch {
+    return response
+  }
 })
 
 http.route({
