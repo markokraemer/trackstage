@@ -76,7 +76,7 @@ export const forEntity = query({
         q
           .eq("eventId", args.eventId)
           .eq("entity", args.entity)
-          .eq("entityId", args.entityId),
+          .eq("entityId", args.entityId)
       )
       .order("desc")
       .take(limit)
@@ -120,7 +120,7 @@ export const feed = query({
       ctx.db
         .query("auditLog")
         .withIndex("by_eventId", (q) =>
-          q.eq("eventId", args.eventId).lt("_creationTime", before),
+          q.eq("eventId", args.eventId).lt("_creationTime", before)
         )
         .order("desc")
         .take(fetch),
@@ -130,7 +130,7 @@ export const feed = query({
             .withIndex("by_organizationId", (q) =>
               q
                 .eq("organizationId", event.organizationId!)
-                .lt("_creationTime", before),
+                .lt("_creationTime", before)
             )
             .order("desc")
             .take(fetch)
@@ -156,10 +156,14 @@ export const feed = query({
   },
 })
 
-function matchesFilter(row: Doc<"auditLog">, filter: string | undefined): boolean {
+function matchesFilter(
+  row: Doc<"auditLog">,
+  filter: string | undefined
+): boolean {
   if (!filter || filter === "all") return true
   // The review lens Marko asked for: everything a robot did, in one place.
-  if (filter === "agents") return row.actorType === "mcp" || row.actorType === "api"
+  if (filter === "agents")
+    return row.actorType === "mcp" || row.actorType === "api"
   return row.entity === filter
 }
 
@@ -183,32 +187,77 @@ export const recordMcpToolCall = internalMutation({
     userId: v.string(),
     tool: v.string(),
     keyPrefix: v.optional(v.string()),
+    /** Event id or slug, from the tool's own `event` argument. */
     eventRef: v.optional(v.string()),
+    /** The row the tool acted on, when it wasn't the event itself. */
+    subjectTable: v.optional(v.string()), // forms | submissions | people | tasks
+    subjectRef: v.optional(v.string()), // id, or slug for forms
     entity: v.string(),
-    entityId: v.optional(v.string()),
     summary: v.string(),
     meta: v.optional(v.record(v.string(), v.any())),
   },
   returns: v.null(),
   handler: async (ctx, args) => {
-    const eventId = await resolveEventRef(ctx, args.userId, args.eventRef)
-    const actor = {
-      type: "mcp" as const,
-      label: agentLabel("MCP", args.tool, args.keyPrefix ?? null),
-    }
+    const subject = await resolveSubject(
+      ctx,
+      args.subjectTable,
+      args.subjectRef
+    )
+    const eventId =
+      subject?.eventId ??
+      (await resolveEventRef(ctx, args.userId, args.eventRef))
+    // No resolvable event means no scope to file this under. Silence beats a
+    // row nobody can ever see — and beats failing a tool call that worked.
     if (!eventId) return null
     await record(ctx, {
       eventId,
       entity: args.entity as AuditEntity,
-      entityId: args.entityId ?? eventId,
+      entityId: subject?.id ?? eventId,
       action: args.tool,
       summary: args.summary,
       meta: args.meta,
-      actor,
+      actor: {
+        type: "mcp",
+        label: agentLabel("MCP", args.tool, args.keyPrefix ?? null),
+      },
     })
     return null
   },
 })
+
+/**
+ * The row an MCP tool acted on → its id and the event it belongs to. Forms
+ * are also addressable by slug (the tools accept either), everything else by
+ * id. Unresolvable refs return null and the caller falls back to the event.
+ */
+async function resolveSubject(
+  ctx: MutationCtx,
+  table: string | undefined,
+  ref: string | undefined
+): Promise<{ id: string; eventId: Id<"events"> } | null> {
+  if (!table || !ref) return null
+  try {
+    if (table === "forms") {
+      const id = ctx.db.normalizeId("forms", ref)
+      const form = id
+        ? await ctx.db.get(id)
+        : await ctx.db
+            .query("forms")
+            .withIndex("by_slug", (q) => q.eq("slug", ref))
+            .unique()
+      return form ? { id: form._id, eventId: form.eventId } : null
+    }
+    if (table === "submissions" || table === "people" || table === "tasks") {
+      const id = ctx.db.normalizeId(table, ref)
+      if (!id) return null
+      const doc = await ctx.db.get(id)
+      return doc ? { id: doc._id, eventId: doc.eventId } : null
+    }
+    return null
+  } catch {
+    return null
+  }
+}
 
 /**
  * One row per REST API write (convex/apiV1.ts). Same contract as the MCP one
@@ -216,21 +265,28 @@ export const recordMcpToolCall = internalMutation({
  */
 export const recordApiWrite = internalMutation({
   args: {
-    eventId: v.id("events"),
-    method: v.string(), // e.g. "POST /v1/event/{id}/sessions"
+    /** Event id or slug — the REST API addresses events by either. */
+    eventRef: v.string(),
+    /** e.g. "POST /v1/event/{event}/sessions/create". */
+    method: v.string(),
     credentialPrefix: v.optional(v.string()),
     entity: v.string(),
-    entityId: v.string(),
+    entityId: v.optional(v.string()),
     action: v.string(),
     summary: v.string(),
     meta: v.optional(v.record(v.string(), v.any())),
   },
   returns: v.null(),
   handler: async (ctx, args) => {
+    // Authorization already happened in convex/apiHttp.ts — this only runs
+    // after a write it permitted has committed, so it resolves without
+    // re-checking and stays silent when the event has vanished underneath it.
+    const eventId = await lookupEvent(ctx, args.eventRef)
+    if (!eventId) return null
     await record(ctx, {
-      eventId: args.eventId,
+      eventId,
       entity: args.entity as AuditEntity,
-      entityId: args.entityId,
+      entityId: args.entityId ?? eventId,
       action: args.action,
       summary: args.summary,
       meta: args.meta,
@@ -243,6 +299,23 @@ export const recordApiWrite = internalMutation({
   },
 })
 
+async function lookupEvent(
+  ctx: MutationCtx,
+  ref: string
+): Promise<Id<"events"> | null> {
+  try {
+    const direct = ctx.db.normalizeId("events", ref)
+    if (direct) return direct
+    const bySlug = await ctx.db
+      .query("events")
+      .withIndex("by_slug", (q) => q.eq("slug", ref))
+      .unique()
+    return bySlug?._id ?? null
+  } catch {
+    return null
+  }
+}
+
 /**
  * Convenience for callers that already hold a MutationCtx and an org id —
  * currently the API-key lifecycle in convex/apiKeys.ts.
@@ -250,7 +323,12 @@ export const recordApiWrite = internalMutation({
 export async function recordKeyEvent(
   ctx: MutationCtx,
   organizationId: Id<"organizations">,
-  input: { entityId: string; action: string; summary: string; meta?: Record<string, unknown> },
+  input: {
+    entityId: string
+    action: string
+    summary: string
+    meta?: Record<string, unknown>
+  }
 ): Promise<void> {
   await recordWorkspace(ctx, {
     organizationId,
@@ -267,7 +345,7 @@ export async function recordKeyEvent(
 async function resolveEventRef(
   ctx: MutationCtx,
   userId: string,
-  ref: string | undefined,
+  ref: string | undefined
 ): Promise<Id<"events"> | null> {
   if (!ref) return null
   try {

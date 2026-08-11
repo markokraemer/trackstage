@@ -773,3 +773,96 @@ hardcoded constants — an organizer cannot add a session format), and a webhook
 card (full backend, zero UI). Then P1: scheduling fields in the submission drawer, bulk
 edit beyond status, file rename/re-assign, organizer-side headshot upload, key scopes in
 the new-key dialog.
+
+## 2026-08-11 — Agenda drag-and-drop: one machine, four views, nothing that blinks
+
+Continued a half-finished pass (the previous agent had already landed
+`use-drag-machine.ts` plus edits across every agenda component and the keyboard e2e
+tests, and left the tree typecheck-clean). This session was therefore not "build it" but
+"drive it in a real browser until it feels finished" — which found three defects that
+only show up under a real pointer.
+
+### The one that mattered: a drag that crossed the tray died
+
+dnd-kit reports `over: null` the moment the pointer leaves every droppable. The machine
+stored *what you were holding* and *where it would land* in a single piece of state, so
+`over: null` erased both: the floating card vanished, the source card un-dimmed, the
+15-minute rules disappeared, and the drag read as broken — right next to the Not
+scheduled tray, which is exactly where an organizer parks a card mid-thought.
+
+The fix is structural and is now the load-bearing comment in the file: **the grab and the
+target are two different pieces of state.** `GrabState` lives for the whole gesture;
+`TargetState` is null off-grid. The ghost is allowed to disappear (nothing would land);
+the card in your hand is not. Off-grid the chip switches to a neutral
+"Move back over the grid to place it" rather than saying nothing.
+
+### Two more, both found by driving it
+
+- **Arrow keys went dead after overshooting the end of the day.** The clamp lived only in
+  the placement resolver, so the stored minutes ran past midnight and the next several
+  ArrowUps did nothing visible while the number unwound. The clamp now lives in `nudge`,
+  so every press is worth exactly one slot.
+- **Auto-scroll scrolled the page, not the grid.** dnd-kit's default `TraversalOrder`
+  walks scroll ancestors outermost-first. Carrying a session toward 6 PM slid the toolbar
+  away and left the grid where it was. `AGENDA_AUTO_SCROLL` now sets
+  `order: ReversedTreeOrder` — the time grid scrolls first, like every calendar.
+
+Also: the pointer chip flips to the other side of the cursor instead of running off the
+window edge; the keyboard chip sits *below* the ghost in the horizontal Rooms lanes so it
+never covers the lane the session came from; Rooms swimlanes gained the `data-slot`
+every other view already had, plus right-edge resize (time runs left→right there, so the
+right edge is the bottom edge) with the same snap, same duration chip, same Shift+arrow
+keyboard path.
+
+### What it does now, identically in Day / Week / Track / Rooms
+
+Ghost in the exact snapped slot at the session's real duration, in the column the drop
+would land in · floating card at reduced opacity following the pointer · live chip
+"10:15 AM – 11:00 AM · Workshop Room" in tabular-nums · client-side conflict pre-warning
+that turns ghost and chip red and *names* the clash ("Overlaps Evaluation harnesses for
+production LLMs in Workshop Room") without ever blocking the drop · 15-minute rules that
+fade in only while something is in the air · edge auto-scroll · optimistic write with a
+spring settle (reduced-motion respected) and revert+toast on server error · edge resize
+with a duration chip · full keyboard DnD (Enter grabs, arrows move slot/column, Enter
+drops, Esc cancels) with aria-live narration. Views differ only in their column mapping:
+rooms, days, tracks, lanes.
+
+### Verification
+
+Driven in a real browser with real pointer drags (Playwright, 1560×980, signed in as the
+demo organizer): screenshots of the clean ghost, the red conflict ghost + chip, the
+off-grid state, the settle, the keyboard grab, and all four views' ghosts. Auto-scroll
+measured, not assumed — the grid's own scroll container went 0 → 336 (its max) during a
+bottom-edge drag.
+
+`tests/e2e/flows/agenda.spec.ts` grew two tests additively, one per structural fix: "a
+drag that leaves the grid keeps the card in hand" and "arrow keys keep working after
+overshooting the end of the day". **9/9 agenda flows pass.** Typecheck and lint are clean
+across `src/components/agenda/**`, `src/routes/app/agenda/**` and the spec.
+
+`public/screenshots/agenda-flow.gif` recaptured (6 frames) — it now shows the real
+interaction language including the red conflict pre-warning frame. The marketing stills
+were recaptured in the same pass, after a `seed:setup` to clear e2e residue.
+
+**Note for whoever runs captures next:** the first attempt photographed an error page —
+another agent had `src/components/shell/event-switcher.tsx` mid-edit and the shell was
+throwing. Always eyeball one PNG before trusting a capture run on this shared dev server.
+
+## 2026-08-11 — Unique contacts + speaker-portal behaviour toggles (product-map deltas #9b, #6)
+
+Closed the silent-overwrite bug first: a co-speaker named on a second submission used to
+have their whole profile rewritten with whatever that submitter typed. `convex/submit.ts`
+now runs every participant through `profilePatch` — the submitter's own row still wins
+(they're typing their own details), but for an **existing contact** only fields that are
+still empty get filled, so a bio written in the portal, or by the first submission, stands.
+Then shipped the valuable subset of their per-portal Configuration as event settings:
+`events.portalSettings { alwaysShowTasks, allowSubmissionEdits, extendTaskDeadlines }`,
+all three defaulting to the permissive value in `convex/portal.ts` so an event that never
+opens the card behaves exactly as before. `portal.home` returns the resolved flags plus
+`tasksVisible` and a per-task `locked`, and the portal UI mirrors what the mutations
+enforce (Tasks tab hidden until a session is accepted, submissions read-only with "email
+the organizers" instead of a save that would fail, past-due tasks shown as closed). New
+`src/components/settings/portal-behavior-card.tsx` on Settings → Event details: three
+switches with plain-English on/off explainers that save instantly. 20 new suite checks in
+`scripts/verify-backend.mjs` (`Unique contacts`, `Speaker portal behaviour`), including
+"submit twice with different bios → the first one survives".

@@ -95,6 +95,56 @@ export const getForm = query({
   },
 })
 
+/**
+ * Profile fields a submission form may carry for a participant. Everything
+ * else on `people` (portal token, headshot, links, workflow status) belongs to
+ * the person and is never touched by someone else's submission.
+ */
+const PROFILE_FIELDS = [
+  "firstName",
+  "lastName",
+  "jobTitle",
+  "company",
+  "phone",
+  "bio",
+] as const
+type ProfileField = (typeof PROFILE_FIELDS)[number]
+type ProfileInput = Partial<Record<ProfileField, string | undefined>>
+
+const isBlank = (value: unknown): boolean =>
+  typeof value !== "string" || value.trim() === ""
+
+/**
+ * Unique Contact Settings, the correctness half (product map §2.2, delta #9).
+ *
+ * A contact who already has a profile OWNS it. When a *later* submission names
+ * the same co-speaker — a repeat speaker across two talks, a colleague guessing
+ * their bio — whatever the submitter typed may only fill fields that are still
+ * empty. It can never overwrite a value the speaker wrote in their portal (or
+ * an earlier, more complete submission wrote for them), which is exactly the
+ * silent-overwrite bug this closes.
+ *
+ * `mode: "own"` is the opposite case: a person editing their OWN row (the
+ * submitter's contact step, their own participant entry). That is their data,
+ * typed by them, so it wins — subject only to "never blank out", since the form
+ * may not have collected a field at all.
+ */
+function profilePatch(
+  person: Doc<"people">,
+  incoming: ProfileInput,
+  mode: "own" | "existing-contact",
+): ProfileInput {
+  const patch: ProfileInput = {}
+  for (const field of PROFILE_FIELDS) {
+    const value = incoming[field]?.trim()
+    if (!value) continue // never blank out what's already there
+    if (mode === "existing-contact" && !isBlank(person[field])) continue
+    if (person[field] === value) continue
+    patch[field] = value
+  }
+  return patch
+}
+
 async function getOrCreatePerson(
   ctx: MutationCtx,
   eventId: Id<"events">,
@@ -240,6 +290,8 @@ async function upsertParticipants(
     phone?: string
     bio?: string
   }>,
+  /** The signed-in submitter — the one participant row that is self-entered. */
+  submitterId: Id<"people">,
 ) {
   // Replace the participant set (used on draft update + final submit).
   const existing = await ctx.db
@@ -256,15 +308,22 @@ async function upsertParticipants(
       p.firstName,
       p.lastName,
     )
-    // Enrich profile with anything newly provided (never blank out).
-    await ctx.db.patch(person._id, {
-      firstName: p.firstName || person.firstName,
-      lastName: p.lastName || person.lastName,
-      jobTitle: p.jobTitle ?? person.jobTitle,
-      company: p.company ?? person.company,
-      phone: p.phone ?? person.phone,
-      bio: p.bio ?? person.bio,
-    })
+    // Fill the profile in, but never speak over the contact themselves: only
+    // the submitter's own row may change values that are already set (see
+    // `profilePatch`). Everyone else's is fill-the-blanks only.
+    const patch = profilePatch(
+      person,
+      {
+        firstName: p.firstName,
+        lastName: p.lastName,
+        jobTitle: p.jobTitle,
+        company: p.company,
+        phone: p.phone,
+        bio: p.bio,
+      },
+      person._id === submitterId ? "own" : "existing-contact",
+    )
+    if (Object.keys(patch).length > 0) await ctx.db.patch(person._id, patch)
     await ctx.db.insert("submissionParticipants", {
       submissionId,
       eventId: form.eventId,
@@ -332,7 +391,7 @@ export const saveDraft = mutation({
         ...fields,
       })
     }
-    await upsertParticipants(ctx, form, submissionId, args.participants)
+    await upsertParticipants(ctx, form, submissionId, args.participants, person._id)
     return { draftId: submissionId }
   },
 })
@@ -414,7 +473,7 @@ export const submit = mutation({
         ...fields,
       })
     }
-    await upsertParticipants(ctx, form, submissionId, args.participants)
+    await upsertParticipants(ctx, form, submissionId, args.participants, person._id)
 
     // ——— Side effects. None of these may lose the submission ———————————
     // The row is already written; a mail failure here must not roll the

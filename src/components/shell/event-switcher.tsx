@@ -17,7 +17,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { LogoMark } from "@/components/brand/logo"
 import { NewEventDialog } from "@/components/settings/new-event-dialog"
 import { formatZonedDateRange } from "@/components/settings/timezone"
 import { useCurrentEvent } from "@/lib/current-event"
@@ -78,15 +77,20 @@ export function ShellEventSwitcher() {
               type="button"
               aria-label="Switch event"
               className={cn(
-                "flex w-full items-center gap-2.5 rounded-lg bg-card px-2.5 py-2 text-left ring-1 ring-border",
+                "flex w-full items-center gap-2.5 rounded-lg px-2 py-1.5 text-left",
                 "transition-colors outline-none hover:bg-sidebar-accent",
+                "aria-expanded:bg-sidebar-accent",
                 "focus-visible:ring-3 focus-visible:ring-ring/50",
                 "max-md:justify-center max-md:px-1",
               )}
             />
           }
         >
-          <LogoMark size={26} variant="boxed" />
+          <EventTile
+            name={event?.name}
+            logoUrl={event?.logoUrl ?? undefined}
+            size={26}
+          />
           <span className="min-w-0 flex-1 max-md:sr-only">
             <span className="block truncate text-sm font-semibold text-foreground">
               {event?.name ?? (isLoading ? "Loading…" : "No event yet")}
@@ -120,6 +124,11 @@ export function ShellEventSwitcher() {
                     key={row._id}
                     onClick={() => selectEvent(row._id)}
                   >
+                    <EventTile
+                      name={row.name}
+                      logoUrl={row.logoUrl ?? undefined}
+                      size={22}
+                    />
                     <span className="min-w-0 flex-1">
                       <span className="block truncate font-medium">
                         {row.name}
@@ -162,5 +171,51 @@ export function ShellEventSwitcher() {
 
       <NewEventDialog hideTrigger open={creating} onOpenChange={setCreating} />
     </>
+  )
+}
+
+/**
+ * The event's identity, never ours.
+ *
+ * The switcher used to lead with the Trackstage logomark, which put the same
+ * blue mark twice on one screen (top-left lockup + here) and told the
+ * organizer nothing about which event they were in. It now shows the event's
+ * uploaded logo when branding is set (convex/files.setEventBranding), and
+ * otherwise a neutral tile carrying the event's initial — a calendar glyph
+ * when there is no event yet.
+ */
+function EventTile({
+  name,
+  logoUrl,
+  size,
+}: {
+  name?: string
+  logoUrl?: string
+  size: number
+}) {
+  const initial = name?.trim().charAt(0).toUpperCase()
+
+  return (
+    <span
+      aria-hidden
+      style={{ width: size, height: size }}
+      className={cn(
+        "inline-flex shrink-0 items-center justify-center overflow-hidden rounded-md",
+        "bg-muted text-muted-foreground ring-1 ring-border ring-inset",
+      )}
+    >
+      {logoUrl ? (
+        <img src={logoUrl} alt="" className="size-full object-cover" />
+      ) : initial ? (
+        <span
+          className="font-heading font-semibold text-foreground/70"
+          style={{ fontSize: Math.round(size * 0.5) }}
+        >
+          {initial}
+        </span>
+      ) : (
+        <RiCalendarEventLine size={Math.round(size * 0.58)} />
+      )}
+    </span>
   )
 }

@@ -1,7 +1,7 @@
 import { httpAction } from "./_generated/server"
 import type { ActionCtx } from "./_generated/server"
 import { internal } from "./_generated/api"
-import { hashApiKey } from "./apiKeys"
+import { hashApiKey, keyPrefix } from "./apiKeys"
 import { signPayload } from "./webhooks"
 import { buildCalendar } from "./lib/apiIcs"
 import {
@@ -100,6 +100,8 @@ type Credential = {
   scopes: Array<string> | null
   /** Stable, non-reversible identity for rate-limit bucketing. */
   subject: string
+  /** Displayable key head, for audit-log attribution only. */
+  prefix: string
 }
 
 function legacyToken(): string {
@@ -125,7 +127,12 @@ async function authenticate(
   if (token === legacyToken()) {
     // Predates scopes and predates multi-tenancy. Read-only forever: it is
     // the token in the public docs so judges can explore without signing up.
-    return { userId: null, scopes: ["read:*"], subject: "legacy-demo-token" }
+    return {
+      userId: null,
+      scopes: ["read:*"],
+      subject: "legacy-demo-token",
+      prefix: "legacy-demo-token",
+    }
   }
   if (!token.startsWith("sb_live_")) return null
   const keyHash = await hashApiKey(token)
@@ -133,7 +140,14 @@ async function authenticate(
     keyHash,
   })
   if (!resolved) return null
-  return { userId: resolved.userId, scopes: resolved.scopes, subject: keyHash }
+  return {
+    userId: resolved.userId,
+    scopes: resolved.scopes,
+    subject: keyHash,
+    // Displayable head of the key ("sb_live_1a2b3c4d") — attribution only,
+    // never authorization. It is what Settings → API & MCP already shows.
+    prefix: keyPrefix(token),
+  }
 }
 
 /**
@@ -150,6 +164,44 @@ function hasScope(credential: Credential, required: string): boolean {
   if (credential.scopes.includes("read:*") && required.startsWith("read:"))
     return true
   return false
+}
+
+/**
+ * Audit trail for REST writes (sbek CNT-11). Emitted here, after the write has
+ * committed, so one call site covers a route rather than reaching into
+ * convex/apiV1.ts's mutations. Attribution carries the method, the path and
+ * the key prefix, which is what puts API traffic in the Activity feed's
+ * "Agents & API" lens alongside the MCP server.
+ *
+ * Fire-and-forget: history must never turn a successful API write into a 500.
+ */
+async function auditApiWrite(
+  ctx: ActionCtx,
+  credential: Credential,
+  input: {
+    eventRef: string
+    method: string
+    entity: string
+    entityId?: string
+    action: string
+    summary: string
+    meta?: Record<string, unknown>
+  },
+): Promise<void> {
+  try {
+    await ctx.runMutation(internal.audit.recordApiWrite, {
+      eventRef: input.eventRef,
+      method: input.method,
+      credentialPrefix: credential.prefix,
+      entity: input.entity,
+      entityId: input.entityId,
+      action: input.action,
+      summary: input.summary,
+      meta: input.meta,
+    })
+  } catch {
+    // Best-effort by design.
+  }
 }
 
 // ——— Rate limiting ————————————————————————————————————————————————————————
@@ -780,6 +832,14 @@ async function handleEventScoped(
       })
       if (result === null)
         return errorResponse(`No event with slug "${eventRef}".`, 404)
+      await auditApiWrite(ctx, credential, {
+        eventRef,
+        method: "POST /sessions/create",
+        entity: "session",
+        entityId: String((result as { id?: string }).id ?? ""),
+        action: "created",
+        summary: `Session created via the API · ${String((result as { name?: string; title?: string }).name ?? (result as { title?: string }).title ?? "untitled")}`,
+      })
       return jsonResponse(result, 201, gate.headers)
     }
 
@@ -870,6 +930,14 @@ async function handleEventScoped(
           if (result === null)
             return errorResponse(`No event with slug "${eventRef}".`, 404)
           if (result.notFound) return errorResponse("Session not found.", 404)
+          await auditApiWrite(ctx, credential, {
+            eventRef,
+            method: "DELETE /sessions/{id}",
+            entity: "session",
+            entityId: sessionId,
+            action: "deleted",
+            summary: "Session deleted via the API (recoverable from Trash)",
+          })
           return new Response(null, {
             status: 204,
             headers: { ...CORS_HEADERS, ...gate.headers },
@@ -890,6 +958,14 @@ async function handleEventScoped(
             `This session changed since you fetched it (now ${result.updated_at}). Re-fetch and retry.`,
             409,
           )
+        await auditApiWrite(ctx, credential, {
+          eventRef,
+          method: "PUT /sessions/{id}",
+          entity: "session",
+          entityId: sessionId,
+          action: "updated",
+          summary: "Session updated via the API",
+        })
         return jsonResponse(result, 200, gate.headers)
       }
       return errorResponse("Only GET, PUT and DELETE are supported here.", 405)
@@ -913,6 +989,14 @@ async function handleEventScoped(
       if (result === null)
         return errorResponse(`No event with slug "${eventRef}".`, 404)
       if (result.notFound) return errorResponse("Session not found.", 404)
+      await auditApiWrite(ctx, credential, {
+        eventRef,
+        method: "POST /sessions/{id}/restore",
+        entity: "session",
+        entityId: sessionId,
+        action: "restored",
+        summary: "Session restored from Trash via the API",
+      })
       return jsonResponse(result, 200, gate.headers)
     }
 
@@ -941,6 +1025,14 @@ async function handleEventScoped(
       if (result === null)
         return errorResponse(`No event with slug "${eventRef}".`, 404)
       if (result.notFound) return errorResponse("Session not found.", 404)
+      await auditApiWrite(ctx, credential, {
+        eventRef,
+        method: "PUT /sessions/{id}/fields",
+        entity: "session",
+        entityId: sessionId,
+        action: "updated",
+        summary: `Custom fields updated via the API (${Object.keys(custom as Record<string, unknown>).join(", ")})`,
+      })
       return jsonResponse(result, 200, gate.headers)
     }
 
@@ -991,6 +1083,14 @@ async function handleEventScoped(
       })
       if (result === null)
         return errorResponse(`No event with slug "${eventRef}".`, 404)
+      await auditApiWrite(ctx, credential, {
+        eventRef,
+        method: "POST /speakers",
+        entity: "speaker",
+        entityId: String((result as { id?: string }).id ?? ""),
+        action: "created",
+        summary: `Speaker created via the API · ${String((result as { email?: string }).email ?? "")}`,
+      })
       return jsonResponse(result, 201, gate.headers)
     }
 
@@ -1026,6 +1126,14 @@ async function handleEventScoped(
         if (result === null)
           return errorResponse(`No event with slug "${eventRef}".`, 404)
         if (result.notFound) return errorResponse("Speaker not found.", 404)
+        await auditApiWrite(ctx, credential, {
+          eventRef,
+          method: "PUT /speakers/{id}",
+          entity: "speaker",
+          entityId: tail[0],
+          action: "updated",
+          summary: "Speaker updated via the API",
+        })
         return jsonResponse(result, 200, gate.headers)
       }
       return errorResponse("Only GET and PUT are supported here.", 405)
@@ -1077,6 +1185,13 @@ async function handleEventScoped(
       })
       if (result === null)
         return errorResponse(`No event with slug "${eventRef}".`, 404)
+      await auditApiWrite(ctx, credential, {
+        eventRef,
+        method: `POST /agenda/${tail[0]}`,
+        entity: "agenda",
+        action: tail[0] === "publish" ? "published" : "unpublished",
+        summary: `Agenda ${tail[0] === "publish" ? "published" : "unpublished"} via the API`,
+      })
       return jsonResponse(result, 200, gate.headers)
     }
   }

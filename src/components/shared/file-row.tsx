@@ -55,6 +55,11 @@ export interface FileRowProps {
   showStatus?: boolean
   /** Extra line under the filename — speaker name, submission title. */
   meta?: React.ReactNode
+  /**
+   * Full-width content under the row itself — the file's comment thread. It
+   * wraps onto its own line, so the row above keeps its single-line shape.
+   */
+  children?: React.ReactNode
   className?: string
 }
 
@@ -63,6 +68,7 @@ export function FileRow({
   actions,
   showStatus = true,
   meta,
+  children,
   className,
 }: FileRowProps) {
   const [downloading, setDownloading] = useState(false)
@@ -161,6 +167,8 @@ export function FileRow({
         ) : null}
         {actions}
       </span>
+
+      {children ? <div className="w-full basis-full">{children}</div> : null}
     </li>
   )
 }

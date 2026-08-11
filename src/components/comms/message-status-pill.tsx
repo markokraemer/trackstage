@@ -7,13 +7,17 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
-import { MESSAGE_STATUS_META } from "./constants"
+import { deliveryStateMeta, MESSAGE_STATUS_META } from "./constants"
 
 /**
  * Outbox status pill — the shared `StatusPill` with the message-delivery tone
  * map layered on top (docs/SPEC.md §4.9): Sent green · Preview blue ·
  * Scheduled amber · Failed red. Failures carry the provider error in a tooltip
  * so an organizer never has to guess why an email did not land.
+ *
+ * When a delivery receipt has come back (`providerStatus`, product-map delta
+ * #7) the pill upgrades itself — "Sent" becomes "Delivered", "Bounced",
+ * "Opened" — because that is the thing the organizer actually wanted to know.
  */
 
 /** Tone overrides for statuses the shared pill does not know about. */
@@ -30,6 +34,8 @@ export interface MessageStatusPillProps {
   status: string
   /** Provider error, shown in a tooltip on failed messages. */
   error?: string
+  /** Resend's latest event, once a delivery receipt has been fetched. */
+  providerStatus?: string
   size?: "sm" | "default"
   className?: string
 }
@@ -37,20 +43,28 @@ export interface MessageStatusPillProps {
 export function MessageStatusPill({
   status,
   error,
+  providerStatus,
   size = "default",
   className,
 }: MessageStatusPillProps) {
+  // A receipt beats a hand-off: once the provider tells us what happened, say
+  // that instead of "Sent".
+  const delivery = status === "sent" ? deliveryStateMeta(providerStatus) : undefined
   const meta = MESSAGE_STATUS_META[status]
+  const toneKey = delivery ? delivery.tone : status
   const pill = (
     <StatusPill
-      status={status}
-      label={meta?.label}
+      status={toneKey}
+      label={delivery?.label ?? meta?.label}
       size={size}
-      className={cn(TONE_OVERRIDE[status], className)}
+      className={cn(TONE_OVERRIDE[toneKey], className)}
     />
   )
 
-  const tip = status === "failed" && error ? error : meta?.help
+  const tip =
+    status === "failed" && error
+      ? error
+      : (delivery?.help ?? meta?.help)
   if (!tip) return pill
 
   return (

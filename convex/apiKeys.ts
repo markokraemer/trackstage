@@ -1,6 +1,7 @@
 import { v } from "convex/values"
 import { mutation, query } from "./_generated/server"
 import { requireUser } from "./lib/auth"
+import { recordForUserWorkspaces } from "./lib/audit"
 
 // ————————————————————————————————————————————————————————————————————————
 // Personal API keys — the credential for the MCP server (convex/mcp.ts) and
@@ -86,6 +87,17 @@ export const ensureCopilotKey = mutation({
       kind: COPILOT_KIND,
       secret: key,
     })
+    // Even the copilot's own loopback key is logged: every AI action in this
+    // workspace is about to be attributed to it, so its creation belongs in
+    // the record (Marko, HISTORY 61 addendum — agent credentials are
+    // first-class audit events).
+    await recordForUserWorkspaces(ctx, user.userId, {
+      entity: "api-key",
+      entityId: keyPrefix(key),
+      action: "created",
+      summary: `AI copilot key ${keyPrefix(key)}… minted`,
+      meta: { name: COPILOT_KEY_NAME, kind: COPILOT_KIND },
+    })
     return { key }
   },
 })
@@ -152,6 +164,13 @@ export const create = mutation({
       createdAt: Date.now(),
       scopes,
     })
+    await recordForUserWorkspaces(ctx, user.userId, {
+      entity: "api-key",
+      entityId: keyPrefix(key),
+      action: "created",
+      summary: `API key ${keyPrefix(key)}… created (“${name}”)`,
+      meta: { name, scopes: scopes ?? "unrestricted" },
+    })
     // The only time the plaintext key ever leaves the server.
     return { keyId, key, prefix: keyPrefix(key), name, scopes: scopes ?? null }
   },
@@ -201,6 +220,13 @@ export const revoke = mutation({
     // else — no probing another user's key ids.
     if (!row || row.userId !== user.userId) throw new Error("Key not found.")
     await ctx.db.delete(args.keyId)
+    await recordForUserWorkspaces(ctx, user.userId, {
+      entity: "api-key",
+      entityId: row.prefix,
+      action: "revoked",
+      summary: `API key ${row.prefix}… revoked (“${row.name}”)`,
+      meta: { name: row.name, lastUsedAt: row.lastUsedAt ?? "never" },
+    })
     return null
   },
 })

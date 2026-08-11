@@ -17,6 +17,13 @@
 // Overlap is harmless: every write is a PATCH upsert keyed on our own
 // "Trackstage ID" column, so the same run twice is the same result.
 //
+// EXPERIMENTAL TWO-WAY (HISTORY.md 61): opt-in per connection. When on, each
+// sync also PULLS the Status column back — one field, enum-validated, guarded
+// against echo loops by the status we last pushed, and our DB wins every
+// genuine conflict (the losing Airtable edit is written to the audit log, not
+// swallowed). The guard itself is pure and unit-tested in
+// convex/lib/airtableInbound.ts + tests/unit/airtable-sync.test.ts.
+//
 // DEMO MODE: with AIRTABLE_DEMO_MODE=1 on the deployment, `connect` skips
 // live validation and `syncEvent` counts rows without talking to Airtable.
 // That exists because the integration must be demo-able (and verifiable in
@@ -26,7 +33,7 @@
 import { v } from "convex/values"
 import { internal } from "./_generated/api"
 import type { Doc, Id } from "./_generated/dataModel"
-import type { MutationCtx, QueryCtx } from "./_generated/server"
+import type { ActionCtx, MutationCtx, QueryCtx } from "./_generated/server"
 import {
   action,
   internalAction,
@@ -40,6 +47,7 @@ import { siteUrl } from "./lib/email"
 import {
   AirtableClient,
   AirtableError,
+  EXTERNAL_ID_FIELD,
   TABLE_KEYS,
   TABLE_NAMES,
   ensureTables,
@@ -50,6 +58,15 @@ import {
   validateCredentials,
 } from "./lib/airtable"
 import type { AirtableRecordPayload } from "./lib/airtable"
+import {
+  INBOUND_REASON_TEXT,
+  emptySummary,
+  modifiedSinceFormula,
+  shouldApplyInbound,
+  tally,
+} from "./lib/airtableInbound"
+import type { InboundSummary } from "./lib/airtableInbound"
+import { record as recordAudit } from "./lib/audit"
 
 /** How long we let writes settle before the on-write sync fires. */
 const SYNC_DEBOUNCE_MS = 5_000
@@ -103,7 +120,17 @@ export const status = query({
       lastError: v.union(v.string(), v.null()),
       recordCounts: v.union(countsValidator, v.null()),
       tables: v.array(v.string()),
-    }),
+      twoWaySync: v.boolean(),
+      inbound: v.union(
+        v.object({
+          at: v.number(),
+          applied: v.number(),
+          skipped: v.number(),
+          conflicts: v.number(),
+        }),
+        v.null()
+      ),
+    })
   ),
   handler: async (ctx, args) => {
     await requireEventAccess(ctx, args.eventId)
@@ -120,6 +147,8 @@ export const status = query({
       lastError: connection.lastError ?? null,
       recordCounts: connection.recordCounts ?? null,
       tables: TABLE_KEYS.map((key) => TABLE_NAMES[key]),
+      twoWaySync: connection.twoWaySync === true,
+      inbound: connection.inbound ?? null,
     }
   },
 })
@@ -201,6 +230,40 @@ export const disconnect = mutation({
   },
 })
 
+/**
+ * Turn the experimental inbound sync on or off (admin only — it is the one
+ * switch that lets an outside system change programme data).
+ *
+ * Turning it ON does not immediately pull: the first push after this writes
+ * the per-record baseline (`lastPushedStatus`), and only once a row has a
+ * baseline can an Airtable edit be told apart from our own echo. So the
+ * honest sequence is switch on → next sync mirrors out → edits in Airtable
+ * come back from the sync after that.
+ */
+export const setTwoWaySync = mutation({
+  args: { eventId: v.id("events"), enabled: v.boolean() },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    await requireEventAccess(ctx, args.eventId, "admin")
+    const connection = await connectionQuery(ctx, args.eventId)
+    if (!connection) throw new Error("Airtable isn't connected for this event.")
+    await ctx.db.patch(connection._id, { twoWaySync: args.enabled })
+    await recordAudit(ctx, {
+      eventId: args.eventId,
+      entity: "settings",
+      entityId: args.eventId,
+      action: "updated",
+      summary: `Airtable two-way sync turned ${args.enabled ? "on" : "off"}`,
+      meta: { twoWaySync: args.enabled, baseId: connection.baseId },
+    })
+    // Re-mirror straight away so every row has a baseline to compare against.
+    await ctx.scheduler.runAfter(0, internal.airtable.syncEvent, {
+      eventId: args.eventId,
+    })
+    return null
+  },
+})
+
 /** "Sync now" — any member can ask for a refresh; the work happens async. */
 export const syncNow = mutation({
   args: { eventId: v.id("events") },
@@ -230,7 +293,7 @@ export const syncNow = mutation({
  */
 export async function scheduleAirtableSync(
   ctx: MutationCtx,
-  eventId: Id<"events">,
+  eventId: Id<"events">
 ): Promise<void> {
   const connection = await connectionQuery(ctx, eventId)
   if (!connection || connection.syncScheduled) return
@@ -311,7 +374,9 @@ export const finishSync = internalMutation({
     await ctx.db.patch(connection._id, {
       status: args.error ? "error" : "connected",
       lastError: args.error,
-      ...(args.counts ? { recordCounts: args.counts, lastSyncAt: Date.now() } : {}),
+      ...(args.counts
+        ? { recordCounts: args.counts, lastSyncAt: Date.now() }
+        : {}),
     })
     return null
   },
@@ -326,7 +391,7 @@ const payloadValidator = v.union(
     submissions: v.array(v.any()),
     speakers: v.array(v.any()),
     sessions: v.array(v.any()),
-  }),
+  })
 )
 
 /**
@@ -407,7 +472,9 @@ export const syncPayload = internalQuery({
         title: submission.title,
         status: submission.status,
         kind: submission.kind,
-        track: submission.trackId ? trackName.get(submission.trackId) : undefined,
+        track: submission.trackId
+          ? trackName.get(submission.trackId)
+          : undefined,
         format: submission.format,
         level: submission.level,
         language: submission.language,
@@ -416,7 +483,9 @@ export const syncPayload = internalQuery({
         speakerEmails: roster.map((person) => person.email),
         submitterEmail: peopleById.get(submission.submitterId)?.email,
         description: submission.description,
-        formName: submission.formId ? formName.get(submission.formId) : undefined,
+        formName: submission.formId
+          ? formName.get(submission.formId)
+          : undefined,
         submittedAt: submission._creationTime,
         decidedAt: submission.decidedAt,
         link: `${base}/app/submissions/${submission._id}`,
@@ -428,7 +497,9 @@ export const syncPayload = internalQuery({
       .map((submission) => ({
         id: submission._id,
         title: submission.title,
-        track: submission.trackId ? trackName.get(submission.trackId) : undefined,
+        track: submission.trackId
+          ? trackName.get(submission.trackId)
+          : undefined,
         room: submission.roomId ? roomName.get(submission.roomId) : undefined,
         startsAt: submission.startsAt as number,
         durationMinutes: submission.durationMinutes,
@@ -444,9 +515,15 @@ export const syncPayload = internalQuery({
       for (const person of speakersOf(submission)) {
         if (seen.has(person._id)) continue
         seen.add(person._id)
-        submissionCount.set(person._id, (submissionCount.get(person._id) ?? 0) + 1)
+        submissionCount.set(
+          person._id,
+          (submissionCount.get(person._id) ?? 0) + 1
+        )
         if (submission.status === "accepted") {
-          acceptedCount.set(person._id, (acceptedCount.get(person._id) ?? 0) + 1)
+          acceptedCount.set(
+            person._id,
+            (acceptedCount.get(person._id) ?? 0) + 1
+          )
         }
       }
     }
@@ -480,6 +557,285 @@ export const syncPayload = internalQuery({
   },
 })
 
+// ——— Two-way sync: state, pull, apply ————————————————————————————————————
+
+/** Records the mirror baseline in batches the transaction can comfortably hold. */
+const STATE_BATCH = 200
+
+const recordStateRow = v.object({
+  submissionId: v.id("submissions"),
+  status: v.string(),
+})
+
+/**
+ * Remember what we just wrote into Airtable. This is the ENTIRE loop guard:
+ * with it, an inbound value that equals the baseline is our own echo, and a
+ * local status that differs from the baseline means the organizer changed it
+ * here since the mirror was written (so we win).
+ *
+ * Written for every connection, not just two-way ones, so flipping the switch
+ * on doesn't need a special backfill — the baseline is already there.
+ */
+export const recordPushedStatuses = internalMutation({
+  args: { eventId: v.id("events"), rows: v.array(recordStateRow) },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const now = Date.now()
+    for (const row of args.rows) {
+      const existing = await ctx.db
+        .query("airtableRecordSync")
+        .withIndex("by_submissionId", (q) =>
+          q.eq("submissionId", row.submissionId)
+        )
+        .unique()
+      if (existing) {
+        if (existing.lastPushedStatus === row.status) continue
+        await ctx.db.patch(existing._id, {
+          lastPushedStatus: row.status,
+          lastPushedAt: now,
+        })
+      } else {
+        await ctx.db.insert("airtableRecordSync", {
+          eventId: args.eventId,
+          submissionId: row.submissionId,
+          lastPushedStatus: row.status,
+          lastPushedAt: now,
+        })
+      }
+    }
+    return null
+  },
+})
+
+/** Credentials + cursor for one pull. Null when there is nothing to pull. */
+export const pullContext = internalQuery({
+  args: { eventId: v.id("events") },
+  returns: v.union(
+    v.null(),
+    v.object({
+      token: v.string(),
+      baseId: v.string(),
+      demo: v.boolean(),
+      lastSyncAt: v.union(v.number(), v.null()),
+    })
+  ),
+  handler: async (ctx, args) => {
+    const connection = await connectionQuery(ctx, args.eventId)
+    if (!connection || connection.twoWaySync !== true) return null
+    return {
+      token: connection.token,
+      baseId: connection.baseId,
+      demo: connection.demo === true,
+      lastSyncAt: connection.lastSyncAt ?? null,
+    }
+  },
+})
+
+const inboundRecord = v.object({
+  /** Our own document id, from the "Trackstage ID" column. */
+  externalId: v.string(),
+  /** The raw Airtable "Status" cell. */
+  status: v.optional(v.string()),
+  modifiedTime: v.optional(v.string()),
+})
+
+const inboundSummaryValidator = v.object({
+  applied: v.number(),
+  skipped: v.number(),
+  conflicts: v.number(),
+})
+
+/**
+ * Apply one batch of Airtable rows, guarded.
+ *
+ * Public-ish surface note: this is INTERNAL and takes rows as data, which is
+ * exactly what lets the verify suite exercise the real guard logic (and the
+ * state-table roundtrip) in demo mode without an Airtable account.
+ *
+ * Nothing here patches `status` directly — it calls submissions.setStatus's
+ * internal twin, so an inbound change fires the same webhook and writes the
+ * same audit row as a click in the UI, attributed to Airtable.
+ */
+export const applyInbound = internalMutation({
+  args: { eventId: v.id("events"), records: v.array(inboundRecord) },
+  returns: inboundSummaryValidator,
+  handler: async (ctx, args) => {
+    let summary: InboundSummary = emptySummary()
+    const now = Date.now()
+
+    for (const row of args.records) {
+      const submissionId = ctx.db.normalizeId("submissions", row.externalId)
+      if (!submissionId) {
+        // A row created by hand in Airtable, or one belonging to another
+        // deployment. We never create submissions from a spreadsheet.
+        summary = tally(summary, "unknown_status")
+        continue
+      }
+      const submission = await ctx.db.get(submissionId)
+      // Cross-event isolation: an id from a different event's base must not
+      // be reachable through this connection.
+      if (!submission || submission.eventId !== args.eventId) {
+        summary = tally(summary, "unknown_status")
+        continue
+      }
+
+      const state = await ctx.db
+        .query("airtableRecordSync")
+        .withIndex("by_submissionId", (q) => q.eq("submissionId", submissionId))
+        .unique()
+
+      const decision = shouldApplyInbound({
+        airtableValue: row.status,
+        currentStatus: submission.status,
+        lastPushedStatus: state?.lastPushedStatus ?? null,
+      })
+      summary = tally(summary, decision.reason)
+
+      if (decision.reason === "conflict") {
+        // The overruled edit is recorded rather than silently dropped — an
+        // organizer who triaged in Airtable and lost deserves to see why.
+        await recordAudit(ctx, {
+          eventId: args.eventId,
+          entity: submission.kind === "session" ? "session" : "submission",
+          entityId: submissionId,
+          action: "sync_conflict",
+          summary: `Airtable said “${decision.airtableStatus}” but this changed in Trackstage — Trackstage wins · ${submission.title}`,
+          meta: {
+            airtableStatus: decision.airtableStatus ?? "",
+            currentStatus: submission.status,
+            lastPushedStatus: state?.lastPushedStatus ?? "none",
+            reason: INBOUND_REASON_TEXT.conflict,
+          },
+          actor: { type: "system", label: "Airtable sync" },
+        })
+        continue
+      }
+
+      if (!decision.apply) continue
+
+      await ctx.runMutation(internal.submissions.setStatusInternal, {
+        submissionId,
+        status: decision.status,
+        actorType: "system",
+        actorLabel: "Airtable sync",
+      })
+
+      // The mirror and our row now agree, so the baseline moves with them —
+      // otherwise the very next pull would read this as a fresh conflict.
+      const patch = {
+        lastPushedStatus: decision.status,
+        lastPulledStatus: decision.status,
+        lastPulledAt: now,
+        lastPulledModifiedTime: row.modifiedTime,
+      }
+      if (state) await ctx.db.patch(state._id, patch)
+      else {
+        await ctx.db.insert("airtableRecordSync", {
+          eventId: args.eventId,
+          submissionId,
+          ...patch,
+        })
+      }
+    }
+
+    return summary
+  },
+})
+
+/** Stores the pull outcome so the Integrations card can report it. */
+export const finishPull = internalMutation({
+  args: { eventId: v.id("events"), summary: inboundSummaryValidator },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const connection = await connectionQuery(ctx, args.eventId)
+    if (!connection) return null
+    await ctx.db.patch(connection._id, {
+      inbound: { at: Date.now(), ...args.summary },
+    })
+    return null
+  },
+})
+
+/**
+ * The inbound half of one sync run. Only ever scheduled by `syncEvent`, and
+ * only when the connection has `twoWaySync` on — so the 5-minute cron pulls
+ * exactly for the events that asked for it and nobody else pays for it.
+ *
+ * Reads are narrowed twice: to two columns, and (when we have a cursor) to
+ * records Airtable says changed since our last sync.
+ */
+export const pullEvent = internalAction({
+  args: { eventId: v.id("events") },
+  returns: inboundSummaryValidator,
+  handler: async (ctx, args) => await pullCore(ctx, args.eventId),
+})
+
+/**
+ * The pull itself as a plain function, so `syncEvent` runs it inline instead
+ * of paying for a nested action call (the two never cross runtimes).
+ */
+async function pullCore(
+  ctx: ActionCtx,
+  eventId: Id<"events">
+): Promise<InboundSummary> {
+  const context = await ctx.runQuery(internal.airtable.pullContext, {
+    eventId,
+  })
+  if (!context) return emptySummary()
+  // Demo mode never talks to Airtable; the suite drives `applyInbound`
+  // directly with fabricated rows to exercise the same guards.
+  if (context.demo || demoMode()) return emptySummary()
+
+  const client = new AirtableClient(context.token, context.baseId)
+  let records: Array<{ id: string; fields: Record<string, unknown> }>
+  try {
+    records = await client.listRecords(TABLE_NAMES.submissions, {
+      fields: [EXTERNAL_ID_FIELD, "Status"],
+      filterByFormula: modifiedSinceFormula(context.lastSyncAt),
+      maxRecords: MAX_ROWS,
+    })
+  } catch (error) {
+    const message =
+      error instanceof AirtableError
+        ? error.message
+        : `Couldn't read changes back from Airtable: ${error instanceof Error ? error.message : String(error)}`
+    await ctx.runMutation(internal.airtable.finishSync, {
+      eventId,
+      error: message,
+    })
+    return emptySummary()
+  }
+
+  const candidates = records
+    .map((record) => ({
+      externalId: String(record.fields[EXTERNAL_ID_FIELD] ?? "").trim(),
+      status:
+        typeof record.fields.Status === "string"
+          ? record.fields.Status
+          : undefined,
+    }))
+    .filter((row) => row.externalId.length > 0)
+
+  let summary = emptySummary()
+  for (let i = 0; i < candidates.length; i += STATE_BATCH) {
+    const batch = await ctx.runMutation(internal.airtable.applyInbound, {
+      eventId,
+      records: candidates.slice(i, i + STATE_BATCH),
+    })
+    summary = {
+      applied: summary.applied + batch.applied,
+      skipped: summary.skipped + batch.skipped,
+      conflicts: summary.conflicts + batch.conflicts,
+    }
+  }
+
+  await ctx.runMutation(internal.airtable.finishPull, {
+    eventId,
+    summary,
+  })
+  return summary
+}
+
 /**
  * The sync itself. Idempotent by construction (PATCH upsert on
  * "Trackstage ID"), so it is safe to run concurrently with itself — which
@@ -492,7 +848,9 @@ export const syncEvent = internalAction({
   args: { eventId: v.id("events") },
   returns: v.null(),
   handler: async (ctx, args) => {
-    await ctx.runMutation(internal.airtable.beginSync, { eventId: args.eventId })
+    await ctx.runMutation(internal.airtable.beginSync, {
+      eventId: args.eventId,
+    })
 
     const payload = await ctx.runQuery(internal.airtable.syncPayload, {
       eventId: args.eventId,
@@ -505,14 +863,26 @@ export const syncEvent = internalAction({
       sessions: payload.sessions.length,
     }
 
+    // The mirror baseline every inbound comparison depends on. Recorded for
+    // the demo path too, so the toggle and the state table are exercisable
+    // (and verifiable) without an Airtable account.
+    const statusRows = payload.submissions
+      .map((row) => ({
+        submissionId: row.id as Id<"submissions">,
+        status: String(row.status),
+      }))
+      .slice(0, MAX_ROWS)
+
     if (payload.demo || demoMode()) {
       // Nothing leaves the deployment: the mirror is simulated so the UI,
       // the cron and the verify suite are all exercisable without an
       // Airtable account.
+      await recordPushed(ctx, args.eventId, statusRows)
       await ctx.runMutation(internal.airtable.finishSync, {
         eventId: args.eventId,
         counts,
       })
+      await maybePull(ctx, args.eventId)
       return null
     }
 
@@ -549,13 +919,41 @@ export const syncEvent = internalAction({
       return null
     }
 
+    await recordPushed(ctx, args.eventId, statusRows)
     await ctx.runMutation(internal.airtable.finishSync, {
       eventId: args.eventId,
       counts,
     })
+    // PUSH THEN PULL, always in that order: the push refreshes the baseline,
+    // so the pull that follows can tell an organizer's Airtable edit from the
+    // value we just wrote there ourselves.
+    await maybePull(ctx, args.eventId)
     return null
   },
 })
+
+/** Baseline write, chunked to stay well inside one transaction each. */
+async function recordPushed(
+  ctx: ActionCtx,
+  eventId: Id<"events">,
+  rows: Array<{ submissionId: Id<"submissions">; status: string }>
+): Promise<void> {
+  for (let i = 0; i < rows.length; i += STATE_BATCH) {
+    await ctx.runMutation(internal.airtable.recordPushedStatuses, {
+      eventId,
+      rows: rows.slice(i, i + STATE_BATCH),
+    })
+  }
+}
+
+/**
+ * Runs the inbound half when — and only when — the connection opted in.
+ * `pullEvent` re-checks the flag itself, so this is a cheap guard rather than
+ * the security boundary.
+ */
+async function maybePull(ctx: ActionCtx, eventId: Id<"events">): Promise<void> {
+  await pullCore(ctx, eventId)
+}
 
 /**
  * Cron entry point (every 5 minutes). Catches everything the on-write hook

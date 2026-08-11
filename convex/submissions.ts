@@ -78,7 +78,9 @@ export const list = query({
           .order("desc")
           .collect()
 
-    let filtered = rows
+    // Soft-deleted rows (`remove` below, and DELETE /sessions/{id}) are gone
+    // from every organizer listing — they live on only in the Trash view.
+    let filtered = rows.filter((s) => s.deletedAt === undefined)
     if (args.trackId) filtered = filtered.filter((s) => s.trackId === args.trackId)
     const joined = await Promise.all(filtered.map((s) => withJoins(ctx, s)))
     if (args.search) {
@@ -102,11 +104,15 @@ export const counts = query({
   args: { eventId: v.id("events") },
   handler: async (ctx, args) => {
     await requireEventAccess(ctx, args.eventId)
-    const rows = await ctx.db
+    const all = await ctx.db
       .query("submissions")
       .withIndex("by_eventId", (q) => q.eq("eventId", args.eventId))
       .collect()
-    const result: Record<string, number> = { all: rows.length }
+    const rows = all.filter((s) => s.deletedAt === undefined)
+    const result: Record<string, number> = {
+      all: rows.length,
+      deleted: all.length - rows.length,
+    }
     for (const status of STATUSES) {
       result[status] = rows.filter((s) => s.status === status).length
     }
@@ -152,8 +158,16 @@ async function applyStatusChange(
   submission: Doc<"submissions">,
   status: string,
   actor?: AuditActor,
+  /**
+   * The custom status LABEL the organizer picked, if any
+   * (convex/sessionStatuses.ts). Presentation only — `status` above stays the
+   * single source of truth for every pipeline rule. Left out (the case for
+   * bulk changes, queue commits and integrations) it clears any previous
+   * label, so a row can never keep wording that contradicts its status.
+   */
+  statusId?: Id<"sessionStatuses">,
 ): Promise<void> {
-  await ctx.db.patch(submission._id, { status })
+  await ctx.db.patch(submission._id, { status, statusId })
   // Outbound webhooks (convex/webhooks.ts) — fire-and-forget, never blocks.
   await emitWebhook(ctx, submission.eventId, "submission.updated", {
     id: submission._id,
@@ -177,6 +191,9 @@ export const setStatus = mutation({
   args: {
     submissionId: v.id("submissions"),
     status: v.string(),
+    // Optional custom status label (convex/sessionStatuses.ts). Must belong to
+    // the same event and behave as `status`; anything else is a client bug.
+    statusId: v.optional(v.id("sessionStatuses")),
   },
   handler: async (ctx, args) => {
     if (!STATUSES.includes(args.status as (typeof STATUSES)[number])) {
@@ -185,7 +202,18 @@ export const setStatus = mutation({
     const submission = await ctx.db.get(args.submissionId)
     if (!submission) throw new Error("Submission not found")
     await requireEventAccess(ctx, submission.eventId)
-    await applyStatusChange(ctx, submission, args.status)
+    if (args.statusId) {
+      const label = await ctx.db.get(args.statusId)
+      if (!label || label.eventId !== submission.eventId) {
+        throw new Error("That status belongs to a different event.")
+      }
+      if (label.pipelineStatus !== args.status) {
+        throw new Error(
+          `“${label.name}” behaves as ${label.pipelineStatus}, not ${args.status}.`,
+        )
+      }
+    }
+    await applyStatusChange(ctx, submission, args.status, undefined, args.statusId)
     return null
   },
 })
@@ -482,6 +510,14 @@ export const addManual = mutation({
   },
 })
 
+/** Plain-English field names for the History tab (organizers read this). */
+const DETAIL_FIELD_LABELS: Record<string, string> = {
+  trackId: "track",
+  durationMinutes: "duration",
+  publicVisible: "public visibility",
+  answers: "custom fields",
+}
+
 export const updateDetails = mutation({
   args: {
     submissionId: v.id("submissions"),
@@ -494,16 +530,28 @@ export const updateDetails = mutation({
       language: v.optional(v.string()),
       tags: v.optional(v.array(v.string())),
       durationMinutes: v.optional(v.number()),
+      // "Show on public schedule" (sbek CNT-12 — Sessionboard's "Display
+      // Session" checkbox). `false` keeps an accepted session off every public
+      // surface; it stays on the organizer's agenda and in the speaker portal.
+      publicVisible: v.optional(v.boolean()),
+      // Custom-field answers, keyed by form question id. MERGED into the
+      // existing map rather than replacing it, so the drawer can autosave one
+      // answer at a time without ever having to send the whole blob back.
+      // Same values `PUT /v1/…/sessions/{id}/fields` writes.
+      answers: v.optional(v.record(v.string(), v.any())),
     }),
   },
   handler: async (ctx, args) => {
     const submission = await ctx.db.get(args.submissionId)
     if (!submission) throw new Error("Submission not found")
     await requireEventAccess(ctx, submission.eventId)
-    const { trackId, ...rest } = args.patch
+    const { trackId, answers, ...rest } = args.patch
     await ctx.db.patch(args.submissionId, {
       ...rest,
       ...(trackId !== undefined ? { trackId: trackId ?? undefined } : {}),
+      ...(answers !== undefined
+        ? { answers: { ...submission.answers, ...answers } }
+        : {}),
       updatedAt: Date.now(),
     })
     await emitWebhook(
@@ -524,11 +572,100 @@ export const updateDetails = mutation({
       action: "updated",
       summary:
         changed.length > 0
-          ? `Updated ${changed.join(", ")} · ${rest.title ?? submission.title}`
+          ? `Updated ${changed.map((key) => DETAIL_FIELD_LABELS[key] ?? key).join(", ")} · ${rest.title ?? submission.title}`
           : `Updated · ${submission.title}`,
       meta: { fields: changed, title: rest.title ?? submission.title },
     })
     return null
+  },
+})
+
+/**
+ * Soft delete — the organizer-side twin of `DELETE /v1/…/sessions/{id}`
+ * (convex/apiV1.ts `deleteSession`). Same rule, same effect: stamp
+ * `deletedAt`, and the row leaves every organizer listing, the agenda, the
+ * speaker portal and the public programme, while everything hanging off it
+ * (reviews, files, participants, history) is left untouched so a mis-click is
+ * undoable via `restore`. Admin-only, exactly like the API path.
+ */
+export const remove = mutation({
+  args: { submissionId: v.id("submissions") },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const submission = await ctx.db.get(args.submissionId)
+    if (!submission) throw new Error("Submission not found")
+    await requireEventAccess(ctx, submission.eventId, "admin")
+    if (submission.deletedAt !== undefined) return null
+
+    await ctx.db.patch(args.submissionId, {
+      deletedAt: Date.now(),
+      updatedAt: Date.now(),
+    })
+    await scheduleAirtableSync(ctx, submission.eventId)
+    await emitWebhook(ctx, submission.eventId, "session.deleted", {
+      id: args.submissionId,
+      title: submission.title,
+      status: submission.status,
+      kind: submission.kind,
+    })
+    await recordAudit(ctx, {
+      eventId: submission.eventId,
+      entity: submission.kind === "session" ? "session" : "submission",
+      entityId: args.submissionId,
+      action: "deleted",
+      summary: `${submission.kind === "session" ? "Session" : "Abstract"} deleted · ${submission.title}`,
+      meta: { status: submission.status, title: submission.title },
+    })
+    return null
+  },
+})
+
+/** Undo a soft delete — `POST /v1/…/sessions/{id}/restore` from the UI. */
+export const restore = mutation({
+  args: { submissionId: v.id("submissions") },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const submission = await ctx.db.get(args.submissionId)
+    if (!submission) throw new Error("Submission not found")
+    await requireEventAccess(ctx, submission.eventId, "admin")
+    if (submission.deletedAt === undefined) return null
+
+    await ctx.db.patch(args.submissionId, {
+      deletedAt: undefined,
+      updatedAt: Date.now(),
+    })
+    await scheduleAirtableSync(ctx, submission.eventId)
+    await emitWebhook(ctx, submission.eventId, "session.restored", {
+      id: args.submissionId,
+      title: submission.title,
+      status: submission.status,
+      kind: submission.kind,
+    })
+    await recordAudit(ctx, {
+      eventId: submission.eventId,
+      entity: submission.kind === "session" ? "session" : "submission",
+      entityId: args.submissionId,
+      action: "restored",
+      summary: `${submission.kind === "session" ? "Session" : "Abstract"} restored · ${submission.title}`,
+      meta: { status: submission.status, title: submission.title },
+    })
+    return null
+  },
+})
+
+/** The trash: everything soft-deleted on this event, newest deletion first. */
+export const listDeleted = query({
+  args: { eventId: v.id("events") },
+  handler: async (ctx, args) => {
+    await requireEventAccess(ctx, args.eventId)
+    const rows = await ctx.db
+      .query("submissions")
+      .withIndex("by_eventId", (q) => q.eq("eventId", args.eventId))
+      .collect()
+    const deleted = rows
+      .filter((s) => s.deletedAt !== undefined)
+      .sort((a, b) => (b.deletedAt ?? 0) - (a.deletedAt ?? 0))
+    return await Promise.all(deleted.map((s) => withJoins(ctx, s)))
   },
 })
 
@@ -541,6 +678,8 @@ export const exportData = query({
       .query("submissions")
       .withIndex("by_eventId", (q) => q.eq("eventId", args.eventId))
       .collect()
-    return await Promise.all(rows.map((s) => withJoins(ctx, s)))
+    return await Promise.all(
+      rows.filter((s) => s.deletedAt === undefined).map((s) => withJoins(ctx, s)),
+    )
   },
 })

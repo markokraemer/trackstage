@@ -44,20 +44,25 @@ function dayKey(ms: number, timezone: string): string {
 }
 
 async function submissionsForEvent(ctx: QueryCtx, eventId: Id<"events">) {
-  return await ctx.db
-    .query("submissions")
-    .withIndex("by_eventId", (q) => q.eq("eventId", eventId))
-    .take(MAX_ROWS)
+  // Soft-deleted rows never count towards anything an organizer is shown.
+  return (
+    await ctx.db
+      .query("submissions")
+      .withIndex("by_eventId", (q) => q.eq("eventId", eventId))
+      .take(MAX_ROWS)
+  ).filter((s) => s.deletedAt === undefined)
 }
 
 /** Person ids participating in any accepted submission, with their sessions. */
 async function acceptedParticipation(ctx: QueryCtx, eventId: Id<"events">) {
-  const accepted = await ctx.db
-    .query("submissions")
-    .withIndex("by_eventId_and_status", (q) =>
-      q.eq("eventId", eventId).eq("status", "accepted")
-    )
-    .take(MAX_ROWS)
+  const accepted = (
+    await ctx.db
+      .query("submissions")
+      .withIndex("by_eventId_and_status", (q) =>
+        q.eq("eventId", eventId).eq("status", "accepted")
+      )
+      .take(MAX_ROWS)
+  ).filter((s) => s.deletedAt === undefined)
 
   const sessionsByPerson = new Map<
     string,
@@ -200,10 +205,12 @@ export const overview = query({
       .take(MAX_ROWS)
     const forms = []
     for (const form of formRows) {
-      const formSubmissions = await ctx.db
-        .query("submissions")
-        .withIndex("by_formId", (q) => q.eq("formId", form._id))
-        .take(MAX_ROWS)
+      const formSubmissions = (
+        await ctx.db
+          .query("submissions")
+          .withIndex("by_formId", (q) => q.eq("formId", form._id))
+          .take(MAX_ROWS)
+      ).filter((s) => s.deletedAt === undefined)
       forms.push({
         formId: form._id,
         name: form.internalName,

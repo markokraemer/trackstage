@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { AirtableCard } from "@/components/settings/airtable-card"
+import { WebhooksCard } from "@/components/settings/webhooks-card"
 import { useCurrentEvent } from "@/lib/current-event"
 
 export const Route = createFileRoute("/app/settings/integrations")({
@@ -41,6 +42,8 @@ function IntegrationsPage() {
   return (
     <div className="flex flex-col gap-6">
       <AirtableCard eventId={event._id} />
+
+      <WebhooksCard eventId={event._id} />
 
       <Card size="sm">
         <CardHeader>

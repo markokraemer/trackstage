@@ -1,6 +1,7 @@
 import { v } from "convex/values"
 import { mutation, query } from "./_generated/server"
 import { requireEventAccess } from "./lib/auth"
+import { record as recordAudit } from "./lib/audit"
 
 // Reusable validators mirroring the schema shapes (kept in sync manually —
 // schema.ts is the source of truth).
@@ -88,10 +89,12 @@ export const list = query({
       .collect()
     return await Promise.all(
       forms.map(async (form) => {
-        const submissions = await ctx.db
-          .query("submissions")
-          .withIndex("by_formId", (q) => q.eq("formId", form._id))
-          .collect()
+        const submissions = (
+          await ctx.db
+            .query("submissions")
+            .withIndex("by_formId", (q) => q.eq("formId", form._id))
+            .collect()
+        ).filter((s) => s.deletedAt === undefined)
         return {
           _id: form._id,
           internalName: form.internalName,
@@ -156,7 +159,7 @@ export const create = mutation({
       slug = `${base}-${i}`
     }
 
-    return await ctx.db.insert("forms", {
+    const formId = await ctx.db.insert("forms", {
       eventId: args.eventId,
       slug,
       kind: args.kind,
@@ -178,6 +181,15 @@ export const create = mutation({
       },
       notifyEmails: [],
     })
+    await recordAudit(ctx, {
+      eventId: args.eventId,
+      entity: "form",
+      entityId: formId,
+      action: "created",
+      summary: `Form created · ${args.internalName}`,
+      meta: { kind: args.kind, slug },
+    })
+    return formId
   },
 })
 
@@ -235,6 +247,29 @@ export const update = mutation({
       ...(questions ? { questions } : {}),
       ...(closeAt !== undefined ? { closeAt: closeAt ?? undefined } : {}),
     })
+
+    // Opening/closing a form and moving its deadline are the edits that change
+    // what the PUBLIC sees, so they get their own sentence; everything else is
+    // recorded as a field list.
+    const changed = Object.keys(args.patch)
+    const headline =
+      status && status !== form.status
+        ? `Form ${status === "open" ? "opened" : "closed"} · ${form.internalName}`
+        : closeAt !== undefined && (closeAt ?? undefined) !== form.closeAt
+          ? `Close date ${closeAt ? "set" : "cleared"} · ${form.internalName}`
+          : `Form updated (${changed.join(", ")}) · ${form.internalName}`
+    await recordAudit(ctx, {
+      eventId: form.eventId,
+      entity: "form",
+      entityId: args.formId,
+      action: status && status !== form.status ? "status_changed" : "updated",
+      summary: headline,
+      meta: {
+        fields: changed,
+        ...(status ? { status, previousStatus: form.status } : {}),
+        ...(closeAt !== undefined ? { closeAt: closeAt ?? "cleared" } : {}),
+      },
+    })
     return null
   },
 })
@@ -255,11 +290,20 @@ export const duplicate = mutation({
       if (!clash) break
       copySlug = `${slug}-copy-${i}`
     }
-    return await ctx.db.insert("forms", {
+    const copyId = await ctx.db.insert("forms", {
       ...rest,
       slug: copySlug,
       internalName: `${internalName} (copy)`,
     })
+    await recordAudit(ctx, {
+      eventId: form.eventId,
+      entity: "form",
+      entityId: copyId,
+      action: "duplicated",
+      summary: `Form duplicated from “${internalName}”`,
+      meta: { sourceFormId: _id, slug: copySlug },
+    })
+    return copyId
   },
 })
 
@@ -279,6 +323,14 @@ export const remove = mutation({
       )
     }
     await ctx.db.delete(args.formId)
+    await recordAudit(ctx, {
+      eventId: form.eventId,
+      entity: "form",
+      entityId: args.formId,
+      action: "deleted",
+      summary: `Form deleted · ${form.internalName}`,
+      meta: { slug: form.slug, kind: form.kind },
+    })
     return null
   },
 })

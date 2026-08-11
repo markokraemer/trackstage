@@ -78,7 +78,7 @@ function trim(value: string, max: number): string {
  * the log stays cheap to read and no caller has to think about it.
  */
 export function clampMeta(
-  meta: Record<string, unknown> | undefined,
+  meta: Record<string, unknown> | undefined
 ): Record<string, unknown> | undefined {
   if (!meta) return undefined
   const out: Record<string, unknown> = {}
@@ -94,7 +94,9 @@ export function clampMeta(
       out[key] = value
         .slice(0, 20)
         .map((item) =>
-          typeof item === "string" ? trim(item, 120) : String(item).slice(0, 120),
+          typeof item === "string"
+            ? trim(item, 120)
+            : String(item).slice(0, 120)
         )
     else out[key] = trim(JSON.stringify(value) ?? "", MAX_META_STRING)
   }
@@ -127,7 +129,10 @@ async function currentActor(ctx: MutationCtx): Promise<AuditActor> {
  * already happened and rolling it back would be far worse than losing a line
  * of history.
  */
-export async function record(ctx: MutationCtx, input: AuditInput): Promise<void> {
+export async function record(
+  ctx: MutationCtx,
+  input: AuditInput
+): Promise<void> {
   try {
     const event = await ctx.db.get(input.eventId)
     if (!event?.organizationId) return
@@ -164,7 +169,7 @@ export async function recordWorkspace(
     summary: string
     meta?: Record<string, unknown>
     actor?: AuditActor
-  },
+  }
 ): Promise<void> {
   try {
     const actor = input.actor ?? (await currentActor(ctx))
@@ -198,7 +203,7 @@ export async function recordForUserWorkspaces(
     summary: string
     meta?: Record<string, unknown>
     actor?: AuditActor
-  },
+  }
 ): Promise<void> {
   try {
     const memberships = await ctx.db
@@ -243,7 +248,7 @@ export function statusChangeSummary(from: string, to: string): string {
 export function agentLabel(
   channel: "MCP" | "API",
   detail: string,
-  credentialPrefix?: string | null,
+  credentialPrefix?: string | null
 ): string {
   const parts = [channel, detail]
   if (credentialPrefix) parts.push(credentialPrefix)

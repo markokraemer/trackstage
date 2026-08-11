@@ -42,6 +42,13 @@ import {
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
+import { Switch } from "@/components/ui/switch"
+import {
+  Field,
+  FieldContent,
+  FieldDescription,
+  FieldLabel,
+} from "@/components/ui/field"
 import { Skeleton } from "@/components/ui/skeleton"
 import { EmptyState } from "@/components/shared/empty-state"
 import { LabeledField } from "@/components/settings/labeled-field"
@@ -95,8 +102,9 @@ export function AirtableCard({ eventId }: { eventId: Id<"events"> }) {
         </CardTitle>
         <CardDescription>
           Mirror this event into a base you own. New submissions appear as rows
-          — point your Airtable automations at them. Nothing flows back:
-          Trackstage stays the source of truth.
+          — point your Airtable automations at them. Trackstage stays the source
+          of truth; only Status can be sent back, and only if you switch it on
+          below.
         </CardDescription>
         {connection ? (
           <CardAction>
@@ -145,7 +153,10 @@ export function AirtableCard({ eventId }: { eventId: Id<"events"> }) {
             className="py-8"
           />
         ) : (
-          <ConnectedState connection={connection} />
+          <>
+            <ConnectedState connection={connection} />
+            <TwoWayToggle eventId={eventId} connection={connection} />
+          </>
         )}
       </CardContent>
 
@@ -259,6 +270,77 @@ function ConnectedState({ connection }: { connection: Connection }) {
         <code className="font-mono text-xs">Trackstage ID</code> column, so a
         sync never duplicates anything.
       </p>
+    </div>
+  )
+}
+
+/**
+ * The experimental inbound half (docs/memory/HISTORY.md 61).
+ *
+ * Framed as one switch with a plain-English promise and a plain-English limit,
+ * because that is the whole risk model an organizer needs: ONE column comes
+ * back, and if the two sides disagree, Trackstage wins. Everything subtler —
+ * echo detection, modified-since cursors — is our problem, not theirs.
+ */
+function TwoWayToggle({
+  eventId,
+  connection,
+}: {
+  eventId: Id<"events">
+  connection: Connection
+}) {
+  const setTwoWay = useMutation({
+    mutationFn: useConvexMutation(api.airtable.setTwoWaySync),
+  })
+  const inbound = connection.inbound
+
+  return (
+    <div className="mt-5 flex flex-col gap-3 rounded-lg border border-border bg-muted/30 p-4">
+      <Field orientation="horizontal">
+        <FieldContent>
+          <FieldLabel
+            htmlFor="airtable-two-way"
+            className="flex items-center gap-2 text-sm font-medium"
+          >
+            Sync Status changes back
+            <Badge variant="outline">Experimental</Badge>
+          </FieldLabel>
+          <FieldDescription>
+            Change a submission's <b>Status</b> in Airtable and it lands here on
+            the next sync. Only that one column comes back — and if the same
+            submission changed in Trackstage too, Trackstage wins and we note it
+            in the activity log.
+          </FieldDescription>
+        </FieldContent>
+        <Switch
+          id="airtable-two-way"
+          checked={connection.twoWaySync}
+          disabled={setTwoWay.isPending}
+          onCheckedChange={async (value) => {
+            try {
+              await setTwoWay.mutateAsync({ eventId, enabled: Boolean(value) })
+              toast.success(
+                value
+                  ? "Two-way sync on — Status changes in Airtable will come back."
+                  : "Two-way sync off — Airtable is a read-only mirror again.",
+              )
+            } catch (error) {
+              toast.error(
+                errorMessage(error, "Couldn't change that setting."),
+              )
+            }
+          }}
+        />
+      </Field>
+
+      {connection.twoWaySync ? (
+        <p className="text-xs text-muted-foreground">
+          {inbound
+            ? `Last check ${formatDistanceToNow(inbound.at, { addSuffix: true })}: ${inbound.applied} applied, ${inbound.skipped} left alone${inbound.conflicts > 0 ? `, ${inbound.conflicts} kept as Trackstage had them` : ""}.`
+            : "Waiting for the first sync — a row becomes eligible once we've mirrored it at least once."}{" "}
+          Draft and Withdrawn can never be set from Airtable.
+        </p>
+      ) : null}
     </div>
   )
 }

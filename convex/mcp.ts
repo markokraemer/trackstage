@@ -13,7 +13,7 @@ import {
 import { internal } from "./_generated/api"
 import { createAuth } from "./auth"
 import { eventAccessFor, membershipFor, randomToken } from "./lib/auth"
-import { hashApiKey } from "./apiKeys"
+import { hashApiKey, keyPrefix } from "./apiKeys"
 import { autoPlaceCore, computeConflicts } from "./agenda"
 import { deleteEventCascade } from "./events"
 import { ensureOnboardingTasks, withJoins } from "./submissions"
@@ -2931,6 +2931,20 @@ async function authenticate(
   }
 }
 
+/**
+ * The displayable head of the API key on this request ("sb_live_1a2b3c4d"),
+ * or null for an OAuth session. Used only for attribution in the audit log —
+ * never for authorization, which `authenticate` above has already settled.
+ */
+function presentedKey(request: Request): string | null {
+  const match = /^Bearer\s+(.+)$/i.exec(
+    (request.headers.get("Authorization") ?? "").trim(),
+  )
+  const token = match?.[1]?.trim()
+  if (!token || !token.startsWith("sb_live_")) return null
+  return keyPrefix(token)
+}
+
 function initializeResult(requested: unknown) {
   const protocolVersion =
     typeof requested === "string" && SUPPORTED_PROTOCOLS.includes(requested)
@@ -2949,10 +2963,118 @@ function initializeResult(requested: unknown) {
   }
 }
 
+// ——— Audit trail for agent writes (sbek CNT-11) ——————————————————————————
+// Marko's directive: agent-driven changes are FIRST-CLASS in the record.
+// Every non-read-only tool call that succeeds writes one audit row attributed
+// to "MCP · <tool> · <key prefix>", so the Activity feed's "Agents & API"
+// lens shows exactly what the robots did — receipts included for the
+// destructive ones.
+//
+// It is emitted HERE, at the dispatcher, rather than inside each tool's
+// mutation: the MCP tools carry their own copies of the domain logic, so one
+// call site covers every write tool (including ones added later) and cannot
+// double-log against the in-app path. Failure is swallowed — a logging
+// problem must never turn a successful tool call into an error.
+
+/** Which row a write tool acts on, so the audit row lands on that record. */
+const TOOL_SUBJECTS: Record<
+  string,
+  { entity: string; table?: string; arg?: string }
+> = {
+  create_event: { entity: "settings" },
+  delete_event: { entity: "settings" },
+  create_form: { entity: "form" },
+  update_form_settings: { entity: "form", table: "forms", arg: "form" },
+  delete_form: { entity: "form", table: "forms", arg: "form" },
+  set_submission_status: {
+    entity: "submission",
+    table: "submissions",
+    arg: "submissionId",
+  },
+  commit_decision_queue: { entity: "submission" },
+  add_manual_session: { entity: "session" },
+  schedule_session: { entity: "session", table: "submissions", arg: "submissionId" },
+  unschedule_session: {
+    entity: "session",
+    table: "submissions",
+    arg: "submissionId",
+  },
+  auto_place_sessions: { entity: "agenda" },
+  assign_task: { entity: "speaker", table: "people", arg: "speakerId" },
+  remove_task: { entity: "speaker", table: "tasks", arg: "taskId" },
+  send_reminders: { entity: "speaker" },
+  update_template: { entity: "settings" },
+  send_test_email: { entity: "settings" },
+}
+
+/** Receipt keys worth putting in the sentence an organizer reads. */
+const RECEIPT_KEYS = [
+  "title",
+  "name",
+  "status",
+  "committed",
+  "emailsQueued",
+  "placed",
+  "queued",
+  "removed",
+  "deleted",
+  "count",
+  "speaker",
+]
+
+function receiptText(result: unknown): string {
+  if (result === null || typeof result !== "object") return ""
+  const row = result as Record<string, unknown>
+  const parts: string[] = []
+  for (const key of RECEIPT_KEYS) {
+    const value = row[key]
+    if (value === undefined || value === null || value === "") continue
+    if (typeof value === "object") continue
+    parts.push(`${key} ${String(value).slice(0, 80)}`)
+    if (parts.length >= 3) break
+  }
+  return parts.join(", ")
+}
+
+async function auditToolCall(
+  ctx: ActionCtx,
+  userId: string,
+  credentialPrefix: string | null,
+  tool: ToolDef,
+  args: Record<string, any>,
+  result: unknown,
+): Promise<void> {
+  const subject = TOOL_SUBJECTS[tool.name] ?? { entity: "settings" }
+  const receipt = receiptText(result)
+  try {
+    await ctx.runMutation(internal.audit.recordMcpToolCall, {
+      userId,
+      tool: tool.name,
+      keyPrefix: credentialPrefix ?? undefined,
+      eventRef: typeof args.event === "string" ? args.event : undefined,
+      subjectTable: subject.table,
+      subjectRef:
+        subject.arg && typeof args[subject.arg] === "string"
+          ? args[subject.arg]
+          : undefined,
+      entity: subject.entity,
+      summary: `${tool.title}${receipt ? ` — ${receipt}` : ""} (via MCP)`,
+      meta: {
+        tool: tool.name,
+        args: JSON.stringify(args).slice(0, 500),
+        ...(receipt ? { receipt } : {}),
+      },
+    })
+  } catch {
+    // History is best-effort; the write already succeeded.
+  }
+}
+
 async function handleRpc(
   ctx: ActionCtx,
   userId: string,
   message: any,
+  credentialPrefix: string | null = null,
 ): Promise<object | null> {
   if (message === null || typeof message !== "object" || Array.isArray(message)) {
     return rpcError(null, INVALID_REQUEST, "Expected a JSON-RPC 2.0 object.")
@@ -3023,6 +3145,16 @@ async function handleRpc(
       if (invalid) return rpcError(id, INVALID_PARAMS, invalid)
       try {
         const result = await tool.run(ctx, userId, args as Record<string, any>)
+        if (!tool.readOnly) {
+          await auditToolCall(
+            ctx,
+            userId,
+            credentialPrefix,
+            tool,
+            args as Record<string, any>,
+            result,
+          )
+        }
         return rpcResult(id, {
           content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
           structuredContent: result,
@@ -3065,6 +3197,11 @@ export const handleMcpPost = httpAction(async (ctx, request) => {
       "Missing or invalid credentials. Send `Authorization: Bearer <your Trackstage API key>` (create one in Settings → API & MCP), or connect via OAuth.",
     )
   }
+  // Which credential is acting, for the audit trail. Read straight off the
+  // header (not from the key row) so nothing sensitive travels further than it
+  // already has: `keyPrefix` is the displayable head of the key, exactly what
+  // Settings → API & MCP shows. OAuth callers have no key, and log as "MCP".
+  const presentedKeyPrefix = presentedKey(request)
 
   let payload: unknown
   try {
@@ -3077,14 +3214,14 @@ export const handleMcpPost = httpAction(async (ctx, request) => {
   if (Array.isArray(payload)) {
     const responses = []
     for (const message of payload) {
-      const response = await handleRpc(ctx, userId, message)
+      const response = await handleRpc(ctx, userId, message, presentedKeyPrefix)
       if (response) responses.push(response)
     }
     if (responses.length === 0) return new Response(null, { status: 202, headers: CORS_HEADERS })
     return json(responses)
   }
 
-  const response = await handleRpc(ctx, userId, payload)
+  const response = await handleRpc(ctx, userId, payload, presentedKeyPrefix)
   // Notifications and responses get 202 Accepted with no body, per the spec.
   if (response === null) return new Response(null, { status: 202, headers: CORS_HEADERS })
   return json(response)

@@ -18,7 +18,6 @@ import {
   RiFileList3Line,
   RiLogoutBoxRLine,
   RiMailSendLine,
-  RiSearchLine,
   RiSettings3Line,
   RiStarLine,
   RiSurveyLine,
@@ -31,10 +30,10 @@ import { cn } from "@/lib/utils"
 import { Button, buttonVariants } from "@/components/ui/button"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import {
-  InputGroup,
-  InputGroupAddon,
-  InputGroupInput,
-} from "@/components/ui/input-group"
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -53,6 +52,7 @@ import {
   CopilotTriggerButton,
 } from "@/components/copilot/copilot-panel"
 import { ShellEventSwitcher } from "@/components/shell/event-switcher"
+import { GlobalSearch } from "@/components/shell/global-search"
 import { requireAuthed, useSession } from "@/lib/session"
 import { useCurrentEvent } from "@/lib/current-event"
 
@@ -146,52 +146,71 @@ function OrganizerLayout() {
 
   return (
     <div className="min-h-svh bg-background">
-      {/* Tier 1 — slim global top bar */}
+      {/*
+        Tier 1 — slim global top bar.
+
+        Three zones, one rhythm: the wordmark (the ONLY place the Trackstage
+        mark appears inside the app — the event switcher carries the EVENT's
+        identity, not ours), the ⌘K search trigger centred, and a right cluster
+        where every control is one --control-h-sm tall. The public-page link is
+        a quiet ghost icon; the copilot keeps a soft primary tint because it is
+        a product feature, not a utility.
+      */}
       <header className="container-app sticky top-0 z-40 flex h-14 items-center gap-3 border-b border-border bg-card">
         <Link
           to="/app"
           aria-label="Trackstage home"
-          className="rounded-md outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+          className="shrink-0 rounded-md outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
         >
           <Logo size="sm" className="max-md:[&>span:last-child]:sr-only" />
         </Link>
 
-        <div className="mx-auto hidden w-full max-w-md sm:block">
-          <InputGroup className="bg-background">
-            <InputGroupAddon align="inline-start">
-              <RiSearchLine aria-hidden />
-            </InputGroupAddon>
-            <InputGroupInput
-              type="search"
-              aria-label="Search Trackstage"
-              placeholder="Find a submission, speaker, or session…"
-              className="[&::-webkit-search-cancel-button]:hidden"
-            />
-          </InputGroup>
-        </div>
+        {/* Global search (⌘K) — src/components/shell/global-search.tsx. */}
+        <GlobalSearch className="mx-auto hidden max-w-xs sm:flex md:max-w-sm" />
 
-        <div className="ml-auto flex shrink-0 items-center gap-2">
+        <div className="ml-auto flex shrink-0 items-center gap-1">
           {event ? (
-            <Button
-              variant="outline"
-              size="sm"
-              nativeButton={false}
-              render={
-                <a href={`/e/${event.slug}`} target="_blank" rel="noreferrer" />
-              }
-            >
-              <RiExternalLinkLine aria-hidden />
-              <span className="max-sm:sr-only">View public page</span>
-            </Button>
+            <Tooltip>
+              <TooltipTrigger
+                render={
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    aria-label="View public page"
+                    nativeButton={false}
+                    render={
+                      <a
+                        href={`/e/${event.slug}`}
+                        target="_blank"
+                        rel="noreferrer"
+                      />
+                    }
+                  />
+                }
+              >
+                <RiExternalLinkLine aria-hidden />
+              </TooltipTrigger>
+              <TooltipContent side="bottom">View public page</TooltipContent>
+            </Tooltip>
           ) : null}
 
           {/* AI copilot — the MCP's home (docs/memory/RULES.md #24). ⌘I. */}
           <CopilotTriggerButton />
 
+          <span
+            aria-hidden
+            className="mx-1 h-5 w-px shrink-0 bg-border max-sm:hidden"
+          />
+
           <DropdownMenu>
             <DropdownMenuTrigger
               render={
-                <Button variant="ghost" size="sm" aria-label="Account menu" />
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  aria-label="Account menu"
+                  className="gap-1 px-1.5"
+                />
               }
             >
               <Avatar className="size-6">
@@ -199,10 +218,10 @@ function OrganizerLayout() {
                   {initials(session?.name || session?.email || "?")}
                 </AvatarFallback>
               </Avatar>
-              <span className="hidden max-w-[140px] truncate lg:inline">
-                {session?.name || session?.email}
-              </span>
-              <RiArrowDownSLine aria-hidden />
+              <RiArrowDownSLine
+                aria-hidden
+                className="size-3.5 text-muted-foreground"
+              />
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-64">
               <DropdownMenuGroup>

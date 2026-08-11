@@ -129,12 +129,21 @@ async function loadProgram(ctx: QueryCtx, slug: string) {
     .withIndex("by_eventId", (q) => q.eq("eventId", event._id))
     .take(MAX_ROWS)
   // Only accepted submissions are ever public — the published program.
-  const submissionRows = await ctx.db
-    .query("submissions")
-    .withIndex("by_eventId_and_status", (q) =>
-      q.eq("eventId", event._id).eq("status", "accepted")
-    )
-    .take(MAX_ROWS)
+  // On top of that, `publicVisible: false` keeps an individual session off
+  // every public surface (sbek CNT-12, Sessionboard's "Display Session"
+  // checkbox): still accepted, still on the organizer's agenda, simply not
+  // announced. Absent ⇒ visible, so nothing existing changes behaviour.
+  const submissionRows = (
+    await ctx.db
+      .query("submissions")
+      .withIndex("by_eventId_and_status", (q) =>
+        q.eq("eventId", event._id).eq("status", "accepted")
+      )
+      .take(MAX_ROWS)
+  ).filter(
+    (submission) =>
+      submission.deletedAt === undefined && submission.publicVisible !== false,
+  )
 
   const rooms = new Map(roomRows.map((r) => [r._id, r]))
   const tracks = new Map(trackRows.map((t) => [t._id, t]))
@@ -156,6 +165,10 @@ async function loadProgram(ctx: QueryCtx, slug: string) {
       if (!speaker) {
         const person = await ctx.db.get(participant.personId)
         if (!person) continue
+        // Per-speaker eye toggle (sbek CNT-12): a hidden person disappears
+        // from the gallery, from their sessions' speaker lists, from the API
+        // and from their own itinerary. The session itself stays public.
+        if (person.publicVisible === false) continue
         speaker = {
           _id: person._id,
           name: personName(person),
@@ -608,10 +621,12 @@ export const apiSubmissionsPage = internalQuery({
   handler: async (ctx, args) => {
     const event = await eventBySlug(ctx, args.slug)
     if (!event) return null
-    const submissions = await ctx.db
-      .query("submissions")
-      .withIndex("by_eventId", (q) => q.eq("eventId", event._id))
-      .take(MAX_ROWS)
+    const submissions = (
+      await ctx.db
+        .query("submissions")
+        .withIndex("by_eventId", (q) => q.eq("eventId", event._id))
+        .take(MAX_ROWS)
+    ).filter((submission) => submission.deletedAt === undefined)
 
     const items = []
     for (const submission of submissions) {

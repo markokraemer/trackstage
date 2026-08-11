@@ -1,13 +1,16 @@
 import { useState } from "react"
-import { useConvexMutation } from "@convex-dev/react-query"
+import { useQuery } from "@tanstack/react-query"
+import { convexQuery, useConvexMutation } from "@convex-dev/react-query"
 import { api } from "@convex/_generated/api"
+import type { Id } from "@convex/_generated/dataModel"
 import { toast } from "sonner"
-import { RiAlertLine, RiCheckLine } from "@remixicon/react"
+import { RiAlertLine, RiChat1Line, RiCheckLine } from "@remixicon/react"
 
 import { cn } from "@/lib/utils"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import { FileDropZone } from "@/components/shared/file-drop-zone"
+import { FileComments } from "@/components/shared/file-comments"
 import { FileList, FileRow } from "@/components/shared/file-row"
 import { MAX_IMAGE_BYTES, MAX_UPLOAD_BYTES } from "@/lib/files"
 import { usePortal } from "./portal-context"
@@ -35,8 +38,13 @@ export function TaskItem({ task, uploads }: TaskItemProps) {
 
   const done = Boolean(task.completedAt)
   const due = dueInfo(task.dueAt)
-  const isFileTask = task.kind === "upload" || task.kind === "headshot"
-  const canConfirm = task.kind === "confirm" || task.kind === "profile"
+  // Past due AND the organizer doesn't accept late work (Settings → Event
+  // details → Speaker portal). The task stays on the list — you should see
+  // what you missed — but nothing on it can be actioned.
+  const locked = task.locked
+  const isFileTask = (task.kind === "upload" || task.kind === "headshot") && !locked
+  const canConfirm =
+    (task.kind === "confirm" || task.kind === "profile") && !locked
   const latest: PortalUpload | undefined = uploads.length > 0 ? uploads[0] : undefined
   const needsChanges = latest?.approvalStatus === "changes_requested"
 
@@ -121,6 +129,7 @@ export function TaskItem({ task, uploads }: TaskItemProps) {
               )}
             >
               {due.label}
+              {locked ? " · closed" : ""}
             </span>
           ) : null}
         </div>
@@ -146,7 +155,9 @@ export function TaskItem({ task, uploads }: TaskItemProps) {
                 key={file.id}
                 file={file}
                 meta={`Uploaded ${formatDate(file.uploadedAt)}`}
-              />
+              >
+                <SpeakerFileComments uploadId={file.id} />
+              </FileRow>
             ))}
           </FileList>
         ) : null}
@@ -171,7 +182,12 @@ export function TaskItem({ task, uploads }: TaskItemProps) {
           />
         ) : null}
 
-        {!done && (canConfirm || !isFileTask) ? (
+        {!done && locked ? (
+          <p className="mt-3 text-sm text-muted-foreground">
+            This task closed when its due date passed. Email the organizers if
+            you still need to send it — they can reopen it for you.
+          </p>
+        ) : !done && (canConfirm || !isFileTask) ? (
           <div className="mt-3 flex flex-wrap items-center gap-2">
             {canConfirm ? (
               <Button size="sm" disabled={isCompleting} onClick={handleComplete}>
@@ -188,5 +204,49 @@ export function TaskItem({ task, uploads }: TaskItemProps) {
         ) : null}
       </div>
     </li>
+  )
+}
+
+/**
+ * The speaker's half of a file's comment thread (sbek CNT-05). Same thread the
+ * organizer reads on their side — so "can you re-export slide 12?" and the
+ * answer stay attached to the file instead of scattering into email.
+ */
+function SpeakerFileComments({ uploadId }: { uploadId: Id<"uploads"> }) {
+  const { portalToken } = usePortal()
+  const [open, setOpen] = useState(false)
+  const { data: comments, isPending } = useQuery(
+    convexQuery(api.portal.uploadComments, { portalToken, uploadId }),
+  )
+  const addComment = useConvexMutation(api.portal.addUploadComment)
+  const count = comments?.length ?? 0
+
+  return (
+    <div className="mt-2">
+      <Button
+        variant="ghost"
+        size="sm"
+        className="h-7 px-2 text-xs text-muted-foreground"
+        aria-expanded={open}
+        onClick={() => setOpen((current) => !current)}
+      >
+        <RiChat1Line aria-hidden />
+        {count === 0
+          ? open
+            ? "Hide comments"
+            : "Comment on this file"
+          : `${count} comment${count === 1 ? "" : "s"}`}
+      </Button>
+      {open ? (
+        <FileComments
+          className="mt-2"
+          viewer="speaker"
+          comments={comments}
+          isPending={isPending}
+          placeholder="Ask the organizers a question about this file…"
+          onSubmit={(body) => addComment({ portalToken, uploadId, body })}
+        />
+      ) : null}
+    </div>
   )
 }

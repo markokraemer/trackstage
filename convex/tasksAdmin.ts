@@ -1,28 +1,47 @@
 import { v } from "convex/values"
+import type { Id } from "./_generated/dataModel"
+import type { MutationCtx } from "./_generated/server"
 import { mutation, query } from "./_generated/server"
 import { requireEventAccess } from "./lib/auth"
 import { enrichUploads } from "./lib/files"
+import { makeTaskVarsCache, renderTaskText } from "./lib/taskVars"
+import { addComment, threadFor } from "./lib/uploadComments"
 
 // Organizer-side task management (create/assign onboarding + file-request
-// tasks) and content review (approve / request changes on uploads).
+// tasks), the reusable task library, and content review (approve / request
+// changes on uploads, plus the per-file comment thread).
+
+const TASK_KINDS = ["profile", "headshot", "upload", "form", "confirm"]
+
+function assertKind(kind: string) {
+  if (!TASK_KINDS.includes(kind)) throw new Error("Invalid task kind.")
+}
 
 export const list = query({
   args: { eventId: v.id("events") },
   handler: async (ctx, args) => {
-    await requireEventAccess(ctx, args.eventId)
+    const { event } = await requireEventAccess(ctx, args.eventId)
     const tasks = await ctx.db
       .query("tasks")
       .withIndex("by_eventId", (q) => q.eq("eventId", args.eventId))
       .collect()
+    // {{firstName}} / {{sessionTitle}} resolve per speaker, so the organizer's
+    // list shows exactly the words that speaker reads in their portal.
+    const varsFor = makeTaskVarsCache(ctx, event.name)
     return await Promise.all(
       tasks
         .sort((a, b) => b._creationTime - a._creationTime)
         .map(async (task) => {
           const person = await ctx.db.get(task.personId)
+          const vars = person ? await varsFor(person) : null
           return {
             id: task._id,
-            title: task.title,
-            instructions: task.instructions,
+            title: vars ? renderTaskText(task.title, vars) : task.title,
+            instructions: vars
+              ? renderTaskText(task.instructions, vars)
+              : task.instructions,
+            /** The unresolved text, for editing. */
+            instructionsTemplate: task.instructions,
             kind: task.kind,
             dueAt: task.dueAt,
             completedAt: task.completedAt,
@@ -41,6 +60,34 @@ export const list = query({
   },
 })
 
+async function insertTasks(
+  ctx: MutationCtx,
+  args: {
+    eventId: Id<"events">
+    personIds: Array<Id<"people">>
+    title: string
+    instructions?: string
+    kind: string
+    dueAt?: number
+  },
+): Promise<number> {
+  let created = 0
+  for (const personId of args.personIds) {
+    const person = await ctx.db.get(personId)
+    if (!person || person.eventId !== args.eventId) continue
+    await ctx.db.insert("tasks", {
+      eventId: args.eventId,
+      personId,
+      title: args.title,
+      instructions: args.instructions,
+      kind: args.kind,
+      dueAt: args.dueAt,
+    })
+    created++
+  }
+  return created
+}
+
 export const create = mutation({
   args: {
     eventId: v.id("events"),
@@ -49,30 +96,167 @@ export const create = mutation({
     instructions: v.optional(v.string()),
     kind: v.string(), // profile | headshot | upload | form | confirm
     dueAt: v.optional(v.number()),
+    /** Also keep this wording in the event's task library for next time. */
+    saveAsTemplate: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     await requireEventAccess(ctx, args.eventId)
-    if (!args.title.trim()) throw new Error("Task title is required.")
-    if (!["profile", "headshot", "upload", "form", "confirm"].includes(args.kind)) {
-      throw new Error("Invalid task kind.")
-    }
+    const title = args.title.trim()
+    if (!title) throw new Error("Task title is required.")
+    assertKind(args.kind)
     if (args.personIds.length === 0) {
       throw new Error("Assign the task to at least one speaker.")
     }
-    let created = 0
-    for (const personId of args.personIds) {
-      const person = await ctx.db.get(personId)
-      if (!person || person.eventId !== args.eventId) continue
-      await ctx.db.insert("tasks", {
-        eventId: args.eventId,
-        personId,
-        title: args.title.trim(),
-        instructions: args.instructions,
-        kind: args.kind,
-        dueAt: args.dueAt,
-      })
-      created++
+    const instructions = args.instructions?.trim() || undefined
+    const created = await insertTasks(ctx, {
+      eventId: args.eventId,
+      personIds: args.personIds,
+      title,
+      instructions,
+      kind: args.kind,
+      dueAt: args.dueAt,
+    })
+
+    // Saving to the library is idempotent on the title: ticking the box twice
+    // updates the wording instead of piling up near-duplicates.
+    let templateId: Id<"taskTemplates"> | null = null
+    if (args.saveAsTemplate) {
+      const existing = await ctx.db
+        .query("taskTemplates")
+        .withIndex("by_eventId", (q) => q.eq("eventId", args.eventId))
+        .collect()
+      const match = existing.find(
+        (t) => t.title.toLowerCase() === title.toLowerCase(),
+      )
+      if (match) {
+        await ctx.db.patch(match._id, { instructions, kind: args.kind })
+        templateId = match._id
+      } else {
+        templateId = await ctx.db.insert("taskTemplates", {
+          eventId: args.eventId,
+          title,
+          instructions,
+          kind: args.kind,
+        })
+      }
     }
+    return { created, templateId }
+  },
+})
+
+// ——— Reusable task library (product-map delta #10) ————————————————————————
+
+export const listTemplates = query({
+  args: { eventId: v.id("events") },
+  handler: async (ctx, args) => {
+    await requireEventAccess(ctx, args.eventId)
+    const templates = await ctx.db
+      .query("taskTemplates")
+      .withIndex("by_eventId", (q) => q.eq("eventId", args.eventId))
+      .collect()
+    return templates
+      .sort((a, b) => a.title.localeCompare(b.title))
+      .map((t) => ({
+        id: t._id,
+        title: t.title,
+        instructions: t.instructions,
+        kind: t.kind,
+        alias: t.alias,
+      }))
+  },
+})
+
+export const createTemplate = mutation({
+  args: {
+    eventId: v.id("events"),
+    title: v.string(),
+    instructions: v.optional(v.string()),
+    kind: v.string(),
+    alias: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    await requireEventAccess(ctx, args.eventId)
+    const title = args.title.trim()
+    if (!title) throw new Error("Give the task a name.")
+    assertKind(args.kind)
+    return await ctx.db.insert("taskTemplates", {
+      eventId: args.eventId,
+      title,
+      instructions: args.instructions?.trim() || undefined,
+      kind: args.kind,
+      alias: args.alias?.trim() || undefined,
+    })
+  },
+})
+
+export const updateTemplate = mutation({
+  args: {
+    templateId: v.id("taskTemplates"),
+    patch: v.object({
+      title: v.optional(v.string()),
+      instructions: v.optional(v.union(v.string(), v.null())),
+      kind: v.optional(v.string()),
+      alias: v.optional(v.union(v.string(), v.null())),
+    }),
+  },
+  handler: async (ctx, args) => {
+    const template = await ctx.db.get(args.templateId)
+    if (!template) throw new Error("Task template not found.")
+    await requireEventAccess(ctx, template.eventId)
+    const { title, instructions, kind, alias } = args.patch
+    if (kind !== undefined) assertKind(kind)
+    if (title !== undefined && !title.trim()) {
+      throw new Error("Give the task a name.")
+    }
+    await ctx.db.patch(args.templateId, {
+      ...(title !== undefined ? { title: title.trim() } : {}),
+      ...(kind !== undefined ? { kind } : {}),
+      ...(instructions !== undefined
+        ? { instructions: instructions?.trim() || undefined }
+        : {}),
+      ...(alias !== undefined ? { alias: alias?.trim() || undefined } : {}),
+    })
+    return null
+  },
+})
+
+export const removeTemplate = mutation({
+  args: { templateId: v.id("taskTemplates") },
+  handler: async (ctx, args) => {
+    const template = await ctx.db.get(args.templateId)
+    if (!template) throw new Error("Task template not found.")
+    await requireEventAccess(ctx, template.eventId)
+    await ctx.db.delete(args.templateId)
+    return null
+  },
+})
+
+/**
+ * Assign a library task to speakers without retyping it. The template's own
+ * wording (placeholders and all) is copied onto each task, so editing the
+ * library later never rewrites tasks already out in the world.
+ */
+export const assignFromTemplate = mutation({
+  args: {
+    templateId: v.id("taskTemplates"),
+    personIds: v.array(v.id("people")),
+    dueAt: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const template = await ctx.db.get(args.templateId)
+    if (!template) throw new Error("Task template not found.")
+    await requireEventAccess(ctx, template.eventId)
+    if (args.personIds.length === 0) {
+      throw new Error("Assign the task to at least one speaker.")
+    }
+    const created = await insertTasks(ctx, {
+      eventId: template.eventId,
+      personIds: args.personIds,
+      title: template.alias?.trim() || template.title,
+      instructions: template.instructions,
+      kind: template.kind,
+      dueAt: args.dueAt,
+    })
     return { created }
   },
 })
@@ -137,9 +321,10 @@ export const listUploads = query({
     return await Promise.all(
       files.map(async (file, index) => {
         const row = rows[index]
-        const [person, submission] = await Promise.all([
+        const [person, submission, comments] = await Promise.all([
           ctx.db.get(row.personId),
           row.submissionId ? ctx.db.get(row.submissionId) : null,
+          threadFor(ctx, row._id),
         ])
         return {
           ...file,
@@ -152,6 +337,12 @@ export const listUploads = query({
               }
             : null,
           submissionTitle: submission?.title,
+          // The files library's `Comments` / `Last Comment At` columns.
+          commentCount: comments.length,
+          lastCommentAt:
+            comments.length > 0
+              ? comments[comments.length - 1].createdAt
+              : undefined,
         }
       }),
     )
@@ -182,5 +373,35 @@ export const reviewUpload = mutation({
       await ctx.db.patch(upload.taskId, { completedAt: undefined })
     }
     return null
+  },
+})
+
+// ——— File comments (sbek CNT-05) ————————————————————————————————————————
+// One thread per file, visible to the organizer AND the speaker who owns it.
+// Nothing is emailed in v1 — the thread lives where the file lives.
+
+export const listUploadComments = query({
+  args: { uploadId: v.id("uploads") },
+  handler: async (ctx, args) => {
+    const upload = await ctx.db.get(args.uploadId)
+    if (!upload) throw new Error("File not found.")
+    await requireEventAccess(ctx, upload.eventId)
+    return await threadFor(ctx, args.uploadId)
+  },
+})
+
+export const addUploadComment = mutation({
+  args: { uploadId: v.id("uploads"), body: v.string() },
+  handler: async (ctx, args) => {
+    const upload = await ctx.db.get(args.uploadId)
+    if (!upload) throw new Error("File not found.")
+    const { user } = await requireEventAccess(ctx, upload.eventId)
+    return await addComment(ctx, {
+      uploadId: args.uploadId,
+      eventId: upload.eventId,
+      authorType: "organizer",
+      authorLabel: user.name?.trim() || user.email,
+      body: args.body,
+    })
   },
 })

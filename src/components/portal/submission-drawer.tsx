@@ -65,11 +65,15 @@ export function SubmissionDrawer({
   open,
   onOpenChange,
 }: SubmissionDrawerProps) {
-  const { portalToken } = usePortal()
+  const { portalToken, home } = usePortal()
   const updateSubmission = useConvexMutation(api.portal.updateSubmission)
   const withdrawSubmission = useConvexMutation(api.portal.withdrawSubmission)
 
-  const editable = canEdit(submission)
+  // The organizer can turn portal editing off for the whole event (Settings →
+  // Event details → Speaker portal). Show the fields read-only rather than
+  // letting someone type a paragraph the save would then refuse.
+  const editsAllowed = home.portal.allowSubmissionEdits
+  const editable = canEdit(submission) && editsAllowed
   const [title, setTitle] = useState(submission.title)
   const [description, setDescription] = useState(submission.description ?? "")
   const [answers, setAnswers] = useState<Record<string, unknown>>(
@@ -220,6 +224,16 @@ export function SubmissionDrawer({
               <AlertDescription>
                 You can update the wording here at any time — even after your
                 talk has been accepted. The organizers see your latest version.
+              </AlertDescription>
+            </Alert>
+          ) : canEdit(submission) ? (
+            <Alert>
+              <RiInformationLine aria-hidden />
+              <AlertTitle>Changes go through the organizers</AlertTitle>
+              <AlertDescription>
+                This event doesn't take edits through the portal. Email the
+                organizers with what you'd like changed and they'll update it
+                for you.
               </AlertDescription>
             </Alert>
           ) : (

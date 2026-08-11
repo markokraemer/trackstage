@@ -3,10 +3,13 @@ import {
   internalAction,
   internalMutation,
   internalQuery,
+  mutation,
+  query,
 } from "./_generated/server"
-import type { MutationCtx } from "./_generated/server"
+import type { MutationCtx, QueryCtx } from "./_generated/server"
 import { internal } from "./_generated/api"
-import type { Id } from "./_generated/dataModel"
+import type { Doc, Id } from "./_generated/dataModel"
+import { requireEventAccess, requireMembership } from "./lib/auth"
 
 // ————————————————————————————————————————————————————————————————————————
 // Outbound webhooks — the "real-time notifications instead of polling" half
@@ -376,5 +379,222 @@ export const sweepUploadIntents = internalMutation({
       await ctx.db.delete(row._id)
     }
     return { deleted: stale.length }
+  },
+})
+
+// ——— Organizer-facing management (Settings → Integrations) ————————————————
+//
+// The REST API manages endpoints through the internal functions in
+// convex/apiV1.ts (`listWebhooks`, `getWebhook`, `writeWebhook`,
+// `webhookDeliveries`), which are reachable only with an API key. These are
+// the same operations for a signed-in organizer, authorized through the
+// ordinary workspace-membership rules in convex/lib/auth.ts — one behaviour,
+// two front doors.
+
+/** Shape shared by the list and the create/rotate responses. */
+function hookForUi(hook: Doc<"webhooks">, revealSecret = false) {
+  return {
+    _id: hook._id,
+    url: hook.url,
+    events: hook.events,
+    description: hook.description ?? null,
+    enabled: hook.enabled,
+    eventId: hook.eventId ?? null,
+    createdAt: hook.createdAt,
+    lastDeliveryAt: hook.lastDeliveryAt ?? null,
+    lastStatus: hook.lastStatus ?? null,
+    lastError: hook.lastError ?? null,
+    consecutiveFailures: hook.consecutiveFailures ?? 0,
+    secret: revealSecret ? hook.secret : maskSecret(hook.secret),
+  }
+}
+
+/**
+ * Every endpoint the event's workspace owns — both the ones scoped to this
+ * event and the workspace-wide ones, since both fire for this event's changes
+ * and hiding the latter would make the list a lie.
+ */
+export const list = query({
+  args: { eventId: v.id("events") },
+  handler: async (ctx, args) => {
+    const { event } = await requireEventAccess(ctx, args.eventId)
+    const rows = await ctx.db
+      .query("webhooks")
+      .withIndex("by_organizationId", (q) =>
+        q.eq("organizationId", event.organizationId!),
+      )
+      .collect()
+    return rows
+      .filter((hook) => hook.eventId === undefined || hook.eventId === event._id)
+      .sort((a, b) => b.createdAt - a.createdAt)
+      .map((hook) => hookForUi(hook))
+  },
+})
+
+/** The event catalogue the create dialog offers. */
+export const eventTypes = query({
+  args: {},
+  returns: v.array(v.string()),
+  handler: async () => [...WEBHOOK_EVENT_TYPES],
+})
+
+async function requireHookAccess(
+  ctx: QueryCtx | MutationCtx,
+  webhookId: Id<"webhooks">,
+  minRole: "member" | "admin" = "member",
+) {
+  const hook = await ctx.db.get(webhookId)
+  if (!hook) throw new Error("That webhook no longer exists.")
+  await requireMembership(ctx, hook.organizationId, minRole)
+  return hook
+}
+
+function validateSubscription(url: string, events: Array<string>): Array<string> {
+  if (!/^https?:\/\//i.test(url.trim()))
+    throw new Error("Enter a full URL starting with https://")
+  const allowed = new Set<string>([...WEBHOOK_EVENT_TYPES, "*"])
+  for (const type of events) {
+    if (!allowed.has(type)) throw new Error(`Unknown event type: ${type}`)
+  }
+  return events.length > 0 ? events : ["*"]
+}
+
+/** Returns the plaintext signing secret — shown once, exactly like an API key. */
+export const create = mutation({
+  args: {
+    eventId: v.id("events"),
+    url: v.string(),
+    events: v.array(v.string()),
+    description: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const { event } = await requireEventAccess(ctx, args.eventId, "admin")
+    const events = validateSubscription(args.url, args.events)
+    const secret = generateWebhookSecret()
+    const id = await ctx.db.insert("webhooks", {
+      organizationId: event.organizationId!,
+      eventId: event._id,
+      url: args.url.trim(),
+      secret,
+      events,
+      description: args.description?.trim() || undefined,
+      enabled: true,
+      createdAt: Date.now(),
+    })
+    const hook = await ctx.db.get(id)
+    return hookForUi(hook as Doc<"webhooks">, true)
+  },
+})
+
+export const update = mutation({
+  args: {
+    webhookId: v.id("webhooks"),
+    url: v.optional(v.string()),
+    events: v.optional(v.array(v.string())),
+    description: v.optional(v.string()),
+    enabled: v.optional(v.boolean()),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const hook = await requireHookAccess(ctx, args.webhookId, "admin")
+    const url = args.url ?? hook.url
+    const events = validateSubscription(url, args.events ?? hook.events)
+    await ctx.db.patch(hook._id, {
+      url: url.trim(),
+      events,
+      description:
+        args.description === undefined
+          ? hook.description
+          : args.description.trim() || undefined,
+      enabled: args.enabled ?? hook.enabled,
+    })
+    return null
+  },
+})
+
+export const remove = mutation({
+  args: { webhookId: v.id("webhooks") },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const hook = await requireHookAccess(ctx, args.webhookId, "admin")
+    const deliveries = await ctx.db
+      .query("webhookDeliveries")
+      .withIndex("by_webhookId", (q) => q.eq("webhookId", hook._id))
+      .take(500)
+    for (const delivery of deliveries) await ctx.db.delete(delivery._id)
+    await ctx.db.delete(hook._id)
+    return null
+  },
+})
+
+/** New signing secret, returned in full once. The old one stops verifying. */
+export const rotate = mutation({
+  args: { webhookId: v.id("webhooks") },
+  returns: v.string(),
+  handler: async (ctx, args) => {
+    const hook = await requireHookAccess(ctx, args.webhookId, "admin")
+    const secret = generateWebhookSecret()
+    await ctx.db.patch(hook._id, { secret })
+    return secret
+  },
+})
+
+/**
+ * Queue a signed `webhook.test` delivery. Returns the delivery id so the card
+ * can watch that row settle rather than guessing at a timeout.
+ */
+export const sendTest = mutation({
+  args: { webhookId: v.id("webhooks") },
+  returns: v.id("webhookDeliveries"),
+  handler: async (ctx, args) => {
+    const hook = await requireHookAccess(ctx, args.webhookId, "admin")
+    const body = JSON.stringify({
+      data: { id: hook._id, sourceOfChange: "user", test: true },
+      metadata: {
+        action: "webhook.test",
+        event_id: hook.eventId ?? null,
+        org_id: hook.organizationId,
+        resource_url: null,
+        version: 1,
+        datetime: new Date().toISOString(),
+      },
+    })
+    const deliveryId = await ctx.db.insert("webhookDeliveries", {
+      webhookId: hook._id,
+      organizationId: hook.organizationId,
+      eventType: "webhook.test",
+      payload: body,
+      status: "pending",
+      attempts: 0,
+      createdAt: Date.now(),
+    })
+    await ctx.scheduler.runAfter(0, internal.webhooks.deliver, {
+      deliveryId,
+      attempt: 1,
+    })
+    return deliveryId
+  },
+})
+
+/** The per-endpoint delivery log the drawer shows (newest first). */
+export const deliveries = query({
+  args: { webhookId: v.id("webhooks"), limit: v.optional(v.number()) },
+  handler: async (ctx, args) => {
+    const hook = await requireHookAccess(ctx, args.webhookId)
+    const rows = await ctx.db
+      .query("webhookDeliveries")
+      .withIndex("by_webhookId", (q) => q.eq("webhookId", hook._id))
+      .order("desc")
+      .take(Math.min(Math.max(args.limit ?? 10, 1), 50))
+    return rows.map((delivery) => ({
+      _id: delivery._id,
+      eventType: delivery.eventType,
+      status: delivery.status,
+      attempts: delivery.attempts,
+      responseStatus: delivery.responseStatus ?? null,
+      error: delivery.error ?? null,
+      createdAt: delivery.createdAt,
+      deliveredAt: delivery.deliveredAt ?? null,
+    }))
   },
 })

@@ -152,6 +152,7 @@ async function walkTo(
   },
 ) {
   const targetIndex = ORDER.indexOf(target)
+  let stalledSince: number | null = null
   const deadline = Date.now() + 90_000
   while (Date.now() < deadline) {
     const step = await currentStep(page)
@@ -167,9 +168,22 @@ async function walkTo(
         // flight; filling it then hangs until the test times out.
         const input = page.locator("#submit-email")
         if (!(await input.isEnabled().catch(() => false))) {
-          await page.waitForTimeout(500)
+          stalledSince ??= Date.now()
+          // A "Checking…" that never resolves means the browser's Convex
+          // websocket dropped — which happens constantly here because other
+          // agents push functions to the shared deployment while we run. The
+          // mutation itself is fast (measured at 120-400ms against the same
+          // backend), so the fix is the one a real user would reach for:
+          // reload, which re-establishes the socket.
+          if (Date.now() - stalledSince > 20_000) {
+            await gotoStable(page, page.url(), "networkidle")
+            stalledSince = null
+          } else {
+            await page.waitForTimeout(500)
+          }
           break
         }
+        stalledSince = null
         if ((await input.inputValue().catch(() => "")) !== email) {
           await fillStable(input, email)
         }

@@ -3,6 +3,7 @@ import type { Doc, Id } from "./_generated/dataModel"
 import type { MutationCtx, QueryCtx } from "./_generated/server"
 import { mutation, query } from "./_generated/server"
 import { requireEventAccess } from "./lib/auth"
+import { record as recordAudit } from "./lib/audit"
 import { emitWebhook } from "./webhooks"
 
 // A submission is schedulable when accepted (or a manual session).
@@ -43,7 +44,12 @@ export async function computeConflicts(ctx: QueryCtx, eventId: Id<"events">) {
         q.eq("eventId", eventId).eq("status", "accepted"),
       )
       .collect()
-  ).filter((s) => s.startsAt !== undefined && s.durationMinutes !== undefined)
+  ).filter(
+    (s) =>
+      s.deletedAt === undefined &&
+      s.startsAt !== undefined &&
+      s.durationMinutes !== undefined,
+  )
 
   const conflicts: Array<{
     kind: "room" | "speaker"
@@ -116,7 +122,7 @@ export const board = query({
           q.eq("eventId", args.eventId).eq("status", "accepted"),
         )
         .collect()
-    )
+    ).filter((s) => s.deletedAt === undefined)
 
     const rooms = (
       await ctx.db
@@ -199,7 +205,9 @@ export const publishAgenda = mutation({
         q.eq("eventId", event._id).eq("status", "accepted"),
       )
       .collect()
-    const sessionCount = accepted.filter((s) => s.startsAt !== undefined).length
+    const sessionCount = accepted.filter(
+      (s) => s.deletedAt === undefined && s.startsAt !== undefined,
+    ).length
     // Outbound webhooks (convex/webhooks.ts) — fire-and-forget.
     await emitWebhook(ctx, args.eventId, "agenda.published", {
       id: args.eventId,
@@ -207,6 +215,14 @@ export const publishAgenda = mutation({
       slug: event.slug,
       published_at: new Date(now).toISOString(),
       session_count: sessionCount,
+    })
+    await recordAudit(ctx, {
+      eventId: args.eventId,
+      entity: "agenda",
+      entityId: args.eventId,
+      action: "published",
+      summary: `Agenda published — ${sessionCount} scheduled session${sessionCount === 1 ? "" : "s"} went public`,
+      meta: { sessionCount },
     })
     return { agendaPublishedAt: now, sessionCount }
   },
@@ -218,6 +234,13 @@ export const unpublishAgenda = mutation({
   handler: async (ctx, args) => {
     await requireEventAccess(ctx, args.eventId, "admin")
     await ctx.db.patch(args.eventId, { agendaPublishedAt: undefined })
+    await recordAudit(ctx, {
+      eventId: args.eventId,
+      entity: "agenda",
+      entityId: args.eventId,
+      action: "unpublished",
+      summary: "Agenda unpublished — the public schedule is hidden again",
+    })
     return null
   },
 })
@@ -257,6 +280,20 @@ export const schedule = mutation({
       starts_at: new Date(args.startsAt).toISOString(),
       duration_minutes: args.durationMinutes,
     })
+    await recordAudit(ctx, {
+      eventId: submission.eventId,
+      entity: "session",
+      entityId: args.submissionId,
+      action: submission.startsAt === undefined ? "scheduled" : "rescheduled",
+      summary: `${submission.startsAt === undefined ? "Scheduled" : "Moved"} to ${room.name}, ${new Date(args.startsAt).toISOString()} (${args.durationMinutes} min) · ${submission.title}`,
+      meta: {
+        room: room.name,
+        startsAt: args.startsAt,
+        durationMinutes: args.durationMinutes,
+        previousStartsAt: submission.startsAt,
+        title: submission.title,
+      },
+    })
     return null
   },
 })
@@ -274,6 +311,14 @@ export const unschedule = mutation({
     await emitWebhook(ctx, submission.eventId, "session.unscheduled", {
       id: args.submissionId,
       title: submission.title,
+    })
+    await recordAudit(ctx, {
+      eventId: submission.eventId,
+      entity: "session",
+      entityId: args.submissionId,
+      action: "unscheduled",
+      summary: `Removed from the agenda · ${submission.title}`,
+      meta: { title: submission.title, previousStartsAt: submission.startsAt },
     })
     return null
   },
@@ -317,8 +362,9 @@ export async function autoPlaceCore(
         q.eq("eventId", eventId).eq("status", "accepted"),
       )
       .collect()
-    const scheduled = accepted.filter((s) => s.startsAt !== undefined)
-    const unscheduled = accepted.filter((s) => s.startsAt === undefined)
+    const live = accepted.filter((s) => s.deletedAt === undefined)
+    const scheduled = live.filter((s) => s.startsAt !== undefined)
+    const unscheduled = live.filter((s) => s.startsAt === undefined)
 
     const duration = args.defaultDurationMinutes ?? 45
     const gap = args.gapMinutes ?? 15
@@ -402,6 +448,17 @@ export const autoPlace = mutation({
   },
   handler: async (ctx, args) => {
     const { event } = await requireEventAccess(ctx, args.eventId)
-    return await autoPlaceCore(ctx, event, args)
+    const result = await autoPlaceCore(ctx, event, args)
+    // One row for the whole run: auto-placement is a single organizer action
+    // and a row per placed talk would flood the feed.
+    await recordAudit(ctx, {
+      eventId: args.eventId,
+      entity: "agenda",
+      entityId: args.eventId,
+      action: "auto_placed",
+      summary: `Auto-placed ${result.placed} session${result.placed === 1 ? "" : "s"}${result.remaining > 0 ? ` — ${result.remaining} still unscheduled` : ""}`,
+      meta: { placed: result.placed, remaining: result.remaining },
+    })
+    return result
   },
 })

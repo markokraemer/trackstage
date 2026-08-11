@@ -4,6 +4,7 @@ import type { api } from "@convex/_generated/api"
 import {
   RiArrowDownLine,
   RiArrowUpLine,
+  RiDeleteBin6Line,
   RiExpandUpDownLine,
   RiMore2Fill,
 } from "@remixicon/react"
@@ -34,8 +35,8 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
-import type { SubmissionStatus } from "@/components/shared/status-pill"
 import { StatusPicker } from "@/components/submissions/status-picker"
+import type { StatusChoice } from "@/components/submissions/status-picker"
 import {
   EMPTY_CELL,
   absoluteDate,
@@ -64,11 +65,17 @@ export interface SubmissionsTableProps {
   selectedIds: Array<string>
   onToggleRow: (id: string, selected: boolean) => void
   onToggleAll: (selected: boolean) => void
-  onStatusChange: (id: string, status: SubmissionStatus) => Promise<void>
+  onStatusChange: (id: string, next: StatusChoice) => Promise<void>
   sort: { key: SortKey; direction: SortDirection }
   onSortChange: (key: SortKey) => void
-  /** Status overrides applied while a mutation is in flight (optimistic). */
-  pendingStatus?: Record<string, string>
+  /**
+   * Status overrides applied while a mutation is in flight (optimistic).
+   * Carries the custom status label too, so a row that was just set to
+   * "Waitlist" doesn't flash "Pending" on the way to the server.
+   */
+  pendingStatus?: Record<string, StatusChoice>
+  /** Opens the delete confirmation. Omit and the row menu hides the action. */
+  onDelete?: (row: SubmissionRow) => void
 }
 
 export function SubmissionsTable({
@@ -82,6 +89,7 @@ export function SubmissionsTable({
   sort,
   onSortChange,
   pendingStatus = {},
+  onDelete,
 }: SubmissionsTableProps) {
   const selected = new Set(selectedIds)
   const allSelected =
@@ -151,7 +159,9 @@ export function SubmissionsTable({
               (p) => p.role === "speaker"
             )
             const people = speakers.length > 0 ? speakers : row.participants
-            const status = pendingStatus[row._id] ?? row.status
+            const optimistic = pendingStatus[row._id]
+            const status = optimistic?.status ?? row.status
+            const statusId = optimistic ? optimistic.statusId : row.statusId
 
             return (
               <TableRow
@@ -172,6 +182,7 @@ export function SubmissionsTable({
                 <TableCell>
                   <StatusPicker
                     status={status}
+                    statusId={statusId}
                     title={row.title}
                     onSave={(next) => onStatusChange(row._id, next)}
                   />
@@ -310,6 +321,18 @@ export function SubmissionsTable({
                       >
                         Move to Pending
                       </DropdownMenuItem>
+                      {onDelete ? (
+                        <>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem
+                            variant="destructive"
+                            onClick={() => onDelete(row)}
+                          >
+                            <RiDeleteBin6Line aria-hidden />
+                            Delete submission
+                          </DropdownMenuItem>
+                        </>
+                      ) : null}
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </TableCell>

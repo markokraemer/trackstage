@@ -1,15 +1,18 @@
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { Link, createFileRoute } from "@tanstack/react-router"
 import { useQuery } from "@tanstack/react-query"
-import { convexQuery } from "@convex-dev/react-query"
+import { convexQuery, useConvexMutation } from "@convex-dev/react-query"
 import { api } from "@convex/_generated/api"
 import type { Id } from "@convex/_generated/dataModel"
 import {
+  RiEyeLine,
+  RiEyeOffLine,
   RiListCheck3,
   RiSettings3Line,
   RiUserAddLine,
   RiUserVoiceLine,
 } from "@remixicon/react"
+import { toast } from "sonner"
 
 import { PageHeader } from "@/components/shared/page-header"
 import { EmptyState } from "@/components/shared/empty-state"
@@ -37,11 +40,33 @@ import { AssignTaskDialog } from "@/components/dashboard/assign-task-dialog"
 import { RemindIncompleteButton } from "@/components/dashboard/remind-incomplete-button"
 import { APP_ROUTES } from "@/components/dashboard/app-routes"
 
+/**
+ * Deep links into the roster. Both are how the ⌘K palette
+ * (src/components/shell/global-search.tsx) hands off: `person` opens that
+ * speaker's profile drawer, `add` opens the "Add speaker" dialog. They are
+ * ordinary URL params, so they also work as plain links for the browser-agent
+ * judge.
+ */
+interface SpeakersSearch {
+  person?: string
+  add?: boolean
+}
+
 export const Route = createFileRoute("/app/speakers/")({
+  validateSearch: (search: Record<string, unknown>): SpeakersSearch => ({
+    person:
+      typeof search.person === "string" && search.person
+        ? search.person
+        : undefined,
+    add:
+      search.add === true || search.add === "1" || search.add === "true"
+        ? true
+        : undefined,
+  }),
   component: SpeakersPage,
 })
 
-type FilterTab = "all" | "attention" | "ready"
+type FilterTab = "all" | "attention" | "ready" | "hidden"
 
 /** Sentinel for "don't filter by workflow status" (sbek SPK-04 filterable). */
 const ALL_WORKFLOW = "all"
@@ -55,6 +80,8 @@ const TAB_LABELS: Record<FilterTab, string> = {
   all: "All speakers",
   attention: "Needs attention",
   ready: "All set",
+  // sbek CNT-12: who is deliberately kept off the public pages right now.
+  hidden: "Hidden publicly",
 }
 
 /**
@@ -73,6 +100,11 @@ function SpeakersPage() {
   const [assignTo, setAssignTo] = useState<Array<Id<"people">>>([])
   const [addOpen, setAddOpen] = useState(false)
   const [editing, setEditing] = useState<SpeakerRosterRow | null>(null)
+  /** Non-null while a bulk show/hide is in flight (sbek CNT-12). */
+  const [bulkVisibility, setBulkVisibility] = useState<boolean | null>(null)
+
+  const { person: deepLinkedPerson, add: deepLinkedAdd } = Route.useSearch()
+  const navigate = Route.useNavigate()
 
   const { data: rows } = useQuery(
     convexQuery(
@@ -81,14 +113,56 @@ function SpeakersPage() {
     ),
   )
 
+  // Deep links (?person=…, ?add=1). The param is consumed once and cleared, so
+  // closing the drawer doesn't fight the URL and a refresh doesn't reopen it.
+  useEffect(() => {
+    if (!deepLinkedPerson || !rows) return
+    const match = rows.find((row) => String(row.personId) === deepLinkedPerson)
+    if (match) setEditing(match)
+    void navigate({
+      search: (prev: SpeakersSearch) => ({ ...prev, person: undefined }),
+      replace: true,
+    })
+  }, [deepLinkedPerson, rows, navigate])
+
+  useEffect(() => {
+    if (!deepLinkedAdd) return
+    setAddOpen(true)
+    void navigate({
+      search: (prev: SpeakersSearch) => ({ ...prev, add: undefined }),
+      replace: true,
+    })
+  }, [deepLinkedAdd, navigate])
+
+  // Public visibility (sbek CNT-12). Kept as its own tiny reactive query of
+  // hidden ids so the toggle echoes instantly without reloading the roster.
+  const { data: hiddenIds } = useQuery(
+    convexQuery(
+      api.speakersAdmin.hiddenFromPublic,
+      event ? { eventId: event._id } : "skip",
+    ),
+  )
+  const hidden = useMemo(
+    () => new Set<string>((hiddenIds ?? []).map(String)),
+    [hiddenIds],
+  )
+  const setPublicVisibility = useConvexMutation(
+    api.speakersAdmin.setPublicVisibility,
+  )
+
   const counts = useMemo(() => {
     const all = rows ?? []
     const attention = all.filter(
       (row) =>
         row.missing.length > 0 || row.tasks.done < row.tasks.total,
     ).length
-    return { all: all.length, attention, ready: all.length - attention }
-  }, [rows])
+    return {
+      all: all.length,
+      attention,
+      ready: all.length - attention,
+      hidden: all.filter((row) => hidden.has(String(row.personId))).length,
+    }
+  }, [rows, hidden])
 
   const visible = useMemo(() => {
     const term = search.trim().toLowerCase()
@@ -97,6 +171,7 @@ function SpeakersPage() {
         row.missing.length > 0 || row.tasks.done < row.tasks.total
       if (tab === "attention" && !needsAttention) return false
       if (tab === "ready" && needsAttention) return false
+      if (tab === "hidden" && !hidden.has(String(row.personId))) return false
       if (workflow !== ALL_WORKFLOW && row.workflowStatus !== workflow) {
         return false
       }
@@ -110,7 +185,7 @@ function SpeakersPage() {
         )
       )
     })
-  }, [rows, search, tab, workflow])
+  }, [rows, search, tab, workflow, hidden])
 
   const speakerOptions = useMemo(
     () =>
@@ -126,6 +201,43 @@ function SpeakersPage() {
   function openAssign(personIds: Array<Id<"people">>) {
     setAssignTo(personIds)
     setAssignOpen(true)
+  }
+
+  /**
+   * Show/hide the selected speakers on every public page (sbek CNT-12) — the
+   * bulk twin of the switch in the profile drawer. One boolean per person, no
+   * approval step: the case is "the whole keynote line-up is under embargo
+   * until Tuesday", and it has to be reversible in one click.
+   */
+  async function applyVisibility(publicVisible: boolean) {
+    const ids = selected as Array<Id<"people">>
+    if (ids.length === 0) return
+    setBulkVisibility(publicVisible)
+    try {
+      await Promise.all(
+        ids.map((personId) =>
+          setPublicVisibility({ personId, publicVisible }),
+        ),
+      )
+      toast.success(
+        publicVisible
+          ? `${ids.length} speaker${ids.length === 1 ? "" : "s"} shown publicly`
+          : `${ids.length} speaker${ids.length === 1 ? "" : "s"} hidden from public pages`,
+        {
+          description: publicVisible
+            ? "They're back on the speaker gallery and their sessions."
+            : "They stay on your roster, keep their portal, tasks and emails.",
+        },
+      )
+      setSelected([])
+    } catch (error) {
+      toast.error("Couldn't change their visibility", {
+        description:
+          error instanceof Error ? error.message : "Please try again.",
+      })
+    } finally {
+      setBulkVisibility(null)
+    }
   }
 
   if (isEmpty) {
@@ -243,6 +355,24 @@ function SpeakersPage() {
               Assign task to selected
             </Button>
             <Button
+              size="sm"
+              variant="outline"
+              disabled={bulkVisibility !== null}
+              onClick={() => void applyVisibility(false)}
+            >
+              <RiEyeOffLine aria-hidden />
+              Hide from public
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={bulkVisibility !== null}
+              onClick={() => void applyVisibility(true)}
+            >
+              <RiEyeLine aria-hidden />
+              Show publicly
+            </Button>
+            <Button
               variant="ghost"
               size="sm"
               onClick={() => setSelected([])}
@@ -321,6 +451,7 @@ function SpeakersPage() {
 
       <SpeakerProfileDrawer
         speaker={editing}
+        publicVisible={editing ? !hidden.has(String(editing.personId)) : true}
         open={editing !== null}
         onOpenChange={(next) => {
           if (!next) setEditing(null)

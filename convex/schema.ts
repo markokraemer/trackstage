@@ -115,6 +115,24 @@ export default defineSchema({
     // pages render "Schedule coming soon" with no sessions, however many are
     // accepted and scheduled internally. Set by agenda.publishAgenda.
     agendaPublishedAt: v.optional(v.number()),
+    // How the speaker portal behaves for this event (Settings → Event →
+    // Speaker portal; the high-value subset of Sessionboard's per-portal
+    // Configuration step, docs/reference/sessionboard-product-map.md §2.5).
+    // Every flag is optional and every unset flag resolves to the permissive
+    // value in convex/portal.ts, so an event that never opens the card keeps
+    // exactly the behaviour it had before this existed.
+    portalSettings: v.optional(
+      v.object({
+        // Tasks are visible to everyone with portal access. Off ⇒ only
+        // speakers with an accepted session see the Tasks tab.
+        alwaysShowTasks: v.optional(v.boolean()),
+        // Speakers may edit their own submissions from the portal.
+        allowSubmissionEdits: v.optional(v.boolean()),
+        // Past-due tasks stay completable. Off ⇒ an overdue task locks and
+        // only the organizers can reopen it.
+        extendTaskDeadlines: v.optional(v.boolean()),
+      }),
+    ),
   })
     .index("by_slug", ["slug"])
     .index("by_organizationId", ["organizationId"]),
@@ -131,6 +149,72 @@ export default defineSchema({
     name: v.string(),
     color: v.string(), // hex
     order: v.number(),
+  }).index("by_eventId", ["eventId"]),
+
+  /**
+   * Custom session statuses (Settings → Statuses) — Sessionboard's
+   * `Name · Category · Color · Order · Sessions` CRUD.
+   *
+   * DESIGN CHOICE, read this before changing anything here:
+   * `submissions.status` STAYS the fixed pipeline enum
+   * (`draft | pending | accept_queue | decline_queue | accepted | declined |
+   * withdrawn`). Every rule in the product — queue commits, decision emails,
+   * portal masking, agenda visibility, the public API — keys off that string
+   * and must keep doing so. This table is a PRESENTATION + GROUPING layer on
+   * top of it:
+   *
+   *   • `pipelineStatus` is the enum value a row behaves as. It is what gets
+   *     written to `submissions.status` when an organizer picks the row.
+   *   • `category` is the behavioural bucket the row inherits (Sessionboard's
+   *     own model: "every status maps to a category and inherits its
+   *     behaviour"). It is what an organizer reasons about.
+   *   • `name` / `color` / `order` are pure presentation.
+   *
+   * So an organizer can rename "Accepted" to "Confirmed", recolour it, and add
+   * "Waitlist" (category `pending`) — and nothing downstream changes, because
+   * a Waitlist submission is still `status: "pending"` to every pipeline rule.
+   * `submissions.statusId` remembers WHICH label was chosen; when it disagrees
+   * with `status` (e.g. a queue commit moved the row) the label is ignored and
+   * the built-in wording wins. See `convex/sessionStatuses.ts`.
+   */
+  sessionStatuses: defineTable({
+    eventId: v.id("events"),
+    // What the organizer sees. Unique per event, case-insensitively.
+    name: v.string(),
+    // The behavioural bucket. Drives what the rest of the product does with a
+    // submission carrying this status — nothing else.
+    category: v.union(
+      v.literal("draft"),
+      v.literal("pending"),
+      v.literal("accepted"),
+      v.literal("declined"),
+      v.literal("withdrawn"),
+    ),
+    // The pipeline enum value written to `submissions.status`. Always inside
+    // the row's category (the two queue statuses are the only case where a
+    // category holds more than one pipeline value).
+    pipelineStatus: v.union(
+      v.literal("draft"),
+      v.literal("pending"),
+      v.literal("accept_queue"),
+      v.literal("decline_queue"),
+      v.literal("accepted"),
+      v.literal("declined"),
+      v.literal("withdrawn"),
+    ),
+    // A design token name, never a hex — the pill tones live in styles.css.
+    color: v.union(
+      v.literal("green"),
+      v.literal("amber"),
+      v.literal("red"),
+      v.literal("gray"),
+      v.literal("blue"),
+    ),
+    order: v.number(),
+    // Set on the seven rows that ship with every event ("Created By: System"
+    // in Sessionboard). System rows can be renamed, recoloured and reordered
+    // but never deleted and never re-categorised — the pipeline needs them.
+    systemKey: v.optional(v.string()),
   }).index("by_eventId", ["eventId"]),
 
   // ——— CFP forms ————————————————————————————————————————————————————————
@@ -196,6 +280,13 @@ export default defineSchema({
     // its presence is also what puts a manually added speaker (one with no
     // accepted submission yet) on the roster.
     workflowStatus: v.optional(v.string()),
+    // Public visibility (sbek CNT-12 — Sessionboard's per-participant "eye"
+    // toggle). Absent means visible: every person is public by default, and an
+    // organizer flips this to embargo a keynote speaker until the announcement.
+    // `false` removes them from every public surface — gallery, session speaker
+    // lists, itineraries, the JSON API and the .ics feed — without touching
+    // their submission or acceptance status.
+    publicVisible: v.optional(v.boolean()),
     // Last REST-API write (convex/apiV1.ts) — see submissions.updatedAt.
     updatedAt: v.optional(v.number()),
   })
@@ -219,6 +310,11 @@ export default defineSchema({
     tags: v.array(v.string()),
     // draft | pending | accept_queue | decline_queue | accepted | declined | withdrawn
     status: v.string(),
+    // Which custom status LABEL the organizer picked (convex/sessionStatuses.ts).
+    // Presentation only: `status` above is the single source of truth for every
+    // pipeline rule. Ignored whenever the referenced row's `pipelineStatus` no
+    // longer equals `status`, so a queue commit can never leave a lying label.
+    statusId: v.optional(v.id("sessionStatuses")),
     submitterId: v.id("people"),
     decidedAt: v.optional(v.number()),
     notifiedAt: v.optional(v.number()),
@@ -226,6 +322,13 @@ export default defineSchema({
     roomId: v.optional(v.id("rooms")),
     startsAt: v.optional(v.number()),
     durationMinutes: v.optional(v.number()),
+    // Public visibility (sbek CNT-12 — Sessionboard's "Display Session"
+    // checkbox). Absent means visible: an accepted session is public once the
+    // agenda is published, and an organizer unticks this to keep a surprise
+    // keynote or an internal briefing off the public schedule, sessions list,
+    // session page, speaker itineraries, JSON API and .ics feed. It is a flag
+    // on the record, not a workflow — nothing else changes.
+    publicVisible: v.optional(v.boolean()),
     // Last REST-API write (convex/apiV1.ts). Surfaced as `updated_at` and used
     // as the optimistic-concurrency token on PUT (mismatch ⇒ 409), exactly
     // like Sessionboard's. Falls back to `_creationTime` when never written
@@ -305,6 +408,19 @@ export default defineSchema({
     .index("by_eventId", ["eventId"])
     .index("by_personId", ["personId"]),
 
+  // The reusable task library (product-map delta #10 — "Portals → Tasks").
+  // Organizers write "Upload your slides" once and assign it all season, and
+  // the instructions may carry {{firstName}} / {{sessionTitle}} placeholders
+  // that resolve per speaker when the portal renders them.
+  taskTemplates: defineTable({
+    eventId: v.id("events"),
+    title: v.string(),
+    instructions: v.optional(v.string()),
+    kind: v.string(), // profile | headshot | upload | confirm
+    /** What a portal calls this task, when it differs from the library name. */
+    alias: v.optional(v.string()),
+  }).index("by_eventId", ["eventId"]),
+
   // Files uploaded by speakers (slides, docs, headshots). Versioned per
   // (personId, submissionId, taskId) slot; organizers approve/request changes.
   uploads: defineTable({
@@ -338,6 +454,22 @@ export default defineSchema({
     // file is never deleted out from under a version that still shows it.
     .index("by_storageId", ["storageId"]),
 
+  // A comment thread per uploaded file (sbek CNT-05, product-map delta #8).
+  // Both sides read the same thread — an organizer asking "can you re-export
+  // this at 16:9?" and the speaker's reply live together, attached to the file
+  // rather than to an email nobody else can see. No notification in v1, which
+  // is exactly how Sessionboard ships it (documented as a known gap).
+  uploadComments: defineTable({
+    uploadId: v.id("uploads"),
+    eventId: v.id("events"),
+    authorType: v.string(), // organizer | speaker
+    /** Display name captured at write time, so it survives renames/removals. */
+    authorLabel: v.string(),
+    body: v.string(),
+  })
+    .index("by_uploadId", ["uploadId"])
+    .index("by_eventId", ["eventId"]),
+
   // ——— Communications ——————————————————————————————————————————————————
   emailTemplates: defineTable({
     eventId: v.id("events"),
@@ -362,6 +494,15 @@ export default defineSchema({
     sentAt: v.optional(v.number()),
     status: v.string(), // scheduled | sent | failed | preview
     error: v.optional(v.string()),
+    // ——— Delivery receipt (product-map delta #7) ————————————————————————
+    // `status: "sent"` only proves the provider accepted the email. These three
+    // carry what happened afterwards, refreshed on demand from Resend.
+    /** Resend's message id, returned by POST /emails — the polling handle. */
+    resendId: v.optional(v.string()),
+    /** Resend's latest event: delivered | bounced | complained | opened | … */
+    providerStatus: v.optional(v.string()),
+    /** When the provider confirmed the mail actually landed. */
+    deliveredAt: v.optional(v.number()),
   })
     .index("by_eventId", ["eventId"])
     .index("by_personId", ["personId"])

@@ -5,11 +5,18 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Skeleton } from "@/components/ui/skeleton"
 import { STATUS_TABS } from "@/components/submissions/constants"
 import type { StatusTabValue } from "@/components/submissions/constants"
+import { systemStatusOption, useStatusCatalog } from "@/lib/status-catalog"
 
 /**
  * Status tab strip with live counts (docs/ux/03 image5). Each tab is a real
  * link, so the current view is shareable, restorable, and reachable by a
  * browser agent without any JavaScript-only interaction.
+ *
+ * The tabs are the PIPELINE — one per stage, always the same seven — but the
+ * wording follows the event's status catalogue, so an organizer who renamed
+ * "Accepted" to "Confirmed" in Settings → Statuses sees "Confirmed" here too.
+ * Custom statuses don't get their own tab: they live inside their category's
+ * stage and show up as labelled pills in the table.
  *
  * Extends the shadcn `Tabs` primitive in its `line` variant.
  */
@@ -22,6 +29,17 @@ export interface StatusTabsProps {
 }
 
 export function StatusTabs({ value, counts, search }: StatusTabsProps) {
+  const { statuses } = useStatusCatalog()
+
+  function tabLabel(tab: (typeof STATUS_TABS)[number]): string {
+    if (tab.value === "all") return tab.label
+    const option = systemStatusOption(statuses, tab.value)
+    // "Drafts" reads better as a tab than the singular status name.
+    return tab.value === "draft" && option.name === "Draft"
+      ? tab.label
+      : option.name
+  }
+
   return (
     <Tabs value={value} className="w-full">
       <TabsList
@@ -52,7 +70,7 @@ export function StatusTabs({ value, counts, search }: StatusTabsProps) {
                 />
               }
             >
-              <span>{tab.label}</span>
+              <span>{tabLabel(tab)}</span>
               {counts === undefined ? (
                 <Skeleton className="h-4 w-6 rounded-full" />
               ) : (

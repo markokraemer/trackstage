@@ -14,7 +14,13 @@
 import * as React from "react"
 import { useConvexMutation } from "@convex-dev/react-query"
 import { api } from "@convex/_generated/api"
-import { RiExternalLinkLine, RiImageLine, RiSaveLine } from "@remixicon/react"
+import {
+  RiExternalLinkLine,
+  RiEyeLine,
+  RiEyeOffLine,
+  RiImageLine,
+  RiSaveLine,
+} from "@remixicon/react"
 import { toast } from "sonner"
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -27,6 +33,7 @@ import {
 } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { Separator } from "@/components/ui/separator"
+import { Switch } from "@/components/ui/switch"
 import { Textarea } from "@/components/ui/textarea"
 import { DrawerShell } from "@/components/shared/drawer-shell"
 import { initialsOf } from "@/components/dashboard/format"
@@ -37,14 +44,20 @@ export interface SpeakerProfileDrawerProps {
   speaker: SpeakerRosterRow | null
   open: boolean
   onOpenChange: (open: boolean) => void
+  /** Whether this speaker currently appears on the public pages (CNT-12). */
+  publicVisible?: boolean
 }
 
 export function SpeakerProfileDrawer({
   speaker,
   open,
   onOpenChange,
+  publicVisible = true,
 }: SpeakerProfileDrawerProps) {
   const updateProfile = useConvexMutation(api.speakersAdmin.updateProfile)
+  const setPublicVisibility = useConvexMutation(
+    api.speakersAdmin.setPublicVisibility,
+  )
   const [firstName, setFirstName] = React.useState("")
   const [lastName, setLastName] = React.useState("")
   const [jobTitle, setJobTitle] = React.useState("")
@@ -71,6 +84,40 @@ export function SpeakerProfileDrawer({
     // on every reactive roster update, and re-seeding then would rewrite the
     // organizer's text under their cursor.
   }, [personId])
+
+  // Optimistic echo for the eye toggle: the switch flips instantly, the
+  // reactive `publicVisible` prop takes over the moment the server confirms.
+  const [pendingVisible, setPendingVisible] = React.useState<boolean | null>(
+    null,
+  )
+  React.useEffect(() => {
+    setPendingVisible(null)
+  }, [personId, publicVisible])
+  const shownPublicly = pendingVisible ?? publicVisible
+
+  async function toggleVisibility(next: boolean) {
+    if (!speaker) return
+    setPendingVisible(next)
+    try {
+      await setPublicVisibility({ personId: speaker.personId, publicVisible: next })
+      toast.success(
+        next
+          ? `${speaker.name} is shown publicly`
+          : `${speaker.name} is hidden from public pages`,
+        {
+          description: next
+            ? "They're back on the speaker gallery and their sessions."
+            : "Useful while a keynote is still under embargo. Nothing else changes.",
+        },
+      )
+    } catch (error) {
+      setPendingVisible(null)
+      toast.error("Couldn't change their visibility", {
+        description:
+          error instanceof Error ? error.message : "Please try again.",
+      })
+    }
+  }
 
   async function save() {
     if (!speaker) return
@@ -150,6 +197,42 @@ export function SpeakerProfileDrawer({
               personId={speaker.personId}
               value={speaker.workflowStatus}
               name={speaker.name}
+            />
+          </div>
+
+          <Separator />
+
+          <div className="flex items-start gap-3 rounded-lg border border-border px-3 py-3">
+            {shownPublicly ? (
+              <RiEyeLine
+                size={18}
+                aria-hidden
+                className="mt-0.5 shrink-0 text-muted-foreground"
+              />
+            ) : (
+              <RiEyeOffLine
+                size={18}
+                aria-hidden
+                className="mt-0.5 shrink-0 text-muted-foreground"
+              />
+            )}
+            <div className="min-w-0 flex-1">
+              <label
+                htmlFor="edit-public-visible"
+                className="text-sm font-medium text-foreground"
+              >
+                Show in public gallery
+              </label>
+              <p className="mt-0.5 text-sm text-muted-foreground">
+                {shownPublicly
+                  ? "They appear on the public speaker pages and next to their sessions."
+                  : "Hidden from the speaker gallery, their sessions and the calendar feed. Their portal, tasks and emails still work."}
+              </p>
+            </div>
+            <Switch
+              id="edit-public-visible"
+              checked={shownPublicly}
+              onCheckedChange={(value) => void toggleVisibility(value)}
             />
           </div>
 

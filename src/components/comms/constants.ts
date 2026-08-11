@@ -143,3 +143,85 @@ export const MESSAGE_STATUS_FILTERS: Array<{ value: string; label: string }> = [
   { value: "scheduled", label: "Scheduled" },
   { value: "failed", label: "Failed" },
 ]
+
+// ——— Delivery receipts ———————————————————————————————————————————————————
+// "Sent" only means the email provider accepted the message. Once a receipt
+// comes back (comms.refreshDeliveryStatus), the row says what actually
+// happened — the vocabulary Sessionboard's own send log uses.
+
+export interface DeliveryStateMeta {
+  label: string
+  help: string
+  /** Status key handed to `StatusPill`, which owns the colour system. */
+  tone: "sent" | "failed" | "scheduled"
+}
+
+/** Keyed by Resend's `last_event`. */
+export const DELIVERY_STATE_META: Record<
+  string,
+  DeliveryStateMeta | undefined
+> = {
+  delivered: {
+    label: "Delivered",
+    help: "The receiving mail server accepted this email.",
+    tone: "sent",
+  },
+  opened: {
+    label: "Opened",
+    help: "Delivered, and the recipient opened it.",
+    tone: "sent",
+  },
+  clicked: {
+    label: "Clicked",
+    help: "Delivered, opened, and a link in it was clicked.",
+    tone: "sent",
+  },
+  bounced: {
+    label: "Bounced",
+    help: "The mail server rejected the address — check it for a typo.",
+    tone: "failed",
+  },
+  complained: {
+    label: "Marked as spam",
+    help: "The recipient reported this email as spam.",
+    tone: "failed",
+  },
+  canceled: {
+    label: "Cancelled",
+    help: "The email provider cancelled this send.",
+    tone: "failed",
+  },
+  failed: {
+    label: "Not delivered",
+    help: "The email provider could not deliver this message.",
+    tone: "failed",
+  },
+  delivery_delayed: {
+    label: "Delayed",
+    help: "The receiving server asked us to retry later — still on its way.",
+    tone: "scheduled",
+  },
+  queued: {
+    label: "Queued at provider",
+    help: "Accepted by the email provider, waiting to go out.",
+    tone: "scheduled",
+  },
+  sent: {
+    label: "Sent",
+    help: "Handed to the email provider. No delivery receipt yet.",
+    tone: "sent",
+  },
+}
+
+export function deliveryStateMeta(
+  providerStatus: string | undefined,
+): DeliveryStateMeta | undefined {
+  if (!providerStatus) return undefined
+  return (
+    DELIVERY_STATE_META[providerStatus] ?? {
+      label: providerStatus.replace(/_/g, " "),
+      help: "Reported by the email provider.",
+      tone: "scheduled",
+    }
+  )
+}

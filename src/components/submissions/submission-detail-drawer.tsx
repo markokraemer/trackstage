@@ -5,6 +5,8 @@ import { api } from "@convex/_generated/api"
 import type { Id } from "@convex/_generated/dataModel"
 import {
   RiAttachment2,
+  RiEyeLine,
+  RiEyeOffLine,
   RiFileTextLine,
   RiStarLine,
   RiTeamLine,
@@ -16,6 +18,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Skeleton } from "@/components/ui/skeleton"
+import { Switch } from "@/components/ui/switch"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Separator } from "@/components/ui/separator"
@@ -30,11 +33,13 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { DrawerShell } from "@/components/shared/drawer-shell"
 import { EmptyState } from "@/components/shared/empty-state"
-import type { SubmissionStatus } from "@/components/shared/status-pill"
 import { SubmissionFiles } from "@/components/submissions/submission-files"
 import { StatusPicker } from "@/components/submissions/status-picker"
+import type { StatusChoice } from "@/components/submissions/status-picker"
 import { TagInput } from "@/components/submissions/tag-input"
 import { ChoiceValue, TrackValue } from "@/components/submissions/field-bits"
+import { AnswersEditor } from "@/components/submissions/answers-editor"
+import { DeleteSubmissionButton } from "@/components/submissions/delete-submission-dialog"
 import {
   EMPTY_CELL,
   FORMAT_OPTIONS,
@@ -55,6 +60,17 @@ import {
 
 const NONE = "none"
 
+/** Questions with their own dedicated control above the answers block. */
+const CORE_QUESTION_IDS = new Set([
+  "title",
+  "description",
+  "track",
+  "format",
+  "level",
+  "language",
+  "tags",
+])
+
 const ROLE_LABELS: Record<string, string> = {
   speaker: "Speaker",
   chairperson: "Chairperson",
@@ -69,6 +85,8 @@ interface Draft {
   level: string
   language: string
   tags: Array<string>
+  /** "Show on public schedule" — sbek CNT-12. Absent on the record ⇒ on. */
+  publicVisible: boolean
 }
 
 export interface SubmissionDetailDrawerProps {
@@ -118,6 +136,7 @@ export function SubmissionDetailDrawer({
       level: submission.level ?? NONE,
       language: submission.language ?? NONE,
       tags: submission.tags,
+      publicVisible: submission.publicVisible !== false,
     })
   }, [submission?._id])
 
@@ -167,10 +186,45 @@ export function SubmissionDetailDrawer({
     }
   }
 
-  async function handleStatus(next: SubmissionStatus) {
+  /**
+   * "Show on public schedule" (sbek CNT-12). Saved the instant it is flipped —
+   * a visibility switch that needs a second "Save" click is how a session ends
+   * up announced by accident. The UI echoes first, the server confirms, and a
+   * failure puts the switch back.
+   */
+  async function handleVisibility(next: boolean) {
+    if (!submissionId || !draft) return
+    setDraft({ ...draft, publicVisible: next })
+    try {
+      await updateDetails({ submissionId, patch: { publicVisible: next } })
+      toast.success(
+        next
+          ? "Showing on the public schedule."
+          : "Hidden from the public schedule."
+      )
+    } catch (error) {
+      setDraft((current) =>
+        current ? { ...current, publicVisible: !next } : current
+      )
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Could not change the visibility."
+      )
+    }
+  }
+
+  async function handleStatus(next: StatusChoice) {
     if (!submissionId) return
     try {
-      await setStatus({ submissionId, status: next })
+      await setStatus({
+        submissionId,
+        status: next.status,
+        // Custom status label, if one was picked (src/lib/status-catalog.ts).
+        statusId: next.statusId
+          ? (next.statusId as Id<"sessionStatuses">)
+          : undefined,
+      })
       toast.success("Status updated.")
     } catch (error) {
       toast.error(
@@ -179,13 +233,17 @@ export function SubmissionDetailDrawer({
     }
   }
 
-  const questionLabels = new Map<string, string>(
-    (form?.questions ?? []).map((question) => [question.id, question.label])
+  // The custom-field block below is rendered by `AnswersEditor`, which drives
+  // each answer through its own question definition (so a dropdown is a
+  // dropdown) and autosaves. It is shown whenever the form has a non-core
+  // question OR the submission carries an answer we can still show.
+  const customQuestions = (form?.questions ?? []).filter(
+    (question) => question.enabled && !CORE_QUESTION_IDS.has(question.id)
   )
-  const answerEntries = Object.entries(submission?.answers ?? {}).filter(
-    ([, value]) =>
-      value !== null && value !== undefined && String(value).length > 0
+  const extraAnswerKeys = Object.keys(submission?.answers ?? {}).filter(
+    (key) => !CORE_QUESTION_IDS.has(key)
   )
+  const hasAnswers = customQuestions.length > 0 || extraAnswerKeys.length > 0
 
   const speakers = submission?.participants ?? []
 
@@ -239,6 +297,15 @@ export function SubmissionDetailDrawer({
         }
         footer={
           <>
+            {submission ? (
+              <DeleteSubmissionButton
+                submissionId={submission._id}
+                title={submission.title}
+                kind={submission.kind}
+                onDeleted={() => onOpenChange(false)}
+              />
+            ) : null}
+            <span className="flex-1" />
             <Button
               type="button"
               variant="outline"
@@ -282,6 +349,7 @@ export function SubmissionDetailDrawer({
                 <span className="text-sm text-muted-foreground">Status</span>
                 <StatusPicker
                   status={submission.status}
+                  statusId={submission.statusId}
                   title={submission.title}
                   onSave={handleStatus}
                 />
@@ -294,6 +362,40 @@ export function SubmissionDetailDrawer({
                     Not notified yet
                   </span>
                 )}
+              </div>
+
+              <div className="mb-5 flex items-start gap-3 rounded-lg border border-border px-3 py-3">
+                {draft.publicVisible ? (
+                  <RiEyeLine
+                    size={18}
+                    aria-hidden
+                    className="mt-0.5 shrink-0 text-muted-foreground"
+                  />
+                ) : (
+                  <RiEyeOffLine
+                    size={18}
+                    aria-hidden
+                    className="mt-0.5 shrink-0 text-muted-foreground"
+                  />
+                )}
+                <div className="min-w-0 flex-1">
+                  <label
+                    htmlFor="detail-public-visible"
+                    className="text-sm font-medium text-foreground"
+                  >
+                    Show on public schedule
+                  </label>
+                  <p className="mt-0.5 text-sm text-muted-foreground">
+                    {draft.publicVisible
+                      ? "Anyone can see this session on your public schedule, session list and calendar feed."
+                      : "Hidden from the public schedule, session list and calendar feed. It stays on your agenda and in the speaker's portal."}
+                  </p>
+                </div>
+                <Switch
+                  id="detail-public-visible"
+                  checked={draft.publicVisible}
+                  onCheckedChange={(value) => void handleVisibility(value)}
+                />
               </div>
 
               <FieldGroup>
@@ -481,26 +583,23 @@ export function SubmissionDetailDrawer({
                 />
               </dl>
 
-              {answerEntries.length > 0 ? (
+              {hasAnswers ? (
                 <>
                   <Separator className="my-6" />
-                  <h3 className="mb-3 text-sm font-semibold text-foreground">
-                    Form answers
-                  </h3>
-                  <dl className="flex flex-col gap-4">
-                    {answerEntries.map(([key, value]) => (
-                      <div key={key}>
-                        <dt className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
-                          {questionLabels.get(key) ?? key}
-                        </dt>
-                        <dd className="mt-1 text-sm whitespace-pre-wrap text-foreground">
-                          {Array.isArray(value)
-                            ? value.join(", ")
-                            : String(value)}
-                        </dd>
-                      </div>
-                    ))}
-                  </dl>
+                  <div className="mb-3">
+                    <h3 className="text-sm font-semibold text-foreground">
+                      Form answers
+                    </h3>
+                    <p className="text-xs text-muted-foreground">
+                      Edit these the way the speaker filled them in — each
+                      change saves on its own.
+                    </p>
+                  </div>
+                  <AnswersEditor
+                    submissionId={submission._id}
+                    questions={form?.questions ?? []}
+                    answers={submission.answers}
+                  />
                 </>
               ) : null}
             </TabsContent>

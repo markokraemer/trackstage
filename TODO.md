@@ -271,24 +271,35 @@ Effort: XS <30min · S ~1h · M ~half day · L ~a day+.
   Default Duration** (dropping a "Lightning Talk" auto-sets 15 min) · which **statuses** appear
   on the agenda · **Room Visibility** (show all / select individual). Also the config the AI
   agenda builder reads.
-- ⏳ **[L6] Portal behaviour toggles** (S1 · L full, **S for the valuable subset**) — full portal
-  segmentation is a big lift; ship these three as event settings first: **Always Show Tasks**
-  (off ⇒ tasks only for accepted speakers), **Manage Related Sessions and Participants** (lets a
-  speaker add a co-presenter), **Extend Task Deadlines** + Final Deadline. Defer multi-portal.
-- ⏳ **[L7] Per-recipient email review + delivery status** (S1 · M) — step through each
-  recipient's fully-rendered email before sending (sbek **SPK-14** wants exactly this), and record
-  `Delivered / Opened / Clicked / Bounced / Spam / Dropped` **with a reason** per recipient.
-  Doubly valuable while the Resend account is still in test mode.
+- 🟡 **[L6] Portal behaviour toggles** (S1 · L full) — the valuable subset SHIPPED as event
+  settings: `events.portalSettings { alwaysShowTasks, allowSubmissionEdits,
+  extendTaskDeadlines }`, a "Speaker portal" card on Settings → Event details (three switches,
+  plain-English on/off explainers, instant save), and `convex/portal.ts` enforcing all three —
+  Tasks tab hidden until a session is accepted, portal edits refused with "email the
+  organizers", past-due tasks shown as closed and refused by `completeTask`/`attachUpload`.
+  All three default to permissive. REMAINING: multi-portal segmentation by filter, per-portal
+  item assignment/alias, per-field lock/hide, weekly digest, an explicit Final Deadline window
+  (today "extend" = indefinite), and Manage Related Sessions and Participants (co-presenter
+  editing) beyond the read-only allow/deny flag.
+- ✅ **[L7] Per-recipient email review + delivery status** (S1 · M) — the composer is now
+  Compose → **Review** → Send: `comms.composeBulk({ preview: true })` renders every recipient's
+  copy server-side (same `renderMessageFor` the send uses), the review pane walks them one by one
+  and can drop individuals, and the send addresses exactly the survivors. Delivery receipts:
+  `messages.resendId / providerStatus / deliveredAt`, `comms.refreshDeliveryStatus` polls Resend
+  `GET /emails/{id}` on demand (no cron), and the outbox pill upgrades Sent → Delivered / Opened /
+  Clicked / Bounced / Marked as spam, with the reason on bounces.
 - ⏳ **[L8] File comments + file type + bulk-download wizard** (S2 · M) — closes sbek **CNT-05**
   (threaded comments per file, author + role + timestamp, cross-role visible) and widens
   **CNT-14**: File type (Presentation / Poster / Handout), then a 3-step download wizard
   (pick file types → **group by submitter / field / record** → estimated count & size → zip).
-- ⏳ **[L9] Conditional participant limits + Unique Contact Settings** (S2 · M) — per-role
-  Min/Max plus a **Total across all roles**, rules that override limits by session format
-  (WHEN ALL MATCH → THEN APPLY PER ROLE, first match wins), and the two correctness toggles:
-  *Allow users to submit new information for existing contacts* and *Notify existing contacts
-  that they have been added to a submission*. Today a second submission naming the same
-  co-speaker silently rewrites their profile.
+- 🟡 **[L9] Conditional participant limits + Unique Contact Settings** (S2 · M) — the
+  correctness half is FIXED: `convex/submit.ts` `profilePatch` means an existing contact's
+  profile can only be *filled in* by someone else's submission, never overwritten (the
+  submitter's own row still wins on their own record), so a repeat co-speaker keeps their bio.
+  REMAINING: per-role Min/Max plus a **Total across all roles**, rules that override limits by
+  session format (WHEN ALL MATCH → THEN APPLY PER ROLE, first match wins), surfacing the
+  behaviour as an explicit per-form *Allow users to submit new information for existing
+  contacts* toggle, and *Notify existing contacts that they have been added to a submission*.
 - ⏳ **[L10] Task personalisation + reusable task library** (S2 · S) — `Use Field` binding on a
   task's **description** and **link** so each speaker sees their own text/URL, plus an **Alias**
   to rename an item per portal. Replaces the spreadsheet mail-merge organizers do today.

@@ -9,6 +9,7 @@ import {
   RiArrowLeftSLine,
   RiArrowRightSLine,
   RiCalendarEventLine,
+  RiDeleteBin6Line,
   RiDownloadLine,
   RiFileList3Line,
   RiMore2Fill,
@@ -47,7 +48,10 @@ import type {
   SortKey,
   SubmissionRow,
 } from "@/components/submissions/submissions-table"
+import type { StatusChoice } from "@/components/submissions/status-picker"
 import { AddSubmissionDrawer } from "@/components/submissions/add-submission-drawer"
+import { DeleteSubmissionDialog } from "@/components/submissions/delete-submission-dialog"
+import { DeletedSubmissionsDrawer } from "@/components/submissions/deleted-submissions-drawer"
 import { SubmissionDetailDrawer } from "@/components/submissions/submission-detail-drawer"
 import { useCurrentEvent } from "@/lib/current-event"
 import {
@@ -107,7 +111,9 @@ function SubmissionsPage() {
   const tab: StatusTabValue = search.status ?? "all"
   const [query, setQuery] = useState(search.q ?? "")
   const [selectedIds, setSelectedIds] = useState<Array<string>>([])
-  const [pendingStatus, setPendingStatus] = useState<Record<string, string>>({})
+  const [pendingStatus, setPendingStatus] = useState<
+    Record<string, StatusChoice>
+  >({})
   const [sort, setSort] = useState<{ key: SortKey; direction: SortDirection }>({
     key: "submitted",
     direction: "desc",
@@ -115,6 +121,10 @@ function SubmissionsPage() {
   const [page, setPage] = useState(0)
   const [addOpen, setAddOpen] = useState(false)
   const [busy, setBusy] = useState(false)
+  // Delete is soft (convex/submissions.remove) — the confirmation and the
+  // Deleted drawer are the two halves of UI census #6.
+  const [deleteTarget, setDeleteTarget] = useState<SubmissionRow | null>(null)
+  const [trashOpen, setTrashOpen] = useState(false)
 
   // ——— Data ————————————————————————————————————————————————————————————
   const { event, isEmpty: hasNoEvent } = useCurrentEvent()
@@ -215,12 +225,17 @@ function SubmissionsPage() {
   const declineStaged = counts?.decline_queue ?? 0
 
   // ——— Actions —————————————————————————————————————————————————————————
-  async function handleStatusChange(id: string, status: SubmissionStatus) {
-    setPendingStatus((prev) => ({ ...prev, [id]: status }))
+  async function handleStatusChange(id: string, next: StatusChoice) {
+    setPendingStatus((prev) => ({ ...prev, [id]: next }))
     try {
       await setStatusMutation({
         submissionId: id as Id<"submissions">,
-        status,
+        status: next.status,
+        // The custom status label, when the organizer picked one
+        // (src/lib/status-catalog.ts). `status` above stays the pipeline value.
+        statusId: next.statusId
+          ? (next.statusId as Id<"sessionStatuses">)
+          : undefined,
       })
     } catch (error) {
       toast.error(
@@ -445,6 +460,11 @@ function SubmissionsPage() {
                   Export this view (CSV)
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => setTrashOpen(true)}>
+                  <RiDeleteBin6Line aria-hidden />
+                  Deleted submissions
+                  {counts?.deleted ? ` (${counts.deleted})` : ""}
+                </DropdownMenuItem>
                 <DropdownMenuItem render={<a href="/app/forms" />}>
                   <RiFileList3Line aria-hidden />
                   Manage submission forms
@@ -531,6 +551,7 @@ function SubmissionsPage() {
               )
             }
             pendingStatus={pendingStatus}
+            onDelete={setDeleteTarget}
           />
         )}
 
@@ -581,6 +602,30 @@ function SubmissionsPage() {
               search: (prev) => ({ ...prev, id: submissionId }),
             })
           }
+        />
+      ) : null}
+
+      <DeleteSubmissionDialog
+        open={deleteTarget !== null}
+        onOpenChange={(open) => {
+          if (!open) setDeleteTarget(null)
+        }}
+        submissionId={deleteTarget?._id ?? null}
+        title={deleteTarget?.title ?? ""}
+        kind={deleteTarget?.kind}
+        onDeleted={() => {
+          setSelectedIds((prev) =>
+            prev.filter((value) => value !== deleteTarget?._id)
+          )
+          setDeleteTarget(null)
+        }}
+      />
+
+      {eventId ? (
+        <DeletedSubmissionsDrawer
+          open={trashOpen}
+          onOpenChange={setTrashOpen}
+          eventId={eventId}
         />
       ) : null}
 

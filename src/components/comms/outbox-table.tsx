@@ -6,6 +6,7 @@ import {
   RiInformationLine,
   RiMailLine,
   RiNotification3Line,
+  RiRefreshLine,
 } from "@remixicon/react"
 
 import { api } from "@convex/_generated/api"
@@ -104,6 +105,16 @@ export function OutboxTable({
   const previewMode = (counts.get("preview") ?? 0) > 0
   const filtered = search.trim().length > 0 || status !== "all"
 
+  // Sent, but the provider has not told us yet whether it landed. Only these
+  // make "Check delivery" worth showing (product-map delta #7).
+  const awaitingReceipts = useMemo(
+    () =>
+      (messages ?? []).filter(
+        (message) => message.status === "sent" && !message.providerStatus,
+      ).length,
+    [messages],
+  )
+
   return (
     <div className="flex flex-col gap-4">
       <DataToolbar
@@ -136,7 +147,17 @@ export function OutboxTable({
             </SelectContent>
           </Select>
         }
-        actions={<RemindSpeakersButton eventId={eventId} />}
+        actions={
+          <>
+            {awaitingReceipts > 0 ? (
+              <CheckDeliveryButton
+                eventId={eventId}
+                awaiting={awaitingReceipts}
+              />
+            ) : null}
+            <RemindSpeakersButton eventId={eventId} />
+          </>
+        }
       />
 
       {previewMode ? (
@@ -259,6 +280,7 @@ export function OutboxTable({
                       <MessageStatusPill
                         status={message.status}
                         error={message.error}
+                        providerStatus={message.providerStatus}
                         size="sm"
                       />
                     </TableCell>
@@ -302,6 +324,67 @@ function TimeCell({ message }: { message: MessageRow }) {
     >
       {formatDistanceToNow(new Date(stamp), { addSuffix: true })}
     </span>
+  )
+}
+
+/**
+ * "Check delivery" (product-map delta #7) — asks the email provider what
+ * happened to every sent message we don't have a receipt for yet. On demand,
+ * because an organizer only asks this question when a speaker says "I never
+ * got it"; the rows update themselves as the answers land.
+ */
+export function CheckDeliveryButton({
+  eventId,
+  awaiting,
+}: {
+  eventId: Id<"events"> | undefined
+  awaiting: number
+}) {
+  const [running, setRunning] = useState(false)
+  const refresh = useConvexMutation(api.comms.refreshDeliveryStatus)
+
+  async function handleClick() {
+    if (!eventId) return
+    setRunning(true)
+    try {
+      const result = await refresh({ eventId })
+      if (!result.configured) {
+        toast.info("No email provider is connected", {
+          description:
+            "Messages are rendered here as previews, so there is no delivery to check.",
+        })
+      } else if (result.checking === 0) {
+        toast.info("Nothing left to check", {
+          description: "Every sent email already has a delivery result.",
+        })
+      } else {
+        toast.success(
+          `Checking ${result.checking} ${plural(result.checking, "email")}`,
+          {
+            description:
+              "The status column updates as the provider answers — usually a second or two.",
+          },
+        )
+      }
+    } catch (error) {
+      toast.error("Could not check delivery", {
+        description:
+          error instanceof Error ? error.message.split("\n")[0] : undefined,
+      })
+    } finally {
+      setRunning(false)
+    }
+  }
+
+  return (
+    <Button
+      variant="outline"
+      disabled={!eventId || running}
+      onClick={() => void handleClick()}
+    >
+      <RiRefreshLine aria-hidden />
+      {running ? "Checking…" : `Check delivery (${awaiting})`}
+    </Button>
   )
 }
 

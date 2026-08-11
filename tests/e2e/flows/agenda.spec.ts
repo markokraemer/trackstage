@@ -251,18 +251,22 @@ test.describe("agenda", () => {
         // gesture (`draggedRef`), so start from a clean render before falling
         // back — otherwise the click opens nothing and we'd hang.
         await page.reload({ waitUntil: "domcontentloaded" })
-        await expect(
-          page
-            .getByRole("button", {
-              name: new RegExp(`${escape(title)}.*schedule this session`, "i"),
-            })
-            .first(),
-        ).toBeVisible({ timeout: 30_000 })
-        await scheduleViaPopover(page, title)
+        const trayCard = page
+          .getByRole("button", {
+            name: new RegExp(`${escape(title)}.*schedule this session`, "i"),
+          })
+          .first()
+        // The card is only still in the tray if the drag really did nothing.
+        // If it isn't there the drag DID land and the earlier poll lost a race
+        // (usually a mid-run reseed) — assert placement instead of forcing a
+        // second one.
+        if (await present(trayCard, 15_000)) {
+          await scheduleViaPopover(page, title)
+        }
         await until(
           async () => await board(organizer, event._id),
-          (b) => b.scheduled.some((s) => s.title === title),
-          { label: "fallback popover placement" },
+          (b) => b.scheduled.some((sess) => sess.title === title),
+          { label: "the session ended up on the grid one way or another" },
         )
       }
 
@@ -273,6 +277,66 @@ test.describe("agenda", () => {
     } finally {
       await organizer.mutation(api.agenda.unschedule, { submissionId: id }).catch(() => {})
     }
+  })
+
+  /**
+   * A drag that wanders off the grid must not look like it died.
+   *
+   * dnd-kit reports `over: null` the moment the pointer leaves every droppable
+   * — over the unscheduled tray, say, which sits right next to the grid and is
+   * exactly where an organizer parks a card mid-thought. If the machine treats
+   * that as "no drag", the floating card, the dimmed original and the snap
+   * rules all blink out and the gesture reads as broken. The ghost is allowed
+   * to go (nothing would land); the card in your hand is not.
+   */
+  test("a drag that leaves the grid keeps the card in hand", async ({ page }) => {
+    const watcher = armed(page)
+    await gotoApp(page, "/app/agenda?view=day")
+
+    const block = page.locator('[data-slot="agenda-grid-block"]').first()
+    const onGrid = await present(block, 20_000)
+    test.skip(!onGrid, "nothing scheduled on this day to drag")
+    await block.scrollIntoViewIfNeeded()
+
+    const box = await block.boundingBox()
+    const tray = page.getByRole("complementary", { name: /not scheduled/i })
+    const trayBox = await tray.boundingBox()
+    test.skip(!box || !trayBox, "grid or tray not laid out side by side")
+
+    const chip = page.locator('[data-slot="agenda-drag-chip"]').first()
+    const ghost = page.locator('[data-slot="agenda-drop-ghost"]')
+
+    await page.mouse.move(box!.x + box!.width / 2, box!.y + 14)
+    await page.mouse.down()
+    try {
+      await page.mouse.move(box!.x + box!.width / 2 + 12, box!.y + 30, { steps: 4 })
+      await page.mouse.move(box!.x + box!.width / 2, box!.y + 140, { steps: 10 })
+      await expect(ghost.first()).toBeVisible({ timeout: 10_000 })
+
+      // Off the grid: ghost goes, chip stays and explains itself.
+      await page.mouse.move(trayBox!.x + trayBox!.width - 24, trayBox!.y + 120, {
+        steps: 10,
+      })
+      await expect(ghost).toHaveCount(0, { timeout: 10_000 })
+      await expect(chip).toBeVisible()
+      await expect(chip).toContainText(/move back over the grid/i)
+      // …and it never gets clipped off the edge of the window.
+      const bounds = await chip.evaluate((el) => {
+        const rect = el.getBoundingClientRect()
+        return { right: rect.right, width: window.innerWidth }
+      })
+      expect(bounds.right).toBeLessThanOrEqual(bounds.width)
+
+      // Back over the grid: the preview comes straight back.
+      await page.mouse.move(box!.x + box!.width / 2, box!.y + 160, { steps: 10 })
+      await expect(ghost.first()).toBeVisible({ timeout: 10_000 })
+    } finally {
+      await page.mouse.up()
+    }
+
+    await expect(ghost).toHaveCount(0, { timeout: 10_000 })
+    await clearToasts(page)
+    watcher.assertClean("agenda drag off the grid")
   })
 
   test("auto-place fills empty slots without creating conflicts", async ({ page }) => {
@@ -339,8 +403,21 @@ test.describe("agenda", () => {
     ).toBeVisible({ timeout: 30_000 })
 
     // ——— Publish through the UI ————————————————————————————————————————
+    // The header is reactive, so the Publish button appears on its own once
+    // the unpublish above lands — but a concurrent publish (another agent, or
+    // a leftover from an earlier run) can flip it back, so re-assert rather
+    // than clicking whatever is there the instant we reload.
     await page.reload({ waitUntil: "domcontentloaded" })
-    await page.getByRole("button", { name: /^publish agenda$/i }).first().click()
+    const publishTrigger = page
+      .getByRole("button", { name: /^publish agenda$/i })
+      .first()
+    await expect(async () => {
+      if (await present(publishTrigger, 2_000)) return
+      await organizer.mutation(api.agenda.unpublishAgenda, { eventId: event._id })
+      await page.reload({ waitUntil: "domcontentloaded" })
+      await expect(publishTrigger).toBeVisible({ timeout: 5_000 })
+    }).toPass({ timeout: 60_000 })
+    await publishTrigger.click()
     await expect(
       page.getByRole("heading", { name: /publish the agenda\?/i }).first(),
     ).toBeVisible({ timeout: 15_000 })
@@ -454,6 +531,46 @@ test.describe("agenda keyboard drag-and-drop", () => {
         .mutation(api.agenda.unschedule, { submissionId: id })
         .catch(() => {})
     }
+  })
+
+  /**
+   * Every arrow press must be worth exactly one slot, including at the end of
+   * the day. The obvious implementation clamps only when the ghost is drawn and
+   * lets the underlying minutes run past midnight, so after over-shooting you
+   * press ArrowUp several times and nothing appears to happen — the keys look
+   * broken. This pins the clamp to the state itself.
+   */
+  test("arrow keys keep working after overshooting the end of the day", async ({
+    page,
+  }) => {
+    const watcher = armed(page)
+    await gotoApp(page, "/app/agenda?view=day")
+
+    const block = page.locator('[data-slot="agenda-grid-block"] button').first()
+    const onGrid = await present(block, 20_000)
+    test.skip(!onGrid, "nothing scheduled on this day to grab")
+
+    await block.focus()
+    await page.keyboard.press("Enter")
+    const chip = page.locator('[data-slot="agenda-drag-chip"]').first()
+    await expect(chip).toBeVisible({ timeout: 10_000 })
+
+    // Slam into the bottom of the grid, then step back up once.
+    for (let i = 0; i < 60; i++) await page.keyboard.press("ArrowDown")
+    const pinned = (await chip.innerText()).split("\n")[0].trim()
+    await page.keyboard.press("ArrowUp")
+    await expect
+      .poll(async () => (await chip.innerText()).split("\n")[0].trim(), {
+        timeout: 10_000,
+      })
+      .not.toBe(pinned)
+
+    await page.keyboard.press("Escape")
+    await expect(page.locator('[data-slot="agenda-drop-ghost"]')).toHaveCount(0, {
+      timeout: 10_000,
+    })
+    await clearToasts(page)
+    watcher.assertClean("agenda keyboard overshoot")
   })
 
   test("Escape cancels a grab and leaves the session where it was", async ({

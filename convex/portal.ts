@@ -10,6 +10,13 @@ import {
   replaceHeadshot,
   storageMeta,
 } from "./lib/files"
+import { record as recordAudit } from "./lib/audit"
+import {
+  buildTaskVars,
+  pickPrimarySubmission,
+  renderTaskText,
+} from "./lib/taskVars"
+import { addComment, threadFor } from "./lib/uploadComments"
 import { notifySubmissionAdmins } from "./platformEmails"
 
 // ————————————————————————————————————————————————————————————————————————
@@ -17,6 +24,42 @@ import { notifySubmissionAdmins } from "./platformEmails"
 // (magic link) — no passwords. Scoping: a person only ever sees their own
 // event's data and their own submissions/tasks/files.
 // ————————————————————————————————————————————————————————————————————————
+
+// ——— Portal behaviour (Settings → Event → Speaker portal) ————————————————
+// The organizer's three switches, resolved once per call. Everything unset
+// resolves to the permissive value: an event that never opens that card keeps
+// the portal it already had, and each switch is an opt-in restriction rather
+// than a surprise. Product map delta #6 (§2.5 "Configuration").
+
+interface PortalBehavior {
+  alwaysShowTasks: boolean
+  allowSubmissionEdits: boolean
+  extendTaskDeadlines: boolean
+}
+
+function portalBehavior(event: Doc<"events"> | null): PortalBehavior {
+  const settings = event?.portalSettings
+  return {
+    alwaysShowTasks: settings?.alwaysShowTasks ?? true,
+    allowSubmissionEdits: settings?.allowSubmissionEdits ?? true,
+    extendTaskDeadlines: settings?.extendTaskDeadlines ?? true,
+  }
+}
+
+/**
+ * A task the speaker can no longer act on: past its due date, not yet done,
+ * and the organizer has NOT left the late door open. Locked tasks stay
+ * visible — a speaker needs to see what they missed — but the portal shows
+ * them as "closed" and the mutations refuse to complete them.
+ */
+function isTaskLocked(task: Doc<"tasks">, behavior: PortalBehavior): boolean {
+  if (behavior.extendTaskDeadlines) return false
+  if (task.completedAt) return false
+  return task.dueAt !== undefined && task.dueAt < Date.now()
+}
+
+const TASK_LOCKED_MESSAGE =
+  "The deadline for this task has passed, so it's closed. Email the organizers and they can reopen it for you."
 
 async function submissionSummary(ctx: QueryCtx, s: Doc<"submissions">) {
   const track = s.trackId ? await ctx.db.get(s.trackId) : null
@@ -79,7 +122,11 @@ export const home = query({
       await Promise.all(asParticipant.map((p) => ctx.db.get(p.submissionId)))
     ).filter((s): s is Doc<"submissions"> => s !== null)
     const map = new Map<string, Doc<"submissions">>()
-    for (const s of [...asSubmitter, ...participantSubs]) map.set(s._id, s)
+    for (const s of [...asSubmitter, ...participantSubs]) {
+      // A submission the organizer deleted disappears from the portal too.
+      if (s.deletedAt !== undefined) continue
+      map.set(s._id, s)
+    }
     const submissions = await Promise.all(
       [...map.values()]
         .sort((a, b) => b._creationTime - a._creationTime)
@@ -90,6 +137,23 @@ export const home = query({
       .query("tasks")
       .withIndex("by_personId", (q) => q.eq("personId", person._id))
       .collect()
+
+    // "Always show tasks" off ⇒ the checklist only opens once a session of
+    // theirs is accepted, so a portal shared with every submitter doesn't ask
+    // people who haven't been accepted yet for slides and headshots.
+    const behavior = portalBehavior(event)
+    const hasAcceptedSession = [...map.values()].some(
+      (s) => s.status === "accepted",
+    )
+    const tasksVisible = behavior.alwaysShowTasks || hasAcceptedSession
+
+    // Personalisation source for the task text: their accepted session if they
+    // have one, otherwise their newest submission.
+    const taskVars = buildTaskVars(
+      person,
+      event.name,
+      pickPrimarySubmission([...map.values()]),
+    )
 
     const headshotUrl = person.headshotId
       ? await ctx.storage.getUrl(person.headshotId)
@@ -121,16 +185,27 @@ export const home = query({
         headshotUrl,
       },
       submissions,
-      tasks: tasks
-        .sort((a, b) => (a.dueAt ?? Infinity) - (b.dueAt ?? Infinity))
-        .map((t) => ({
-          id: t._id,
-          title: t.title,
-          instructions: t.instructions,
-          kind: t.kind,
-          dueAt: t.dueAt,
-          completedAt: t.completedAt,
-        })),
+      // What the organizer's Speaker portal card allows, so the portal shows
+      // the same rules the mutations enforce instead of failing on save.
+      portal: {
+        ...behavior,
+        tasksVisible,
+      },
+      tasks: tasksVisible
+        ? tasks
+            .sort((a, b) => (a.dueAt ?? Infinity) - (b.dueAt ?? Infinity))
+            .map((t) => ({
+              id: t._id,
+              // {{firstName}} / {{sessionTitle}} become this speaker's own
+              // words here, at read time — one library task, personal wording.
+              title: renderTaskText(t.title, taskVars) ?? t.title,
+              instructions: renderTaskText(t.instructions, taskVars),
+              kind: t.kind,
+              dueAt: t.dueAt,
+              completedAt: t.completedAt,
+              locked: isTaskLocked(t, behavior),
+            }))
+        : [],
     }
   },
 })
@@ -213,6 +288,14 @@ export const updateSubmission = mutation({
     if (["declined", "withdrawn"].includes(submission.status)) {
       throw new Error("This submission can no longer be edited.")
     }
+    // The organizer can turn portal editing off for the whole event
+    // (Settings → Event → Speaker portal). Say who to ask instead.
+    const behavior = portalBehavior(await ctx.db.get(submission.eventId))
+    if (!behavior.allowSubmissionEdits) {
+      throw new Error(
+        "The organizers have turned off editing submissions from the portal. Email them with what you'd like changed and they'll update it for you.",
+      )
+    }
     const { title, description, answers } = args.patch
     await ctx.db.patch(args.submissionId, {
       ...(title !== undefined ? { title } : {}),
@@ -231,6 +314,23 @@ export const updateSubmission = mutation({
     } catch (error) {
       console.error("submission notification could not be scheduled", error)
     }
+    // Attributed to the SPEAKER, not the organizer looking at the drawer —
+    // "who changed this abstract under review" is the question the History
+    // tab exists to answer.
+    const changed = Object.keys(args.patch)
+    await recordAudit(ctx, {
+      eventId: submission.eventId,
+      entity: submission.kind === "session" ? "session" : "submission",
+      entityId: args.submissionId,
+      action: "updated",
+      summary: `Speaker edited ${changed.join(", ")} · ${title ?? submission.title}`,
+      meta: { fields: changed, title: title ?? submission.title },
+      actor: {
+        type: "speaker",
+        label:
+          `${person.firstName} ${person.lastName}`.trim() || person.email,
+      },
+    })
     return null
   },
 })
@@ -249,6 +349,19 @@ export const withdrawSubmission = mutation({
       )
     }
     await ctx.db.patch(args.submissionId, { status: "withdrawn" })
+    await recordAudit(ctx, {
+      eventId: submission.eventId,
+      entity: submission.kind === "session" ? "session" : "submission",
+      entityId: args.submissionId,
+      action: "status_changed",
+      summary: `Withdrawn by the speaker · ${submission.title}`,
+      meta: { from: submission.status, to: "withdrawn", title: submission.title },
+      actor: {
+        type: "speaker",
+        label:
+          `${person.firstName} ${person.lastName}`.trim() || person.email,
+      },
+    })
     return null
   },
 })
@@ -262,6 +375,9 @@ export const completeTask = mutation({
     if (!["confirm", "profile"].includes(task.kind)) {
       throw new Error("Complete this task by uploading the requested file.")
     }
+    // "Extend task deadlines" off ⇒ a past-due task is closed for good.
+    const behavior = portalBehavior(await ctx.db.get(task.eventId))
+    if (isTaskLocked(task, behavior)) throw new Error(TASK_LOCKED_MESSAGE)
     await ctx.db.patch(args.taskId, { completedAt: Date.now() })
     return null
   },
@@ -299,6 +415,16 @@ export const attachUpload = mutation({
       throw new Error("That upload didn't finish — please try again.")
     }
     assertAllowedUpload(meta, args.filename)
+
+    // A closed task can't be completed by uploading into it either — check
+    // before anything is written, so a locked task never gains a file.
+    if (args.taskId) {
+      const target = await ctx.db.get(args.taskId)
+      if (target && target.personId === person._id) {
+        const behavior = portalBehavior(await ctx.db.get(target.eventId))
+        if (isTaskLocked(target, behavior)) throw new Error(TASK_LOCKED_MESSAGE)
+      }
+    }
 
     if (args.isHeadshot) {
       // Replaces the photo AND deletes the one it replaces (convex/lib/files).
@@ -348,5 +474,70 @@ export const myUploads = query({
       ctx,
       uploads.sort((a, b) => b._creationTime - a._creationTime),
     )
+  },
+})
+
+// ——— File comments (sbek CNT-05) ————————————————————————————————————————
+// The speaker's half of the thread the organizer sees on the same file. One
+// conversation, two doors — so "can you re-export this at 16:9?" and the
+// answer never live in someone's inbox.
+
+/** A speaker may only read/write the thread on a file that is theirs. */
+async function requireOwnUpload(
+  ctx: QueryCtx | MutationCtx,
+  portalToken: string,
+  uploadId: Id<"uploads">,
+): Promise<{ person: Doc<"people">; upload: Doc<"uploads"> }> {
+  const person = await requirePerson(ctx, portalToken)
+  const upload = await ctx.db.get(uploadId)
+  if (!upload || upload.eventId !== person.eventId) {
+    throw new Error("File not found.")
+  }
+  let mine = upload.personId === person._id
+  if (!mine && upload.submissionId) {
+    // A co-speaker on the session can talk about its files too.
+    const participants = await ctx.db
+      .query("submissionParticipants")
+      .withIndex("by_submissionId", (q) =>
+        q.eq("submissionId", upload.submissionId as Id<"submissions">),
+      )
+      .collect()
+    const submission = await ctx.db.get(upload.submissionId)
+    mine =
+      participants.some((p) => p.personId === person._id) ||
+      submission?.submitterId === person._id
+  }
+  if (!mine) throw new Error("You don't have access to this file.")
+  return { person, upload }
+}
+
+export const uploadComments = query({
+  args: { portalToken: v.string(), uploadId: v.id("uploads") },
+  handler: async (ctx, args) => {
+    await requireOwnUpload(ctx, args.portalToken, args.uploadId)
+    return await threadFor(ctx, args.uploadId)
+  },
+})
+
+export const addUploadComment = mutation({
+  args: {
+    portalToken: v.string(),
+    uploadId: v.id("uploads"),
+    body: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const { person, upload } = await requireOwnUpload(
+      ctx,
+      args.portalToken,
+      args.uploadId,
+    )
+    return await addComment(ctx, {
+      uploadId: args.uploadId,
+      eventId: upload.eventId,
+      authorType: "speaker",
+      authorLabel:
+        `${person.firstName} ${person.lastName}`.trim() || person.email,
+      body: args.body,
+    })
   },
 })

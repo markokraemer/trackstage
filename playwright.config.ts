@@ -32,10 +32,11 @@ export default defineConfig({
       },
       dependencies: ["setup"],
     },
-    // Per-flow end-to-end journeys (tests/e2e/flows). These drive real
-    // multi-step product flows against the shared dev deployment, so they run
-    // serially with one retry — pre-hydration clicks are the only flake we
-    // tolerate; anything else is a product bug and belongs in KNOWN-ISSUES.md.
+    // Per-flow end-to-end journeys (tests/e2e/flows) — one file per user
+    // flow, each driving the real UI end to end. They share one seeded
+    // deployment, so they run serially (workers: 1, above). Anything that
+    // fails all attempts is a product bug and belongs in
+    // tests/e2e/KNOWN-ISSUES.md, not in a widened selector.
     {
       name: "flows",
       testMatch: /flows\/.*\.spec\.ts/,

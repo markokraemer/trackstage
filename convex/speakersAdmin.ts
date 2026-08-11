@@ -17,9 +17,10 @@
 
 import { v } from "convex/values"
 import type { Doc } from "./_generated/dataModel"
-import { mutation } from "./_generated/server"
+import { mutation, query } from "./_generated/server"
 import { randomToken, requireEventAccess } from "./lib/auth"
 import { emitWebhook } from "./webhooks"
+import { record as recordAudit } from "./lib/audit"
 
 /** The three states an organizer tracks a speaker through. */
 export const WORKFLOW_STATUSES = ["invited", "confirmed", "dropped"] as const
@@ -29,6 +30,9 @@ const workflowStatusValidator = v.union(
   v.literal("confirmed"),
   v.literal("dropped"),
 )
+
+/** Ceiling on a single event's people scan (matches convex/dashboard.ts). */
+const MAX_PEOPLE = 4000
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
@@ -91,6 +95,14 @@ export const addManual = mutation({
         bio: args.bio?.trim() || existing.bio,
         workflowStatus,
       })
+      await recordAudit(ctx, {
+        eventId: args.eventId,
+        entity: "speaker",
+        entityId: existing._id,
+        action: "updated",
+        summary: `Speaker details filled in · ${firstName} ${lastName}`.trim(),
+        meta: { email, workflowStatus },
+      })
       return {
         personId: existing._id,
         portalToken: existing.portalToken,
@@ -118,6 +130,14 @@ export const addManual = mutation({
       last_name: lastName,
       workflow_status: workflowStatus,
     })
+    await recordAudit(ctx, {
+      eventId: args.eventId,
+      entity: "speaker",
+      entityId: personId,
+      action: "created",
+      summary: `Speaker added · ${firstName} ${lastName}`.trim(),
+      meta: { email, workflowStatus },
+    })
     return { personId, portalToken, created: true }
   },
 })
@@ -142,6 +162,8 @@ export const updateProfile = mutation({
       company: v.optional(v.string()),
       bio: v.optional(v.string()),
       headshotNote: v.optional(v.string()),
+      // "Show in public gallery" (sbek CNT-12). See setPublicVisibility.
+      publicVisible: v.optional(v.boolean()),
     }),
   },
   returns: v.null(),
@@ -169,6 +191,9 @@ export const updateProfile = mutation({
     if (args.patch.headshotNote !== undefined) {
       patch.headshotNote = args.patch.headshotNote.trim() || undefined
     }
+    if (args.patch.publicVisible !== undefined) {
+      patch.publicVisible = args.patch.publicVisible
+    }
     await ctx.db.patch(args.personId, { ...patch, updatedAt: Date.now() })
     await emitWebhook(ctx, person.eventId, "speaker.updated", {
       id: args.personId,
@@ -176,7 +201,82 @@ export const updateProfile = mutation({
       first_name: patch.firstName ?? person.firstName,
       last_name: patch.lastName ?? person.lastName,
     })
+    const changed = Object.keys(patch)
+    await recordAudit(ctx, {
+      eventId: person.eventId,
+      entity: "speaker",
+      entityId: args.personId,
+      action: "updated",
+      summary: `Profile updated (${changed.join(", ")}) · ${`${patch.firstName ?? person.firstName} ${patch.lastName ?? person.lastName}`.trim() || person.email}`,
+      meta: { fields: changed, email: person.email },
+    })
     return null
+  },
+})
+
+/**
+ * The eye toggle (sbek CNT-12): show or hide one speaker on every public
+ * surface — gallery, speaker list, the speaker lists on their sessions, their
+ * itinerary, the JSON API and the .ics feed. It is deliberately a single
+ * boolean rather than an approval workflow: the real case is "embargo the
+ * keynote until we announce it", and it must be one click to set and one click
+ * to undo. Acceptance status, the agenda and the speaker's portal are
+ * untouched — the speaker still gets their tasks and emails.
+ *
+ * Absent on a person ⇒ visible, so every existing speaker stays public.
+ */
+export const setPublicVisibility = mutation({
+  args: {
+    personId: v.id("people"),
+    publicVisible: v.boolean(),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const person = await ctx.db.get("people", args.personId)
+    if (!person) throw new Error("Speaker not found.")
+    await requireEventAccess(ctx, person.eventId)
+    await ctx.db.patch(args.personId, {
+      publicVisible: args.publicVisible,
+      updatedAt: Date.now(),
+    })
+    const name = `${person.firstName} ${person.lastName}`.trim() || person.email
+    await emitWebhook(ctx, person.eventId, "speaker.updated", {
+      id: args.personId,
+      email: person.email,
+      is_public: args.publicVisible,
+    })
+    await recordAudit(ctx, {
+      eventId: person.eventId,
+      entity: "speaker",
+      entityId: args.personId,
+      action: "updated",
+      summary: args.publicVisible
+        ? `Shown in the public speaker gallery · ${name}`
+        : `Hidden from the public speaker gallery · ${name}`,
+      meta: { publicVisible: args.publicVisible, email: person.email },
+    })
+    return null
+  },
+})
+
+/**
+ * Which speakers are currently hidden from the public surfaces. Kept as its
+ * own tiny reactive query (ids only) so the roster can render the eye state
+ * and the "Hidden" filter without widening the roster payload, and so the
+ * toggle echoes the instant the mutation lands.
+ */
+export const hiddenFromPublic = query({
+  args: { eventId: v.id("events") },
+  returns: v.array(v.id("people")),
+  handler: async (ctx, args) => {
+    await requireEventAccess(ctx, args.eventId)
+    const people = await ctx.db
+      .query("people")
+      .withIndex("by_eventId", (q) => q.eq("eventId", args.eventId))
+      .take(MAX_PEOPLE)
+    return people
+      .filter((person) => person.publicVisible === false)
+      .map((person) => person._id)
   },
 })
 
@@ -200,6 +300,17 @@ export const setWorkflowStatus = mutation({
       email: person.email,
       workflow_status: args.workflowStatus,
       previous_workflow_status: person.workflowStatus ?? null,
+    })
+    await recordAudit(ctx, {
+      eventId: person.eventId,
+      entity: "speaker",
+      entityId: args.personId,
+      action: "status_changed",
+      summary: `Speaker marked ${args.workflowStatus} · ${`${person.firstName} ${person.lastName}`.trim() || person.email}`,
+      meta: {
+        workflowStatus: args.workflowStatus,
+        previousWorkflowStatus: person.workflowStatus ?? "none",
+      },
     })
     return null
   },

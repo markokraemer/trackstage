@@ -66,24 +66,49 @@ function CommandDialog({
   )
 }
 
+/**
+ * `size="lg"` is the full-window palette variant (⌘K global search): the input
+ * becomes the dialog's own header row — no inset field, no border radius of its
+ * own, just a hairline under it — which is how Linear, Attio and Raycast draw
+ * a command palette. `default` keeps the inset combobox field used inside
+ * popovers (timezone picker, prompt input).
+ */
 function CommandInput({
   className,
+  size = "default",
+  children,
   ...props
-}: React.ComponentProps<typeof CommandPrimitive.Input>) {
+}: Omit<React.ComponentProps<typeof CommandPrimitive.Input>, "size"> & {
+  size?: "default" | "lg"
+}) {
+  const large = size === "lg"
   return (
-    <div data-slot="command-input-wrapper" className="p-1 pb-0">
-      <InputGroup className="h-8! rounded-lg! border-input/30 bg-input/30 shadow-none! *:data-[slot=input-group-addon]:pl-2!">
+    <div
+      data-slot="command-input-wrapper"
+      className={cn(large ? "border-b border-border" : "p-1 pb-0")}
+    >
+      <InputGroup
+        className={cn(
+          "h-8! rounded-lg! border-input/30 bg-input/30 shadow-none! *:data-[slot=input-group-addon]:pl-2!",
+          large &&
+            "h-12! rounded-none! border-0 bg-transparent has-[[data-slot=input-group-control]:focus-visible]:ring-0 *:data-[slot=input-group-addon]:pl-4!"
+        )}
+      >
         <CommandPrimitive.Input
           data-slot="command-input"
           className={cn(
             "w-full text-sm outline-hidden disabled:cursor-not-allowed disabled:opacity-50",
+            large && "pr-4 text-[15px] placeholder:text-muted-foreground",
             className
           )}
           {...props}
         />
         <InputGroupAddon>
-          <RiSearchLine className="size-4 shrink-0 opacity-50" />
+          <RiSearchLine
+            className={cn("shrink-0 opacity-50", large ? "size-[18px]" : "size-4")}
+          />
         </InputGroupAddon>
+        {children}
       </InputGroup>
     </div>
   )

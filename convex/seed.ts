@@ -26,6 +26,7 @@ import type {MutationCtx} from "./_generated/server";
 import { requireUser } from "./lib/auth"
 import { createAuth } from "./auth"
 import { DEFAULT_TEMPLATES, portalLinkFor, renderTemplate } from "./lib/email"
+import { ensureDefaultStatuses } from "./sessionStatuses"
 
 // ——— Demo constants ———————————————————————————————————————————————————————
 
@@ -36,6 +37,13 @@ export const DEMO_ORGANIZER_PASSWORD = "demo2026"
 export const DEMO_ORGANIZER_NAME = "Dana Organizer"
 
 const DAY = 24 * 60 * 60 * 1000
+
+/**
+ * Events created by our own automated verification runs, not by a person.
+ * `seed:setup` purges anything matching this so the switcher only ever shows
+ * the demo world (see the agent-artifact purge in `run`).
+ */
+const AGENT_ARTIFACT_EVENT = /^(Copilot Verification|MCP Test|Verify)/i
 
 /** Pacific Daylight Time (UTC−7) — valid for the March–November 2026 window. */
 function pt(year: number, month: number, day: number, hour: number, minute = 0) {
@@ -101,11 +109,25 @@ async function purgeEvent(ctx: MutationCtx, eventId: Id<"events">) {
     .take(500)
   for (const row of tracks) await ctx.db.delete("tracks", row._id)
 
+  const statuses = await ctx.db
+    .query("sessionStatuses")
+    .withIndex("by_eventId", (q) => q.eq("eventId", eventId))
+    .take(500)
+  for (const row of statuses) await ctx.db.delete("sessionStatuses", row._id)
+
   const forms = await ctx.db
     .query("forms")
     .withIndex("by_eventId", (q) => q.eq("eventId", eventId))
     .take(500)
   for (const row of forms) await ctx.db.delete("forms", row._id)
+
+  const uploadComments = await ctx.db
+    .query("uploadComments")
+    .withIndex("by_eventId", (q) => q.eq("eventId", eventId))
+    .take(2000)
+  for (const row of uploadComments) {
+    await ctx.db.delete("uploadComments", row._id)
+  }
 
   const uploads = await ctx.db
     .query("uploads")
@@ -121,6 +143,14 @@ async function purgeEvent(ctx: MutationCtx, eventId: Id<"events">) {
     .withIndex("by_eventId", (q) => q.eq("eventId", eventId))
     .take(2000)
   for (const row of tasks) await ctx.db.delete("tasks", row._id)
+
+  const taskTemplates = await ctx.db
+    .query("taskTemplates")
+    .withIndex("by_eventId", (q) => q.eq("eventId", eventId))
+    .take(500)
+  for (const row of taskTemplates) {
+    await ctx.db.delete("taskTemplates", row._id)
+  }
 
   const plans = await ctx.db
     .query("evaluationPlans")
@@ -745,6 +775,38 @@ const TASKS: TaskSeed[] = [
   { person: "rafael", title: "Upload your slides", instructions: "PDF please, 16:9. We collect slides a week ahead so the AV team can test them.", kind: "upload", dueInDays: 20 },
 ]
 
+type TaskTemplateSeed = {
+  title: string
+  instructions: string
+  kind: string
+}
+
+/**
+ * The reusable task library every event starts with (product-map delta #10).
+ * `{{firstName}}` and `{{sessionTitle}}` resolve per speaker when the portal
+ * renders the task — one wording, personal for everyone who receives it.
+ */
+const TASK_TEMPLATES: TaskTemplateSeed[] = [
+  {
+    title: "Upload your slides",
+    instructions:
+      "Hi {{firstName}} — please upload the deck for “{{sessionTitle}}” as a PDF, 16:9. We collect slides a week ahead so the AV team can test them on the room projectors.",
+    kind: "upload",
+  },
+  {
+    title: "Upload your headshot",
+    instructions:
+      "A square image, at least 800×800px, on a plain background. It appears next to “{{sessionTitle}}” on the public programme.",
+    kind: "headshot",
+  },
+  {
+    title: "Confirm your travel plans",
+    instructions:
+      "{{firstName}}, confirm you can be on site 45 minutes before “{{sessionTitle}}” starts. If your travel has changed, reply to the organizers before you tick this off.",
+    kind: "confirm",
+  },
+]
+
 type EvaluationSeed = {
   submission: string
   evaluator: "alex" | "sam"
@@ -807,6 +869,18 @@ export const run = internalMutation({
       }
     }
 
+    // — Agent-artifact purge ——————————————————————————————————————————————
+    // Automated verification runs (MCP tool checks, copilot smoke passes)
+    // create real events through the real API and rarely clean up after
+    // themselves. They then sit in the event switcher, dateless, next to the
+    // demo world a judge is looking at. Seeding is the reset button, so it
+    // resets those too — the names are ours, never an organizer's.
+    for (const artifact of allEvents) {
+      if (AGENT_ARTIFACT_EVENT.test(artifact.name)) {
+        await purgeBySlug(ctx, artifact.slug)
+      }
+    }
+
     // — Demo workspace + owner membership (Better Auth user id) ——————————
     let organizationId: Id<"organizations">
     const existingOrg = await ctx.db
@@ -854,6 +928,11 @@ export const run = internalMutation({
       // publish gate actually gates.
       agendaPublishedAt: now - 5 * DAY,
     })
+
+    // — Session statuses ——————————————————————————————————————————————————
+    // The seven built-ins (Settings → Statuses). Every event gets them so the
+    // status picker, the tabs and the settings screen all read from one list.
+    await ensureDefaultStatuses(ctx, eventId)
 
     // — Rooms & tracks ————————————————————————————————————————————————————
     const roomIds = {
@@ -1111,6 +1190,22 @@ export const run = internalMutation({
       }
     }
 
+    // — One custom status, so the feature is visible in the demo ——————————
+    // "Waitlist" behaves exactly as Pending (its category) — every pipeline
+    // rule still sees a pending submission — but the organizer's table reads
+    // "Waitlist". This is the whole point of convex/sessionStatuses.ts.
+    const waitlistId = await ctx.db.insert("sessionStatuses", {
+      eventId,
+      name: "Waitlist",
+      category: "pending",
+      pipelineStatus: "pending",
+      color: "blue",
+      order: 35,
+    })
+    if (submissionIds.s4) {
+      await ctx.db.patch(submissionIds.s4, { statusId: waitlistId })
+    }
+
     // — Evaluation ————————————————————————————————————————————————————————
     const criteria = [
       { id: "overall", label: "Overall" },
@@ -1182,6 +1277,19 @@ export const run = internalMutation({
             : now - task.completedDaysAgo * DAY,
       })
       taskIds[`${task.person}:${task.kind}`] = id
+    }
+
+    // — Task library ———————————————————————————————————————————————————————
+    // The three an organizer reaches for every season. Two of them carry
+    // {{firstName}} / {{sessionTitle}}, so the demo shows personalisation
+    // working the moment one is assigned.
+    for (const template of TASK_TEMPLATES) {
+      await ctx.db.insert("taskTemplates", {
+        eventId,
+        title: template.title,
+        instructions: template.instructions,
+        kind: template.kind,
+      })
     }
 
     // — Email templates ————————————————————————————————————————————————————
@@ -1342,6 +1450,8 @@ async function seedSecondEvent(
     startsAt: et(2026, 11, 5, 9, 0),
     endsAt: et(2026, 11, 5, 18, 0),
   })
+
+  await ensureDefaultStatuses(ctx, eventId)
 
   const trackId = await ctx.db.insert("tracks", {
     eventId,
@@ -1589,7 +1699,7 @@ export const applyUpload = internalMutation({
       await ctx.storage.delete(args.storageId)
       return null
     }
-    await ctx.db.insert("uploads", {
+    const uploadId = await ctx.db.insert("uploads", {
       eventId: args.eventId,
       personId: args.personId,
       submissionId: args.submissionId,
@@ -1602,6 +1712,30 @@ export const applyUpload = internalMutation({
       approvalStatus: "approved",
       reviewNote: "Looks great — AV have the deck.",
     })
+    // A short thread on the file, so the demo shows both sides of a real
+    // conversation attached to the deck rather than an empty comment box.
+    const speakerLabel =
+      `${person.firstName} ${person.lastName}`.trim() || person.email
+    for (const comment of [
+      {
+        authorType: "organizer",
+        authorLabel: DEMO_ORGANIZER_NAME,
+        body: "Thanks for sending this early — one ask: can slide 12 lose the dark background? The room projectors wash it out.",
+      },
+      {
+        authorType: "speaker",
+        authorLabel: speakerLabel,
+        body: "Good catch. Swapped it for the light variant and re-exported — this version has the fix.",
+      },
+    ]) {
+      await ctx.db.insert("uploadComments", {
+        uploadId,
+        eventId: args.eventId,
+        authorType: comment.authorType,
+        authorLabel: comment.authorLabel,
+        body: comment.body,
+      })
+    }
     return null
   },
 })

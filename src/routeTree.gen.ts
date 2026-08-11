@@ -46,6 +46,7 @@ import { Route as AppFormsFormIdRouteImport } from './routes/app/forms/$formId'
 import { Route as AppFormsNewRouteImport } from './routes/app/forms/new'
 import { Route as AppSettingsIndexRouteImport } from './routes/app/settings/index'
 import { Route as AppSettingsApiMcpRouteImport } from './routes/app/settings/api-mcp'
+import { Route as AppSettingsFieldsAndOptionsRouteImport } from './routes/app/settings/fields-and-options'
 import { Route as AppSettingsIntegrationsRouteImport } from './routes/app/settings/integrations'
 import { Route as AppSettingsRoomsAndTracksRouteImport } from './routes/app/settings/rooms-and-tracks'
 import { Route as AppSpeakersIndexRouteImport } from './routes/app/speakers/index'
@@ -255,6 +256,12 @@ const AppSettingsApiMcpRoute = AppSettingsApiMcpRouteImport.update({
   path: '/api-mcp',
   getParentRoute: () => AppSettingsRouteRoute,
 } as any)
+const AppSettingsFieldsAndOptionsRoute =
+  AppSettingsFieldsAndOptionsRouteImport.update({
+    id: '/fields-and-options',
+    path: '/fields-and-options',
+    getParentRoute: () => AppSettingsRouteRoute,
+  } as any)
 const AppSettingsIntegrationsRoute = AppSettingsIntegrationsRouteImport.update({
   id: '/integrations',
   path: '/integrations',
@@ -402,6 +409,7 @@ export interface FileRoutesByFullPath {
   '/app/forms/$formId': typeof AppFormsFormIdRoute
   '/app/forms/new': typeof AppFormsNewRoute
   '/app/settings/api-mcp': typeof AppSettingsApiMcpRoute
+  '/app/settings/fields-and-options': typeof AppSettingsFieldsAndOptionsRoute
   '/app/settings/integrations': typeof AppSettingsIntegrationsRoute
   '/app/settings/rooms-and-tracks': typeof AppSettingsRoomsAndTracksRoute
   '/docs/guide/ai-copilot': typeof DocsGuideAiCopilotRoute
@@ -458,6 +466,7 @@ export interface FileRoutesByTo {
   '/app/forms/$formId': typeof AppFormsFormIdRoute
   '/app/forms/new': typeof AppFormsNewRoute
   '/app/settings/api-mcp': typeof AppSettingsApiMcpRoute
+  '/app/settings/fields-and-options': typeof AppSettingsFieldsAndOptionsRoute
   '/app/settings/integrations': typeof AppSettingsIntegrationsRoute
   '/app/settings/rooms-and-tracks': typeof AppSettingsRoomsAndTracksRoute
   '/docs/guide/ai-copilot': typeof DocsGuideAiCopilotRoute
@@ -520,6 +529,7 @@ export interface FileRoutesById {
   '/app/forms/$formId': typeof AppFormsFormIdRoute
   '/app/forms/new': typeof AppFormsNewRoute
   '/app/settings/api-mcp': typeof AppSettingsApiMcpRoute
+  '/app/settings/fields-and-options': typeof AppSettingsFieldsAndOptionsRoute
   '/app/settings/integrations': typeof AppSettingsIntegrationsRoute
   '/app/settings/rooms-and-tracks': typeof AppSettingsRoomsAndTracksRoute
   '/docs/guide/ai-copilot': typeof DocsGuideAiCopilotRoute
@@ -583,6 +593,7 @@ export interface FileRouteTypes {
     | '/app/forms/$formId'
     | '/app/forms/new'
     | '/app/settings/api-mcp'
+    | '/app/settings/fields-and-options'
     | '/app/settings/integrations'
     | '/app/settings/rooms-and-tracks'
     | '/docs/guide/ai-copilot'
@@ -639,6 +650,7 @@ export interface FileRouteTypes {
     | '/app/forms/$formId'
     | '/app/forms/new'
     | '/app/settings/api-mcp'
+    | '/app/settings/fields-and-options'
     | '/app/settings/integrations'
     | '/app/settings/rooms-and-tracks'
     | '/docs/guide/ai-copilot'
@@ -700,6 +712,7 @@ export interface FileRouteTypes {
     | '/app/forms/$formId'
     | '/app/forms/new'
     | '/app/settings/api-mcp'
+    | '/app/settings/fields-and-options'
     | '/app/settings/integrations'
     | '/app/settings/rooms-and-tracks'
     | '/docs/guide/ai-copilot'
@@ -1009,6 +1022,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppSettingsApiMcpRouteImport
       parentRoute: typeof AppSettingsRouteRoute
     }
+    '/app/settings/fields-and-options': {
+      id: '/app/settings/fields-and-options'
+      path: '/fields-and-options'
+      fullPath: '/app/settings/fields-and-options'
+      preLoaderRoute: typeof AppSettingsFieldsAndOptionsRouteImport
+      parentRoute: typeof AppSettingsRouteRoute
+    }
     '/app/settings/integrations': {
       id: '/app/settings/integrations'
       path: '/integrations'
@@ -1168,6 +1188,7 @@ declare module '@tanstack/react-router' {
 
 interface AppSettingsRouteRouteChildren {
   AppSettingsApiMcpRoute: typeof AppSettingsApiMcpRoute
+  AppSettingsFieldsAndOptionsRoute: typeof AppSettingsFieldsAndOptionsRoute
   AppSettingsIntegrationsRoute: typeof AppSettingsIntegrationsRoute
   AppSettingsRoomsAndTracksRoute: typeof AppSettingsRoomsAndTracksRoute
   AppSettingsIndexRoute: typeof AppSettingsIndexRoute
@@ -1175,6 +1196,7 @@ interface AppSettingsRouteRouteChildren {
 
 const AppSettingsRouteRouteChildren: AppSettingsRouteRouteChildren = {
   AppSettingsApiMcpRoute: AppSettingsApiMcpRoute,
+  AppSettingsFieldsAndOptionsRoute: AppSettingsFieldsAndOptionsRoute,
   AppSettingsIntegrationsRoute: AppSettingsIntegrationsRoute,
   AppSettingsRoomsAndTracksRoute: AppSettingsRoomsAndTracksRoute,
   AppSettingsIndexRoute: AppSettingsIndexRoute,

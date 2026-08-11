@@ -281,19 +281,29 @@ async function createEvent(page, state) {
   )
 
   // Event slugs are globally unique and this is a shared dev database, so fall
-  // back to a suffixed slug rather than failing the whole run.
-  for (let attempt = 0; attempt < 3; attempt++) {
-    if (attempt > 0) {
-      state.eventSlug = `${EVENT.slug}-${RUN}${attempt > 1 ? attempt : ""}`
-      await fillSticky(page, "#new-event-slug", state.eventSlug)
-    }
-    await page.getByRole("button", { name: /^create event$/i }).first().click()
+  // back to a numbered slug rather than failing the whole run.
+  const dialog = page.locator('[data-slot="dialog-content"]')
+  for (let attempt = 1; attempt <= 6; attempt++) {
+    await page
+      .getByRole("button", { name: /^create event$/i })
+      .first()
+      .click({ timeout: 8000 })
+      .catch(() => {})
     try {
-      await page.waitForURL(/\/app\/settings/, { timeout: 9000 })
+      await page.waitForURL(/\/app\/settings/, { timeout: 20000 })
       log(`created "${EVENT.name}" at /e/${state.eventSlug}`)
       return
     } catch {
-      log("event slug taken — retrying with a unique one")
+      // The dialog closing without a slug error means it worked and only the
+      // navigation was slow.
+      if (!(await dialog.isVisible().catch(() => false))) {
+        await settle(page, 1500)
+        log(`created "${EVENT.name}" at /e/${state.eventSlug}`)
+        return
+      }
+      state.eventSlug = `${EVENT.slug}-${attempt + 1}`
+      log(`event slug taken — retrying as ${state.eventSlug}`)
+      await fillSticky(page, "#new-event-slug", state.eventSlug)
     }
   }
   throw new Error("could not create the event")

@@ -1,5 +1,11 @@
 import { useState } from "react"
-import { RiArrowDownSLine, RiCheckLine, RiRefreshLine } from "@remixicon/react"
+import { Link } from "@tanstack/react-router"
+import {
+  RiArrowDownSLine,
+  RiCheckLine,
+  RiRefreshLine,
+  RiSettings3Line,
+} from "@remixicon/react"
 
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -11,51 +17,68 @@ import {
   PopoverTitle,
   PopoverTrigger,
 } from "@/components/ui/popover"
-import { StatusPill, statusLabel } from "@/components/shared/status-pill"
+import { StatusPill } from "@/components/shared/status-pill"
 import type { SubmissionStatus } from "@/components/shared/status-pill"
+import {
+  resolveStatusOption,
+  useStatusCatalog,
+} from "@/lib/status-catalog"
+import type { StatusOption } from "@/lib/status-catalog"
 
 /**
  * Inline status editor for the submissions table (docs/ux/03 image13): click the
  * pill in the cell, pick a new one, confirm with Save. The selection is *staged*
  * — nothing is written until Save — so a misclick during fast triage is free.
  *
+ * The list comes from the event's status catalogue (Settings → Statuses), so a
+ * renamed built-in and a custom status like "Waitlist" both show up here with
+ * the organizer's own wording and colour. What gets written is still the
+ * pipeline enum — see `src/lib/status-catalog.ts` for why.
+ *
  * Extends the shadcn `Popover` + shared `StatusPill` primitives.
  */
 
-/** Order shown in the picker — pipeline order, most-used first. */
-const PICKER_ORDER: Array<SubmissionStatus> = [
-  "accepted",
-  "accept_queue",
-  "pending",
-  "decline_queue",
-  "declined",
-  "withdrawn",
-  "draft",
-]
+export interface StatusChoice {
+  /** The pipeline value written to `submissions.status`. */
+  status: SubmissionStatus
+  /** The custom label picked, when it isn't a plain built-in. */
+  statusId?: string
+}
 
 export interface StatusPickerProps {
   status: string
+  /** The custom status label currently on the submission, if any. */
+  statusId?: string | null
   /** Submission title — used for accessible labelling only. */
   title: string
-  onSave: (status: SubmissionStatus) => void | Promise<void>
+  onSave: (next: StatusChoice) => void | Promise<void>
   disabled?: boolean
   className?: string
 }
 
+/** Stable identity for an option — custom rows by id, built-ins by status. */
+function optionKey(option: StatusOption): string {
+  return option._id ?? `system:${option.pipelineStatus}`
+}
+
 export function StatusPicker({
   status,
+  statusId,
   title,
   onSave,
   disabled,
   className,
 }: StatusPickerProps) {
+  const { statuses } = useStatusCatalog()
   const [open, setOpen] = useState(false)
-  const [staged, setStaged] = useState<SubmissionStatus | null>(null)
+  const [staged, setStaged] = useState<StatusOption | null>(null)
   const [saving, setSaving] = useState(false)
 
-  const current = status as SubmissionStatus
+  const current = resolveStatusOption(statuses, status, statusId)
   const selected = staged ?? current
-  const dirty = staged !== null && staged !== current
+  const dirty = staged !== null && optionKey(staged) !== optionKey(current)
+  const pending =
+    statuses.find((option) => option.systemKey === "pending") ?? current
 
   function handleOpenChange(next: boolean) {
     setOpen(next)
@@ -63,13 +86,18 @@ export function StatusPicker({
   }
 
   async function handleSave() {
-    if (!dirty) {
+    if (!dirty || !staged) {
       handleOpenChange(false)
       return
     }
     setSaving(true)
     try {
-      await onSave(staged)
+      await onSave({
+        status: staged.pipelineStatus,
+        // Built-ins carry no label — the pipeline value says it all, and
+        // leaving the label off keeps the row clean.
+        statusId: staged.systemKey ? undefined : (staged._id ?? undefined),
+      })
       handleOpenChange(false)
     } finally {
       setSaving(false)
@@ -83,7 +111,7 @@ export function StatusPicker({
         render={
           <button
             type="button"
-            aria-label={`Change status of ${title} (currently ${statusLabel(status)})`}
+            aria-label={`Change status of ${title} (currently ${current.name})`}
             className={cn(
               "-mx-1 inline-flex items-center gap-1 rounded-full px-1 py-0.5 outline-none",
               "hover:bg-muted focus-visible:ring-3 focus-visible:ring-ring/50",
@@ -93,7 +121,12 @@ export function StatusPicker({
           />
         }
       >
-        <StatusPill status={status} size="sm" />
+        <StatusPill
+          status={current.pipelineStatus}
+          label={current.name}
+          tone={current.color}
+          size="sm"
+        />
         <RiArrowDownSLine
           size={14}
           aria-hidden
@@ -101,15 +134,15 @@ export function StatusPicker({
         />
       </PopoverTrigger>
 
-      <PopoverContent align="start" className="w-64 gap-0 p-3">
+      <PopoverContent align="start" className="w-72 gap-0 p-3">
         <PopoverHeader className="flex-row items-center justify-between gap-2">
           <PopoverTitle>Status</PopoverTitle>
           <Button
             type="button"
             variant="ghost"
             size="xs"
-            onClick={() => setStaged("pending")}
-            disabled={selected === "pending"}
+            onClick={() => setStaged(pending)}
+            disabled={optionKey(selected) === optionKey(pending)}
           >
             <RiRefreshLine aria-hidden />
             Reset
@@ -119,12 +152,12 @@ export function StatusPicker({
           Pick a status, then save. Queue statuses don't email anyone yet.
         </PopoverDescription>
 
-        <div className="mt-3 flex flex-col gap-0.5">
-          {PICKER_ORDER.map((option) => {
-            const isSelected = selected === option
+        <div className="mt-3 flex max-h-72 flex-col gap-0.5 overflow-y-auto">
+          {statuses.map((option) => {
+            const isSelected = optionKey(selected) === optionKey(option)
             return (
               <button
-                key={option}
+                key={optionKey(option)}
                 type="button"
                 aria-pressed={isSelected}
                 onClick={() => setStaged(option)}
@@ -134,7 +167,12 @@ export function StatusPicker({
                   isSelected && "bg-accent hover:bg-accent"
                 )}
               >
-                <StatusPill status={option} size="sm" />
+                <StatusPill
+                  status={option.pipelineStatus}
+                  label={option.name}
+                  tone={option.color}
+                  size="sm"
+                />
                 {isSelected ? (
                   <RiCheckLine
                     size={16}
@@ -149,26 +187,43 @@ export function StatusPicker({
 
         <div className="mt-3 flex items-center gap-1.5 border-t pt-3 text-xs text-muted-foreground">
           <span>New status:</span>
-          <StatusPill status={selected} size="sm" />
+          <StatusPill
+            status={selected.pipelineStatus}
+            label={selected.name}
+            tone={selected.color}
+            size="sm"
+          />
         </div>
 
-        <div className="mt-3 flex items-center justify-end gap-2">
+        <div className="mt-3 flex items-center justify-between gap-2">
           <Button
             type="button"
-            variant="outline"
+            variant="ghost"
             size="sm"
-            onClick={() => handleOpenChange(false)}
+            nativeButton={false}
+            render={<Link to="/app/settings/statuses" />}
           >
-            Cancel
+            <RiSettings3Line aria-hidden />
+            Edit statuses
           </Button>
-          <Button
-            type="button"
-            size="sm"
-            onClick={() => void handleSave()}
-            disabled={!dirty || saving}
-          >
-            Save
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => handleOpenChange(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              onClick={() => void handleSave()}
+              disabled={!dirty || saving}
+            >
+              Save
+            </Button>
+          </div>
         </div>
       </PopoverContent>
     </Popover>

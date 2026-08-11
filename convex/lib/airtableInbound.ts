@@ -61,7 +61,10 @@ export type InboundStatus = (typeof INBOUND_STATUSES)[number]
  */
 export function parseStatusLabel(label: unknown): string | null {
   if (typeof label !== "string") return null
-  const normalized = label.trim().toLowerCase().replace(/[\s-]+/g, "_")
+  const normalized = label
+    .trim()
+    .toLowerCase()
+    .replace(/[\s-]+/g, "_")
   if (!normalized) return null
   const known: Record<string, string> = {
     draft: "draft",
@@ -117,9 +120,12 @@ export type InboundCandidate = {
  *     baseline and the row becomes eligible.
  *  4. `echo` before `conflict` — our own write returning is not a conflict.
  */
-export function shouldApplyInbound(candidate: InboundCandidate): InboundDecision {
+export function shouldApplyInbound(
+  candidate: InboundCandidate
+): InboundDecision {
   const parsed = parseStatusLabel(candidate.airtableValue)
-  if (parsed === null) return { apply: false, status: null, reason: "unknown_status" }
+  if (parsed === null)
+    return { apply: false, status: null, reason: "unknown_status" }
   if (!INBOUND_STATUSES.includes(parsed as InboundStatus)) {
     return { apply: false, status: null, reason: "not_allowed" }
   }
@@ -152,8 +158,7 @@ export function shouldApplyInbound(candidate: InboundCandidate): InboundDecision
 export const INBOUND_REASON_TEXT: Record<InboundDecision["reason"], string> = {
   apply: "Applied from Airtable",
   unknown_status: "Airtable holds a status we don't recognise — left alone",
-  not_allowed:
-    "Draft and Withdrawn can't be set from Airtable — left alone",
+  not_allowed: "Draft and Withdrawn can't be set from Airtable — left alone",
   unchanged: "Already up to date",
   no_baseline: "Not mirrored yet — will be eligible after the next sync",
   echo: "Our own last sync coming back — ignored",
@@ -171,9 +176,13 @@ export const INBOUND_REASON_TEXT: Record<InboundDecision["reason"], string> = {
  */
 export const MODIFIED_SINCE_SLACK_MS = 60_000
 
-export function modifiedSinceFormula(sinceMs: number | null | undefined): string | undefined {
+export function modifiedSinceFormula(
+  sinceMs: number | null | undefined
+): string | undefined {
   if (typeof sinceMs !== "number" || !Number.isFinite(sinceMs)) return undefined
-  const iso = new Date(Math.max(0, sinceMs - MODIFIED_SINCE_SLACK_MS)).toISOString()
+  const iso = new Date(
+    Math.max(0, sinceMs - MODIFIED_SINCE_SLACK_MS)
+  ).toISOString()
   return `IS_AFTER(LAST_MODIFIED_TIME(), DATETIME_PARSE("${iso}"))`
 }
 
@@ -190,7 +199,7 @@ export function emptySummary(): InboundSummary {
 
 export function tally(
   summary: InboundSummary,
-  reason: InboundDecision["reason"],
+  reason: InboundDecision["reason"]
 ): InboundSummary {
   if (reason === "apply") return { ...summary, applied: summary.applied + 1 }
   if (reason === "conflict")

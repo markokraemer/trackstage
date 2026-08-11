@@ -1,6 +1,6 @@
 import { useState } from "react"
 import { useQuery } from "@tanstack/react-query"
-import { convexQuery } from "@convex-dev/react-query"
+import { convexQuery, useConvexMutation } from "@convex-dev/react-query"
 import { format } from "date-fns"
 import { toast } from "sonner"
 import {
@@ -10,6 +10,7 @@ import {
   RiErrorWarningLine,
   RiFileCopyLine,
   RiInformationLine,
+  RiRefreshLine,
 } from "@remixicon/react"
 
 import { api } from "@convex/_generated/api"
@@ -21,7 +22,12 @@ import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { DrawerShell } from "@/components/shared/drawer-shell"
 import { MessageStatusPill } from "./message-status-pill"
-import { MESSAGE_STATUS_META, templateLabel } from "./constants"
+import {
+  deliveryStateMeta,
+  MESSAGE_STATUS_META,
+  templateLabel,
+} from "./constants"
+import { EmailPreviewCard } from "./email-preview"
 import { downloadIcs, icsFilename, icsForSession } from "./ics"
 import type { MessageRow } from "./types"
 
@@ -49,6 +55,8 @@ export function MessageDrawer({
   venue,
 }: MessageDrawerProps) {
   const [copied, setCopied] = useState(false)
+  const [checking, setChecking] = useState(false)
+  const refreshDelivery = useConvexMutation(api.comms.refreshDeliveryStatus)
 
   // Calendar details are only fetched when this message actually carries an
   // invite — the outbox itself never pays for the agenda query.
@@ -72,6 +80,42 @@ export function MessageDrawer({
       undefined)
     : undefined
   const statusMeta = MESSAGE_STATUS_META[message.status]
+  const deliveryMeta =
+    message.status === "sent"
+      ? deliveryStateMeta(message.providerStatus)
+      : undefined
+
+  /**
+   * Ask the email provider what happened to this one message. The drawer
+   * re-renders on its own when the answer lands — the outbox query is reactive.
+   */
+  async function handleCheckDelivery() {
+    if (!message || !eventId) return
+    setChecking(true)
+    try {
+      const result = await refreshDelivery({
+        eventId,
+        messageId: message._id,
+      })
+      if (!result.configured) {
+        toast.info("No email provider is connected", {
+          description: "This message was rendered here, not delivered.",
+        })
+      } else if (result.checking === 0) {
+        toast.info("Nothing to check", {
+          description:
+            "This message either has its final result already, or was never handed to the provider.",
+        })
+      }
+    } catch (error) {
+      toast.error("Could not check delivery", {
+        description:
+          error instanceof Error ? error.message.split("\n")[0] : undefined,
+      })
+    } finally {
+      setChecking(false)
+    }
+  }
 
   function handleDownloadIcs() {
     if (!message || !session || session.startsAt === undefined) {
@@ -166,13 +210,12 @@ export function MessageDrawer({
             <MessageStatusPill
               status={message.status}
               error={message.error}
+              providerStatus={message.providerStatus}
               size="sm"
             />
-            {statusMeta ? (
-              <span className="ml-2 text-muted-foreground">
-                {statusMeta.help}
-              </span>
-            ) : null}
+            <span className="ml-2 text-muted-foreground">
+              {deliveryMeta?.help ?? statusMeta?.help}
+            </span>
           </MetaRow>
           <MetaRow label="To">
             <span className="font-medium text-foreground">
@@ -200,6 +243,33 @@ export function MessageDrawer({
               {format(new Date(message.sentAt), "MMM d, yyyy 'at' h:mm a")}
             </MetaRow>
           ) : null}
+          {message.deliveredAt ? (
+            <MetaRow label="Delivered">
+              {format(new Date(message.deliveredAt), "MMM d, yyyy 'at' h:mm a")}
+            </MetaRow>
+          ) : null}
+          {message.status === "sent" ? (
+            <MetaRow label="Delivery">
+              <span className="inline-flex items-center gap-2">
+                <span className="text-muted-foreground">
+                  {deliveryMeta
+                    ? deliveryMeta.label
+                    : "No receipt from the email provider yet."}
+                </span>
+                {eventId ? (
+                  <Button
+                    variant="outline"
+                    size="xs"
+                    disabled={checking}
+                    onClick={() => void handleCheckDelivery()}
+                  >
+                    <RiRefreshLine aria-hidden />
+                    {checking ? "Checking…" : "Refresh"}
+                  </Button>
+                ) : null}
+              </span>
+            </MetaRow>
+          ) : null}
         </dl>
 
         {message.icsAttached ? (
@@ -224,19 +294,11 @@ export function MessageDrawer({
           <p className="mb-2 text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
             Email as the speaker sees it
           </p>
-          <Card className="gap-0 overflow-hidden p-0">
-            <div className="border-b border-border bg-muted/50 px-4 py-3">
-              <p className="text-xs text-muted-foreground">
-                To: {message.toEmail}
-              </p>
-              <p className="mt-1 text-sm font-semibold text-foreground">
-                {message.subject}
-              </p>
-            </div>
-            <div className="px-4 py-4 text-sm leading-relaxed whitespace-pre-wrap text-foreground">
-              <BodyWithLinks body={message.body} />
-            </div>
-          </Card>
+          <EmailPreviewCard
+            toEmail={message.toEmail}
+            subject={message.subject}
+            body={message.body}
+          />
         </div>
       </div>
     </DrawerShell>
@@ -258,31 +320,3 @@ function MetaRow({
   )
 }
 
-const URL_PATTERN = /(https?:\/\/[^\s<>"')]+)/g
-
-/**
- * Render the plain-text body, turning URLs (the portal magic link, above all)
- * into real anchors so the link can be followed straight from the outbox.
- */
-function BodyWithLinks({ body }: { body: string }) {
-  const parts = body.split(URL_PATTERN)
-  return (
-    <>
-      {parts.map((part, index) =>
-        index % 2 === 1 ? (
-          <a
-            key={index}
-            href={part}
-            target="_blank"
-            rel="noreferrer"
-            className="text-primary underline underline-offset-2 hover:opacity-80"
-          >
-            {part}
-          </a>
-        ) : (
-          <span key={index}>{part}</span>
-        ),
-      )}
-    </>
-  )
-}

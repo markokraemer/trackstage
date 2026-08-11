@@ -5,6 +5,7 @@ import { api } from "@convex/_generated/api"
 import type { Id } from "@convex/_generated/dataModel"
 import {
   RiAttachment2,
+  RiChat1Line,
   RiCheckLine,
   RiDeleteBin6Line,
   RiFolderDownloadLine,
@@ -26,6 +27,7 @@ import {
 } from "@/components/ui/alert-dialog"
 import { EmptyState } from "@/components/shared/empty-state"
 import { FileDropZone } from "@/components/shared/file-drop-zone"
+import { FileComments } from "@/components/shared/file-comments"
 import { FileList, FileRow } from "@/components/shared/file-row"
 import { downloadFilesBundle, uploadToStorage } from "@/lib/files"
 
@@ -207,7 +209,9 @@ export function SubmissionFiles({
                     </AlertDialog>
                   </>
                 }
-              />
+              >
+                <OrganizerFileComments uploadId={file.id} />
+              </FileRow>
             ))}
           </FileList>
         </>
@@ -219,6 +223,50 @@ export function SubmissionFiles({
         onUpload={handleUpload}
         onError={(message) => toast.error(message)}
       />
+    </div>
+  )
+}
+
+/**
+ * The organizer's half of a file's comment thread (sbek CNT-05). Collapsed to
+ * a one-line count until someone wants it, because most files never need a
+ * conversation — and the ones that do need it right here, next to the file,
+ * rather than in an email the AV team can't see.
+ */
+function OrganizerFileComments({ uploadId }: { uploadId: Id<"uploads"> }) {
+  const [open, setOpen] = useState(false)
+  const { data: comments, isPending } = useQuery(
+    convexQuery(api.tasksAdmin.listUploadComments, { uploadId }),
+  )
+  const addComment = useConvexMutation(api.tasksAdmin.addUploadComment)
+  const count = comments?.length ?? 0
+
+  return (
+    <div className="mt-2">
+      <Button
+        variant="ghost"
+        size="sm"
+        className="h-7 px-2 text-xs text-muted-foreground"
+        aria-expanded={open}
+        onClick={() => setOpen((current) => !current)}
+      >
+        <RiChat1Line aria-hidden />
+        {count === 0
+          ? open
+            ? "Hide comments"
+            : "Add a comment"
+          : `${count} comment${count === 1 ? "" : "s"}`}
+      </Button>
+      {open ? (
+        <FileComments
+          className="mt-2"
+          viewer="organizer"
+          comments={comments}
+          isPending={isPending}
+          placeholder="Ask the speaker for a change, or leave a note…"
+          onSubmit={(body) => addComment({ uploadId, body })}
+        />
+      ) : null}
     </div>
   )
 }

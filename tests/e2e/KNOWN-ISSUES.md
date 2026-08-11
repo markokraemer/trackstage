@@ -25,9 +25,14 @@ app (`/app/submissions` in particular).
 
 **Fixed by** passing `nativeButton={false}` alongside `render={<Link …/>}` —
 see `src/components/submissions/status-tabs.tsx`, which now carries a comment
-explaining exactly why. The allowance stays in `KNOWN_CONSOLE_NOISE` for now
-because the same pattern appears in several tab strips and only some have been
-converted; remove it once `crawl.spec.ts` is green on every organizer route.
+explaining exactly why. Every link-rendering `TabsTrigger` in the tree now does
+this (`status-tabs`, `portal-tabs`, `settings-level-nav`, `app/settings/route`),
+verified by grep.
+
+**Next step:** the allowance is still listed in `KNOWN_CONSOLE_NOISE`. It was
+deliberately left in place for the three verification runs so they measured one
+constant configuration. Drop it, re-run `crawl.spec.ts` against every organizer
+route, and if that stays green delete this section too.
 
 ---
 

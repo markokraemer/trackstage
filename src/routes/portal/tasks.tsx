@@ -25,6 +25,7 @@ export const Route = createFileRoute("/portal/tasks")({
 function PortalTasksPage() {
   const { portalToken, home } = usePortal()
   const tasks = home.tasks
+  const tasksVisible = home.portal.tasksVisible
 
   const { data: uploads, isPending } = useQuery(
     convexQuery(api.portal.myUploads, { portalToken }),
@@ -59,7 +60,15 @@ function PortalTasksPage() {
         </p>
       </div>
 
-      {tasks.length === 0 ? (
+      {!tasksVisible ? (
+        // The tab is hidden in this case, but the URL is still reachable —
+        // explain rather than showing an empty list.
+        <EmptyState
+          icon={RiBriefcase4Line}
+          title="Tasks open once a session is accepted"
+          description="The organizers of this event only send tasks — headshots, slides, confirmations — to speakers whose session has been accepted. Keep an eye on your submissions; anything they need from you will appear here."
+        />
+      ) : tasks.length === 0 ? (
         <EmptyState
           icon={RiBriefcase4Line}
           title="Nothing to do right now"

@@ -29,7 +29,7 @@ while not GOAL:
     sleep(fallback_heartbeat=25min)   # events wake earlier
 ```
 
-## RUNNING NOW (9 agents)
+## RUNNING NOW (8 agents)
 
 | Agent | Delivers |
 | --- | --- |
@@ -38,7 +38,6 @@ while not GOAL:
 | Landing trim | nav cut to essentials, copy halved, less yap (structure/shots stay) |
 | Copilot | shadcn chat foundation, 27+ generative tool views, draggable panel, SOTA patterns |
 | e2e flows | 10-flow Playwright suite green 3× |
-| Agenda DnD | ghost preview, snap chip, conflict pre-warning, keyboard DnD, new GIF |
 | API parity | Sessionboard API matrix + missing endpoints + custom fields + webhooks + UI census |
 | Learn-site ingestion | all walkthrough videos (Gemini + frame-by-frame vision) + POV docs → product map + deltas |
 | (watcher) | Resend verify done — hello@trackstage.app live |
@@ -78,4 +77,7 @@ storage maxed (orphan-free) · docs site (14 routes) · password reset e2e · em
 stack complete on verified hello@trackstage.app · parity wave 1 (6 gaps) · audit
 gaps 1–3 · agenda publish gate · error-class hardening + nativeButton lint guard ·
 width system · brand kit + right-click context menu · README · CI/CD + prod deploy
-(in flight) · trackstage.app configured
+(in flight) · trackstage.app configured · **agenda drag-and-drop excellence** (one
+drag machine across Day/Week/Track/Rooms: snapped ghost, live time+column chip,
+conflict pre-warning, keyboard DnD, edge auto-scroll, optimistic spring settle,
+edge resize; 9/9 agenda e2e; GIF recaptured)

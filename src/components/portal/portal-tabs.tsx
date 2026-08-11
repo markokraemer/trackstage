@@ -45,17 +45,27 @@ export function activePortalTab(pathname: string): string {
 export function PortalTabs({
   active,
   openTaskCount = 0,
+  showTasks = true,
 }: {
   active: string
   openTaskCount?: number
+  /**
+   * False when the organizer has turned "Show tasks to everyone with portal
+   * access" off and this speaker has no accepted session yet — there is
+   * nothing behind the tab, so it isn't offered.
+   */
+  showTasks?: boolean
 }) {
+  const tabs = showTasks
+    ? PORTAL_TABS
+    : PORTAL_TABS.filter((tab) => tab.value !== "tasks")
   return (
     <Tabs value={active} className="w-full">
       <TabsList
         aria-label="Speaker portal sections"
         className="h-auto w-full max-w-full justify-start overflow-x-auto rounded-xl bg-card p-1 ring-1 ring-foreground/10 sm:w-fit"
       >
-        {PORTAL_TABS.map((tab) => (
+        {tabs.map((tab) => (
           <TabsTrigger
             key={tab.value}
             value={tab.value}

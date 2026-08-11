@@ -126,7 +126,7 @@ function PortalLayout() {
 
   if (!contextValue) return <PortalSkeleton />
 
-  const { event, me, tasks } = contextValue.home
+  const { event, me, tasks, portal } = contextValue.home
   const openTasks = tasks.filter((task) => !task.completedAt).length
   const dates = formatEventDates(event.startsAt, event.endsAt)
 
@@ -241,6 +241,7 @@ function PortalLayout() {
           <PortalTabs
             active={activePortalTab(location.pathname)}
             openTaskCount={openTasks}
+            showTasks={portal.tasksVisible}
           />
 
           <div className="mt-6">

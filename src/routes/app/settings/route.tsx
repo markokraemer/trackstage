@@ -29,6 +29,11 @@ const TABS = [
     to: "/app/settings/rooms-and-tracks",
   },
   {
+    value: "fields",
+    label: "Fields & options",
+    to: "/app/settings/fields-and-options",
+  },
+  {
     value: "integrations",
     label: "Integrations",
     to: "/app/settings/integrations",

@@ -558,6 +558,93 @@ ok("cross-event isolation: other slug can't see our session",
   (await client.query(api.publicData.sessionDetail, { slug: "design-systems-day", submissionId: String(submitted.submissionId) })).session === null)
 ok("no portal tokens leaked publicly", !JSON.stringify({ sched, speakers, sessions }).includes(PT))
 
+// ————— Public visibility flags (sbek CNT-12) —————
+// Two booleans, not a workflow: "Show on public schedule" per session and
+// "Show in public gallery" per speaker. Both directions are asserted, and the
+// organizer-facing side must be completely unaffected.
+section("Public visibility flags")
+const SLUG = "ai-summit-2026"
+const publicSlug = { slug: SLUG }
+const idsIn = (list, key = "_id") => list.map((row) => String(row[key]))
+const icsIds = () => convexRun("publicData:icsFeed", publicSlug).events.map((e) => String(e.id))
+const listedSessionIds = async () =>
+  idsIn((await client.query(api.publicData.sessionsList, publicSlug)).sessions)
+const scheduledSessionIds = async () => {
+  const s = await client.query(api.publicData.schedule, publicSlug)
+  return [...s.days.flatMap((d) => idsIn(d.sessions)), ...idsIn(s.unscheduled)]
+}
+const galleryIds = async () =>
+  idsIn((await client.query(api.publicData.speakers, publicSlug)).speakers)
+
+// A scheduled, spoken-at session: it is in every public surface incl. the feed.
+const hideTarget =
+  sessions.sessions.find((s) => s.startsAt !== undefined && s.speakers.length > 0) ??
+  sessions.sessions[0]
+ok("found a public session to hide", !!hideTarget)
+ok("it starts out in the .ics feed", icsIds().includes(String(hideTarget._id)))
+
+await client.mutation(api.submissions.updateDetails, {
+  submissionId: hideTarget._id, patch: { publicVisible: false },
+})
+ok("hidden session leaves the public schedule", !(await scheduledSessionIds()).includes(String(hideTarget._id)))
+ok("hidden session leaves the public sessions list", !(await listedSessionIds()).includes(String(hideTarget._id)))
+ok("hidden session's public page resolves to nothing",
+  (await client.query(api.publicData.sessionDetail, { slug: SLUG, submissionId: String(hideTarget._id) })).session === null)
+ok("hidden session leaves the .ics feed", !icsIds().includes(String(hideTarget._id)))
+ok("hidden session leaves the public JSON API",
+  !convexRun("publicData:apiSessionsPage", { slug: SLUG, page: 1, pageSize: 200 })
+    .data.some((s) => String(s.id) === String(hideTarget._id)))
+const hiddenDoc = await client.query(api.submissions.get, { submissionId: hideTarget._id })
+ok("hidden session is still accepted for the organizer", hiddenDoc.status === "accepted" && hiddenDoc.publicVisible === false)
+const boardWhileHidden = await client.query(api.agenda.board, { eventId: main._id })
+ok("hidden session stays on the organizer's agenda",
+  [...boardWhileHidden.scheduled, ...boardWhileHidden.unscheduled].some((s) => String(s.id) === String(hideTarget._id)))
+await client.mutation(api.submissions.updateDetails, {
+  submissionId: hideTarget._id, patch: { publicVisible: true },
+})
+ok("un-hiding a session brings it straight back",
+  (await listedSessionIds()).includes(String(hideTarget._id)) && icsIds().includes(String(hideTarget._id)))
+
+// Per-speaker eye toggle: the person disappears, their session does not.
+const speakerTarget = speakers.speakers.find((s) => s.sessionCount > 0) ?? speakers.speakers[0]
+ok("found a public speaker to hide", !!speakerTarget)
+const theirSessionId = String(
+  (await client.query(api.publicData.speakers, publicSlug))
+    .speakers.find((s) => String(s._id) === String(speakerTarget._id))?.sessions[0]?._id ?? "",
+)
+await client.mutation(api.speakersAdmin.setPublicVisibility, {
+  personId: speakerTarget._id, publicVisible: false,
+})
+ok("hidden speaker leaves the public gallery", !(await galleryIds()).includes(String(speakerTarget._id)))
+ok("hidden speaker leaves every session's speaker list",
+  !(await client.query(api.publicData.sessionsList, publicSlug)).sessions
+    .some((s) => s.speakers.some((sp) => String(sp._id) === String(speakerTarget._id))))
+ok("hidden speaker's public itinerary is blank",
+  (await client.query(api.publicData.speakerItinerary, { slug: SLUG, personId: String(speakerTarget._id) })).speaker === null)
+ok("hidden speaker leaves the public JSON API",
+  !convexRun("publicData:apiSpeakersPage", { slug: SLUG, page: 1, pageSize: 500 })
+    .data.some((s) => String(s.id) === String(speakerTarget._id)))
+ok("hidden speaker leaves the .ics feed's speaker lists",
+  !convexRun("publicData:icsFeed", publicSlug).events.some((e) => e.speakers.includes(speakerTarget.name)))
+if (theirSessionId) {
+  ok("their session itself stays public", (await listedSessionIds()).includes(theirSessionId))
+}
+ok("hidden speaker is still on the organizer's roster",
+  (await client.query(api.dashboard.speakersRoster, { eventId: main._id }))
+    .some((s) => String(s.personId) === String(speakerTarget._id)))
+ok("hiddenFromPublic lists exactly who is hidden",
+  (await client.query(api.speakersAdmin.hiddenFromPublic, { eventId: main._id }))
+    .map(String).includes(String(speakerTarget._id)))
+await throws("hiddenFromPublic is organizer-only", () =>
+  anonClient.query(api.speakersAdmin.hiddenFromPublic, { eventId: main._id }))
+// The profile-edit path accepts the same flag (drawer "Save changes").
+await client.mutation(api.speakersAdmin.updateProfile, {
+  personId: speakerTarget._id, patch: { publicVisible: true },
+})
+ok("un-hiding a speaker restores the gallery", (await galleryIds()).includes(String(speakerTarget._id)))
+ok("nobody is left hidden after the round trip",
+  (await client.query(api.speakersAdmin.hiddenFromPublic, { eventId: main._id })).length === 0)
+
 // ————— Publish gate / go-live (sbek AIA-07) —————
 section("Agenda publish gate")
 ok("seeded main event is published", sched.published === true && sched.publicMessage === null)
@@ -652,6 +739,56 @@ await throws("composeBulk refuses an empty body", () =>
 await throws("composeBulk refuses an empty audience", () =>
   client.mutation(api.comms.composeBulk, { eventId: main._id, filter: "manual", personIds: [], subject: "x", body: "y" }), "Nobody matches")
 
+// ————— Per-recipient review + delivery receipts (delta #7 / sbek SPK-14) —————
+section("Per-recipient email review & delivery status")
+const outboxBeforeReview = (await client.query(api.comms.listMessages, { eventId: main._id, limit: 500 })).length
+const reviewed = await client.mutation(api.comms.composeBulk, {
+  eventId: main._id, filter: "accepted",
+  subject: "Green room for {{firstName}}",
+  body: "Hi {{firstName}},\n\nYour portal: {{portalLink}}\nSee you at {{eventName}}.",
+  preview: true,
+})
+ok("preview renders one email per recipient",
+  reviewed.previews.length === reviewed.recipients && reviewed.recipients === acceptedCount,
+  `previews=${reviewed.previews.length} recipients=${reviewed.recipients}`)
+ok("preview queues nothing", reviewed.queued === 0)
+ok("preview does not touch the outbox",
+  (await client.query(api.comms.listMessages, { eventId: main._id, limit: 500 })).length === outboxBeforeReview)
+const firstPreview = reviewed.previews[0]
+ok("preview resolves merge fields per recipient",
+  Boolean(firstPreview) && !firstPreview.subject.includes("{{") && !firstPreview.body.includes("{{") &&
+  firstPreview.body.includes("/portal/t/") && firstPreview.subject.includes(firstPreview.personName.split(" ")[0]),
+  JSON.stringify(firstPreview?.subject))
+ok("preview carries the recipient's own address",
+  Boolean(firstPreview?.toEmail?.includes("@")) && Boolean(firstPreview?.personId))
+ok("each preview is that person's own copy",
+  new Set(reviewed.previews.map((p) => p.toEmail)).size === reviewed.previews.length)
+// Removing someone in the review step must actually exclude them from the send.
+const keep = reviewed.previews.slice(0, Math.max(1, reviewed.previews.length - 1))
+const dropped = reviewed.previews.slice(keep.length)
+const sentAfterReview = await client.mutation(api.comms.composeBulk, {
+  eventId: main._id, filter: "manual", personIds: keep.map((p) => p.personId),
+  subject: "Green room for {{firstName}}",
+  body: "Hi {{firstName}},\n\nYour portal: {{portalLink}}\nSee you at {{eventName}}.",
+})
+ok("sending after review emails exactly the kept recipients", sentAfterReview.queued === keep.length)
+const outboxAfterReview = await client.query(api.comms.listMessages, { eventId: main._id, limit: 500 })
+const reviewSends = outboxAfterReview.filter((m) => m.subject.startsWith("Green room for "))
+ok("the approved copy is the queued copy",
+  reviewSends.some((m) => m.subject === firstPreview.subject && m.body === firstPreview.body))
+ok("a removed recipient gets nothing",
+  dropped.length === 0 || !reviewSends.some((m) => m.toEmail === dropped[0].toEmail))
+// Delivery receipts: seeded @example.com recipients stay previews, so there is
+// nothing to poll — the refresh must say so honestly rather than error.
+const receipts = await client.mutation(api.comms.refreshDeliveryStatus, { eventId: main._id })
+ok("delivery refresh reports what it is checking",
+  typeof receipts.checking === "number" && typeof receipts.configured === "boolean", JSON.stringify(receipts))
+ok("demo previews are never counted as awaiting a receipt", receipts.checking === 0)
+ok("preview rows carry no delivery receipt",
+  outboxAfterReview.every((m) => m.status !== "preview" || (m.providerStatus === undefined && m.deliveredAt === undefined)))
+ok("outbox rows expose the delivery-receipt fields",
+  outboxAfterReview.every((m) => "resendId" in m || m.resendId === undefined))
+
 // ————— Core basics: event + workspace lifecycle —————
 section("Core basics (events & workspaces)")
 const myWorkspaces = await client.query(api.workspaces.mine, {})
@@ -718,6 +855,12 @@ await throws("stranger cannot bulk-email our speakers", () =>
   strangerClient.mutation(api.comms.composeBulk, {
     eventId: main._id, filter: "all_speakers", subject: "hi", body: "hi",
   }), "access")
+await throws("stranger cannot preview our speakers' emails", () =>
+  strangerClient.mutation(api.comms.composeBulk, {
+    eventId: main._id, filter: "all_speakers", subject: "hi", body: "hi", preview: true,
+  }), "access")
+await throws("stranger cannot read our delivery receipts", () =>
+  strangerClient.mutation(api.comms.refreshDeliveryStatus, { eventId: main._id }), "access")
 await throws("stranger cannot list our saved embeds", () =>
   strangerClient.query(api.embeds.list, { eventId: main._id }), "access")
 await throws("stranger cannot mint an upload URL for our event", () =>
@@ -1386,6 +1529,131 @@ const sweepAfter = convexRun("files:sweepOrphans", { deleteUnreferenced: false, 
 ok("storage is clean after the sweep", sweepAfter.unreferencedBlobs === 0,
   `${sweepAfter.unreferencedBlobs} orphans / ${sweepAfter.unreferencedBytes} bytes`)
 ok("every file still in use survived the sweep", (await client.query(api.portal.myUploads, { portalToken: PT })).every((u) => !u.missing && u.url))
+
+// ————— Unique contacts: a repeat co-speaker owns their own profile —————
+// Product-map delta #9 ("Unique Contact Settings"): before this, the SECOND
+// submission naming the same co-speaker silently rewrote their profile with
+// whatever that submitter typed. Now an existing contact's own words stand and
+// only empty fields get filled in.
+section("Unique contacts")
+const coEmail = `verify-co-${Date.now().toString(36)}@example.com`
+async function submitNaming(coSpeaker, titleSuffix) {
+  const email = `verify-sub-${Math.random().toString(36).slice(2, 8)}@example.com`
+  const ident = await client.mutation(api.submit.identify, { slug: "cfp", email })
+  return await client.mutation(api.submit.submit, {
+    slug: "cfp", portalToken: ident.portalToken,
+    title: `Contact Talk ${titleSuffix}`,
+    answers: { ...goodAnswers, title: `Contact Talk ${titleSuffix}` },
+    participants: [
+      { firstName: "Sub", lastName: "Mitter", email, role: "speaker" },
+      coSpeaker,
+    ],
+  })
+}
+await submitNaming({
+  firstName: "Casey", lastName: "Cospeaker", email: coEmail, role: "speaker",
+  bio: "First bio — written by the co-speaker themselves.",
+}, "A")
+const coIdent = await client.mutation(api.submit.identify, { slug: "cfp", email: coEmail })
+const coHome1 = await client.query(api.portal.home, { portalToken: coIdent.portalToken })
+ok("a named co-speaker gets a profile from the first submission",
+  coHome1.me.bio?.startsWith("First bio"), coHome1.me.bio)
+ok("their portal profile starts with only what was provided",
+  !coHome1.me.jobTitle)
+
+// A second submitter names the same person and guesses at their details.
+await submitNaming({
+  firstName: "C.", lastName: "Cospeaker", email: coEmail, role: "speaker",
+  bio: "Second bio — typed by somebody else entirely.",
+  jobTitle: "Principal Engineer",
+}, "B")
+const coHome2 = await client.query(api.portal.home, { portalToken: coIdent.portalToken })
+ok("a second submission cannot overwrite an existing contact's bio",
+  coHome2.me.bio?.startsWith("First bio"), coHome2.me.bio)
+ok("nor their name",
+  coHome2.me.firstName === "Casey", `${coHome2.me.firstName} ${coHome2.me.lastName}`)
+ok("but it does fill a field that was still empty",
+  coHome2.me.jobTitle === "Principal Engineer", coHome2.me.jobTitle)
+
+// The speaker's own portal edit is authoritative over any later submission.
+await client.mutation(api.portal.updateProfile, {
+  portalToken: coIdent.portalToken,
+  patch: { bio: "Authoritative bio, edited in my own portal.", company: "Cospeaker Ltd" },
+})
+await submitNaming({
+  firstName: "Casey", lastName: "Cospeaker", email: coEmail, role: "speaker",
+  bio: "Third bio — still not theirs.", company: "Wrong Company Inc",
+}, "C")
+const coHome3 = await client.query(api.portal.home, { portalToken: coIdent.portalToken })
+ok("the speaker's own portal edits survive later submissions",
+  coHome3.me.bio?.startsWith("Authoritative bio") && coHome3.me.company === "Cospeaker Ltd",
+  `${coHome3.me.bio} / ${coHome3.me.company}`)
+ok("all three submissions still list the co-speaker",
+  coHome3.submissions.filter((s) => s.title.startsWith("Contact Talk")).length === 3)
+
+// ————— Speaker-portal behaviour toggles —————
+// Product-map delta #6, the valuable subset of their per-portal Configuration:
+// Always Show Tasks · portal submission edits · Extend Task Deadlines.
+section("Speaker portal behaviour")
+const behaviorHome = await client.query(api.portal.home, { portalToken: PT })
+ok("defaults are permissive — nothing changes until the organizer says so",
+  behaviorHome.portal.alwaysShowTasks && behaviorHome.portal.allowSubmissionEdits &&
+  behaviorHome.portal.extendTaskDeadlines && behaviorHome.portal.tasksVisible,
+  JSON.stringify(behaviorHome.portal))
+const setPortalSettings = (portalSettings) =>
+  client.mutation(api.events.update, { eventId: main._id, patch: { portalSettings } })
+const ALL_ON = { alwaysShowTasks: true, allowSubmissionEdits: true, extendTaskDeadlines: true }
+
+// — Extend task deadlines —
+const overdueTitle = `Verify overdue task ${Date.now().toString(36)}`
+await client.mutation(api.tasksAdmin.create, {
+  eventId: main._id, personIds: [behaviorHome.me.id], title: overdueTitle,
+  kind: "confirm", dueAt: Date.now() - 3 * 24 * 60 * 60 * 1000,
+})
+const findOverdue = async () =>
+  (await client.query(api.portal.home, { portalToken: PT })).tasks.find((t) => t.title === overdueTitle)
+ok("an overdue task is completable while late work is accepted",
+  (await findOverdue())?.locked === false)
+await setPortalSettings({ ...ALL_ON, extendTaskDeadlines: false })
+const lockedTask = await findOverdue()
+ok("turning that off marks the overdue task closed in the portal", lockedTask?.locked === true)
+await throws("and refuses to complete it, in plain English", () =>
+  client.mutation(api.portal.completeTask, { portalToken: PT, taskId: lockedTask.id }), "deadline")
+await setPortalSettings({ ...ALL_ON, extendTaskDeadlines: true })
+await client.mutation(api.portal.completeTask, { portalToken: PT, taskId: lockedTask.id })
+ok("switching it back on reopens the task", Boolean((await findOverdue())?.completedAt))
+await client.mutation(api.tasksAdmin.remove, { taskId: lockedTask.id })
+
+// — Portal submission edits —
+await setPortalSettings({ ...ALL_ON, allowSubmissionEdits: false })
+const editsOff = await client.query(api.portal.home, { portalToken: PT })
+ok("the portal is told edits are off", editsOff.portal.allowSubmissionEdits === false)
+await throws("editing a submission is refused with somewhere to go instead", () =>
+  client.mutation(api.portal.updateSubmission, {
+    portalToken: PT, submissionId: submitted.submissionId,
+    patch: { title: "Should never save" },
+  }), "turned off editing")
+await setPortalSettings(ALL_ON)
+await client.mutation(api.portal.updateSubmission, {
+  portalToken: PT, submissionId: submitted.submissionId,
+  patch: { title: "Verification Talk (edited)" },
+})
+ok("switching it back on restores editing",
+  (await client.query(api.portal.home, { portalToken: PT })).submissions
+    .some((s) => s.id === submitted.submissionId && s.title.includes("edited")))
+
+// — Always show tasks —
+await setPortalSettings({ ...ALL_ON, alwaysShowTasks: false })
+const quietHome = await client.query(api.portal.home, { portalToken: quietIdent.portalToken })
+ok("a speaker with nothing accepted loses the task list",
+  quietHome.portal.tasksVisible === false && quietHome.tasks.length === 0,
+  JSON.stringify(quietHome.portal))
+const acceptedHome = await client.query(api.portal.home, { portalToken: PT })
+ok("an accepted speaker still sees theirs",
+  acceptedHome.portal.tasksVisible === true && acceptedHome.tasks.length >= 1)
+await setPortalSettings(ALL_ON)
+ok("tasks come back for everyone once it's on again",
+  (await client.query(api.portal.home, { portalToken: quietIdent.portalToken })).portal.tasksVisible === true)
 
 // ————— Summary —————
 console.log(`\n━━━ ${passed} passed, ${failed} failed ━━━`)

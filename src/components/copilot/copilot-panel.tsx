@@ -278,17 +278,28 @@ function ResizeHandle({ width }: { width: number }) {
   )
 }
 
-/** The sparkle in the app top bar. Opens the panel; Cmd+I does the same. */
+/**
+ * The sparkle in the app top bar. Opens the panel; Cmd+I does the same.
+ *
+ * Calm, but not anonymous: a soft primary-tinted surface rather than another
+ * outlined utility button, because the copilot IS a product feature and the
+ * top bar has to say so without shouting (no gradient, no filled primary
+ * competing with the page's own save buttons).
+ */
 export function CopilotTriggerButton() {
   const { open, toggle } = useCopilotPanel()
   return (
     <Button
-      variant="outline"
+      variant="ghost"
       size="sm"
       aria-label="Open the AI copilot"
       aria-expanded={open}
       title="Copilot (⌘I)"
       onClick={toggle}
+      className={cn(
+        "gap-1.5 bg-primary/8 text-primary hover:bg-primary/14 hover:text-primary",
+        "aria-expanded:bg-primary/14 aria-expanded:text-primary"
+      )}
     >
       <RiSparkling2Line aria-hidden />
       <span className="max-sm:sr-only">Copilot</span>

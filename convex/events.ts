@@ -3,6 +3,7 @@ import type { Id } from "./_generated/dataModel"
 import type { MutationCtx } from "./_generated/server"
 import { mutation, query } from "./_generated/server"
 import { myMemberships, requireEventAccess, requireMembership } from "./lib/auth"
+import { record as recordAudit } from "./lib/audit"
 import { deleteEventBlobs } from "./lib/files"
 
 export const list = query({
@@ -20,7 +21,14 @@ export const list = query({
         )
         .collect()
       for (const event of events) {
-        rows.push({ ...event, organizationName: organization?.name ?? "" })
+        rows.push({
+          ...event,
+          organizationName: organization?.name ?? "",
+          // The shell's event switcher shows the event's own logo on its tile
+          // when branding is set (convex/files.setEventBranding), so the
+          // Trackstage logomark is never repeated inside the app chrome.
+          logoUrl: event.logoId ? await ctx.storage.getUrl(event.logoId) : null,
+        })
       }
     }
     return rows
@@ -104,11 +112,30 @@ export const update = mutation({
       venue: v.optional(v.string()),
       startsAt: v.optional(v.number()),
       endsAt: v.optional(v.number()),
+      // Speaker-portal behaviour (schema `events.portalSettings`). Sent as a
+      // whole object — `ctx.db.patch` replaces the field, so the settings card
+      // always submits all three flags together.
+      portalSettings: v.optional(
+        v.object({
+          alwaysShowTasks: v.optional(v.boolean()),
+          allowSubmissionEdits: v.optional(v.boolean()),
+          extendTaskDeadlines: v.optional(v.boolean()),
+        }),
+      ),
     }),
   },
   handler: async (ctx, args) => {
-    await requireEventAccess(ctx, args.eventId, "admin")
+    const { event } = await requireEventAccess(ctx, args.eventId, "admin")
     await ctx.db.patch(args.eventId, args.patch)
+    const changed = Object.keys(args.patch)
+    await recordAudit(ctx, {
+      eventId: args.eventId,
+      entity: "settings",
+      entityId: args.eventId,
+      action: "updated",
+      summary: `Event settings updated (${changed.join(", ")}) · ${args.patch.name ?? event.name}`,
+      meta: { fields: changed },
+    })
     return null
   },
 })
@@ -131,6 +158,7 @@ export async function deleteEventCascade(
   const byEventId = [
     "rooms",
     "tracks",
+    "sessionStatuses",
     "forms",
     "people",
     "submissions",
@@ -142,6 +170,11 @@ export async function deleteEventCascade(
     "emailTemplates",
     "messages",
     "embeds",
+    // Integration + history rows: they are event-scoped bookkeeping and must
+    // not outlive the event they describe.
+    "airtableConnections",
+    "airtableRecordSync",
+    "auditLog",
   ] as const
   for (const table of byEventId) {
     const rows = await ctx.db

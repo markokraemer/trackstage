@@ -32,7 +32,7 @@ export const Route = createFileRoute("/portal/")({
  */
 function PortalHomePage() {
   const { home } = usePortal()
-  const { me, submissions, tasks } = home
+  const { me, submissions, tasks, portal } = home
   const total = submissions.length
   const openTasks = tasks.filter((task) => !task.completedAt)
   const doneTasks = tasks.length - openTasks.length
@@ -189,6 +189,9 @@ function PortalHomePage() {
         </PanelCard>
       </div>
 
+      {/* No Tasks card at all when the organizer keeps the checklist for
+          accepted speakers only — see convex/portal.ts `tasksVisible`. */}
+      {!portal.tasksVisible ? null : (
       <PanelCard
         icon={RiBriefcase4Line}
         title="Tasks"
@@ -267,6 +270,7 @@ function PortalHomePage() {
           </Button>
         ) : null}
       </PanelCard>
+      )}
     </div>
   )
 }

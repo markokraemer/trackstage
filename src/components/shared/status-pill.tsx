@@ -137,13 +137,21 @@ const statusPillVariants = cva("gap-1.5 rounded-full", {
   defaultVariants: { tone: "gray", size: "default", staged: false },
 })
 
-const DOT_CLASS: Record<Tone, string> = {
+/**
+ * Dot colour per tone. Exported because custom session statuses
+ * (`src/lib/status-catalog.ts`) pick their tone from this same set, so the
+ * settings screen's swatches and the pills in the table are the same colours
+ * by construction.
+ */
+export const STATUS_TONE_DOT_CLASS: Record<Tone, string> = {
   green: "bg-status-green-dot",
   amber: "bg-status-amber-dot",
   red: "bg-status-red-dot",
   gray: "bg-status-gray-dot",
   blue: "bg-status-blue-dot",
 }
+
+const DOT_CLASS = STATUS_TONE_DOT_CLASS
 
 export interface StatusPillProps
   extends Omit<React.ComponentProps<typeof Badge>, "children" | "variant">,
@@ -152,6 +160,12 @@ export interface StatusPillProps
   status: StatusValue | (string & {})
   /** Override the label (defaults to the canonical wording). */
   label?: string
+  /**
+   * Override the colour family. Used by custom session statuses, whose colour
+   * is chosen by the organizer in Settings → Statuses rather than derived from
+   * the pipeline value (`src/lib/status-catalog.ts`).
+   */
+  tone?: Tone
   /** Leading dot. On by default — it carries the meaning at a glance. */
   dot?: boolean
   /**
@@ -167,6 +181,7 @@ export interface StatusPillProps
 export function StatusPill({
   status,
   label,
+  tone: toneOverride,
   dot = true,
   size = "default",
   variant = "dot",
@@ -174,7 +189,8 @@ export function StatusPill({
   ...props
 }: StatusPillProps) {
   const key = status as StatusValue
-  const tone: Tone = key in STATUS_TONES ? STATUS_TONES[key] : "gray"
+  const tone: Tone =
+    toneOverride ?? (key in STATUS_TONES ? STATUS_TONES[key] : "gray")
   const staged = STAGED.has(key)
 
   if (variant === "dot") {

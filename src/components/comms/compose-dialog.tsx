@@ -1,15 +1,21 @@
 /**
- * Bulk email composer (sbek SPK-13).
+ * Bulk email composer (sbek SPK-13) with a per-recipient review step
+ * (sbek SPK-14 / product-map delta #7).
  *
  * Templates cover the moments the system already knows about — accepted,
  * declined, reminder. This covers everything else a programme chair has to
  * say: the venue moved, here's your green-room time, please read the AV notes.
  *
- * Three decisions, in the order an organizer makes them: who it goes to (with
- * a live count, so nobody guesses), what it says (merge fields insert at the
- * cursor), and then send. Everything lands in the same outbox as every other
- * email, so the preview-vs-deliver rule (@example.com addresses render as
- * previews rather than bouncing) is inherited, not re-implemented.
+ * Four decisions, in the order an organizer makes them: who it goes to (with a
+ * live count, so nobody guesses), what it says (merge fields insert at the
+ * cursor), *then a read-through of each person's actual email* — click a name,
+ * see their copy with their own merge fields filled in, drop anyone who
+ * shouldn't be on it — and only then send. The review renders through the same
+ * server code that queues the mail, so what is approved is what goes out.
+ *
+ * Everything lands in the same outbox as every other email, so the
+ * preview-vs-deliver rule (@example.com addresses render as previews rather
+ * than bouncing) is inherited, not re-implemented.
  */
 
 import * as React from "react"
@@ -17,7 +23,13 @@ import { useQuery } from "@tanstack/react-query"
 import { convexQuery, useConvexMutation } from "@convex-dev/react-query"
 import { api } from "@convex/_generated/api"
 import type { Id } from "@convex/_generated/dataModel"
-import { RiGroupLine, RiSendPlaneLine } from "@remixicon/react"
+import {
+  RiArrowLeftLine,
+  RiCloseLine,
+  RiEyeLine,
+  RiGroupLine,
+  RiSendPlaneLine,
+} from "@remixicon/react"
 import { toast } from "sonner"
 
 import { cn } from "@/lib/utils"
@@ -31,6 +43,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
+import { ScrollArea } from "@/components/ui/scroll-area"
+import { EmailPreviewCard } from "./email-preview"
 import {
   Field,
   FieldDescription,
@@ -82,6 +96,15 @@ const PLACEHOLDERS = [
   "portalLink",
 ] as const
 
+/** One recipient's rendered copy, straight from `composeBulk({ preview: true })`. */
+type Preview = {
+  personId: Id<"people">
+  personName: string
+  toEmail: string
+  subject: string
+  body: string
+}
+
 export interface ComposeDialogProps {
   eventId: Id<"events"> | undefined
   open: boolean
@@ -102,6 +125,11 @@ export function ComposeDialog({
   const [subject, setSubject] = React.useState("")
   const [body, setBody] = React.useState("")
   const [sending, setSending] = React.useState(false)
+  const [step, setStep] = React.useState<"compose" | "review">("compose")
+  const [previews, setPreviews] = React.useState<Array<Preview>>([])
+  /** How many people the audience matched, before the 100-per-send cap. */
+  const [audienceTotal, setAudienceTotal] = React.useState(0)
+  const [selectedId, setSelectedId] = React.useState<string | null>(null)
   const bodyRef = React.useRef<HTMLTextAreaElement | null>(null)
 
   React.useEffect(() => {
@@ -110,6 +138,9 @@ export function ComposeDialog({
     setPicked([])
     setSubject("")
     setBody("")
+    setStep("compose")
+    setPreviews([])
+    setSelectedId(null)
   }, [open])
 
   const { data: roster } = useQuery(
@@ -167,7 +198,8 @@ export function ComposeDialog({
     )
   }
 
-  async function send(event: React.FormEvent) {
+  /** Step 1 → 2: render everyone's copy on the server, queue nothing. */
+  async function review(event: React.FormEvent) {
     event.preventDefault()
     if (!eventId) return
     if (subject.trim().length === 0 || body.trim().length === 0) {
@@ -187,6 +219,39 @@ export function ComposeDialog({
         body: body.trim(),
         personIds:
           audience === "manual" ? (picked as Array<Id<"people">>) : undefined,
+        preview: true,
+      })
+      setPreviews(result.previews)
+      setAudienceTotal(result.recipients)
+      setSelectedId(
+        result.previews.length > 0 ? String(result.previews[0].personId) : null,
+      )
+      setStep("review")
+    } catch (error) {
+      toast.error("Couldn't build the preview", {
+        description:
+          error instanceof Error ? error.message : "Please try again.",
+      })
+    } finally {
+      setSending(false)
+    }
+  }
+
+  /**
+   * Step 2 → sent. Always addressed to the exact people left in the review
+   * list, so removing someone genuinely removes them — the audience filter is
+   * not re-run behind the organizer's back.
+   */
+  async function send() {
+    if (!eventId || previews.length === 0) return
+    setSending(true)
+    try {
+      const result = await composeBulk({
+        eventId,
+        filter: "manual",
+        subject: subject.trim(),
+        body: body.trim(),
+        personIds: previews.map((preview) => preview.personId),
       })
       onOpenChange(false)
       toast.success(
@@ -207,6 +272,140 @@ export function ComposeDialog({
     }
   }
 
+  function removeRecipient(personId: string) {
+    const next = previews.filter(
+      (preview) => String(preview.personId) !== personId,
+    )
+    setPreviews(next)
+    if (selectedId === personId) {
+      const fallback = next.at(0)
+      setSelectedId(fallback ? String(fallback.personId) : null)
+    }
+  }
+
+  const selected: Preview | null =
+    previews.find((preview) => String(preview.personId) === selectedId) ??
+    previews.at(0) ??
+    null
+
+  if (step === "review") {
+    return (
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="sm:max-w-4xl">
+          <DialogHeader>
+            <DialogTitle>Review before sending</DialogTitle>
+            <DialogDescription>
+              Click a name to read the exact email that person will get, with
+              their own details filled in. Remove anyone who shouldn't be on
+              this send.
+            </DialogDescription>
+          </DialogHeader>
+
+          {previews.length === 0 ? (
+            <div className="rounded-lg border border-border bg-muted/40 px-4 py-10 text-center text-sm text-muted-foreground">
+              You removed everyone. Go back to add recipients again.
+            </div>
+          ) : (
+            <div className="grid gap-4 sm:grid-cols-[240px_1fr]">
+              <div className="flex flex-col gap-2">
+                <p className="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
+                  {previews.length} recipient{previews.length === 1 ? "" : "s"}
+                </p>
+                {audienceTotal > previews.length ? (
+                  <p className="text-xs text-muted-foreground">
+                    Showing the first {previews.length} of {audienceTotal}. One
+                    send goes to at most {previews.length} people — send again
+                    for the rest.
+                  </p>
+                ) : null}
+                <ScrollArea className="h-[380px] rounded-lg border border-border">
+                  <ul>
+                    {previews.map((preview) => {
+                      const id = String(preview.personId)
+                      const active = selected
+                        ? String(selected.personId) === id
+                        : false
+                      return (
+                        <li
+                          key={id}
+                          className={cn(
+                            "flex items-center gap-1 border-b border-border last:border-b-0",
+                            active && "bg-accent",
+                          )}
+                        >
+                          <button
+                            type="button"
+                            onClick={() => setSelectedId(id)}
+                            aria-current={active ? "true" : undefined}
+                            className="min-w-0 flex-1 cursor-pointer px-3 py-2.5 text-left hover:bg-accent/60"
+                          >
+                            <span className="block truncate text-sm font-medium text-foreground">
+                              {preview.personName || preview.toEmail}
+                            </span>
+                            <span className="block truncate text-xs text-muted-foreground">
+                              {preview.toEmail}
+                            </span>
+                          </button>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon-sm"
+                            className="mr-1.5 shrink-0 text-muted-foreground"
+                            aria-label={`Remove ${preview.personName || preview.toEmail}`}
+                            onClick={() => removeRecipient(id)}
+                          >
+                            <RiCloseLine aria-hidden />
+                          </Button>
+                        </li>
+                      )
+                    })}
+                  </ul>
+                </ScrollArea>
+              </div>
+
+              <div className="flex min-w-0 flex-col gap-2">
+                <p className="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
+                  Email as {selected?.personName || "this person"} sees it
+                </p>
+                <ScrollArea className="h-[380px]">
+                  {selected ? (
+                    <EmailPreviewCard
+                      toEmail={selected.toEmail}
+                      subject={selected.subject}
+                      body={selected.body}
+                    />
+                  ) : null}
+                </ScrollArea>
+              </div>
+            </div>
+          )}
+
+          <DialogFooter className="mt-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setStep("compose")}
+              disabled={sending}
+            >
+              <RiArrowLeftLine aria-hidden />
+              Back to the message
+            </Button>
+            <Button
+              type="button"
+              onClick={() => void send()}
+              disabled={sending || previews.length === 0}
+            >
+              <RiSendPlaneLine aria-hidden />
+              {sending
+                ? "Sending…"
+                : `Send to ${previews.length} ${previews.length === 1 ? "person" : "people"}`}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    )
+  }
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-2xl">
@@ -214,11 +413,12 @@ export function ComposeDialog({
           <DialogTitle>Compose an email</DialogTitle>
           <DialogDescription>
             A one-off message to a group of speakers. Merge fields fill
-            themselves in per person, exactly like your saved templates.
+            themselves in per person, exactly like your saved templates. You'll
+            read each person's email before anything is sent.
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={(event) => void send(event)}>
+        <form onSubmit={(event) => void review(event)}>
           <FieldGroup className="gap-5">
             <Field>
               <FieldLabel htmlFor="compose-audience">Send to</FieldLabel>
@@ -293,7 +493,7 @@ export function ComposeDialog({
               <RiGroupLine size={16} aria-hidden />
               {recipients === 0
                 ? "Nobody matches this audience yet."
-                : `This will send ${recipients} email${recipients === 1 ? "" : "s"} — one per person.`}
+                : `${recipients} email${recipients === 1 ? "" : "s"} — one per person. You'll read each one before it goes out.`}
             </p>
 
             <Field>
@@ -353,10 +553,10 @@ export function ComposeDialog({
               Cancel
             </Button>
             <Button type="submit" disabled={sending || !eventId}>
-              <RiSendPlaneLine aria-hidden />
+              <RiEyeLine aria-hidden />
               {sending
-                ? "Sending…"
-                : `Send to ${recipients} ${recipients === 1 ? "person" : "people"}`}
+                ? "Rendering…"
+                : `Review ${recipients} ${recipients === 1 ? "email" : "emails"}`}
             </Button>
           </DialogFooter>
         </form>

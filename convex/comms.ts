@@ -45,6 +45,14 @@ export const REMINDER_DEDUPE_MS = 20 * 60 * 60 * 1000 // 20 hours
 /** A claimed message stuck in "sending" longer than this is retried. */
 const CLAIM_STALE_MS = 5 * 60 * 1000
 const DEFAULT_BATCH = 25
+/**
+ * How many recipients the composer renders for the review step in one call.
+ * Sessionboard caps a manual send at 100 recipients; we render up to the same
+ * number so the reviewer never scrolls a list the product itself would refuse.
+ */
+const MAX_PER_SEND = 100
+/** How many delivery receipts one refresh click checks. */
+const MAX_DELIVERY_POLL = 50
 
 export const MESSAGE_STATUS = {
   scheduled: "scheduled",
@@ -84,6 +92,21 @@ export async function resolveTemplate(
   return defaultTemplate(key)
 }
 
+/**
+ * Provider delivery states we understand, in Resend's own vocabulary. Anything
+ * else Resend returns is stored verbatim and rendered as-is — we never hide a
+ * state just because it is new.
+ */
+export const DELIVERY_TERMINAL = new Set<string>([
+  "delivered",
+  "bounced",
+  "complained",
+  "opened",
+  "clicked",
+  "canceled",
+  "failed",
+])
+
 export type QueueMessageArgs = {
   eventId: Id<"events">
   personId: Id<"people">
@@ -100,15 +123,26 @@ export type QueueMessageArgs = {
   override?: { subject: string; body: string }
 }
 
+export type RenderedMessage = {
+  personName: string
+  toEmail: string
+  subject: string
+  body: string
+  icsAttached: boolean
+}
+
 /**
- * Render a template for one person and drop it into the outbox. Returns the new
- * message id. Does NOT schedule delivery — callers batch that into a single
- * `ctx.scheduler.runAfter(0, internal.comms.deliverPending)`.
+ * Render one person's copy of a message — the exact subject and body that would
+ * hit their inbox — without writing anything.
+ *
+ * Both the outbox insert and the composer's per-recipient review step go
+ * through here, so what an organizer approves in the review step is byte-for-byte
+ * what gets queued (product-map delta #7 / sbek SPK-14).
  */
-export async function queueMessage(
-  ctx: MutationCtx,
+export async function renderMessageFor(
+  ctx: QueryCtx | MutationCtx,
   args: QueueMessageArgs,
-): Promise<Id<"messages">> {
+): Promise<RenderedMessage> {
   const person = await ctx.db.get("people", args.personId)
   if (!person) throw new Error("Person not found.")
   if (person.eventId !== args.eventId) {
@@ -136,18 +170,36 @@ export async function queueMessage(
     ...(args.extraVars ?? {}),
   }
 
-  // An invite only makes sense once the session actually has a slot.
-  const icsAttached = Boolean(args.submissionId && submission?.startsAt != null)
+  return {
+    personName: `${person.firstName} ${person.lastName}`.trim(),
+    toEmail: args.toEmailOverride ?? person.email,
+    subject: renderTemplate(template.subject, vars),
+    body: renderTemplate(template.body, vars),
+    // An invite only makes sense once the session actually has a slot.
+    icsAttached: Boolean(args.submissionId && submission?.startsAt != null),
+  }
+}
+
+/**
+ * Render a template for one person and drop it into the outbox. Returns the new
+ * message id. Does NOT schedule delivery — callers batch that into a single
+ * `ctx.scheduler.runAfter(0, internal.comms.deliverPending)`.
+ */
+export async function queueMessage(
+  ctx: MutationCtx,
+  args: QueueMessageArgs,
+): Promise<Id<"messages">> {
+  const rendered = await renderMessageFor(ctx, args)
 
   return await ctx.db.insert("messages", {
     eventId: args.eventId,
     personId: args.personId,
     templateKey: args.templateKey,
-    toEmail: args.toEmailOverride ?? person.email,
-    subject: renderTemplate(template.subject, vars),
-    body: renderTemplate(template.body, vars),
+    toEmail: rendered.toEmail,
+    subject: rendered.subject,
+    body: rendered.body,
     submissionId: args.submissionId,
-    icsAttached,
+    icsAttached: rendered.icsAttached,
     scheduledAt: Date.now(),
     status: MESSAGE_STATUS.scheduled,
   })
@@ -342,6 +394,9 @@ const outboxRowValidator = v.object({
   sentAt: v.optional(v.number()),
   status: v.string(),
   error: v.optional(v.string()),
+  resendId: v.optional(v.string()),
+  providerStatus: v.optional(v.string()),
+  deliveredAt: v.optional(v.number()),
   personName: v.string(),
   personEmail: v.string(),
   submissionTitle: v.union(v.string(), v.null()),
@@ -600,6 +655,25 @@ export const recipientCount = query({
   },
 })
 
+/** One recipient's fully rendered copy, for the composer's review step. */
+const bulkPreviewValidator = v.object({
+  personId: v.id("people"),
+  personName: v.string(),
+  toEmail: v.string(),
+  subject: v.string(),
+  body: v.string(),
+})
+
+/**
+ * Send a one-off email to an audience — or, with `preview: true`, render every
+ * recipient's copy and write nothing.
+ *
+ * The preview mode is what the composer's Review step reads (product-map delta
+ * #7 / sbek SPK-14): the organizer walks the list, reads the exact email each
+ * person will get with their own merge fields resolved, drops anyone who
+ * shouldn't be on it, and only then sends. Preview and send share
+ * `renderMessageFor`, so the approved copy is the sent copy.
+ */
 export const composeBulk = mutation({
   args: {
     eventId: v.id("events"),
@@ -608,8 +682,15 @@ export const composeBulk = mutation({
     body: v.string(),
     /** Only read when `filter` is "manual". */
     personIds: v.optional(v.array(v.id("people"))),
+    /** Render every recipient's copy and queue nothing. */
+    preview: v.optional(v.boolean()),
   },
-  returns: v.object({ queued: v.number(), recipients: v.number() }),
+  returns: v.object({
+    queued: v.number(),
+    recipients: v.number(),
+    /** Populated only when `preview` is true. */
+    previews: v.array(bulkPreviewValidator),
+  }),
   handler: async (ctx, args) => {
     await requireEventAccess(ctx, args.eventId)
     const subject = args.subject.trim()
@@ -629,19 +710,41 @@ export const composeBulk = mutation({
       )
     }
 
+    // Groups these in the outbox without pretending to be a saved template.
+    const templateKey = "custom-bulk"
+
+    if (args.preview === true) {
+      const previews: Array<Infer<typeof bulkPreviewValidator>> = []
+      for (const personId of recipients.slice(0, MAX_PER_SEND)) {
+        const rendered = await renderMessageFor(ctx, {
+          eventId: args.eventId,
+          personId,
+          templateKey,
+          override: { subject, body },
+        })
+        previews.push({
+          personId,
+          personName: rendered.personName,
+          toEmail: rendered.toEmail,
+          subject: rendered.subject,
+          body: rendered.body,
+        })
+      }
+      return { queued: 0, recipients: recipients.length, previews }
+    }
+
     let queued = 0
     for (const personId of recipients) {
       await queueMessage(ctx, {
         eventId: args.eventId,
         personId,
-        // Groups these in the outbox without pretending to be a saved template.
-        templateKey: "custom-bulk",
+        templateKey,
         override: { subject, body },
       })
       queued++
     }
     await ctx.scheduler.runAfter(0, internal.comms.deliverPending, {})
-    return { queued, recipients: recipients.length }
+    return { queued, recipients: recipients.length, previews: [] }
   },
 })
 
@@ -778,6 +881,8 @@ export const markDelivered = internalMutation({
     status: v.string(),
     sentAt: v.optional(v.number()),
     error: v.optional(v.string()),
+    /** Resend's own message id — the handle used to ask "did it land?". */
+    resendId: v.optional(v.string()),
   },
   returns: v.null(),
   handler: async (ctx, args) => {
@@ -787,6 +892,7 @@ export const markDelivered = internalMutation({
       status: args.status,
       sentAt: args.sentAt,
       error: args.error,
+      resendId: args.resendId,
     })
     return null
   },
@@ -883,10 +989,21 @@ export const deliverPending = internalAction({
           throw new Error(`Resend responded ${response.status}: ${detail.slice(0, 400)}`)
         }
 
+        // Resend answers `{ id }` — keep it: it is the only handle for asking
+        // later whether the mail actually landed (refreshDeliveryStatus).
+        const accepted: unknown = await response.json().catch(() => null)
+        const acceptedId =
+          accepted && typeof accepted === "object" && "id" in accepted
+            ? accepted.id
+            : undefined
+        const resendId =
+          typeof acceptedId === "string" ? acceptedId : undefined
+
         await ctx.runMutation(internal.comms.markDelivered, {
           messageId: message.messageId,
           status: MESSAGE_STATUS.sent,
           sentAt: Date.now(),
+          resendId,
         })
         summary.sent++
       } catch (error) {
@@ -900,6 +1017,160 @@ export const deliverPending = internalAction({
     }
 
     return summary
+  },
+})
+
+// ——— Delivery receipts (product-map delta #7 / sbek SPK-14) ——————————————
+// "Sent" only means Resend accepted the message. Whether it reached the inbox
+// is a second question, and the one an organizer actually cares about when a
+// speaker says "I never got it". We answer it on demand — one click asks Resend
+// GET /emails/{id} for the messages that still have an open question — rather
+// than running a cron that burns API calls on a mailbox nobody is looking at.
+
+const deliveryHandleValidator = v.object({
+  messageId: v.id("messages"),
+  resendId: v.string(),
+})
+
+/** Sent messages whose final delivery state we don't know yet. */
+export const openDeliveryHandles = internalQuery({
+  args: {
+    eventId: v.id("events"),
+    messageId: v.optional(v.id("messages")),
+  },
+  returns: v.array(deliveryHandleValidator),
+  handler: async (ctx, args) => {
+    const candidates: Array<Doc<"messages">> = []
+    if (args.messageId) {
+      const one = await ctx.db.get("messages", args.messageId)
+      if (one && one.eventId === args.eventId) candidates.push(one)
+    } else {
+      const recent = await ctx.db
+        .query("messages")
+        .withIndex("by_eventId", (q) => q.eq("eventId", args.eventId))
+        .order("desc")
+        .take(500)
+      candidates.push(...recent)
+    }
+
+    const open: Array<Infer<typeof deliveryHandleValidator>> = []
+    for (const message of candidates) {
+      if (open.length >= MAX_DELIVERY_POLL) break
+      if (message.status !== MESSAGE_STATUS.sent) continue
+      if (!message.resendId) continue
+      // Terminal states never change; don't pay to re-ask.
+      if (
+        message.providerStatus &&
+        DELIVERY_TERMINAL.has(message.providerStatus)
+      ) {
+        continue
+      }
+      open.push({ messageId: message._id, resendId: message.resendId })
+    }
+    return open
+  },
+})
+
+export const applyDeliveryStatus = internalMutation({
+  args: {
+    messageId: v.id("messages"),
+    providerStatus: v.string(),
+    deliveredAt: v.optional(v.number()),
+    /** Why it didn't land, when the provider tells us. */
+    error: v.optional(v.string()),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const message = await ctx.db.get("messages", args.messageId)
+    if (!message) return null
+    await ctx.db.patch("messages", args.messageId, {
+      providerStatus: args.providerStatus,
+      deliveredAt: args.deliveredAt ?? message.deliveredAt,
+      error: args.error ?? message.error,
+    })
+    return null
+  },
+})
+
+/** Ask Resend what happened to each handle and write the answer back. */
+export const pollDeliveryStatus = internalAction({
+  args: { handles: v.array(deliveryHandleValidator) },
+  returns: v.object({ checked: v.number(), updated: v.number() }),
+  handler: async (ctx, args) => {
+    const apiKey = process.env.RESEND_API_KEY
+    let checked = 0
+    let updated = 0
+    if (!apiKey) return { checked, updated }
+
+    for (const handle of args.handles.slice(0, MAX_DELIVERY_POLL)) {
+      checked++
+      try {
+        const response = await fetch(
+          `https://api.resend.com/emails/${encodeURIComponent(handle.resendId)}`,
+          { headers: { Authorization: `Bearer ${apiKey}` } },
+        )
+        if (!response.ok) continue
+        const payload: unknown = await response.json()
+        if (!payload || typeof payload !== "object") continue
+        const record = payload as Record<string, unknown>
+        const lastEvent =
+          typeof record.last_event === "string" ? record.last_event : null
+        if (!lastEvent) continue
+
+        await ctx.runMutation(internal.comms.applyDeliveryStatus, {
+          messageId: handle.messageId,
+          providerStatus: lastEvent,
+          deliveredAt:
+            lastEvent === "delivered" ||
+            lastEvent === "opened" ||
+            lastEvent === "clicked"
+              ? Date.now()
+              : undefined,
+          error:
+            lastEvent === "bounced"
+              ? "The mail server rejected this address (bounced)."
+              : lastEvent === "complained"
+                ? "The recipient marked this email as spam."
+                : undefined,
+        })
+        updated++
+      } catch {
+        // A receipt we couldn't fetch just stays unknown — never a failure the
+        // organizer has to act on.
+      }
+    }
+    return { checked, updated }
+  },
+})
+
+/**
+ * "Check delivery" — refresh the delivery state of this event's sent mail (or
+ * of one message). Returns how many receipts are being checked so the UI can
+ * say something true immediately; the rows themselves update reactively as the
+ * answers come back.
+ */
+export const refreshDeliveryStatus = mutation({
+  args: {
+    eventId: v.id("events"),
+    messageId: v.optional(v.id("messages")),
+  },
+  returns: v.object({ checking: v.number(), configured: v.boolean() }),
+  handler: async (ctx, args) => {
+    await requireEventAccess(ctx, args.eventId)
+    const handles: Array<Infer<typeof deliveryHandleValidator>> =
+      await ctx.runQuery(internal.comms.openDeliveryHandles, {
+        eventId: args.eventId,
+        messageId: args.messageId,
+      })
+    if (handles.length > 0) {
+      await ctx.scheduler.runAfter(0, internal.comms.pollDeliveryStatus, {
+        handles,
+      })
+    }
+    return {
+      checking: handles.length,
+      configured: process.env.RESEND_API_KEY !== undefined,
+    }
   },
 })
 

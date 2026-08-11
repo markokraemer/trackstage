@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react"
-import { useConvexMutation } from "@convex-dev/react-query"
+import { useQuery } from "@tanstack/react-query"
+import { convexQuery, useConvexMutation } from "@convex-dev/react-query"
 import { api } from "@convex/_generated/api"
 import type { Id } from "@convex/_generated/dataModel"
 import { RiListCheck3 } from "@remixicon/react"
@@ -25,6 +26,13 @@ import {
   FieldLabel,
 } from "@/components/ui/field"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { DatePicker } from "@/components/dashboard/date-picker"
 import { initialsOf } from "@/components/dashboard/format"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
@@ -58,6 +66,19 @@ export const TASK_KINDS = [
     label: "Confirm something",
     help: "One click to acknowledge — travel, AV needs, an agreement.",
   },
+] as const
+
+/** Sentinel for "no library task" — Base UI selects want a real value. */
+const FROM_SCRATCH = "scratch"
+
+/**
+ * The placeholders an organizer may drop into the instructions. Rendered per
+ * speaker when the portal shows the task, so one wording reads personally for
+ * everybody — Sessionboard's "Use Field", without the field picker.
+ */
+export const TASK_PLACEHOLDER_HINTS = [
+  { token: "{{firstName}}", label: "their first name" },
+  { token: "{{sessionTitle}}", label: "their session title" },
 ] as const
 
 export interface AssignTaskSpeaker {
@@ -97,8 +118,25 @@ export function AssignTaskDialog({
   const [search, setSearch] = useState("")
   const [submitting, setSubmitting] = useState(false)
   const [showErrors, setShowErrors] = useState(false)
+  const [templateId, setTemplateId] = useState<string>(FROM_SCRATCH)
+  const [saveAsTemplate, setSaveAsTemplate] = useState(false)
 
   const createTask = useConvexMutation(api.tasksAdmin.create)
+  const { data: templates } = useQuery(
+    convexQuery(api.tasksAdmin.listTemplates, { eventId }),
+  )
+
+  // "Start from scratch" plus every saved task, in one picker.
+  const templateOptions = useMemo(
+    () => [
+      { value: FROM_SCRATCH, label: "Start from scratch" },
+      ...(templates ?? []).map((template) => ({
+        value: String(template.id),
+        label: template.title,
+      })),
+    ],
+    [templates],
+  )
 
   // Reset the form each time the dialog opens so it never shows stale input.
   useEffect(() => {
@@ -109,9 +147,31 @@ export function AssignTaskDialog({
       setDueAt(undefined)
       setSearch("")
       setShowErrors(false)
+      setTemplateId(FROM_SCRATCH)
+      setSaveAsTemplate(false)
       setSelected(initialPersonIds ? initialPersonIds.map(String) : [])
     }
   }, [open, initialPersonIds])
+
+  /**
+   * Picking a saved task fills the form in — and leaves it editable, so a
+   * one-off tweak never means editing the library copy.
+   */
+  function applyTemplate(nextId: string) {
+    setTemplateId(nextId)
+    if (nextId === FROM_SCRATCH) {
+      setTitle("")
+      setInstructions("")
+      setKind("upload")
+      return
+    }
+    const template = (templates ?? []).find((t) => String(t.id) === nextId)
+    if (!template) return
+    setTitle(template.alias?.trim() || template.title)
+    setInstructions(template.instructions ?? "")
+    setKind(template.kind)
+    setSaveAsTemplate(false)
+  }
 
   const filtered = useMemo(() => {
     const term = search.trim().toLowerCase()
@@ -153,11 +213,16 @@ export function AssignTaskDialog({
         instructions: instructions.trim() || undefined,
         kind,
         dueAt,
+        saveAsTemplate: saveAsTemplate || undefined,
       })
       onOpenChange(false)
       toast.success(
         `Task assigned to ${result.created} speaker${result.created === 1 ? "" : "s"}`,
-        { description: `"${title.trim()}" is now in their speaker portal.` },
+        {
+          description: saveAsTemplate
+            ? `"${title.trim()}" is in their speaker portal and saved to your library.`
+            : `"${title.trim()}" is now in their speaker portal.`,
+        },
       )
     } catch (error) {
       toast.error("Couldn't assign the task", {
@@ -187,6 +252,32 @@ export function AssignTaskDialog({
           className="flex min-h-0 flex-col gap-4"
         >
           <FieldGroup className="-mr-2 min-h-0 flex-1 gap-5 overflow-y-auto pr-2">
+            {templateOptions.length > 1 ? (
+              <Field>
+                <FieldLabel htmlFor="task-template">From your library</FieldLabel>
+                <FieldDescription>
+                  Reuse a task you've written before. You can still edit it here
+                  — the saved version stays as it is.
+                </FieldDescription>
+                <Select
+                  items={templateOptions}
+                  value={templateId}
+                  onValueChange={(next) => applyTemplate(String(next))}
+                >
+                  <SelectTrigger id="task-template" aria-label="From your library">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {templateOptions.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </Field>
+            ) : null}
+
             <Field>
               <FieldLabel htmlFor="task-title">
                 Task title<span className="required-asterisk">*</span>
@@ -261,6 +352,33 @@ export function AssignTaskDialog({
                 onChange={(event) => setInstructions(event.target.value)}
                 placeholder="PDF or Keynote, 16:9, no more than 30 slides."
               />
+              {/* Personalisation, explained in plain English and one click
+                  away — organizers shouldn't have to memorise the tokens. */}
+              <FieldDescription className="flex flex-wrap items-center gap-1.5">
+                <span>Personalise it:</span>
+                {TASK_PLACEHOLDER_HINTS.map((hint) => (
+                  <Button
+                    key={hint.token}
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="h-6 px-1.5 font-mono text-[11px]"
+                    onClick={() =>
+                      setInstructions((current) =>
+                        current.length === 0
+                          ? hint.token
+                          : `${current.replace(/\s+$/, "")} ${hint.token}`,
+                      )
+                    }
+                  >
+                    {hint.token}
+                  </Button>
+                ))}
+                <span>
+                  becomes {TASK_PLACEHOLDER_HINTS.map((h) => h.label).join(" and ")}
+                  , per speaker.
+                </span>
+              </FieldDescription>
             </Field>
 
             <Field>
@@ -366,6 +484,26 @@ export function AssignTaskDialog({
                   </div>
                 </div>
               )}
+            </Field>
+
+            <Field>
+              <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-border px-3 py-2.5 hover:bg-accent/40">
+                <Checkbox
+                  checked={saveAsTemplate}
+                  onCheckedChange={(value) => setSaveAsTemplate(value === true)}
+                  className="mt-0.5"
+                  aria-label="Save this task to your library"
+                />
+                <span className="min-w-0">
+                  <span className="block text-sm font-medium text-foreground">
+                    Save this task to your library
+                  </span>
+                  <span className="block text-xs leading-relaxed text-muted-foreground">
+                    Keeps the title and instructions so you can assign the same
+                    task again next time without retyping it.
+                  </span>
+                </span>
+              </label>
             </Field>
           </FieldGroup>
 
