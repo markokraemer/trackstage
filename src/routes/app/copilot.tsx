@@ -21,8 +21,11 @@ function CopilotPage() {
   const { setOpen } = useCopilotPanel()
 
   return (
-    <div className="flex h-[calc(100svh-3.5rem-3rem)] min-h-0 flex-col overflow-hidden rounded-xl border border-border bg-card">
-      <header className="flex shrink-0 items-center justify-between gap-3 border-b border-border px-4 py-3">
+    // Full-bleed within the shell: escape main's vertical padding so the
+    // conversation owns the whole height and the composer sits on the shell's
+    // bottom edge — a workspace, not a card floating in one (Marko, 2026-08-11).
+    <div className="-my-6 flex h-[calc(100svh-3.5rem)] min-h-0 flex-col">
+      <header className="flex shrink-0 items-center justify-between gap-3 border-b border-border py-3">
         <div className="min-w-0">
           <h1 className="font-heading truncate text-sm font-semibold text-foreground">
             Copilot

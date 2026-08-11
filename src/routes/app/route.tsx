@@ -10,6 +10,7 @@ import {
   RiCalendarScheduleLine,
   RiCodeSSlashLine,
   RiDashboardLine,
+  RiSparkling2Line,
   RiExternalLinkLine,
   RiFileList3Line,
   RiFolder3Line,
@@ -99,6 +100,14 @@ function navGroupsFor(ref: EventRef | undefined): Array<NavGroup> {
           label: "Dashboard",
           to: ref ? appLink.dashboard(ref) : legacyAppLink.dashboard,
           icon: RiDashboardLine,
+          exact: true,
+        },
+        // The copilot is a first-class destination, not just the top-bar
+        // button (Marko, 2026-08-11): same full-page conversation, one click.
+        {
+          label: "Copilot",
+          to: "/app/copilot",
+          icon: RiSparkling2Line,
           exact: true,
         },
       ],
