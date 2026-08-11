@@ -88,12 +88,17 @@ async function scheduleViaPopover(
   await trigger.click()
   const room = page.getByLabel("Room", { exact: true }).first()
   await expect(room).toBeVisible({ timeout: 20_000 })
-  await room.click()
-  await page.getByRole("option").nth(roomIndex).click()
-
-  const start = page.getByLabel(/start time/i).first()
-  await start.click()
-  await page.getByRole("option").nth(startIndex).click()
+  // In isolation these selects are rock-stable; under a full parallel run a
+  // reactive board rerender can close an open list mid-click. Open + pick is
+  // therefore ONE retried gesture: if the list vanished, reopen and try again.
+  const pick = async (field: ReturnType<typeof page.getByLabel>, index: number) => {
+    await expect(async () => {
+      await field.click()
+      await page.getByRole("option").nth(index).click({ timeout: 3_000 })
+    }).toPass({ timeout: 40_000 })
+  }
+  await pick(room, roomIndex)
+  await pick(page.getByLabel(/start time/i).first(), startIndex)
 
   await page.getByRole("button", { name: /schedule session/i }).first().click()
 }
