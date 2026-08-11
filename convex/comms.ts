@@ -665,8 +665,11 @@ export const deliverPending = internalAction({
             })
           : null
 
-        if (!apiKey) {
-          // Demo-safe path: no transport configured, keep the rendered preview.
+        // Demo-safe paths: no transport configured, OR a seeded demo
+        // recipient (@example.com would bounce at Resend and pollute the
+        // outbox with failures) — keep the fully rendered preview instead.
+        const isDemoRecipient = /@example\.(com|org|net)$/i.test(message.toEmail)
+        if (!apiKey || isDemoRecipient) {
           await ctx.runMutation(internal.comms.markDelivered, {
             messageId: message.messageId,
             status: MESSAGE_STATUS.preview,

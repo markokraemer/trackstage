@@ -1,6 +1,6 @@
 # Sessionboard UX Forensics — Event Config & Public CFP Page
 
-Source: `$10,0000 Kill My SaaS - Competition Brief/images/` (Sessionboard competition brief screenshots).
+Source: `docs/initial-brief/images/` (Sessionboard competition brief screenshots).
 Goal: forensic detail sufficient to recreate these screens ~1:1 in an open-source, light-mode, organizer-friendly clone.
 
 Images covered, in read order:

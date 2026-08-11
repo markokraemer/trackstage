@@ -16,3 +16,5 @@ todos.json
 
 # convex
 !.env.example
+tests/e2e/.auth/
+tests/e2e/.results/

@@ -1,6 +1,6 @@
 # Sessionboard UX Forensics — Agenda Builder, Tasks, Forms, File Requests
 
-**Source images:** `$10,0000 Kill My SaaS - Competition Brief/images/{image30,image33,image18,image22,image26,image28,image24,image16}.png`
+**Source images:** `docs/initial-brief/images/{image30,image33,image18,image22,image26,image28,image24,image16}.png`
 
 > **IMPORTANT CAVEAT:** None of the 8 screenshots in this batch actually show the *end-user-facing Speaker Portal* itself (i.e. what a speaker sees when they log into their portal and complete a task/form). All 8 are the **organizer/admin side** — the builder screens under the left-nav "PORTALS" section (`Portals`, `Tasks`, `Forms`, `File Requests`, `Resources`, `Files`) where an organizer configures what will later appear inside a speaker's portal. Several are also **empty states** (no data yet in this sandbox account: "AI.Engineer Sandbox", Oct 12–14, 2026). This doc documents exactly what's visible — the admin-side Agenda module, the admin Tasks list, and the admin Forms/File-Request builders — and calls out explicitly, per image, what could NOT be captured (the actual portal-rendered task checklist / live form-fill UI) so a follow-up screenshot pass can target those specifically.
 

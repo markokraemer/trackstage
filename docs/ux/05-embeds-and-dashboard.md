@@ -1,6 +1,6 @@
 # Sessionboard UX Forensics — CMS Embeds & Dashboard
 
-Source screenshots: `$10,0000 Kill My SaaS - Competition Brief/images/`
+Source screenshots: `docs/initial-brief/images/`
 App: `appv2.sessionboard.com/event/6703/...` (event "AI.Engineer Sandbox Event - NYC", Oct 12–14 2026)
 Global chrome observed across all screens: white top bar (`#FFFFFF`), left icon rail with blue "megaphone" logo tile (`~#2F5CF0` / `#3B5BFB` on `#EFF3FF` rounded-square background), top search bar "Find or ask" with `⌘K` hint pill, right-aligned "View Portal" outlined-blue button, bell/megaphone announcement icon with red notification dot, "?" help icon, circular dark-navy avatar badge "SY". Left sidebar shows event switcher card (org initials avatar "AS", org name truncated "AI.Engineer Sand...", date range "Oct 12–14, 2026", chevron expander) then nav sections: Dashboard, Program (expandable: Overview, Submissions [View All, Abstracts, Sessions, Files], Collect & Review [Forms, Evaluation, Agenda, Invoices, Site], Portals [Portals, Tasks, Forms, File Requests, Resources, Files], Configure [Settings]), then CRM, Marketing, CMS (Overview, Embeds), Reports, Studio, History, Event Team, Preview, Settings. Base font is a clean grotesque/system sans (looks like Inter or similar), body copy ~14px, headings bold ~28–32px for page titles.
 

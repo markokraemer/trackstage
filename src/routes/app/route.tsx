@@ -35,6 +35,7 @@ import {
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
@@ -162,6 +163,7 @@ function OrganizerLayout() {
             <Button
               variant="outline"
               size="sm"
+              nativeButton={false}
               render={
                 <a href={`/e/${event.slug}`} target="_blank" rel="noreferrer" />
               }
@@ -188,14 +190,16 @@ function OrganizerLayout() {
               <RiArrowDownSLine aria-hidden />
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-56">
-              <DropdownMenuLabel className="text-foreground">
-                <span className="block truncate font-medium">
-                  {session?.name}
-                </span>
-                <span className="block truncate text-xs font-normal text-muted-foreground">
-                  {session?.email}
-                </span>
-              </DropdownMenuLabel>
+              <DropdownMenuGroup>
+                <DropdownMenuLabel className="text-foreground">
+                  <span className="block truncate font-medium">
+                    {session?.name}
+                  </span>
+                  <span className="block truncate text-xs font-normal text-muted-foreground">
+                    {session?.email}
+                  </span>
+                </DropdownMenuLabel>
+              </DropdownMenuGroup>
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={signOut}>
                 <RiLogoutBoxRLine aria-hidden />

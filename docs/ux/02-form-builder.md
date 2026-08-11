@@ -1,6 +1,6 @@
 # Sessionboard — Program > Submission Forms > Create (Form Builder) — Forensic UX/UI Spec
 
-Source: `$10,0000 Kill My SaaS - Competition Brief/images/` — image15, image35, image23, image20, image1, image27, image2, image21, image36, image9, image7.
+Source: `docs/initial-brief/images/` — image15, image35, image23, image20, image1, image27, image2, image21, image36, image9, image7.
 
 All 11 screenshots come from the **CFP / Submission Form builder**, entered via `Program > Forms`. The builder is a **left-rail, multi-step wizard** (not a top-tab or modal wizard) titled "Edit Session Form" while editing an existing form ("Session Submission Form #4"). Two screenshots (image21, image7) carry red callout annotations from the brief author grading each panel's priority for the clone ("NOT NEEDED", "kinda impt", "make sure this works", "nice to have", "must have") — these are noted per-image and folded into the synthesis priorities.
 

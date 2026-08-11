@@ -1,6 +1,6 @@
 # Sessionboard OSS
 
-An open-source alternative to [Sessionboard](https://www.sessionboard.com) — conference speaker, CFP, and program management. Built for the "$10,000 Kill My SaaS" competition (brief in `$10,0000 Kill My SaaS - Competition Brief/`).
+An open-source alternative to [Sessionboard](https://www.sessionboard.com) — conference speaker, CFP, and program management. Built for the "$10,000 Kill My SaaS" competition (brief in `docs/initial-brief/`).
 
 The flow it covers: **event → call for speakers → submission → review & decision → speaker onboarding → scheduled agenda → published program.**
 

@@ -13,8 +13,38 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AppRouteRouteImport } from './routes/app/route'
 import { Route as DesignSystemRouteImport } from './routes/design-system'
 import { Route as LoginRouteImport } from './routes/login'
+import { Route as PortalRouteRouteImport } from './routes/portal/route'
 import { Route as AppIndexRouteImport } from './routes/app/index'
+import { Route as AppSettingsRouteRouteImport } from './routes/app/settings/route'
+import { Route as ESlugRouteRouteImport } from './routes/e/$slug/route'
+import { Route as PortalIndexRouteImport } from './routes/portal/index'
+import { Route as PortalProfileRouteImport } from './routes/portal/profile'
+import { Route as PortalSubmissionsRouteImport } from './routes/portal/submissions'
+import { Route as PortalTasksRouteImport } from './routes/portal/tasks'
+import { Route as ReviewTokenRouteImport } from './routes/review/$token'
+import { Route as SubmitSlugRouteImport } from './routes/submit/$slug'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
+import { Route as AppAgendaIndexRouteImport } from './routes/app/agenda/index'
+import { Route as AppCommunicationsIndexRouteImport } from './routes/app/communications/index'
+import { Route as AppEmbedsIndexRouteImport } from './routes/app/embeds/index'
+import { Route as AppEvaluationIndexRouteImport } from './routes/app/evaluation/index'
+import { Route as AppEvaluationPlanIdRouteImport } from './routes/app/evaluation/$planId'
+import { Route as AppEventsIndexRouteImport } from './routes/app/events/index'
+import { Route as AppFormsIndexRouteImport } from './routes/app/forms/index'
+import { Route as AppFormsFormIdRouteImport } from './routes/app/forms/$formId'
+import { Route as AppFormsNewRouteImport } from './routes/app/forms/new'
+import { Route as AppSettingsIndexRouteImport } from './routes/app/settings/index'
+import { Route as AppSettingsRoomsAndTracksRouteImport } from './routes/app/settings/rooms-and-tracks'
+import { Route as AppSettingsTeamRouteImport } from './routes/app/settings/team'
+import { Route as AppSpeakersIndexRouteImport } from './routes/app/speakers/index'
+import { Route as AppSubmissionsIndexRouteImport } from './routes/app/submissions/index'
+import { Route as ESlugIndexRouteImport } from './routes/e/$slug/index'
+import { Route as ESlugMyScheduleRouteImport } from './routes/e/$slug/my-schedule'
+import { Route as ESlugSpeakersRouteImport } from './routes/e/$slug/speakers'
+import { Route as PortalTTokenRouteImport } from './routes/portal/t.$token'
+import { Route as ESlugItineraryPersonIdRouteImport } from './routes/e/$slug/itinerary/$personId'
+import { Route as ESlugSessionsIndexRouteImport } from './routes/e/$slug/sessions/index'
+import { Route as ESlugSessionsSessionIdRouteImport } from './routes/e/$slug/sessions/$sessionId'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -36,62 +66,401 @@ const LoginRoute = LoginRouteImport.update({
   path: '/login',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PortalRouteRoute = PortalRouteRouteImport.update({
+  id: '/portal',
+  path: '/portal',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AppIndexRoute = AppIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => AppRouteRoute,
+} as any)
+const AppSettingsRouteRoute = AppSettingsRouteRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => AppRouteRoute,
+} as any)
+const ESlugRouteRoute = ESlugRouteRouteImport.update({
+  id: '/e/$slug',
+  path: '/e/$slug',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PortalIndexRoute = PortalIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => PortalRouteRoute,
+} as any)
+const PortalProfileRoute = PortalProfileRouteImport.update({
+  id: '/profile',
+  path: '/profile',
+  getParentRoute: () => PortalRouteRoute,
+} as any)
+const PortalSubmissionsRoute = PortalSubmissionsRouteImport.update({
+  id: '/submissions',
+  path: '/submissions',
+  getParentRoute: () => PortalRouteRoute,
+} as any)
+const PortalTasksRoute = PortalTasksRouteImport.update({
+  id: '/tasks',
+  path: '/tasks',
+  getParentRoute: () => PortalRouteRoute,
+} as any)
+const ReviewTokenRoute = ReviewTokenRouteImport.update({
+  id: '/review/$token',
+  path: '/review/$token',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SubmitSlugRoute = SubmitSlugRouteImport.update({
+  id: '/submit/$slug',
+  path: '/submit/$slug',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   id: '/api/auth/$',
   path: '/api/auth/$',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AppAgendaIndexRoute = AppAgendaIndexRouteImport.update({
+  id: '/agenda/',
+  path: '/agenda/',
+  getParentRoute: () => AppRouteRoute,
+} as any)
+const AppCommunicationsIndexRoute = AppCommunicationsIndexRouteImport.update({
+  id: '/communications/',
+  path: '/communications/',
+  getParentRoute: () => AppRouteRoute,
+} as any)
+const AppEmbedsIndexRoute = AppEmbedsIndexRouteImport.update({
+  id: '/embeds/',
+  path: '/embeds/',
+  getParentRoute: () => AppRouteRoute,
+} as any)
+const AppEvaluationIndexRoute = AppEvaluationIndexRouteImport.update({
+  id: '/evaluation/',
+  path: '/evaluation/',
+  getParentRoute: () => AppRouteRoute,
+} as any)
+const AppEvaluationPlanIdRoute = AppEvaluationPlanIdRouteImport.update({
+  id: '/evaluation/$planId',
+  path: '/evaluation/$planId',
+  getParentRoute: () => AppRouteRoute,
+} as any)
+const AppEventsIndexRoute = AppEventsIndexRouteImport.update({
+  id: '/events/',
+  path: '/events/',
+  getParentRoute: () => AppRouteRoute,
+} as any)
+const AppFormsIndexRoute = AppFormsIndexRouteImport.update({
+  id: '/forms/',
+  path: '/forms/',
+  getParentRoute: () => AppRouteRoute,
+} as any)
+const AppFormsFormIdRoute = AppFormsFormIdRouteImport.update({
+  id: '/forms/$formId',
+  path: '/forms/$formId',
+  getParentRoute: () => AppRouteRoute,
+} as any)
+const AppFormsNewRoute = AppFormsNewRouteImport.update({
+  id: '/forms/new',
+  path: '/forms/new',
+  getParentRoute: () => AppRouteRoute,
+} as any)
+const AppSettingsIndexRoute = AppSettingsIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AppSettingsRouteRoute,
+} as any)
+const AppSettingsRoomsAndTracksRoute =
+  AppSettingsRoomsAndTracksRouteImport.update({
+    id: '/rooms-and-tracks',
+    path: '/rooms-and-tracks',
+    getParentRoute: () => AppSettingsRouteRoute,
+  } as any)
+const AppSettingsTeamRoute = AppSettingsTeamRouteImport.update({
+  id: '/team',
+  path: '/team',
+  getParentRoute: () => AppSettingsRouteRoute,
+} as any)
+const AppSpeakersIndexRoute = AppSpeakersIndexRouteImport.update({
+  id: '/speakers/',
+  path: '/speakers/',
+  getParentRoute: () => AppRouteRoute,
+} as any)
+const AppSubmissionsIndexRoute = AppSubmissionsIndexRouteImport.update({
+  id: '/submissions/',
+  path: '/submissions/',
+  getParentRoute: () => AppRouteRoute,
+} as any)
+const ESlugIndexRoute = ESlugIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => ESlugRouteRoute,
+} as any)
+const ESlugMyScheduleRoute = ESlugMyScheduleRouteImport.update({
+  id: '/my-schedule',
+  path: '/my-schedule',
+  getParentRoute: () => ESlugRouteRoute,
+} as any)
+const ESlugSpeakersRoute = ESlugSpeakersRouteImport.update({
+  id: '/speakers',
+  path: '/speakers',
+  getParentRoute: () => ESlugRouteRoute,
+} as any)
+const PortalTTokenRoute = PortalTTokenRouteImport.update({
+  id: '/t/$token',
+  path: '/t/$token',
+  getParentRoute: () => PortalRouteRoute,
+} as any)
+const ESlugItineraryPersonIdRoute = ESlugItineraryPersonIdRouteImport.update({
+  id: '/itinerary/$personId',
+  path: '/itinerary/$personId',
+  getParentRoute: () => ESlugRouteRoute,
+} as any)
+const ESlugSessionsIndexRoute = ESlugSessionsIndexRouteImport.update({
+  id: '/sessions/',
+  path: '/sessions/',
+  getParentRoute: () => ESlugRouteRoute,
+} as any)
+const ESlugSessionsSessionIdRoute = ESlugSessionsSessionIdRouteImport.update({
+  id: '/sessions/$sessionId',
+  path: '/sessions/$sessionId',
+  getParentRoute: () => ESlugRouteRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/app': typeof AppRouteRouteWithChildren
+  '/portal': typeof PortalRouteRouteWithChildren
   '/design-system': typeof DesignSystemRoute
   '/login': typeof LoginRoute
+  '/app/settings': typeof AppSettingsRouteRouteWithChildren
+  '/e/$slug': typeof ESlugRouteRouteWithChildren
+  '/portal/profile': typeof PortalProfileRoute
+  '/portal/submissions': typeof PortalSubmissionsRoute
+  '/portal/tasks': typeof PortalTasksRoute
+  '/review/$token': typeof ReviewTokenRoute
+  '/submit/$slug': typeof SubmitSlugRoute
   '/app/': typeof AppIndexRoute
+  '/portal/': typeof PortalIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/app/evaluation/$planId': typeof AppEvaluationPlanIdRoute
+  '/app/forms/$formId': typeof AppFormsFormIdRoute
+  '/app/forms/new': typeof AppFormsNewRoute
+  '/app/settings/rooms-and-tracks': typeof AppSettingsRoomsAndTracksRoute
+  '/app/settings/team': typeof AppSettingsTeamRoute
+  '/e/$slug/my-schedule': typeof ESlugMyScheduleRoute
+  '/e/$slug/speakers': typeof ESlugSpeakersRoute
+  '/portal/t/$token': typeof PortalTTokenRoute
+  '/app/agenda/': typeof AppAgendaIndexRoute
+  '/app/communications/': typeof AppCommunicationsIndexRoute
+  '/app/embeds/': typeof AppEmbedsIndexRoute
+  '/app/evaluation/': typeof AppEvaluationIndexRoute
+  '/app/events/': typeof AppEventsIndexRoute
+  '/app/forms/': typeof AppFormsIndexRoute
+  '/app/settings/': typeof AppSettingsIndexRoute
+  '/app/speakers/': typeof AppSpeakersIndexRoute
+  '/app/submissions/': typeof AppSubmissionsIndexRoute
+  '/e/$slug/': typeof ESlugIndexRoute
+  '/e/$slug/itinerary/$personId': typeof ESlugItineraryPersonIdRoute
+  '/e/$slug/sessions/$sessionId': typeof ESlugSessionsSessionIdRoute
+  '/e/$slug/sessions/': typeof ESlugSessionsIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/design-system': typeof DesignSystemRoute
   '/login': typeof LoginRoute
+  '/portal/profile': typeof PortalProfileRoute
+  '/portal/submissions': typeof PortalSubmissionsRoute
+  '/portal/tasks': typeof PortalTasksRoute
+  '/review/$token': typeof ReviewTokenRoute
+  '/submit/$slug': typeof SubmitSlugRoute
   '/app': typeof AppIndexRoute
+  '/portal': typeof PortalIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/app/evaluation/$planId': typeof AppEvaluationPlanIdRoute
+  '/app/forms/$formId': typeof AppFormsFormIdRoute
+  '/app/forms/new': typeof AppFormsNewRoute
+  '/app/settings/rooms-and-tracks': typeof AppSettingsRoomsAndTracksRoute
+  '/app/settings/team': typeof AppSettingsTeamRoute
+  '/e/$slug/my-schedule': typeof ESlugMyScheduleRoute
+  '/e/$slug/speakers': typeof ESlugSpeakersRoute
+  '/portal/t/$token': typeof PortalTTokenRoute
+  '/app/agenda': typeof AppAgendaIndexRoute
+  '/app/communications': typeof AppCommunicationsIndexRoute
+  '/app/embeds': typeof AppEmbedsIndexRoute
+  '/app/evaluation': typeof AppEvaluationIndexRoute
+  '/app/events': typeof AppEventsIndexRoute
+  '/app/forms': typeof AppFormsIndexRoute
+  '/app/settings': typeof AppSettingsIndexRoute
+  '/app/speakers': typeof AppSpeakersIndexRoute
+  '/app/submissions': typeof AppSubmissionsIndexRoute
+  '/e/$slug': typeof ESlugIndexRoute
+  '/e/$slug/itinerary/$personId': typeof ESlugItineraryPersonIdRoute
+  '/e/$slug/sessions/$sessionId': typeof ESlugSessionsSessionIdRoute
+  '/e/$slug/sessions': typeof ESlugSessionsIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/app': typeof AppRouteRouteWithChildren
+  '/portal': typeof PortalRouteRouteWithChildren
   '/design-system': typeof DesignSystemRoute
   '/login': typeof LoginRoute
+  '/app/settings': typeof AppSettingsRouteRouteWithChildren
+  '/e/$slug': typeof ESlugRouteRouteWithChildren
+  '/portal/profile': typeof PortalProfileRoute
+  '/portal/submissions': typeof PortalSubmissionsRoute
+  '/portal/tasks': typeof PortalTasksRoute
+  '/review/$token': typeof ReviewTokenRoute
+  '/submit/$slug': typeof SubmitSlugRoute
   '/app/': typeof AppIndexRoute
+  '/portal/': typeof PortalIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/app/evaluation/$planId': typeof AppEvaluationPlanIdRoute
+  '/app/forms/$formId': typeof AppFormsFormIdRoute
+  '/app/forms/new': typeof AppFormsNewRoute
+  '/app/settings/rooms-and-tracks': typeof AppSettingsRoomsAndTracksRoute
+  '/app/settings/team': typeof AppSettingsTeamRoute
+  '/e/$slug/my-schedule': typeof ESlugMyScheduleRoute
+  '/e/$slug/speakers': typeof ESlugSpeakersRoute
+  '/portal/t/$token': typeof PortalTTokenRoute
+  '/app/agenda/': typeof AppAgendaIndexRoute
+  '/app/communications/': typeof AppCommunicationsIndexRoute
+  '/app/embeds/': typeof AppEmbedsIndexRoute
+  '/app/evaluation/': typeof AppEvaluationIndexRoute
+  '/app/events/': typeof AppEventsIndexRoute
+  '/app/forms/': typeof AppFormsIndexRoute
+  '/app/settings/': typeof AppSettingsIndexRoute
+  '/app/speakers/': typeof AppSpeakersIndexRoute
+  '/app/submissions/': typeof AppSubmissionsIndexRoute
+  '/e/$slug/': typeof ESlugIndexRoute
+  '/e/$slug/itinerary/$personId': typeof ESlugItineraryPersonIdRoute
+  '/e/$slug/sessions/$sessionId': typeof ESlugSessionsSessionIdRoute
+  '/e/$slug/sessions/': typeof ESlugSessionsIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
-    '/' | '/app' | '/design-system' | '/login' | '/app/' | '/api/auth/$'
+    | '/'
+    | '/app'
+    | '/portal'
+    | '/design-system'
+    | '/login'
+    | '/app/settings'
+    | '/e/$slug'
+    | '/portal/profile'
+    | '/portal/submissions'
+    | '/portal/tasks'
+    | '/review/$token'
+    | '/submit/$slug'
+    | '/app/'
+    | '/portal/'
+    | '/api/auth/$'
+    | '/app/evaluation/$planId'
+    | '/app/forms/$formId'
+    | '/app/forms/new'
+    | '/app/settings/rooms-and-tracks'
+    | '/app/settings/team'
+    | '/e/$slug/my-schedule'
+    | '/e/$slug/speakers'
+    | '/portal/t/$token'
+    | '/app/agenda/'
+    | '/app/communications/'
+    | '/app/embeds/'
+    | '/app/evaluation/'
+    | '/app/events/'
+    | '/app/forms/'
+    | '/app/settings/'
+    | '/app/speakers/'
+    | '/app/submissions/'
+    | '/e/$slug/'
+    | '/e/$slug/itinerary/$personId'
+    | '/e/$slug/sessions/$sessionId'
+    | '/e/$slug/sessions/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/design-system' | '/login' | '/app' | '/api/auth/$'
+  to:
+    | '/'
+    | '/design-system'
+    | '/login'
+    | '/portal/profile'
+    | '/portal/submissions'
+    | '/portal/tasks'
+    | '/review/$token'
+    | '/submit/$slug'
+    | '/app'
+    | '/portal'
+    | '/api/auth/$'
+    | '/app/evaluation/$planId'
+    | '/app/forms/$formId'
+    | '/app/forms/new'
+    | '/app/settings/rooms-and-tracks'
+    | '/app/settings/team'
+    | '/e/$slug/my-schedule'
+    | '/e/$slug/speakers'
+    | '/portal/t/$token'
+    | '/app/agenda'
+    | '/app/communications'
+    | '/app/embeds'
+    | '/app/evaluation'
+    | '/app/events'
+    | '/app/forms'
+    | '/app/settings'
+    | '/app/speakers'
+    | '/app/submissions'
+    | '/e/$slug'
+    | '/e/$slug/itinerary/$personId'
+    | '/e/$slug/sessions/$sessionId'
+    | '/e/$slug/sessions'
   id:
     | '__root__'
     | '/'
     | '/app'
+    | '/portal'
     | '/design-system'
     | '/login'
+    | '/app/settings'
+    | '/e/$slug'
+    | '/portal/profile'
+    | '/portal/submissions'
+    | '/portal/tasks'
+    | '/review/$token'
+    | '/submit/$slug'
     | '/app/'
+    | '/portal/'
     | '/api/auth/$'
+    | '/app/evaluation/$planId'
+    | '/app/forms/$formId'
+    | '/app/forms/new'
+    | '/app/settings/rooms-and-tracks'
+    | '/app/settings/team'
+    | '/e/$slug/my-schedule'
+    | '/e/$slug/speakers'
+    | '/portal/t/$token'
+    | '/app/agenda/'
+    | '/app/communications/'
+    | '/app/embeds/'
+    | '/app/evaluation/'
+    | '/app/events/'
+    | '/app/forms/'
+    | '/app/settings/'
+    | '/app/speakers/'
+    | '/app/submissions/'
+    | '/e/$slug/'
+    | '/e/$slug/itinerary/$personId'
+    | '/e/$slug/sessions/$sessionId'
+    | '/e/$slug/sessions/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AppRouteRoute: typeof AppRouteRouteWithChildren
+  PortalRouteRoute: typeof PortalRouteRouteWithChildren
   DesignSystemRoute: typeof DesignSystemRoute
   LoginRoute: typeof LoginRoute
+  ESlugRouteRoute: typeof ESlugRouteRouteWithChildren
+  ReviewTokenRoute: typeof ReviewTokenRoute
+  SubmitSlugRoute: typeof SubmitSlugRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
 }
 
@@ -125,12 +494,75 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LoginRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/portal': {
+      id: '/portal'
+      path: '/portal'
+      fullPath: '/portal'
+      preLoaderRoute: typeof PortalRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/app/': {
       id: '/app/'
       path: '/'
       fullPath: '/app/'
       preLoaderRoute: typeof AppIndexRouteImport
       parentRoute: typeof AppRouteRoute
+    }
+    '/app/settings': {
+      id: '/app/settings'
+      path: '/settings'
+      fullPath: '/app/settings'
+      preLoaderRoute: typeof AppSettingsRouteRouteImport
+      parentRoute: typeof AppRouteRoute
+    }
+    '/e/$slug': {
+      id: '/e/$slug'
+      path: '/e/$slug'
+      fullPath: '/e/$slug'
+      preLoaderRoute: typeof ESlugRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/portal/': {
+      id: '/portal/'
+      path: '/'
+      fullPath: '/portal/'
+      preLoaderRoute: typeof PortalIndexRouteImport
+      parentRoute: typeof PortalRouteRoute
+    }
+    '/portal/profile': {
+      id: '/portal/profile'
+      path: '/profile'
+      fullPath: '/portal/profile'
+      preLoaderRoute: typeof PortalProfileRouteImport
+      parentRoute: typeof PortalRouteRoute
+    }
+    '/portal/submissions': {
+      id: '/portal/submissions'
+      path: '/submissions'
+      fullPath: '/portal/submissions'
+      preLoaderRoute: typeof PortalSubmissionsRouteImport
+      parentRoute: typeof PortalRouteRoute
+    }
+    '/portal/tasks': {
+      id: '/portal/tasks'
+      path: '/tasks'
+      fullPath: '/portal/tasks'
+      preLoaderRoute: typeof PortalTasksRouteImport
+      parentRoute: typeof PortalRouteRoute
+    }
+    '/review/$token': {
+      id: '/review/$token'
+      path: '/review/$token'
+      fullPath: '/review/$token'
+      preLoaderRoute: typeof ReviewTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/submit/$slug': {
+      id: '/submit/$slug'
+      path: '/submit/$slug'
+      fullPath: '/submit/$slug'
+      preLoaderRoute: typeof SubmitSlugRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/api/auth/$': {
       id: '/api/auth/$'
@@ -139,26 +571,258 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAuthSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/app/agenda/': {
+      id: '/app/agenda/'
+      path: '/agenda'
+      fullPath: '/app/agenda/'
+      preLoaderRoute: typeof AppAgendaIndexRouteImport
+      parentRoute: typeof AppRouteRoute
+    }
+    '/app/communications/': {
+      id: '/app/communications/'
+      path: '/communications'
+      fullPath: '/app/communications/'
+      preLoaderRoute: typeof AppCommunicationsIndexRouteImport
+      parentRoute: typeof AppRouteRoute
+    }
+    '/app/embeds/': {
+      id: '/app/embeds/'
+      path: '/embeds'
+      fullPath: '/app/embeds/'
+      preLoaderRoute: typeof AppEmbedsIndexRouteImport
+      parentRoute: typeof AppRouteRoute
+    }
+    '/app/evaluation/': {
+      id: '/app/evaluation/'
+      path: '/evaluation'
+      fullPath: '/app/evaluation/'
+      preLoaderRoute: typeof AppEvaluationIndexRouteImport
+      parentRoute: typeof AppRouteRoute
+    }
+    '/app/evaluation/$planId': {
+      id: '/app/evaluation/$planId'
+      path: '/evaluation/$planId'
+      fullPath: '/app/evaluation/$planId'
+      preLoaderRoute: typeof AppEvaluationPlanIdRouteImport
+      parentRoute: typeof AppRouteRoute
+    }
+    '/app/events/': {
+      id: '/app/events/'
+      path: '/events'
+      fullPath: '/app/events/'
+      preLoaderRoute: typeof AppEventsIndexRouteImport
+      parentRoute: typeof AppRouteRoute
+    }
+    '/app/forms/': {
+      id: '/app/forms/'
+      path: '/forms'
+      fullPath: '/app/forms/'
+      preLoaderRoute: typeof AppFormsIndexRouteImport
+      parentRoute: typeof AppRouteRoute
+    }
+    '/app/forms/$formId': {
+      id: '/app/forms/$formId'
+      path: '/forms/$formId'
+      fullPath: '/app/forms/$formId'
+      preLoaderRoute: typeof AppFormsFormIdRouteImport
+      parentRoute: typeof AppRouteRoute
+    }
+    '/app/forms/new': {
+      id: '/app/forms/new'
+      path: '/forms/new'
+      fullPath: '/app/forms/new'
+      preLoaderRoute: typeof AppFormsNewRouteImport
+      parentRoute: typeof AppRouteRoute
+    }
+    '/app/settings/': {
+      id: '/app/settings/'
+      path: '/'
+      fullPath: '/app/settings/'
+      preLoaderRoute: typeof AppSettingsIndexRouteImport
+      parentRoute: typeof AppSettingsRouteRoute
+    }
+    '/app/settings/rooms-and-tracks': {
+      id: '/app/settings/rooms-and-tracks'
+      path: '/rooms-and-tracks'
+      fullPath: '/app/settings/rooms-and-tracks'
+      preLoaderRoute: typeof AppSettingsRoomsAndTracksRouteImport
+      parentRoute: typeof AppSettingsRouteRoute
+    }
+    '/app/settings/team': {
+      id: '/app/settings/team'
+      path: '/team'
+      fullPath: '/app/settings/team'
+      preLoaderRoute: typeof AppSettingsTeamRouteImport
+      parentRoute: typeof AppSettingsRouteRoute
+    }
+    '/app/speakers/': {
+      id: '/app/speakers/'
+      path: '/speakers'
+      fullPath: '/app/speakers/'
+      preLoaderRoute: typeof AppSpeakersIndexRouteImport
+      parentRoute: typeof AppRouteRoute
+    }
+    '/app/submissions/': {
+      id: '/app/submissions/'
+      path: '/submissions'
+      fullPath: '/app/submissions/'
+      preLoaderRoute: typeof AppSubmissionsIndexRouteImport
+      parentRoute: typeof AppRouteRoute
+    }
+    '/e/$slug/': {
+      id: '/e/$slug/'
+      path: '/'
+      fullPath: '/e/$slug/'
+      preLoaderRoute: typeof ESlugIndexRouteImport
+      parentRoute: typeof ESlugRouteRoute
+    }
+    '/e/$slug/my-schedule': {
+      id: '/e/$slug/my-schedule'
+      path: '/my-schedule'
+      fullPath: '/e/$slug/my-schedule'
+      preLoaderRoute: typeof ESlugMyScheduleRouteImport
+      parentRoute: typeof ESlugRouteRoute
+    }
+    '/e/$slug/speakers': {
+      id: '/e/$slug/speakers'
+      path: '/speakers'
+      fullPath: '/e/$slug/speakers'
+      preLoaderRoute: typeof ESlugSpeakersRouteImport
+      parentRoute: typeof ESlugRouteRoute
+    }
+    '/portal/t/$token': {
+      id: '/portal/t/$token'
+      path: '/t/$token'
+      fullPath: '/portal/t/$token'
+      preLoaderRoute: typeof PortalTTokenRouteImport
+      parentRoute: typeof PortalRouteRoute
+    }
+    '/e/$slug/itinerary/$personId': {
+      id: '/e/$slug/itinerary/$personId'
+      path: '/itinerary/$personId'
+      fullPath: '/e/$slug/itinerary/$personId'
+      preLoaderRoute: typeof ESlugItineraryPersonIdRouteImport
+      parentRoute: typeof ESlugRouteRoute
+    }
+    '/e/$slug/sessions/': {
+      id: '/e/$slug/sessions/'
+      path: '/sessions'
+      fullPath: '/e/$slug/sessions/'
+      preLoaderRoute: typeof ESlugSessionsIndexRouteImport
+      parentRoute: typeof ESlugRouteRoute
+    }
+    '/e/$slug/sessions/$sessionId': {
+      id: '/e/$slug/sessions/$sessionId'
+      path: '/sessions/$sessionId'
+      fullPath: '/e/$slug/sessions/$sessionId'
+      preLoaderRoute: typeof ESlugSessionsSessionIdRouteImport
+      parentRoute: typeof ESlugRouteRoute
+    }
   }
 }
 
+interface AppSettingsRouteRouteChildren {
+  AppSettingsRoomsAndTracksRoute: typeof AppSettingsRoomsAndTracksRoute
+  AppSettingsTeamRoute: typeof AppSettingsTeamRoute
+  AppSettingsIndexRoute: typeof AppSettingsIndexRoute
+}
+
+const AppSettingsRouteRouteChildren: AppSettingsRouteRouteChildren = {
+  AppSettingsRoomsAndTracksRoute: AppSettingsRoomsAndTracksRoute,
+  AppSettingsTeamRoute: AppSettingsTeamRoute,
+  AppSettingsIndexRoute: AppSettingsIndexRoute,
+}
+
+const AppSettingsRouteRouteWithChildren =
+  AppSettingsRouteRoute._addFileChildren(AppSettingsRouteRouteChildren)
+
 interface AppRouteRouteChildren {
+  AppSettingsRouteRoute: typeof AppSettingsRouteRouteWithChildren
   AppIndexRoute: typeof AppIndexRoute
+  AppEvaluationPlanIdRoute: typeof AppEvaluationPlanIdRoute
+  AppFormsFormIdRoute: typeof AppFormsFormIdRoute
+  AppFormsNewRoute: typeof AppFormsNewRoute
+  AppAgendaIndexRoute: typeof AppAgendaIndexRoute
+  AppCommunicationsIndexRoute: typeof AppCommunicationsIndexRoute
+  AppEmbedsIndexRoute: typeof AppEmbedsIndexRoute
+  AppEvaluationIndexRoute: typeof AppEvaluationIndexRoute
+  AppEventsIndexRoute: typeof AppEventsIndexRoute
+  AppFormsIndexRoute: typeof AppFormsIndexRoute
+  AppSpeakersIndexRoute: typeof AppSpeakersIndexRoute
+  AppSubmissionsIndexRoute: typeof AppSubmissionsIndexRoute
 }
 
 const AppRouteRouteChildren: AppRouteRouteChildren = {
+  AppSettingsRouteRoute: AppSettingsRouteRouteWithChildren,
   AppIndexRoute: AppIndexRoute,
+  AppEvaluationPlanIdRoute: AppEvaluationPlanIdRoute,
+  AppFormsFormIdRoute: AppFormsFormIdRoute,
+  AppFormsNewRoute: AppFormsNewRoute,
+  AppAgendaIndexRoute: AppAgendaIndexRoute,
+  AppCommunicationsIndexRoute: AppCommunicationsIndexRoute,
+  AppEmbedsIndexRoute: AppEmbedsIndexRoute,
+  AppEvaluationIndexRoute: AppEvaluationIndexRoute,
+  AppEventsIndexRoute: AppEventsIndexRoute,
+  AppFormsIndexRoute: AppFormsIndexRoute,
+  AppSpeakersIndexRoute: AppSpeakersIndexRoute,
+  AppSubmissionsIndexRoute: AppSubmissionsIndexRoute,
 }
 
 const AppRouteRouteWithChildren = AppRouteRoute._addFileChildren(
   AppRouteRouteChildren,
 )
 
+interface PortalRouteRouteChildren {
+  PortalProfileRoute: typeof PortalProfileRoute
+  PortalSubmissionsRoute: typeof PortalSubmissionsRoute
+  PortalTasksRoute: typeof PortalTasksRoute
+  PortalIndexRoute: typeof PortalIndexRoute
+  PortalTTokenRoute: typeof PortalTTokenRoute
+}
+
+const PortalRouteRouteChildren: PortalRouteRouteChildren = {
+  PortalProfileRoute: PortalProfileRoute,
+  PortalSubmissionsRoute: PortalSubmissionsRoute,
+  PortalTasksRoute: PortalTasksRoute,
+  PortalIndexRoute: PortalIndexRoute,
+  PortalTTokenRoute: PortalTTokenRoute,
+}
+
+const PortalRouteRouteWithChildren = PortalRouteRoute._addFileChildren(
+  PortalRouteRouteChildren,
+)
+
+interface ESlugRouteRouteChildren {
+  ESlugMyScheduleRoute: typeof ESlugMyScheduleRoute
+  ESlugSpeakersRoute: typeof ESlugSpeakersRoute
+  ESlugIndexRoute: typeof ESlugIndexRoute
+  ESlugItineraryPersonIdRoute: typeof ESlugItineraryPersonIdRoute
+  ESlugSessionsSessionIdRoute: typeof ESlugSessionsSessionIdRoute
+  ESlugSessionsIndexRoute: typeof ESlugSessionsIndexRoute
+}
+
+const ESlugRouteRouteChildren: ESlugRouteRouteChildren = {
+  ESlugMyScheduleRoute: ESlugMyScheduleRoute,
+  ESlugSpeakersRoute: ESlugSpeakersRoute,
+  ESlugIndexRoute: ESlugIndexRoute,
+  ESlugItineraryPersonIdRoute: ESlugItineraryPersonIdRoute,
+  ESlugSessionsSessionIdRoute: ESlugSessionsSessionIdRoute,
+  ESlugSessionsIndexRoute: ESlugSessionsIndexRoute,
+}
+
+const ESlugRouteRouteWithChildren = ESlugRouteRoute._addFileChildren(
+  ESlugRouteRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AppRouteRoute: AppRouteRouteWithChildren,
+  PortalRouteRoute: PortalRouteRouteWithChildren,
   DesignSystemRoute: DesignSystemRoute,
   LoginRoute: LoginRoute,
+  ESlugRouteRoute: ESlugRouteRouteWithChildren,
+  ReviewTokenRoute: ReviewTokenRoute,
+  SubmitSlugRoute: SubmitSlugRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
 }
 export const routeTree = rootRouteImport

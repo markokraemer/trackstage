@@ -46,7 +46,7 @@ engineering and UX/UI practices.
 | `docs/ux/01…05-*.md` | Forensic UI specs of all 42 brief screenshots, per product area |
 | `docs/reference/brief.md` | The competition brief (Gene Kim's cleaned copy) |
 | `docs/reference/swyx-clarifications.md` | swyx's Discord answers — these AMEND the spec |
-| `$10,0000 Kill My SaaS - Competition Brief/` | Original brief HTML + all 42 screenshots |
+| `docs/initial-brief/` | Original brief HTML + all 42 screenshots |
 | `…Brief/kill-my-saas-submissions.md` | Research on all ~15 competing submissions |
 
 ## Scope (per brief + amendments)

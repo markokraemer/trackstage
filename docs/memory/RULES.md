@@ -84,3 +84,24 @@ Agents: read this before working; add new directives the moment Marko states the
     could potentially need, all generated from the single source component.
     **Font: Inter, deliberately** ("the boring font" — Marko's words, keep it). Headings
     may use tighter tracking/weight for character, but no font swap without his say-so.
+18e. **All emails via Resend, perfectly handled** (key provided by Marko, set as
+    RESEND_API_KEY on the Convex deployment): speaker comms (decisions, confirmations,
+    reminders, .ics invites), workspace/member invites, and every email the full
+    multi-tenant lifecycle requires (password reset etc.). Nothing may silently not-send:
+    real recipients get real Resend emails; seeded @example.com demo recipients render
+    as outbox previews (Resend would bounce them and pollute the demo). This is part of
+    the spec — do not forget any email surface.
+18f. **Landing page, enterprise grade**: rip sessionboard.com's landing structure and
+    cover the same aspects at the utmost quality — custom graphics, platform screenshots
+    (placeholders until real ones exist), clearly open source, Log in CTA, and "Buy now"
+    as a $10k ONE-TIME fee — a joke/voluntary thing, copy should wink at it.
+19. **Mandatory final reconciliation pass**: slice-per-agent parallelism will drift —
+    different layouts, spacing, and interaction patterns per slice. Before ship, ONE
+    agent reads and reworks the whole app end to end for coherent, standardized,
+    top-notch UX/UI. Marko, up front: "you might end up with different ux/ui and
+    layouts and things… one agent that does a final reconciliation pass that is just
+    going to read and rework through everything." `/design-system` is the contract that
+    pass audits against: every screen must reuse `src/components/shared/*` primitives
+    (PageHeader, EmptyState, DataToolbar, StatusPill, DrawerShell, WizardShell), shadcn
+    `src/components/ui/*` bases, and the tokens in `src/styles.css` — no bespoke
+    one-off headers, pills, drawers, toolbars, or hardcoded hexes.

@@ -1,6 +1,6 @@
 # Sessionboard UX Forensics — 03: Speaker Portal (Post-Submission) & Program > Abstracts
 
-Source images: `$10,0000 Kill My SaaS - Competition Brief/images/{image17,image40,image5,image13,image14,image10,image8}.png`
+Source images: `docs/initial-brief/images/{image17,image40,image5,image13,image14,image10,image8}.png`
 
 Scope: (A) what a speaker sees in the public/speaker portal after they submit a CFP entry, and (B) the organizer-facing "Program > Abstracts" review workspace — the core submission-review, status-triage, column-configuration, and abstract-creation surfaces.
 

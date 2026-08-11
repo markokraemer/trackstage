@@ -1,4 +1,5 @@
 import { v } from "convex/values"
+import { internal } from "./_generated/api"
 import { mutation, query } from "./_generated/server"
 import { myMemberships, requireMembership, requireUser } from "./lib/auth"
 
@@ -87,7 +88,7 @@ export const addMember = mutation({
     role: v.string(), // admin | member
   },
   handler: async (ctx, args) => {
-    await requireMembership(ctx, args.organizationId, "admin")
+    const { user } = await requireMembership(ctx, args.organizationId, "admin")
     if (!["admin", "member"].includes(args.role)) {
       throw new Error("Role must be admin or member.")
     }
@@ -108,6 +109,14 @@ export const addMember = mutation({
       organizationId: args.organizationId,
       userId: "",
       email,
+      role: args.role,
+    })
+    // Invite email (Resend) — linked automatically when they sign up.
+    const org = await ctx.db.get(args.organizationId)
+    await ctx.scheduler.runAfter(0, internal.platformEmails.sendWorkspaceInvite, {
+      toEmail: email,
+      workspaceName: org?.name ?? "your team's workspace",
+      inviterName: user.name ?? user.email,
       role: args.role,
     })
     return null

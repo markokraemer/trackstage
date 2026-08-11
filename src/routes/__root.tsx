@@ -46,12 +46,34 @@ export const Route = createRootRouteWithContext<RouterContext>()({
         content:
           "Open-source speaker and program management: call for speakers, review, speaker portal, and agenda building.",
       },
+      { name: "theme-color", content: "#2F5CE0" },
+      { property: "og:type", content: "website" },
+      { property: "og:site_name", content: "Sessionboard" },
+      { property: "og:title", content: "Sessionboard" },
+      {
+        property: "og:description",
+        content: "Open-source speaker and program management.",
+      },
+      { property: "og:image", content: "/og-image.png" },
+      { property: "og:image:width", content: "1200" },
+      { property: "og:image:height", content: "630" },
+      { name: "twitter:card", content: "summary_large_image" },
+      { name: "twitter:title", content: "Sessionboard" },
+      {
+        name: "twitter:description",
+        content: "Open-source speaker and program management.",
+      },
+      { name: "twitter:image", content: "/og-image.png" },
     ],
     links: [
       {
         rel: "stylesheet",
         href: appCss,
       },
+      { rel: "icon", href: "/favicon.svg", type: "image/svg+xml" },
+      { rel: "alternate icon", href: "/favicon.ico", sizes: "32x32" },
+      { rel: "apple-touch-icon", href: "/icon-192.png" },
+      { rel: "manifest", href: "/manifest.json" },
     ],
   }),
   beforeLoad: async (ctx) => {
