@@ -207,7 +207,13 @@ export function QuestionField({
 
   return (
     <Field data-invalid={invalid || undefined}>
-      <FieldLabel id={`${id}-label`} htmlFor={id} className="text-foreground">
+      {/* `gap-1` keeps the required asterisk tight to its label (see the note
+          in account-step.tsx). */}
+      <FieldLabel
+        id={`${id}-label`}
+        htmlFor={id}
+        className="gap-1 text-foreground"
+      >
         {question.label}
         {question.required ? (
           <span className="required-asterisk" aria-hidden>

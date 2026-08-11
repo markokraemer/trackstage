@@ -1,8 +1,7 @@
-import { Link } from "@tanstack/react-router"
-
 import { cn } from "@/lib/utils"
 import { Card } from "@/components/ui/card"
 import { LogoMark } from "@/components/brand/logo"
+import { PoweredByTrackstage } from "@/components/brand/powered-by"
 
 /**
  * The public CFP page frame: fully de-chromed — no sidebar, no app header —
@@ -65,12 +64,9 @@ export function SubmitShell({
           ) : null}
         </Card>
 
-        <p className="mt-5 text-center text-xs text-muted-foreground">
-          Powered by{" "}
-          <Link to="/" className="font-medium text-primary hover:underline">
-            Trackstage
-          </Link>
-        </p>
+        <div className="mt-5 flex justify-center">
+          <PoweredByTrackstage />
+        </div>
       </div>
     </main>
   )

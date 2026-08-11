@@ -111,7 +111,7 @@ export function ParticipantCard({
 
     return (
       <Field key={fieldId} data-invalid={invalid || undefined}>
-        <FieldLabel htmlFor={id} className="text-foreground">
+        <FieldLabel htmlFor={id} className="gap-1 text-foreground">
           {label}
           {required ? (
             <span className="required-asterisk" aria-hidden>

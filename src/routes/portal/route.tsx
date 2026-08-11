@@ -29,7 +29,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Skeleton } from "@/components/ui/skeleton"
-import { LogoMark, Wordmark } from "@/components/brand/logo"
+import { LogoMark } from "@/components/brand/logo"
+import { PoweredByTrackstage } from "@/components/brand/powered-by"
 import { PageHeader } from "@/components/shared/page-header"
 import { PortalProvider } from "@/components/portal/portal-context"
 import { PortalSignedOut } from "@/components/portal/portal-signed-out"
@@ -311,10 +312,7 @@ function PortalFooter() {
           >
             How this works
           </Link>
-          <span className="inline-flex items-center gap-1.5 text-muted-foreground">
-            <span className="text-xs">Powered by</span>
-            <Wordmark size="sm" className="text-foreground/70" />
-          </span>
+          <PoweredByTrackstage />
         </div>
       </div>
     </footer>

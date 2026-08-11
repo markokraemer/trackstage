@@ -11,7 +11,7 @@ import type { RemixiconComponentType } from "@remixicon/react"
 
 import { cn } from "@/lib/utils"
 import { Badge } from "@/components/ui/badge"
-import { Logo } from "@/components/brand/logo"
+import { PoweredByTrackstage } from "@/components/brand/powered-by"
 import { buttonVariants } from "@/components/ui/button"
 import { CopyLinkButton } from "@/components/public/copy-link-button"
 import { SubscribeMenu } from "@/components/public/subscribe-menu"
@@ -428,17 +428,13 @@ export function PublicShell({
   )
 }
 
-/** "Powered by Trackstage" — the one mark a de-chromed page still carries. */
+/**
+ * "Powered by Trackstage" — the one mark a de-chromed page still carries.
+ * The lockup itself lives in `@/components/brand/powered-by` so this page, the
+ * CFP wizard and the speaker portal all render byte-identical attribution.
+ */
 function EmbedAttribution() {
-  return (
-    <a
-      href="/"
-      className="inline-flex items-center gap-2 rounded-md text-xs text-muted-foreground outline-none transition-colors hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50"
-    >
-      Powered by
-      <Logo size="sm" />
-    </a>
-  )
+  return <PoweredByTrackstage />
 }
 
 /**
