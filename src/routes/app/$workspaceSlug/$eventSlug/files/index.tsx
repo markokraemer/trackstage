@@ -26,6 +26,7 @@ import {
   FilesTableSkeleton,
 } from "@/components/dashboard/files-table"
 import type { FileLibraryRow } from "@/components/dashboard/files-table"
+import { FilePreviewDialog } from "@/components/shared/file-preview-dialog"
 import { appLink, legacyAppLink } from "@/lib/app-links"
 import { useCurrentEvent } from "@/lib/current-event"
 import { downloadFilesBundle } from "@/lib/files"
@@ -74,6 +75,8 @@ function FilesPage() {
   const [bundling, setBundling] = useState(false)
   /** Ticked files, by upload id — what "Download N selected" bundles. */
   const [selected, setSelected] = useState<Array<string>>([])
+  /** File open in the preview dialog — click a row and it opens right here. */
+  const [previewId, setPreviewId] = useState<string | null>(null)
 
   const { data: rows } = useQuery(
     convexQuery(
@@ -304,10 +307,27 @@ function FilesPage() {
         <FilesTable
           rows={visible}
           onApprove={(row) => void approve(row)}
+          onPreview={(row) => setPreviewId(row.id)}
           selectedIds={selected}
           onSelectedChange={setSelected}
         />
       )}
+
+      {/* Arrow keys walk through exactly what the filters are showing. */}
+      <FilePreviewDialog
+        files={visible.map((row) => ({
+          id: row.id,
+          filename: row.filename,
+          contentType: row.contentType,
+          size: row.size,
+          url: row.url,
+          meta: [row.person?.name, row.submissionTitle]
+            .filter(Boolean)
+            .join(" · "),
+        }))}
+        openId={previewId}
+        onOpenChange={setPreviewId}
+      />
     </div>
   )
 }

@@ -47,6 +47,7 @@ import { DrawerShell } from "@/components/shared/drawer-shell"
 import { FileDropZone } from "@/components/shared/file-drop-zone"
 import { uploadToStorage } from "@/lib/files"
 import { FileList, FileRow } from "@/components/shared/file-row"
+import { FilePreviewDialog } from "@/components/shared/file-preview-dialog"
 import { Skeleton } from "@/components/ui/skeleton"
 import { initialsOf, relativeTime } from "@/components/dashboard/format"
 import { useCurrentEvent } from "@/lib/current-event"
@@ -647,6 +648,7 @@ function SpeakerFiles({
       event ? { eventId: event._id, personId } : "skip",
     ),
   )
+  const [previewId, setPreviewId] = React.useState<string | null>(null)
 
   return (
     <section className="flex flex-col gap-2">
@@ -672,6 +674,7 @@ function SpeakerFiles({
             <FileRow
               key={file.id}
               file={file}
+              onPreview={() => setPreviewId(file.id)}
               // `block whitespace-normal` so the session title and the time
               // wrap onto a second line instead of being clipped by the
               // drawer's narrow column.
@@ -689,6 +692,21 @@ function SpeakerFiles({
           ))}
         </FileList>
       )}
+
+      <FilePreviewDialog
+        files={(files ?? []).map((file) => ({
+          id: file.id,
+          filename: file.filename,
+          contentType: file.contentType,
+          size: file.size,
+          url: file.url,
+          meta: [name, file.submissionTitle ?? file.task?.title]
+            .filter(Boolean)
+            .join(" · "),
+        }))}
+        openId={previewId}
+        onOpenChange={setPreviewId}
+      />
     </section>
   )
 }

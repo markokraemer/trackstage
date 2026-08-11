@@ -5,6 +5,7 @@ import { toast } from "sonner"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { StatusPill } from "@/components/shared/status-pill"
+import { isPreviewExemptClick } from "@/components/shared/file-preview-dialog"
 import {
   downloadFile,
   fileIcon,
@@ -49,6 +50,12 @@ export function approvalMeta(status: string): { label: string; status: string } 
 
 export interface FileRowProps {
   file: StoredFile
+  /**
+   * Opens this file in the shared `FilePreviewDialog`. When set, clicking
+   * anywhere on the row (except its buttons, links and comment thread)
+   * previews the file, and the filename becomes a real button for keyboards.
+   */
+  onPreview?: () => void
   /** Extra buttons (review, delete) rendered after the download button. */
   actions?: React.ReactNode
   /** Hide the approval pill where it adds nothing (event branding). */
@@ -65,6 +72,7 @@ export interface FileRowProps {
 
 export function FileRow({
   file,
+  onPreview,
   actions,
   showStatus = true,
   meta,
@@ -93,8 +101,17 @@ export function FileRow({
     <li
       className={cn(
         "flex flex-wrap items-center gap-x-3 gap-y-2 px-3 py-2.5",
+        onPreview && "cursor-pointer transition-colors hover:bg-muted/40",
         className,
       )}
+      onClick={
+        onPreview
+          ? (event) => {
+              if (isPreviewExemptClick(event.target)) return
+              onPreview()
+            }
+          : undefined
+      }
     >
       {/* Thumbnail for images, a typed icon for everything else. */}
       <span
@@ -114,9 +131,19 @@ export function FileRow({
       </span>
 
       <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-medium text-foreground">
-          {file.filename}
-        </p>
+        {onPreview ? (
+          <button
+            type="button"
+            onClick={onPreview}
+            className="block max-w-full truncate text-left text-sm font-medium text-foreground hover:underline"
+          >
+            {file.filename}
+          </button>
+        ) : (
+          <p className="truncate text-sm font-medium text-foreground">
+            {file.filename}
+          </p>
+        )}
         <p className="flex flex-wrap items-center gap-x-1.5 text-xs text-muted-foreground">
           <span>Version {file.version}</span>
           <span aria-hidden>·</span>
@@ -168,7 +195,12 @@ export function FileRow({
         {actions}
       </span>
 
-      {children ? <div className="w-full basis-full">{children}</div> : null}
+      {/* Comment threads keep their own clicks — never a preview trigger. */}
+      {children ? (
+        <div className="w-full basis-full" data-no-preview>
+          {children}
+        </div>
+      ) : null}
     </li>
   )
 }

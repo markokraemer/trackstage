@@ -21,6 +21,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { FileDropZone } from "@/components/shared/file-drop-zone"
 import { FileComments } from "@/components/shared/file-comments"
 import { FileList, FileRow } from "@/components/shared/file-row"
+import { FilePreviewDialog } from "@/components/shared/file-preview-dialog"
 import { MAX_IMAGE_BYTES, MAX_UPLOAD_BYTES } from "@/lib/files"
 import { DueChip } from "./due-chip"
 import { usePortal } from "./portal-context"
@@ -94,6 +95,8 @@ export function TaskItem({ task, uploads }: TaskItemProps) {
   const [showReplace, setShowReplace] = useState(false)
   const [answer, setAnswer] = useState(task.response ?? "")
   const [isEditingAnswer, setIsEditingAnswer] = useState(false)
+  /** Version open in the preview dialog — tap a file to look at what you sent. */
+  const [previewId, setPreviewId] = useState<string | null>(null)
 
   const done = Boolean(task.completedAt)
   // Past due AND the organizer doesn't accept late work (Settings → Event
@@ -299,6 +302,7 @@ export function TaskItem({ task, uploads }: TaskItemProps) {
               <FileRow
                 key={file.id}
                 file={file}
+                onPreview={() => setPreviewId(file.id)}
                 meta={`Uploaded ${formatDate(file.uploadedAt)}`}
               >
                 <SpeakerFileComments uploadId={file.id} />
@@ -306,6 +310,19 @@ export function TaskItem({ task, uploads }: TaskItemProps) {
             ))}
           </FileList>
         ) : null}
+
+        <FilePreviewDialog
+          files={uploads.map((file) => ({
+            id: file.id,
+            filename: file.filename,
+            contentType: file.contentType,
+            size: file.size,
+            url: file.url,
+            meta: `Version ${file.version} · uploaded ${formatDate(file.uploadedAt)}`,
+          }))}
+          openId={previewId}
+          onOpenChange={setPreviewId}
+        />
 
         {showDropZone ? (
           <FileDropZone

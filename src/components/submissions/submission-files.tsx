@@ -29,6 +29,7 @@ import { EmptyState } from "@/components/shared/empty-state"
 import { FileDropZone } from "@/components/shared/file-drop-zone"
 import { FileComments } from "@/components/shared/file-comments"
 import { FileList, FileRow } from "@/components/shared/file-row"
+import { FilePreviewDialog } from "@/components/shared/file-preview-dialog"
 import { downloadFilesBundle, uploadToStorage } from "@/lib/files"
 import { errorMessage } from "@/lib/errors"
 
@@ -57,6 +58,7 @@ export function SubmissionFiles({
   const reviewUpload = useConvexMutation(api.tasksAdmin.reviewUpload)
   const deleteUpload = useConvexMutation(api.files.deleteUpload)
   const [bundling, setBundling] = useState(false)
+  const [previewId, setPreviewId] = useState<string | null>(null)
 
   async function handleUpload(
     file: File,
@@ -132,6 +134,7 @@ export function SubmissionFiles({
               <FileRow
                 key={file.id}
                 file={file}
+                onPreview={() => setPreviewId(file.id)}
                 meta={
                   file.personName
                     ? `${file.personName}${file.reviewNote ? ` · “${file.reviewNote}”` : ""}`
@@ -217,6 +220,19 @@ export function SubmissionFiles({
         hint="Filed against the primary speaker, exactly as if they had uploaded it themselves."
         onUpload={handleUpload}
         onError={(message) => toast.error(message)}
+      />
+
+      <FilePreviewDialog
+        files={(files ?? []).map((file) => ({
+          id: file.id,
+          filename: file.filename,
+          contentType: file.contentType,
+          size: file.size,
+          url: file.url,
+          meta: [file.personName, `v${file.version}`].filter(Boolean).join(" · "),
+        }))}
+        openId={previewId}
+        onOpenChange={setPreviewId}
       />
     </div>
   )

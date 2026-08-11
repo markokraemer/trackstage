@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/table"
 import { StatusPill } from "@/components/shared/status-pill"
 import { approvalMeta } from "@/components/shared/file-row"
+import { isPreviewExemptClick } from "@/components/shared/file-preview-dialog"
 import { appLink, legacyAppLink } from "@/lib/app-links"
 import { useCurrentEvent } from "@/lib/current-event"
 import { relativeTime } from "@/components/dashboard/format"
@@ -39,6 +40,13 @@ export interface FilesTableProps {
   rows: Array<FileLibraryRow>
   /** Approve a file in place — the same mutation the submission drawer uses. */
   onApprove?: (row: FileLibraryRow) => void
+  /**
+   * Open this file in the shared preview dialog. When set, clicking the row
+   * itself previews the file (Marko: "just click the file in the list and it
+   * opens the preview") — checkboxes, links and the action buttons keep
+   * their own clicks.
+   */
+  onPreview?: (row: FileLibraryRow) => void
   /**
    * Ticked rows, by file id. Omit both of these and the checkbox column
    * disappears — the per-session Files tab lists three files and has no use
@@ -62,6 +70,7 @@ export interface FilesTableProps {
 export function FilesTable({
   rows,
   onApprove,
+  onPreview,
   selectedIds,
   onSelectedChange,
   className,
@@ -115,6 +124,7 @@ export function FilesTable({
               key={row.id}
               row={row}
               onApprove={onApprove}
+              onPreview={onPreview}
               selected={selectable ? selected.has(row.id) : undefined}
               onSelectedChange={
                 selectable ? (checked) => toggle(row.id, checked) : undefined
@@ -130,11 +140,13 @@ export function FilesTable({
 function FileTableRow({
   row,
   onApprove,
+  onPreview,
   selected,
   onSelectedChange,
 }: {
   row: FileLibraryRow
   onApprove?: (row: FileLibraryRow) => void
+  onPreview?: (row: FileLibraryRow) => void
   selected?: boolean
   onSelectedChange?: (checked: boolean) => void
 }) {
@@ -163,9 +175,22 @@ function FileTableRow({
   }
 
   return (
-    <TableRow data-state={selected ? "selected" : undefined}>
+    <TableRow
+      data-state={selected ? "selected" : undefined}
+      className={onPreview ? "cursor-pointer" : undefined}
+      onClick={
+        onPreview
+          ? (event) => {
+              if (isPreviewExemptClick(event.target)) return
+              onPreview(row)
+            }
+          : undefined
+      }
+    >
       {onSelectedChange ? (
-        <TableCell className="pl-4">
+        /* The whole cell is exempt so a near-miss on the checkbox never
+           opens the preview instead of ticking the row. */
+        <TableCell className="pl-4" data-no-preview>
           <Checkbox
             aria-label={`Select ${row.filename}`}
             checked={selected === true}
@@ -191,9 +216,19 @@ function FileTableRow({
             )}
           </span>
           <div className="min-w-0">
-            <p className="max-w-[280px] truncate font-medium text-foreground">
-              {row.filename}
-            </p>
+            {onPreview ? (
+              <button
+                type="button"
+                onClick={() => onPreview(row)}
+                className="block max-w-[280px] truncate text-left font-medium text-foreground hover:underline"
+              >
+                {row.filename}
+              </button>
+            ) : (
+              <p className="max-w-[280px] truncate font-medium text-foreground">
+                {row.filename}
+              </p>
+            )}
             <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
               <span>{fileKindLabel(row.contentType, row.filename)}</span>
               {size ? (
@@ -268,7 +303,7 @@ function FileTableRow({
         ) : null}
       </TableCell>
 
-      <TableCell className="text-right">
+      <TableCell className="text-right" data-no-preview>
         <div className="flex items-center justify-end gap-1">
           {onApprove && row.approvalStatus !== "approved" ? (
             <Button
