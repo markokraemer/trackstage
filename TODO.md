@@ -1,0 +1,45 @@
+# TODO — master tracker
+
+Source of truth for everything Marko asked + build status. Update continuously.
+✅ done · 🔨 in progress · ⏳ queued · 💤 stretch/end
+
+## Product build
+- ✅ Stack scaffold (TanStack Start + Convex + shadcn/Base UI + CF Workers), verified e2e
+- ✅ Full ingestion: video (4× Gemini 3.6 Flash via OpenRouter), 42 screenshots, brief,
+  swyx clarifications, competitor research
+- ✅ docs/SPEC.md + docs/memory (RULES/DECISIONS/BUILD-LOG) + AGENTS.md hub
+- ✅ sbek eval kit cloned → ~/Projects/kortix/sbek
+- ✅ Convex schema v2 (SPEC §5 + rubric amendments) pushed
+- 🔨 Backend contract: auth/events done; forms/submit/submissions/agenda/portal (orchestrator);
+  comms+ics+seed (agent); evaluations+dashboard+public+API (agent)
+- 🔨 Foundation UI: tokens, shell, login, shared primitives (agent)
+- 🔨 sbek rubric digest → docs/reference/sbek-rubric.md (agent)
+- ⏳ UI slices via Workflow: form builder · public submit flow · submissions table ·
+  decisions/queues · agenda (drag-drop + conflicts) · speaker portal · dashboard/speakers ·
+  evaluation · communications · public widgets (schedule/speakers/sessions/itinerary/gallery)
+- ⏳ Content management depth: file versions + approval flow UI (sbek area, 15%)
+- ⏳ Multi-event support surfaced in UI (event switcher; scoping proven) — sbek judged
+- ⏳ AI agenda: auto-place scheduler + conflict assistance (sbek area, 10%)
+- ⏳ Public API (/v1) + README docs (bonus)
+- ⏳ Seed: rich demo world, judge-friendly demo-mode links
+- 💤 Airtable one-click one-way sync (submissions/speakers/sessions rows; idempotent;
+  swyx: read-only mirror is enough — their automations fire on new rows)
+
+## Quality / hill-climb
+- ⏳ First full pass review vs screenshots + video (UX 1:1 check), then vs SPEC acceptance
+  criteria
+- ⏳ sbek run against deployed site → fix → rerun (hill-climb loop); Fable final passes
+- ⏳ Speed pass (swyx's #1 complaint about Sessionboard is slowness)
+- ⏳ e2e flows work via plain links/forms/buttons (browser-agent judge)
+
+## Ship
+- ⏳ Deploy: convex deploy + wrangler deploy (workers.dev), custom domain optional
+- ⏳ Landing page: really good + simple; CTAs = open source (GitHub), try demo/sign up,
+  "Declare the winner" → $10k Stripe checkout link (constant in code; Marko supplies link)
+- ⏳ README: product tour, self-host, API docs, screenshots
+- ⏳ Submission: fill swyx's form, flip repo public, submissionNotes for sbek config
+- ⏳ Manual verification prep: .ics imports (Google/Apple/Outlook), email previews
+
+## Standing process
+- ✅ Git repo = source of truth; commit+push incrementally; no Claude co-author
+- 🔁 Keep RULES/DECISIONS/BUILD-LOG/TODO current every session; heavy subagents + Workflow

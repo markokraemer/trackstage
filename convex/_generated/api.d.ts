@@ -8,7 +8,9 @@
  * @module
  */
 
+import type * as auth from "../auth.js";
 import type * as events from "../events.js";
+import type * as lib_auth from "../lib/auth.js";
 
 import type {
   ApiFromModules,
@@ -17,7 +19,9 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  auth: typeof auth;
   events: typeof events;
+  "lib/auth": typeof lib_auth;
 }>;
 
 /**

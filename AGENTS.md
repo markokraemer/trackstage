@@ -22,10 +22,24 @@ professionals** — simple, clear, organizer-friendly UI wins.
 
 This file is the centralized project memory. Keep it updated as decisions land.
 
+## Project memory (read FIRST, keep updated)
+
+| Doc | Memory type |
+| --- | --- |
+| `docs/memory/RULES.md` | Procedural — Marko's standing directives; binding |
+| `docs/memory/DECISIONS.md` | Semantic — every decision + why |
+| `docs/memory/BUILD-LOG.md` | Episodic — what actually happened, append per session |
+
+Add to these the moment something new is decided, learned, or directed. Nothing here is
+sacred — anything may be refactored toward the best possible product, following best
+engineering and UX/UI practices.
+
 ## Source-of-truth documents (read before building anything)
 
 | Doc | What it is |
 | --- | --- |
+| `docs/SPEC.md` | **The build spec** — IA, screens, acceptance criteria, data model |
+| `docs/reference/sbek-rubric.md` | Digest of the official eval rubric (hill-climb target) |
 | `docs/video/transcript.md` | Full timestamped transcript of swyx's walkthrough video |
 | `docs/video/actions.md` | Chronological screen/action/requirement analysis of the video |
 | `docs/video/ui_fidelity.md` | Extra pass: layout geometry, micro-style, usability cues |
