@@ -266,7 +266,8 @@ export function SubmissionDetailDrawer({
           ) : undefined
         }
         tabs={
-          <TabsList className="w-full">
+          // Five tabs overflow a phone-width drawer — the strip scrolls.
+          <TabsList className="w-full justify-start overflow-x-auto">
             <TabsTrigger value="details">
               <RiFileTextLine aria-hidden />
               Details
