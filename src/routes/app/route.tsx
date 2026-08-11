@@ -17,8 +17,10 @@ import {
   RiGlobalLine,
   RiLogoutBoxRLine,
   RiMailSendLine,
+  RiMoonLine,
   RiSettings3Line,
   RiStarLine,
+  RiSunLine,
   RiSurveyLine,
   RiUserSettingsLine,
   RiUserVoiceLine,
@@ -70,6 +72,7 @@ import {
 } from "@/components/shell/settings-dialogs"
 import { GlobalSearch } from "@/components/shell/global-search"
 import { requireAuthed, useSession } from "@/lib/session"
+import { useTheme } from "@/components/theme/theme-provider"
 import { eventRefOf, useCurrentEvent } from "@/lib/current-event"
 import { appLink, legacyAppLink } from "@/lib/app-links"
 import type { EventRef, EventSection } from "@/lib/app-links"
@@ -193,6 +196,11 @@ function settingsNavFor(ref: EventRef | undefined): Array<NavGroup> {
 function OrganizerLayout() {
   const navigate = Route.useNavigate()
   const { session, status, signOut } = useSession()
+  // Quick flip in the avatar menu. The three-way choice (including "System")
+  // lives in /app/account?tab=profile; this is the one-click version of it,
+  // and picking it explicitly is what "System" gives up.
+  const { resolved: resolvedTheme, setPreference: setThemePreference } =
+    useTheme()
   // The server already resolved auth in the root route's `beforeLoad`, and
   // `/app`'s own `beforeLoad` redirected everyone who failed it — so if this
   // component is rendering at all, the visitor IS signed in. `useSession()`
@@ -484,6 +492,18 @@ function OrganizerLayout() {
               </DropdownMenuGroup>
 
               <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onClick={() =>
+                  setThemePreference(resolvedTheme === "dark" ? "light" : "dark")
+                }
+              >
+                {resolvedTheme === "dark" ? (
+                  <RiSunLine aria-hidden />
+                ) : (
+                  <RiMoonLine aria-hidden />
+                )}
+                {resolvedTheme === "dark" ? "Light mode" : "Dark mode"}
+              </DropdownMenuItem>
               <DropdownMenuItem nativeButton={false} render={<Link to="/docs" />}>
                 <RiBookOpenLine aria-hidden />
                 Docs

@@ -327,22 +327,29 @@ export function shingle(
 // inverts it to a solid saturated fill with white text.
 
 export interface TrackTint {
-  /** Pale surface, ~9% of the track hue over white. */
+  /** Pale surface — a tint of the track hue over the block's base surface. */
   surface: string
   /** Fully saturated left bar and, on drag, the whole fill. */
   bar: string
-  /** Saturated title text, darkened enough to stay AA on the tint. */
+  /** Saturated title text, pushed far enough from the tint to stay AA. */
   title: string
   /** Same hue, quieter — the time/speaker lines. */
   meta: string
 }
 
+/**
+ * A track colour is an arbitrary organizer-chosen hex, so the block recipe is a
+ * MIX rather than a palette — and both ends of every mix are tokens
+ * (`--track-*` in src/styles.css) so the same call renders a pale block on
+ * white in light mode and a deep block on near-black in dark mode. Dark also
+ * raises the mix amounts: 9% of any hue over a near-black card is invisible.
+ */
 export function trackTint(color: string | null | undefined): TrackTint {
   const hue = color ?? NO_TRACK_COLOR
   return {
-    surface: `color-mix(in oklab, ${hue} 9%, #ffffff)`,
+    surface: `color-mix(in oklab, ${hue} var(--track-tint-amount), var(--track-tint-base))`,
     bar: hue,
-    title: `color-mix(in oklab, ${hue} 70%, #101014)`,
-    meta: `color-mix(in oklab, ${hue} 42%, #52525b)`,
+    title: `color-mix(in oklab, ${hue} var(--track-title-amount), var(--track-title-base))`,
+    meta: `color-mix(in oklab, ${hue} var(--track-meta-amount), var(--track-meta-base))`,
   }
 }

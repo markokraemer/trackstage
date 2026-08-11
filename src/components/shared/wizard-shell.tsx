@@ -133,7 +133,12 @@ export function WizardShell({
                     className={cn(
                       "h-auto w-full items-start justify-start gap-3 rounded-lg px-3 py-2.5 text-left whitespace-normal",
                       isCurrent
-                        ? "bg-foreground text-background hover:bg-foreground/90 hover:text-background"
+                        ? // Light: the inverted ink chip from the reference
+                          // screenshots. Dark: inverting again would paint a
+                          // near-white slab down the rail, so the active step
+                          // becomes a raised neutral instead — same "this one
+                          // is current" signal, read the way dark UIs read it.
+                          "bg-foreground text-background hover:bg-foreground/90 hover:text-background dark:bg-accent dark:text-foreground dark:hover:bg-accent dark:hover:text-foreground"
                         : "text-foreground",
                     )}
                   >
@@ -141,7 +146,7 @@ export function WizardShell({
                       className={cn(
                         "mt-px flex size-5 shrink-0 items-center justify-center rounded-full text-[11px] font-semibold",
                         isCurrent
-                          ? "bg-background/15 text-background"
+                          ? "bg-background/15 text-background dark:bg-primary dark:text-primary-foreground"
                           : isDone
                             ? "bg-status-green-bg text-status-green-fg"
                             : "bg-muted text-muted-foreground",
@@ -164,7 +169,7 @@ export function WizardShell({
                           className={cn(
                             "mt-0.5 block text-xs leading-snug",
                             isCurrent
-                              ? "text-background/70"
+                              ? "text-background/70 dark:text-muted-foreground"
                               : "text-muted-foreground",
                           )}
                         >

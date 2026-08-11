@@ -4,10 +4,26 @@
 @import "@fontsource-variable/inter";
 
 /*
- * Trackstage is LIGHT MODE ONLY (docs/memory/RULES.md #3, docs/SPEC.md §2.1).
- * The `dark` variant is deliberately re-mapped to a `.dark` ancestor class that we
- * never render, so any `dark:` utility shipped inside shadcn components is inert
- * instead of firing off the visitor's `prefers-color-scheme`.
+ * DARK MODE — opt-in, and ONLY inside the organizer app (Marko, 2026-08-12:
+ * "end-to-end add a dark/light mode switcher as part of the account settings").
+ *
+ * The variant is keyed off a `.dark` class on <html>, which
+ * src/components/theme/theme-provider.tsx puts there and the inline boot script
+ * in src/routes/__root.tsx applies before first paint. Two consequences worth
+ * stating out loud:
+ *
+ *   1. `dark:` utilities that ship inside shadcn components (input tints,
+ *      overlay strengths, syntax themes) are LIVE again rather than inert. They
+ *      were written against exactly this token set, so they land correctly.
+ *   2. The class is never applied outside `/app/*` — marketing, the public
+ *      event page, the CFP wizard, the speaker portal, /docs, /login and
+ *      /design-system stay light for everyone, always (see `isThemeableRoute`
+ *      in src/lib/theme.ts). sbek judges those surfaces; a half-dark public
+ *      page is a worse outcome than a light one.
+ *
+ * Everything below is token-level: `.dark` re-declares the SAME custom
+ * properties `:root` declares, so components that already speak in tokens
+ * (which is nearly all of them, after the Attio revamp) follow for free.
  */
 @custom-variant dark (&:is(.dark *));
 
@@ -200,6 +216,22 @@
     --tag-gray-fg: #5f5f66;
 
     /*
+     * Agenda session blocks (src/components/agenda/agenda-model.ts). A block is
+     * a ~9% tint of its TRACK colour — an arbitrary organizer-chosen hex — so
+     * the recipe cannot be a fixed palette; it is a mix, and these tokens are
+     * the two ends of it. Light mixes the hue toward white and writes the title
+     * in the hue over near-black; dark inverts both ends AND leans on the hue
+     * harder (a 9% tint of anything over a near-black card is invisible).
+     */
+    --track-tint-amount: 9%;
+    --track-tint-base: #ffffff;
+    --track-edge-amount: 24%;
+    --track-title-amount: 70%;
+    --track-title-base: #101014;
+    --track-meta-amount: 42%;
+    --track-meta-base: #52525b;
+
+    /*
      * ------------------------------------------------------------- SIZING
      * We take Attio's system, NOT Attio's density (RULES.md #22): organizers
      * are not power users. 40px controls, 36px compact controls, 44px rows.
@@ -223,6 +255,126 @@
     --container-narrow: 42rem; /* single-column forms, public submit */
     --container-card: 25rem; /* centred auth / entry cards */
     --container-reading: 65ch; /* prose measure — paragraphs, descriptions */
+
+    /* Native widgets (scrollbars, date pickers, form controls) follow. */
+    color-scheme: light;
+}
+
+/*
+ * ---------------------------------------------------------------- DARK MODE
+ * The same system, inverted with intent — not `filter: invert()` and not a
+ * generic "slate-900 everything". Four rules, mirroring the light palette's:
+ *
+ *   1. CHROME IS STILL NEUTRAL. The ramp is a barely-cool near-black family
+ *      (a whisper of blue so it reads calm rather than muddy, chroma still
+ *      tiny). No navy chrome, no tinted panels.
+ *   2. ELEVATION READS UPWARD. Light stacks page < card; dark stacks the same
+ *      way, so the page is the DARKEST surface and cards/popovers step up.
+ *      That keeps every screen's figure/ground identical to light mode.
+ *   3. COLOUR STILL CARRIES DATA. Status and tag tints become deep fills with
+ *      light ink (9–10:1) instead of pale fills with dark ink; the dots keep
+ *      their meaning and get brightened so they survive on a dark ground.
+ *   4. THE ACCENT IS LIFTED, NOT CHANGED. #2F5CE0 → #3D6BE5: the same hue, one
+ *      step brighter. White on it measures 4.74:1 (AA) so primary buttons keep
+ *      white text, and it measures 4.1:1 against the page so links and the
+ *      focus ring are legible. Brightening further would win link contrast and
+ *      lose the button's white text — buttons win.
+ */
+.dark {
+    color-scheme: dark;
+
+    /* Surfaces & text — page is darkest, cards step up (rule 2). */
+    --background: #0b0d12;
+    --foreground: #ecedef;
+    --card: #12141a;
+    --card-foreground: #ecedef;
+    --popover: #16181f;
+    --popover-foreground: #ecedef;
+
+    /* Brand — lifted one step so it reads on a dark ground (rule 4). */
+    --primary: #3d6be5;
+    --primary-foreground: #ffffff;
+    /* Hover/active BRIGHTEN in dark; darkening them would read as disabled. */
+    --primary-hover: #4d78ea;
+    --primary-active: #6189ef;
+    /* The one tinted-blue surface left: selected filter chips, active rows. */
+    --primary-surface: #151d33;
+    --primary-surface-hover: #1b2645;
+    --primary-border: #2c3d6b;
+
+    --secondary: #1b1e25;
+    --secondary-foreground: #ecedef;
+    --muted: #171a20;
+    --muted-foreground: #9a9da6;
+    --accent: #1f232b;
+    --accent-foreground: #ecedef;
+    /* Reds get lighter on dark: white on this is 3.9:1 (AA-large, and button
+     * labels are semibold), while `text-destructive` on the page is 5.0:1. */
+    --destructive: #e5484d;
+
+    /* Lines & focus. `--border` is the hairline between surfaces; `--input`
+     * is deliberately a step brighter so a field's edge is findable. */
+    --border: #23262e;
+    --input: #2c303a;
+    --ring: var(--primary);
+
+    /* Charts — same roles, brightened for a dark plot area. */
+    --chart-1: var(--primary);
+    --chart-2: #8ea8f5;
+    --chart-3: #34d399;
+    --chart-4: #fbbf24;
+    --chart-5: #8a8d96;
+
+    /* Sidebar — same relationship as light: the panel sits AT page level and
+     * the border does the separating; the active item is the one lift. */
+    --sidebar: #0b0d12;
+    --sidebar-foreground: #ecedef;
+    --sidebar-primary: var(--primary);
+    --sidebar-primary-foreground: #ffffff;
+    --sidebar-accent: #1f232b;
+    --sidebar-accent-foreground: #ffffff;
+    --sidebar-border: #23262e;
+    --sidebar-ring: var(--primary);
+
+    /* Status — deep fill, light ink (every pair clears 8:1), brighter dots. */
+    --status-green-bg: #0f2e22;
+    --status-green-fg: #6ee7b7;
+    --status-green-dot: #34d399;
+    --status-amber-bg: #33240b;
+    --status-amber-fg: #fcd34d;
+    --status-amber-dot: #f59e0b;
+    --status-red-bg: #3a1516;
+    --status-red-fg: #fca5a5;
+    --status-red-dot: #f87171;
+    --status-gray-bg: #1f232b;
+    --status-gray-fg: #a8abb4;
+    --status-gray-dot: #6e727c;
+    /* "blue" stays the neutral tone it became in the revamp. */
+    --status-blue-bg: #1f232b;
+    --status-blue-fg: #a8abb4;
+    --status-blue-dot: #6e727c;
+
+    /* Categorical tag tints — same five families, inverted the same way. */
+    --tag-blue-bg: #16223a;
+    --tag-blue-fg: #a8c6f5;
+    --tag-green-bg: #10291f;
+    --tag-green-fg: #8fddb6;
+    --tag-amber-bg: #2e2410;
+    --tag-amber-fg: #e9c57e;
+    --tag-purple-bg: #241a38;
+    --tag-purple-fg: #c7adf0;
+    --tag-gray-bg: #1f232b;
+    --tag-gray-fg: #a8abb4;
+
+    /* Agenda blocks: mix toward the card, not toward white, and lean harder on
+     * the hue so a track is still identifiable at a glance. */
+    --track-tint-amount: 26%;
+    --track-tint-base: #14161c;
+    --track-edge-amount: 42%;
+    --track-title-amount: 58%;
+    --track-title-base: #f2f3f5;
+    --track-meta-amount: 34%;
+    --track-meta-base: #a8abb4;
 }
 
 /*

@@ -10,6 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Skeleton } from "@/components/ui/skeleton"
 import { TooltipProvider } from "@/components/ui/tooltip"
 import { PageHeader } from "@/components/shared/page-header"
+import { AppearanceCard } from "@/components/account/appearance-card"
 import { ProfileCard } from "@/components/account/profile-card"
 import { PasswordCard } from "@/components/account/password-card"
 import type { CreatedApiKey } from "@/components/settings/api-keys-card"
@@ -112,6 +113,10 @@ function AccountSettingsPage() {
                 name={session.name}
                 email={session.email}
               />
+              {/* Appearance sits with the profile, not in its own tab: it is a
+                  one-choice setting about YOU, and a tab holding a single card
+                  is a click that buys nothing. */}
+              <AppearanceCard />
             </TabsContent>
 
             <TabsContent value="security" className="flex flex-col gap-6">

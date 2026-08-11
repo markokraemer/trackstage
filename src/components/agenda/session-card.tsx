@@ -69,7 +69,7 @@ export function sessionBlockStyle(
     backgroundColor: tint.surface,
     borderColor: state.conflicted
       ? "var(--destructive)"
-      : `color-mix(in oklab, ${hue} 24%, #ffffff)`,
+      : `color-mix(in oklab, ${hue} var(--track-edge-amount), var(--track-tint-base))`,
     "--sb-bar": hue,
     "--sb-title": tint.title,
     "--sb-meta": tint.meta,

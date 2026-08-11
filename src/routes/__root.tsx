@@ -12,9 +12,16 @@ import type { QueryClient } from "@tanstack/react-query"
 import type { ConvexQueryClient } from "@convex-dev/react-query"
 import type { ConvexReactClient } from "convex/react"
 import { Toaster } from "@/components/ui/sonner"
+import { ThemeProvider } from "@/components/theme/theme-provider"
 import { authClient } from "@/lib/auth-client"
 import { readAuthMemo, writeAuthMemo } from "@/lib/auth-memo"
 import { getToken } from "@/lib/auth-server"
+import {
+  THEME_BOOT_SCRIPT,
+  readStoredTheme,
+  readThemeCookie,
+} from "@/lib/theme"
+import type { ThemePreference } from "@/lib/theme"
 
 import appCss from "../styles.css?url"
 // The one font file every screen paints with. Imported for its hashed URL so
@@ -74,6 +81,25 @@ async function resolveAuth() {
   const value = await getAuth()
   writeAuthMemo(value)
   return value
+}
+
+/**
+ * The organizer's Light/Dark/System choice, off the cookie.
+ *
+ * Server-only: in the browser the same cookie is right there on `document`, so
+ * `resolveTheme` below never pays for a round trip. This exists so the
+ * Appearance control in account settings renders ALREADY pre-selected in the
+ * SSR HTML — the class on <html> is not this value's job (the inline boot
+ * script in the document head owns that, before first paint).
+ */
+const getThemeCookie = createServerFn({ method: "GET" }).handler(async () => {
+  const { getRequestHeader } = await import("@tanstack/react-start/server")
+  return readThemeCookie(getRequestHeader("cookie") ?? "")
+})
+
+async function resolveThemePreference(): Promise<ThemePreference> {
+  if (typeof document !== "undefined") return readStoredTheme()
+  return (await getThemeCookie()) ?? "system"
 }
 
 export const Route = createRootRouteWithContext<RouterContext>()({
@@ -137,11 +163,14 @@ export const Route = createRootRouteWithContext<RouterContext>()({
     ],
   }),
   beforeLoad: async (ctx) => {
-    const token = await resolveAuth()
+    const [token, theme] = await Promise.all([
+      resolveAuth(),
+      resolveThemePreference(),
+    ])
     if (token) {
       ctx.context.convexQueryClient.serverHttpClient?.setAuth(token)
     }
-    return { isAuthenticated: !!token, token }
+    return { isAuthenticated: !!token, token, theme }
   },
   notFoundComponent: () => (
     <main className="container mx-auto p-4 pt-16">
@@ -185,7 +214,9 @@ function RootComponent() {
       authClient={authClient as unknown as React.ComponentProps<typeof ConvexBetterAuthProvider>["authClient"]}
       initialToken={context.token}
     >
-      <Outlet />
+      <ThemeProvider initialPreference={context.theme}>
+        <Outlet />
+      </ThemeProvider>
     </ConvexBetterAuthProvider>
   )
 }
@@ -211,8 +242,22 @@ function DevTools() {
 
 function RootDocument({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
+    /*
+      `suppressHydrationWarning` is load-bearing, not decoration: the boot
+      script below mutates <html>'s class and style attributes BEFORE React
+      hydrates, so the server HTML and the live DOM legitimately differ on this
+      one element. Nothing else in the tree relies on it — and note that no
+      `className` is passed here on purpose, so React never fights the script
+      for ownership of the attribute.
+    */
+    <html lang="en" suppressHydrationWarning>
       <head>
+        {/*
+          FIRST thing in <head>, ahead of the stylesheet: this is the whole
+          no-flash mechanism. It runs while the parser is still above <body>,
+          so a dark-mode organizer's first painted frame is already dark.
+        */}
+        <script dangerouslySetInnerHTML={{ __html: THEME_BOOT_SCRIPT }} />
         <HeadContent />
       </head>
       <body>
