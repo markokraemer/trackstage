@@ -20,15 +20,19 @@ export const GITHUB_LICENSE_URL = `${GITHUB_URL}/blob/main/LICENSE`
 export const GITHUB_README_URL = `${GITHUB_URL}#readme`
 export const GITHUB_ISSUES_URL = `${GITHUB_URL}/issues`
 export const SESSIONBOARD_URL = "https://www.sessionboard.com"
-export const KILL_MY_SAAS_POST_URL =
-  "https://x.com/swyx/status/2085517544795079014"
-export const LATENT_SPACE_URL = "https://www.latent.space"
 
 /**
  * Public product surfaces anyone can open without an account. These are real,
  * seeded routes (`convex/seed.ts`) — the landing page never links to a stub.
  */
 export const DEMO_PORTAL_URL = "/portal"
+/**
+ * The seeded demo organizer account (`convex/seed.ts`), shown with a one-click
+ * copy on the landing page's demo block and on the sign-in card. ONE source —
+ * the login page imports these too, so the two can never drift.
+ */
+export const DEMO_ORGANIZER_EMAIL = "organizer@demo.sessionboard.dev"
+export const DEMO_ORGANIZER_PASSWORD = "demo2026"
 export const DEMO_WORKSPACE_SLUG = "ai-engineer"
 export const DEMO_EVENT_SLUG = "ai-summit-2026"
 export const DEMO_PROGRAM_URL = eventPath(DEMO_WORKSPACE_SLUG, DEMO_EVENT_SLUG)

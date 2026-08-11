@@ -1,7 +1,9 @@
 import { Link } from "@tanstack/react-router"
+import { toast } from "sonner"
 import {
   RiArrowRightLine,
   RiExternalLinkLine,
+  RiFileCopyLine,
   RiMicLine,
   RiSendPlaneLine,
   RiUserSettingsLine,
@@ -15,6 +17,8 @@ import {
 } from "@/components/marketing/section"
 import {
   DEMO_CFP_URL,
+  DEMO_ORGANIZER_EMAIL,
+  DEMO_ORGANIZER_PASSWORD,
   DEMO_PORTAL_URL,
   DEMO_PROGRAM_URL,
   SECTION_IDS,
@@ -28,26 +32,69 @@ interface DemoEntry {
   /** Typed router link (organizer demo) vs. plain anchor (public surfaces). */
   to?: "/login"
   href?: string
+  /** Extra content between the description and the CTA (the creds block). */
+  extra?: React.ReactNode
+}
+
+/**
+ * The demo credentials, copyable in place. The organizer entrance is the one
+ * seat that needs a sign-in, so the account is handed over right here — click
+ * to copy, then the CTA takes you to the form that wants it. The login card
+ * shows the same pair (both import it from links.ts).
+ */
+function CredRow({ label, value }: { label: string; value: string }) {
+  return (
+    <button
+      type="button"
+      onClick={() => {
+        navigator.clipboard
+          .writeText(value)
+          .then(() => toast.success(`${label} copied`))
+          .catch(() => toast(value))
+      }}
+      title={`Copy ${label.toLowerCase()}`}
+      className="group/cred flex w-full items-center gap-2 rounded-md border border-border bg-muted/50 px-2.5 py-1.5 text-left outline-none transition-colors hover:bg-muted focus-visible:ring-3 focus-visible:ring-ring/50"
+    >
+      <span className="w-16 shrink-0 text-xs text-muted-foreground">
+        {label}
+      </span>
+      <span className="min-w-0 flex-1 truncate font-mono text-xs text-foreground">
+        {value}
+      </span>
+      <RiFileCopyLine
+        size={14}
+        aria-hidden
+        className="shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover/cred:opacity-100 group-focus-visible/cred:opacity-100"
+      />
+      <span className="sr-only">Copy {label.toLowerCase()}</span>
+    </button>
+  )
 }
 
 const DEMO_ENTRIES: Array<DemoEntry> = [
   {
-    title: "Organizer demo",
-    description: "Submissions, review queues, agenda, speaker tasks.",
+    title: "Use the demo account",
+    description: "The organizer app: submissions, review, agenda, emails.",
     cta: "Open the organizer app",
     icon: RiUserSettingsLine,
     to: "/login",
+    extra: (
+      <div className="mt-2 space-y-1.5">
+        <CredRow label="Email" value={DEMO_ORGANIZER_EMAIL} />
+        <CredRow label="Password" value={DEMO_ORGANIZER_PASSWORD} />
+      </div>
+    ),
   },
   {
-    title: "Speaker portal demo",
-    description: "What a speaker sees after they're accepted.",
+    title: "Speaker portal",
+    description: "What a speaker sees after they're accepted. No password.",
     cta: "Open the speaker portal",
     icon: RiMicLine,
     href: DEMO_PORTAL_URL,
   },
   {
     title: "Submit a talk",
-    description: "The public CFP form. No account needed.",
+    description: "The public CFP form, end to end. No account needed.",
     cta: "Open the CFP form",
     icon: RiSendPlaneLine,
     href: DEMO_CFP_URL,
@@ -55,19 +102,20 @@ const DEMO_ENTRIES: Array<DemoEntry> = [
 ]
 
 /**
- * Three flat panes sharing one bordered container — Attio's grouped-card
- * pattern: hairlines between the cells, no shadows, no rounded islands.
+ * Three flat panes sharing one bordered container — the grouped-card pattern:
+ * hairlines between the cells, no shadows, no rounded islands. Cells are plain
+ * containers (not links) so the creds block stays clickable; the CTA at the
+ * bottom of each cell is the way in.
  */
-const CELL_CLASS = cn(
-  "group flex h-full flex-col gap-2.5 p-6 transition-colors outline-none",
-  "border-t border-border first:border-t-0 sm:border-t-0 sm:border-l sm:first:border-l-0",
-  "hover:bg-background focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:ring-inset"
-)
+const CELL_CLASS =
+  "flex h-full flex-col gap-2.5 p-6 border-t border-border first:border-t-0 sm:border-t-0 sm:border-l sm:first:border-l-0"
+
+const CTA_CLASS =
+  "group mt-auto flex w-fit items-center gap-1.5 pt-4 text-sm font-medium text-primary rounded-sm outline-none hover:underline hover:underline-offset-4 focus-visible:ring-3 focus-visible:ring-ring/50"
 
 /**
- * The live-demo entry points. These sit directly under the hero on purpose
- * (docs/memory/RULES.md 18f): anyone landing here — judge, organizer, curious
- * dev — is one click from a working product, no signup in the way.
+ * The live-demo entry points, directly under the hero: anyone landing here is
+ * one click from a working product on a pre-loaded event, no signup in the way.
  */
 export function DemoEntries() {
   return (
@@ -79,17 +127,28 @@ export function DemoEntries() {
             "max-w-md text-3xl leading-[1.05] text-balance sm:text-4xl"
           )}
         >
-          Three ways in. Pick a seat.
+          Try it live. Pick a seat.
         </h2>
         <p className="max-w-sm text-sm leading-relaxed text-pretty text-muted-foreground sm:text-right">
-          Live, on a pre-loaded event. Nothing to install.
+          A pre-loaded demo event, open to everyone. Nothing to install.
         </p>
       </div>
 
       <div className="mt-9 grid overflow-hidden rounded-xl border border-border bg-card sm:grid-cols-3">
         {DEMO_ENTRIES.map((entry) => {
-          const content = (
+          const cta = (
             <>
+              {entry.cta}
+              <RiArrowRightLine
+                size={15}
+                aria-hidden
+                className="transition-transform group-hover:translate-x-0.5"
+              />
+            </>
+          )
+
+          return (
+            <div key={entry.title} className={CELL_CLASS}>
               <entry.icon
                 size={20}
                 aria-hidden
@@ -101,25 +160,17 @@ export function DemoEntries() {
               <span className="block text-sm leading-relaxed text-muted-foreground">
                 {entry.description}
               </span>
-              <span className="mt-auto flex items-center gap-1.5 pt-4 text-sm font-medium text-primary">
-                {entry.cta}
-                <RiArrowRightLine
-                  size={15}
-                  aria-hidden
-                  className="transition-transform group-hover:translate-x-0.5"
-                />
-              </span>
-            </>
-          )
-
-          return entry.to ? (
-            <Link key={entry.title} to={entry.to} className={CELL_CLASS}>
-              {content}
-            </Link>
-          ) : (
-            <a key={entry.title} href={entry.href} className={CELL_CLASS}>
-              {content}
-            </a>
+              {entry.extra}
+              {entry.to ? (
+                <Link to={entry.to} className={CTA_CLASS}>
+                  {cta}
+                </Link>
+              ) : (
+                <a href={entry.href} className={CTA_CLASS}>
+                  {cta}
+                </a>
+              )}
+            </div>
           )
         })}
       </div>

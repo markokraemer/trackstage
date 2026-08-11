@@ -19,15 +19,19 @@ import {
   FieldLabel,
 } from "@/components/ui/field"
 import { Logo } from "@/components/brand/logo"
+import {
+  DEMO_ORGANIZER_EMAIL,
+  DEMO_ORGANIZER_PASSWORD,
+} from "@/components/marketing/links"
 import { authClient } from "@/lib/auth-client"
 import { invalidateAuthMemo } from "@/lib/auth-memo"
 import { markFreshSignup } from "@/lib/onboarding-storage"
 import { useSession } from "@/lib/session"
 import { errorMessage } from "@/lib/errors"
 
-/** Seeded demo organizer — shown on the sign-in card so judges never guess. */
-const DEMO_EMAIL = "organizer@demo.sessionboard.dev"
-const DEMO_PASSWORD = "demo2026"
+/** Seeded demo organizer — shown on the sign-in card so nobody has to guess. */
+const DEMO_EMAIL = DEMO_ORGANIZER_EMAIL
+const DEMO_PASSWORD = DEMO_ORGANIZER_PASSWORD
 
 export interface LoginSearch {
   /** Where to land after a successful sign-in. */
