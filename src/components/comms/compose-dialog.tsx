@@ -146,6 +146,7 @@ export function ComposeDialog({
     setBody("")
     setStep("compose")
     setPreviews([])
+    setCappedAt(null)
     setSelectedId(null)
   }, [open])
 

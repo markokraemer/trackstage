@@ -525,6 +525,9 @@ test.describe("public CFP submission", () => {
             await expect(
               page.getByRole("heading", { name: /review and submit/i }).first(),
             ).toBeVisible()
+            // The refused mutation logs a Convex server error — that refusal
+            // IS the assertion here, so forget it before the cleanliness check.
+            watcher.reset()
           }
           watcher.assertClean(`per-user limit attempt ${attempt}`)
         } finally {

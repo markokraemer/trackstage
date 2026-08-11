@@ -96,15 +96,16 @@ fast with "the deployment was reseeded mid-test" so Playwright's retry starts
 over against the new world instead of burning the timeout. If you see that
 message, nothing is broken — someone reseeded while you were running.
 
-**Related, same cause:** `[copilot] MCP tool loading failed: getRequestHeaders
-is not a function` (`src/routes/api/chat.ts:143`). `getRequestHeaders` *is*
-exported by the installed `@tanstack/react-start/server` — verified directly —
-so this is the same mid-edit module-graph inconsistency, surfacing through
-`@convex-dev/better-auth`'s dynamic import. Worth re-checking on a quiet tree
-before treating it as real: if it persists there, the copilot silently loses
-every tool, which `copilot.spec.ts` will catch.
-
----
+**Related, and NOT a bug — checked rather than assumed:** the console error
+`[copilot] MCP tool loading failed: getRequestHeaders is not a function`
+(`src/routes/api/chat.ts:143`) looked like it meant the copilot was running
+with zero tools. It isn't. Driving the real panel end to end, the copilot
+renders a `data-tool` frame and answers correctly ("There are 7 pending
+submissions"), and the destructive-approval card appears within 5 s with
+Cancel / Approve & run. `getRequestHeaders` *is* exported by the installed
+`@tanstack/react-start/server`. So this is the same transient mid-edit
+module-graph inconsistency as KI-3 — logged, recovered from, harmless. It was
+one verification away from being filed as a false S1 bug.
 
 ## Recommended next step — give the specs their own event
 
