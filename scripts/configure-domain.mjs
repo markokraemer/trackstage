@@ -66,7 +66,7 @@ const wanted = detail.records ?? []
 const current = await cf(`/zones/${zone.id}/dns_records?per_page=100`)
 for (const record of wanted) {
   const name = record.name === "@" || record.name === DOMAIN ? DOMAIN : `${record.name}.${DOMAIN}`.replace(new RegExp(`\\.${DOMAIN}\\.${DOMAIN}$`), `.${DOMAIN}`)
-  const type = record.record ?? record.type // resend uses `record`
+  const type = record.type ?? record.record // `type` = DNS type; `record` = purpose label (SPF/DKIM)
   const content = record.value
   const match = current.find((r) => r.type === type && r.name === name)
   const payload = {
