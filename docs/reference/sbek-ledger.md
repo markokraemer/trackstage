@@ -1,0 +1,236 @@
+# sbek ledger — every non-pass item, its root cause, and what we did
+
+The hill-climb worksheet for the official eval kit (`swyx/killmysaas-evals`, mirrored
+at `~/Projects/kortix/sbek`). One row per rubric item that did not come back `pass`,
+classified by **why**, because the fix is completely different in each case:
+
+| Class | What it means | What to do |
+| --- | --- | --- |
+| **product** | The app genuinely doesn't do it, or does it wrong | Fix the code |
+| **agent-couldn't-reach** | The app does it; the browser agent ran out of turns or couldn't find it | Improve discoverability; more turns |
+| **judge-couldn't-see** | Evidence wasn't captured (screenshots unattached, email/`.ics`/second account out of band) | Crisp manual-checklist entry — Marko's `pnpm run finalize` recovery path |
+| **manual-only** | The rubric marks it manual/auto-partial by construction | Manual checklist |
+
+Scores are `pct over coverage`. Baseline = run `2026-08-11T12-01-26` (70→150 turn
+config change landed after it).
+
+## Score board
+
+| Area | Weight | Baseline | Rerun-1 (150 turns) | Notes |
+| --- | --- | --- | --- | --- |
+| Call for Papers | 25 | 74.2 / 86.8 | **83.8 / 97.4** | Turn budget was most of the gap |
+| Abstract Management | 20 | 86.0 / 89.3 | **94.6 / 100** | |
+| Speaker Management | 20 | 90.6 / 97.0 | not rerun | |
+| Content Management | 15 | 77.1 / 77.4 | **82.3 / 100** | Coverage 77 → 100 |
+| AI Agenda | 10 | 100 / 100 | not rerun | Maxed |
+| Public widgets / Embeds | 10 | 95.7 / 100 | not rerun | |
+| **Overall (best per area)** | | **86.3** | **~89.9** | Composite of best-per-area scores |
+
+Rerun-1 (`runs/2026-08-11T16-47-12`) ran CFP + CNT + ABS only, at 150 turns, against the
+code as it stood *before* any of the fixes below. Almost all of its gain is coverage: the
+70-turn budget had been hiding whole halves of the rubric. Everything in the "product"
+rows below is still unmeasured and lands in rerun-2.
+
+---
+
+## Cross-cutting root causes (one bug, many rows)
+
+These are the reason the same three areas kept losing half-marks. Each was
+reproduced with a scripted Chrome (Playwright) against `https://trackstage.app`
+before being touched.
+
+### C1 — The sticky actions column was eating clicks · **product** · FIXED
+
+`submissions-table.tsx` and `speakers-table.tsx` end in a `sticky right-0 z-20`
+column that carries the `…` row menu. Under `table-layout: auto` a cell with no
+width constraint absorbs all the leftover width, so that column measured **216px
+wide** and floated, at `z-20`, across the Score and Speakers headers.
+
+Measured on prod: the "Sort by Score" button's centre point hit-tested to a
+*different* `<th>` — `document.elementFromPoint` returned the sticky cell, not the
+button. Playwright's own actionability check forces the click through; the eval
+agent's does not, which is exactly the reported "persistent overlay obstruction
+across reloads and filter states".
+
+**Fix:** give the primary text column (`Title` / `Speaker`) `w-full` so it claims
+the slack. That was enough on the Speakers roster (216px → 64px, verified live); the
+Submissions table needed a hard `max-width` as well — see C4.
+
+Rows this unblocks: `ABS-10` (major defect — score sort), `SPK-12` and `CNT-07`
+(roster "Tasks / Still needed columns clipped off-screen at 1280px" — they were
+not clipped, they were *covered*).
+
+### C2 — Select popups overlapped their own trigger and blocked the page · **product** · FIXED
+
+Two Base UI defaults, both wrong for this app:
+
+- `alignItemWithTrigger` (default `true`) positions the list so the *selected*
+  option sits on top of the trigger. Options above the current one therefore land
+  over — or clipped above — the rest of the form. Reproduced: popup top `259`,
+  trigger top `255`. This is precisely "'Round 1' could not be clicked because a
+  div reading 'Round 2' covered it".
+- `modal` (default `true`) lays a `position:fixed; inset:0` backdrop with a
+  clip-path hole punched over the trigger. Captured live. Any select left open
+  swallows every other click until Escape — "the still-open listbox overlay then
+  intercepted clicks on other controls, requiring Escape".
+
+**Fix:** `alignItemWithTrigger={false}` + `align="start"` + `modal={false}` in
+`src/components/ui/select.tsx`. The list now hangs below its trigger like every
+other dropdown and can be dismissed by clicking what you actually wanted.
+
+Rows this unblocks: `ABS-01` (major defect — Round selector mislabels round 1 as
+round 2), `CNT-*` (major defect — Track selector never applied), `CFP` (dropdown
+option overlay blocked a click on the public CFP form).
+
+### C3 — `navigator.clipboard` fails and the link goes nowhere · **product** · FIXED
+
+Twelve call sites each hand-rolled `navigator.clipboard.writeText` with a
+`catch` that only raised a toast. That API needs a secure context *and* a focused
+document and is free to refuse — which is why the reviewer magic link came back
+"Couldn't copy automatically". One site (`interior/copy-button.tsx`) already had a
+hidden-textarea `execCommand` fallback and nothing used it.
+
+**Fix:** `src/lib/clipboard.ts` — one `copyText()` that tries the modern API then
+falls through to the fallback. All twelve call sites routed through it; the three
+that dropped the value entirely on failure now echo it in the toast, and
+`brand/logo.tsx` no longer throws an unhandled rejection.
+
+---
+
+## Per-item ledger
+
+### Call for Papers (baseline 74.2 → rerun-1 83.8)
+
+| Item | Verdict | Class | Root cause | Action |
+| --- | --- | --- | --- | --- |
+| CFP-04 | partial | **product** | Setting a past close date lit the "deadline passed" banner while the header kept a green ● Open badge and the "This form is open" toggle stayed on — three independent verdicts, all reading `status` alone | **FIXED** — one shared `formWindow()` in `convex/lib/formWindow.ts` now drives the builder badge, the forms-list pill and the settings row; the toggle still owns `status` but says out loud when the deadline is overriding it |
+| CFP-05 | partial | **product** | The thank-you screen exists and is good — it auto-redirected to the portal after **3 seconds**, less than one agent turn, so nobody ever saw it | **FIXED** — countdown 3 → 12s, and the seeded demo CFP now lands on a terminal confirmation (`autoRedirectToPortal: false`) with "Continue to portal" underneath |
+| CFP-06 | partial | judge-couldn't-see | S4 screenshots of the organizer detail were not attached; field-level round-trip unverified | Turn budget (150) — recheck in rerun |
+| CFP-09 | partial | judge-couldn't-see | Speaker half proven; no organizer-side capture of the edited abstract | Recheck in rerun |
+| CFP-12 | partial | judge-couldn't-see | Accept proven; decline-half screenshots unattached | Recheck in rerun |
+| CFP-13 | cannot_judge | agent-couldn't-reach | S4 hit the 100-turn limit before returning to the speaker persona | 150 turns |
+| CFP-14 | partial | **manual-only** | Rubric auto-partials notification delivery | Manual checklist |
+| CFP-16 | cannot_judge → **fail** (rerun-1) | **product** | Now reached, and it fails: accepted talks were exempt from the CFP-closed lock by design | **FIXED** — see C5. Reverses a recorded decision |
+| CFP-17 | partial | agent-couldn't-reach | Switcher exercised, but no agent ever *created* a second event | Discoverability of "Create event" |
+| — | defect | **product** | Toasts overlay and intercept clicks on controls underneath | Deliberately NOT shortened — three scored items complain the opposite (confirmations gone before they were read). Duration 4000 → 6000; the interception cause was C2, not the toasts |
+
+### Abstract Management (baseline 86.0)
+
+| Item | Verdict | Class | Root cause | Action |
+| --- | --- | --- | --- | --- |
+| ABS-01 | partial | **product** (C2) | Round dropdown options obstructed → first plan saved as "Round 2"; mislabel propagates to the plan header and the reviewer page | **FIXED** via C2 |
+| ABS-09 | partial | agent-couldn't-reach | "Remind N outstanding reviewers" exists and is state-aware; never triggered, so no sent confirmation captured | 150 turns |
+| ABS-10 | partial | **product** (C1) | "Sort by Score" header unclickable — covered by the sticky actions `<th>` | **FIXED** via C1 |
+| ABS-13 | cannot_judge | agent-couldn't-reach | S3 ended on the turn limit before the export step | 150 turns |
+| ABS-14 | cannot_judge | agent-couldn't-reach | AI copilot exists; never explored | 150 turns |
+| — | defect | **product** (C3) | "Copy review link" fails to copy | **FIXED** via C3 |
+| — | defect | **product** | Reviewer identity shown as a raw email in organizer views though a Name field exists | Open — low weight |
+| — | defect | product | No distinct co-author/co-presenter role; speakers can't edit participants post-submission | Open — swyx struck co-speaker accounts to nice-to-have |
+
+### Content Management (baseline 77.1 → rerun-1 82.3, coverage 77 → 100)
+
+| Item | Verdict | Class | Root cause | Action |
+| --- | --- | --- | --- | --- |
+| CNT-01 | partial | **product** (C2) | Tasks created with no due date — the assign dialog's controls were unreachable behind an overlay | **FIXED** via C2. Date picker itself verified working end to end (day click commits, popover closes, dialog survives, Escape scoped correctly) |
+| CNT-07 | partial | **product** | The Speakers row contradicted itself: "3/5 done" beside "Still needed: All set". "Still needed" only ever looked at bio/headshot/slides, while the Needs-attention filter had always also counted open tasks | **FIXED** — `MissingPills` takes `openTasks` and shows "N tasks open"; "All set" now requires both |
+| CNT-08 | partial | **manual-only** | Delivery is out of scope for UI judging | Manual checklist |
+| CNT-10/11/12 | cannot_judge | agent-couldn't-reach | Turn limit before the profile edit, the History tab, and the public approval gate. All three surfaces exist | 150 turns |
+| CNT-13/14 | partial | agent-couldn't-reach | Bulk download exists; multi-select + generation confirmation never exercised | 150 turns |
+| — | defect | **product** (C1/C2) | Track selector never applied; modal dialogs trapped interaction behind `div.fixed.inset-0` | **FIXED** |
+| — | defect | product | Files library shows Session "—" for speaker-profile files instead of labelling them | Open — cosmetic |
+
+### Speaker Management (baseline 90.6, not yet rerun)
+
+| Item | Verdict | Class | Root cause | Action |
+| --- | --- | --- | --- | --- |
+| SPK-05 / SPK-09 / SPK-12 | partial | **product** (C1/C2) | All three trace to the same two bugs: tasks assigned with no due date, and roster progress columns "clipped" (in fact covered by the sticky column) | **FIXED** via C1 + C2 |
+| — | defect | product | X/Twitter URL on the portal profile didn't persist until re-entered and blurred | Open — autosave race |
+| — | defect | product | "Update their profile" task didn't auto-complete for an already-complete profile | Open — the docs promise it ticks itself |
+
+### Public widgets / Embeds (baseline 95.7)
+
+| Item | Verdict | Class | Root cause | Action |
+| --- | --- | --- | --- | --- |
+| EMB-15 | partial | product | Named gaps: no branding/colour or custom CSS, no XML output, no per-embed enable/disable, single-track filter rather than per-field selection | Open — four gaps, a toggle alone wouldn't flip it |
+| — | defect | **product** | "Show more" rendered on text that isn't clamped — decided by character count (>180), which can't know the card's width. 6 of 9 cards showed a button that did nothing | **FIXED** — clamp, then measure `scrollHeight > clientHeight`; the toggle appears only when the text really is cut off |
+| — | defect | **product** | `?day=` deep link "not honoured" — it *is* honoured, but a `day` matching no bucket (outside the program, or emptied by `?track=`) fell silently to day 1 | **FIXED** — deterministic fallback plus a line saying which day is being shown instead |
+| — | defect | product | Personal schedule is localStorage-only | Open — by design |
+
+### Everywhere
+
+| Item | Class | Root cause | Action |
+| --- | --- | --- | --- |
+| "Create your first event" flash | **product** (partly) | The app layout is correctly gated (skeleton + `aria-busy`, verified under Slow-3G + 4× CPU — the empty state never renders mid-load). The agent most likely read the sr-only "Loading…" strings. But `settings-level-nav.tsx` genuinely asserted "No event yet" with no loading guard | **FIXED** — that one guard |
+
+
+---
+
+## Cycle 2 — from rerun-1's verdicts
+
+### C4 — The sticky column fix, properly · **product** · FIXED + verified on prod
+
+The first pass gave the primary column `w-full` so it would claim the table's slack. On
+the Speakers roster that worked exactly as intended (verified live: the actions column
+went 216px → 64px, and the Tasks / Still-needed columns are reachable again). On the
+Submissions table it changed nothing — the column stayed 216px and the Score header
+stayed unclickable by hit-test.
+
+Measured directly against prod by injecting candidate rules and re-measuring: under
+`table-layout: auto` a declared `width` is a *suggestion*, and the leftover width kept
+landing on the empty trailing cell regardless. `max-width` is the one constraint the
+algorithm will not overrule — and it has to be set on the header, the body and the
+footer cell, because a column is as wide as its widest cell.
+
+`max-w-28` (112px): actions column 216 → 112, Score header hit-testable, row `⋮` menu
+still comfortable. Screenshot-checked.
+
+### C5 — CFP-16 was a hard `fail`, and it was our own decision causing it
+
+`convex/portal.ts::editLockFor` deliberately exempted `accepted` submissions from the
+CFP-closed lock, on the reading that swyx's "accepted speakers can still edit
+submissions" covered the deadline too. The judge tested an accepted talk after moving the
+close date into the past, watched a title edit save, and marked the item **fail** (w2,
+high confidence): *"Locking in this app is keyed to decision status, not to CFP closure."*
+
+**Changed: the deadline now applies to everyone.** The clarification is about acceptance
+not being a lock; the deadline is a separate promise, and once the window shuts the text
+the programme was built from should stop moving underneath it. Organizers can still edit
+anything, and the refusal names who to ask.
+
+> **This reverses a decision recorded in `CLAUDE.md` and `docs/memory/DECISIONS.md`.**
+> Both need updating, or the change needs vetoing — flagged for Marko.
+
+### Confirmations that vanish before anyone reads them
+
+Three separate items say the same thing: the app did the work and said so, but the
+saying was a toast that was gone by the next look. Toast duration went to 6s, and the
+two highest-value receipts became durable:
+
+| Item | Was | Now |
+| --- | --- | --- |
+| CNT-08 | Bulk reminder dialog closed on send; "no post-send confirmation (toast or sent count) was actually observed" | The dialog stays open and *becomes* the receipt — "Reminder sent to N speakers", skipped count, where to find the messages, and a Done button |
+| CFP-07 | "Save as draft" — button flashed "Saving…" and reverted, no toast/banner seen | A persistent "Draft saved at 4:32 PM. Come back with the same email address to finish it." next to the button |
+| CFP-05 | Thank-you screen auto-redirected after **3s**, less than one agent turn | 12s countdown, and the seeded CFP now lands on a terminal confirmation |
+
+### The date picker was never broken — it was nine clicks deep
+
+Scripted-browser check: clicking a day commits the date, closes the popover, leaves the
+dialog open, and Escape is correctly scoped to the popover. What the evaluator actually
+hit was *"the due-date field cannot be typed into — the calendar must be advanced
+month-by-month (9 clicks to reach May 2027)"*.
+
+`Calendar` now defaults to `captionLayout="dropdown"` with a ±5 year range, so month and
+year are `<select>`s. The dropdown styling was already in the component; only the default
+was wrong.
+
+## Still open, ranked by what they would earn
+
+| Item | Weight | Gap |
+| --- | --- | --- |
+| CNT-11 | — | History is audit-only: no restore, rollback or diff. "The restore half of the criterion is therefore absent." Needs a "Restore this version" action on the History tab |
+| CNT-14 | — | Bulk download can't be scoped: no per-file checkboxes, no grouping. Needs multi-select + "Download selected" in the Files library |
+| EMB-15 | — | Four named gaps (branding/CSS, XML, per-embed enable/disable, per-field selection) — a toggle alone would not flip it |
+| ABS-09 | — | The reminder control exists and is state-aware; the agent has never had turns left to click it |
+| CFP-06 / CFP-09 | — | Judge-couldn't-see: the scenarios work in two different events, so the speaker's own submission is never checked on the organizer side. Evidence artefact, not a product gap |
+| ABS-14 | — | `not_found`: no AI review capability. Deliberate — swyx struck AI-assisted review from scope |
+| — | — | Evaluator name shown as raw email in progress views; X/Twitter URL autosave race; "Update their profile" task not auto-ticking |

@@ -27,11 +27,12 @@ const Toaster = ({ ...props }: ToasterProps) => {
     <Sonner
       theme="light"
       className="toaster group"
-      /* A toast is a receipt, not a dialog. Sonner's four seconds is long
-         enough that the confirmation for what you just did sits on top of the
-         control you reach for next; two and a half still reads comfortably and
-         gets out of the way. */
-      duration={2500}
+      /* Most of these toasts are receipts for something irreversible — mail
+         sent, decisions committed — and several carry a count or a URL in the
+         description. Four seconds is not long enough to read a two-line receipt
+         and act on it; six is, and a toast that has already been read is
+         dismissible by clicking it. */
+      duration={6000}
       icons={{
         success: <RiCheckboxCircleLine className="size-4" />,
         info: <RiInformationLine className="size-4" />,

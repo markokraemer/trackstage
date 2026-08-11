@@ -284,7 +284,7 @@ export function SubmissionDrawer({
               <AlertDescription>
                 {submission.editableUntil
                   ? `You can update the wording here until ${formatDate(submission.editableUntil)}, when the call for speakers closes. The organizers see your latest version.`
-                  : "You can update the wording here at any time — even after your talk has been accepted. The organizers see your latest version."}
+                  : "You can update the wording here — even after your talk has been accepted. The organizers see your latest version."}
               </AlertDescription>
             </Alert>
           ) : (

@@ -14,24 +14,41 @@ import { cn } from "@/lib/utils"
 import { Button, buttonVariants } from "@/components/ui/button"
 import { RiArrowLeftSLine, RiArrowRightSLine, RiArrowDownSLine } from "@remixicon/react"
 
+/**
+ * How far either side of today the month and year dropdowns reach. Event work
+ * is planned a year or two out and reported on a year or two back; five each
+ * way covers both without an endless year list.
+ */
+const YEAR_REACH = 5
+
 function Calendar({
   className,
   classNames,
   showOutsideDays = true,
-  captionLayout = "label",
+  /**
+   * Month and year are pickable, not paged to. A plain caption meant that
+   * setting a deadline in May 2027 took nine presses of the next-month arrow —
+   * the kind of work a calendar exists to remove.
+   */
+  captionLayout = "dropdown",
   buttonVariant = "ghost",
   locale = enUS,
   formatters,
   components,
+  startMonth,
+  endMonth,
   ...props
 }: React.ComponentProps<typeof DayPicker> & {
   buttonVariant?: React.ComponentProps<typeof Button>["variant"]
 }) {
   const defaultClassNames = getDefaultClassNames()
+  const thisYear = new Date().getFullYear()
 
   return (
     <DayPicker
       showOutsideDays={showOutsideDays}
+      startMonth={startMonth ?? new Date(thisYear - YEAR_REACH, 0)}
+      endMonth={endMonth ?? new Date(thisYear + YEAR_REACH, 11)}
       className={cn(
         "group/calendar bg-background p-3 [--cell-radius:var(--radius-md)] [--cell-size:--spacing(8)] in-data-[slot=card-content]:bg-transparent in-data-[slot=popover-content]:bg-transparent",
         String.raw`rtl:**:[.rdp-button\_next>svg]:rotate-180`,

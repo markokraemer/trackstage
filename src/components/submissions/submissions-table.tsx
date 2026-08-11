@@ -162,12 +162,6 @@ export function SubmissionsTable({
               />
             </TableHead>
             <TableHead className="w-[150px] text-xs">Status</TableHead>
-            {/* The slack column. `table-layout: auto` hands leftover width to
-                whichever cell will take it, and the empty actions header at
-                the end was taking all of it — a 216px-wide `sticky right-0`
-                block floating over Score and Speakers, eating their clicks.
-                Claiming the spare width for Title pins the actions column back
-                to its own 48px. */}
             <TableHead className="w-full min-w-[240px] text-xs">
               <SortButton
                 label="Title"
@@ -195,7 +189,15 @@ export function SubmissionsTable({
                 onClick={() => onSortChange("submitted")}
               />
             </TableHead>
-            <TableHead className="sticky right-0 z-20 w-12 bg-card pr-4" />
+            {/* `max-w` is doing the real work here, not `w-12`. Under
+                `table-layout: auto` a declared width is only a suggestion, and
+                leftover table width was landing on this empty trailing cell —
+                which, being `sticky right-0` at `z-20`, then floated 216px of
+                itself across the Score and Speakers headers and swallowed
+                their clicks. A maximum is the one thing the algorithm won't
+                overrule. It has to be repeated on the body and footer cells:
+                a column is as wide as its widest cell. */}
+            <TableHead className="sticky right-0 z-20 w-12 max-w-28 bg-card pr-4" />
           </TableRow>
         </TableHeader>
 
@@ -323,7 +325,7 @@ export function SubmissionsTable({
                   {relativeDate(row._creationTime)}
                 </TableCell>
 
-                <TableCell className="sticky right-0 z-[1] bg-card pr-4 text-right group-hover:bg-muted group-data-[state=selected]:bg-muted">
+                <TableCell className="sticky right-0 z-[1] max-w-28 bg-card pr-4 text-right group-hover:bg-muted group-data-[state=selected]:bg-muted">
                   <div className="flex items-center justify-end gap-1">
                     {status === "pending" ? (
                       <>
@@ -431,7 +433,7 @@ export function SubmissionsTable({
             </TableCell>
             <TableCell />
             <TableCell />
-            <TableCell className="sticky right-0 z-[1] bg-card pr-4" />
+            <TableCell className="sticky right-0 z-[1] max-w-28 bg-card pr-4" />
           </TableRow>
         </TableFooter>
       </Table>

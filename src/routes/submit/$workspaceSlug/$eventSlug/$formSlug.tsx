@@ -163,6 +163,12 @@ function SubmitFlow({
     sent: boolean
   } | null>(null)
   const [savingDraft, setSavingDraft] = useState(false)
+  /**
+   * When the draft was last stored. A toast says so and then leaves; this stays
+   * next to the button, because "did that save?" is the exact question someone
+   * has when they close a half-finished proposal and hope to come back to it.
+   */
+  const [draftSavedAt, setDraftSavedAt] = useState<Date | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [submitted, setSubmitted] = useState<{
     portalToken: string
@@ -581,6 +587,7 @@ function SubmitFlow({
         participants: participantPayload(false),
       })
       setDraftId(result.draftId)
+      setDraftSavedAt(new Date())
       toast.success(
         "Draft saved. Come back with the same email address to finish it.",
       )
@@ -671,15 +678,30 @@ function SubmitFlow({
   const canSaveDraft = form.allowDrafts && portalToken !== ""
 
   const saveDraftButton = canSaveDraft ? (
-    <Button
-      type="button"
-      variant="outline"
-      onClick={() => void handleSaveDraft()}
-      disabled={savingDraft}
-    >
-      <RiSaveLine aria-hidden />
-      {savingDraft ? "Saving…" : "Save as draft"}
-    </Button>
+    <span className="flex flex-wrap items-center gap-2">
+      <Button
+        type="button"
+        variant="outline"
+        onClick={() => void handleSaveDraft()}
+        disabled={savingDraft}
+      >
+        <RiSaveLine aria-hidden />
+        {savingDraft ? "Saving…" : "Save as draft"}
+      </Button>
+      {draftSavedAt ? (
+        <span
+          aria-live="polite"
+          className="text-xs text-muted-foreground"
+        >
+          Draft saved at{" "}
+          {draftSavedAt.toLocaleTimeString([], {
+            hour: "numeric",
+            minute: "2-digit",
+          })}
+          . Come back with the same email address to finish it.
+        </span>
+      ) : null}
+    </span>
   ) : null
 
   const backButton = (

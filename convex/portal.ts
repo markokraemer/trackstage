@@ -132,14 +132,17 @@ function editLockFor(
         "The organizers have turned off editing submissions from the portal. Email them with what you'd like changed and they'll update it for you.",
     }
   }
-  // The CFP's own deadline (sbek CFP-16). An ACCEPTED talk is exempt: swyx
-  // clarified that accepted speakers keep polishing their abstract — it is
-  // already in the programme, and the deadline was about accepting new work.
-  if (
-    form &&
-    submission.status !== "accepted" &&
-    !isFormOpen(form).open
-  ) {
+  // The CFP's own deadline (sbek CFP-16), and it applies to accepted talks too.
+  //
+  // This used to exempt `accepted`, reading swyx's "accepted speakers can still
+  // edit submissions" as covering the deadline as well. It doesn't: that
+  // clarification is about ACCEPTANCE not being a lock, and the deadline is a
+  // separate promise the organizer made to everyone — once the window shuts,
+  // the text the programme was built from stops moving underneath it. An
+  // organizer can still change anything, and the message below says exactly
+  // who to ask, so nothing is actually unfixable; it just goes through the
+  // person accountable for the programme.
+  if (form && !isFormOpen(form).open) {
     return {
       code: "cfp_closed",
       title: "The call for speakers has closed",
@@ -151,15 +154,15 @@ function editLockFor(
 
 /**
  * The moment editing stops being possible, when there is one — the CFP's close
- * date on a submission that isn't accepted yet. Returned so the portal can say
- * "editable until Aug 20" INSTEAD of quietly locking on the day.
+ * date. Returned so the portal can say "editable until Aug 20" INSTEAD of
+ * quietly locking on the day.
  */
 function editableUntil(
-  submission: Doc<"submissions">,
+  _submission: Doc<"submissions">,
   form: Doc<"forms"> | null,
   lock: EditLock | null,
 ): number | null {
-  if (lock || !form || submission.status === "accepted") return null
+  if (lock || !form) return null
   return form.closeAt ?? null
 }
 

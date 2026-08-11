@@ -262,11 +262,21 @@ export const Mcp: React.FC<{ scene: McpSceneV3 }> = ({ scene }) => {
   const viewportH = Math.round(FRAME_W * CLIP_RATIO)
   const imgW = Math.round(FRAME_W * 1.3)
   const imgH = Math.round(imgW * CLIP_RATIO)
-  const panY = interpolate(frame, [8, durationInFrames - 10], [0, imgH - viewportH], {
-    extrapolateLeft: "clamp",
-    extrapolateRight: "clamp",
-    easing: Easing.inOut(Easing.ease),
-  })
+  // A slight downward drift, ending bottom-aligned on the connect card + the
+  // CLI one-liner. The whole travel stays BELOW the account header (heading
+  // and sub end at image y≈208 at this scale) so the demo fixture email
+  // never enters the viewport.
+  const maxPan = imgH - viewportH
+  const panY = interpolate(
+    frame,
+    [8, durationInFrames - 10],
+    [maxPan - 40, maxPan],
+    {
+      extrapolateLeft: "clamp",
+      extrapolateRight: "clamp",
+      easing: Easing.inOut(Easing.ease),
+    },
+  )
   return (
     <AbsoluteFill style={{ background: color.background }}>
       <div style={{ position: "absolute", top: HEADER_TOP, left: FRAME_X }}>
@@ -400,12 +410,20 @@ const StillShot: React.FC<{
 
 export const Stats: React.FC<{ scene: StatsSceneV3 }> = ({ scene }) => {
   const frame = useCurrentFrame()
-  const { fps } = useVideoConfig()
+  const { fps, durationInFrames } = useVideoConfig()
   const headlineIn = interpolate(frame, [4, 18], [0, 1], {
     extrapolateLeft: "clamp",
     extrapolateRight: "clamp",
     easing: easeOut,
   })
+  // Leave before the crossfade into the close, so the incoming hero fold
+  // lands on a clean ground instead of on top of the stat wall.
+  const exit = interpolate(
+    frame,
+    [durationInFrames - 16, durationInFrames - 3],
+    [1, 0],
+    { extrapolateLeft: "clamp", extrapolateRight: "clamp", easing: easeOut },
+  )
   return (
     <AbsoluteFill style={{ background: color.background }}>
       <div
@@ -418,6 +436,7 @@ export const Stats: React.FC<{ scene: StatsSceneV3 }> = ({ scene }) => {
           display: "flex",
           flexDirection: "column",
           justifyContent: "center",
+          opacity: exit,
         }}
       >
         <EyebrowRow glyph={<MarkGlyph />} label={scene.eyebrow} delay={2} />
@@ -484,7 +503,7 @@ export const Close: React.FC<{ scene: CloseSceneV3 }> = ({ scene }) => {
   const frame = useCurrentFrame()
   const { fps } = useVideoConfig()
   const wordmark = spring({
-    frame: frame - 10,
+    frame: frame - 14,
     fps,
     config: { damping: 18, stiffness: 90 },
   })
@@ -502,7 +521,7 @@ export const Close: React.FC<{ scene: CloseSceneV3 }> = ({ scene }) => {
   return (
     <HeroGround>
       <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
-        <Chip text={scene.chip} delay={2} />
+        <Chip text={scene.chip} delay={10} />
         <div
           style={{
             display: "flex",
@@ -511,7 +530,7 @@ export const Close: React.FC<{ scene: CloseSceneV3 }> = ({ scene }) => {
             marginTop: 40,
           }}
         >
-          <AnimatedMark size={76} delay={6} />
+          <AnimatedMark size={76} delay={12} />
           <div
             style={{
               ...heading(88),

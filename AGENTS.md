@@ -79,10 +79,12 @@ portal accounts are nice-to-have. Airtable read-only is fine (bonus, not core).
   because the whole point of a queue is that nothing is announced until the organizer
   commits it. Masked once, server-side, in `convex/portal.ts::submissionSummary`; every
   organizer surface keeps the real queue status.
-- **Editing a submission from the portal closes when the CFP closes** (sbek CFP-16) —
-  except for `accepted` talks, which stay editable (swyx's clarification was about
-  acceptance-locking, not the deadline). One verdict, `convex/portal.ts::editLockFor`,
-  drives both the greyed-out drawer and the mutation's refusal sentence.
+- **Editing a submission from the portal closes when the CFP closes — for everyone,
+  accepted included** (sbek CFP-16 hard-fails any exemption; reversal recorded in
+  DECISIONS.md 2026-08-11). Acceptance itself never locks editing while the CFP is
+  open, and `events.portalSettings.allowSubmissionEdits` is the organizer's escape
+  hatch after the deadline. One verdict, `convex/portal.ts::editLockFor`, drives both
+  the greyed-out drawer and the mutation's refusal sentence.
 - **Track** = colored single-select (drives routing + agenda columns). **Tags** = gray
   multi-select. **Format / Level / Language** = plain dropdowns.
 - **Evaluation** happens via **Evaluation Plans**: a plan bundles evaluators + assigned

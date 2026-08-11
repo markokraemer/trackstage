@@ -100,6 +100,42 @@ endpoint (convex.site) and demo account email at ~13px — authentic
 product footage, illegible at viewing size; the app's own dialog-backdrop
 blur in commit/auto-place is product behaviour, not an edit artifact.
 
+### Iteration 3 — render 3 (1956 fr / 65.26s), 81 frames read
+
+All iteration-1 fixes verified clean in pixels: reveal exits before the
+crossfade (0188/0193 now blend ground → chapter, no text over UI); no chip
+pop at the cold-open handoff (0087); CFP opens on the loaded welcome
+screen (0316); copilot chapter now reads ask → Thinking… (1308) →
+approval card (1389) → approved + "staged only, no email sent" result
+(1471) — the full trust story. The new MCP beat lands: pan from API keys
+to the connect card, ending on Claude / ChatGPT / Codex tabs + the
+one-command connect (1587). Three findings, fixed for render 4:
+
+1. **MCP pan starts on the account header** (1478): "Account settings —
+   organizer@demo.sessionboard.dev" is large and legible at 1.3× — a
+   Sessionboard-brand fixture leak in a Trackstage film. Fix: pan starts
+   at image y=110, below the header; the email never enters the viewport.
+2. **Stats → close crossfade collision** (1813): the close's chip and the
+   logomark's blue rail drew on top of the fading stat wall. Fix: stats
+   content exit-fades in its last ~14 frames (same recipe as the reveal);
+   close chip/mark/wordmark delays 10/12/14 so the fold assembles after
+   the fade completes.
+3. Minor: dead white at the very bottom of the MCP pan is the capture's
+   own page padding — bounded by ending the pan at the image bottom
+   (verified against mcp.png crops; the CLI line is the last content).
+
+### Iteration 4 — render 4 (1956 fr / 65.26s), changed scenes re-read
+
+- Stats → close handoff now clean: the stat wall exit-fades to the bare
+  grid (1813), the close fold assembles after the fade (1808). Fixed.
+- **MCP pan STILL opened on the account header** (1478): the y=110 start
+  was based on a bad estimate — measured properly against mcp.png, the
+  heading + sub occupy image y≈158–208 at 1.3×, and max pan is only 252,
+  so most of the intended travel was inside the header zone. Fix: drift
+  constrained to [maxPan−40 → maxPan] — starts just below the sub, ends
+  bottom-aligned on the connect card + Claude Code CLI line. The email can
+  never enter the viewport by construction.
+
 ### Iteration 2 — render 2 (1928 fr / 64.27s), superseded before frame pass
 
 All six iteration-1 fixes rendered, but Marko's mid-task directive landed:

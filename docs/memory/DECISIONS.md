@@ -239,3 +239,13 @@ Format: date · decision · why · status.
   (client: nav, switchers, drawers, copy buttons). Nothing may hand-build `/app/`,
   `/e/` or `/submit/` strings. Prod rollout: `convex deploy` adds the index; no data
   backfill exists because organization slugs already existed on every row. ✅
+
+## CFP-16 reversal: the close date locks editing for EVERYONE (2026-08-11)
+The earlier decision exempted accepted talks from the CFP-close edit lock,
+reading swyx's "accepted speakers can still edit" clarification as
+deadline-related. The official eval kit hard-fails that reading (CFP-16, w2:
+editing locks when the CFP closes — no exemption). The kit is the judge:
+exemption removed. Swyx's clarification still holds where it was actually
+aimed — ACCEPTANCE itself never locks editing while the CFP is open.
+Organizers can still reopen editing anytime via portalSettings
+(allowSubmissionEdits) — that's the escape hatch for post-deadline fixes.
