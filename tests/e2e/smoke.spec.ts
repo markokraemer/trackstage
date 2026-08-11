@@ -208,11 +208,15 @@ test.describe("hierarchy", () => {
   }) => {
     const watcher = watchConsole(page)
     await page.goto("/app")
-    await page.getByRole("button", { name: /account menu/i }).first().click()
-    await page
-      .getByRole("menuitem", { name: /account settings/i })
-      .first()
-      .click()
+    // Open + pick as one retried unit: a click that lands before hydration is
+    // swallowed and the menu never opens.
+    await expect(async () => {
+      await page.getByRole("button", { name: /account menu/i }).first().click()
+      await page
+        .getByRole("menuitem", { name: /account settings/i })
+        .first()
+        .click({ timeout: 3_000 })
+    }).toPass({ timeout: 25_000 })
     // Account settings is a MODAL now — the menu item adds `?settings=account`
     // in place instead of navigating away.
     await expect(page).toHaveURL(/settings=account/)
