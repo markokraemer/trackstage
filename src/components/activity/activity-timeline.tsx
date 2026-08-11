@@ -39,7 +39,7 @@ export type ActivityRow = {
   meta: Record<string, unknown> | null
 }
 
-const ACTION_ICONS: Record<string, RemixiconComponentType> = {
+const ACTION_ICONS: Partial<Record<string, RemixiconComponentType>> = {
   created: RiSparkling2Line,
   updated: RiEditLine,
   deleted: RiDeleteBin6Line,
@@ -59,7 +59,8 @@ const ACTION_ICONS: Record<string, RemixiconComponentType> = {
 
 function iconFor(row: ActivityRow): RemixiconComponentType {
   if (row.entity === "api-key") return RiKey2Line
-  if (ACTION_ICONS[row.action]) return ACTION_ICONS[row.action]
+  const mapped: RemixiconComponentType | undefined = ACTION_ICONS[row.action]
+  if (mapped) return mapped
   // MCP tool calls use the tool name as their action, so anything unmapped
   // from an agent is agent-shaped.
   if (row.actorType === "mcp" || row.actorType === "api") return RiRobot2Line

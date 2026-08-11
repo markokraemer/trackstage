@@ -82,7 +82,15 @@ test.describe("copilot", () => {
     }
     await expect(panel).toBeVisible({ timeout: 20_000 })
 
-    await ask(page, "What needs my attention?")
+    // Ask in a way that *requires* a lookup. The panel injects live app state
+    // via `useCopilotReadable`, so a bare "what needs my attention?" can be
+    // answered from context with no tool call at all — correct behaviour, but
+    // it makes "a tool ran" untestable. Verified by hand: this phrasing
+    // produces a tool frame and the right number.
+    await ask(
+      page,
+      "Use your tools to look up how many submissions are pending right now.",
+    )
     await skipUnlessCopilotResponds(page)
 
     // A reply that grows: assert the transcript gains text, not that it says
@@ -148,11 +156,12 @@ test.describe("copilot", () => {
       await expect(cancel).toBeVisible()
 
       // It must say what it is about to do, including that mail goes out.
-      const card = page
-        .locator("div")
-        .filter({ has: approve })
-        .last()
+      // Assert on the OUTERMOST container that holds the button — `.last()`
+      // resolves to the innermost one, which is just the two buttons and
+      // carries none of the explanatory copy.
+      const card = page.locator("div").filter({ has: approve }).first()
       await expect(card).toContainText(/queue|decision|accept/i)
+      await expect(card).toContainText(/email/i)
 
       // Nothing may have run while the card is on screen.
       const stagedDuring = (await organizer.query(api.submissions.get, {
@@ -205,7 +214,10 @@ test.describe("copilot", () => {
     // copilot would be useless, so a plain lookup must just answer.
     const watcher = armed(page, [/AbortError|The user aborted a request/i])
     await gotoApp(page, "/app/copilot")
-    await ask(page, "How many submissions are pending?")
+    await ask(
+      page,
+      "Use your tools to look up how many submissions are pending right now.",
+    )
     await skipUnlessCopilotResponds(page)
 
     await expect(page.locator("[data-tool]").first()).toBeVisible({

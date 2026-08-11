@@ -45,7 +45,12 @@ import {
 } from "@/components/ui/table"
 import { DataToolbar } from "@/components/shared/data-toolbar"
 import { EmptyState } from "@/components/shared/empty-state"
-import { MESSAGE_STATUS_FILTERS, templateLabel } from "./constants"
+import {
+  DELIVERY_FILTERS,
+  MESSAGE_STATUS_FILTERS,
+  outboxFilterKey,
+  templateLabel,
+} from "./constants"
 import { IcsAttachmentIcon, MessageStatusPill } from "./message-status-pill"
 import type { MessageRow } from "./types"
 
@@ -82,7 +87,7 @@ export function OutboxTable({
     if (!messages) return []
     const needle = search.trim().toLowerCase()
     return messages.filter((message) => {
-      if (status !== "all" && message.status !== status) return false
+      if (status !== "all" && outboxFilterKey(message) !== status) return false
       if (!needle) return true
       return [
         message.personName,
@@ -97,20 +102,36 @@ export function OutboxTable({
   const counts = useMemo(() => {
     const map = new Map<string, number>()
     for (const message of messages ?? []) {
-      map.set(message.status, (map.get(message.status) ?? 0) + 1)
+      const key = outboxFilterKey(message)
+      map.set(key, (map.get(key) ?? 0) + 1)
     }
     return map
   }, [messages])
 
+  // Delivered / Not delivered only appear once the provider has actually told
+  // us something — no filter that can only ever say "0".
+  const filterOptions = useMemo(
+    () => [
+      ...MESSAGE_STATUS_FILTERS,
+      ...DELIVERY_FILTERS.filter((option) => (counts.get(option.value) ?? 0) > 0),
+    ],
+    [counts],
+  )
+
   const previewMode = (counts.get("preview") ?? 0) > 0
   const filtered = search.trim().length > 0 || status !== "all"
 
-  // Sent, but the provider has not told us yet whether it landed. Only these
-  // make "Check delivery" worth showing (product-map delta #7).
+  // Handed to the provider, tracking id in hand, but no verdict yet — the only
+  // rows a delivery check can actually answer for (product-map delta #7). Rows
+  // without a tracking id (seeded history, anything sent before we stored ids)
+  // are deliberately excluded: offering to check them would be a dead end.
   const awaitingReceipts = useMemo(
     () =>
       (messages ?? []).filter(
-        (message) => message.status === "sent" && !message.providerStatus,
+        (message) =>
+          message.status === "sent" &&
+          Boolean(message.resendId) &&
+          !message.providerStatus,
       ).length,
     [messages],
   )
@@ -127,14 +148,14 @@ export function OutboxTable({
             value={status}
             // `items` lets the trigger render the friendly label, not the raw
             // value — Base UI resolves the selected label from this list.
-            items={MESSAGE_STATUS_FILTERS}
+            items={filterOptions}
             onValueChange={(value: unknown) => onStatusChange(String(value))}
           >
             <SelectTrigger className="w-[180px] bg-card" aria-label="Filter by status">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              {MESSAGE_STATUS_FILTERS.map((option) => (
+              {filterOptions.map((option) => (
                 <SelectItem key={option.value} value={option.value}>
                   {option.label}
                   <span className="ml-auto text-xs text-muted-foreground">
@@ -164,10 +185,11 @@ export function OutboxTable({
         <Alert>
           <RiInformationLine aria-hidden />
           <AlertTitle>
-            Preview mode — emails are rendered here, not delivered
+            Some of these were previewed, not delivered
           </AlertTitle>
           <AlertDescription>
-            No email key is configured, so every message is kept in full below
+            Demo recipients (addresses ending in example.com) and anything
+            queued while no email provider is connected are kept here in full
             instead of being sent. Open any row to read exactly what the speaker
             would receive.
           </AlertDescription>

@@ -273,8 +273,22 @@ test.describe("emails", () => {
       `Hi {{firstName}} — the venue changed. Your portal: {{portalLink}} (${marker})`,
     )
 
-    const send = dialog.getByRole("button", { name: /^send to \d+ (person|people)$/i }).first()
-    await expect(send).toBeVisible({ timeout: 15_000 })
+    // Compose is two-stage on purpose: you render and READ every email before
+    // any of them goes out. Step one is "Review N emails", step two is
+    // "Send to N people" — the promise the next assertions hold it to.
+    const review = dialog
+      .getByRole("button", { name: /^review \d+ emails?$/i })
+      .first()
+    await expect(review).toBeVisible({ timeout: 20_000 })
+    await review.click()
+
+    await expect(
+      dialog.getByText(/review before sending/i).first(),
+    ).toBeVisible({ timeout: 20_000 })
+    const send = dialog
+      .getByRole("button", { name: /^send to \d+ (person|people)$/i })
+      .first()
+    await expect(send).toBeVisible({ timeout: 20_000 })
     const promised = Number(
       (await send.textContent())?.match(/\d+/)?.[0] ?? "0",
     )

@@ -293,6 +293,10 @@ export const commitQueue = mutation({
     for (const submission of staged) {
       await ctx.db.patch(submission._id, {
         status: accepting ? "accepted" : "declined",
+        // Committing a queue drops any custom status label: the row is moving
+        // to a different pipeline stage, so the old wording no longer applies
+        // (convex/sessionStatuses.ts).
+        statusId: undefined,
         decidedAt: now,
         notifiedAt: now,
       })

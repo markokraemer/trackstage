@@ -635,6 +635,35 @@ export async function resolveBulkRecipients(
   return [...ids]
 }
 
+/** `{{sessionTitle}}` (any spacing) anywhere in the composer's copy. */
+const SESSION_TITLE_PLACEHOLDER = /\{\{\s*sessionTitle\s*\}\}/
+
+/**
+ * The session an organizer means when they write `{{sessionTitle}}` in a bulk
+ * email: this person's accepted session if they have one, otherwise whatever
+ * they submitted. Returns "" for someone with no submission at all — visible
+ * in the review step, which is exactly where a wrong merge field should
+ * surface, before anything is sent.
+ */
+async function sessionTitleFor(
+  ctx: QueryCtx | MutationCtx,
+  personId: Id<"people">,
+): Promise<string> {
+  const participations = await ctx.db
+    .query("submissionParticipants")
+    .withIndex("by_personId", (q) => q.eq("personId", personId))
+    .take(16)
+
+  let fallback = ""
+  for (const participation of participations) {
+    const submission = await ctx.db.get("submissions", participation.submissionId)
+    if (!submission) continue
+    if (submission.status === "accepted") return submission.title
+    if (!fallback) fallback = submission.title
+  }
+  return fallback
+}
+
 /** Live audience size for the composer, before anything is sent. */
 export const recipientCount = query({
   args: {
@@ -712,6 +741,14 @@ export const composeBulk = mutation({
 
     // Groups these in the outbox without pretending to be a saved template.
     const templateKey = "custom-bulk"
+    // A bulk send carries no session of its own, so {{sessionTitle}} would
+    // render empty for everyone. Resolve each person's own session instead —
+    // but only when the copy actually asks for it.
+    const usesSessionTitle = SESSION_TITLE_PLACEHOLDER.test(`${subject}\n${body}`)
+    const extraVarsFor = async (personId: Id<"people">) =>
+      usesSessionTitle
+        ? { sessionTitle: await sessionTitleFor(ctx, personId) }
+        : undefined
 
     if (args.preview === true) {
       const previews: Array<Infer<typeof bulkPreviewValidator>> = []
@@ -721,6 +758,7 @@ export const composeBulk = mutation({
           personId,
           templateKey,
           override: { subject, body },
+          extraVars: await extraVarsFor(personId),
         })
         previews.push({
           personId,
@@ -740,6 +778,7 @@ export const composeBulk = mutation({
         personId,
         templateKey,
         override: { subject, body },
+        extraVars: await extraVarsFor(personId),
       })
       queued++
     }

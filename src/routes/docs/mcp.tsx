@@ -75,7 +75,9 @@ function McpPage() {
       </h2>
 
       <Tabs defaultValue="claude" className="mt-3">
-        <TabsList>
+        {/* Four labels plus their brand icons are a few pixels wider than a
+            390px phone — let the strip scroll rather than the page. */}
+        <TabsList className="max-w-full justify-start overflow-x-auto">
           <TabsTrigger value="claude">
             <ClientIcon client="claude" />
             Claude

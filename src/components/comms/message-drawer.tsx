@@ -185,21 +185,31 @@ export function MessageDrawer({
       }
     >
       <div className="flex flex-col gap-5">
-        {message.status === "failed" && message.error ? (
+        {/* Reason-if-undelivered, whether the provider refused it at hand-off
+            (status "failed") or the receiving server rejected it afterwards
+            (a bounce/spam receipt on an otherwise "sent" row). */}
+        {(message.status === "failed" || deliveryMeta?.tone === "failed") &&
+        (message.error ?? deliveryMeta?.help) ? (
           <Alert variant="destructive">
             <RiErrorWarningLine aria-hidden />
-            <AlertTitle>This email was not delivered</AlertTitle>
-            <AlertDescription>{message.error}</AlertDescription>
+            <AlertTitle>
+              {deliveryMeta?.tone === "failed"
+                ? `${deliveryMeta.label} — this one never reached the inbox`
+                : "This email was not delivered"}
+            </AlertTitle>
+            <AlertDescription>
+              {message.error ?? deliveryMeta?.help}
+            </AlertDescription>
           </Alert>
         ) : null}
 
         {message.status === "preview" ? (
           <Alert>
             <RiInformationLine aria-hidden />
-            <AlertTitle>Preview — no email key configured</AlertTitle>
+            <AlertTitle>Preview — this one was not delivered</AlertTitle>
             <AlertDescription>
               {
-                "Nothing was delivered. The message below is exactly what would be sent; add a RESEND_API_KEY to switch delivery on."
+                "Either the address is a demo one (example.com), or no email provider was connected when it was queued. The message below is exactly what would be sent."
               }
             </AlertDescription>
           </Alert>
@@ -254,7 +264,9 @@ export function MessageDrawer({
                 <span className="text-muted-foreground">
                   {deliveryMeta
                     ? deliveryMeta.label
-                    : "No receipt from the email provider yet."}
+                    : message.resendId
+                      ? "Waiting on the email provider's receipt."
+                      : "No delivery receipt for this one."}
                 </span>
                 {eventId ? (
                   <Button

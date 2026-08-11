@@ -167,6 +167,10 @@ export const list = query({
         color: colorValidator,
         order: v.number(),
         count: v.number(),
+        // Their `Created By` / `Created At` columns. `null` means the row ships
+        // with the product and reads as "System".
+        createdBy: v.union(v.string(), v.null()),
+        createdAt: v.union(v.number(), v.null()),
       }),
     ),
   }),
@@ -186,6 +190,8 @@ export const list = query({
           _id: null,
           ...preset,
           count: live.filter((s) => s.status === preset.pipelineStatus).length,
+          createdBy: null,
+          createdAt: null,
         })),
       }
     }
@@ -208,6 +214,10 @@ export const list = query({
         color: row.color,
         order: row.order,
         count: counts.get(row._id) ?? 0,
+        createdBy: row.createdBy ?? null,
+        // Built-ins are seeded with the event, so their creation time is noise
+        // — "System" is the whole answer for a row nobody added.
+        createdAt: row.systemKey ? null : row._creationTime,
       })),
     }
   },
@@ -264,7 +274,7 @@ export const create = mutation({
   },
   returns: v.id("sessionStatuses"),
   handler: async (ctx, args) => {
-    await requireEventAccess(ctx, args.eventId)
+    const { user } = await requireEventAccess(ctx, args.eventId)
     const name = args.name.trim()
     if (!name) throw new Error("Give the status a name first.")
     if (name.length > 60) throw new Error("Status names are limited to 60 characters.")
@@ -281,6 +291,7 @@ export const create = mutation({
       pipelineStatus: CATEGORY_PIPELINE_STATUS[args.category],
       color: args.color,
       order,
+      createdBy: user.name || user.email,
     })
   },
 })
@@ -353,7 +364,15 @@ export const remove = mutation({
       .query("submissions")
       .withIndex("by_eventId", (q) => q.eq("eventId", status.eventId))
       .collect()
-    const inUse = submissions.filter((row) => row.statusId === status._id)
+    const labelled = submissions.filter((row) => row.statusId === status._id)
+    // Only labels that still AGREE with the submission's pipeline status are
+    // really in use — those are the ones the Statuses screen counts, so the
+    // message below matches the number the organizer is looking at. A label
+    // left behind by a queue commit is already being ignored on screen; it
+    // just needs clearing, and moving it would rewrite a pipeline status the
+    // organizer never asked to change.
+    const inUse = labelled.filter((row) => row.status === status.pipelineStatus)
+    const stale = labelled.filter((row) => row.status !== status.pipelineStatus)
 
     if (inUse.length > 0 && !args.reassignToStatusId) {
       throw new Error(
@@ -379,6 +398,12 @@ export const remove = mutation({
         })
         reassigned += 1
       }
+    }
+
+    // Whatever happens to the live ones, a dangling label must not outlive the
+    // row it points at.
+    for (const submission of stale) {
+      await ctx.db.patch(submission._id, { statusId: undefined })
     }
 
     await ctx.db.delete(args.statusId)

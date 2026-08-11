@@ -725,7 +725,9 @@ export function SubmissionDetailDrawer({
               <SubmissionHistory
                 eventId={submission.eventId}
                 submissionId={submission._id}
-                entity={submission.kind === "session" ? "session" : "submission"}
+                entity={
+                  submission.kind === "session" ? "session" : "submission"
+                }
                 active={tab === "history"}
               />
             </TabsContent>

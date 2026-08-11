@@ -33,12 +33,14 @@ const TABS = [
     label: "Fields & options",
     to: "/app/settings/fields-and-options",
   },
+  { value: "statuses", label: "Statuses", to: "/app/settings/statuses" },
   {
     value: "integrations",
     label: "Integrations",
     to: "/app/settings/integrations",
   },
   { value: "api-mcp", label: "API & MCP", to: "/app/settings/api-mcp" },
+  { value: "activity", label: "Activity", to: "/app/settings/activity" },
 ] as const
 
 /**

@@ -47,6 +47,10 @@ export interface StatusOption {
   order: number
   /** Live submission count — the `Sessions` column of their Statuses table. */
   count: number
+  /** Who added it. `null` on the built-ins, which read as "System". */
+  createdBy?: string | null
+  /** When it was added. `null` on the built-ins. */
+  createdAt?: number | null
 }
 
 /**
@@ -102,13 +106,22 @@ export const CATEGORY_OPTIONS = STATUS_CATEGORIES.map((value) => ({
   ...CATEGORY_META[value],
 }))
 
-/** The five pill colours, all of them design tokens (never a raw hex). */
+/**
+ * The colours an organizer can pick, all of them design tokens (never a raw
+ * hex) — and the same four Sessionboard's own built-ins use.
+ *
+ * `blue` stays in `StatusTone` because rows already carry it, but it is NOT
+ * offered: the revamp deliberately made the blue status token neutral so
+ * "Active"/"Scheduled" wouldn't read as links (see the comment above
+ * `--status-blue-bg` in `src/styles.css`), which leaves it pixel-identical to
+ * grey. Offering two swatches that render the same is a worse product than
+ * offering four that don't.
+ */
 export const STATUS_TONE_OPTIONS: Array<{ value: StatusTone; label: string }> = [
   { value: "green", label: "Green" },
   { value: "amber", label: "Amber" },
   { value: "red", label: "Red" },
   { value: "gray", label: "Grey" },
-  { value: "blue", label: "Blue" },
 ]
 
 export function isStatusTone(value: string): value is StatusTone {

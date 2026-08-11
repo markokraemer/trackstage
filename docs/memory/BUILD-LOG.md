@@ -863,9 +863,13 @@ opens the card behaves exactly as before. `portal.home` returns the resolved fla
 enforce (Tasks tab hidden until a session is accepted, submissions read-only with "email
 the organizers" instead of a save that would fail, past-due tasks shown as closed). New
 `src/components/settings/portal-behavior-card.tsx` on Settings → Event details: three
-switches with plain-English on/off explainers that save instantly. 20 new suite checks in
+switches with plain-English on/off explainers that save instantly. 18 new suite checks in
 `scripts/verify-backend.mjs` (`Unique contacts`, `Speaker portal behaviour`), including
-"submit twice with different bios → the first one survives".
+"submit twice with different bios → the first one survives". Those 18 ran green standalone
+(18/18); the full suite could not complete in one pass this session — every attempt was cut
+short by other agents running `seed:setup` on the shared dev deployment (best run: 347 ✓ /
+1 ✗, where the ✗ was itself a mid-run reseed, "Session not found"). Same failure mode
+already recorded under the API-parity session above.
 
 ## 2026-08-11 — Public visibility flags (product-map delta #4, sbek CNT-12)
 
@@ -913,6 +917,20 @@ into `src/components/comms/email-preview.tsx` and is now shared with the review 
 and `seed:setup` concurrently today; a run that dies with "Event not found" or a portal
 setting that is unexpectedly off is that collision, not a regression. Re-seed and re-run.
 
+**Follow-up pass (delta #7, same day)** — five fixes found by driving the real composer in
+the browser: `{{sessionTitle}}` in a bulk send now resolves to *each recipient's own*
+session (accepted first, else whatever they submitted) instead of rendering empty — a bulk
+email carries no session of its own, which is exactly the trap Sessionboard papers over by
+forcing session mail out of the Sessions module; the composer no longer flashes "Nobody
+matches this audience yet" while the count is still in flight; "Check delivery (N)" only
+counts rows that actually have a provider tracking id, so seeded history never advertises a
+check that would be a dead end; a bounce/spam receipt now raises the same red
+reason-if-undelivered alert a hard failure does (delivery-status vocabulary comes from the
+product map's send log); and the outbox status filter grows **Delivered / Not delivered**
+options — but only once receipts exist, so nothing offers a permanent "0". Suite section is
+now 16 assertions (all green on a focused re-run; the full suite kept being killed mid-run
+by concurrent reseeds).
+
 **Custom session statuses (product-map delta #1) — 2026-08-11.** `Settings → Statuses` now
 exists: a `sessionStatuses` table + `convex/sessionStatuses.ts` CRUD (rename/recolour/reorder,
 add, delete-with-reassignment, admin-only delete, live per-status submission counts), the seven
@@ -924,3 +942,347 @@ whenever the two disagree — so a rename or a new status can never break queues
 or the agenda. 26 new assertions in `scripts/verify-backend.mjs` (verified 27/27 as a standalone
 slice; the full suite kept being torn down mid-run by concurrent `seed:setup` calls from other
 agents — the known collision, not a regression).
+
+**Statuses: `Added by` / `Added at` columns — 2026-08-11.** Closed the last column-level gap
+against the product map's `Name · Category · Color · Order · Sessions · Created By · Created At`
+table: a denormalised `sessionStatuses.createdBy` (audit label, so it survives the member
+leaving) plus `_creationTime` for the date, both `null` on the built-ins so they read `System`
+exactly as theirs do. +3 assertions. Still deferred: **Show custom status name**, which is only
+meaningful once the speaker portal consumes the catalogue.
+
+## 2026-08-11 — Top bar overhaul: real ⌘K global search, one logo, calm right cluster
+
+Marko's screenshots: the search box was a giant always-focus-ringed input that searched
+nothing, the Trackstage logomark appeared twice (top-left lockup + event switcher tile),
+the centre nav read as clutter, and "View public page" / "Copilot" fought each other.
+
+**Search is real now.** New `convex/search.ts` → `search.global({eventId, q})`: one
+`requireEventAccess`-gated query, seven capped event-scoped index reads in parallel
+(`people`, `submissions`, `submissionParticipants`, `forms`, `rooms`, `tracks`, `tasks`),
+case-insensitive all-terms contains matching, 8 results per group. Deliberately NOT search
+indexes: the palette answers four questions at once and a speaker's NAME has to find their
+SUBMISSION, which no per-table index does without a fan-out. Groups: **Submissions**
+(title/description/tags/track/speaker name+email → title, speakers, status pill),
+**Scheduled sessions** (anything with a `startsAt` — a scheduled submission IS the session,
+so it appears in exactly one group, the one that can show it a time and a room),
+**Speakers** (roster only: manually managed people plus participants of accepted
+submissions, with "Headshot / Bio / N tasks" chips), **Forms**. Quick actions stay
+client-side — they are routes, not data, so the blank palette needs no round trip.
+
+`src/components/shell/global-search.tsx` is the shadcn `command` primitive (cmdk) in a
+`Dialog`, opened by ⌘K/Ctrl+K *and* by clicking the bar. Typing echoes instantly, the query
+is debounced 120 ms, and `keepPreviousData` stops results blinking to "No matches" between
+keystrokes (rule 26). Enter navigates: submission → `/app/submissions?id=`, session →
+`/app/agenda?view=day&day=…&focus=`, speaker → `/app/speakers?person=`, form →
+`/app/forms/$formId`. Recent searches persist in `localStorage`. `ui/command.tsx` gained a
+`size="lg"` CommandInput variant (the palette's own header row) — extended, not forked.
+`/app/speakers` gained `?person=` (opens the profile drawer) and `?add=1` (opens Add
+speaker); both params are consumed once and cleared so a refresh doesn't reopen them.
+
+**The bar:** wordmark left (the only Trackstage mark in the app chrome), the ⌘K trigger
+absolutely centred on the viewport (`mx-auto` parked it visibly left of centre because the
+logo and the action cluster are different widths), then a right cluster where everything is
+one `--control-h-sm` tall: quiet ghost icon-link for the public page with a tooltip, a
+soft primary-tinted Copilot button (it is a product feature, not a utility), a hairline,
+and an avatar-only account menu (the name was already in the menu). Below `sm` the pill
+becomes an icon button. The public-page control is now a plain `<a>` wearing
+`buttonVariants` rather than Base UI's `Button` — `Button` stamps `role="button"` on
+whatever it renders, which downgraded a real link, and the judge is a browser agent.
+
+**Event switcher:** the logomark is gone. The tile now carries the EVENT's identity — its
+uploaded branding logo (`events.list` returns `logoUrl`), else its initial in a neutral
+tile, else a calendar glyph — and the block lost its card-in-card ring for a plain hover.
+
+**Demo hygiene:** `seed.run` purges any event whose name matches
+`/^(Copilot Verification|MCP Test|Verify)/i`. Those are our own verification-run artifacts
+that never clean up after themselves and then sit dateless in the organizer's switcher.
+Seeding is the reset button, so it resets them too. Run on dev and prod.
+
+Verified at 1440/900/480 px: zero console errors, ⌘K opens, Esc closes, arrows+Enter
+navigate, all four result kinds land on the right screen. Two new smoke tests in the
+`organizer shell` describe cover the palette end to end.
+
+## 2026-08-11 — Experimental two-way Airtable + audit log (HISTORY #61, sbek CNT-11)
+
+Two features that answer the same question from different ends: *what changed, and who
+changed it.*
+
+**Two-way Airtable (experimental, off by default).** The mirror stays one-way in spirit —
+only `submissions.status` ever comes back, because it is the highest-value field for the
+triage-in-Airtable workflow and the only one that is enum-validatable (a free-text pull
+would let a spreadsheet typo overwrite an abstract). The loop guard is one recorded value:
+`airtableRecordSync.lastPushedStatus`, the status WE last wrote into the base. It answers
+both dangerous questions with one comparison — `airtable === lastPushed` is our own echo,
+and `current !== lastPushed` means the organizer moved it *here* since the mirror was
+written, so **our DB wins** and the overruled Airtable edit is written to the audit log
+rather than swallowed. Order matters and is unit-tested: unchanged → unknown → not-allowed
+→ no-baseline → echo → conflict, which is why an applied change settles on the next pull
+instead of oscillating. `draft` and `withdrawn` can never be set from Airtable (a draft is
+the speaker's, and withdrawal is the speaker's intent to express). The pull runs INSIDE
+`syncEvent`, always after the push, so the baseline is fresh; Airtable is queried with
+`filterByFormula: IS_AFTER(LAST_MODIFIED_TIME(), …)` minus 60s of clock slack and only two
+columns. Inbound changes travel `submissions.setStatusInternal` — the same domain path as
+the UI — so the webhook and the audit row fire identically, attributed to "Airtable sync".
+Guards are pure in `convex/lib/airtableInbound.ts` (18 tests in
+`tests/unit/airtable-sync.test.ts`); the wiring, the state-table roundtrip and the conflict
+rule are proven in the backend suite's demo-mode path.
+
+**Audit log (CNT-11).** New `auditLog` table (`organizationId` + optional `eventId` ·
+`actorType` · `actorLabel` · `entity` · `entityId` · `action` · `summary` · `meta`), written
+inline by the domain mutations so history commits in the same transaction as the change,
+and never able to fail its caller (`lib/audit.ts` swallows its own errors). `summary` is a
+finished human sentence — "Status changed Pending → Accepted · <title>" — so the UI does no
+interpretation. Emit points, deliberately surgical: `submissions` setStatus/bulkSetStatus
+(via one extracted `applyStatusChange`), commitQueue (a `decision_committed` row per
+submission), addManual, updateDetails · `forms` create/update/duplicate/remove (open/close
+and close-date get their own wording) · `agenda` schedule/unschedule/publish/unpublish/
+autoPlace · `events.update` · `speakersAdmin` addManual/updateProfile/setWorkflowStatus ·
+`portal` updateSubmission/withdrawSubmission (attributed to the SPEAKER) · `apiKeys`
+create/revoke/copilot-mint (workspace-level rows, fanned across the owner's memberships).
+
+**Agents are first-class** (Marko's addendum). Every non-read-only MCP tool call logs one
+row from the dispatcher — `MCP · <tool> · sb_live_1a2b3c4d`, with the tool's own receipt in
+`meta` — which is both surgical (one call site covers all 16 write tools, present and
+future) and correct, because the MCP tools carry their own copies of the domain logic and
+would otherwise double-log. REST writes log as `API · <method path> · sb_live_…` from
+`apiHttp.ts` after the write commits. The Activity page's **Agents & API** tab is the
+review lens this exists for.
+
+UI: a **History** tab on the submission drawer (loads only while open) and
+**Settings → Activity** — event-wide feed, entity filters plus the agents lens, 50 rows and
+a Load more that grows one reactive query rather than stitching pages. Both render through
+one `ActivityTimeline` component. Restore is deliberately NOT built: swyx's own instinct
+(HISTORY 61) was that full versioning is overkill for v1, so `coverage-matrix` #122 and the
+CNT-11 rubric row are marked "history covered, restore deferred by decision" rather than
+claimed as complete.
+
+**Note for the next agent:** `AIRTABLE_DEMO_MODE=1` is now set on the dev deployment, which
+is what makes the Airtable section (and the new two-way assertions) run its full roundtrip
+instead of the "junk token → friendly error" branch. Both branches are correct; unset it if
+you want to test against a real base.
+
+---
+
+## 2026-08-11 — Task library + per-speaker task wording + file comment threads (product-map deltas #10, #8 subset / sbek CNT-05)
+
+Two deltas, one session, both aimed at the thing organizers currently solve with a
+spreadsheet and an inbox.
+
+**Reusable task library (delta #10).** New additive table `taskTemplates {eventId, title,
+instructions, kind, alias?}` with full CRUD in `convex/tasksAdmin.ts`
+(`listTemplates / createTemplate / updateTemplate / removeTemplate / assignFromTemplate`).
+The Assign-a-task dialog leads with a **From your library** select ("Start from scratch"
+first), which fills the form and leaves every field editable — picking a saved task never
+edits the library copy — and closes with a **Save this task to your library** checkbox that
+`tasksAdmin.create` honours idempotently on the title (ticking it twice updates the wording
+instead of piling up near-duplicates). `assignFromTemplate` copies the template's wording
+onto each task, so editing the library later never rewrites tasks already out in the world,
+and it prefers the template's `alias` — Sessionboard's per-portal rename — as the title the
+speaker reads. Seed ships the three an organizer reaches for every season (slides,
+headshot, travel confirmation).
+
+**"Use Field", the cheap version.** Task text stores `{{firstName}} / {{lastName}} /
+{{speakerName}} / {{sessionTitle}} / {{eventName}}` and resolves **at read time** in
+`convex/lib/taskVars.ts` through the same `renderTemplate` the email templates use — so the
+placeholder vocabulary is one vocabulary, and an unknown token collapses to empty rather
+than leaking `{{x}}` at a speaker. The portal (`portal.home`) renders per speaker; the
+organizer's `tasksAdmin.list` returns BOTH the resolved wording (what that speaker actually
+reads) and `instructionsTemplate` (what to edit). `sessionTitle` resolves to their accepted
+talk, else their newest, across both origins (submitter and named co-speaker), with a
+per-person cache so a 40-task roster costs 8 lookups, not 40. The dialog explains it in
+plain English with one-click token buttons — no field picker to learn.
+
+**File comments (delta #8 subset, sbek CNT-05).** Additive `uploadComments {uploadId,
+eventId, authorType, authorLabel, body}`; one shared thread helper
+(`convex/lib/uploadComments.ts`) behind `tasksAdmin.listUploadComments/addUploadComment`
+and `portal.uploadComments/addUploadComment`, so the two sides can never drift in shape or
+order (oldest first, 2,000-char cap). `authorLabel` is captured at write time and survives
+renames. One presentational `shared/file-comments.tsx` renders both surfaces — the
+submission drawer's Files tab and the portal's task file rows — collapsed to a count until
+someone opens it. Portal authorization reuses the file's own ownership plus co-speakers on
+the same session; a stranger's token can neither read nor post. No email in v1 — exactly
+how Sessionboard ships it (their docs call it a known gap). `tasksAdmin.listUploads` now
+also returns `commentCount / lastCommentAt`, which is the Files library's `Comments` /
+`Last Comment At` columns pre-wired for TODO [14].
+
+**Verification.** `scripts/verify-backend.mjs` gains two sections — **File comments** (13
+assertions incl. cross-role visibility, attribution, empty/oversize refusal, and four
+authz negatives) and **Task library & personalisation** (19 assertions incl. "no raw
+placeholder ever reaches a speaker", alias-wins-in-the-portal, save-twice-updates, and
+cleanup of everything it created). Both green.
+
+**Note for the next agent:** the dev deployment was being reseeded by parallel agents every
+couple of minutes while this landed, so full-suite runs kept dying mid-flight with "Event
+not found" / "Session expired". Reseed and rerun; the failures are always state collisions,
+never assertions.
+
+---
+
+## 2026-08-11 — The four P0 UI gaps from the API-parity census
+
+`docs/reference/api-parity.md` ends with a feature census: every endpoint Sessionboard
+ships implies a product surface an organizer can *use*, and four of ours were backend-only
+(#6 delete/restore, #8 editable answers, #16 value lists, #20 webhooks). All four are now
+built. None of them needed new domain logic — the interesting part was making the UI reach
+the *same* code path the REST API already reaches, rather than a parallel one.
+
+**#6 — Delete a submission, and get it back.** The single biggest gap: there was no way to
+remove a spam or duplicate submission from the product at all. `submissions.remove` /
+`restore` are the organizer-side twins of `DELETE /sessions/{id}` and
+`POST /sessions/{id}/restore` — same soft delete, same admin-only rule, same webhooks
+(`session.deleted` / `session.restored`), plus an audit row. Reachable from the `…` row
+menu and the detail-drawer footer; the confirm is a plain red AlertDialog rather than a
+type-the-name gauntlet, because the toast that follows offers **Undo** and Options →
+"Deleted submissions (N)" restores anything missed. A destructive confirmation should be
+proportional to how hard the mistake is to undo.
+
+The schema had promised since the API landed that a soft-deleted row is "invisible to every
+organizer, portal and public read". Nothing enforced it — only `apiV1.ts` filtered. So this
+change also added `deletedAt` filters to `submissions.list/counts/exportData`, `agenda`
+(conflicts, board, publish count, auto-place), `dashboard`, `portal`, `publicData` and the
+per-form counts. Without that pass, delete would have been a lie in six places.
+
+**#8 — Editable custom-field answers.** Organizers could read "Form answers" and not fix a
+typo in one, while the API could write them. `AnswersEditor` renders each answer through
+the **same `QuestionField` the public CFP form uses**, driven by the question's own
+definition — a dropdown stays a dropdown, a multi-select stays checkboxes. Sharing the
+component is what guarantees the organizer and the speaker are editing the same field and
+not two lookalikes. Saving is autosave-on-blur for typed controls and immediate for picked
+ones (a Select never blurs in a way a user reads as "done"), and only the touched key is
+sent — `updateDetails` now takes an `answers` patch that MERGES, so two organizers editing
+different answers cannot clobber each other. Answers whose question was later deleted from
+the form still render, as text, rather than being dropped on the floor.
+
+**#16 — Value lists are form-question options, and now they're editable.** Formats, levels,
+languages and tags were hardcoded in `src/components/submissions/constants.ts`; an
+organizer could not add a session format without a code change. `convex/valueLists.ts`
+models them exactly as the API does — a value list IS the option set on the owning question
+(`format` / `level` / `language` / `tags`), edited across every form on the event — so the
+form builder, the public form, the organizer's dropdowns and the REST API stay one source
+of truth instead of two that drift. Event settings gains a **Fields & options** tab with
+per-option usage counts (the number that makes "can I safely remove this?" answerable),
+rename that cascades onto every session using the old value, and a "No longer offered" flag
+for values in use that the form stopped offering. Removing takes the option off the form
+and *keeps* it on sessions already using it — deleting an organizer's data because a
+dropdown changed would be indefensible.
+
+**#20 — Webhooks UI.** Full backend, zero UI. Public wrappers in `convex/webhooks.ts`
+(`list`, `eventTypes`, `create`, `update`, `remove`, `rotate`, `sendTest`, `deliveries`)
+perform the same operations as the internal `apiV1` functions, authorized through the
+ordinary workspace-membership rules instead of an API key — one behaviour, two front doors.
+The card lives on **Settings → Integrations** (census row #22 put it there; API & MCP is
+about credentials, Integrations is about things that talk to other systems). It lists
+endpoints with their last delivery status, creates them through a dialog whose event picker
+is grouped by prefix, reveals the `whsec_…` secret exactly once with copy, and offers send
+test / rotate / pause / delete plus a per-endpoint delivery-log drawer.
+
+**Verified in the browser** (organizer demo, screenshots in
+`docs/verification/p0-api-parity-ui/`): delete → toast-with-Undo → Deleted-submissions
+drawer → Restore; the answers block saving a `long_text` answer with a "Saved" affordance;
+Fields & options adding "Fireside chat", confirmed landing in the CFP form's `format`
+options in the database; the webhook create dialog, the one-time secret, and a delivery log
+showing a real `webhook.test` alongside live `submission.updated` / `speaker.updated`
+deliveries with attempt counts and response codes.
+
+**Note for the next agent (again).** The dev deployment was being reseeded by parallel
+agents every 30–60 seconds throughout. Reseeding deletes and recreates events with NEW ids,
+which (a) wipes any row you just soft-deleted, and (b) orphans event-scoped rows in tables
+the seed does not clean — one inert webhook pointing at a dead event id survives in
+`webhooks` from this session. Verify UI behaviour through the UI's own reactive state; a
+follow-up database read is racing the reseeder, not checking your work.
+
+---
+
+## 2026-08-11 — Docs: standalone API reference, a fresh-account walkthrough, self-host page (and a production CFP outage found on the way)
+
+Two things Marko flagged on the shipped `/docs` site, plus the bug that fell out of chasing
+the second one.
+
+**#1 — The API reference "looks very very weird".** It was Scalar embedded inside the docs
+shell: a sidebar inside a sidebar, and Scalar's side-by-side example column squeezed into a
+reading-width content well. Two fixes were sanctioned (integrate real Fumadocs UI, or make
+`/docs/api` a standalone full-page Scalar route). **Chose the standalone route**, and it is
+not just the faster option — it is the right one. Fumadocs UI is a Next.js/React-Router-first
+library that carries its own design language; adopting it would have put a second design
+system next to the Attio-neutral one the whole app was just reconciled onto (RULES 19, 22),
+needed a `RootProvider` in the shared `__root.tsx`, and would still have left Scalar
+squeezed into a content column — because the complaint was never about the docs chrome, it
+was about Scalar not having room. Our own docs shell already matches the product exactly.
+
+`src/routes/docs_.api.tsx` — the `docs_` segment opts the route out of the `/docs` layout,
+so it keeps the same `/docs/api` URL with none of the shell. A 48px bar (← Docs · logo ·
+"API reference" · MCP server · openapi.json) and then Scalar owns everything: `layout:
+"modern"`, its own operation sidebar, the request runner, the client-library panel. The old
+page's quickstart curl and endpoint list were not deleted — they moved into
+`info.description` in `public/docs/api/openapi.json`, which is where Scalar renders an
+API's introduction, so they now also reach anyone who opens the spec in another tool. The
+sidebar entry and the `/docs` index card say it opens full screen (a new `standalone` flag
+on `DocsNavItem` draws a small expand glyph).
+
+**#2 — The guide screenshots told the wrong story.** They came from
+`capture-screenshots.mjs --docs`, which shoots the *seeded* demo: a database already full
+of submissions, a finished agenda, a busy dashboard. A new organizer never sees any of it,
+and the empty states — the screens they actually meet on day one — appeared nowhere.
+
+New `scripts/capture-walkthrough.mjs` signs up a **brand-new account every run** and drives
+one organizer's whole journey through the real UI, 31 numbered shots in order:
+`01-sign-up` → empty workspace → create **Devcon Berlin 2026** → event details → rooms
+(Aula, Workshop) & tracks → the CFP form built step by step → copy the public link → one
+talk submitted by a speaker in their own browser context → it appears in the inbox →
+drawer → Accept Queue → commit → speaker portal → assign a task → schedule onto the agenda
+→ publish → `31-public-page` live. Nine guide pages were rewritten around them, so the
+reader follows one event growing page by page. Seeded shots were kept in exactly five
+places where *populated-at-scale* is the point (dashboard numbers, a deep submissions
+table, a conflicting agenda, a filled speaker profile, workspace/integration screens) and
+each is captioned as a different, larger event so the narrative never lies. The twenty
+now-orphaned seeded PNGs were deleted and `capture-screenshots.mjs --docs` trimmed to the
+twelve that remain, so the two scripts no longer overlap.
+
+Notes for whoever runs it next: the public CFP wizard is driven as a **state machine**, not
+a straight line (it is server-rendered — a Continue click landing before hydration submits
+natively and resets the wizard to Welcome; same approach as `tests/e2e/flows/cfp-submit.spec.ts`).
+The event slug is claimed up front via `convex run events:getBySlug` rather than by
+retrying a taken one. `--resume <email> <slug>` re-shoots only shots 29–31.
+
+**#3 — Self-host page** (`/docs/self-host`, last in the Developers section): clone,
+`pnpm dev:setup`, `pnpm dev`, `pnpm deploy`, and the four optional env vars — every command
+in a copyable `CodeSnippet`.
+
+**#4 — Client brand icons** on both connect surfaces (`/docs/mcp` tabs and Settings → API &
+MCP), via one shared `ClientIcon` using Google's favicon service with a `RiPlugLine`
+fallback. The tab strip needed `overflow-x-auto` afterwards — four labels plus icons are a
+few pixels wider than a 390px phone.
+
+### The bug: every anonymous surface was silently dead, in production
+
+Driving the walkthrough's speaker submission never got past the account step. It was not
+the script: **`submit.identify` was never reaching Convex at all**, and the repo's own
+`cfp-submit.spec.ts` was failing the same way. Reproduced on **trackstage.app**, so this
+was live.
+
+Root cause, two pieces that only break in combination:
+
+1. `src/router.tsx` builds the client with `expectAuth: true`, which **pauses the Convex
+   websocket at construction** until auth resolves one way or the other.
+2. Convex's `ConvexProviderWithAuth` calls `client.clearAuth()` only in the *cleanup* of an
+   effect that runs when the visitor is authenticated. A visitor who is **never**
+   authenticated never triggers it — and `clearAuth()` would not have helped anyway: only
+   `setAuth()` runs the code path that calls `resumeSocket()`.
+
+So on every public surface the socket stayed paused forever. Pages still rendered (their
+data comes from the SSR-dehydrated cache), which is exactly why this was invisible — but
+the first live query or mutation hung with no error: the CFP form's Continue button stuck
+on "Checking…", and the same latent failure sat under the speaker portal and evaluator
+review links.
+
+Fix in `src/routes/__root.tsx`: a mount-only effect that, when there is no token, resolves
+auth to "none" with `convexClient.setAuth(async () => null)` — which is what releases the
+socket. Authenticated visitors carry a token and are left to the provider, so the no-flash
+behaviour `expectAuth` exists for is untouched. `cfp-submit.spec.ts` went from failing its
+main journey to **4 passed, 1 flaky (passes on retry)**; the one remaining failure is the
+per-user-limit case asserting console cleanliness while the server correctly throws the
+limit error — a test-strictness nit that was previously unreachable, not a regression.
+
+**Verified:** `pnpm typecheck` 0 errors, eslint clean on every touched file, and a crawl of
+all 15 docs routes at 1440px and 390px — no broken images, no horizontal page overflow, no
+console errors.

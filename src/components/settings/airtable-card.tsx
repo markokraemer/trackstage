@@ -74,7 +74,7 @@ const SCOPES = [
  */
 export function AirtableCard({ eventId }: { eventId: Id<"events"> }) {
   const { data: connection, isPending } = useQuery(
-    convexQuery(api.airtable.status, { eventId }),
+    convexQuery(api.airtable.status, { eventId })
   )
   const [dialogOpen, setDialogOpen] = useState(false)
 
@@ -92,7 +92,11 @@ export function AirtableCard({ eventId }: { eventId: Id<"events"> }) {
           <RiTableLine size={18} aria-hidden className="text-primary" />
           Airtable
           {connection ? (
-            <Badge variant={connection.status === "error" ? "destructive" : "secondary"}>
+            <Badge
+              variant={
+                connection.status === "error" ? "destructive" : "secondary"
+              }
+            >
               {connection.status === "error" ? "Needs attention" : "Connected"}
             </Badge>
           ) : null}
@@ -146,7 +150,11 @@ export function AirtableCard({ eventId }: { eventId: Id<"events"> }) {
             title="Not connected yet"
             description="Connect once and we'll create three tables — Submissions, Speakers and Sessions — in your base, then keep them up to date automatically."
             action={
-              <Button type="button" size="sm" onClick={() => setDialogOpen(true)}>
+              <Button
+                type="button"
+                size="sm"
+                onClick={() => setDialogOpen(true)}
+              >
                 Connect Airtable
               </Button>
             }
@@ -213,20 +221,27 @@ function ConnectedState({ connection }: { connection: Connection }) {
 
       {connection.mode === "demo" ? (
         <Alert>
-          <RiCheckboxCircleFill size={18} aria-hidden className="text-primary" />
+          <RiCheckboxCircleFill
+            size={18}
+            aria-hidden
+            className="text-primary"
+          />
           <AlertTitle>Demo mode</AlertTitle>
           <AlertDescription>
-            This deployment runs with <code className="font-mono text-xs">AIRTABLE_DEMO_MODE=1</code>,
-            so the connection is simulated: we count the rows we would mirror
-            but never call Airtable. Unset it and reconnect with a real token
-            to write for real.
+            This deployment runs with{" "}
+            <code className="font-mono text-xs">AIRTABLE_DEMO_MODE=1</code>, so
+            the connection is simulated: we count the rows we would mirror but
+            never call Airtable. Unset it and reconnect with a real token to
+            write for real.
           </AlertDescription>
         </Alert>
       ) : null}
 
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="flex flex-col gap-1">
-          <span className="text-xs font-medium text-muted-foreground">Base</span>
+          <span className="text-xs font-medium text-muted-foreground">
+            Base
+          </span>
           <a
             href={connection.baseUrl}
             target="_blank"
@@ -238,7 +253,9 @@ function ConnectedState({ connection }: { connection: Connection }) {
           </a>
         </div>
         <div className="flex flex-col gap-1">
-          <span className="text-xs font-medium text-muted-foreground">Token</span>
+          <span className="text-xs font-medium text-muted-foreground">
+            Token
+          </span>
           <span className="font-mono text-sm text-foreground">
             {connection.tokenMasked}
           </span>
@@ -322,12 +339,10 @@ function TwoWayToggle({
               toast.success(
                 value
                   ? "Two-way sync on — Status changes in Airtable will come back."
-                  : "Two-way sync off — Airtable is a read-only mirror again.",
+                  : "Two-way sync off — Airtable is a read-only mirror again."
               )
             } catch (error) {
-              toast.error(
-                errorMessage(error, "Couldn't change that setting."),
-              )
+              toast.error(errorMessage(error, "Couldn't change that setting."))
             }
           }}
         />
@@ -357,7 +372,9 @@ function ConnectDialog({
   const [token, setToken] = useState("")
   const [baseId, setBaseId] = useState("")
   const [error, setError] = useState<string | null>(null)
-  const connect = useMutation({ mutationFn: useConvexAction(api.airtable.connect) })
+  const connect = useMutation({
+    mutationFn: useConvexAction(api.airtable.connect),
+  })
 
   function reset() {
     setToken("")
@@ -379,7 +396,7 @@ function ConnectDialog({
       toast.success(
         result.createdTables.length > 0
           ? `Airtable connected — created ${result.createdTables.join(", ")}.`
-          : "Airtable connected — syncing now.",
+          : "Airtable connected — syncing now."
       )
       for (const warning of result.warnings) toast.warning(warning)
     } catch (caught) {
@@ -462,7 +479,8 @@ function ConnectDialog({
             description="Open the base in Airtable — the ID is in the address bar, right after airtable.com/ and starting with “app”."
             footer={
               <span className="font-mono text-[11px]">
-                airtable.com/<b className="text-foreground">appAbC123XyZ</b>/tblXXXX/viwXXXX
+                airtable.com/<b className="text-foreground">appAbC123XyZ</b>
+                /tblXXXX/viwXXXX
               </span>
             }
           >
@@ -483,7 +501,11 @@ function ConnectDialog({
             <Button type="submit" disabled={connect.isPending}>
               {connect.isPending ? (
                 <>
-                  <RiLoader4Line size={15} aria-hidden className="animate-spin" />
+                  <RiLoader4Line
+                    size={15}
+                    aria-hidden
+                    className="animate-spin"
+                  />
                   Checking with Airtable…
                 </>
               ) : (

@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test"
+import type { Locator, Page } from "@playwright/test"
 import { api } from "../../../convex/_generated/api.js"
 import type { Id } from "../../../convex/_generated/dataModel"
 import {
@@ -29,6 +30,61 @@ import {
  * condition works → copy public link → close the form → public says closed.
  */
 
+/**
+ * Close the question editor. "Done" only calls `onOpenChange(false)` — every
+ * edit is already applied live — so Escape is exactly equivalent and, unlike
+ * clicking, doesn't need the button to be *stable*: the drawer animates and
+ * re-renders continuously while open, which starves Playwright's actionability
+ * check (observed: 36 stability retries, then a timeout).
+ */
+/**
+ * Move to a step in the builder's rail. The click can land before the editor
+ * has hydrated, in which case nothing happens and the next assertion fails on
+ * a screen that looks fine — so click until the step's own content shows up.
+ */
+async function goToStep(page: Page, step: RegExp, content: Locator) {
+  await expect(async () => {
+    if (await content.first().isVisible().catch(() => false)) return
+    await page.getByRole("button", { name: step }).first().click({ timeout: 5_000 })
+    await expect(content.first()).toBeVisible({ timeout: 4_000 })
+  }).toPass({ timeout: 45_000 })
+}
+
+/**
+ * "+ Add question" → pick a type → the editor drawer opens. The trigger is a
+ * dropdown menu, so a click that lands mid-render opens nothing; retry the
+ * whole gesture until the drawer is actually up. The button is labelled "Add
+ * question" in the header and "Add another question" under the list — either
+ * will do.
+ */
+async function addQuestion(page: Page, type: RegExp) {
+  const drawer = page.getByRole("dialog").first()
+  await expect(async () => {
+    if (await drawer.isVisible().catch(() => false)) return
+    await page
+      .getByRole("button", { name: /add (another )?question/i })
+      .first()
+      .click({ timeout: 5_000 })
+    await page
+      .getByRole("menuitem", { name: type })
+      .first()
+      .click({ timeout: 5_000 })
+    await expect(drawer).toBeVisible({ timeout: 5_000 })
+  }).toPass({ timeout: 45_000 })
+  return drawer
+}
+
+async function closeQuestionEditor(page: Page, drawer: Locator) {
+  await page.keyboard.press("Escape")
+  if (await present(drawer, 2_000)) {
+    await drawer
+      .getByRole("button", { name: /^done$/i })
+      .first()
+      .click({ force: true })
+  }
+  await expect(drawer).toBeHidden({ timeout: 20_000 })
+}
+
 test.describe("form builder", () => {
   test.use({ storageState: ORGANIZER_STATE })
 
@@ -38,6 +94,7 @@ test.describe("form builder", () => {
   }) => {
     const watcher = armed(page)
     const organizer = await organizerConvexClient()
+    const eventId = async () => (await mainEvent(organizer))._id
     const marker = unique("fb")
     const originalName = `Builder Form ${marker}`
     const renamedTo = `Renamed Form ${marker}`
@@ -57,13 +114,23 @@ test.describe("form builder", () => {
       await fillStable(page.getByLabel(/form name/i).first(), originalName)
       await page.getByRole("button", { name: /^create form$/i }).first().click()
       await expect(page).toHaveURL(/\/app\/forms\/[a-z0-9]+/i, { timeout: 45_000 })
-      formId = page.url().split("/").pop()!.split("?")[0] as Id<"forms">
+      // Resolve the id from the backend rather than by slicing the URL: the
+      // editor adds query state (`?step=…`) and can gain trailing segments, and
+      // a mis-sliced id fails later as an opaque ArgumentValidationError.
+      formId = (
+        await until(
+          async () =>
+            await organizer.query(api.forms.list, { eventId: await eventId() }),
+          (forms) => forms.some((f) => f.internalName === originalName),
+          { label: `the new form "${originalName}" exists` },
+        )
+      ).find((f) => f.internalName === originalName)!._id
       await expectToast(page, /form created/i, 30_000)
       await clearToasts(page)
 
       // ——— Rename (step 1/2 of the rail) ————————————————————————————————
-      await page.getByRole("button", { name: /welcome screen/i }).first().click()
       const internalName = page.getByLabel(/internal form name/i).first()
+      await goToStep(page, /welcome screen/i, internalName)
       if (await present(internalName, 8_000)) {
         await fillStable(internalName, renamedTo)
       } else {
@@ -76,32 +143,32 @@ test.describe("form builder", () => {
       }
 
       // ——— Questions: add a trigger + a dependent with a showIf rule ————
-      await page.getByRole("button", { name: /submission questions/i }).first().click()
-      await expect(
-        page.getByRole("button", { name: /add question/i }).first(),
-      ).toBeVisible({ timeout: 20_000 })
+      await goToStep(
+        page,
+        /submission questions/i,
+        page.getByRole("button", { name: /add question/i }),
+      )
 
       // 1. A dropdown that will drive the condition.
-      await page.getByRole("button", { name: /add question/i }).first().click()
-      await page.getByRole("menuitem", { name: /^dropdown/i }).first().click()
-      const drawer = page.getByRole("dialog").first()
-      await expect(drawer).toBeVisible({ timeout: 20_000 })
+      const drawer = await addQuestion(page, /^dropdown/i)
       await fillStable(drawer.getByLabel(/^question/i).first(), triggerLabel)
-      // Give it two known options.
+      // Give it two known options. Adding one is a re-render, so assert the
+      // count each time rather than looping on a stale `count()`.
       const optionInputs = drawer.getByLabel(/answer option \d+/i)
-      while ((await optionInputs.count()) < 2) {
-        await drawer.getByRole("button", { name: /add option/i }).first().click()
+      for (let want = (await optionInputs.count()) || 0; want < 2; want++) {
+        await drawer
+          .getByRole("button", { name: /add option/i })
+          .first()
+          .click({ force: true })
+        await expect(optionInputs).toHaveCount(want + 1, { timeout: 10_000 })
       }
+      await expect(optionInputs).toHaveCount(2, { timeout: 10_000 })
       await fillStable(optionInputs.nth(0), "In person")
       await fillStable(optionInputs.nth(1), "Remote")
-      await drawer.getByRole("button", { name: /^done$/i }).first().click()
-      await expect(drawer).toBeHidden({ timeout: 20_000 })
+      await closeQuestionEditor(page, drawer)
 
       // 2. A short-text question that only shows for "Remote".
-      await page.getByRole("button", { name: /add (another )?question/i }).last().click()
-      await page.getByRole("menuitem", { name: /^short text/i }).first().click()
-      const drawer2 = page.getByRole("dialog").first()
-      await expect(drawer2).toBeVisible({ timeout: 20_000 })
+      const drawer2 = await addQuestion(page, /^short text/i)
       await fillStable(drawer2.getByLabel(/^question/i).first(), dependentLabel)
       await drawer2
         .getByRole("switch", { name: /only show this question sometimes/i })
@@ -111,8 +178,7 @@ test.describe("form builder", () => {
       await page.getByRole("option", { name: triggerLabel }).first().click()
       await drawer2.getByLabel(/trigger answer/i).first().click()
       await page.getByRole("option", { name: "Remote", exact: true }).first().click()
-      await drawer2.getByRole("button", { name: /^done$/i }).first().click()
-      await expect(drawer2).toBeHidden({ timeout: 20_000 })
+      await closeQuestionEditor(page, drawer2)
 
       // The row summarises the rule the organizer just built.
       await expect(
@@ -189,15 +255,22 @@ test.describe("form builder", () => {
       // ——— Copy public link (swyx hunted for this — it must be one click) —
       await context.grantPermissions(["clipboard-read", "clipboard-write"])
       await gotoApp(page, "/app/forms")
+      // Scope to OUR card. The forms list also holds the seeded CFP, and an
+      // unscoped "Copy public link" copies whichever card renders first — the
+      // assertion below then compares our slug against /submit/cfp.
       const card = page
         .locator("div")
-        .filter({ hasText: renamedTo })
+        .filter({ has: page.getByRole("button", { name: `More actions for ${renamedTo}` }) })
         .last()
       await expect(card).toBeVisible({ timeout: 30_000 })
-      await page.getByRole("button", { name: /copy public link/i }).first().click()
-      await expectToast(page, /public link copied/i, 20_000)
-      const clipboard = await page.evaluate(() => navigator.clipboard.readText())
-      expect(clipboard).toContain(`/submit/${slug}`)
+      await card.getByRole("button", { name: /copy public link/i }).first().click()
+      // The clipboard is the assertion that matters — the toast is a courtesy
+      // and can be gone by the time we look (Sonner auto-dismisses, and this
+      // step runs after several earlier toasts).
+      await expect(async () => {
+        const clipboard = await page.evaluate(() => navigator.clipboard.readText())
+        expect(clipboard).toContain(`/submit/${slug}`)
+      }).toPass({ timeout: 20_000 })
       await clearToasts(page)
 
       // ——— Close the form → the public page says so ————————————————————
@@ -205,16 +278,23 @@ test.describe("form builder", () => {
         formId,
         patch: { status: "closed" },
       })
-      await gotoStable(publicPage, `/submit/${slug}`, "networkidle")
+      await publicPage.close()
+      // Check the closed screen from a CLEAN context: `publicPage` is parked
+      // mid-wizard and the submit flow restores its progress from
+      // sessionStorage, so it would resume the form instead of showing the
+      // closed notice. A first-time visitor is the case that matters.
+      const closedContext = await context.browser()!.newContext()
+      const closedPage = await closedContext.newPage()
+      await gotoStable(closedPage, `/submit/${slug}`, "networkidle")
       await expect(
-        publicPage
+        closedPage
           .getByRole("heading", { name: /this call for speakers is closed/i })
           .first(),
       ).toBeVisible({ timeout: 30_000 })
       await expect(
-        publicPage.getByRole("button", { name: /^continue$/i }),
+        closedPage.getByRole("button", { name: /^continue$/i }),
       ).toHaveCount(0)
-      await publicPage.close()
+      await closedContext.close()
 
       watcher.assertClean("form builder")
     } finally {
@@ -237,8 +317,7 @@ test.describe("form builder", () => {
     test.skip(!cfp, "no form to inspect")
 
     await gotoStable(page, `/app/forms/${cfp._id}`)
-    await page.getByRole("button", { name: /submission questions/i }).first().click()
-    await expect(page.getByText(/^locked$/i).first()).toBeVisible({ timeout: 30_000 })
+    await goToStep(page, /submission questions/i, page.getByText(/^locked$/i))
 
     const titleEnabled = page
       .getByRole("switch", { name: /session title is shown on the form/i })

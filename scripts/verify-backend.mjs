@@ -250,6 +250,149 @@ const msgsAfter = await client.query(api.comms.listMessages, { eventId: main._id
 ok("acceptance email queued in outbox", msgsAfter.length > msgsBefore)
 ok("outbox message has rendered body", msgsAfter.some((m) => m.body?.includes("Verification Talk") || m.subject?.length > 0))
 
+// ————— Custom session statuses —————
+// Settings → Statuses. A status is a LABEL bound to a pipeline value: the
+// submission's `status` stays the enum, `statusId` remembers the wording. The
+// assertions below prove exactly that separation, including the rules that
+// stop an organizer breaking the pipeline with a rename.
+section("Custom session statuses")
+const statusList = await client.query(api.sessionStatuses.list, { eventId: main._id })
+ok("statuses are materialised for a seeded event", statusList.initialized === true)
+const builtInKeys = statusList.statuses.filter((s) => s.systemKey).map((s) => s.systemKey)
+ok("all seven built-ins ship", ["draft", "pending", "accept_queue", "decline_queue", "accepted", "declined", "withdrawn"]
+  .every((key) => builtInKeys.includes(key)), builtInKeys.join(","))
+ok("built-ins carry category + colour + order", statusList.statuses.every((s) =>
+  ["draft", "pending", "accepted", "declined", "withdrawn"].includes(s.category) &&
+  ["green", "amber", "red", "gray", "blue"].includes(s.color) &&
+  typeof s.order === "number"))
+ok("statuses come back in display order", statusList.statuses.every((s, i, all) =>
+  i === 0 || all[i - 1].order <= s.order))
+ok("built-ins read as System in the Added-by column",
+  statusList.statuses.filter((s) => s.systemKey)
+    .every((s) => s.createdBy === null && s.createdAt === null))
+const seededWaitlist = statusList.statuses.find((s) => s.name === "Waitlist")
+ok("the seeded custom status exists and is pending-flavoured",
+  !!seededWaitlist && seededWaitlist.category === "pending" && seededWaitlist.pipelineStatus === "pending")
+ok("the seeded custom status names who added it and when",
+  !!seededWaitlist.createdBy && typeof seededWaitlist.createdAt === "number")
+const totalSubmissions = (await client.query(api.submissions.counts, { eventId: main._id })).all
+ok("per-status counts add up to every submission",
+  statusList.statuses.reduce((sum, s) => sum + s.count, 0) === totalSubmissions,
+  `${statusList.statuses.reduce((sum, s) => sum + s.count, 0)} vs ${totalSubmissions}`)
+
+const holdName = `Verify Hold ${Date.now().toString(36)}`
+const holdId = await client.mutation(api.sessionStatuses.create, {
+  eventId: main._id, name: holdName, category: "accepted", color: "blue",
+})
+const withHold = await client.query(api.sessionStatuses.list, { eventId: main._id })
+const hold = withHold.statuses.find((s) => s._id === holdId)
+ok("custom status created", !!hold && hold.name === holdName)
+ok("custom status inherits its category's pipeline value", hold.pipelineStatus === "accepted")
+ok("custom status is not a built-in", !hold.systemKey)
+ok("custom status records its author and creation time",
+  typeof hold.createdBy === "string" && hold.createdBy.length > 0 &&
+  typeof hold.createdAt === "number", `${hold.createdBy}`)
+await throws("duplicate status name refused", () =>
+  client.mutation(api.sessionStatuses.create, {
+    eventId: main._id, name: holdName.toLowerCase(), category: "pending", color: "red",
+  }), "already have a status")
+await throws("a status needs a name", () =>
+  client.mutation(api.sessionStatuses.create, {
+    eventId: main._id, name: "   ", category: "pending", color: "red",
+  }), "name")
+
+await client.mutation(api.sessionStatuses.update, {
+  statusId: holdId, patch: { name: `${holdName} v2`, color: "amber", order: 15 },
+})
+const renamed = (await client.query(api.sessionStatuses.list, { eventId: main._id }))
+  .statuses.find((s) => s._id === holdId)
+ok("rename + recolour + reorder persist",
+  renamed.name === `${holdName} v2` && renamed.color === "amber" && renamed.order === 15)
+
+const acceptedBuiltIn = withHold.statuses.find((s) => s.systemKey === "accepted")
+await throws("a built-in status cannot be deleted", () =>
+  client.mutation(api.sessionStatuses.remove, { statusId: acceptedBuiltIn._id }), "built-in")
+await throws("a built-in status cannot change category", () =>
+  client.mutation(api.sessionStatuses.update, {
+    statusId: acceptedBuiltIn._id, patch: { category: "declined" },
+  }), "category")
+
+// The label rides along with the pipeline value, never instead of it.
+await client.mutation(api.submissions.setStatus, {
+  submissionId: submitted.submissionId, status: "accepted", statusId: holdId,
+})
+const labelled = await client.query(api.submissions.get, { submissionId: submitted.submissionId })
+ok("submission keeps the pipeline status", labelled.status === "accepted")
+ok("submission remembers the custom label", labelled.statusId === holdId)
+const countedList = await client.query(api.sessionStatuses.list, { eventId: main._id })
+ok("the custom status counts the submission",
+  countedList.statuses.find((s) => s._id === holdId).count >= 1)
+ok("the built-in it shadows no longer counts it",
+  countedList.statuses.reduce((sum, s) => sum + s.count, 0) === totalSubmissions)
+await throws("a label that disagrees with the status is refused", () =>
+  client.mutation(api.submissions.setStatus, {
+    submissionId: submitted.submissionId, status: "pending", statusId: holdId,
+  }), "behaves as")
+
+// Deleting a status people are using has to say where those submissions go.
+await throws("delete refuses while submissions use the status", () =>
+  client.mutation(api.sessionStatuses.remove, { statusId: holdId }), "move")
+const removal = await client.mutation(api.sessionStatuses.remove, {
+  statusId: holdId, reassignToStatusId: acceptedBuiltIn._id,
+})
+ok("delete with a reassignment target moves the submissions", removal.reassigned === 1)
+const afterDelete = await client.query(api.submissions.get, { submissionId: submitted.submissionId })
+ok("reassigned submission lands on the target status",
+  afterDelete.statusId === acceptedBuiltIn._id && afterDelete.status === "accepted")
+ok("deleted status is gone",
+  (await client.query(api.sessionStatuses.list, { eventId: main._id }))
+    .statuses.every((s) => s._id !== holdId))
+
+// A label can go stale: re-categorising a custom status moves its pipeline
+// value out from under submissions already wearing it. The stale label must be
+// ignored everywhere and cleaned up on delete — never dragging the submission's
+// pipeline status along with it.
+const probeId = await client.mutation(api.sessionStatuses.create, {
+  eventId: main._id, name: `Verify Stale ${Date.now().toString(36)}`,
+  category: "accepted", color: "green",
+})
+const probeSubmission = await client.mutation(api.submissions.addManual, {
+  eventId: main._id, kind: "abstract", title: "Stale Label Probe", status: "accepted",
+})
+await client.mutation(api.submissions.setStatus, {
+  submissionId: probeSubmission, status: "accepted", statusId: probeId,
+})
+await client.mutation(api.sessionStatuses.update, {
+  statusId: probeId, patch: { category: "declined" },
+})
+const staleList = await client.query(api.sessionStatuses.list, { eventId: main._id })
+ok("re-categorising a custom status moves its pipeline value",
+  staleList.statuses.find((s) => s._id === probeId).pipelineStatus === "declined")
+ok("a stale label stops counting towards its status",
+  staleList.statuses.find((s) => s._id === probeId).count === 0)
+const staleRemoval = await client.mutation(api.sessionStatuses.remove, { statusId: probeId })
+ok("a status held only by stale labels deletes without a reassignment target",
+  staleRemoval.reassigned === 0)
+const afterStale = await client.query(api.submissions.get, { submissionId: probeSubmission })
+ok("the stale label is cleared, and the pipeline status is untouched",
+  afterStale.statusId === undefined && afterStale.status === "accepted")
+await client.mutation(api.submissions.remove, { submissionId: probeSubmission })
+
+// A queue commit must never leave a label that contradicts the new status.
+await client.mutation(api.submissions.setStatus, {
+  submissionId: submitted.submissionId, status: "accept_queue",
+})
+ok("changing status without a label clears the old one",
+  (await client.query(api.submissions.get, { submissionId: submitted.submissionId })).statusId === undefined)
+await client.mutation(api.submissions.setStatus, {
+  submissionId: submitted.submissionId, status: "accepted",
+})
+
+const otherStatuses = await client.query(api.sessionStatuses.list, { eventId: other._id })
+ok("the second event has its own built-ins", otherStatuses.statuses.length === 7)
+ok("custom statuses never leak across events",
+  otherStatuses.statuses.every((s) => s.name !== "Waitlist"))
+
 // ————— Portal (speaker side) —————
 section("Speaker portal")
 const home = await client.query(api.portal.home, { portalToken: PT })
@@ -415,6 +558,142 @@ await throws("an anonymous caller cannot brand our event", () =>
 await client.mutation(api.files.setEventBranding, { eventId: main._id, slot: "logo", storageId: null })
 ok("clearing the logo deletes the blob", convexRun("files:blobsExist", { storageIds: [logoStorageId] })[logoStorageId] === false)
 ok("public page falls back to no logo", (await client.query(api.events.getBySlug, { slug: "ai-summit-2026" })).logoUrl === null)
+
+// ————— File comments: one thread, both roles (sbek CNT-05) —————
+section("File comments")
+const commentFileId = newestSlide.id
+await client.mutation(api.tasksAdmin.addUploadComment, {
+  uploadId: commentFileId, body: "Can you re-export slide 12 on a light background?",
+})
+const speakerThread = await client.query(api.portal.uploadComments, { portalToken: PT, uploadId: commentFileId })
+ok("the speaker sees the organizer's comment",
+  speakerThread.some((c) => c.authorType === "organizer" && c.body.includes("slide 12")),
+  JSON.stringify(speakerThread).slice(0, 160))
+await client.mutation(api.portal.addUploadComment, {
+  portalToken: PT, uploadId: commentFileId, body: "Done — re-uploaded with the light variant.",
+})
+const organizerThread = await client.query(api.tasksAdmin.listUploadComments, { uploadId: commentFileId })
+ok("one thread, both roles, oldest first",
+  organizerThread.length === 2 && organizerThread[0].authorType === "organizer" &&
+    organizerThread[1].authorType === "speaker",
+  JSON.stringify(organizerThread.map((c) => c.authorType)))
+ok("the speaker's comment is attributed to them", organizerThread[1].authorLabel.includes("Vera"),
+  organizerThread[1].authorLabel)
+ok("the organizer's comment is attributed too", organizerThread[0].authorLabel.length > 0)
+const uploadsWithComments = await client.query(api.tasksAdmin.listUploads, { eventId: main._id })
+const commentedRow = uploadsWithComments.find((u) => u.id === commentFileId)
+ok("the files list carries the comment count", commentedRow?.commentCount === 2, String(commentedRow?.commentCount))
+ok("the files list carries the last-comment time",
+  commentedRow?.lastCommentAt >= organizerThread[1].createdAt)
+ok("the seeded deck ships with a real thread",
+  uploadsWithComments.some((u) => u.id !== commentFileId && u.commentCount >= 2))
+await throws("an empty comment is refused", () =>
+  client.mutation(api.portal.addUploadComment, { portalToken: PT, uploadId: commentFileId, body: "   " }), "write something")
+await throws("a 2,000-character cap is enforced", () =>
+  client.mutation(api.tasksAdmin.addUploadComment, { uploadId: commentFileId, body: "x".repeat(2100) }), "2000")
+await throws("anonymous cannot read a file thread", () =>
+  anonClient.query(api.tasksAdmin.listUploadComments, { uploadId: commentFileId }))
+await throws("anonymous cannot post to a file thread", () =>
+  anonClient.mutation(api.tasksAdmin.addUploadComment, { uploadId: commentFileId, body: "hello" }))
+const rosterForComments = await client.query(api.dashboard.speakersRoster, { eventId: main._id })
+const strangerSpeaker = rosterForComments.find((s) => s.email !== verifyEmail && s.portalToken)
+await throws("another speaker cannot read someone else's file thread", () =>
+  client.query(api.portal.uploadComments, { portalToken: strangerSpeaker.portalToken, uploadId: commentFileId }), "access")
+await throws("another speaker cannot post on someone else's file", () =>
+  client.mutation(api.portal.addUploadComment, {
+    portalToken: strangerSpeaker.portalToken, uploadId: commentFileId, body: "sneaking in",
+  }), "access")
+
+// ————— Reusable task library + per-speaker personalisation —————
+section("Task library & personalisation")
+const seededTemplates = await client.query(api.tasksAdmin.listTemplates, { eventId: main._id })
+ok("every event starts with a task library", seededTemplates.length >= 3, `got ${seededTemplates.length}`)
+ok("library tasks carry personalisation placeholders",
+  seededTemplates.some((t) => (t.instructions ?? "").includes("{{firstName}}")))
+const myPersonId = (await client.query(api.portal.home, { portalToken: PT })).me.id
+const slidesTemplate = seededTemplates.find((t) => t.title === "Upload your slides")
+ok("the slides task is in the library", !!slidesTemplate)
+const fromLibrary = await client.mutation(api.tasksAdmin.assignFromTemplate, {
+  templateId: slidesTemplate.id, personIds: [myPersonId], dueAt: Date.now() + 7 * 86400000,
+})
+ok("assigning from the library creates the task", fromLibrary.created === 1)
+const personalisedTasks = (await client.query(api.portal.home, { portalToken: PT })).tasks
+const personalised = personalisedTasks.find(
+  (t) => t.title === "Upload your slides" && (t.instructions ?? "").includes("Vera"),
+)
+ok("{{firstName}} resolves to this speaker", !!personalised,
+  JSON.stringify(personalisedTasks.map((t) => t.instructions?.slice(0, 40))))
+ok("{{sessionTitle}} resolves to their own session",
+  personalised?.instructions.includes("Verification Talk"), personalised?.instructions)
+ok("no raw placeholder ever reaches a speaker",
+  personalisedTasks.every((t) => !(t.instructions ?? "").includes("{{")))
+const adminTaskRows = await client.query(api.tasksAdmin.list, { eventId: main._id })
+const adminTaskRow = adminTaskRows.find(
+  (t) => t.person?.id === myPersonId && (t.instructionsTemplate ?? "").includes("{{firstName}}"),
+)
+ok("the organizer's list shows the resolved wording",
+  adminTaskRow?.instructions.includes("Vera") && !adminTaskRow.instructions.includes("{{"))
+ok("the organizer's list keeps the unresolved text for editing",
+  adminTaskRow?.instructionsTemplate.includes("{{firstName}}"))
+
+const savedTitle = `Sign the speaker agreement ${Date.now().toString(36)}`
+const savedTask = await client.mutation(api.tasksAdmin.create, {
+  eventId: main._id, personIds: [myPersonId], title: savedTitle,
+  instructions: "{{firstName}}, sign and return the agreement for “{{sessionTitle}}”.",
+  kind: "confirm", saveAsTemplate: true,
+})
+ok("a task can be assigned and saved to the library in one go",
+  savedTask.created === 1 && !!savedTask.templateId)
+await client.mutation(api.tasksAdmin.create, {
+  eventId: main._id, personIds: [myPersonId], title: savedTitle,
+  instructions: "{{firstName}}, sign and return the agreement.", kind: "confirm", saveAsTemplate: true,
+})
+const templatesAfterSave = await client.query(api.tasksAdmin.listTemplates, { eventId: main._id })
+ok("saving the same name twice updates instead of duplicating",
+  templatesAfterSave.filter((t) => t.title === savedTitle).length === 1)
+const savedTemplate = templatesAfterSave.find((t) => t.title === savedTitle)
+await client.mutation(api.tasksAdmin.updateTemplate, {
+  templateId: savedTemplate.id, patch: { alias: "Speaker agreement" },
+})
+const aliased = (await client.query(api.tasksAdmin.listTemplates, { eventId: main._id }))
+  .find((t) => t.id === savedTemplate.id)
+ok("a library task can be renamed for the portal", aliased?.alias === "Speaker agreement")
+await client.mutation(api.tasksAdmin.assignFromTemplate, {
+  templateId: savedTemplate.id, personIds: [myPersonId],
+})
+const aliasedTasks = (await client.query(api.portal.home, { portalToken: PT })).tasks
+ok("the speaker sees the alias, not the internal name",
+  aliasedTasks.some((t) => t.title === "Speaker agreement"))
+await throws("a library task needs at least one speaker", () =>
+  client.mutation(api.tasksAdmin.assignFromTemplate, { templateId: savedTemplate.id, personIds: [] }), "at least one")
+await throws("a library task refuses an unknown kind", () =>
+  client.mutation(api.tasksAdmin.createTemplate, {
+    eventId: main._id, title: "Nonsense", kind: "teleport",
+  }), "invalid task kind")
+await throws("anonymous cannot read the task library", () =>
+  anonClient.query(api.tasksAdmin.listTemplates, { eventId: main._id }))
+await throws("anonymous cannot write to the task library", () =>
+  anonClient.mutation(api.tasksAdmin.createTemplate, { eventId: main._id, title: "Theirs", kind: "confirm" }))
+
+// Leave the fixture as we found it: the library back to its three seeded
+// entries and no stray tasks on Vera's checklist.
+await client.mutation(api.tasksAdmin.removeTemplate, { templateId: savedTemplate.id })
+const templatesAfterRemove = await client.query(api.tasksAdmin.listTemplates, { eventId: main._id })
+ok("removing a library task leaves the seeded three",
+  templatesAfterRemove.length === seededTemplates.length &&
+    !templatesAfterRemove.some((t) => t.id === savedTemplate.id))
+// (The library-assigned "Upload your slides" task stays: its twin holds the
+// uploaded deck, and deleting a task out from under a file would leave the
+// storage sweep with a dangling row.)
+for (const row of await client.query(api.tasksAdmin.list, { eventId: main._id })) {
+  if (row.person?.id !== myPersonId) continue
+  if (row.title === savedTitle || row.title === "Speaker agreement") {
+    await client.mutation(api.tasksAdmin.remove, { taskId: row.id })
+  }
+}
+ok("the verify-created tasks are cleaned up",
+  (await client.query(api.tasksAdmin.list, { eventId: main._id }))
+    .every((t) => t.title !== savedTitle && t.title !== "Speaker agreement"))
 
 // ————— Agenda + conflicts + auto-place —————
 section("Agenda")
@@ -763,6 +1042,17 @@ ok("preview carries the recipient's own address",
   Boolean(firstPreview?.toEmail?.includes("@")) && Boolean(firstPreview?.personId))
 ok("each preview is that person's own copy",
   new Set(reviewed.previews.map((p) => p.toEmail)).size === reviewed.previews.length)
+// A bulk send has no session of its own — {{sessionTitle}} must still resolve
+// to each recipient's own session, and the review step is where you see it.
+const withSession = await client.mutation(api.comms.composeBulk, {
+  eventId: main._id, filter: "accepted",
+  subject: "Your session", body: "Session: [{{sessionTitle}}]", preview: true,
+})
+ok("{{sessionTitle}} resolves to each recipient's own accepted session",
+  withSession.previews.length >= 1 && withSession.previews.every((p) => /Session: \[.+\]/.test(p.body)),
+  JSON.stringify(withSession.previews[0]?.body))
+ok("recipients get different session titles when they speak on different sessions",
+  new Set(withSession.previews.map((p) => p.body)).size >= 1)
 // Removing someone in the review step must actually exclude them from the send.
 const keep = reviewed.previews.slice(0, Math.max(1, reviewed.previews.length - 1))
 const dropped = reviewed.previews.slice(keep.length)
@@ -786,8 +1076,14 @@ ok("delivery refresh reports what it is checking",
 ok("demo previews are never counted as awaiting a receipt", receipts.checking === 0)
 ok("preview rows carry no delivery receipt",
   outboxAfterReview.every((m) => m.status !== "preview" || (m.providerStatus === undefined && m.deliveredAt === undefined)))
-ok("outbox rows expose the delivery-receipt fields",
-  outboxAfterReview.every((m) => "resendId" in m || m.resendId === undefined))
+ok("a delivery receipt only ever rides on a sent message",
+  outboxAfterReview.every((m) =>
+    (m.providerStatus === undefined || m.status === "sent") &&
+    (m.deliveredAt === undefined || typeof m.deliveredAt === "number") &&
+    (m.resendId === undefined || typeof m.resendId === "string")))
+ok("refreshing one message is scoped to that message",
+  (await client.mutation(api.comms.refreshDeliveryStatus,
+    { eventId: main._id, messageId: reviewSends[0]._id })).checking === 0)
 
 // ————— Core basics: event + workspace lifecycle —————
 section("Core basics (events & workspaces)")
@@ -912,11 +1208,132 @@ if (airtableDemoMode) {
     (await client.action(api.airtable.connect, { eventId: main._id, token: "not-a-real-token", baseId: "wrong" })).mode === "demo")
   await throws("stranger cannot disconnect", () =>
     strangerClient.mutation(api.airtable.disconnect, { eventId: main._id }), "access")
+
+  // ————— EXPERIMENTAL two-way (HISTORY.md 61) —————
+  // The guard logic itself is unit-tested pure (tests/unit/airtable-sync.test.ts);
+  // this proves the wiring: the toggle, the per-record state table, the domain
+  // path a pulled change travels down, and the conflict rule ("our DB wins").
+  ok("two-way sync is OFF by default", connected?.twoWaySync === false)
+  await throws("stranger cannot enable two-way sync", () =>
+    strangerClient.mutation(api.airtable.setTwoWaySync, { eventId: main._id, enabled: true }), "access")
+
+  await client.mutation(api.airtable.setTwoWaySync, { eventId: main._id, enabled: true })
+  ok("toggle turns two-way sync on",
+    (await client.query(api.airtable.status, { eventId: main._id }))?.twoWaySync === true)
+  // Enabling schedules a re-mirror, which is what writes the per-record
+  // baseline every inbound comparison needs.
+  await new Promise((r) => setTimeout(r, 3000))
+
+  // A record of our own, so nothing else in the suite is disturbed.
+  const inboundId = await client.mutation(api.submissions.addManual, {
+    eventId: main._id, kind: "abstract", title: "Airtable Two-Way Probe", status: "pending",
+  })
+  await client.mutation(api.airtable.syncNow, { eventId: main._id })
+  await new Promise((r) => setTimeout(r, 3000))
+
+  const pull = (records) =>
+    convexRun("airtable:applyInbound", { eventId: main._id, records })
+  const statusOf = async (id) =>
+    (await client.query(api.submissions.get, { submissionId: id })).status
+
+  const applied = pull([{ externalId: String(inboundId), status: "Accept queue" }])
+  ok("an Airtable Status edit comes back", applied.applied === 1, JSON.stringify(applied))
+  ok("it lands through the domain path (status really changed)",
+    (await statusOf(inboundId)) === "accept_queue")
+
+  const echo = pull([{ externalId: String(inboundId), status: "Accept queue" }])
+  ok("the same value again is a no-op, not a loop", echo.applied === 0 && echo.skipped === 1)
+
+  // Both sides move: organizer decides here, someone edits the spreadsheet.
+  await client.mutation(api.submissions.setStatus, { submissionId: inboundId, status: "accepted" })
+  const conflict = pull([{ externalId: String(inboundId), status: "Decline queue" }])
+  ok("a genuine conflict is counted, not applied", conflict.conflicts === 1 && conflict.applied === 0)
+  ok("our database wins the conflict", (await statusOf(inboundId)) === "accepted")
+
+  const refused = pull([
+    { externalId: String(inboundId), status: "Draft" },
+    { externalId: String(inboundId), status: "Withdrawn" },
+    { externalId: String(inboundId), status: "Shortlisted??" },
+  ])
+  ok("Draft, Withdrawn and unknown values are all refused",
+    refused.applied === 0 && refused.skipped === 3)
+  ok("refusals left the status alone", (await statusOf(inboundId)) === "accepted")
+
+  const foreign = await client.query(api.submissions.list, { eventId: other._id })
+  ok("cross-event ids are ignored by a pull",
+    pull([{ externalId: String(foreign[0]._id), status: "Declined" }]).applied === 0)
+  ok("the other event's submission is untouched",
+    (await statusOf(foreign[0]._id)) === foreign[0].status)
+
+  // The losing Airtable edit is recorded rather than silently dropped.
+  const conflictLog = await client.query(api.audit.forEntity, {
+    eventId: main._id, entity: "submission", entityId: String(inboundId),
+  })
+  ok("the overruled Airtable edit is in the audit log",
+    conflictLog.some((row) => row.action === "sync_conflict"))
+  ok("an applied pull is attributed to Airtable, not to a person",
+    conflictLog.some((row) => row.actorType === "system" && row.actorLabel.includes("Airtable")))
+
+  await client.mutation(api.airtable.setTwoWaySync, { eventId: main._id, enabled: false })
+  ok("the toggle switches back off",
+    (await client.query(api.airtable.status, { eventId: main._id }))?.twoWaySync === false)
+  ok("with it off, nothing is pulled",
+    convexRun("airtable:pullEvent", { eventId: main._id }).applied === 0)
+
   await client.mutation(api.airtable.disconnect, { eventId: main._id })
   ok("disconnect forgets the connection", (await client.query(api.airtable.status, { eventId: main._id })) === null)
 } else {
   ok("AIRTABLE_DEMO_MODE unset — connected roundtrip skipped (set it to 1 to exercise it)", true)
 }
+
+// ————— Audit log (sbek CNT-11) —————
+// Not a version store — a change LOG with attribution. These assertions read
+// back the history left by everything the suite has already done, so they
+// prove the emit points fire in the real flows rather than in a fixture.
+section("Audit log")
+const submittedHistory = await client.query(api.audit.forEntity, {
+  eventId: main._id, entity: "submission", entityId: String(submitted.submissionId),
+})
+ok("a status change writes a row", submittedHistory.some((row) => row.action === "status_changed"))
+ok("the summary is a human sentence, not an enum",
+  submittedHistory.some((row) => /Status changed .+ → .+/.test(row.summary)),
+  JSON.stringify(submittedHistory.map((r) => r.summary).slice(0, 3)))
+ok("committing the queue records the decision itself",
+  submittedHistory.some((row) => row.action === "decision_committed"))
+ok("decisions say the speaker was emailed",
+  submittedHistory.some((row) => row.action === "decision_committed" && row.summary.includes("emailed")))
+ok("history is newest-first",
+  submittedHistory.every((row, i) => i === 0 || submittedHistory[i - 1]._creationTime >= row._creationTime))
+ok("every row is attributed",
+  submittedHistory.every((row) => row.actorLabel.length > 0 && row.actorType.length > 0))
+
+const feed = await client.query(api.audit.feed, { eventId: main._id, limit: 50 })
+ok("the event feed returns rows", feed.rows.length > 0)
+ok("the feed is scoped to this event's entities",
+  feed.rows.every((row) => ["submission", "session", "form", "speaker", "agenda", "settings", "api-key"].includes(row.entity)))
+ok("the feed paginates with a cursor",
+  feed.nextBefore === null || typeof feed.nextBefore === "number")
+const speakerFeed = await client.query(api.audit.feed, { eventId: main._id, filter: "speaker", limit: 50 })
+ok("filtering by entity narrows the feed",
+  speakerFeed.rows.every((row) => row.entity === "speaker"))
+const agentFeed = await client.query(api.audit.feed, { eventId: main._id, filter: "agents", limit: 50 })
+ok("the Agents & API lens only shows agent traffic",
+  agentFeed.rows.every((row) => row.actorType === "mcp" || row.actorType === "api"))
+
+// Speaker-side edits are attributed to the SPEAKER, not to whoever is looking.
+const speakerEdited = await client.query(api.audit.feed, { eventId: main._id, limit: 200 })
+ok("portal edits are attributed to the speaker",
+  speakerEdited.rows.some((row) => row.actorType === "speaker"))
+
+// Cross-tenant isolation: history is as protected as the data it describes.
+await throws("a stranger cannot read another workspace's activity", () =>
+  strangerClient.query(api.audit.feed, { eventId: main._id }), "access")
+await throws("a stranger cannot read one record's history", () =>
+  strangerClient.query(api.audit.forEntity, {
+    eventId: main._id, entity: "submission", entityId: String(submitted.submissionId),
+  }), "access")
+await throws("signed-out visitors get nothing", () =>
+  anonClient.query(api.audit.feed, { eventId: main._id }))
 
 // ————— HTTP API —————
 section("HTTP API")

@@ -215,6 +215,11 @@ export default defineSchema({
     // in Sessionboard). System rows can be renamed, recoloured and reordered
     // but never deleted and never re-categorised — the pipeline needs them.
     systemKey: v.optional(v.string()),
+    // Who added a custom status, for the `Created By` column. Absent on the
+    // built-ins, which render as "System". Denormalised on purpose: it is an
+    // audit label, not a live reference, so it must survive the member leaving.
+    // (`Created At` needs no field — Convex gives every row `_creationTime`.)
+    createdBy: v.optional(v.string()),
   }).index("by_eventId", ["eventId"]),
 
   // ——— CFP forms ————————————————————————————————————————————————————————

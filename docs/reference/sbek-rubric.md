@@ -105,13 +105,13 @@ Every optional Speaker-CRM item (12) is a Gap — SPEC.md has no org-level/cross
 | CNT-02 | 3 | crud | Speaker portal lists tasks w/ deadlines, accepts file upload recorded against task/session | §4.7 Tasks "file-upload" task type | Covered |
 | CNT-03 | 3 | scoping | Speaker scoped to own sessions/tasks; admin routes blocked for speaker accounts | §3 IA (`/portal` has no admin nav; separate route tree from `/app`) | Covered (structural, via route/IA separation) |
 | CNT-04 | 2 | rule | Re-upload creates a new version; latest marked, priors still accessible | §5 `uploads` table has no version field | **Gap** — no versioning concept anywhere |
-| CNT-05 | 2 | roundtrip | Comments on an uploaded file, author+timestamp, visible cross-role | — | **Gap** — no comment-thread feature on uploads |
+| CNT-05 | 2 | roundtrip | Comments on an uploaded file, author+timestamp, visible cross-role | `convex/lib/uploadComments.ts` · `tasksAdmin.listUploadComments/addUploadComment` · `portal.uploadComments/addUploadComment` · `src/components/shared/file-comments.tsx` | **Covered** (2026-08-11) — one thread per file, author + role + timestamp, organizer and speaker read the same conversation |
 | CNT-06 | 1 | depth | Upload UI states file constraints (type/size) | — | **Gap** — no constraint messaging described |
 | CNT-07 | 3 | roundtrip | Deliverables dashboard: per-speaker per-task status, filterable, reflects uploads | §4.8 Dashboard "Outstanding tasks" metric + "Top speakers by outstanding tasks" | Partial — dashboard-level insight exists; no full filterable per-task grid described |
 | CNT-08 | 2 | bulk | Bulk reminder to speakers with outstanding tasks, confirmed | §4.9 "manual 'Send reminder to incomplete speakers' action + auto-reminder cron" | Covered (near-verbatim match) |
 | CNT-09 | 2 | crud | Organizer edits session title/abstract from admin, persists | §4.4 drawer (Details/Participants/Evaluations tabs) — editability not explicit | Partial |
 | CNT-10 | 2 | crud | Organizer edits speaker bio/headshot from admin, persists | — | **Gap** — only speaker self-edit via portal (§4.7) is described; no organizer-side edit path |
-| CNT-11 | 2 | depth | Content edits logged in version/change history w/ attribution+timestamp; restore works | — | **Gap** — no change-history/restore feature anywhere |
+| CNT-11 | 2 | depth | Content edits logged in version/change history w/ attribution+timestamp; restore works | `convex/audit.ts` · submission drawer History tab · Settings → Activity | **Mostly closed (2026-08-11)** — append-only audit log with attribution + timestamp, incl. agent/API writes. Restore deliberately not built (HISTORY.md 61). |
 | CNT-12 | 3 | rule | Sessions carry a content-approval status; unapproved content excluded from public output | §5 `submissions.status` (accept/decline/etc.) is the only status field | **Gap** — no distinct content-approval gate separate from submission/session status |
 | CNT-13 | 1 | exists | Central files library aggregating uploads w/ metadata (session/speaker/date/versions) | — | **Gap** — no "Library"/"Files" nav item or screen anywhere in §3 IA |
 | CNT-14 | 2 | bulk | Multi-select sessions/files → bulk ZIP download of latest versions | — | **Gap** — no bulk export feature described |
@@ -209,8 +209,16 @@ with 20% of the graded score:
   feature ("re-upload creates a new version, latest clearly marked, priors still viewable") has
   no equivalent anywhere: `uploads` in §5 has no version field, and no version-list UI is
   described.
-- **CNT-11 (version/change history + restore, depth, w2) — Gap.** No audit trail of
-  session/speaker content edits (who/when), no restore-to-prior-version action, anywhere.
+- **CNT-11 (version/change history + restore, depth, w2) — MOSTLY CLOSED 2026-08-11.**
+  An append-only `auditLog` records every high-value change with attribution and a timestamp
+  (status changes, queue commits, form/agenda/speaker/settings edits, speaker portal edits)
+  and — Marko's explicit addendum — every AGENT write: MCP tool calls (`MCP · <tool> ·
+  sb_live_…`), REST writes (`API · <method path> · sb_live_…`), API-key create/revoke, and
+  the experimental Airtable pull-back. Read as a **History** tab on each submission and an
+  event-wide **Settings → Activity** feed with an "Agents & API" review lens. The RESTORE
+  half is deliberately not built: swyx's own instinct (HISTORY.md 61) was that full
+  versioning-with-restore is overkill for v1, so we ship the attribution and accept the
+  remainder of this item's weight.
 - **CNT-12 (approval gate, rule, w3) — Gap, and the highest-leverage single item in this area.**
   SessionBoard's content-management model is: organizer sets an internal approval status
   (draft/in-review/approved) on a session, and **only approved content syncs to the public
@@ -223,7 +231,7 @@ with 20% of the graded score:
   §4.7; there is no described admin screen for creating a file-request task with instructions
   and a due date and assigning it to speakers. Without this screen, CNT-01/07/08 all become hard
   to reach and CNT-02 (speaker-side upload) has nothing to be assigned against.
-- **CNT-05 (file comments), CNT-10 (organizer edits speaker bio/photo), CNT-13 (files library),
+- **~~CNT-05 (file comments)~~ (COVERED 2026-08-11), CNT-10 (organizer edits speaker bio/photo), CNT-13 (files library),
   CNT-14 (bulk ZIP export) — all Gap.** None of these secondary content-management surfaces are
   described. CNT-13's absence is notable because sbek's own README calls it out as the
   organizer's review surface for collected assets.
@@ -315,7 +323,7 @@ Effective points shown are per-item, out of the required-area total of 100.
 | 9 | CFP-17 | Call for Papers | 2 | exists | 1.05 | Gap | Cheap to stub (a 1-row events list + "+ New event"); unlocks CFP-18 and the entire CRM bonus area too |
 | 10 | CFP-18 | Call for Papers | 2 | scoping | 1.05 | Gap | Direct consequence of #9 — once an events list exists, this is close to free |
 | 11 | EMB-06 | Public Widgets | 3 | exists | 1.76 | Partial/Gap | Agenda widget structure (grid, day nav, block detail) is unspecified even though "public schedule" is named |
-| 12 | CNT-11 | Content Mgmt | 2 | depth | 0.97 | Gap | Change history + restore is a documented differentiator (`depth` type = "polish beyond the core loop" but scored real points) |
+| 12 | CNT-11 | Content Mgmt | 2 | depth | 0.97 | **Mostly closed** (2026-08-11) | Audit log with attribution shipped (incl. agent/API writes); restore deliberately deferred — see the CNT-11 note above |
 | 13 | SPK-13 | Speaker Mgmt | 3 | bulk | 1.36 | Gap | Highest-weight Speaker-Mgmt gap; no general bulk-compose-to-speakers flow exists at all |
 | 14 | SPK-02 | Speaker Mgmt | 3 | crud | 1.36 | Partial | Highest-weight item in the whole SPK area; roster is described as derived-from-acceptance, not a first-class manual add flow |
 | 15 | SPK-05 | Speaker Mgmt | 2 | crud | 0.91 | Gap | No organizer-side general-task creation screen — blocks SPK-05/09/12 chain |

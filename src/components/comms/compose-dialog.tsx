@@ -129,6 +129,12 @@ export function ComposeDialog({
   const [previews, setPreviews] = React.useState<Array<Preview>>([])
   /** How many people the audience matched, before the 100-per-send cap. */
   const [audienceTotal, setAudienceTotal] = React.useState(0)
+  /**
+   * How many the server actually rendered, when the audience was bigger than
+   * one send allows. Frozen at review time so removing someone from the list
+   * never reads as "we truncated your audience".
+   */
+  const [cappedAt, setCappedAt] = React.useState<number | null>(null)
   const [selectedId, setSelectedId] = React.useState<string | null>(null)
   const bodyRef = React.useRef<HTMLTextAreaElement | null>(null)
 
@@ -166,6 +172,9 @@ export function ComposeDialog({
     ),
   )
 
+  // `undefined` means the count is still in flight — never the same thing as
+  // "nobody matches", which would flash a scary warning on every open.
+  const countingRecipients = count === undefined
   const recipients = count ?? 0
   const audienceHelp = AUDIENCES.find((item) => item.value === audience)?.help
 
@@ -223,6 +232,9 @@ export function ComposeDialog({
       })
       setPreviews(result.previews)
       setAudienceTotal(result.recipients)
+      setCappedAt(
+        result.recipients > result.previews.length ? result.previews.length : null,
+      )
       setSelectedId(
         result.previews.length > 0 ? String(result.previews[0].personId) : null,
       )
@@ -311,10 +323,10 @@ export function ComposeDialog({
                 <p className="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
                   {previews.length} recipient{previews.length === 1 ? "" : "s"}
                 </p>
-                {audienceTotal > previews.length ? (
+                {cappedAt !== null ? (
                   <p className="text-xs text-muted-foreground">
-                    Showing the first {previews.length} of {audienceTotal}. One
-                    send goes to at most {previews.length} people — send again
+                    Your audience is {audienceTotal} people. One send goes to at
+                    most {cappedAt} — review and send these, then compose again
                     for the rest.
                   </p>
                 ) : null}
@@ -485,15 +497,17 @@ export function ComposeDialog({
             <p
               className={cn(
                 "flex items-center gap-2 rounded-lg border px-3 py-2 text-sm",
-                recipients === 0
+                recipients === 0 && !countingRecipients
                   ? "border-status-amber-dot/30 bg-status-amber-bg/50 text-status-amber-fg"
                   : "border-border bg-muted/40 text-muted-foreground",
               )}
             >
               <RiGroupLine size={16} aria-hidden />
-              {recipients === 0
-                ? "Nobody matches this audience yet."
-                : `${recipients} email${recipients === 1 ? "" : "s"} — one per person. You'll read each one before it goes out.`}
+              {countingRecipients
+                ? "Working out who this goes to…"
+                : recipients === 0
+                  ? "Nobody matches this audience yet."
+                  : `${recipients} email${recipients === 1 ? "" : "s"} — one per person. You'll read each one before it goes out.`}
             </p>
 
             <Field>
@@ -552,11 +566,16 @@ export function ComposeDialog({
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={sending || !eventId}>
+            <Button
+              type="submit"
+              disabled={sending || !eventId || countingRecipients}
+            >
               <RiEyeLine aria-hidden />
               {sending
                 ? "Rendering…"
-                : `Review ${recipients} ${recipients === 1 ? "email" : "emails"}`}
+                : countingRecipients
+                  ? "Review the emails"
+                  : `Review ${recipients} ${recipients === 1 ? "email" : "emails"}`}
             </Button>
           </DialogFooter>
         </form>

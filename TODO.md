@@ -33,8 +33,9 @@ Source of truth for everything Marko asked + build status. Update continuously.
   (/app/embeds, EMB-15) ✅in slice · itinerary widget ✅in slice · blind review ✅DONE
   (2026-08-11 — enforced in `review.queue`, switch in the plan dialog, badge on /review) ·
   organizer task creation ✅tasksAdmin · bulk email compose to filtered speakers
-  ✅comms.composeBulk + Compose dialog · change history/restore on
-  content edits (CNT-11 — decide: cheap audit-log table or accept the gap) · Speaker CRM
+  ✅comms.composeBulk + Compose dialog · change history on content edits
+  ✅DONE (2026-08-11 — `auditLog` table + History tab + Settings → Activity; restore
+  deliberately out of scope per HISTORY 61) · Speaker CRM
   optional area (19pts extra credit, needs cross-event speaker reuse — decide after v1)
 - ⏳ Public API (/v1) + README docs (bonus)
 - ✅ MCP server (rule 21): 31 tools over MCP Streamable HTTP at `{CONVEX_SITE_URL}/mcp`,
@@ -53,6 +54,12 @@ Source of truth for everything Marko asked + build status. Update continuously.
   "Sessionboard ID" column, on-write (~5s debounced) + every-5-min cron. Needs a REAL
   Airtable PAT from Marko for a live end-to-end proof; `AIRTABLE_DEMO_MODE=1` on the
   deployment makes it demo-able without one
+- ✅ Airtable EXPERIMENTAL two-way sync (HISTORY 61): off by default, one switch on the
+  Integrations card. Inbound is scoped to `submissions.status` only, enum-validated,
+  loop-guarded by the per-record `lastPushedStatus` baseline (`airtableRecordSync`), and
+  our DB wins every conflict — the overruled Airtable edit is written to the audit log.
+  Draft/Withdrawn can never be set from Airtable. Pure guards in
+  `convex/lib/airtableInbound.ts` (18 unit tests); wiring proven in the backend suite
 
 ## Emails (rule 18e — Resend key live on deployment)
 - ✅ Speaker comms via Resend (real recipients send; @example.com demo → preview)
@@ -256,21 +263,30 @@ pipeline into `docs/video/learn/` · a frame-by-frame visual pass). Only items N
 above are listed. Severity: S1 judge-visible · S2 demoed surface · S3 fidelity · S4 optional.
 Effort: XS <30min · S ~1h · M ~half day · L ~a day+.
 
-- ⏳ **[L1] Custom session statuses** (S1 · M) — `Settings → Statuses` CRUD: Name · **Category**
-  (every status maps to one of the 5 built-in categories and inherits its behaviour) · Color ·
-  Display Order · **Show custom status name** (off ⇒ portal users see the category wording) ·
-  live per-status session count. Built-ins ship as `Created By: System`. Unlocks the agenda's
-  status filter and keeps queue-masking intact. Ours is a fixed string union today.
+- ✅ **[L1] Custom session statuses** (S1 · M) — `Settings → Statuses` ships: Name · **Category**
+  (5 categories, each status inherits its behaviour) · Color (design tokens, not hexes) ·
+  Display Order · live per-status submission count · **Added by / Added at** (built-ins read
+  `System`, matching their `Created By`/`Created At` columns) · built-ins marked `Built-in` and
+  undeletable/un-recategorisable. `convex/sessionStatuses.ts` + `sessionStatuses` table;
+  delete refuses while submissions use a status and takes a reassignment target.
+  **Design choice:** `submissions.status` stays the pipeline enum — a status row is a LABEL
+  bound to a pipeline value (`submissions.statusId`), so renames/new statuses can never break
+  queues, emails or the agenda. The picker, the row menu and the status tabs all read the
+  catalogue. Deferred: **Show custom status name** (needs the portal to consume the catalogue
+  first) and custom statuses in the REST/MCP surface.
 - ⏳ **[L2] Portal Username separate from Email** (S1 · S) — their #1 documented support issue:
   the two fields never auto-sync, so editing a speaker's email must not move their portal login.
   Add `people.portalUsername` (defaults to email), authenticate on it, expose "Change portal
   username" on the speaker drawer.
-- ⏳ **[L3] Audit log / change history** (S1 · M) — **already directed by Marko** (HISTORY.md 61:
-  full restore is overkill for v1, but a lightweight audit log ships); this pass supplies the
-  proven shape to build it in. Closes sbek **CNT-11**. Generic
-  `Subject · Type · User · Action · Field · New Value · Occurred At` table surfaced globally
-  (a History page) and inline on each session + speaker. Also the right home for MCP/copilot
-  writes ("every agent action appears in the record's activity feed" is literally their model).
+- ✅ **[L3] Audit log / change history** (S1 · M) — DONE (2026-08-11). `auditLog` table
+  (`organizationId` + optional `eventId` · actorType · actorLabel · entity · entityId ·
+  action · summary · meta) written inline by the domain mutations, so history commits in the
+  same transaction as the change. Surfaced as a **History** tab on the submission drawer and
+  **Settings → Activity** (event-wide feed, entity filters + an **Agents & API** lens).
+  Agent traffic is first-class per Marko: every MCP write tool logs as
+  `MCP · <tool> · sb_live_…`, REST writes as `API · <method path> · sb_live_…`, API-key
+  create/revoke as workspace-level rows, and the Airtable pull as `Airtable sync`.
+  Restore stays deliberately out of scope (HISTORY 61).
 - ✅ **[L4] Public visibility at both granularities** (S1 · S) — DONE. Landed as
   `people.publicVisible` (per PERSON, not per `submissionParticipants` row: an embargoed
   speaker is embargoed everywhere, and one flag beats N rows to keep in sync) plus
@@ -300,10 +316,18 @@ Effort: XS <30min · S ~1h · M ~half day · L ~a day+.
   and can drop individuals, and the send addresses exactly the survivors. Delivery receipts:
   `messages.resendId / providerStatus / deliveredAt`, `comms.refreshDeliveryStatus` polls Resend
   `GET /emails/{id}` on demand (no cron), and the outbox pill upgrades Sent → Delivered / Opened /
-  Clicked / Bounced / Marked as spam, with the reason on bounces.
-- ⏳ **[L8] File comments + file type + bulk-download wizard** (S2 · M) — closes sbek **CNT-05**
-  (threaded comments per file, author + role + timestamp, cross-role visible) and widens
-  **CNT-14**: File type (Presentation / Poster / Handout), then a 3-step download wizard
+  Clicked / Bounced / Marked as spam, with the reason on bounces. Follow-up pass: per-recipient
+  `{{sessionTitle}}` resolution in bulk sends, Delivered / Not delivered outbox filters (shown
+  only once receipts exist), bounce reasons raised as a red alert on the message drawer, and
+  "Check delivery" limited to rows that actually have a provider tracking id.
+- 🟡 **[L8] File comments + file type + bulk-download wizard** (S2 · M) — **comments DONE**,
+  closing sbek **CNT-05**: `uploadComments` + one shared thread helper
+  (`convex/lib/uploadComments.ts`) behind `tasksAdmin.listUploadComments/addUploadComment` and
+  `portal.uploadComments/addUploadComment`, rendered by one `shared/file-comments.tsx` on the
+  submission drawer's Files tab AND the portal's file rows — same thread, both roles, author +
+  role + timestamp, no email in v1 (as Sessionboard ships it). `tasksAdmin.listUploads` returns
+  `commentCount / lastCommentAt` ready for the Files library. REMAINING (widens **CNT-14**):
+  File type (Presentation / Poster / Handout), then a 3-step download wizard
   (pick file types → **group by submitter / field / record** → estimated count & size → zip).
 - 🟡 **[L9] Conditional participant limits + Unique Contact Settings** (S2 · M) — the
   correctness half is FIXED: `convex/submit.ts` `profilePatch` means an existing contact's
@@ -313,9 +337,16 @@ Effort: XS <30min · S ~1h · M ~half day · L ~a day+.
   session format (WHEN ALL MATCH → THEN APPLY PER ROLE, first match wins), surfacing the
   behaviour as an explicit per-form *Allow users to submit new information for existing
   contacts* toggle, and *Notify existing contacts that they have been added to a submission*.
-- ⏳ **[L10] Task personalisation + reusable task library** (S2 · S) — `Use Field` binding on a
-  task's **description** and **link** so each speaker sees their own text/URL, plus an **Alias**
-  to rename an item per portal. Replaces the spreadsheet mail-merge organizers do today.
+- ✅ **[L10] Task personalisation + reusable task library** (S2 · S) — `taskTemplates` is the
+  event's task library (CRUD + `assignFromTemplate` in `convex/tasksAdmin.ts`, three seeded);
+  the Assign-a-task dialog opens with a **From your library** select and closes with a
+  **Save this task to your library** checkbox (idempotent on the title). "Use Field" ships as
+  `{{firstName}} / {{lastName}} / {{speakerName}} / {{sessionTitle}} / {{eventName}}` resolved
+  **at read time** (`convex/lib/taskVars.ts`, same `renderTemplate` as the email templates) in
+  the portal and in the organizer's task list, which also returns the unresolved
+  `instructionsTemplate` for editing; **Alias** renames a library task for the speaker-facing
+  copy. NOT built: a per-task **link** binding — our tasks carry no URL field, so there is
+  nothing to bind; revisit if a task ever gains a link.
 - ⏳ **[L11] Program Site** (S2 · M) — one branded URL indexing every open form *and* reviewer
   access to evaluation plans. We already have `/submit/:slug` and `/review/:token`; this is the
   index over them and it is how their reviewers get in at all.
@@ -378,16 +409,25 @@ Effort: XS <30min · S ~1h · M ~half day · L ~a day+.
 - ⏳ **CI step for the deploy agent to place** in `.github/workflows/ci.yml` after "Lint":
   `- name: OpenAPI spec up to date` / `run: pnpm openapi:check`.
 
-### P0 — backend already ships, these are UI-only builds
-- ⏳ **Session delete + restore (trash)** — the product has *no way to delete a submission*
-  at all. API does soft-delete + restore; needs a row action, a confirm, and a trash view.
-- ⏳ **Editable custom-field answers** — organizers can see "Form answers" in the detail
-  drawer but not edit them. `PUT /sessions/{id}/fields` already writes them.
-- ⏳ **Value-list management (formats / levels / languages / tags)** — currently hardcoded
-  in `src/components/submissions/constants.ts`; an organizer cannot add a session format.
-  The API edits them via the owning form question; needs a Settings card.
-- ⏳ **Webhooks settings card** — full backend (CRUD, HMAC signing, retries, delivery log,
-  test send, secret rotation), zero UI. Belongs on `/app/settings/integrations`.
+### P0 — backend already shipped; UI built 2026-08-11, all four DONE
+- ✅ **Session delete + restore (trash)** — `…` row menu and the detail-drawer footer both
+  open a red AlertDialog; the delete is soft (`submissions.remove`, admin-only, same
+  semantics as `DELETE /sessions/{id}`), the toast offers **Undo**, and Options →
+  **Deleted submissions (N)** opens a drawer that restores. Soft-deleted rows are now
+  filtered out of every organizer, agenda, dashboard, portal and public read — the schema
+  promised this and nothing enforced it.
+- ✅ **Editable custom-field answers** — the detail drawer's "Form answers" block renders
+  each answer through the *same* `QuestionField` the public CFP uses (dropdown stays a
+  dropdown, multi-select stays checkboxes), autosaving on blur (immediately for picked
+  controls) via a merging `answers` patch on `submissions.updateDetails`.
+- ✅ **Value-list management** — Event settings → **Fields & options** manages Formats /
+  Levels / Languages / Tags with usage counts, add / rename (cascades onto sessions) /
+  remove, and a "no longer offered" flag for drift. Writes go through the form question,
+  the same single source of truth the API uses (`convex/valueLists.ts`).
+- ✅ **Webhooks settings card** — on `/app/settings/integrations` (per census row #22):
+  list with last-delivery status, create dialog with a grouped event-type picker, the
+  `whsec_…` secret revealed once with copy, send test, rotate, pause/resume, delete, and a
+  per-endpoint delivery-log drawer. Public wrappers live in `convex/webhooks.ts`.
 
 ### P1
 - ⏳ Room / start time / duration editable in the submission drawer (today: agenda only).

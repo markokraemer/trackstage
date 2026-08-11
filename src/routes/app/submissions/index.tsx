@@ -225,16 +225,16 @@ function SubmissionsPage() {
   const declineStaged = counts?.decline_queue ?? 0
 
   // ——— Actions —————————————————————————————————————————————————————————
-  async function handleStatusChange(id: string, next: StatusChoice) {
-    setPendingStatus((prev) => ({ ...prev, [id]: next }))
+  async function handleStatusChange(id: string, choice: StatusChoice) {
+    setPendingStatus((prev) => ({ ...prev, [id]: choice }))
     try {
       await setStatusMutation({
         submissionId: id as Id<"submissions">,
-        status: next.status,
+        status: choice.status,
         // The custom status label, when the organizer picked one
         // (src/lib/status-catalog.ts). `status` above stays the pipeline value.
-        statusId: next.statusId
-          ? (next.statusId as Id<"sessionStatuses">)
+        statusId: choice.statusId
+          ? (choice.statusId as Id<"sessionStatuses">)
           : undefined,
       })
     } catch (error) {

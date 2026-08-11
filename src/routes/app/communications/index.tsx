@@ -19,7 +19,7 @@ import { TooltipProvider } from "@/components/ui/tooltip"
 import { EmptyState } from "@/components/shared/empty-state"
 import { PageHeader } from "@/components/shared/page-header"
 import { ComposeDialog } from "@/components/comms/compose-dialog"
-import { MESSAGE_STATUS_FILTERS } from "@/components/comms/constants"
+import { OUTBOX_FILTER_VALUES } from "@/components/comms/constants"
 import { MessageDrawer } from "@/components/comms/message-drawer"
 import { OutboxTable } from "@/components/comms/outbox-table"
 import { TemplateDrawer } from "@/components/comms/template-drawer"
@@ -46,9 +46,7 @@ export const Route = createFileRoute("/app/communications/")({
     const rawStatus = typeof search.status === "string" ? search.status : "all"
     return {
       tab: search.tab === "outbox" ? "outbox" : "templates",
-      status: MESSAGE_STATUS_FILTERS.some((f) => f.value === rawStatus)
-        ? rawStatus
-        : "all",
+      status: OUTBOX_FILTER_VALUES.includes(rawStatus) ? rawStatus : "all",
     }
   },
   component: CommunicationsPage,

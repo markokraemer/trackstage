@@ -98,7 +98,7 @@ export function clampMeta(
             ? trim(item, 120)
             : String(item).slice(0, 120)
         )
-    else out[key] = trim(JSON.stringify(value) ?? "", MAX_META_STRING)
+    else out[key] = trim(JSON.stringify(value), MAX_META_STRING)
   }
   return Object.keys(out).length > 0 ? out : undefined
 }
@@ -114,7 +114,7 @@ async function currentActor(ctx: MutationCtx): Promise<AuditActor> {
     if (user) {
       return {
         type: "organizer",
-        label: user.name?.trim() || user.email || "Organizer",
+        label: user.name.trim() || user.email || "Organizer",
       }
     }
   } catch {

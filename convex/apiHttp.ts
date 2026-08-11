@@ -1031,7 +1031,7 @@ async function handleEventScoped(
         entity: "session",
         entityId: sessionId,
         action: "updated",
-        summary: `Custom fields updated via the API (${Object.keys(custom as Record<string, unknown>).join(", ")})`,
+        summary: `Custom fields updated via the API (${Object.keys(custom).join(", ")})`,
       })
       return jsonResponse(result, 200, gate.headers)
     }

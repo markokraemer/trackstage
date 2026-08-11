@@ -86,7 +86,9 @@ export function StatusPicker({
   }
 
   async function handleSave() {
-    if (!dirty || !staged) {
+    // `dirty` is only ever true when something is staged, so TypeScript
+    // narrows `staged` to non-null from here on.
+    if (!dirty) {
       handleOpenChange(false)
       return
     }

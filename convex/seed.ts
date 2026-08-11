@@ -1199,8 +1199,11 @@ export const run = internalMutation({
       name: "Waitlist",
       category: "pending",
       pipelineStatus: "pending",
-      color: "blue",
+      // Grey reads as a holding state and — unlike the amber it sits between —
+      // is visibly its own thing in the table, which is the point of the demo.
+      color: "gray",
       order: 35,
+      createdBy: DEMO_ORGANIZER_NAME,
     })
     if (submissionIds.s4) {
       await ctx.db.patch(submissionIds.s4, { statusId: waitlistId })

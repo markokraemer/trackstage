@@ -37,6 +37,7 @@ import {
 } from "@/components/ui/tooltip"
 import { StatusPicker } from "@/components/submissions/status-picker"
 import type { StatusChoice } from "@/components/submissions/status-picker"
+import { systemStatusOption, useStatusCatalog } from "@/lib/status-catalog"
 import {
   EMPTY_CELL,
   absoluteDate,
@@ -54,6 +55,9 @@ import {
 export type SubmissionRow = FunctionReturnType<
   typeof api.submissions.list
 >[number]
+
+/** The three one-click moves in the row menu, in pipeline order. */
+const QUICK_MOVES = ["accept_queue", "decline_queue", "pending"] as const
 
 export type SortKey = "submitted" | "title" | "score"
 export type SortDirection = "asc" | "desc"
@@ -73,7 +77,7 @@ export interface SubmissionsTableProps {
    * Carries the custom status label too, so a row that was just set to
    * "Waitlist" doesn't flash "Pending" on the way to the server.
    */
-  pendingStatus?: Record<string, StatusChoice>
+  pendingStatus?: Partial<Record<string, StatusChoice>>
   /** Opens the delete confirmation. Omit and the row menu hides the action. */
   onDelete?: (row: SubmissionRow) => void
 }
@@ -91,6 +95,9 @@ export function SubmissionsTable({
   pendingStatus = {},
   onDelete,
 }: SubmissionsTableProps) {
+  // Status wording follows Settings → Statuses, so a renamed built-in reads
+  // the same in the row menu as it does in the pill.
+  const { statuses } = useStatusCatalog()
   const selected = new Set(selectedIds)
   const allSelected =
     rows.length > 0 && rows.every((row) => selected.has(row._id))
@@ -302,25 +309,16 @@ export function SubmissionsTable({
                         View details
                       </DropdownMenuItem>
                       <DropdownMenuSeparator />
-                      <DropdownMenuItem
-                        onClick={() =>
-                          void onStatusChange(row._id, "accept_queue")
-                        }
-                      >
-                        Move to Accept Queue
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        onClick={() =>
-                          void onStatusChange(row._id, "decline_queue")
-                        }
-                      >
-                        Move to Decline Queue
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        onClick={() => void onStatusChange(row._id, "pending")}
-                      >
-                        Move to Pending
-                      </DropdownMenuItem>
+                      {QUICK_MOVES.map((quick) => (
+                        <DropdownMenuItem
+                          key={quick}
+                          onClick={() =>
+                            void onStatusChange(row._id, { status: quick })
+                          }
+                        >
+                          Move to {systemStatusOption(statuses, quick).name}
+                        </DropdownMenuItem>
+                      ))}
                       {onDelete ? (
                         <>
                           <DropdownMenuSeparator />

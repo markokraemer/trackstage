@@ -115,11 +115,11 @@ export const MESSAGE_STATUS_META: Record<
 > = {
   sent: {
     label: "Sent",
-    help: "Delivered to the recipient's inbox.",
+    help: "Handed to the email provider. Check delivery to see whether it landed.",
   },
   preview: {
     label: "Preview",
-    help: "Preview — no email key configured. The message is fully rendered here but was not delivered.",
+    help: "Rendered in full here but not delivered — a demo address, or no email provider was connected.",
   },
   scheduled: {
     label: "Scheduled",
@@ -142,6 +142,22 @@ export const MESSAGE_STATUS_FILTERS: Array<{ value: string; label: string }> = [
   { value: "preview", label: "Preview" },
   { value: "scheduled", label: "Scheduled" },
   { value: "failed", label: "Failed" },
+]
+
+/**
+ * Extra filters that only exist once delivery receipts have come back. Kept out
+ * of the list above so an event with no receipts is never offered two filters
+ * that can only ever say "0".
+ */
+export const DELIVERY_FILTERS: Array<{ value: string; label: string }> = [
+  { value: "delivered", label: "Delivered" },
+  { value: "bounced", label: "Not delivered" },
+]
+
+/** Every filter value the outbox understands — used to validate the URL. */
+export const OUTBOX_FILTER_VALUES: Array<string> = [
+  ...MESSAGE_STATUS_FILTERS.map((option) => option.value),
+  ...DELIVERY_FILTERS.map((option) => option.value),
 ]
 
 // ——— Delivery receipts ———————————————————————————————————————————————————
@@ -224,4 +240,26 @@ export function deliveryStateMeta(
       tone: "scheduled",
     }
   )
+}
+
+/**
+ * The bucket a row belongs to in the outbox — the receipt when we have one,
+ * otherwise the queue status. Filtering and the per-filter counts both go
+ * through here so a row is always counted where it is shown.
+ */
+export function outboxFilterKey(message: {
+  status: string
+  providerStatus?: string
+}): string {
+  if (message.status !== "sent" || !message.providerStatus) return message.status
+  const tone = deliveryStateMeta(message.providerStatus)?.tone
+  if (tone === "failed") return "bounced"
+  if (
+    message.providerStatus === "delivered" ||
+    message.providerStatus === "opened" ||
+    message.providerStatus === "clicked"
+  ) {
+    return "delivered"
+  }
+  return "sent"
 }

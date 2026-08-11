@@ -868,7 +868,7 @@ export const syncEvent = internalAction({
     // (and verifiable) without an Airtable account.
     const statusRows = payload.submissions
       .map((row) => ({
-        submissionId: row.id as Id<"submissions">,
+        submissionId: row.id,
         status: String(row.status),
       }))
       .slice(0, MAX_ROWS)

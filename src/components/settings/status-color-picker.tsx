@@ -18,9 +18,9 @@ import type { StatusTone } from "@/lib/status-catalog"
 /**
  * Colour-dot picker for a session status (Settings → Statuses).
  *
- * The five choices are the status tones from the design system, never raw
- * hexes — so a status pill in the submissions table and its swatch here are
- * literally the same token.
+ * The choices are the status tones from the design system, never raw hexes —
+ * so a status pill in the submissions table and its swatch here are literally
+ * the same token. Which tones are offered is `STATUS_TONE_OPTIONS`' call.
  *
  * Built on the shadcn `Popover` + `Button`: the trigger IS the dot, so the
  * swatch doubles as the current value. Same shape as `TrackColorPicker`.
@@ -73,7 +73,7 @@ export function StatusColorPicker({
             Used on every status pill — the table, the drawer and the portal.
           </PopoverDescription>
         </PopoverHeader>
-        <div className="mt-3 grid grid-cols-5 gap-2">
+        <div className="mt-3 flex flex-wrap gap-2">
           {STATUS_TONE_OPTIONS.map((tone) => {
             const selected = tone.value === value
             return (
