@@ -87,12 +87,12 @@ async function settledSince(
   client: Awaited<ReturnType<typeof organizerConvexClient>>,
   eventId: Id<"events">,
   since: number,
-  { atLeast = 1 } = {},
+  { atLeast = 1, timeout = 60_000 } = {},
 ) {
   return await until(
     async () => (await outbox(client, eventId)).filter((m) => m._creationTime > since),
     (rows) => rows.length >= atLeast && rows.every((m) => TERMINAL.has(m.status)),
-    { timeout: 60_000, label: `${atLeast}+ settled outbox rows` },
+    { timeout, label: `${atLeast}+ settled outbox rows` },
   )
 }
 
@@ -297,8 +297,11 @@ test.describe("emails", () => {
     await expectToast(page, /queued \d+ email/i, 30_000)
     await clearToasts(page)
 
+    // The demo event accumulates speakers as the suite runs, so a bulk send
+    // can be dozens of messages; delivery is batched and needs room.
     const settled = await settledSince(client, event._id, since, {
       atLeast: promised,
+      timeout: 90_000,
     })
     const bulk = settled.filter((m) => m.subject.includes(marker))
     expect(bulk.length, "one message per promised recipient").toBe(promised)

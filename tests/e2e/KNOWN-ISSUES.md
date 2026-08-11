@@ -107,6 +107,40 @@ Cancel / Approve & run. `getRequestHeaders` *is* exported by the installed
 module-graph inconsistency as KI-3 — logged, recovered from, harmless. It was
 one verification away from being filed as a false S1 bug.
 
+## KI-5 — duplicate React keys in the copilot's deadline list
+
+**Severity:** medium — React's own message says rows "may be duplicated and/or
+omitted", and this list is what the copilot shows an organizer when they ask
+what's coming up.
+
+**Repro:** sign in as the demo organizer, open the copilot (⌘I), ask anything
+that calls `get_event_summary` ("what needs my attention?"), and watch the
+console:
+
+```
+Encountered two children with the same key, `%s`. … Speaker task "Upload your
+headshot" due
+```
+
+**Cause:** `src/components/copilot/tool-views/events.tsx:339`
+
+```tsx
+key={str(deadline.what) ?? index}
+```
+
+`deadline.what` is built in `convex/mcp.ts:1953` as
+`Speaker task "${task.title}" due` — and the onboarding tasks created for every
+accepted speaker share their titles ("Upload your headshot", "Complete your
+speaker bio", "Upload your slides"). Two speakers with the same open task
+therefore produce byte-identical keys.
+
+**Fix:** make the key unique — `key={`${deadline.what}-${deadline.when}`}` or
+just `key={index}`, since the list is a rendered slice with no reordering.
+
+**Handling:** listed in `KNOWN_CONSOLE_NOISE` with this reference so
+`copilot.spec.ts` still asserts what it exists to assert (the panel opens, the
+answer streams, a tool ran). Delete the allowance with the fix.
+
 ## Recommended next step — give the specs their own event
 
 Every flow spec currently works inside the seeded `ai-summit-2026` event. That
