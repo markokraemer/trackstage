@@ -1,4 +1,4 @@
-import { v } from "convex/values"
+import { ConvexError, v } from "convex/values"
 import type { Doc, Id } from "./_generated/dataModel"
 import type { MutationCtx, QueryCtx } from "./_generated/server"
 import {
@@ -90,7 +90,7 @@ export const setEventBranding = mutation({
     if (args.storageId !== null) {
       const meta = await storageMeta(ctx, args.storageId)
       if (!meta) {
-        throw new Error("That upload didn't finish — please try again.")
+        throw new ConvexError("That upload didn't finish — please try again.")
       }
       assertImageUpload(meta, args.filename ?? "image")
     }
@@ -127,17 +127,17 @@ export const attachUploadAsOrganizer = mutation({
   },
   handler: async (ctx, args) => {
     const submission = await ctx.db.get(args.submissionId)
-    if (!submission) throw new Error("Submission not found.")
+    if (!submission) throw new ConvexError("Submission not found.")
     await requireEventAccess(ctx, submission.eventId)
 
     const meta = await storageMeta(ctx, args.storageId)
-    if (!meta) throw new Error("That upload didn't finish — please try again.")
+    if (!meta) throw new ConvexError("That upload didn't finish — please try again.")
     assertAllowedUpload(meta, args.filename)
 
     const personId = args.personId ?? (await primarySpeaker(ctx, submission))
     const person = await ctx.db.get(personId)
     if (!person || person.eventId !== submission.eventId) {
-      throw new Error("That speaker doesn't belong to this event.")
+      throw new ConvexError("That speaker doesn't belong to this event.")
     }
 
     const version = await nextVersion(ctx, {
@@ -182,7 +182,7 @@ export const deleteUpload = mutation({
   returns: v.null(),
   handler: async (ctx, args) => {
     const row = await ctx.db.get(args.uploadId)
-    if (!row) throw new Error("File not found.")
+    if (!row) throw new ConvexError("File not found.")
     await requireEventAccess(ctx, row.eventId, "admin")
     await deleteUploadRow(ctx, row)
     return null
@@ -204,7 +204,7 @@ export const submissionFiles = query({
   args: { submissionId: v.id("submissions") },
   handler: async (ctx, args) => {
     const submission = await ctx.db.get(args.submissionId)
-    if (!submission) throw new Error("Submission not found.")
+    if (!submission) throw new ConvexError("Submission not found.")
     await requireEventAccess(ctx, submission.eventId)
     const direct = await ctx.db
       .query("uploads")

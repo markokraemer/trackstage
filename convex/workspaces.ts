@@ -1,4 +1,4 @@
-import { v } from "convex/values"
+import { ConvexError, v } from "convex/values"
 import { internal } from "./_generated/api"
 import type { Id } from "./_generated/dataModel"
 import type { MutationCtx } from "./_generated/server"
@@ -93,7 +93,7 @@ async function checkedEventIds(
   for (const eventId of unique) {
     const event = await ctx.db.get(eventId)
     if (!event || event.organizationId !== organizationId) {
-      throw new Error("That event isn't part of this workspace.")
+      throw new ConvexError("That event isn't part of this workspace.")
     }
   }
   return unique
@@ -117,14 +117,14 @@ export const addMember = mutation({
   handler: async (ctx, args) => {
     const { user } = await requireMembership(ctx, args.organizationId, "admin")
     if (!["admin", "member"].includes(args.role)) {
-      throw new Error("Role must be admin or member.")
+      throw new ConvexError("Role must be admin or member.")
     }
     const scoped =
       args.role === "member" && args.eventIds !== undefined
         ? await checkedEventIds(ctx, args.organizationId, args.eventIds)
         : undefined
     if (scoped !== undefined && scoped.length === 0) {
-      throw new Error("Pick at least one event, or give them all events.")
+      throw new ConvexError("Pick at least one event, or give them all events.")
     }
     const email = args.email.toLowerCase().trim()
     const existing = await ctx.db
@@ -134,7 +134,7 @@ export const addMember = mutation({
       )
       .collect()
     if (existing.some((m) => m.email === email)) {
-      throw new Error("That person is already a member.")
+      throw new ConvexError("That person is already a member.")
     }
     // The userId is resolved when they first sign in (ensure() links by email
     // is not possible without their user id) — so we require they exist:
@@ -178,10 +178,10 @@ export const removeMember = mutation({
       "admin",
     )
     if (target._id === member._id) {
-      throw new Error("You can't remove yourself.")
+      throw new ConvexError("You can't remove yourself.")
     }
     if (target.role === "owner") {
-      throw new Error("Owners can't be removed.")
+      throw new ConvexError("Owners can't be removed.")
     }
     await ctx.db.delete(args.memberId)
     return null
@@ -192,12 +192,12 @@ export const updateMemberRole = mutation({
   args: { memberId: v.id("members"), role: v.string() },
   handler: async (ctx, args) => {
     const target = await ctx.db.get(args.memberId)
-    if (!target) throw new Error("Member not found.")
+    if (!target) throw new ConvexError("Member not found.")
     await requireMembership(ctx, target.organizationId, "owner")
     if (!["admin", "member"].includes(args.role)) {
-      throw new Error("Role must be admin or member.")
+      throw new ConvexError("Role must be admin or member.")
     }
-    if (target.role === "owner") throw new Error("Owners keep the owner role.")
+    if (target.role === "owner") throw new ConvexError("Owners keep the owner role.")
     await ctx.db.patch(args.memberId, {
       role: args.role,
       // Promoting to admin unlocks the whole workspace — an admin is never
@@ -223,7 +223,7 @@ export const setMemberEventAccess = mutation({
   },
   handler: async (ctx, args) => {
     const target = await ctx.db.get(args.memberId)
-    if (!target) throw new Error("Member not found.")
+    if (!target) throw new ConvexError("Member not found.")
     await requireMembership(ctx, target.organizationId, "admin")
 
     if (args.eventIds === null) {
@@ -231,7 +231,7 @@ export const setMemberEventAccess = mutation({
       return null
     }
     if (isWorkspaceWideRole(target.role)) {
-      throw new Error(
+      throw new ConvexError(
         `${target.role === "owner" ? "Owners" : "Admins"} always have access to every event. Change their role to Member first if you want to limit them.`,
       )
     }
@@ -241,7 +241,7 @@ export const setMemberEventAccess = mutation({
       args.eventIds,
     )
     if (eventIds.length === 0) {
-      throw new Error("Pick at least one event, or give them all events.")
+      throw new ConvexError("Pick at least one event, or give them all events.")
     }
     await ctx.db.patch(args.memberId, { eventIds })
     return null
@@ -253,7 +253,7 @@ export const get = query({
   handler: async (ctx, args) => {
     const { member } = await requireMembership(ctx, args.organizationId)
     const org = await ctx.db.get(args.organizationId)
-    if (!org) throw new Error("Workspace not found.")
+    if (!org) throw new ConvexError("Workspace not found.")
     return { id: org._id, name: org.name, slug: org.slug, myRole: member.role }
   },
 })
@@ -275,9 +275,9 @@ export const update = mutation({
   handler: async (ctx, args) => {
     await requireMembership(ctx, args.organizationId, "admin")
     const org = await ctx.db.get(args.organizationId)
-    if (!org) throw new Error("Workspace not found.")
+    if (!org) throw new ConvexError("Workspace not found.")
     if (args.patch.name !== undefined && !args.patch.name.trim()) {
-      throw new Error("Workspace name can't be empty.")
+      throw new ConvexError("Workspace name can't be empty.")
     }
 
     let slug: string | undefined
@@ -305,7 +305,7 @@ export const create = mutation({
   args: { name: v.string() },
   handler: async (ctx, args) => {
     const user = await requireUser(ctx)
-    if (!args.name.trim()) throw new Error("Workspace name is required.")
+    if (!args.name.trim()) throw new ConvexError("Workspace name is required.")
     const slug = await uniqueWorkspaceSlug(ctx, args.name)
     const organizationId = await ctx.db.insert("organizations", {
       name: args.name.trim(),

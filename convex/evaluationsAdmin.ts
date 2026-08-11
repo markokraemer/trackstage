@@ -1,4 +1,4 @@
-import { v } from "convex/values"
+import { ConvexError, v } from "convex/values"
 import { internal } from "./_generated/api"
 import { mutation, query } from "./_generated/server"
 import type { MutationCtx, QueryCtx } from "./_generated/server"
@@ -70,7 +70,7 @@ async function requirePlan(
   planId: Id<"evaluationPlans">
 ) {
   const plan = await ctx.db.get(planId)
-  if (!plan) throw new Error("That evaluation plan no longer exists.")
+  if (!plan) throw new ConvexError("That evaluation plan no longer exists.")
   return plan
 }
 
@@ -84,16 +84,16 @@ function validateCriteria(
   criteria: Array<PlanCriterion>
 ): Array<PlanCriterion> {
   if (criteria.length === 0) {
-    throw new Error("Add at least one scoring criterion.")
+    throw new ConvexError("Add at least one scoring criterion.")
   }
   const seen = new Set<string>()
   const normalized: Array<PlanCriterion> = []
   for (const criterion of criteria) {
     const id = criterion.id.trim()
     const label = criterion.label.trim()
-    if (!id) throw new Error("Every criterion needs an id.")
-    if (!label) throw new Error("Every criterion needs a label.")
-    if (seen.has(id)) throw new Error(`Duplicate criterion id "${id}".`)
+    if (!id) throw new ConvexError("Every criterion needs an id.")
+    if (!label) throw new ConvexError("Every criterion needs a label.")
+    if (seen.has(id)) throw new ConvexError(`Duplicate criterion id "${id}".`)
     seen.add(id)
 
     const type = criterionType(criterion)
@@ -102,12 +102,12 @@ function validateCriteria(
         .map((option) => option.trim())
         .filter(Boolean)
       if (options.length < 2) {
-        throw new Error(
+        throw new ConvexError(
           `"${label}" is a choice — give it at least two options to pick from.`
         )
       }
       if (new Set(options).size !== options.length) {
-        throw new Error(`"${label}" has the same option listed twice.`)
+        throw new ConvexError(`"${label}" has the same option listed twice.`)
       }
       normalized.push({ id, label, type, options })
       continue
@@ -122,7 +122,7 @@ function validateCriteria(
       weight !== undefined &&
       (!Number.isFinite(weight) || weight <= 0 || weight > 100)
     ) {
-      throw new Error(`"${label}" needs a weight between 1 and 100.`)
+      throw new ConvexError(`"${label}" needs a weight between 1 and 100.`)
     }
     normalized.push({
       id,
@@ -135,7 +135,7 @@ function validateCriteria(
     })
   }
   if (!normalized.some(isNumericCriterion)) {
-    throw new Error(
+    throw new ConvexError(
       "Add at least one 1–5 rating so submissions can be ranked by score."
     )
   }
@@ -159,7 +159,7 @@ async function validateSubmissionIds(
   for (const submissionId of unique) {
     const submission = await ctx.db.get(submissionId)
     if (!submission || submission.eventId !== eventId) {
-      throw new Error("A selected submission does not belong to this event.")
+      throw new ConvexError("A selected submission does not belong to this event.")
     }
   }
   return unique
@@ -488,14 +488,14 @@ export const createPlan = mutation({
   handler: async (ctx, args) => {
     await requireEventAccess(ctx, args.eventId)
     const name = args.name.trim()
-    if (!name) throw new Error("Give the plan a name.")
+    if (!name) throw new ConvexError("Give the plan a name.")
     const criteria = validateCriteria(args.criteria)
     if (
       args.opensAt !== undefined &&
       args.dueAt !== undefined &&
       args.opensAt > args.dueAt
     ) {
-      throw new Error("The round can't close before it opens.")
+      throw new ConvexError("The round can't close before it opens.")
     }
     const submissionIds = await validateSubmissionIds(
       ctx,
@@ -553,7 +553,7 @@ export const updatePlan = mutation({
     const patch: Partial<Doc<"evaluationPlans">> = {}
     if (args.name !== undefined) {
       const name = args.name.trim()
-      if (!name) throw new Error("Give the plan a name.")
+      if (!name) throw new ConvexError("Give the plan a name.")
       patch.name = name
     }
     if (args.round !== undefined) patch.round = args.round
@@ -576,7 +576,7 @@ export const updatePlan = mutation({
       : (args.opensAt ?? plan.opensAt)
     const dueAt = args.clearDueAt ? undefined : (args.dueAt ?? plan.dueAt)
     if (opensAt !== undefined && dueAt !== undefined && opensAt > dueAt) {
-      throw new Error("The round can't close before it opens.")
+      throw new ConvexError("The round can't close before it opens.")
     }
     if (args.status !== undefined) patch.status = args.status
     // Store `undefined` rather than `false` so the flag reads the same whether
@@ -633,7 +633,7 @@ export const addEvaluator = mutation({
     const plan = await requirePlan(ctx, args.planId)
     await requireEventAccess(ctx, plan.eventId)
     const email = args.email.toLowerCase().trim()
-    if (!email.includes("@")) throw new Error("Enter a valid email address.")
+    if (!email.includes("@")) throw new ConvexError("Enter a valid email address.")
 
     const existing = (await evaluatorsForPlan(ctx, plan._id)).find(
       (e) => e.email === email
@@ -678,7 +678,7 @@ export const rotateEvaluatorToken = mutation({
   returns: v.string(),
   handler: async (ctx, args) => {
     const evaluator = await ctx.db.get(args.evaluatorId)
-    if (!evaluator) throw new Error("That evaluator no longer exists.")
+    if (!evaluator) throw new ConvexError("That evaluator no longer exists.")
     await requireEventAccess(ctx, evaluator.eventId)
     const token = randomToken()
     await ctx.db.patch(evaluator._id, { token })
@@ -737,7 +737,7 @@ export const submissionEvaluations = query({
   args: { submissionId: v.id("submissions") },
   handler: async (ctx, args) => {
     const submission = await ctx.db.get(args.submissionId)
-    if (!submission) throw new Error("That submission no longer exists.")
+    if (!submission) throw new ConvexError("That submission no longer exists.")
     await requireEventAccess(ctx, submission.eventId)
     const evaluations = await ctx.db
       .query("evaluations")
@@ -826,12 +826,12 @@ export const autoDistribute = mutation({
 
     const cap = args.perReviewerCap
     if (cap !== undefined && (!Number.isInteger(cap) || cap < 1)) {
-      throw new Error("The per-reviewer cap has to be a whole number, 1 or more.")
+      throw new ConvexError("The per-reviewer cap has to be a whole number, 1 or more.")
     }
 
     const evaluators = await evaluatorsForPlan(ctx, plan._id)
     if (evaluators.length === 0) {
-      throw new Error("Add at least one evaluator before distributing.")
+      throw new ConvexError("Add at least one evaluator before distributing.")
     }
     // Stable order so re-running the same distribution gives the same result.
     evaluators.sort((a, b) => a.email.localeCompare(b.email))
@@ -884,7 +884,7 @@ export const setAssignments = mutation({
   returns: v.object({ assigned: v.number() }),
   handler: async (ctx, args) => {
     const evaluator = await ctx.db.get(args.evaluatorId)
-    if (!evaluator) throw new Error("That evaluator no longer exists.")
+    if (!evaluator) throw new ConvexError("That evaluator no longer exists.")
     await requireEventAccess(ctx, evaluator.eventId)
     const plan = await requirePlan(ctx, evaluator.planId)
 
@@ -897,7 +897,7 @@ export const setAssignments = mutation({
     const unique = [...new Set(args.submissionIds ?? [])]
     for (const submissionId of unique) {
       if (!pool.has(submissionId)) {
-        throw new Error(
+        throw new ConvexError(
           "That submission isn't in this plan — add it to the plan first."
         )
       }

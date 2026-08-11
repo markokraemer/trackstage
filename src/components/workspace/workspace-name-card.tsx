@@ -18,7 +18,7 @@ import {
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { LabeledField } from "@/components/settings/labeled-field"
-import { errorMessage } from "@/components/settings/errors"
+import { errorMessage } from "@/lib/errors"
 import {
   ROLE_HELP,
   canManageTeam,

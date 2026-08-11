@@ -46,6 +46,7 @@ import {
   slugifyInput,
 } from "@/components/settings/slug"
 import type { EventSummary } from "@/lib/current-event"
+import { errorMessage } from "@/lib/errors"
 
 /** Plain-English event types — the select in docs/ux/01 image25. */
 export const EVENT_TYPES = [
@@ -188,11 +189,7 @@ export function EventDetailsForm({ event }: { event: EventSummary }) {
         toast.success("Event settings saved")
       }
     } catch (error) {
-      toast.error(
-        error instanceof Error
-          ? error.message
-          : "Couldn't save your changes. Please try again.",
-      )
+      toast.error(errorMessage(error, "Couldn't save your changes. Please try again."))
     }
   }
 

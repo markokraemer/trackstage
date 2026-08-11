@@ -21,6 +21,7 @@ import {
 import { Logo } from "@/components/brand/logo"
 import { authClient } from "@/lib/auth-client"
 import { useSession } from "@/lib/session"
+import { errorMessage } from "@/lib/errors"
 
 /** Seeded demo organizer — shown on the sign-in card so judges never guess. */
 const DEMO_EMAIL = "organizer@demo.sessionboard.dev"
@@ -137,7 +138,7 @@ function LoginPage() {
       }
       goToApp()
     } catch (err) {
-      const message = err instanceof Error ? err.message : ""
+      const message = errorMessage(err, "")
       setError(
         /invalid|incorrect|credential/i.test(message)
           ? "That email and password don't match. Try the demo credentials below."

@@ -1,4 +1,4 @@
-import { v } from "convex/values"
+import { ConvexError, v } from "convex/values"
 import { internal } from "./_generated/api"
 import { internalMutation, internalQuery } from "./_generated/server"
 import type { MutationCtx, QueryCtx } from "./_generated/server"
@@ -23,6 +23,8 @@ import {
   ensureDefaultStatuses,
 } from "./sessionStatuses"
 import type { StatusCategory, StatusColor } from "./sessionStatuses"
+import { humanMessage } from "./lib/errors"
+import { TASK_KINDS as APP_TASK_KINDS } from "./tasksAdmin"
 
 // ————————————————————————————————————————————————————————————————————————
 // Public REST API — data layer (convex/apiHttp.ts is the routing/serialization
@@ -859,13 +861,13 @@ async function applySessionWrite(
 
   if (input.title !== undefined) {
     const title = input.title.trim()
-    if (!title) throw new Error("`title` cannot be empty.")
+    if (!title) throw new ConvexError("`title` cannot be empty.")
     patch.title = title
   }
   if (input.description !== undefined) patch.description = input.description
   if (input.status !== undefined) {
     if (!VALID_STATUSES.includes(input.status))
-      throw new Error(
+      throw new ConvexError(
         `Unknown status "${input.status}". Valid: ${VALID_STATUSES.join(", ")}.`,
       )
     patch.status = input.status
@@ -894,7 +896,7 @@ async function applySessionWrite(
       const roomId = ctx.db.normalizeId("rooms", input.room_id)
       const room = roomId ? await ctx.db.get(roomId) : null
       if (!room || room.eventId !== event._id)
-        throw new Error(`No room "${input.room_id}" in this event.`)
+        throw new ConvexError(`No room "${input.room_id}" in this event.`)
       patch.roomId = roomId
     }
   }
@@ -904,7 +906,7 @@ async function applySessionWrite(
       const trackId = ctx.db.normalizeId("tracks", input.track_id)
       const track = trackId ? await ctx.db.get(trackId) : null
       if (!track || track.eventId !== event._id)
-        throw new Error(`No track "${input.track_id}" in this event.`)
+        throw new ConvexError(`No track "${input.track_id}" in this event.`)
       patch.trackId = trackId
     }
   }
@@ -940,7 +942,7 @@ async function applySessionWrite(
     })
     submitter = await ctx.db.get(submitterId)
   }
-  if (!submitter) throw new Error("Could not resolve a submitter.")
+  if (!submitter) throw new ConvexError("Could not resolve a submitter.")
 
   const id = await ctx.db.insert("submissions", {
     eventId: event._id,
@@ -1003,10 +1005,10 @@ export const createSession = internalMutation({
     if (!event) return null
     await authorizeEvent(ctx, event, args.userId)
     if (!args.input.title || !args.input.title.trim())
-      throw new Error("`title` is required.")
+      throw new ConvexError("`title` is required.")
     const id = await applySessionWrite(ctx, event, args.input, null)
     const submission = await ctx.db.get(id)
-    if (!submission) throw new Error("Create failed.")
+    if (!submission) throw new ConvexError("Create failed.")
     const maps = await loadMaps(ctx, event._id)
     const defs = await fieldDefinitions(ctx, event._id)
     const shaped = await sessionShape(ctx, submission, {
@@ -1059,7 +1061,7 @@ export const updateSession = internalMutation({
     await applySessionWrite(ctx, event, input, submission)
 
     const fresh = await ctx.db.get(submission._id)
-    if (!fresh) throw new Error("Update failed.")
+    if (!fresh) throw new ConvexError("Update failed.")
     const maps = await loadMaps(ctx, event._id)
     const defs = await fieldDefinitions(ctx, event._id)
     const shaped = await sessionShape(ctx, fresh, {
@@ -1105,7 +1107,7 @@ export const deleteSession = internalMutation({
       updatedAt: Date.now(),
     })
     const fresh = await ctx.db.get(submission._id)
-    if (!fresh) throw new Error("Delete failed.")
+    if (!fresh) throw new ConvexError("Delete failed.")
     const maps = await loadMaps(ctx, event._id)
     const defs = await fieldDefinitions(ctx, event._id)
     const shaped = await sessionShape(ctx, fresh, {
@@ -1142,7 +1144,7 @@ export const bulkSessions = internalMutation({
     if (!event) return null
     await authorizeEvent(ctx, event, args.userId)
     if (args.operations.length > MAX_BULK_OPERATIONS)
-      throw new Error(`At most ${MAX_BULK_OPERATIONS} operations per request.`)
+      throw new ConvexError(`At most ${MAX_BULK_OPERATIONS} operations per request.`)
 
     const results: Array<Record<string, unknown>> = []
     let succeeded = 0
@@ -1151,25 +1153,25 @@ export const bulkSessions = internalMutation({
       const op = args.operations[index]
       try {
         if (op.action === "create") {
-          if (!op.data?.title) throw new Error("`data.title` is required.")
+          if (!op.data?.title) throw new ConvexError("`data.title` is required.")
           const id = await applySessionWrite(ctx, event, op.data, null)
           results.push({ index, action: "create", status: "success", id })
           succeeded++
         } else if (op.action === "update") {
-          if (!op.id) throw new Error("`id` is required for update.")
+          if (!op.id) throw new ConvexError("`id` is required for update.")
           const id = ctx.db.normalizeId("submissions", op.id)
           const existing = id ? await ctx.db.get(id) : null
           if (!existing || existing.eventId !== event._id)
-            throw new Error("Session not found.")
+            throw new ConvexError("Session not found.")
           await applySessionWrite(ctx, event, op.data ?? {}, existing)
           results.push({ index, action: "update", status: "success", id: existing._id })
           succeeded++
         } else if (op.action === "delete") {
-          if (!op.id) throw new Error("`id` is required for delete.")
+          if (!op.id) throw new ConvexError("`id` is required for delete.")
           const id = ctx.db.normalizeId("submissions", op.id)
           const existing = id ? await ctx.db.get(id) : null
           if (!existing || existing.eventId !== event._id)
-            throw new Error("Session not found.")
+            throw new ConvexError("Session not found.")
           await ctx.db.patch(existing._id, {
             deletedAt: Date.now(),
             updatedAt: Date.now(),
@@ -1177,7 +1179,7 @@ export const bulkSessions = internalMutation({
           results.push({ index, action: "delete", status: "success", id: existing._id })
           succeeded++
         } else {
-          throw new Error(
+          throw new ConvexError(
             `Unknown action "${op.action}". Valid: create, update, delete.`,
           )
         }
@@ -1188,7 +1190,7 @@ export const bulkSessions = internalMutation({
           status: "error",
           error: {
             code: "operation_failed",
-            message: e instanceof Error ? e.message : String(e),
+            message: humanMessage(e, "That operation failed."),
           },
         })
         failed++
@@ -1377,7 +1379,7 @@ export const writeSpeaker = internalMutation({
     }
 
     const email = (input.email ?? "").trim().toLowerCase()
-    if (!email) throw new Error("`email` is required to create a speaker.")
+    if (!email) throw new ConvexError("`email` is required to create a speaker.")
     const existing = await ctx.db
       .query("people")
       .withIndex("by_eventId_and_email", (q) =>
@@ -1537,7 +1539,7 @@ function readStatusColor(value: string | undefined): StatusColor | undefined {
   if (value === undefined) return undefined
   const mapped = STATUS_COLOR_ALIASES[value.trim().toLowerCase()]
   if (!mapped)
-    throw new Error(
+    throw new ConvexError(
       `Unknown status colour "${value}". Use one of: green, amber, red, gray, blue.`,
     )
   return mapped as StatusColor
@@ -1547,7 +1549,7 @@ function readStatusCategory(value: string | undefined): StatusCategory | undefin
   if (value === undefined) return undefined
   const trimmed = value.trim().toLowerCase()
   if (!(STATUS_CATEGORIES as ReadonlyArray<string>).includes(trimmed))
-    throw new Error(
+    throw new ConvexError(
       `Unknown status category "${value}". Use one of: ${STATUS_CATEGORIES.join(", ")}.`,
     )
   return trimmed as StatusCategory
@@ -1704,9 +1706,9 @@ export const writeMetadata = internalMutation({
 
       if (args.action === "create") {
         const name = (args.name ?? "").trim()
-        if (!name) throw new Error("`name` is required.")
+        if (!name) throw new ConvexError("`name` is required.")
         if (name.length > 60)
-          throw new Error("Status names are limited to 60 characters.")
+          throw new ConvexError("Status names are limited to 60 characters.")
         const category = readStatusCategory(args.category) ?? "pending"
         const color = readStatusColor(args.color) ?? "gray"
         const rows = await ctx.db
@@ -1715,7 +1717,7 @@ export const writeMetadata = internalMutation({
           .take(MAX_ROWS)
         const live = rows.filter((row) => row.deletedAt === undefined)
         if (live.some((row) => row.name.toLowerCase() === name.toLowerCase()))
-          throw new Error(`You already have a status called “${name}”.`)
+          throw new ConvexError(`You already have a status called “${name}”.`)
         const order =
           args.order ??
           live.reduce((max, row) => Math.max(max, row.order), 0) + 10
@@ -1745,7 +1747,7 @@ export const writeMetadata = internalMutation({
             .take(MAX_ROWS)
         ).filter((other) => other.deletedAt === undefined)
         if (live.some((other) => other.name.toLowerCase() === row.name.toLowerCase()))
-          throw new Error(
+          throw new ConvexError(
             `A status called “${row.name}” exists again — rename that one before restoring this.`,
           )
         await ctx.db.patch(row._id, { deletedAt: undefined })
@@ -1755,7 +1757,7 @@ export const writeMetadata = internalMutation({
 
       if (args.action === "delete") {
         if (row.systemKey)
-          throw new Error(
+          throw new ConvexError(
             `“${row.name}” is a built-in status the pipeline needs. You can rename or recolour it, but not delete it.`,
           )
         if (row.deletedAt !== undefined) return { deleted: true, reassigned: 0 }
@@ -1770,10 +1772,10 @@ export const writeMetadata = internalMutation({
         if (args.reassignTo) {
           target = await findStatusRow(ctx, event._id, args.reassignTo)
           if (!target || target._id === row._id)
-            throw new Error("Pick a different status from this event to move them to.")
+            throw new ConvexError("Pick a different status from this event to move them to.")
         }
         if (inUse.length > 0 && !target)
-          throw new Error(
+          throw new ConvexError(
             `${inUse.length} submission${inUse.length === 1 ? " is" : "s are"} set to “${row.name}”. Pass \`reassign_to\` with the status to move ${inUse.length === 1 ? "it" : "them"} to.`,
           )
         let reassigned = 0
@@ -1794,9 +1796,9 @@ export const writeMetadata = internalMutation({
       const patch: Record<string, unknown> = {}
       if (args.name !== undefined) {
         const name = args.name.trim()
-        if (!name) throw new Error("A status needs a name.")
+        if (!name) throw new ConvexError("A status needs a name.")
         if (name.length > 60)
-          throw new Error("Status names are limited to 60 characters.")
+          throw new ConvexError("Status names are limited to 60 characters.")
         const live = (
           await ctx.db
             .query("sessionStatuses")
@@ -1804,7 +1806,7 @@ export const writeMetadata = internalMutation({
             .take(MAX_ROWS)
         ).filter((other) => other.deletedAt === undefined && other._id !== row._id)
         if (live.some((other) => other.name.toLowerCase() === name.toLowerCase()))
-          throw new Error(`You already have a status called “${name}”.`)
+          throw new ConvexError(`You already have a status called “${name}”.`)
         patch.name = name
       }
       const color = readStatusColor(args.color)
@@ -1813,7 +1815,7 @@ export const writeMetadata = internalMutation({
       const category = readStatusCategory(args.category)
       if (category !== undefined && category !== row.category) {
         if (row.systemKey)
-          throw new Error(
+          throw new ConvexError(
             "Built-in statuses keep their category — it's what the accept/decline pipeline runs on. Rename or recolour it instead.",
           )
         patch.category = category
@@ -1831,7 +1833,7 @@ export const writeMetadata = internalMutation({
           .withIndex("by_eventId", (q) => q.eq("eventId", event._id))
           .take(MAX_ROWS)
         const name = (args.name ?? "").trim()
-        if (!name) throw new Error("`name` is required.")
+        if (!name) throw new ConvexError("`name` is required.")
         const id = await ctx.db.insert("rooms", {
           eventId: event._id,
           name,
@@ -1886,7 +1888,7 @@ export const writeMetadata = internalMutation({
           .withIndex("by_eventId", (q) => q.eq("eventId", event._id))
           .take(MAX_ROWS)
         const name = (args.name ?? "").trim()
-        if (!name) throw new Error("`name` is required.")
+        if (!name) throw new ConvexError("`name` is required.")
         const id = await ctx.db.insert("tracks", {
           eventId: event._id,
           name,
@@ -1941,7 +1943,7 @@ export const writeMetadata = internalMutation({
       .withIndex("by_eventId", (q) => q.eq("eventId", event._id))
       .take(MAX_ROWS)
     const target = args.action === "create" ? (args.name ?? "").trim() : (args.id ?? "")
-    if (!target) throw new Error("`name` is required.")
+    if (!target) throw new ConvexError("`name` is required.")
     let touched = 0
     for (const form of forms) {
       const index = form.questions.findIndex((q) => q.id === questionId)
@@ -2006,7 +2008,7 @@ export const writeField = internalMutation({
       .withIndex("by_eventId", (q) => q.eq("eventId", event._id))
       .take(MAX_ROWS)
     if (forms.length === 0)
-      throw new Error("This event has no form to hold custom fields yet.")
+      throw new ConvexError("This event has no form to hold custom fields yet.")
 
     const explicitForm = args.formId
       ? forms.find((f) => f._id === ctx.db.normalizeId("forms", args.formId ?? ""))
@@ -2015,14 +2017,14 @@ export const writeField = internalMutation({
     if (args.action === "create") {
       const form = explicitForm ?? forms[0]
       const label = (args.label ?? "").trim()
-      if (!label) throw new Error("`label` (or `name`) is required.")
+      if (!label) throw new ConvexError("`label` (or `name`) is required.")
       const slug =
         label
           .toLowerCase()
           .replace(/[^a-z0-9]+/g, "_")
           .replace(/^_+|_+$/g, "") || `field_${Date.now()}`
       if (form.questions.some((q) => q.id === slug))
-        throw new Error(`A field named "${label}" already exists.`)
+        throw new ConvexError(`A field named "${label}" already exists.`)
       const question = {
         id: slug,
         label,
@@ -2048,7 +2050,7 @@ export const writeField = internalMutation({
     }
 
     const fieldId = args.fieldId ?? ""
-    if (!fieldId) throw new Error("`fieldId` is required.")
+    if (!fieldId) throw new ConvexError("`fieldId` is required.")
     let touched = 0
     let shaped: Record<string, unknown> | null = null
     for (const form of forms) {
@@ -2056,7 +2058,7 @@ export const writeField = internalMutation({
       if (index === -1) continue
       const question = form.questions[index]
       if (question.locked)
-        throw new Error(
+        throw new ConvexError(
           `"${question.label}" is a system field and cannot be ${args.action === "delete" ? "deleted" : "renamed"}.`,
         )
       const questions = [...form.questions]
@@ -2161,7 +2163,7 @@ export const attachSessionFile = internalMutation({
       const candidate = ctx.db.normalizeId("people", args.assignedParticipantId)
       const person = candidate ? await ctx.db.get(candidate) : null
       if (!person || person.eventId !== event._id)
-        throw new Error("`assigned_participant_id` is not a person on this event.")
+        throw new ConvexError("`assigned_participant_id` is not a person on this event.")
       personId = person._id
     }
 
@@ -2231,7 +2233,7 @@ export const updateSessionFile = internalMutation({
         const candidate = ctx.db.normalizeId("people", args.assignedParticipantId)
         const person = candidate ? await ctx.db.get(candidate) : null
         if (!person || person.eventId !== event._id)
-          throw new Error("`assigned_participant_id` is not a person on this event.")
+          throw new ConvexError("`assigned_participant_id` is not a person on this event.")
         patch.assignedPersonId = person._id
       }
     }
@@ -2269,7 +2271,7 @@ export const createUploadIntent = internalMutation({
       const candidate = ctx.db.normalizeId("people", args.assignedParticipantId)
       const person = candidate ? await ctx.db.get(candidate) : null
       if (!person || person.eventId !== event._id)
-        throw new Error("`assigned_participant_id` is not a person on this event.")
+        throw new ConvexError("`assigned_participant_id` is not a person on this event.")
       assignedPersonId = person._id
     }
 
@@ -2322,7 +2324,7 @@ export const completeUploadIntent = internalMutation({
     const intent = id ? await ctx.db.get(id) : null
     if (!intent || intent.eventId !== event._id) return { notFound: true }
     if (!intent.storageId)
-      throw new Error(
+      throw new ConvexError(
         "No bytes received yet — PUT the file to the `upload.url` from this file's create response first.",
       )
 
@@ -2531,7 +2533,7 @@ export const writeEvent = internalMutation({
 
     if (args.action === "create") {
       const name = (input.name ?? "").trim()
-      if (!name) throw new Error("`name` is required to create an event.")
+      if (!name) throw new ConvexError("`name` is required to create an event.")
       const timezone = (input.timezone ?? "").trim() || "UTC"
       // Which workspace? Named explicitly, or — the common case — the only one
       // this credential's owner is an admin of. Ambiguity is answered with the
@@ -2549,13 +2551,13 @@ export const writeEvent = internalMutation({
           "organizations",
           input.organization_id,
         )
-        if (!normalized) throw new Error("That workspace id isn't valid.")
+        if (!normalized) throw new ConvexError("That workspace id isn't valid.")
         await membershipFor(ctx, args.userId, normalized, "admin")
         organizationId = normalized
       } else if (admin.length === 1) {
         organizationId = admin[0].organizationId
       } else if (admin.length === 0) {
-        throw new Error(
+        throw new ConvexError(
           "You need to be an admin of a workspace to create an event.",
         )
       } else {
@@ -2564,7 +2566,7 @@ export const writeEvent = internalMutation({
           const org = await ctx.db.get(member.organizationId)
           names.push(`${member.organizationId} (${org?.name ?? "workspace"})`)
         }
-        throw new Error(
+        throw new ConvexError(
           `You belong to more than one workspace — pass \`organization_id\`: ${names.join(", ")}.`,
         )
       }
@@ -2619,7 +2621,7 @@ export const writeEvent = internalMutation({
     const patch: Record<string, unknown> = {}
     if (input.name !== undefined) {
       const name = input.name.trim()
-      if (!name) throw new Error("`name` cannot be empty.")
+      if (!name) throw new ConvexError("`name` cannot be empty.")
       patch.name = name
     }
     let slugAdjusted = false
@@ -2762,7 +2764,7 @@ export const writeSessionParticipant = internalMutation({
 
     const role = (args.role ?? "speaker").trim().toLowerCase()
     if (!PARTICIPANT_ROLES.includes(role))
-      throw new Error(
+      throw new ConvexError(
         `Unknown role "${role}". Valid: ${PARTICIPANT_ROLES.join(", ")}.`,
       )
 
@@ -2775,7 +2777,7 @@ export const writeSessionParticipant = internalMutation({
     } else {
       const email = (args.email ?? "").trim().toLowerCase()
       if (!email)
-        throw new Error("Pass `speaker_id`, or an `email` to attach someone new.")
+        throw new ConvexError("Pass `speaker_id`, or an `email` to attach someone new.")
       person = await ctx.db
         .query("people")
         .withIndex("by_eventId_and_email", (q) =>
@@ -2785,7 +2787,7 @@ export const writeSessionParticipant = internalMutation({
       if (!person) {
         const firstName = (args.firstName ?? "").trim()
         if (!firstName)
-          throw new Error("Add a `first_name` for someone new to this event.")
+          throw new ConvexError("Add a `first_name` for someone new to this event.")
         const personId = await ctx.db.insert("people", {
           eventId: event._id,
           email,
@@ -2879,7 +2881,7 @@ export const deleteSpeaker = internalMutation({
       if (submission && submission.deletedAt === undefined) live.add(submission._id)
     }
     if (live.size > 0)
-      throw new Error(
+      throw new ConvexError(
         `${name} is on ${live.size} submission${live.size === 1 ? "" : "s"}. Remove them from those sessions first (DELETE …/sessions/{id}/participants/{speakerId}).`,
       )
 
@@ -3143,10 +3145,10 @@ export const writeForm = internalMutation({
       await authorizeEvent(ctx, event, args.userId)
       const internalName = (input.internal_name ?? "").trim()
       if (!internalName)
-        throw new Error("`internal_name` is required to create a form.")
+        throw new ConvexError("`internal_name` is required to create a form.")
       const kind = (input.kind ?? "abstract").trim()
       if (!["abstract", "session"].includes(kind))
-        throw new Error("`kind` must be `abstract` or `session`.")
+        throw new ConvexError("`kind` must be `abstract` or `session`.")
       const tracks = await ctx.db
         .query("tracks")
         .withIndex("by_eventId", (q) => q.eq("eventId", event._id))
@@ -3196,7 +3198,7 @@ export const writeForm = internalMutation({
         .withIndex("by_formId", (q) => q.eq("formId", form._id))
         .first()
       if (existing)
-        throw new Error(
+        throw new ConvexError(
           "This form has submissions. Close it instead of deleting it (PUT with `status: \"closed\"`).",
         )
       await ctx.db.delete(form._id)
@@ -3207,14 +3209,14 @@ export const writeForm = internalMutation({
     const patch: Record<string, unknown> = {}
     if (input.internal_name !== undefined) {
       const name = input.internal_name.trim()
-      if (!name) throw new Error("`internal_name` cannot be empty.")
+      if (!name) throw new ConvexError("`internal_name` cannot be empty.")
       patch.internalName = name
     }
     if (input.external_title !== undefined)
       patch.externalTitle = input.external_title
     if (input.kind !== undefined) {
       if (!["abstract", "session"].includes(input.kind))
-        throw new Error("`kind` must be `abstract` or `session`.")
+        throw new ConvexError("`kind` must be `abstract` or `session`.")
       patch.kind = input.kind
     }
     if (input.slug !== undefined) {
@@ -3226,7 +3228,7 @@ export const writeForm = internalMutation({
     }
     if (input.status !== undefined) {
       if (!["open", "closed"].includes(input.status))
-        throw new Error("`status` must be `open` or `closed`.")
+        throw new ConvexError("`status` must be `open` or `closed`.")
       patch.status = input.status
     }
     if (input.close_at !== undefined) patch.closeAt = input.close_at
@@ -3242,7 +3244,7 @@ export const writeForm = internalMutation({
       // would break the public form silently.
       for (const locked of form.questions.filter((question) => question.locked))
         if (!input.questions.some((question) => question.id === locked.id))
-          throw new Error(
+          throw new ConvexError(
             `"${locked.label}" is a system question and has to stay on the form.`,
           )
       patch.questions = input.questions
@@ -3367,7 +3369,10 @@ function mergeFormSettings(
 // is one POST per speaker, and a nightly script can read what is still open.
 // ══════════════════════════════════════════════════════════════════════════
 
-const TASK_KINDS = ["profile", "headshot", "upload", "form", "confirm"]
+// One source of truth with the app (convex/tasksAdmin.ts): a kind the REST API
+// accepts but the portal cannot complete would be a task nobody can ever
+// finish. `form` is gone — `answer` (the speaker types a reply) replaced it.
+const TASK_KINDS = APP_TASK_KINDS
 
 async function taskShape(
   ctx: QueryCtx,
@@ -3380,6 +3385,8 @@ async function taskShape(
     title: task.title,
     instructions: task.instructions ?? null,
     kind: task.kind,
+    /** Kind `answer` only: what the speaker typed back in their portal. */
+    response: task.response ?? null,
     due_at: iso(task.dueAt),
     completed_at: iso(task.completedAt),
     is_complete: task.completedAt !== undefined,
@@ -3497,10 +3504,10 @@ export const writeTask = internalMutation({
     if (args.action === "create") {
       await authorizeEvent(ctx, event, args.userId)
       const title = (input.title ?? "").trim()
-      if (!title) throw new Error("`title` is required.")
+      if (!title) throw new ConvexError("`title` is required.")
       const kind = (input.kind ?? "upload").trim()
       if (!TASK_KINDS.includes(kind))
-        throw new Error(
+        throw new ConvexError(
           `Unknown task kind "${kind}". Valid: ${TASK_KINDS.join(", ")}.`,
         )
       let submissionId: Id<"submissions"> | undefined
@@ -3508,7 +3515,7 @@ export const writeTask = internalMutation({
         const normalized = ctx.db.normalizeId("submissions", input.session_id)
         const submission = normalized ? await ctx.db.get(normalized) : null
         if (!submission || submission.eventId !== event._id)
-          throw new Error("That session doesn't belong to this event.")
+          throw new ConvexError("That session doesn't belong to this event.")
         submissionId = submission._id
       }
 
@@ -3519,7 +3526,7 @@ export const writeTask = internalMutation({
         const personId = ctx.db.normalizeId("people", ref)
         const person = personId ? await ctx.db.get(personId) : null
         if (!person || person.eventId !== event._id)
-          throw new Error(`No speaker "${ref}" in this event.`)
+          throw new ConvexError(`No speaker "${ref}" in this event.`)
         people.push(person)
       }
       for (const email of input.speaker_emails ?? []) {
@@ -3529,11 +3536,11 @@ export const writeTask = internalMutation({
             q.eq("eventId", event._id).eq("email", email.trim().toLowerCase()),
           )
           .unique()
-        if (!person) throw new Error(`Nobody in this event has the email ${email}.`)
+        if (!person) throw new ConvexError(`Nobody in this event has the email ${email}.`)
         people.push(person)
       }
       if (people.length === 0)
-        throw new Error(
+        throw new ConvexError(
           "Assign the task to at least one speaker (`speaker_ids` or `speaker_emails`).",
         )
 
@@ -3576,14 +3583,14 @@ export const writeTask = internalMutation({
     const patch: Record<string, unknown> = {}
     if (input.title !== undefined) {
       const title = input.title.trim()
-      if (!title) throw new Error("`title` cannot be empty.")
+      if (!title) throw new ConvexError("`title` cannot be empty.")
       patch.title = title
     }
     if (input.instructions !== undefined)
       patch.instructions = input.instructions.trim() || undefined
     if (input.kind !== undefined) {
       if (!TASK_KINDS.includes(input.kind))
-        throw new Error(
+        throw new ConvexError(
           `Unknown task kind "${input.kind}". Valid: ${TASK_KINDS.join(", ")}.`,
         )
       patch.kind = input.kind
@@ -3848,7 +3855,7 @@ export const writeEvaluationPlan = internalMutation({
       (input.criteria ?? []).map((criterion, index) => {
         const type = criterion.type ?? "numeric"
         if (!["numeric", "select", "text"].includes(type))
-          throw new Error(
+          throw new ConvexError(
             `Unknown criterion type "${type}". Valid: numeric, select, text.`,
           )
         const slug =
@@ -3872,7 +3879,7 @@ export const writeEvaluationPlan = internalMutation({
         const id = ctx.db.normalizeId("submissions", ref)
         const submission = id ? await ctx.db.get(id) : null
         if (!submission || submission.eventId !== event._id)
-          throw new Error(`No session "${ref}" in this event.`)
+          throw new ConvexError(`No session "${ref}" in this event.`)
         if (!ids.includes(submission._id)) ids.push(submission._id)
       }
       return ids
@@ -3880,10 +3887,10 @@ export const writeEvaluationPlan = internalMutation({
 
     if (args.action === "create") {
       const name = (input.name ?? "").trim()
-      if (!name) throw new Error("`name` is required.")
+      if (!name) throw new ConvexError("`name` is required.")
       const criteria = readCriteria()
       if (criteria.length === 0)
-        throw new Error(
+        throw new ConvexError(
           "Give the plan at least one criterion (`criteria: [{ label: \"Relevance\" }]`).",
         )
       const planId = await ctx.db.insert("evaluationPlans", {
@@ -3917,13 +3924,13 @@ export const writeEvaluationPlan = internalMutation({
     const patch: Record<string, unknown> = {}
     if (input.name !== undefined) {
       const name = input.name.trim()
-      if (!name) throw new Error("`name` cannot be empty.")
+      if (!name) throw new ConvexError("`name` cannot be empty.")
       patch.name = name
     }
     if (input.round !== undefined) patch.round = input.round
     if (input.status !== undefined) {
       if (!["open", "closed"].includes(input.status))
-        throw new Error("`status` must be `open` or `closed`.")
+        throw new ConvexError("`status` must be `open` or `closed`.")
       patch.status = input.status
     }
     if (input.blind !== undefined) patch.blind = input.blind
@@ -4001,7 +4008,7 @@ export const writeEvaluator = internalMutation({
       for (const ref of input.assigned_submission_ids) {
         const id = ctx.db.normalizeId("submissions", ref)
         if (!id || !plan.submissionIds.includes(id))
-          throw new Error(`Session "${ref}" is not in this plan's pool.`)
+          throw new ConvexError(`Session "${ref}" is not in this plan's pool.`)
         if (!ids.includes(id)) ids.push(id)
       }
       return ids
@@ -4013,9 +4020,9 @@ export const writeEvaluator = internalMutation({
         : null
       const plan = planId ? await ctx.db.get(planId) : null
       if (!plan || plan.eventId !== event._id)
-        throw new Error("`plan_id` must name an evaluation plan on this event.")
+        throw new ConvexError("`plan_id` must name an evaluation plan on this event.")
       const email = (input.email ?? "").trim().toLowerCase()
-      if (!email) throw new Error("`email` is required.")
+      if (!email) throw new ConvexError("`email` is required.")
       const existing = (await evaluatorsOf(ctx, plan._id)).find(
         (row) => row.email === email,
       )
@@ -4247,7 +4254,7 @@ export const writeWebhook = internalMutation({
     if (args.action === "create") {
       const url = (args.url ?? "").trim()
       if (!/^https?:\/\//i.test(url))
-        throw new Error("`url` must be an absolute http(s) URL.")
+        throw new ConvexError("`url` must be an absolute http(s) URL.")
       const event = args.eventRef ? await resolveEvent(ctx, args.eventRef) : null
       if (args.eventRef && !event) return { notFound: true }
       let organizationId: Id<"organizations"> | undefined = event?.organizationId
@@ -4255,7 +4262,7 @@ export const writeWebhook = internalMutation({
         const orgIds = await organizationsFor(ctx, args.userId)
         organizationId = orgIds[0]
       }
-      if (!organizationId) throw new Error("You don't belong to a workspace yet.")
+      if (!organizationId) throw new ConvexError("You don't belong to a workspace yet.")
       await membershipFor(ctx, args.userId, organizationId, "admin")
 
       const secret = generateWebhookSecret()
@@ -4349,7 +4356,7 @@ export const writeWebhook = internalMutation({
     }
 
     if (args.url !== undefined && !/^https?:\/\//i.test(args.url))
-      throw new Error("`url` must be an absolute http(s) URL.")
+      throw new ConvexError("`url` must be an absolute http(s) URL.")
     await ctx.db.patch(hook._id, {
       url: args.url ?? hook.url,
       events: args.events ?? hook.events,

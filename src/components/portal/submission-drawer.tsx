@@ -36,6 +36,7 @@ import { StatusPill } from "@/components/shared/status-pill"
 import { usePortal } from "./portal-context"
 import type { PortalSubmission } from "./portal-context"
 import { TrackDot } from "./submission-card"
+import { errorMessage } from "@/lib/errors"
 import {
   canEdit,
   canWithdraw,
@@ -174,9 +175,7 @@ export function SubmissionDrawer({
       })
       toast.success("Your changes were saved.")
     } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : "We couldn't save your changes.",
-      )
+      toast.error(errorMessage(error, "We couldn't save your changes."))
     } finally {
       setIsSaving(false)
     }
@@ -189,11 +188,7 @@ export function SubmissionDrawer({
       toast.success("Your submission was withdrawn.")
       onOpenChange(false)
     } catch (error) {
-      toast.error(
-        error instanceof Error
-          ? error.message
-          : "We couldn't withdraw this submission.",
-      )
+      toast.error(errorMessage(error, "We couldn't withdraw this submission."))
     } finally {
       setIsWithdrawing(false)
     }

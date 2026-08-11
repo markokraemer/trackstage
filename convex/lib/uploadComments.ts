@@ -1,5 +1,6 @@
 import type { Id } from "../_generated/dataModel"
 import type { MutationCtx, QueryCtx } from "../_generated/server"
+import { ConvexError } from "convex/values"
 
 // ————————————————————————————————————————————————————————————————————————
 // The comment thread that hangs off one uploaded file (sbek CNT-05,
@@ -52,9 +53,9 @@ export async function addComment(
   },
 ): Promise<Id<"uploadComments">> {
   const body = input.body.trim()
-  if (!body) throw new Error("Write something before posting.")
+  if (!body) throw new ConvexError("Write something before posting.")
   if (body.length > MAX_COMMENT_LENGTH) {
-    throw new Error(
+    throw new ConvexError(
       `Keep the comment under ${MAX_COMMENT_LENGTH} characters — attach a document for anything longer.`,
     )
   }

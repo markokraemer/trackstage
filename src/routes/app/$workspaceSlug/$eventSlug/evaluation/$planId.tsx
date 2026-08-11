@@ -48,6 +48,7 @@ import { AssignSubmissionsDialog } from "@/components/evaluation/assign-submissi
 import { DeletePlanButton } from "@/components/evaluation/delete-plan-dialog"
 import { appLink, legacyAppLink } from "@/lib/app-links"
 import { useCurrentEvent } from "@/lib/current-event"
+import { errorMessage } from "@/lib/errors"
 
 /**
  * Evaluation plan detail (docs/SPEC.md §4.5): who is reviewing, how far they
@@ -174,7 +175,7 @@ function PlanDetailPage() {
         },
         onError: (error: Error) =>
           toast.error("Couldn't send the reminders", {
-            description: error.message,
+            description: errorMessage(error, "Please try again."),
           }),
       },
     )
@@ -192,7 +193,7 @@ function PlanDetailPage() {
           ),
         onError: (error: Error) =>
           toast.error("Couldn't update the plan", {
-            description: error.message,
+            description: errorMessage(error, "Please try again."),
           }),
       },
     )

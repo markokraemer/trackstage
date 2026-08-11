@@ -41,6 +41,7 @@ import { EmptyState } from "@/components/shared/empty-state"
 import { initialsOf } from "@/components/dashboard/format"
 import { PersonPicker } from "@/components/dashboard/person-picker"
 import { useCurrentEvent } from "@/lib/current-event"
+import { errorMessage } from "@/lib/errors"
 
 /** The three roles a person can hold on a session (docs/SPEC.md §2.3). */
 export const PARTICIPANT_ROLE_VALUES = [
@@ -139,7 +140,7 @@ export function ParticipantsEditor({
     } catch (error) {
       toast.error("Couldn't add them", {
         description:
-          error instanceof Error ? error.message : "Please try again.",
+          errorMessage(error, "Please try again."),
       })
     } finally {
       setSubmitting(false)
@@ -154,7 +155,7 @@ export function ParticipantsEditor({
     } catch (error) {
       toast.error("Couldn't change their role", {
         description:
-          error instanceof Error ? error.message : "Please try again.",
+          errorMessage(error, "Please try again."),
       })
     } finally {
       setBusyPerson(null)
@@ -172,7 +173,7 @@ export function ParticipantsEditor({
     } catch (error) {
       toast.error("Couldn't remove them", {
         description:
-          error instanceof Error ? error.message : "Please try again.",
+          errorMessage(error, "Please try again."),
       })
     } finally {
       setBusyPerson(null)

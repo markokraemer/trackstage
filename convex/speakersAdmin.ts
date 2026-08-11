@@ -21,7 +21,7 @@
 // `workflowStatus` doubles as the marker that keeps a hand-added speaker on
 // the roster before they have an accepted session (see dashboard.speakersRoster).
 
-import { v } from "convex/values"
+import { ConvexError, v } from "convex/values"
 import type { Doc, Id } from "./_generated/dataModel"
 import type { MutationCtx } from "./_generated/server"
 import { mutation, query } from "./_generated/server"
@@ -56,14 +56,14 @@ const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 function normalizeEmail(email: string): string {
   const trimmed = email.trim().toLowerCase()
   if (!EMAIL_PATTERN.test(trimmed)) {
-    throw new Error("Enter a valid email address.")
+    throw new ConvexError("Enter a valid email address.")
   }
   return trimmed
 }
 
 function requireText(value: string, label: string): string {
   const trimmed = value.trim()
-  if (!trimmed) throw new Error(`${label} is required.`)
+  if (!trimmed) throw new ConvexError(`${label} is required.`)
   return trimmed
 }
 
@@ -189,7 +189,7 @@ export const updateProfile = mutation({
   returns: v.null(),
   handler: async (ctx, args) => {
     const person = await ctx.db.get("people", args.personId)
-    if (!person) throw new Error("Speaker not found.")
+    if (!person) throw new ConvexError("Speaker not found.")
     await requireEventAccess(ctx, person.eventId)
 
     const patch: Partial<Doc<"people">> = {}
@@ -256,7 +256,7 @@ export const setPublicVisibility = mutation({
   returns: v.null(),
   handler: async (ctx, args) => {
     const person = await ctx.db.get("people", args.personId)
-    if (!person) throw new Error("Speaker not found.")
+    if (!person) throw new ConvexError("Speaker not found.")
     await requireEventAccess(ctx, person.eventId)
     await ctx.db.patch(args.personId, {
       publicVisible: args.publicVisible,
@@ -318,7 +318,7 @@ export const profile = query({
   }),
   handler: async (ctx, args) => {
     const person = await ctx.db.get("people", args.personId)
-    if (!person) throw new Error("Speaker not found.")
+    if (!person) throw new ConvexError("Speaker not found.")
     await requireEventAccess(ctx, person.eventId)
     const headshotUrl = person.headshotId
       ? await ctx.storage.getUrl(person.headshotId)
@@ -372,11 +372,11 @@ export const setHeadshot = mutation({
   returns: v.null(),
   handler: async (ctx, args) => {
     const person = await ctx.db.get("people", args.personId)
-    if (!person) throw new Error("Speaker not found.")
+    if (!person) throw new ConvexError("Speaker not found.")
     await requireEventAccess(ctx, person.eventId)
 
     const meta = await storageMeta(ctx, args.storageId)
-    if (!meta) throw new Error("That upload didn't finish — please try again.")
+    if (!meta) throw new ConvexError("That upload didn't finish — please try again.")
     assertImageUpload(meta, args.filename)
 
     // Points the person at the new blob AND drops the loose profile file it
@@ -424,7 +424,7 @@ export const clearHeadshot = mutation({
   returns: v.null(),
   handler: async (ctx, args) => {
     const person = await ctx.db.get("people", args.personId)
-    if (!person) throw new Error("Speaker not found.")
+    if (!person) throw new ConvexError("Speaker not found.")
     await requireEventAccess(ctx, person.eventId)
     const previous = person.headshotId
     if (!previous) return null
@@ -510,9 +510,9 @@ export const bulkAdd = mutation({
   }),
   handler: async (ctx, args) => {
     await requireEventAccess(ctx, args.eventId)
-    if (args.rows.length === 0) throw new Error("That file had no rows to import.")
+    if (args.rows.length === 0) throw new ConvexError("That file had no rows to import.")
     if (args.rows.length > MAX_IMPORT_ROWS) {
-      throw new Error(
+      throw new ConvexError(
         `That file has ${args.rows.length} rows. Import up to ${MAX_IMPORT_ROWS} speakers at a time.`,
       )
     }
@@ -649,7 +649,7 @@ const ROLE_LABELS: Record<string, string> = {
 
 async function requireSubmission(ctx: MutationCtx, submissionId: Id<"submissions">) {
   const submission = await ctx.db.get(submissionId)
-  if (!submission) throw new Error("Submission not found.")
+  if (!submission) throw new ConvexError("Submission not found.")
   await requireEventAccess(ctx, submission.eventId)
   return submission
 }
@@ -714,7 +714,7 @@ export const addSubmissionParticipant = mutation({
       }
     } else {
       if (!firstName) {
-        throw new Error("Add a first name for someone new to this event.")
+        throw new ConvexError("Add a first name for someone new to this event.")
       }
       const personId = await ctx.db.insert("people", {
         eventId: submission.eventId,
@@ -724,7 +724,7 @@ export const addSubmissionParticipant = mutation({
         portalToken: randomToken(),
       })
       const inserted = await ctx.db.get(personId)
-      if (!inserted) throw new Error("Couldn't create that person.")
+      if (!inserted) throw new ConvexError("Couldn't create that person.")
       person = inserted
       created = true
       await emitWebhook(ctx, submission.eventId, "speaker.created", {
@@ -741,7 +741,7 @@ export const addSubmissionParticipant = mutation({
       .withIndex("by_submissionId", (q) => q.eq("submissionId", args.submissionId))
       .collect()
     if (rows.some((row) => row.personId === person._id)) {
-      throw new Error("They're already on this submission.")
+      throw new ConvexError("They're already on this submission.")
     }
     await ctx.db.insert("submissionParticipants", {
       submissionId: args.submissionId,
@@ -779,7 +779,7 @@ export const setParticipantRole = mutation({
         )
         .collect()
     ).find((candidate) => candidate.personId === args.personId)
-    if (!row) throw new Error("They're not on this submission.")
+    if (!row) throw new ConvexError("They're not on this submission.")
     if (row.role === args.role) return null
     await ctx.db.patch(row._id, { role: args.role })
 
@@ -813,7 +813,7 @@ export const removeSubmissionParticipant = mutation({
         )
         .collect()
     ).find((candidate) => candidate.personId === args.personId)
-    if (!row) throw new Error("They're not on this submission.")
+    if (!row) throw new ConvexError("They're not on this submission.")
     await ctx.db.delete(row._id)
 
     // The person themselves is deliberately left alone: they may be speaking
@@ -841,7 +841,7 @@ export const setWorkflowStatus = mutation({
   returns: v.null(),
   handler: async (ctx, args) => {
     const person = await ctx.db.get("people", args.personId)
-    if (!person) throw new Error("Speaker not found.")
+    if (!person) throw new ConvexError("Speaker not found.")
     await requireEventAccess(ctx, person.eventId)
     await ctx.db.patch(args.personId, {
       workflowStatus: args.workflowStatus,
@@ -895,7 +895,7 @@ export const removePerson = mutation({
   returns: v.null(),
   handler: async (ctx, args) => {
     const person = await ctx.db.get("people", args.personId)
-    if (!person) throw new Error("Speaker not found.")
+    if (!person) throw new ConvexError("Speaker not found.")
     await requireEventAccess(ctx, person.eventId)
     const name = `${person.firstName} ${person.lastName}`.trim() || person.email
 
@@ -920,7 +920,7 @@ export const removePerson = mutation({
     }
     if (liveSubmissionIds.size > 0) {
       const count = liveSubmissionIds.size
-      throw new Error(
+      throw new ConvexError(
         `${name} is on ${count} submission${count === 1 ? "" : "s"}. Remove them from those submissions first.`,
       )
     }

@@ -242,6 +242,34 @@ async function purgeEvent(ctx: MutationCtx, eventId: Id<"events">) {
     .take(500)
   for (const row of embeds) await ctx.db.delete("embeds", row._id)
 
+  // Airtable: the connection row holds a LIVE personal access token. Leaving
+  // it behind after the event is gone would keep somebody's Airtable
+  // credential in the deployment with nothing pointing at it — the one row in
+  // this cascade that is a secret, so it is never skipped.
+  const airtable = await ctx.db
+    .query("airtableConnections")
+    .withIndex("by_eventId", (q) => q.eq("eventId", eventId))
+    .take(50)
+  for (const row of airtable) {
+    await ctx.db.delete("airtableConnections", row._id)
+  }
+
+  const airtableMirrors = await ctx.db
+    .query("airtableRecordSync")
+    .withIndex("by_eventId", (q) => q.eq("eventId", eventId))
+    .take(2000)
+  for (const row of airtableMirrors) {
+    await ctx.db.delete("airtableRecordSync", row._id)
+  }
+
+  // History of an event that no longer exists (same list as
+  // `deleteEventCascade` in convex/events.ts — the two purges must agree).
+  const audit = await ctx.db
+    .query("auditLog")
+    .withIndex("by_eventId", (q) => q.eq("eventId", eventId))
+    .take(4000)
+  for (const row of audit) await ctx.db.delete("auditLog", row._id)
+
   const event = await ctx.db.get("events", eventId)
   if (event?.logoId) await forgetBlob(ctx, event.logoId)
   if (event?.backgroundId) await forgetBlob(ctx, event.backgroundId)

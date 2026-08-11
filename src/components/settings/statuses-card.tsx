@@ -58,7 +58,7 @@ import {
 import { StatusPill } from "@/components/shared/status-pill"
 import { absoluteDate } from "@/components/submissions/constants"
 import { StatusColorPicker } from "@/components/settings/status-color-picker"
-import { errorMessage } from "@/components/settings/errors"
+import { errorMessage } from "@/lib/errors"
 import { CATEGORY_META, CATEGORY_OPTIONS } from "@/lib/status-catalog"
 import type {
   StatusCategory,
@@ -447,9 +447,7 @@ function StatusRow({
             ariaLabel={`Category for ${status.name}`}
             onValueChange={(value) => {
               void onPatch({ category: value }).catch((error: unknown) =>
-                toast.error(
-                  errorMessage(error, "Couldn't change that category."),
-                ),
+                toast.error(errorMessage(error, "Couldn't change that category.")),
               )
             }}
           />

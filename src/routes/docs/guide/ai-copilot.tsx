@@ -24,8 +24,8 @@ function Page() {
         <Step title="Press the sparkle “Copilot” button in the top bar, or hit ⌘I / Ctrl+I.">
           <Shot
             src="copilot.png"
-            alt="The Copilot chat with suggested prompts"
-            caption="Same conversation whether you use the side panel or the full page."
+            alt="The Copilot chat naming the event it is working on, with suggested prompts"
+            caption="It names the event it is working on under the title — the same one your sidebar is pointed at. Same conversation whether you use the side panel or the full page."
           />
         </Step>
 

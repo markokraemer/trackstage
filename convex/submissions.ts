@@ -1,4 +1,4 @@
-import { v } from "convex/values"
+import { ConvexError, v } from "convex/values"
 import { internal } from "./_generated/api"
 import type { Doc, Id } from "./_generated/dataModel"
 import type { MutationCtx, QueryCtx } from "./_generated/server"
@@ -124,7 +124,7 @@ export const get = query({
   args: { submissionId: v.id("submissions") },
   handler: async (ctx, args) => {
     const submission = await ctx.db.get(args.submissionId)
-    if (!submission) throw new Error("Submission not found")
+    if (!submission) throw new ConvexError("Submission not found")
     await requireEventAccess(ctx, submission.eventId)
     const joined = await withJoins(ctx, submission)
     const uploads = await ctx.db
@@ -197,18 +197,18 @@ export const setStatus = mutation({
   },
   handler: async (ctx, args) => {
     if (!STATUSES.includes(args.status as (typeof STATUSES)[number])) {
-      throw new Error(`Invalid status: ${args.status}`)
+      throw new ConvexError(`Invalid status: ${args.status}`)
     }
     const submission = await ctx.db.get(args.submissionId)
-    if (!submission) throw new Error("Submission not found")
+    if (!submission) throw new ConvexError("Submission not found")
     await requireEventAccess(ctx, submission.eventId)
     if (args.statusId) {
       const label = await ctx.db.get(args.statusId)
       if (!label || label.eventId !== submission.eventId) {
-        throw new Error("That status belongs to a different event.")
+        throw new ConvexError("That status belongs to a different event.")
       }
       if (label.pipelineStatus !== args.status) {
-        throw new Error(
+        throw new ConvexError(
           `“${label.name}” behaves as ${label.pipelineStatus}, not ${args.status}.`,
         )
       }
@@ -235,10 +235,10 @@ export const setStatusInternal = internalMutation({
   returns: v.null(),
   handler: async (ctx, args) => {
     if (!STATUSES.includes(args.status as (typeof STATUSES)[number])) {
-      throw new Error(`Invalid status: ${args.status}`)
+      throw new ConvexError(`Invalid status: ${args.status}`)
     }
     const submission = await ctx.db.get(args.submissionId)
-    if (!submission) throw new Error("Submission not found")
+    if (!submission) throw new ConvexError("Submission not found")
     await applyStatusChange(ctx, submission, args.status, {
       type: args.actorType as AuditActor["type"],
       label: args.actorLabel,
@@ -254,7 +254,7 @@ export const bulkSetStatus = mutation({
   },
   handler: async (ctx, args) => {
     if (!STATUSES.includes(args.status as (typeof STATUSES)[number])) {
-      throw new Error(`Invalid status: ${args.status}`)
+      throw new ConvexError(`Invalid status: ${args.status}`)
     }
     // Every id is authorized on its own event — a bulk call can never straddle
     // an event the caller has no access to.
@@ -278,7 +278,7 @@ export const commitQueue = mutation({
   handler: async (ctx, args) => {
     await requireEventAccess(ctx, args.eventId, "admin")
     if (!["accept_queue", "decline_queue"].includes(args.queue)) {
-      throw new Error("queue must be accept_queue or decline_queue")
+      throw new ConvexError("queue must be accept_queue or decline_queue")
     }
     const accepting = args.queue === "accept_queue"
     const staged = await ctx.db
@@ -425,10 +425,10 @@ export const addManual = mutation({
   },
   handler: async (ctx, args) => {
     const { user } = await requireEventAccess(ctx, args.eventId)
-    if (!args.title.trim()) throw new Error("Title is required.")
+    if (!args.title.trim()) throw new ConvexError("Title is required.")
     const status = args.status ?? (args.kind === "session" ? "accepted" : "pending")
     if (!STATUSES.includes(status as (typeof STATUSES)[number])) {
-      throw new Error(`Invalid status: ${status}`)
+      throw new ConvexError(`Invalid status: ${status}`)
     }
 
     // Manual entries are "submitted" by the organizer's person record.
@@ -547,7 +547,7 @@ export const updateDetails = mutation({
   },
   handler: async (ctx, args) => {
     const submission = await ctx.db.get(args.submissionId)
-    if (!submission) throw new Error("Submission not found")
+    if (!submission) throw new ConvexError("Submission not found")
     await requireEventAccess(ctx, submission.eventId)
     const { trackId, answers, ...rest } = args.patch
     await ctx.db.patch(args.submissionId, {
@@ -597,7 +597,7 @@ export const remove = mutation({
   returns: v.null(),
   handler: async (ctx, args) => {
     const submission = await ctx.db.get(args.submissionId)
-    if (!submission) throw new Error("Submission not found")
+    if (!submission) throw new ConvexError("Submission not found")
     await requireEventAccess(ctx, submission.eventId, "admin")
     if (submission.deletedAt !== undefined) return null
 
@@ -630,7 +630,7 @@ export const restore = mutation({
   returns: v.null(),
   handler: async (ctx, args) => {
     const submission = await ctx.db.get(args.submissionId)
-    if (!submission) throw new Error("Submission not found")
+    if (!submission) throw new ConvexError("Submission not found")
     await requireEventAccess(ctx, submission.eventId, "admin")
     if (submission.deletedAt === undefined) return null
 

@@ -8,6 +8,7 @@ import { toast } from "sonner"
 import { FieldGroup } from "@/components/ui/field"
 import { QuestionField } from "@/components/submit/question-field"
 import type { AnswerValue, SubmitQuestion } from "@/components/submit/types"
+import { errorMessage } from "@/lib/errors"
 
 /**
  * The submission's custom-field answers, EDITABLE (docs/reference/
@@ -122,9 +123,7 @@ export function AnswersEditor({
       savedTimer.current = setTimeout(() => setSavedKey(null), 2000)
       toast.success("Answer saved.")
     } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : "Could not save that answer."
-      )
+      toast.error(errorMessage(error, "Could not save that answer."))
     }
   }
 

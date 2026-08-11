@@ -18,6 +18,7 @@ import {
 import { Skeleton } from "@/components/ui/skeleton"
 import { FileDropZone } from "@/components/shared/file-drop-zone"
 import { MAX_IMAGE_BYTES, formatBytes, uploadToStorage } from "@/lib/files"
+import { errorMessage } from "@/lib/errors"
 
 /**
  * Settings → Event details → Branding (docs/ux/01 image25).
@@ -59,9 +60,7 @@ export function EventBrandingCard({ eventId }: { eventId: Id<"events"> }) {
       await setBranding({ eventId, slot, storageId: null })
       toast.success(slot === "logo" ? "Logo removed." : "Background removed.")
     } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : "Could not remove that image.",
-      )
+      toast.error(errorMessage(error, "Could not remove that image."))
     }
   }
 

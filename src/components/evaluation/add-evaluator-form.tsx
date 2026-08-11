@@ -9,6 +9,7 @@ import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Field, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
+import { errorMessage } from "@/lib/errors"
 
 /**
  * Add one evaluator to a plan. Deliberately a plain inline form (not a drawer):
@@ -47,7 +48,8 @@ export function AddEvaluatorForm({
             description: "Copy their review link from the table to invite them.",
           })
         },
-        onError: (mutationError: Error) => setError(mutationError.message),
+        onError: (mutationError: Error) =>
+          setError(errorMessage(mutationError, "Please try again.")),
       },
     )
   }

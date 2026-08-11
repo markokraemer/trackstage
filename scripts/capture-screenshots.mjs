@@ -7,6 +7,7 @@
  *   node scripts/capture-screenshots.mjs             # marketing + docs shots
  *   node scripts/capture-screenshots.mjs --marketing # public/screenshots/* only
  *   node scripts/capture-screenshots.mjs --docs       # public/docs/* only
+ *   node scripts/capture-screenshots.mjs --marketing --gif  # …and rebuild the GIF
  *
  * Everything is driven through the real UI (sign in, click, navigate) so the
  * shots can never drift from what a visitor actually gets. Re-run it after any
@@ -49,6 +50,18 @@ const MODE = args.includes("--docs")
     : args.includes("--marketing")
       ? "marketing"
       : "all"
+
+/**
+ * `agenda-flow.gif` is OPT-IN (`--gif`).
+ *
+ * The shipped GIF is cut from `video/public/clips/agenda.mp4` — a real 9.5s
+ * drag with the conflict pre-warning in it, which reads far better than the
+ * four-to-six stills this script can stitch. Rebuilding it here by default
+ * would silently clobber the better one on every routine refresh. It also
+ * MUTATES the demo agenda (it really drops a session in a new slot), so it has
+ * no business running while an e2e gate is driving the same database.
+ */
+const WANT_GIF = args.includes("--gif")
 
 const log = (...a) => console.log("·", ...a)
 
@@ -114,6 +127,15 @@ async function signIn(page) {
  * `useCurrentEvent` defaults to whichever one loaded first — which is not
  * reliably the demo event. Every organizer-side shot depends on this.
  */
+/**
+ * `{ workspaceSlug, eventSlug }` for the demo event, learned from the URL the
+ * app lands on when we open it. Every organizer shot is then addressed
+ * canonically (`/app/:ws/:event/…`, docs/memory/DECISIONS.md "URL
+ * architecture is fully hierarchical") instead of through a bare legacy path,
+ * which only resolves via the stored pointer and repaints a skeleton first.
+ */
+let demoRef = null
+
 async function selectDemoEvent(page) {
   try {
     await page.goto(`${BASE}/app/events`, { waitUntil: "networkidle" })
@@ -121,12 +143,43 @@ async function selectDemoEvent(page) {
     const card = page.locator('[data-slot="card"]').filter({ hasText: EVENT_NAME }).first()
     const button = card.getByRole("button", { name: /open event|go to dashboard/i })
     await button.click({ timeout: 5000 })
-    await page.waitForURL(/\/app$/, { timeout: 5000 }).catch(() => {})
+    await page.waitForURL(/\/app\/[^/]+\/[^/]+/, { timeout: 8000 }).catch(() => {})
     await settle(page, 500)
-    log(`selected demo event: ${EVENT_NAME}`)
+    const match = new URL(page.url()).pathname.match(/^\/app\/([^/]+)\/([^/]+)/)
+    if (match && match[2] !== "workspace") {
+      demoRef = { workspaceSlug: match[1], eventSlug: match[2] }
+    }
+    log(
+      `selected demo event: ${EVENT_NAME}${demoRef ? ` (/app/${demoRef.workspaceSlug}/${demoRef.eventSlug})` : ""}`
+    )
   } catch {
     log(`could not select "${EVENT_NAME}" explicitly — continuing with the default event`)
   }
+}
+
+/** Event-scoped sections, as the bare legacy paths still name them. */
+const EVENT_SECTIONS = [
+  "submissions",
+  "forms",
+  "evaluation",
+  "agenda",
+  "speakers",
+  "files",
+  "communications",
+  "embeds",
+  "settings",
+]
+
+/** A bare `/app/…` path rewritten onto the demo event, when we know it. */
+function canonical(path) {
+  if (!demoRef) return path
+  const base = `/app/${demoRef.workspaceSlug}/${demoRef.eventSlug}`
+  if (path === "/app") return base
+  // `/app/workspace` is workspace-level, not event-level.
+  if (path === "/app/workspace") return `/app/${demoRef.workspaceSlug}/workspace`
+  const rest = path.replace(/^\/app\//, "")
+  const section = rest.split(/[/?]/)[0]
+  return EVENT_SECTIONS.includes(section) ? `${base}/${rest}` : path
 }
 
 /** Retry a navigation once — `net::ERR_ABORTED` from a racing client-side redirect is transient. */
@@ -149,7 +202,7 @@ async function gotoSafe(page, url, opts = { waitUntil: "networkidle" }) {
  * pointed at the real demo event instead of an empty leftover one.
  */
 async function gotoOrganizer(page, path) {
-  await gotoSafe(page, `${BASE}${path}`)
+  await gotoSafe(page, `${BASE}${canonical(path)}`)
   await settle(page, 500)
   const onDemoEvent = await page
     .locator("aside")
@@ -158,7 +211,7 @@ async function gotoOrganizer(page, path) {
     .catch(() => 0)
   if (onDemoEvent === 0) {
     await selectDemoEvent(page)
-    await gotoSafe(page, `${BASE}${path}`)
+    await gotoSafe(page, `${BASE}${canonical(path)}`)
     await settle(page, 500)
   }
 }
@@ -178,7 +231,7 @@ async function tryClick(page, locator, label) {
 async function main() {
   await mkdir(OUT, { recursive: true })
   await mkdir(DOCS_OUT, { recursive: true })
-  if (MODE !== "docs") {
+  if (MODE !== "docs" && WANT_GIF) {
     await rm(FRAMES, { recursive: true, force: true })
     await mkdir(FRAMES, { recursive: true })
   }
@@ -207,7 +260,7 @@ async function main() {
 
   await browser.close()
 
-  if (MODE !== "docs") await buildGif()
+  if (MODE !== "docs" && WANT_GIF) await buildGif()
 
   if (consoleErrors.length) {
     console.log("\nconsole errors seen while capturing:")
@@ -221,28 +274,39 @@ async function captureMarketingShots(page) {
   await page.goto(`${BASE}/app`, { waitUntil: "networkidle" })
   await shot(page, "dashboard")
 
-  // 2 — Submissions table
+  // 2 — Submissions table, sorted by score descending.
+  //
+  // Not decoration: the default order is newest-first, and on a shared dev
+  // database that is a wall of un-cleaned e2e fixtures ("Copilot Guard cg-…",
+  // "Outbox Proof t-…"). Every seeded submission carries a score and no fixture
+  // does, so sorting by score floats the real programme to the top and the shot
+  // stays clean even mid-gate. It also puts the Score column to work, which is
+  // the point of the screen.
   await page.goto(`${BASE}/app/submissions`, { waitUntil: "networkidle" })
+  await settle(page)
+  await tryClick(page, page.locator("thead").getByText(/^score$/i), "sort by Score")
   await shot(page, "submissions")
 
-  // 3 — Agenda: list view (dense) + day grid scrolled onto the programme
+  // 3 — Agenda: day grid scrolled onto the programme. (The List view is NOT
+  // shot: its Room cell renders the raw room id — see capture-screenshots.md.)
   await page.goto(`${BASE}/app/agenda`, { waitUntil: "networkidle" })
   await settle(page)
-  await tryClick(page, page.getByText(/^list$/i), "agenda List view")
-  await shot(page, "agenda-list")
   await tryClick(page, page.getByText(/^day$/i), "agenda Day view")
   await settle(page)
   await scrollGridToProgramme(page)
   await shot(page, "agenda")
 
-  // 3b — Agenda drag frames for the flow GIF
-  await captureAgendaFlow(page)
+  // 3b — Agenda drag frames for the flow GIF (opt-in, see WANT_GIF)
+  if (WANT_GIF) await captureAgendaFlow(page)
 
   // 4 — Form builder, question step
+  // Forms now live under /app/{workspace}/{event}/forms/{id}, so match the
+  // segment rather than a fixed prefix.
   await page.goto(`${BASE}/app/forms`, { waitUntil: "networkidle" })
-  await tryClick(page, page.getByRole("link", { name: /call for speakers|cfp|edit/i }), "open form")
-  if (!page.url().match(/\/app\/forms\/[^/]+$/)) {
-    await tryClick(page, page.locator("a[href*='/app/forms/']"), "open form (href)")
+  await settle(page)
+  await tryClick(page, page.getByRole("link", { name: /^edit$/i }), "open form (Edit)")
+  if (!page.url().match(/\/forms\/[^/]+$/)) {
+    await tryClick(page, page.locator("a[href*='/forms/']"), "open form (href)")
   }
   await settle(page)
   await tryClick(page, page.getByText(/submission questions/i), "form step: Submission questions")
@@ -254,7 +318,14 @@ async function captureMarketingShots(page) {
   await shot(page, "portal")
 
   // 6 — Public schedule
-  await page.goto(`${BASE}/e/${EVENT_SLUG}`, { waitUntil: "networkidle" })
+  // Canonical `/e/:workspaceSlug/:eventSlug`; the one-segment legacy address
+  // resolves oldest-claimant-first, which on a shared database is a gamble.
+  await page.goto(
+    demoRef
+      ? `${BASE}/e/${demoRef.workspaceSlug}/${demoRef.eventSlug}`
+      : `${BASE}/e/${EVENT_SLUG}`,
+    { waitUntil: "networkidle" }
+  )
   await shot(page, "public-schedule")
 }
 
@@ -313,8 +384,33 @@ async function captureDocsShots(page) {
 
 
 
+  /*
+   * submissions-inbox — both tab strips with their real counts, over rows a
+   * reader can actually learn from.
+   *
+   * The table is ordered newest-first, and on this shared dev deployment the
+   * newest rows are whatever fixtures another agent's verification run just
+   * wrote ("Auto B au-msox3gng", "Dragged dg-…", "E2E Proposal t-…"). Scoping
+   * to Accepted AND one track excludes all of them — fixtures are transient
+   * and land untracked or unaccepted — and leaves the seeded programme, which
+   * is what the guide is pointing at. Both tab strips keep their real,
+   * unfiltered counts either way.
+   */
   await safeShot("submissions-inbox", async () => {
-    await gotoOrganizer(page, "/app/submissions")
+    await gotoOrganizer(page, "/app/submissions?status=accepted")
+    await settle(page, 600)
+    const opened = await tryClick(
+      page,
+      page.locator('[aria-label="Filter by track"]'),
+      "open the track filter"
+    )
+    if (!opened) throw new Error("track filter not reachable")
+    await tryClick(
+      page,
+      page.getByRole("option", { name: /^ai engineering$/i }),
+      "filter to the AI Engineering track"
+    )
+    await settle(page, 600)
     await shot(page, "submissions-inbox", DOCS_OUT)
   })
 
@@ -326,7 +422,13 @@ async function captureDocsShots(page) {
   // ——— Speaker portal —————————————————————————————————————————————————
 
 
+  // The portal's whole auth model is the magic-link token, and `--docs` does
+  // not run the marketing pass that used to open it — without this the two
+  // portal shots were the signed-out "Check your email for your portal link"
+  // card twice over.
   await safeShot("portal-submissions", async () => {
+    await page.goto(`${BASE}/portal/t/${PORTAL_TOKEN}`, { waitUntil: "networkidle" })
+    await settle(page, 900)
     await page.goto(`${BASE}/portal/submissions`, { waitUntil: "networkidle" })
     await shot(page, "portal-submissions", DOCS_OUT)
   })
@@ -439,13 +541,11 @@ async function scrollGridToProgramme(page) {
 async function captureAgendaShots(page) {
   await page.goto(`${BASE}/app/agenda`, { waitUntil: "networkidle" })
   await settle(page)
-  await tryClick(page, page.getByText(/^list$/i), "agenda List view")
-  await shot(page, "agenda-list")
   await tryClick(page, page.getByText(/^day$/i), "agenda Day view")
   await settle(page)
   await scrollGridToProgramme(page)
   await shot(page, "agenda")
-  await captureAgendaFlow(page)
+  if (WANT_GIF) await captureAgendaFlow(page)
 }
 
 /**

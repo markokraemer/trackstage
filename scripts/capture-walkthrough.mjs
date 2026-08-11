@@ -24,15 +24,23 @@
  * The account is additive (shared dev database) and disposable: a new email
  * every run, so re-running never collides with itself. Everything is driven
  * through ordinary clicks, so a shot can never drift from the shipped UI.
+ *
+ * URL architecture (docs/memory/DECISIONS.md, "URL architecture is fully
+ * hierarchical"): every organizer screen lives at
+ * `/app/:workspaceSlug/:eventSlug/…` and every public page at
+ * `/e/:workspaceSlug/:eventSlug`. A fresh account's workspace slug is minted
+ * server-side from the organizer's name, so the run READS both segments off
+ * the URL the create-event dialog lands on and addresses everything
+ * canonically from there — the bare legacy paths (`/app/agenda`) only ever
+ * redirect through a stored pointer, which is a race we don't need in a
+ * screenshot run, and the legacy `/e/:slug` resolves oldest-claimant-first,
+ * which on a shared database is somebody else's event entirely.
  */
 import { chromium } from "@playwright/test"
 import { mkdir } from "node:fs/promises"
-import { execFile } from "node:child_process"
-import { promisify } from "node:util"
 import { resolve, dirname } from "node:path"
 import { fileURLToPath } from "node:url"
 
-const exec = promisify(execFile)
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..")
 const OUT = resolve(root, "public/docs/walkthrough")
 
@@ -60,7 +68,8 @@ const ORGANIZER = {
 }
 const EVENT = {
   name: "Devcon Berlin 2026",
-  slug: "devcon-berlin-2026",
+  // The slug is derived from the name by the dialog and confirmed by the
+  // server (unique per workspace, and every run gets a fresh workspace).
   venue: "Kulturbrauerei, Prenzlauer Berg",
   // Two days, far enough out that the CFP story makes sense.
   starts: { month: 10, day: 13, year: 2026 },
@@ -83,7 +92,12 @@ const TALK = {
   jobTitle: "Staff Engineer",
 }
 const TASK = {
-  title: "Upload a headshot and a one-line bio",
+  title: "Send your talk photo and a one-line bio",
+  // A due date is what makes the task sort to the top of the speaker's list
+  // (convex/portal.ts orders by `dueAt`, and the three onboarding tasks
+  // acceptance creates have none), so shot 26 shows the task the organizer
+  // just assigned rather than only the automatic ones.
+  due: { month: 9, day: 15, year: 2026 },
 }
 
 const log = (...a) => console.log("·", ...a)
@@ -95,7 +109,13 @@ const resumeAt = args.indexOf("--resume")
 const RESUME =
   resumeAt === -1
     ? null
-    : { email: args[resumeAt + 1], eventSlug: args[resumeAt + 2] }
+    : {
+        email: args[resumeAt + 1],
+        ref: {
+          workspaceSlug: args[resumeAt + 2],
+          eventSlug: args[resumeAt + 3],
+        },
+      }
 
 // ——— Plumbing ————————————————————————————————————————————————————————————
 
@@ -129,6 +149,20 @@ async function cropShot(page, locator, name) {
   await locator.first().screenshot({ path: resolve(OUT, `${name}.png`) })
   written.push(name)
   log(`shot ${name} (cropped)`)
+}
+
+/** Rewind every scroller inside a dialog, so a crop starts at its first field. */
+async function scrollDialogToTop(page, dialog) {
+  await dialog
+    .first()
+    .evaluate((node) => {
+      for (const child of node.querySelectorAll("*")) {
+        if (child.scrollHeight > child.clientHeight) child.scrollTop = 0
+      }
+      node.scrollTop = 0
+    })
+    .catch(() => {})
+  await page.waitForTimeout(200)
 }
 
 /** A shot that must never abort the run: one missing PNG beats zero PNGs. */
@@ -191,9 +225,20 @@ async function pickOption(page, triggerSelector, optionLabel) {
  * month, so page forward until the wanted day cell exists — react-day-picker
  * tags every day button with `data-day="M/D/YYYY"`.
  */
-async function pickDate(page, triggerId, { month, day, year }) {
+async function pickDate(page, triggerId, date) {
   await page.locator(`#${triggerId}`).click()
   await page.waitForTimeout(300)
+  await pickCalendarDay(page, date)
+  await page.keyboard.press("Escape").catch(() => {})
+  await page.waitForTimeout(200)
+}
+
+/**
+ * Click a day in an ALREADY-OPEN calendar, paging forward until the month is
+ * on screen. Split out from `pickDate` because a calendar inside a dialog must
+ * not be dismissed with Escape — that closes the dialog with it.
+ */
+async function pickCalendarDay(page, { month, day, year }) {
   const cell = page.locator(`[data-day="${month}/${day}/${year}"]`)
   for (let hop = 0; hop < 24; hop++) {
     if (await cell.count()) break
@@ -205,8 +250,22 @@ async function pickDate(page, triggerId, { month, day, year }) {
   }
   await cell.first().click({ timeout: 5000 })
   await page.waitForTimeout(300)
-  await page.keyboard.press("Escape").catch(() => {})
-  await page.waitForTimeout(200)
+}
+
+/**
+ * The canonical address of a section of the event this run created —
+ * `/app/:workspaceSlug/:eventSlug{suffix}`. Both segments come off the URL the
+ * app itself navigated to after the create, so they are the app's own truth.
+ */
+function appUrl(state, suffix = "") {
+  const { workspaceSlug, eventSlug } = state.ref
+  return `${BASE}/app/${workspaceSlug}/${eventSlug}${suffix}`
+}
+
+/** `/app/:ws/:event/…` → `{ workspaceSlug, eventSlug }`, or null. */
+function refFromUrl(url) {
+  const match = new URL(url).pathname.match(/^\/app\/([^/]+)\/([^/]+)(?:\/|$)/)
+  return match ? { workspaceSlug: match[1], eventSlug: match[2] } : null
 }
 
 async function click(page, locator, label, timeout = 8000) {
@@ -241,25 +300,25 @@ async function main() {
     if (m.type() === "error") consoleErrors.push(m.text())
   })
 
-  const state = { eventSlug: EVENT.slug, formPath: null, portalUrl: null }
+  const state = { ref: null, formPath: null, portalUrl: null }
 
   if (RESUME) {
-    // `--resume <email> <event-slug>` re-shoots only the agenda/publish tail on
-    // an account a previous run already built, so one flaky navigation at the
-    // end never costs a whole 6-minute run.
+    // `--resume <email> <workspace-slug> <event-slug>` re-shoots only the
+    // agenda/publish tail on an account a previous run already built, so one
+    // flaky navigation at the end never costs a whole 6-minute run.
     // Shots 27 and 28 show the agenda BEFORE anything is scheduled, so they
     // can only ever come from the original run — resume picks up after them.
-    state.eventSlug = RESUME.eventSlug
+    state.ref = RESUME.ref
     await signIn(page, RESUME.email)
     await scheduleAndPublish(page, state, { from: 29 })
   } else {
     await signUp(page)
     await createEvent(page, state)
-    await eventDetails(page)
-    await roomsAndTracks(page)
+    await eventDetails(page, state)
+    await roomsAndTracks(page, state)
     await buildForm(page, state)
     await submitATalk(context, state)
-    await reviewAndAccept(page)
+    await reviewAndAccept(page, state)
     await speakerFollowUp(page, state)
     await scheduleAndPublish(page, state)
   }
@@ -275,7 +334,11 @@ async function main() {
   } else {
     console.log("\nno console errors seen during the run")
   }
-  console.log(`\naccount: ${ORGANIZER.email} / event: ${state.eventSlug}`)
+  console.log(
+    `\naccount: ${ORGANIZER.email} / event: ${
+      state.ref ? `${state.ref.workspaceSlug}/${state.ref.eventSlug}` : "(none)"
+    }`
+  )
   if (state.portalUrl) console.log(`speaker portal: ${state.portalUrl}`)
 }
 
@@ -324,58 +387,46 @@ async function signUp(page) {
 }
 
 /**
- * Event slugs are globally unique and this is a shared dev database that keeps
- * every previous run's event, so settle on a free slug BEFORE opening the
- * dialog. Then the slug in the screenshot is the slug that gets created, and
- * there is no retry loop to get wrong.
+ * 02–04 — the empty workspace, the create dialog, the empty dashboard.
+ *
+ * Event slugs are unique PER WORKSPACE now (convex/lib/publicLinks.ts), and
+ * every run signs up a brand-new organizer with a brand-new workspace, so
+ * "devcon-berlin-2026" is always free and there is no slug to reserve up
+ * front. The server still hands back whatever it actually stored — we read it
+ * (with the workspace segment) off the URL the app navigates to.
  */
-async function freeEventSlug() {
-  for (let n = 1; n <= 40; n++) {
-    const slug = n === 1 ? EVENT.slug : `${EVENT.slug}-${n}`
-    const { stdout } = await exec("pnpm", [
-      "exec",
-      "convex",
-      "run",
-      "events:getBySlug",
-      JSON.stringify({ slug }),
-    ]).catch(() => ({ stdout: "null" }))
-    if (stdout.trim() === "null") return slug
-  }
-  return `${EVENT.slug}-${RUN}`
-}
-
-/** 02–04 — the empty workspace, the create dialog, the empty dashboard. */
 async function createEvent(page, state) {
-  state.eventSlug = await freeEventSlug()
-  log(`claiming /e/${state.eventSlug}`)
-
   await go(page, `${BASE}/app/events`)
   await safeShot("02-empty-workspace", () => shot(page, "02-empty-workspace"))
 
   await click(
     page,
     page.getByRole("button", { name: /create your first event|^new event$/i }),
-    "opened the New event dialog"
+    "opened the Create an event dialog"
   )
   await fillSticky(page, "#new-event-name", EVENT.name)
   await settle(page, 400)
-  if (state.eventSlug !== EVENT.slug) {
-    await fillSticky(page, "#new-event-slug", state.eventSlug)
-  }
 
   await safeShot("03-create-event", () =>
     cropShot(page, page.locator('[data-slot="dialog-content"]'), "03-create-event")
   )
 
   await click(page, page.getByRole("button", { name: /^create event$/i }), "created the event")
-  await page.waitForURL(/\/app\/settings/, { timeout: 30000 })
+  // The dialog navigates to the new event's canonical settings page —
+  // `/app/:workspaceSlug/:eventSlug/settings`.
+  await page.waitForURL(/\/app\/[^/]+\/[^/]+\/settings/, { timeout: 30000 })
   await settle(page, 1200)
-  log(`created "${EVENT.name}" at /e/${state.eventSlug}`)
+
+  state.ref = refFromUrl(page.url())
+  if (!state.ref) throw new Error(`could not read the event ref from ${page.url()}`)
+  log(
+    `created "${EVENT.name}" at /app/${state.ref.workspaceSlug}/${state.ref.eventSlug}`
+  )
 }
 
 /** 04–05 — fill in the event, then look at the still-empty dashboard. */
-async function eventDetails(page) {
-  await go(page, `${BASE}/app/settings`)
+async function eventDetails(page, state) {
+  await go(page, appUrl(state, "/settings"))
   await settle(page)
   await fillSticky(page, "#event-venue", EVENT.venue)
   await pickDate(page, "event-starts", EVENT.starts)
@@ -386,13 +437,13 @@ async function eventDetails(page) {
   await click(page, page.getByRole("button", { name: /save changes/i }), "saved the event details")
   await settle(page, 1200)
 
-  await go(page, `${BASE}/app`)
+  await go(page, appUrl(state))
   await safeShot("05-empty-dashboard", () => shot(page, "05-empty-dashboard"))
 }
 
 /** 06 — the rooms and tracks every later screen depends on. */
-async function roomsAndTracks(page) {
-  await go(page, `${BASE}/app/settings/rooms-and-tracks`)
+async function roomsAndTracks(page, state) {
+  await go(page, appUrl(state, "/settings/rooms-and-tracks"))
   await settle(page)
 
   for (const room of ROOMS) {
@@ -413,16 +464,20 @@ async function roomsAndTracks(page) {
 
 /** 07–11 — the CFP form, step by step, and the public link. */
 async function buildForm(page, state) {
-  await go(page, `${BASE}/app/forms`)
+  await go(page, appUrl(state, "/forms"))
   await safeShot("07-no-forms-yet", () => shot(page, "07-no-forms-yet"))
 
-  await go(page, `${BASE}/app/forms/new`)
+  await go(page, appUrl(state, "/forms/new"))
   await settle(page)
   await fillSticky(page, page.getByLabel(/form name/i), FORM_NAME)
   await safeShot("08-new-form", () => shot(page, "08-new-form"))
 
   await click(page, page.getByRole("button", { name: /^create form$/i }), "created the form")
-  await page.waitForURL(/\/app\/forms\/[^/]+$/, { timeout: 15000 })
+  // `/app/:ws/:event/forms/:formId` — anything but the `new` page it left.
+  await page.waitForURL(
+    (url) => /\/forms\/[^/]+$/.test(url.pathname) && !url.pathname.endsWith("/new"),
+    { timeout: 15000 }
+  )
   await settle(page, 1200)
 
   // Rail buttons are named "<title> <one-line description>", so anchor at the
@@ -450,12 +505,12 @@ async function buildForm(page, state) {
     .first()
     .getAttribute("href")
     .catch(() => null)
-  // `/submit/:eventSlug/:formSlug` — both segments, kept whole.
+  // `/submit/:workspaceSlug/:eventSlug/:formSlug` — all three, kept whole.
   state.formPath = href
   if (!state.formPath) throw new Error("could not read the public form link")
   log(`public form: ${state.formPath}`)
 
-  await go(page, `${BASE}/app/forms`)
+  await go(page, appUrl(state, "/forms"))
   await settle(page)
   await safeShot("12-share-the-link", async () => {
     const copy = page.getByRole("button", { name: /copy (public )?link/i }).first()
@@ -601,15 +656,15 @@ async function submitATalk(context, state) {
 }
 
 /** 19–22 — it lands in the inbox, gets read, staged and committed. */
-async function reviewAndAccept(page) {
-  await go(page, `${BASE}/app/submissions`)
+async function reviewAndAccept(page, state) {
+  await go(page, appUrl(state, "/submissions"))
   await settle(page, 1200)
   await safeShot("19-first-submission", () => shot(page, "19-first-submission"))
 
   await safeShot("20-read-the-submission", async () => {
     await click(
       page,
-      page.locator('table a[href*="/app/submissions"]').first(),
+      page.locator('table a[href*="/submissions"]').first(),
       "opened the submission drawer"
     )
     await cropShot(page, page.locator('[data-slot="drawer-shell"]'), "20-read-the-submission")
@@ -626,7 +681,7 @@ async function reviewAndAccept(page) {
     await tryClick(page, page.getByRole("button", { name: /^save$/i }), "saved the status")
     await settle(page, 1200)
     await page.keyboard.press("Escape").catch(() => {})
-    await go(page, `${BASE}/app/submissions?status=accept_queue`)
+    await go(page, appUrl(state, "/submissions?status=accept_queue"))
     await shot(page, "21-accept-queue")
   })
 
@@ -649,22 +704,50 @@ async function reviewAndAccept(page) {
 
 /** 23–25 — the speaker's side: a task to do, and the portal they do it in. */
 async function speakerFollowUp(page, state) {
-  await go(page, `${BASE}/app/speakers`)
+  await go(page, appUrl(state, "/speakers"))
   await settle(page, 1000)
   await safeShot("23-speakers", () => shot(page, "23-speakers"))
 
   await safeShot("24-assign-a-task", async () => {
-    await click(page, page.getByRole("button", { name: /assign task/i }), "opened Assign task")
+    await click(
+      page,
+      page.getByRole("button", { name: /^assign task$/i }),
+      "opened Assign task"
+    )
     const dialog = page.locator('[data-slot="dialog-content"]')
-    const title = dialog.locator("input[type='text'], textarea").first()
-    await title.fill(TASK.title).catch(() => {})
+    await dialog.waitFor({ timeout: 8000 })
+    await fillSticky(page, dialog.locator("#task-title"), TASK.title)
+    // A due date, picked from the real calendar. Best-effort: the shot is
+    // worth more than the date.
+    if (await tryClick(page, dialog.locator("#task-due"), "opened the due-date picker")) {
+      await pickCalendarDay(page, TASK.due).catch(() => log("skipped the due date"))
+    }
+    // The dialog's fields scroll inside a fixed-height body, and every focus
+    // scrolls that body — which is how the title field, the whole reason for
+    // the shot, ended up above the crop. Rewind it, and shoot before ticking
+    // a speaker (one more scroll) rather than after.
+    await scrollDialogToTop(page, dialog)
     await settle(page, 400)
     await cropShot(page, dialog, "24-assign-a-task")
-    await tryClick(
+    // "Assign to" is required — the dialog refuses to submit with nobody
+    // ticked, and the story needs a real assignment: the speaker-portal shots
+    // downstream are the proof it landed.
+    await click(
       page,
-      dialog.getByRole("button", { name: /^(assign|create|save|add)( task)?$/i }),
+      dialog.getByRole("checkbox", {
+        name: new RegExp(`assign to ${TALK.firstName}`, "i"),
+      }),
+      `ticked ${TALK.firstName} ${TALK.lastName}`
+    )
+    await settle(page, 300)
+    await click(
+      page,
+      dialog.getByRole("button", { name: /^assign task$/i }),
       "assigned the task"
     )
+    // The dialog closes on success — if it is still there, nothing was created
+    // and shot 26 would quietly lie about it.
+    await dialog.waitFor({ state: "hidden", timeout: 15000 })
     await settle(page, 900)
   })
 
@@ -700,7 +783,7 @@ async function speakerFollowUp(page, state) {
 /** 27–31 — the accepted talk onto the agenda, then live to the world. */
 async function scheduleAndPublish(page, state, { from = 27 } = {}) {
   if (from <= 28) {
-    await go(page, `${BASE}/app/agenda`)
+    await go(page, appUrl(state, "/agenda"))
     await settle(page, 1400)
     await safeShot("27-nothing-scheduled", () => shot(page, "27-nothing-scheduled"))
 
@@ -733,14 +816,14 @@ async function scheduleAndPublish(page, state, { from = 27 } = {}) {
   }
 
   await safeShot("29-agenda", async () => {
-    await go(page, `${BASE}/app/agenda?view=day`)
+    await go(page, appUrl(state, "/agenda?view=day"))
     await settle(page, 1200)
     await scrollGridToProgramme(page)
     await shot(page, "29-agenda")
   })
 
   await safeShot("30-publish", async () => {
-    await go(page, `${BASE}/app/agenda`)
+    await go(page, appUrl(state, "/agenda"))
     await settle(page, 1000)
     await click(page, page.getByRole("button", { name: /^publish agenda$/i }), "opened Publish")
     await cropShot(page, page.locator('[data-slot="dialog-content"]'), "30-publish")
@@ -753,7 +836,10 @@ async function scheduleAndPublish(page, state, { from = 27 } = {}) {
   })
 
   await safeShot("31-public-page", async () => {
-    await go(page, `${BASE}/e/${state.eventSlug}`)
+    // Canonical `/e/:workspaceSlug/:eventSlug`. The legacy one-segment address
+    // resolves oldest-claimant-first, which on the shared dev database is a
+    // previous run's event.
+    await go(page, `${BASE}/e/${state.ref.workspaceSlug}/${state.ref.eventSlug}`)
     await settle(page, 1200)
     await shot(page, "31-public-page")
   })

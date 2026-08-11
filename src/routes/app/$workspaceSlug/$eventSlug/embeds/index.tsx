@@ -52,6 +52,7 @@ import {
 import type { EmbedOptions } from "@/components/embeds/embed-config"
 import { useCurrentEvent } from "@/lib/current-event"
 import { eventPath } from "@/lib/public-links"
+import { errorMessage } from "@/lib/errors"
 
 /**
  * Embeds — the "Get Code" surface (sbek EMB-15, docs/ux/05 image39 + image12).
@@ -314,7 +315,7 @@ function EmbedsPage() {
     } catch (error) {
       toast.error("Couldn't save this embed", {
         description:
-          error instanceof Error ? error.message : "Please try again.",
+          errorMessage(error, "Please try again."),
       })
     } finally {
       setSaving(false)

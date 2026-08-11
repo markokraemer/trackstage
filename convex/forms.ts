@@ -1,4 +1,4 @@
-import { v } from "convex/values"
+import { ConvexError, v } from "convex/values"
 import { mutation, query } from "./_generated/server"
 import { requireEventAccess } from "./lib/auth"
 import { record as recordAudit } from "./lib/audit"
@@ -129,7 +129,7 @@ export const get = query({
   args: { formId: v.id("forms") },
   handler: async (ctx, args) => {
     const form = await ctx.db.get(args.formId)
-    if (!form) throw new Error("Form not found")
+    if (!form) throw new ConvexError("Form not found")
     const { event } = await requireEventAccess(ctx, form.eventId)
     // Both parent slugs ride along so the builder can render the canonical
     // public URL without a second round trip (docs/memory/DECISIONS.md).
@@ -150,7 +150,7 @@ export const create = mutation({
   handler: async (ctx, args) => {
     await requireEventAccess(ctx, args.eventId)
     if (!["abstract", "session"].includes(args.kind)) {
-      throw new Error("kind must be abstract or session")
+      throw new ConvexError("kind must be abstract or session")
     }
 
     // Track question options default to the event's tracks.
@@ -228,12 +228,12 @@ export const update = mutation({
   },
   handler: async (ctx, args) => {
     const form = await ctx.db.get(args.formId)
-    if (!form) throw new Error("Form not found")
+    if (!form) throw new ConvexError("Form not found")
     await requireEventAccess(ctx, form.eventId)
 
     const { closeAt, questions, status, slug, ...rest } = args.patch
     if (status && !["open", "closed"].includes(status)) {
-      throw new Error("status must be open or closed")
+      throw new ConvexError("status must be open or closed")
     }
 
     // ——— Public address —————————————————————————————————————————————————
@@ -243,7 +243,7 @@ export const update = mutation({
     if (slug !== undefined) {
       const cleaned = slugify(slug, "")
       if (!cleaned || !isValidSlug(cleaned)) {
-        throw new Error(
+        throw new ConvexError(
           "A web address needs at least one letter or number — use lowercase letters, numbers and dashes.",
         )
       }
@@ -256,7 +256,7 @@ export const update = mutation({
             cleaned,
             form._id,
           )
-          throw new Error(
+          throw new ConvexError(
             `That address is already taken for this event. Try “${suggestion}” instead.`,
           )
         }
@@ -268,7 +268,7 @@ export const update = mutation({
       for (const locked of form.questions.filter((q) => q.locked)) {
         const still = questions.find((q) => q.id === locked.id)
         if (!still || !still.enabled) {
-          throw new Error(`The "${locked.label}" question is required and cannot be removed.`)
+          throw new ConvexError(`The "${locked.label}" question is required and cannot be removed.`)
         }
       }
       // showIf must reference an existing, earlier question.
@@ -276,9 +276,9 @@ export const update = mutation({
       for (const q of questions) {
         if (q.showIf) {
           const refIndex = ids.indexOf(q.showIf.questionId)
-          if (refIndex === -1) throw new Error(`"${q.label}" has a condition referencing a deleted question.`)
+          if (refIndex === -1) throw new ConvexError(`"${q.label}" has a condition referencing a deleted question.`)
           if (refIndex >= ids.indexOf(q.id)) {
-            throw new Error(`"${q.label}" can only depend on a question that comes before it.`)
+            throw new ConvexError(`"${q.label}" can only depend on a question that comes before it.`)
           }
         }
       }
@@ -327,7 +327,7 @@ export const duplicate = mutation({
   args: { formId: v.id("forms") },
   handler: async (ctx, args) => {
     const form = await ctx.db.get(args.formId)
-    if (!form) throw new Error("Form not found")
+    if (!form) throw new ConvexError("Form not found")
     await requireEventAccess(ctx, form.eventId)
     const { _id, _creationTime, slug, internalName, ...rest } = form
     // Per-event namespace, same as create.
@@ -353,16 +353,33 @@ export const remove = mutation({
   args: { formId: v.id("forms") },
   handler: async (ctx, args) => {
     const form = await ctx.db.get(args.formId)
-    if (!form) throw new Error("Form not found")
+    if (!form) throw new ConvexError("Form not found")
     await requireEventAccess(ctx, form.eventId, "admin")
-    const existing = await ctx.db
+    // Only LIVE submissions block the delete. A form whose entries are all in
+    // the trash shows "0 submissions" everywhere in the UI, so refusing on the
+    // trashed rows was a dead end an organizer could not act on — the form
+    // could never be deleted and nothing on screen explained why.
+    const attached = await ctx.db
       .query("submissions")
       .withIndex("by_formId", (q) => q.eq("formId", args.formId))
-      .first()
-    if (existing) {
-      throw new Error(
-        "This form has submissions. Close it instead of deleting it.",
+      .take(2000)
+    const live = attached.filter(
+      (submission) => submission.deletedAt === undefined,
+    )
+    if (live.length > 0) {
+      throw new ConvexError(
+        `This form has ${live.length} submission${live.length === 1 ? "" : "s"}. Close it instead of deleting it.`,
       )
+    }
+    // The trashed ones are ORPHANED, not purged: restoring from the trash must
+    // still give the organizer their data back, and a submission whose form is
+    // gone reads exactly like a manually added one (`formId` is optional for
+    // that reason). Deleting a form never destroys somebody's writing.
+    const orphaned = attached.filter(
+      (submission) => submission.deletedAt !== undefined,
+    )
+    for (const submission of orphaned) {
+      await ctx.db.patch(submission._id, { formId: undefined })
     }
     await ctx.db.delete(args.formId)
     await recordAudit(ctx, {
@@ -371,7 +388,11 @@ export const remove = mutation({
       entityId: args.formId,
       action: "deleted",
       summary: `Form deleted · ${form.internalName}`,
-      meta: { slug: form.slug, kind: form.kind },
+      meta: {
+        slug: form.slug,
+        kind: form.kind,
+        ...(orphaned.length > 0 ? { orphanedTrashed: orphaned.length } : {}),
+      },
     })
     return null
   },

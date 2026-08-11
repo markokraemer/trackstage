@@ -6,6 +6,7 @@ import { RiDeleteBin6Line } from "@remixicon/react"
 import { toast } from "sonner"
 
 import { Button } from "@/components/ui/button"
+import { errorMessage } from "@/lib/errors"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -66,21 +67,13 @@ export function DeleteSubmissionDialog({
             void restore({ submissionId })
               .then(() => toast.success(`“${title}” is back.`))
               .catch((error: unknown) =>
-                toast.error(
-                  error instanceof Error
-                    ? error.message
-                    : "Could not restore that submission."
-                )
+                toast.error(errorMessage(error, "Could not restore that submission."))
               )
           },
         },
       })
     } catch (error) {
-      toast.error(
-        error instanceof Error
-          ? error.message
-          : "Could not delete that submission."
-      )
+      toast.error(errorMessage(error, "Could not delete that submission."))
     } finally {
       setBusy(false)
     }

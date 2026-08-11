@@ -1,4 +1,4 @@
-import { v } from "convex/values"
+import { ConvexError, v } from "convex/values"
 import type { Id } from "./_generated/dataModel"
 import type { MutationCtx } from "./_generated/server"
 import { mutation, query } from "./_generated/server"
@@ -11,20 +11,41 @@ import { addComment, threadFor } from "./lib/uploadComments"
 // tasks), the reusable task library, and content review (approve / request
 // changes on uploads, plus the per-file comment thread).
 
-const TASK_KINDS = ["profile", "headshot", "upload", "form", "confirm"]
+// How a task gets ticked off. `answer` is the "Collect an answer" kind: the
+// organizer writes a question in the instructions and the speaker types a
+// reply in their portal — the reply IS the completion, and it is stored on the
+// task so the organizer reads it where they read the task. It replaces the old
+// `form` kind, which nothing in the portal ever rendered.
+export const TASK_KINDS = ["profile", "headshot", "upload", "answer", "confirm"]
 
 function assertKind(kind: string) {
-  if (!TASK_KINDS.includes(kind)) throw new Error("Invalid task kind.")
+  if (!TASK_KINDS.includes(kind)) {
+    throw new ConvexError({
+      message: `"${kind}" isn't a task type. Pick one of: ${TASK_KINDS.join(", ")}.`,
+    })
+  }
 }
 
 export const list = query({
-  args: { eventId: v.id("events") },
+  args: {
+    eventId: v.id("events"),
+    /** One speaker's tasks — the Tasks section of their profile drawer. */
+    personId: v.optional(v.id("people")),
+  },
   handler: async (ctx, args) => {
     const { event } = await requireEventAccess(ctx, args.eventId)
-    const tasks = await ctx.db
-      .query("tasks")
-      .withIndex("by_eventId", (q) => q.eq("eventId", args.eventId))
-      .collect()
+    const personId = args.personId
+    const tasks = personId
+      ? (
+          await ctx.db
+            .query("tasks")
+            .withIndex("by_personId", (q) => q.eq("personId", personId))
+            .collect()
+        ).filter((task) => task.eventId === args.eventId)
+      : await ctx.db
+          .query("tasks")
+          .withIndex("by_eventId", (q) => q.eq("eventId", args.eventId))
+          .collect()
     // {{firstName}} / {{sessionTitle}} resolve per speaker, so the organizer's
     // list shows exactly the words that speaker reads in their portal.
     const varsFor = makeTaskVarsCache(ctx, event.name)
@@ -43,6 +64,8 @@ export const list = query({
             /** The unresolved text, for editing. */
             instructionsTemplate: task.instructions,
             kind: task.kind,
+            /** `answer` tasks: what the speaker typed back, once they have. */
+            response: task.response,
             dueAt: task.dueAt,
             completedAt: task.completedAt,
             person: person
@@ -79,7 +102,7 @@ async function insertTasks(
   if (args.submissionId) {
     const submission = await ctx.db.get(args.submissionId)
     if (!submission || submission.eventId !== args.eventId) {
-      throw new Error("That session doesn't belong to this event.")
+      throw new ConvexError("That session doesn't belong to this event.")
     }
     submissionId = submission._id
   }
@@ -107,7 +130,7 @@ export const create = mutation({
     personIds: v.array(v.id("people")),
     title: v.string(),
     instructions: v.optional(v.string()),
-    kind: v.string(), // profile | headshot | upload | form | confirm
+    kind: v.string(), // profile | headshot | upload | answer | confirm
     dueAt: v.optional(v.number()),
     /** Optional: the session this task is about (files land on its Files tab). */
     submissionId: v.optional(v.id("submissions")),
@@ -117,10 +140,10 @@ export const create = mutation({
   handler: async (ctx, args) => {
     await requireEventAccess(ctx, args.eventId)
     const title = args.title.trim()
-    if (!title) throw new Error("Task title is required.")
+    if (!title) throw new ConvexError("Task title is required.")
     assertKind(args.kind)
     if (args.personIds.length === 0) {
-      throw new Error("Assign the task to at least one speaker.")
+      throw new ConvexError("Assign the task to at least one speaker.")
     }
     const instructions = args.instructions?.trim() || undefined
     const created = await insertTasks(ctx, {
@@ -193,7 +216,7 @@ export const createTemplate = mutation({
   handler: async (ctx, args) => {
     await requireEventAccess(ctx, args.eventId)
     const title = args.title.trim()
-    if (!title) throw new Error("Give the task a name.")
+    if (!title) throw new ConvexError("Give the task a name.")
     assertKind(args.kind)
     return await ctx.db.insert("taskTemplates", {
       eventId: args.eventId,
@@ -217,12 +240,12 @@ export const updateTemplate = mutation({
   },
   handler: async (ctx, args) => {
     const template = await ctx.db.get(args.templateId)
-    if (!template) throw new Error("Task template not found.")
+    if (!template) throw new ConvexError("Task template not found.")
     await requireEventAccess(ctx, template.eventId)
     const { title, instructions, kind, alias } = args.patch
     if (kind !== undefined) assertKind(kind)
     if (title !== undefined && !title.trim()) {
-      throw new Error("Give the task a name.")
+      throw new ConvexError("Give the task a name.")
     }
     await ctx.db.patch(args.templateId, {
       ...(title !== undefined ? { title: title.trim() } : {}),
@@ -240,7 +263,7 @@ export const removeTemplate = mutation({
   args: { templateId: v.id("taskTemplates") },
   handler: async (ctx, args) => {
     const template = await ctx.db.get(args.templateId)
-    if (!template) throw new Error("Task template not found.")
+    if (!template) throw new ConvexError("Task template not found.")
     await requireEventAccess(ctx, template.eventId)
     await ctx.db.delete(args.templateId)
     return null
@@ -262,10 +285,10 @@ export const assignFromTemplate = mutation({
   },
   handler: async (ctx, args) => {
     const template = await ctx.db.get(args.templateId)
-    if (!template) throw new Error("Task template not found.")
+    if (!template) throw new ConvexError("Task template not found.")
     await requireEventAccess(ctx, template.eventId)
     if (args.personIds.length === 0) {
-      throw new Error("Assign the task to at least one speaker.")
+      throw new ConvexError("Assign the task to at least one speaker.")
     }
     const created = await insertTasks(ctx, {
       eventId: template.eventId,
@@ -292,7 +315,7 @@ export const update = mutation({
   },
   handler: async (ctx, args) => {
     const task = await ctx.db.get(args.taskId)
-    if (!task) throw new Error("Task not found.")
+    if (!task) throw new ConvexError("Task not found.")
     await requireEventAccess(ctx, task.eventId)
     const { dueAt, completedAt, ...rest } = args.patch
     await ctx.db.patch(args.taskId, {
@@ -310,7 +333,7 @@ export const remove = mutation({
   args: { taskId: v.id("tasks") },
   handler: async (ctx, args) => {
     const task = await ctx.db.get(args.taskId)
-    if (!task) throw new Error("Task not found.")
+    if (!task) throw new ConvexError("Task not found.")
     await requireEventAccess(ctx, task.eventId, "admin")
     await ctx.db.delete(args.taskId)
     return null
@@ -399,10 +422,10 @@ export const reviewUpload = mutation({
   },
   handler: async (ctx, args) => {
     if (!["approved", "changes_requested", "pending"].includes(args.approvalStatus)) {
-      throw new Error("Invalid approval status.")
+      throw new ConvexError("Invalid approval status.")
     }
     const upload = await ctx.db.get(args.uploadId)
-    if (!upload) throw new Error("Upload not found.")
+    if (!upload) throw new ConvexError("Upload not found.")
     await requireEventAccess(ctx, upload.eventId)
     await ctx.db.patch(args.uploadId, {
       approvalStatus: args.approvalStatus,
@@ -424,7 +447,7 @@ export const listUploadComments = query({
   args: { uploadId: v.id("uploads") },
   handler: async (ctx, args) => {
     const upload = await ctx.db.get(args.uploadId)
-    if (!upload) throw new Error("File not found.")
+    if (!upload) throw new ConvexError("File not found.")
     await requireEventAccess(ctx, upload.eventId)
     return await threadFor(ctx, args.uploadId)
   },
@@ -434,7 +457,7 @@ export const addUploadComment = mutation({
   args: { uploadId: v.id("uploads"), body: v.string() },
   handler: async (ctx, args) => {
     const upload = await ctx.db.get(args.uploadId)
-    if (!upload) throw new Error("File not found.")
+    if (!upload) throw new ConvexError("File not found.")
     const { user } = await requireEventAccess(ctx, upload.eventId)
     return await addComment(ctx, {
       uploadId: args.uploadId,

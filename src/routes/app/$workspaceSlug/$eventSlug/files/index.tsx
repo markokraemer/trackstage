@@ -29,6 +29,7 @@ import type { FileLibraryRow } from "@/components/dashboard/files-table"
 import { appLink, legacyAppLink } from "@/lib/app-links"
 import { useCurrentEvent } from "@/lib/current-event"
 import { downloadFilesBundle } from "@/lib/files"
+import { errorMessage } from "@/lib/errors"
 
 /**
  * `/app/files` — the event's file library (docs/reference/sbek-rubric.md
@@ -111,7 +112,7 @@ function FilesPage() {
     } catch (error) {
       toast.error("Couldn't approve that file", {
         description:
-          error instanceof Error ? error.message : "Please try again.",
+          errorMessage(error, "Please try again."),
       })
     }
   }
@@ -131,9 +132,7 @@ function FilesPage() {
           : `Downloaded ${result.included} file${result.included === 1 ? "" : "s"}.`,
       )
     } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : "Could not build the bundle.",
-      )
+      toast.error(errorMessage(error, "Could not build the bundle."))
     } finally {
       setBundling(false)
     }

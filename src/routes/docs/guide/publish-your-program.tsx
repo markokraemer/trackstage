@@ -63,8 +63,9 @@ function Page() {
       <div className="mt-10">
         <Callout tone="note">
           The JSON feed is the same data as the{" "}
-          <DocLink to="/docs/api">HTTP API</DocLink> — it needs an API key from
-          Settings → API &amp; MCP.
+          <DocLink to="/docs/api">HTTP API</DocLink> — it needs an API key,
+          which lives with you rather than with the event: avatar menu →{" "}
+          <strong>Account settings</strong> → <strong>API &amp; MCP</strong>.
         </Callout>
       </div>
     </DocArticle>

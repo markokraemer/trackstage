@@ -14,6 +14,7 @@ import { EmptyState } from "@/components/shared/empty-state"
 import { StatusPill } from "@/components/shared/status-pill"
 import type { SubmissionStatus } from "@/components/shared/status-pill"
 import { absoluteDate, relativeDate } from "@/components/submissions/constants"
+import { errorMessage } from "@/lib/errors"
 
 /**
  * Deleted submissions — the recovery half of the delete feature
@@ -48,11 +49,7 @@ export function DeletedSubmissionsDrawer({
       await restore({ submissionId })
       toast.success(`“${title}” is back in your submissions.`)
     } catch (error) {
-      toast.error(
-        error instanceof Error
-          ? error.message
-          : "Could not restore that submission."
-      )
+      toast.error(errorMessage(error, "Could not restore that submission."))
     } finally {
       setRestoringId(null)
     }

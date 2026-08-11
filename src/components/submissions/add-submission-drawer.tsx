@@ -33,6 +33,7 @@ import { StatusPill } from "@/components/shared/status-pill"
 import { PersonPicker } from "@/components/dashboard/person-picker"
 import { TagInput } from "@/components/submissions/tag-input"
 import { ChoiceValue, TrackValue } from "@/components/submissions/field-bits"
+import { errorMessage } from "@/lib/errors"
 import {
   FORMAT_OPTIONS,
   LANGUAGE_OPTIONS,
@@ -149,9 +150,7 @@ export function AddSubmissionDrawer({
       onOpenChange(false)
       onCreated?.(submissionId)
     } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : "Could not add the submission."
-      )
+      toast.error(errorMessage(error, "Could not add the submission."))
     } finally {
       setSaving(false)
     }

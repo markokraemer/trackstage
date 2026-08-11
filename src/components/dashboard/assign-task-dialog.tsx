@@ -36,6 +36,7 @@ import {
 import { DatePicker } from "@/components/dashboard/date-picker"
 import { initialsOf } from "@/components/dashboard/format"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import { errorMessage } from "@/lib/errors"
 
 /**
  * What the speaker is being asked to do. The choice is not decoration — it
@@ -43,13 +44,20 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar"
  * rather than making an organizer guess what "kind" means.
  *
  * `form` used to be offered here and is deliberately gone: nothing in the
- * product ever read it, so it was a promise the portal couldn't keep.
+ * product ever read it, so it was a promise the portal couldn't keep. What
+ * replaced it is `answer` — the same "ask them something" job, done in the one
+ * shape a portal can actually complete: a question, a text box, an answer.
  */
 export const TASK_KINDS = [
   {
     value: "upload",
     label: "Upload a file",
     help: "They attach a file in their portal and you review it — slides, a signed form, a rider.",
+  },
+  {
+    value: "answer",
+    label: "Collect an answer",
+    help: "They type a reply; their answer is the proof. Ask the question below and read what they wrote on their profile.",
   },
   {
     value: "profile",
@@ -230,6 +238,9 @@ export function AssignTaskDialog({
 
   const titleMissing = title.trim().length === 0
   const noSpeakers = selected.length === 0
+  const isAnswerKind = kind === "answer"
+  /** An "answer" task with no question is a text box with nothing above it. */
+  const questionMissing = isAnswerKind && instructions.trim().length === 0
 
   function toggle(personId: string, checked: boolean) {
     setSelected((current) =>
@@ -243,9 +254,13 @@ export function AssignTaskDialog({
 
   async function submit(event: React.FormEvent) {
     event.preventDefault()
-    if (titleMissing || noSpeakers) {
+    if (titleMissing || noSpeakers || questionMissing) {
       setShowErrors(true)
-      toast.error("Add a task title and pick at least one speaker")
+      toast.error(
+        questionMissing && !titleMissing && !noSpeakers
+          ? "Write the question you want them to answer"
+          : "Add a task title and pick at least one speaker",
+      )
       return
     }
     setSubmitting(true)
@@ -275,7 +290,7 @@ export function AssignTaskDialog({
     } catch (error) {
       toast.error("Couldn't assign the task", {
         description:
-          error instanceof Error ? error.message : "Please try again.",
+          errorMessage(error, "Please try again."),
       })
     } finally {
       setSubmitting(false)
@@ -313,7 +328,19 @@ export function AssignTaskDialog({
                   onValueChange={(next) => applyTemplate(String(next))}
                 >
                   <SelectTrigger id="task-template" aria-label="From your library">
-                    <SelectValue />
+                    {/* Always the task's NAME, never its id: the trigger
+                        renders the raw value whenever the item list hasn't
+                        arrived (or a saved task was renamed under it), and a
+                        Convex id under the field is meaningless to an
+                        organizer. Resolve the label ourselves and fall back to
+                        the sentinel's wording. */}
+                    <SelectValue>
+                      {(value) =>
+                        templateOptions.find(
+                          (option) => option.value === String(value),
+                        )?.label ?? "Start from scratch"
+                      }
+                    </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
                     {templateOptions.map((option) => (
@@ -386,11 +413,23 @@ export function AssignTaskDialog({
               </RadioGroup>
             </Field>
 
+            {/* For an "answer" task this field IS the question, so it stops
+                being optional and says so — a text box under a blank question
+                is the one thing a speaker cannot act on. */}
             <Field>
-              <FieldLabel htmlFor="task-instructions">Instructions</FieldLabel>
+              <FieldLabel htmlFor="task-instructions">
+                {isAnswerKind ? (
+                  <>
+                    Your question<span className="required-asterisk">*</span>
+                  </>
+                ) : (
+                  "Instructions"
+                )}
+              </FieldLabel>
               <FieldDescription>
-                Optional. Spell out exactly what you need — file format, length,
-                anything easy to get wrong.
+                {isAnswerKind
+                  ? "What do you want to know? They see this above a text box in their portal, and their reply lands on their profile."
+                  : "Optional. Spell out exactly what you need — file format, length, anything easy to get wrong."}
               </FieldDescription>
               <Textarea
                 id="task-instructions"
@@ -398,7 +437,14 @@ export function AssignTaskDialog({
                 rows={3}
                 value={instructions}
                 onChange={(event) => setInstructions(event.target.value)}
-                placeholder="PDF or Keynote, 16:9, no more than 30 slides."
+                aria-invalid={
+                  showErrors && questionMissing ? true : undefined
+                }
+                placeholder={
+                  isAnswerKind
+                    ? "What size t-shirt do you wear, and do you have any dietary requirements?"
+                    : "PDF or Keynote, 16:9, no more than 30 slides."
+                }
               />
               {/* Personalisation, explained in plain English and one click
                   away — organizers shouldn't have to memorise the tokens. */}
@@ -549,7 +595,14 @@ export function AssignTaskDialog({
                   onValueChange={(next) => setSubmissionId(String(next))}
                 >
                   <SelectTrigger id="task-session" aria-label="For session">
-                    <SelectValue />
+                    {/* Session titles, never submission ids — same reason. */}
+                    <SelectValue>
+                      {(value) =>
+                        sessionOptions.find(
+                          (option) => option.value === String(value),
+                        )?.label ?? "Not about a particular session"
+                      }
+                    </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
                     {sessionOptions.map((option) => (

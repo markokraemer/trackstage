@@ -23,6 +23,7 @@ import { api } from "@convex/_generated/api"
 import type { AgendaBoard } from "./agenda-model"
 import { computeBoardConflicts } from "./agenda-model"
 import { formatTime } from "./agenda-time"
+import { errorMessage } from "@/lib/errors"
 
 export interface SchedulePlacement {
   submissionId: string
@@ -210,11 +211,7 @@ export function useAgendaActions() {
   return { place, remove, setTrack }
 }
 
+/** The agenda's toasts, on the one shared extractor (`src/lib/errors.ts`). */
 export function messageOf(error: unknown): string {
-  if (error instanceof Error) {
-    // Convex wraps thrown errors — keep only the organizer-facing sentence.
-    const match = /Uncaught Error:\s*(.*?)(\n|$)/.exec(error.message)
-    return (match?.[1] ?? error.message).trim()
-  }
-  return "Please try again."
+  return errorMessage(error, "Please try again.")
 }

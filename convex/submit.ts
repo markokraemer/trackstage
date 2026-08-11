@@ -1,4 +1,4 @@
-import { v } from "convex/values"
+import { ConvexError, v } from "convex/values"
 import { internal } from "./_generated/api"
 import type { Doc, Id } from "./_generated/dataModel"
 import type { MutationCtx, QueryCtx } from "./_generated/server"
@@ -78,7 +78,7 @@ async function requirePublicForm(
 ): Promise<Doc<"forms">> {
   const resolved = await resolvePublicForm(ctx, args)
   if (resolved.status === "ok") return resolved.form
-  throw new Error("Form not found")
+  throw new ConvexError("Form not found")
 }
 
 /**
@@ -421,7 +421,7 @@ export const identify = mutation({
   handler: async (ctx, args) => {
     const email = args.email.trim().toLowerCase()
     if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
-      throw new Error("Please enter a valid email address.")
+      throw new ConvexError("Please enter a valid email address.")
     }
     const form = await requirePublicForm(ctx, args)
 
@@ -521,25 +521,25 @@ async function validateSubmission(
     if (empty) missing.push(q.label)
   }
   if (missing.length > 0) {
-    throw new Error(`Missing required fields: ${missing.join(", ")}`)
+    throw new ConvexError(`Missing required fields: ${missing.join(", ")}`)
   }
 
   const speakers = participants.filter((p) => p.role === "speaker")
   const { speakerMin, speakerMax } = form.participantConfig
   if (speakers.length < speakerMin) {
-    throw new Error(
+    throw new ConvexError(
       `At least ${speakerMin} speaker${speakerMin === 1 ? "" : "s"} required.`,
     )
   }
   if (speakers.length > speakerMax) {
-    throw new Error(`At most ${speakerMax} speakers allowed.`)
+    throw new ConvexError(`At most ${speakerMax} speakers allowed.`)
   }
   for (const p of participants) {
     if (!p.firstName.trim() || !p.lastName.trim()) {
-      throw new Error("Every participant needs a first and last name.")
+      throw new ConvexError("Every participant needs a first and last name.")
     }
     if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(p.email.trim())) {
-      throw new Error(`Invalid email for ${p.firstName || "participant"}.`)
+      throw new ConvexError(`Invalid email for ${p.firstName || "participant"}.`)
     }
   }
 
@@ -551,7 +551,7 @@ async function validateSubmission(
     for (const p of participants as Array<Record<string, unknown>>) {
       const value = p[field.id]
       if (value === undefined || (typeof value === "string" && value.trim() === "")) {
-        throw new Error(`"${field.label}" is required for every participant.`)
+        throw new ConvexError(`"${field.label}" is required for every participant.`)
       }
     }
   }
@@ -642,16 +642,16 @@ export const saveDraft = mutation({
   },
   handler: async (ctx, args) => {
     const form = await requirePublicForm(ctx, args)
-    if (!form.settings.allowDrafts) throw new Error("Drafts are not allowed on this form.")
+    if (!form.settings.allowDrafts) throw new ConvexError("Drafts are not allowed on this form.")
     const openState = isFormOpen(form)
-    if (!openState.open) throw new Error(openState.reason)
+    if (!openState.open) throw new ConvexError(openState.reason)
 
     const person = await ctx.db
       .query("people")
       .withIndex("by_portalToken", (q) => q.eq("portalToken", args.portalToken))
       .unique()
     if (!person || person.eventId !== form.eventId) {
-      throw new Error("Session expired — please re-enter your email.")
+      throw new ConvexError("Session expired — please re-enter your email.")
     }
 
     const trackId = await resolveTrackId(ctx, form, args.answers)
@@ -670,7 +670,7 @@ export const saveDraft = mutation({
     if (args.draftId) {
       const draft = await ctx.db.get(args.draftId)
       if (!draft || draft.submitterId !== person._id || draft.status !== "draft") {
-        throw new Error("Draft not found")
+        throw new ConvexError("Draft not found")
       }
       await ctx.db.patch(args.draftId, fields)
       submissionId = args.draftId
@@ -701,14 +701,14 @@ export const submit = mutation({
   handler: async (ctx, args) => {
     const form = await requirePublicForm(ctx, args)
     const openState = isFormOpen(form)
-    if (!openState.open) throw new Error(openState.reason)
+    if (!openState.open) throw new ConvexError(openState.reason)
 
     const person = await ctx.db
       .query("people")
       .withIndex("by_portalToken", (q) => q.eq("portalToken", args.portalToken))
       .unique()
     if (!person || person.eventId !== form.eventId) {
-      throw new Error("Session expired — please re-enter your email.")
+      throw new ConvexError("Session expired — please re-enter your email.")
     }
 
     // Per-user submission limit (drafts don't count).
@@ -723,13 +723,13 @@ export const submit = mutation({
         (s) => s.formId === form._id && s._id !== args.draftId,
       )
       if (submitted.length >= form.settings.limitPerUser) {
-        throw new Error(
+        throw new ConvexError(
           `You've reached the limit of ${form.settings.limitPerUser} submissions for this form.`,
         )
       }
     }
 
-    if (!args.title.trim()) throw new Error("Missing required fields: Title")
+    if (!args.title.trim()) throw new ConvexError("Missing required fields: Title")
     await validateSubmission(ctx, form, args.answers, args.participants)
     const trackId = await resolveTrackId(ctx, form, args.answers)
 
@@ -749,7 +749,7 @@ export const submit = mutation({
     let submissionId: Id<"submissions">
     if (args.draftId) {
       const draft = await ctx.db.get(args.draftId)
-      if (!draft || draft.submitterId !== person._id) throw new Error("Draft not found")
+      if (!draft || draft.submitterId !== person._id) throw new ConvexError("Draft not found")
       await ctx.db.patch(args.draftId, fields)
       submissionId = args.draftId
     } else {

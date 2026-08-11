@@ -1,4 +1,4 @@
-import { v } from "convex/values"
+import { ConvexError, v } from "convex/values"
 import type { Doc, Id } from "./_generated/dataModel"
 import type { MutationCtx, QueryCtx } from "./_generated/server"
 import { mutation, query } from "./_generated/server"
@@ -268,7 +268,7 @@ async function assertNameFree(
       row._id !== ignoreId && row.name.trim().toLowerCase() === name.toLowerCase(),
   )
   if (clash) {
-    throw new Error(`You already have a status called “${clash.name}”.`)
+    throw new ConvexError(`You already have a status called “${clash.name}”.`)
   }
 }
 
@@ -283,8 +283,8 @@ export const create = mutation({
   handler: async (ctx, args) => {
     const { user } = await requireEventAccess(ctx, args.eventId)
     const name = args.name.trim()
-    if (!name) throw new Error("Give the status a name first.")
-    if (name.length > 60) throw new Error("Status names are limited to 60 characters.")
+    if (!name) throw new ConvexError("Give the status a name first.")
+    if (name.length > 60) throw new ConvexError("Status names are limited to 60 characters.")
     // Adding a custom status to an event that never opened this screen must
     // not silently orphan the built-ins.
     await ensureDefaultStatuses(ctx, args.eventId)
@@ -316,14 +316,14 @@ export const update = mutation({
   returns: v.null(),
   handler: async (ctx, args) => {
     const status = await ctx.db.get(args.statusId)
-    if (!status) throw new Error("Status not found.")
+    if (!status) throw new ConvexError("Status not found.")
     await requireEventAccess(ctx, status.eventId)
 
     const patch: Partial<Doc<"sessionStatuses">> = {}
     if (args.patch.name !== undefined) {
       const name = args.patch.name.trim()
-      if (!name) throw new Error("A status needs a name.")
-      if (name.length > 60) throw new Error("Status names are limited to 60 characters.")
+      if (!name) throw new ConvexError("A status needs a name.")
+      if (name.length > 60) throw new ConvexError("Status names are limited to 60 characters.")
       await assertNameFree(ctx, status.eventId, name, status._id)
       patch.name = name
     }
@@ -332,7 +332,7 @@ export const update = mutation({
     if (args.patch.category !== undefined && args.patch.category !== status.category) {
       if (status.systemKey) {
         // Re-categorising "Accepted" would silently rewire acceptance emails.
-        throw new Error(
+        throw new ConvexError(
           "Built-in statuses keep their category — it's what the accept/decline pipeline runs on. Rename or recolour it instead.",
         )
       }
@@ -358,11 +358,11 @@ export const remove = mutation({
   returns: v.object({ reassigned: v.number() }),
   handler: async (ctx, args) => {
     const status = await ctx.db.get(args.statusId)
-    if (!status) throw new Error("Status not found.")
+    if (!status) throw new ConvexError("Status not found.")
     // Deleting configuration the whole event reads is an admin act.
     await requireEventAccess(ctx, status.eventId, "admin")
     if (status.systemKey) {
-      throw new Error(
+      throw new ConvexError(
         `“${status.name}” is a built-in status the pipeline needs. You can rename or recolour it, but not delete it.`,
       )
     }
@@ -382,7 +382,7 @@ export const remove = mutation({
     const stale = labelled.filter((row) => row.status !== status.pipelineStatus)
 
     if (inUse.length > 0 && !args.reassignToStatusId) {
-      throw new Error(
+      throw new ConvexError(
         `${inUse.length} submission${inUse.length === 1 ? " is" : "s are"} set to “${status.name}”. Choose a status to move ${inUse.length === 1 ? "it" : "them"} to first.`,
       )
     }
@@ -391,10 +391,10 @@ export const remove = mutation({
     if (inUse.length > 0 && args.reassignToStatusId) {
       const target = await ctx.db.get(args.reassignToStatusId)
       if (!target || target.eventId !== status.eventId) {
-        throw new Error("Pick a status from this event to move them to.")
+        throw new ConvexError("Pick a status from this event to move them to.")
       }
       if (target._id === status._id) {
-        throw new Error("Pick a different status to move them to.")
+        throw new ConvexError("Pick a different status to move them to.")
       }
       for (const submission of inUse) {
         // The pipeline value moves with the label — that is the whole point of

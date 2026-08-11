@@ -1,4 +1,4 @@
-import { v } from "convex/values"
+import { ConvexError, v } from "convex/values"
 import type { Doc, Id } from "./_generated/dataModel"
 import type {
   ActionCtx,
@@ -22,7 +22,9 @@ import { hashApiKey, keyPrefix } from "./apiKeys"
 import { autoPlaceCore, computeConflicts } from "./agenda"
 import { deleteEventCascade } from "./events"
 import { ensureOnboardingTasks, withJoins } from "./submissions"
+import { TASK_KINDS } from "./tasksAdmin"
 import { queueMessage, queueTaskReminders } from "./comms"
+import { humanMessage } from "./lib/errors"
 import {
   DEFAULT_TEMPLATES,
   TEMPLATE_KEYS,
@@ -31,6 +33,7 @@ import {
   siteUrl,
 } from "./lib/email"
 import {
+  eventPath,
   formPath,
   uniqueEventSlug,
   uniqueFormSlug,
@@ -146,7 +149,7 @@ async function resolveEvent(
     }
   }
   if (visible.length === 0) {
-    throw new Error(
+    throw new ConvexError(
       `No event matches "${ref}". Call list_events to see the available event ids and slugs.`,
     )
   }
@@ -162,7 +165,7 @@ function requireId<T extends "submissions" | "forms" | "rooms" | "tracks" | "peo
   value: string,
 ): Id<T> {
   const id = ctx.db.normalizeId(table, value.trim())
-  if (!id) throw new Error(`"${value}" is not a valid ${table} id.`)
+  if (!id) throw new ConvexError(`"${value}" is not a valid ${table} id.`)
   return id
 }
 
@@ -182,7 +185,7 @@ function parseWhen(value: string | undefined): number | undefined {
   }
   const parsed = Date.parse(trimmed)
   if (Number.isNaN(parsed)) {
-    throw new Error(
+    throw new ConvexError(
       `"${value}" is not a valid date. Use an ISO-8601 string such as "2026-09-14T09:30:00Z".`,
     )
   }
@@ -361,22 +364,22 @@ export const createEvent = internalMutation({
   returns: v.any(),
   handler: async (ctx, args) => {
     const name = args.name.trim()
-    if (!name) throw new Error("An event name is required.")
+    if (!name) throw new ConvexError("An event name is required.")
 
     // With a single workspace the caller shouldn't have to name it.
     let organizationId: Id<"organizations">
     if (args.organizationId) {
       const normalized = ctx.db.normalizeId("organizations", args.organizationId)
-      if (!normalized) throw new Error(`"${args.organizationId}" is not a valid workspace id.`)
+      if (!normalized) throw new ConvexError(`"${args.organizationId}" is not a valid workspace id.`)
       organizationId = normalized
     } else {
       const memberships = await ctx.db
         .query("members")
         .withIndex("by_userId", (q) => q.eq("userId", args.userId))
         .collect()
-      if (memberships.length === 0) throw new Error("You don't belong to a workspace yet.")
+      if (memberships.length === 0) throw new ConvexError("You don't belong to a workspace yet.")
       if (memberships.length > 1) {
-        throw new Error(
+        throw new ConvexError(
           "You belong to several workspaces — pass organizationId (see list_workspaces).",
         )
       }
@@ -399,11 +402,19 @@ export const createEvent = internalMutation({
       endsAt: args.endsAt,
     })
     const organization = await ctx.db.get(organizationId)
+    // Every public address in this product is `workspace / event / …`, so the
+    // workspace slug travels WITH the event id — without it a caller (or a
+    // copilot tool view) cannot build a single link to what it just created.
+    const workspaceSlug = organization?.slug ?? "workspace"
     return withLinkWarning({
       eventId,
       slug,
       name,
-      publicSubmitUrlHint: `${siteUrl()}${formPath(organization?.slug ?? "workspace", slug, "<form-slug>")}`,
+      workspaceSlug,
+      organizationId,
+      /** The canonical public program page — shareable the moment it exists. */
+      publicUrl: `${siteUrl()}${eventPath(workspaceSlug, slug)}`,
+      publicSubmitUrlHint: `${siteUrl()}${formPath(workspaceSlug, slug, "<form-slug>")}`,
     })
   },
 })
@@ -548,11 +559,11 @@ async function resolveForm(
   }
   if (visible.length === 1) return visible[0]
   if (visible.length > 1) {
-    throw new Error(
+    throw new ConvexError(
       `"${ref}" is the slug of ${visible.length} forms across different events. Pass the formId (see list_forms) so the right one is edited.`,
     )
   }
-  throw new Error(
+  throw new ConvexError(
     `No form matches "${ref}". Call list_forms to see the form ids and slugs.`,
   )
 }
@@ -618,10 +629,10 @@ export const createForm = internalMutation({
     const event = await resolveEvent(ctx, args.userId, args.event)
     const kind = args.kind ?? "abstract"
     if (kind !== "abstract" && kind !== "session") {
-      throw new Error("kind must be 'abstract' or 'session'.")
+      throw new ConvexError("kind must be 'abstract' or 'session'.")
     }
     const name = args.name.trim()
-    if (!name) throw new Error("A form name is required.")
+    if (!name) throw new ConvexError("A form name is required.")
 
     const tracks = (
       await ctx.db
@@ -712,7 +723,7 @@ export const updateFormSettings = internalMutation({
     const patch: Record<string, unknown> = {}
     if (args.status !== undefined) {
       if (args.status !== "open" && args.status !== "closed") {
-        throw new Error("status must be 'open' or 'closed'.")
+        throw new ConvexError("status must be 'open' or 'closed'.")
       }
       patch.status = args.status
     }
@@ -739,7 +750,7 @@ export const updateFormSettings = internalMutation({
       }
     }
     if (Object.keys(patch).length === 0) {
-      throw new Error("Nothing to update — pass at least one setting.")
+      throw new ConvexError("Nothing to update — pass at least one setting.")
     }
     // Snapshot before the write so callers can show a real before/after — an
     // "updated!" with no previous value is unverifiable by the reader.
@@ -824,7 +835,7 @@ export const listSubmissions = internalQuery({
   handler: async (ctx, args) => {
     const event = await resolveEvent(ctx, args.userId, args.event)
     if (args.status !== undefined && !SUBMISSION_STATUSES.includes(args.status)) {
-      throw new Error(
+      throw new ConvexError(
         `Invalid status "${args.status}". One of: ${SUBMISSION_STATUSES.join(", ")}.`,
       )
     }
@@ -878,7 +889,7 @@ export const getSubmission = internalQuery({
   handler: async (ctx, args) => {
     const id = requireId(ctx, "submissions", args.submissionId)
     const submission = await ctx.db.get(id)
-    if (!submission) throw new Error("Submission not found.")
+    if (!submission) throw new ConvexError("Submission not found.")
     await eventAccessFor(ctx, args.userId, submission.eventId)
     const joined = await withJoins(ctx, submission)
     const uploads = await ctx.db
@@ -926,13 +937,13 @@ export const setSubmissionStatus = internalMutation({
   returns: v.any(),
   handler: async (ctx, args) => {
     if (!SUBMISSION_STATUSES.includes(args.status)) {
-      throw new Error(
+      throw new ConvexError(
         `Invalid status "${args.status}". One of: ${SUBMISSION_STATUSES.join(", ")}.`,
       )
     }
     const id = requireId(ctx, "submissions", args.submissionId)
     const submission = await ctx.db.get(id)
-    if (!submission) throw new Error("Submission not found.")
+    if (!submission) throw new ConvexError("Submission not found.")
     await eventAccessFor(ctx, args.userId, submission.eventId)
     await ctx.db.patch(id, { status: args.status })
     return {
@@ -953,7 +964,7 @@ export const commitDecisionQueue = internalMutation({
   returns: v.any(),
   handler: async (ctx, args) => {
     if (args.queue !== "accept_queue" && args.queue !== "decline_queue") {
-      throw new Error("queue must be 'accept_queue' or 'decline_queue'.")
+      throw new ConvexError("queue must be 'accept_queue' or 'decline_queue'.")
     }
     // Committing a queue mails real speakers — same admin bar as the web app.
     const event = await resolveEvent(ctx, args.userId, args.event, "admin")
@@ -1041,12 +1052,12 @@ export const addManualSession = internalMutation({
       event.organizationId!,
     )
     const title = args.title.trim()
-    if (!title) throw new Error("A title is required.")
+    if (!title) throw new ConvexError("A title is required.")
 
     const kind = args.kind === "abstract" ? "abstract" : "session"
     const status = args.status ?? (kind === "session" ? "accepted" : "pending")
     if (!SUBMISSION_STATUSES.includes(status)) {
-      throw new Error(
+      throw new ConvexError(
         `Invalid status "${status}". One of: ${SUBMISSION_STATUSES.join(", ")}.`,
       )
     }
@@ -1062,7 +1073,7 @@ export const addManualSession = internalMutation({
         tracks.find((t) => t._id === args.track) ??
         tracks.find((t) => t.name.toLowerCase() === needle)
       if (!match) {
-        throw new Error(
+        throw new ConvexError(
           `No track named "${args.track}". Available: ${tracks.map((t) => t.name).join(", ") || "(none)"}.`,
         )
       }
@@ -1270,10 +1281,10 @@ export const scheduleSession = internalMutation({
   handler: async (ctx, args) => {
     const id = requireId(ctx, "submissions", args.submissionId)
     const submission = await ctx.db.get(id)
-    if (!submission) throw new Error("Session not found.")
+    if (!submission) throw new ConvexError("Session not found.")
     await eventAccessFor(ctx, args.userId, submission.eventId)
     if (submission.status !== "accepted") {
-      throw new Error(
+      throw new ConvexError(
         "Only accepted sessions can be scheduled. Accept it first (set_submission_status + commit_decision_queue).",
       )
     }
@@ -1286,13 +1297,13 @@ export const scheduleSession = internalMutation({
       rooms.find((r) => r._id === args.room.trim()) ??
       rooms.find((r) => r.name.toLowerCase() === needle)
     if (!room) {
-      throw new Error(
+      throw new ConvexError(
         `No room named "${args.room}". Available: ${rooms.map((r) => r.name).join(", ") || "(none — add one in Settings)"}.`,
       )
     }
     const durationMinutes = args.durationMinutes ?? submission.durationMinutes ?? 45
     if (durationMinutes < 5 || durationMinutes > 480) {
-      throw new Error("Duration must be between 5 minutes and 8 hours.")
+      throw new ConvexError("Duration must be between 5 minutes and 8 hours.")
     }
     await ctx.db.patch(id, {
       roomId: room._id,
@@ -1321,7 +1332,7 @@ export const unscheduleSession = internalMutation({
   handler: async (ctx, args) => {
     const id = requireId(ctx, "submissions", args.submissionId)
     const submission = await ctx.db.get(id)
-    if (!submission) throw new Error("Session not found.")
+    if (!submission) throw new ConvexError("Session not found.")
     await eventAccessFor(ctx, args.userId, submission.eventId)
     await ctx.db.patch(id, { roomId: undefined, startsAt: undefined })
     return {
@@ -1512,7 +1523,7 @@ async function findPerson(
     )
     .unique()
   if (byEmail) return byEmail
-  throw new Error(
+  throw new ConvexError(
     `No speaker matching "${ref}" in this event. Use list_speakers to see emails.`,
   )
 }
@@ -1547,16 +1558,10 @@ export const assignTask = internalMutation({
   handler: async (ctx, args) => {
     const event = await resolveEvent(ctx, args.userId, args.event)
     const title = args.title.trim()
-    if (!title) throw new Error("A task title is required.")
-    const kind = args.kind ?? "confirm"
-    // "form" is intentionally not offered: nothing in the portal ever read it,
-    // so a task created with it could never be completed.
-    const kinds = ["profile", "headshot", "upload", "confirm"]
-    if (!kinds.includes(kind)) {
-      throw new Error(`Invalid task kind "${kind}". One of: ${kinds.join(", ")}.`)
-    }
+    if (!title) throw new ConvexError("A task title is required.")
+    const kind = assertTaskKind(args.kind ?? "confirm")
     if (args.speakers.length === 0) {
-      throw new Error("Assign the task to at least one speaker.")
+      throw new ConvexError("Assign the task to at least one speaker.")
     }
     const assigned: Array<string> = []
     for (const ref of args.speakers) {
@@ -1578,6 +1583,171 @@ export const assignTask = internalMutation({
       dueAt: iso(args.dueAt),
       assignedTo: assigned,
       note: "Speakers see this in their portal. Use send_reminders to nudge them by email.",
+    }
+  },
+})
+
+// ——— The task library (convex/tasksAdmin.ts template functions) ——————————
+// An organizer writes "Upload your slides" once and assigns it all season.
+// These three tools are the MCP half of that: read the library, save wording
+// into it, and assign a saved task to a batch of speakers.
+
+/** Every task kind a portal can actually complete. Mirrors tasksAdmin. */
+function assertTaskKind(kind: string): string {
+  // "form" is intentionally not offered: nothing in the portal ever read it —
+  // "answer" (the speaker types a reply) is what replaced it.
+  if (!TASK_KINDS.includes(kind)) {
+    throw new ConvexError(
+      `Invalid task kind "${kind}". One of: ${TASK_KINDS.join(", ")}.`,
+    )
+  }
+  return kind
+}
+
+export const listTaskLibrary = internalQuery({
+  args: { userId: v.string(), event: v.string() },
+  returns: v.any(),
+  handler: async (ctx, args) => {
+    const event = await resolveEvent(ctx, args.userId, args.event)
+    const templates = await ctx.db
+      .query("taskTemplates")
+      .withIndex("by_eventId", (q) => q.eq("eventId", event._id))
+      .take(200)
+    return {
+      event: { eventId: event._id, name: event.name, slug: event.slug },
+      templates: templates
+        .sort((a, b) => a.title.localeCompare(b.title))
+        .map((template) => ({
+          templateId: template._id,
+          title: template.title,
+          alias: template.alias ?? null,
+          kind: template.kind,
+          instructions: template.instructions ?? null,
+        })),
+      note:
+        templates.length === 0
+          ? "The library is empty — save_task_template writes the first entry."
+          : "Assign one with assign_task_from_template (the wording is copied onto each speaker's task).",
+    }
+  },
+})
+
+export const saveTaskTemplate = internalMutation({
+  args: {
+    userId: v.string(),
+    event: v.string(),
+    title: v.string(),
+    kind: v.optional(v.string()),
+    instructions: v.optional(v.string()),
+    alias: v.optional(v.string()),
+  },
+  returns: v.any(),
+  handler: async (ctx, args) => {
+    const event = await resolveEvent(ctx, args.userId, args.event)
+    const title = args.title.trim()
+    if (!title) throw new ConvexError("A task title is required.")
+    // Idempotent on the title, exactly like the "save to library" tick in the
+    // assign-task dialog: saving twice edits the wording instead of piling up
+    // near-duplicates a model would then have to disambiguate.
+    const existing = await ctx.db
+      .query("taskTemplates")
+      .withIndex("by_eventId", (q) => q.eq("eventId", event._id))
+      .take(200)
+    const match = existing.find(
+      (template) => template.title.toLowerCase() === title.toLowerCase(),
+    )
+    const kind = assertTaskKind(args.kind ?? match?.kind ?? "confirm")
+    const instructions = args.instructions?.trim() || undefined
+    const alias = args.alias?.trim() || undefined
+    if (match) {
+      await ctx.db.patch(match._id, {
+        title,
+        kind,
+        ...(args.instructions !== undefined ? { instructions } : {}),
+        ...(args.alias !== undefined ? { alias } : {}),
+      })
+      return {
+        templateId: match._id,
+        title,
+        kind,
+        updated: true,
+        note: `"${title}" was already in the library — its wording is updated. Tasks already assigned keep the words they were sent with.`,
+      }
+    }
+    const templateId = await ctx.db.insert("taskTemplates", {
+      eventId: event._id,
+      title,
+      instructions,
+      kind,
+      alias,
+    })
+    return {
+      templateId,
+      title,
+      kind,
+      updated: false,
+      note: "Saved to the library. Assign it with assign_task_from_template.",
+    }
+  },
+})
+
+export const assignTaskFromTemplate = internalMutation({
+  args: {
+    userId: v.string(),
+    template: v.string(),
+    speakers: v.array(v.string()),
+    dueAt: v.optional(v.number()),
+    submissionId: v.optional(v.string()),
+  },
+  returns: v.any(),
+  handler: async (ctx, args) => {
+    const templateId = ctx.db.normalizeId("taskTemplates", args.template.trim())
+    const template = templateId ? await ctx.db.get(templateId) : null
+    if (!template) {
+      throw new ConvexError(
+        `No task template "${args.template}". Call list_task_library for the ids.`,
+      )
+    }
+    await eventAccessFor(ctx, args.userId, template.eventId)
+    if (args.speakers.length === 0) {
+      throw new ConvexError("Assign the task to at least one speaker.")
+    }
+    // A task may only point at a session of THIS event, otherwise a stale id
+    // would file a speaker's uploads under someone else's programme.
+    let submissionId: Id<"submissions"> | undefined
+    if (args.submissionId) {
+      const id = requireId(ctx, "submissions", args.submissionId)
+      const submission = await ctx.db.get(id)
+      if (!submission || submission.eventId !== template.eventId) {
+        throw new ConvexError("That session doesn't belong to this event.")
+      }
+      submissionId = submission._id
+    }
+    // The template's own wording is COPIED onto each task, so editing the
+    // library later never rewrites tasks already out in the world.
+    const title = template.alias?.trim() || template.title
+    const assigned: Array<string> = []
+    for (const ref of args.speakers) {
+      const person = await findPerson(ctx, template.eventId, ref)
+      await ctx.db.insert("tasks", {
+        eventId: template.eventId,
+        personId: person._id,
+        title,
+        instructions: template.instructions,
+        kind: template.kind,
+        submissionId,
+        dueAt: args.dueAt,
+      })
+      assigned.push(person.email)
+    }
+    return {
+      created: assigned.length,
+      templateId: template._id,
+      title,
+      kind: template.kind,
+      dueAt: iso(args.dueAt),
+      assignedTo: assigned,
+      note: "Speakers see this in their portal immediately. Use send_reminders to nudge them by email.",
     }
   },
 })
@@ -1664,7 +1834,7 @@ export const getTemplate = internalQuery({
     const event = await resolveEvent(ctx, args.userId, args.event)
     const key = args.key.trim()
     if (!(TEMPLATE_KEYS as ReadonlyArray<string>).includes(key)) {
-      throw new Error(
+      throw new ConvexError(
         `Unknown template key "${args.key}". One of: ${TEMPLATE_KEYS.join(", ")}.`,
       )
     }
@@ -1703,7 +1873,7 @@ export const updateTemplate = internalMutation({
     // Templates are a closed set: the Communications screen only renders these
     // five, and anything else would be an invisible row that never sends.
     if (!(TEMPLATE_KEYS as ReadonlyArray<string>).includes(key)) {
-      throw new Error(
+      throw new ConvexError(
         `Unknown template key "${args.key}". One of: ${TEMPLATE_KEYS.join(", ")}.`,
       )
     }
@@ -1769,7 +1939,7 @@ export const sendTestEmail = internalMutation({
   handler: async (ctx, args) => {
     const event = await resolveEvent(ctx, args.userId, args.event)
     if (!(TEMPLATE_KEYS as ReadonlyArray<string>).includes(args.key.trim())) {
-      throw new Error(
+      throw new ConvexError(
         `Unknown template key "${args.key}". One of: ${TEMPLATE_KEYS.join(", ")}.`,
       )
     }
@@ -1837,7 +2007,7 @@ export const deleteEvent = internalMutation({
     if (args.confirmName.trim() !== event.name.trim()) {
       // Deliberately does NOT quote the correct name back: the whole point of
       // the echo is that the caller already knows which event it is holding.
-      throw new Error(
+      throw new ConvexError(
         `confirmName "${args.confirmName}" does not match this event's name. Pass the event's name exactly as list_events returns it — nothing was deleted.`,
       )
     }
@@ -1877,16 +2047,23 @@ export const deleteForm = internalMutation({
   returns: v.any(),
   handler: async (ctx, args) => {
     const form = await resolveForm(ctx, args.userId, args.form, "admin")
-    // Same rule as forms.remove: a form that collected anything is history,
-    // not clutter. Drafts count — a speaker is mid-submission behind them.
+    // Same rule as forms.remove: a form that collected anything LIVE is
+    // history, not clutter. Drafts count — a speaker is mid-submission behind
+    // them. Trashed entries do not: they already left the organizer's view, so
+    // they are orphaned (formId cleared) rather than blocking the delete.
     const submissions = await ctx.db
       .query("submissions")
       .withIndex("by_formId", (q) => q.eq("formId", form._id))
       .take(MAX_ROWS)
-    if (submissions.length > 0) {
-      throw new Error(
-        `"${form.internalName}" has ${submissions.length} submission(s) and cannot be deleted — deleting it would destroy them. Close it instead: update_form_settings(form: "${form.slug}", status: "closed").`,
+    const live = submissions.filter((s) => s.deletedAt === undefined)
+    if (live.length > 0) {
+      throw new ConvexError(
+        `"${form.internalName}" has ${live.length} submission(s) and cannot be deleted — deleting it would destroy them. Close it instead: update_form_settings(form: "${form.slug}", status: "closed").`,
       )
+    }
+    const orphaned = submissions.filter((s) => s.deletedAt !== undefined)
+    for (const submission of orphaned) {
+      await ctx.db.patch(submission._id, { formId: undefined })
     }
     await ctx.db.delete(form._id)
     return {
@@ -1894,6 +2071,7 @@ export const deleteForm = internalMutation({
       formId: form._id,
       name: form.internalName,
       slug: form.slug,
+      orphanedTrashedSubmissions: orphaned.length,
       note: "The form is gone. Its public URL now 404s.",
     }
   },
@@ -1905,7 +2083,7 @@ export const removeTask = internalMutation({
   handler: async (ctx, args) => {
     const id = requireId(ctx, "tasks", args.taskId)
     const task = await ctx.db.get(id)
-    if (!task) throw new Error("Task not found — it may already have been removed.")
+    if (!task) throw new ConvexError("Task not found — it may already have been removed.")
     // tasksAdmin.remove is admin-only; an MCP caller gets no cheaper bar.
     await eventAccessFor(ctx, args.userId, task.eventId, "admin")
     const person = await ctx.db.get(task.personId)
@@ -2152,18 +2330,18 @@ function validateArgs(
 }
 
 /**
- * Convex wraps a thrown Error as "Uncaught Error: <message>" plus a stack of
- * bundled-file frames. The message is the part a model can act on; the frames
- * are noise that costs tokens and points at our source layout.
+ * Convex wraps a thrown error as "Uncaught ConvexError: <message>" plus a stack
+ * of bundled-file frames. The message is the part a model can act on; the
+ * frames are noise that costs tokens and points at our source layout.
+ *
+ * `.data` is read FIRST because it is the only channel that survives a
+ * PRODUCTION deployment: Convex replaces the `message` of any thrown exception
+ * with "Server Error" out there, so a tool that reported `error.message` would
+ * hand the model "[Request ID: …] Server Error" on trackstage.app and a perfect
+ * sentence on dev. Every refusal in this file is a ConvexError for that reason.
  */
 function toolErrorMessage(error: unknown): string {
-  const raw = error instanceof Error ? error.message : String(error)
-  return (
-    raw
-      .split(/\n\s+at\s/)[0]
-      .replace(/^(Uncaught\s+)?(Convex)?Error:\s*/i, "")
-      .trim() || "Something went wrong."
-  )
+  return humanMessage(error, "Something went wrong.")
 }
 
 export const TOOLS: Array<ToolDef> = [
@@ -2190,7 +2368,7 @@ export const TOOLS: Array<ToolDef> = [
     name: "create_event",
     title: "Create an event",
     description:
-      "Creates a new event in one of your workspaces. Requires the admin or owner role. If you belong to exactly one workspace you can omit organizationId. Dates are ISO-8601 strings, e.g. \"2026-09-14T09:00:00Z\"; set them if you plan to use auto_place_sessions later.",
+      "Creates a new event in one of your workspaces. Requires the admin or owner role. If you belong to exactly one workspace you can omit organizationId. Dates are ISO-8601 strings, e.g. \"2026-09-14T09:00:00Z\"; set them if you plan to use auto_place_sessions later. Returns the event id, its slug, the workspace slug and the canonical public URL of the program page.",
     inputSchema: schema(
       {
         name: { type: "string", description: "Display name, e.g. \"AI Summit 2026\"." },
@@ -2421,7 +2599,7 @@ export const TOOLS: Array<ToolDef> = [
     readOnly: false,
     run: (ctx, userId, args) => {
       if (args.confirm !== true) {
-        throw new Error(
+        throw new ConvexError(
           "Refusing to send decision emails without confirm: true. Review the queue with list_submissions first, then call again with confirm: true.",
         )
       }
@@ -2615,7 +2793,7 @@ export const TOOLS: Array<ToolDef> = [
     name: "assign_task",
     title: "Assign a speaker task",
     description:
-      "Assigns an onboarding task to one or more speakers — it appears in their portal immediately. Kinds: profile (completes itself once their bio is filled in), headshot (completes on upload), upload (they send a file such as slides, you review it), confirm (one click to acknowledge). Assigning does not email anyone; run send_reminders for that.",
+      "Assigns an onboarding task to one or more speakers — it appears in their portal immediately. Kinds: profile (completes itself once their bio is filled in), headshot (completes on upload), upload (they send a file such as slides, you review it), answer (you ask a question in the instructions and they type a reply — their answer completes it and you can read it back), confirm (one click to acknowledge). Assigning does not email anyone; run send_reminders for that.",
     inputSchema: schema(
       {
         event: EVENT_ARG,
@@ -2627,10 +2805,13 @@ export const TOOLS: Array<ToolDef> = [
         title: { type: "string", description: "e.g. \"Upload your slides\"." },
         kind: {
           type: "string",
-          enum: ["profile", "headshot", "upload", "confirm"],
+          enum: ["profile", "headshot", "upload", "answer", "confirm"],
           description: "Default \"confirm\".",
         },
-        instructions: { type: "string" },
+        instructions: {
+          type: "string",
+          description: "What they should do. For kind \"answer\" this is the QUESTION they reply to. Supports {{firstName}} / {{sessionTitle}}.",
+        },
         dueAt: { type: "string", description: "ISO-8601 due date." },
       },
       ["event", "speakers", "title"],
@@ -2645,6 +2826,86 @@ export const TOOLS: Array<ToolDef> = [
         kind: args.kind,
         instructions: args.instructions,
         dueAt: parseWhen(args.dueAt),
+      }),
+  },
+  {
+    name: "list_task_library",
+    title: "List saved speaker tasks",
+    description:
+      "Lists the event's reusable task library — the wording an organizer saved once and assigns all season, with each entry's id, title, kind and instructions. Read this before assign_task_from_template, and before writing a new task from scratch: reusing the saved wording keeps every speaker's portal consistent.",
+    inputSchema: schema({ event: EVENT_ARG }, ["event"]),
+    readOnly: true,
+    run: (ctx, userId, args) =>
+      ctx.runQuery(internal.mcp.listTaskLibrary, {
+        userId,
+        event: args.event,
+      }),
+  },
+  {
+    name: "save_task_template",
+    title: "Save a task to the library",
+    description:
+      "Saves a reusable task into the event's library (or updates it, matching on the title — saving twice edits the wording rather than creating a near-duplicate). Instructions may carry {{firstName}} / {{sessionTitle}}, which resolve per speaker when their portal renders the task. This only writes the library; assign it with assign_task_from_template.",
+    inputSchema: schema(
+      {
+        event: EVENT_ARG,
+        title: { type: "string", description: "Library name, e.g. \"Upload your slides\"." },
+        kind: {
+          type: "string",
+          enum: ["profile", "headshot", "upload", "answer", "confirm"],
+          description: "How it gets ticked off. Default \"confirm\".",
+        },
+        instructions: {
+          type: "string",
+          description: "What the speaker should do — the question itself for kind \"answer\".",
+        },
+        alias: {
+          type: "string",
+          description: "What the speaker's portal calls it, when that differs from the library name.",
+        },
+      },
+      ["event", "title"],
+    ),
+    readOnly: false,
+    run: (ctx, userId, args) =>
+      ctx.runMutation(internal.mcp.saveTaskTemplate, {
+        userId,
+        event: args.event,
+        title: args.title,
+        kind: args.kind,
+        instructions: args.instructions,
+        alias: args.alias,
+      }),
+  },
+  {
+    name: "assign_task_from_template",
+    title: "Assign a saved task to speakers",
+    description:
+      "Assigns a task from the library to one or more speakers without retyping it — the saved wording is copied onto each speaker's task, so editing the library later never rewrites tasks already sent. Optionally bind it to one session, and anything they upload for it is filed against that session. Template ids come from list_task_library. Assigning does not email anyone; run send_reminders for that.",
+    inputSchema: schema(
+      {
+        template: { type: "string", description: "Template id from list_task_library." },
+        speakers: {
+          type: "array",
+          items: { type: "string" },
+          description: "Speaker emails (or person ids).",
+        },
+        dueAt: { type: "string", description: "ISO-8601 due date." },
+        submissionId: {
+          type: "string",
+          description: "Optional session this task is about (see list_submissions).",
+        },
+      },
+      ["template", "speakers"],
+    ),
+    readOnly: false,
+    run: (ctx, userId, args) =>
+      ctx.runMutation(internal.mcp.assignTaskFromTemplate, {
+        userId,
+        template: args.template,
+        speakers: args.speakers,
+        dueAt: parseWhen(args.dueAt),
+        submissionId: args.submissionId,
       }),
   },
   {
@@ -2816,7 +3077,7 @@ export const TOOLS: Array<ToolDef> = [
     readOnly: false,
     run: (ctx, userId, args) => {
       if (args.confirm !== true) {
-        throw new Error(
+        throw new ConvexError(
           "Refusing to delete an event without confirm: true. Check what you are about to destroy with get_event_summary, then call again with confirm: true and confirmName set to the event's exact name.",
         )
       }
@@ -2845,7 +3106,7 @@ export const TOOLS: Array<ToolDef> = [
     readOnly: false,
     run: (ctx, userId, args) => {
       if (args.confirm !== true) {
-        throw new Error(
+        throw new ConvexError(
           "Refusing to delete a form without confirm: true. If you only want to stop new submissions, call update_form_settings(status: \"closed\") instead; otherwise call again with confirm: true.",
         )
       }

@@ -235,6 +235,71 @@ export function TaskAssignedView({ output }: ToolOutputProps) {
   )
 }
 
+// ——— list_task_library / save_task_template ——————————————————————————————
+
+/**
+ * The reusable task library: wording an organizer saved once and assigns all
+ * season. Each row leads with the words the speaker will read, because that —
+ * not the id — is how an organizer recognises the task they mean.
+ */
+export function TaskLibraryView({ output }: ToolOutputProps) {
+  const speakersLink = useSectionLink("speakers")
+  const rows = asArray(output.templates) ?? []
+  if (rows.length === 0) {
+    return (
+      <EmptyRow>
+        Nothing saved yet — ticking &ldquo;Save this task to your library&rdquo;
+        when you assign a task puts it here.
+      </EmptyRow>
+    )
+  }
+  return (
+    <Panel title="Task library" meta={`${rows.length}`}>
+      <Rows>
+        {rows.map((row, index) => (
+          <Row key={str(row.templateId) ?? index}>
+            <RiTaskLine
+              size={15}
+              aria-hidden
+              className="mt-0.5 shrink-0 text-muted-foreground"
+            />
+            <div className="min-w-0 flex-1">
+              <span className="block truncate text-sm font-medium text-foreground">
+                {str(row.alias) ?? str(row.title) ?? "Task"}
+              </span>
+              {str(row.instructions) ? (
+                <span className="mt-0.5 block truncate text-xs text-muted-foreground">
+                  {str(row.instructions)}
+                </span>
+              ) : null}
+            </div>
+            <Chip tone="muted">{str(row.kind) ?? "confirm"}</Chip>
+          </Row>
+        ))}
+      </Rows>
+      {str(output.note) ? <Note>{str(output.note)}</Note> : null}
+      <MoreLink target={{ to: speakersLink }}>Open Speakers</MoreLink>
+    </Panel>
+  )
+}
+
+/** One saved (or re-saved) library entry — a receipt, not a celebration. */
+export function TaskTemplateSavedView({ output }: ToolOutputProps) {
+  const updated = output.updated === true
+  return (
+    <Banner
+      icon={<RiCheckboxCircleLine size={16} />}
+      tone="good"
+      title={`${str(output.title) ?? "Task"} ${updated ? "updated in" : "saved to"} your library`}
+    >
+      <FieldGrid
+        entries={[{ label: "Kind", value: str(output.kind) ?? "confirm" }]}
+      />
+      {str(output.note) ? <Note>{str(output.note)}</Note> : null}
+    </Banner>
+  )
+}
+
 // ——— send_reminders ——————————————————————————————————————————————————————
 
 export function RemindersSentView({ output }: ToolOutputProps) {

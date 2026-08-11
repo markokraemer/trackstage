@@ -195,7 +195,11 @@ export const TASK_KIND_LABEL: Record<string, string> = {
   upload: "File upload",
   confirm: "Confirmation",
   profile: "Profile details",
-  form: "Form",
+  // "Collect an answer": a question from the organizer, answered in a text
+  // box. `form` is the dead kind it replaced — the server already reads those
+  // rows as `answer`, and the label agrees so nothing reads as two things.
+  answer: "Written answer",
+  form: "Written answer",
 }
 
 // File helpers deliberately DO NOT live here: `formatBytes`, type labels and

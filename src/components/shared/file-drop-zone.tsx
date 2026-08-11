@@ -4,6 +4,7 @@ import { RiUploadCloud2Line } from "@remixicon/react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
+import { errorMessage } from "@/lib/errors"
 import {
   FILE_ACCEPT,
   IMAGE_ACCEPT,
@@ -84,9 +85,7 @@ export function FileDropZone({
       onSuccess?.(file)
     } catch (error) {
       onError?.(
-        error instanceof Error
-          ? error.message
-          : "We couldn't upload that file. Please try again.",
+        errorMessage(error, "We couldn't upload that file. Please try again."),
       )
     } finally {
       setPercent(null)

@@ -1,4 +1,4 @@
-import { v } from "convex/values"
+import { ConvexError, v } from "convex/values"
 import { mutation, query } from "./_generated/server"
 import { requireUser } from "./lib/auth"
 import { recordForUserWorkspaces } from "./lib/audit"
@@ -132,14 +132,14 @@ export const create = mutation({
   handler: async (ctx, args) => {
     const user = await requireUser(ctx)
     const name = (args.name ?? "").trim() || "API key"
-    if (name.length > 60) throw new Error("Name must be 60 characters or less.")
+    if (name.length > 60) throw new ConvexError("Name must be 60 characters or less.")
 
     const existing = await ctx.db
       .query("apiKeys")
       .withIndex("by_userId", (q) => q.eq("userId", user.userId))
       .collect()
     if (existing.length >= 20) {
-      throw new Error("You already have 20 API keys. Revoke one first.")
+      throw new ConvexError("You already have 20 API keys. Revoke one first.")
     }
 
     let scopes: Array<string> | undefined
@@ -148,7 +148,7 @@ export const create = mutation({
         (scope) => !API_SCOPES.includes(scope as (typeof API_SCOPES)[number]),
       )
       if (unknown.length > 0) {
-        throw new Error(
+        throw new ConvexError(
           `Unknown scope(s): ${unknown.join(", ")}. Valid scopes: ${API_SCOPES.join(", ")}.`,
         )
       }
@@ -218,7 +218,7 @@ export const revoke = mutation({
     const row = await ctx.db.get(args.keyId)
     // Same 404-shaped error whether it never existed or belongs to someone
     // else — no probing another user's key ids.
-    if (!row || row.userId !== user.userId) throw new Error("Key not found.")
+    if (!row || row.userId !== user.userId) throw new ConvexError("Key not found.")
     await ctx.db.delete(args.keyId)
     await recordForUserWorkspaces(ctx, user.userId, {
       entity: "api-key",

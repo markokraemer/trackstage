@@ -6,6 +6,7 @@ import { RiDeleteBin6Line } from "@remixicon/react"
 import { toast } from "sonner"
 
 import { Button } from "@/components/ui/button"
+import { errorMessage } from "@/lib/errors"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -54,9 +55,7 @@ export function RemovePersonDialog({
       await removePerson({ personId })
       toast.success("Speaker removed")
     } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : "Couldn't remove that person.",
-      )
+      toast.error(errorMessage(error, "Couldn't remove that person."))
     } finally {
       setBusy(false)
     }

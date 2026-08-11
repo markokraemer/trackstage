@@ -56,7 +56,9 @@ import {
   SpeakerPortalLinkView,
   SpeakersView,
   TaskAssignedView,
+  TaskLibraryView,
   TaskRemovedView,
+  TaskTemplateSavedView,
 } from "@/components/copilot/tool-views/speakers"
 import {
   OutboxView,
@@ -77,7 +79,7 @@ import {
  * this registry must degrade gracefully, because a tool added to the MCP
  * server tomorrow will show up here with no entry at all.
  *
- * So: every one of the 31 tools has a view, and anything unknown falls back to
+ * So: every one of the 34 tools has a view, and anything unknown falls back to
  * a syntax-highlighted JSON block that is still honest about what happened.
  */
 
@@ -171,6 +173,14 @@ export const TOOL_VIEWS: Record<string, ToolViewSpec | undefined> = {
     OutputView: SpeakerPortalLinkView,
   },
   assign_task: { icon: RiTaskLine, OutputView: TaskAssignedView },
+  list_task_library: { icon: RiTaskLine, OutputView: TaskLibraryView },
+  save_task_template: {
+    icon: RiTaskLine,
+    OutputView: TaskTemplateSavedView,
+  },
+  // Same payload shape as assign_task — one view, because from the
+  // organizer's side the two tools did the same thing.
+  assign_task_from_template: { icon: RiTaskLine, OutputView: TaskAssignedView },
   send_reminders: { icon: RiMailSendLine, OutputView: RemindersSentView },
 
   // Comms

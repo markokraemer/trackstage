@@ -42,6 +42,7 @@ import {
 import { FileDropZone } from "@/components/shared/file-drop-zone"
 import { checkImportRows, parseSpeakerCsv } from "@/lib/csv"
 import type { CheckedImportRow, ImportRowStatus } from "@/lib/csv"
+import { errorMessage } from "@/lib/errors"
 
 export interface ImportSpeakersDialogProps {
   eventId: Id<"events">
@@ -145,7 +146,7 @@ export function ImportSpeakersDialog({
     } catch (error) {
       toast.error("Couldn't import that file", {
         description:
-          error instanceof Error ? error.message : "Please try again.",
+          errorMessage(error, "Please try again."),
       })
     } finally {
       setImporting(false)

@@ -8,13 +8,16 @@ import {
   RiAlertLine,
   RiChat1Line,
   RiCheckLine,
+  RiEditLine,
   RiLockLine,
+  RiSendPlaneLine,
   RiUpload2Line,
 } from "@remixicon/react"
 
 import { cn } from "@/lib/utils"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
+import { Textarea } from "@/components/ui/textarea"
 import { FileDropZone } from "@/components/shared/file-drop-zone"
 import { FileComments } from "@/components/shared/file-comments"
 import { FileList, FileRow } from "@/components/shared/file-row"
@@ -24,6 +27,7 @@ import { usePortal } from "./portal-context"
 import type { PortalTask, PortalUpload } from "./portal-context"
 import { usePortalUpload } from "./use-portal-upload"
 import { TASK_KIND_LABEL, formatDate } from "./portal-utils"
+import { errorMessage } from "@/lib/errors"
 
 export interface TaskItemProps {
   task: PortalTask
@@ -32,8 +36,9 @@ export interface TaskItemProps {
 }
 
 /**
- * One task in the speaker checklist (docs/SPEC.md §4.7). Three shapes:
- * confirm (a button), headshot/upload (a file), and anything else (guidance).
+ * One task in the speaker checklist (docs/SPEC.md §4.7). Four shapes:
+ * confirm/profile (a button), headshot/upload (a file), answer (a question and
+ * a text box — sending the reply completes it), and anything else (guidance).
  * Uploaded files stay visible with their approval status, and a "changes
  * requested" note tells the speaker exactly what to fix.
  */
@@ -59,9 +64,36 @@ export function TaskItem({ task, uploads }: TaskItemProps) {
       },
     )
   })
+  // "Collect an answer": sending the reply IS the completion, so the mutation
+  // ticks the task off and stores the words in one write. Optimistic for the
+  // same reason as completeTask — the checklist must move on the same frame.
+  const answerTask = useConvexMutation(
+    api.portal.answerTask,
+  ).withOptimisticUpdate((localStore, args) => {
+    const current = localStore.getQuery(api.portal.home, { portalToken })
+    if (!current) return
+    localStore.setQuery(
+      api.portal.home,
+      { portalToken },
+      {
+        ...current,
+        tasks: current.tasks.map((t) =>
+          t.id === args.taskId
+            ? {
+                ...t,
+                response: args.response,
+                completedAt: t.completedAt ?? Date.now(),
+              }
+            : t,
+        ),
+      },
+    )
+  })
   const { upload } = usePortalUpload()
   const [isCompleting, setIsCompleting] = useState(false)
   const [showReplace, setShowReplace] = useState(false)
+  const [answer, setAnswer] = useState(task.response ?? "")
+  const [isEditingAnswer, setIsEditingAnswer] = useState(false)
 
   const done = Boolean(task.completedAt)
   // Past due AND the organizer doesn't accept late work (Settings → Event
@@ -71,6 +103,10 @@ export function TaskItem({ task, uploads }: TaskItemProps) {
   const isFileTask = (task.kind === "upload" || task.kind === "headshot") && !locked
   const canConfirm =
     (task.kind === "confirm" || task.kind === "profile") && !locked
+  const isAnswerTask = task.kind === "answer"
+  // A sent answer folds down to the words themselves, with one tap to revise
+  // them — the same shape as a finished file task, for the same reason.
+  const showAnswerBox = isAnswerTask && !locked && (!done || isEditingAnswer)
   const latest: PortalUpload | undefined = uploads.length > 0 ? uploads[0] : undefined
   const needsChanges = latest?.approvalStatus === "changes_requested"
   // A finished file task keeps its drop zone folded away: the file is the
@@ -84,11 +120,25 @@ export function TaskItem({ task, uploads }: TaskItemProps) {
       await completeTask({ portalToken, taskId: task.id })
       toast.success("Marked as complete.")
     } catch (error) {
-      toast.error(
-        error instanceof Error
-          ? error.message
-          : "We couldn't complete that task.",
-      )
+      toast.error(errorMessage(error, "We couldn't complete that task."))
+    } finally {
+      setIsCompleting(false)
+    }
+  }
+
+  async function handleAnswer(event: React.FormEvent) {
+    event.preventDefault()
+    if (answer.trim().length === 0) {
+      toast.error("Write your answer before sending it.")
+      return
+    }
+    setIsCompleting(true)
+    try {
+      await answerTask({ portalToken, taskId: task.id, response: answer.trim() })
+      setIsEditingAnswer(false)
+      toast.success("Answer sent — the organizers can see it.")
+    } catch (error) {
+      toast.error(errorMessage(error, "We couldn't send that answer."))
     } finally {
       setIsCompleting(false)
     }
@@ -174,6 +224,75 @@ export function TaskItem({ task, uploads }: TaskItemProps) {
           </Alert>
         ) : null}
 
+        {/* "Collect an answer": the instructions above ARE the question, so
+            the reply sits directly under them. Once sent it reads back as
+            plain words — what you told them, still true — with one tap to
+            revise it, because people re-read a question and think better. */}
+        {isAnswerTask && task.response && !showAnswerBox ? (
+          <div className="mt-3 rounded-lg border border-border bg-muted/40 px-3 py-2.5">
+            <p className="text-xs font-medium text-muted-foreground">
+              Your answer
+            </p>
+            <p className="mt-1 text-sm whitespace-pre-wrap text-foreground">
+              {task.response}
+            </p>
+            {!locked ? (
+              <Button
+                variant="outline"
+                size="sm"
+                className="mt-2"
+                onClick={() => {
+                  setAnswer(task.response ?? "")
+                  setIsEditingAnswer(true)
+                }}
+              >
+                <RiEditLine aria-hidden />
+                Change my answer
+              </Button>
+            ) : null}
+          </div>
+        ) : null}
+
+        {showAnswerBox ? (
+          <form className="mt-3 flex flex-col gap-2" onSubmit={handleAnswer}>
+            <Textarea
+              rows={3}
+              value={answer}
+              onChange={(event) => setAnswer(event.target.value)}
+              aria-label={`Your answer to "${task.title}"`}
+              placeholder="Type your answer…"
+            />
+            <div className="flex flex-wrap items-center gap-2">
+              <Button
+                type="submit"
+                size="sm"
+                disabled={isCompleting || answer.trim().length === 0}
+              >
+                <RiSendPlaneLine aria-hidden />
+                {isCompleting
+                  ? "Sending…"
+                  : task.response
+                    ? "Save my answer"
+                    : "Send my answer"}
+              </Button>
+              {isEditingAnswer ? (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  disabled={isCompleting}
+                  onClick={() => {
+                    setAnswer(task.response ?? "")
+                    setIsEditingAnswer(false)
+                  }}
+                >
+                  Cancel
+                </Button>
+              ) : null}
+            </div>
+          </form>
+        ) : null}
+
         {uploads.length > 0 ? (
           <FileList className="mt-3">
             {uploads.map((file) => (
@@ -223,7 +342,7 @@ export function TaskItem({ task, uploads }: TaskItemProps) {
             This task closed when its due date passed. Email the organizers if
             you still need to send it — they can reopen it for you.
           </p>
-        ) : !done && (canConfirm || !isFileTask) ? (
+        ) : !done && !isAnswerTask && (canConfirm || !isFileTask) ? (
           <div className="mt-3 flex flex-wrap items-center gap-2">
             {canConfirm ? (
               <Button size="sm" disabled={isCompleting} onClick={handleComplete}>

@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { Skeleton } from "@/components/ui/skeleton"
+import { errorMessage } from "@/lib/errors"
 
 /**
  * The comment thread on one uploaded file (sbek CNT-05) — the same component
@@ -68,7 +69,7 @@ export function FileComments({
     } catch (error) {
       toast.error("Couldn't post that comment", {
         description:
-          error instanceof Error ? error.message : "Please try again.",
+          errorMessage(error, "Please try again."),
       })
     } finally {
       setSending(false)

@@ -13,6 +13,7 @@ import {
 import { Field, FieldContent, FieldDescription, FieldLabel } from "@/components/ui/field"
 import { Switch } from "@/components/ui/switch"
 import type { EventSummary } from "@/lib/current-event"
+import { errorMessage } from "@/lib/errors"
 
 /**
  * Settings → Event details → Speaker portal (product-map delta #6, the
@@ -80,11 +81,7 @@ export function PortalBehaviorCard({ event }: { event: EventSummary }) {
       await update({ eventId: event._id, patch: { portalSettings: next } })
     } catch (error) {
       setFlags(previous)
-      toast.error(
-        error instanceof Error
-          ? error.message
-          : "Couldn't save that. Please try again.",
-      )
+      toast.error(errorMessage(error, "Couldn't save that. Please try again."))
     }
   }
 

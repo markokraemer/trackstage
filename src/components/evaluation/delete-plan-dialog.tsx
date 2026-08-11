@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/alert-dialog"
 import { appLink, legacyAppLink } from "@/lib/app-links"
 import { useCurrentEvent } from "@/lib/current-event"
+import { errorMessage } from "@/lib/errors"
 
 /**
  * Deleting an evaluation plan (convex/evaluationsAdmin.ts `deletePlan`). Unlike
@@ -55,9 +56,7 @@ export function DeletePlanDialog({
       await deletePlan({ planId })
       toast.success("Plan deleted")
     } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : "Could not delete that plan.",
-      )
+      toast.error(errorMessage(error, "Could not delete that plan."))
     } finally {
       setBusy(false)
     }

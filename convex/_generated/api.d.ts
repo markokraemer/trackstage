@@ -31,6 +31,7 @@ import type * as lib_apiIcs from "../lib/apiIcs.js";
 import type * as lib_audit from "../lib/audit.js";
 import type * as lib_auth from "../lib/auth.js";
 import type * as lib_email from "../lib/email.js";
+import type * as lib_errors from "../lib/errors.js";
 import type * as lib_evaluation from "../lib/evaluation.js";
 import type * as lib_files from "../lib/files.js";
 import type * as lib_formWindow from "../lib/formWindow.js";
@@ -85,6 +86,7 @@ declare const fullApi: ApiFromModules<{
   "lib/audit": typeof lib_audit;
   "lib/auth": typeof lib_auth;
   "lib/email": typeof lib_email;
+  "lib/errors": typeof lib_errors;
   "lib/evaluation": typeof lib_evaluation;
   "lib/files": typeof lib_files;
   "lib/formWindow": typeof lib_formWindow;

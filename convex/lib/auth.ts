@@ -1,6 +1,7 @@
 import type { Doc, Id } from "../_generated/dataModel"
 import type { MutationCtx, QueryCtx } from "../_generated/server"
 import { authComponent } from "../auth"
+import { ConvexError } from "convex/values"
 
 // ————————————————————————————————————————————————————————————————————————
 // Authorization layer. Authentication is Better Auth (users/sessions live in
@@ -67,7 +68,7 @@ function assertRole(
   minRole: "member" | "admin" | "owner",
 ): void {
   if ((ROLE_RANK[member.role] ?? -1) < ROLE_RANK[minRole]) {
-    throw new Error(
+    throw new ConvexError(
       `This action requires the ${minRole} role (you are ${member.role}).`,
     )
   }
@@ -88,7 +89,7 @@ export async function membershipFor(
 ): Promise<Doc<"members">> {
   const member = await findMembership(ctx, userId, organizationId)
   if (!member) {
-    throw new Error("You don't have access to this workspace.")
+    throw new ConvexError("You don't have access to this workspace.")
   }
   assertRole(member, minRole)
   return member
@@ -111,10 +112,10 @@ export async function eventAccessFor(
 ): Promise<{ member: Doc<"members">; event: Doc<"events"> }> {
   const event = await ctx.db.get(eventId)
   // `!organizationId` = legacy pre-multi-tenancy row awaiting purge (seed.run).
-  if (!event || !event.organizationId) throw new Error("Event not found.")
+  if (!event || !event.organizationId) throw new ConvexError("Event not found.")
   const member = await findMembership(ctx, userId, event.organizationId)
-  if (!member) throw new Error("You don't have access to this workspace.")
-  if (!memberCanSeeEvent(member, eventId)) throw new Error("Event not found.")
+  if (!member) throw new ConvexError("You don't have access to this workspace.")
+  if (!memberCanSeeEvent(member, eventId)) throw new ConvexError("Event not found.")
   assertRole(member, minRole)
   return { member, event }
 }
@@ -169,7 +170,7 @@ export async function requirePerson(
     .query("people")
     .withIndex("by_portalToken", (q) => q.eq("portalToken", portalToken))
     .unique()
-  if (!person) throw new Error("Invalid or expired portal link.")
+  if (!person) throw new ConvexError("Invalid or expired portal link.")
   return person
 }
 
@@ -180,7 +181,7 @@ export async function requirePersonInEvent(
 ) {
   const person = await requirePerson(ctx, portalToken)
   if (person.eventId !== eventId) {
-    throw new Error("This portal link belongs to a different event.")
+    throw new ConvexError("This portal link belongs to a different event.")
   }
   return person
 }

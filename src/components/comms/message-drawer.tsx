@@ -30,6 +30,7 @@ import {
 import { EmailPreviewCard } from "./email-preview"
 import { downloadIcs, icsFilename, icsForSession } from "./ics"
 import type { MessageRow } from "./types"
+import { errorMessageOrNull } from "@/lib/errors"
 
 /**
  * Outbox detail drawer (docs/SPEC.md §4.9).
@@ -121,7 +122,7 @@ export function MessageDrawer({
     } catch (error) {
       toast.error("Could not check delivery", {
         description:
-          error instanceof Error ? error.message.split("\n")[0] : undefined,
+          errorMessageOrNull(error) ?? undefined,
       })
     } finally {
       setChecking(false)

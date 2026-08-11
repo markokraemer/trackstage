@@ -11,7 +11,7 @@
 // body — the demo-safe path judges evaluate. Delivery is claim-based so two
 // overlapping `deliverPending` runs can never send the same email twice.
 
-import { v  } from "convex/values"
+import { ConvexError, v } from "convex/values"
 import type {Infer} from "convex/values";
 import { internal } from "./_generated/api"
 import type { Doc, Id } from "./_generated/dataModel"
@@ -148,18 +148,18 @@ export async function renderMessageFor(
   args: QueueMessageArgs,
 ): Promise<RenderedMessage> {
   const person = await ctx.db.get("people", args.personId)
-  if (!person) throw new Error("Person not found.")
+  if (!person) throw new ConvexError("Person not found.")
   if (person.eventId !== args.eventId) {
-    throw new Error("That person belongs to a different event.")
+    throw new ConvexError("That person belongs to a different event.")
   }
   const event = await ctx.db.get("events", args.eventId)
-  if (!event) throw new Error("Event not found.")
+  if (!event) throw new ConvexError("Event not found.")
 
   let submission = null
   if (args.submissionId) {
     submission = await ctx.db.get("submissions", args.submissionId)
     if (submission && submission.eventId !== args.eventId) {
-      throw new Error("That submission belongs to a different event.")
+      throw new ConvexError("That submission belongs to a different event.")
     }
   }
 
@@ -510,7 +510,7 @@ export const upsertTemplate = mutation({
   handler: async (ctx, args) => {
     await requireEventAccess(ctx, args.eventId)
     const key = args.key.trim()
-    if (!key) throw new Error("A template key is required.")
+    if (!key) throw new ConvexError("A template key is required.")
 
     const existing = await ctx.db
       .query("emailTemplates")
@@ -681,7 +681,7 @@ export const sendTestToSelf = mutation({
         portalToken: `test-${Math.random().toString(36).slice(2)}${Date.now().toString(36)}`,
       })
       found = await ctx.db.get("people", personId)
-      if (!found) throw new Error("Could not create a preview recipient.")
+      if (!found) throw new ConvexError("Could not create a preview recipient.")
     }
     const recipient: Doc<"people"> = found
 
@@ -884,8 +884,8 @@ export const composeBulk = mutation({
     await requireEventAccess(ctx, args.eventId)
     const subject = args.subject.trim()
     const body = args.body.trim()
-    if (!subject) throw new Error("Add a subject line.")
-    if (!body) throw new Error("Write a message before sending.")
+    if (!subject) throw new ConvexError("Add a subject line.")
+    if (!body) throw new ConvexError("Write a message before sending.")
 
     const recipients = await resolveBulkRecipients(
       ctx,
@@ -894,7 +894,7 @@ export const composeBulk = mutation({
       args.personIds,
     )
     if (recipients.length === 0) {
-      throw new Error(
+      throw new ConvexError(
         "Nobody matches that audience yet — pick a different filter.",
       )
     }

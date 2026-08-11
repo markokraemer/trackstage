@@ -7,7 +7,7 @@ import {
   normalizeCredentials,
   normalizeToken,
 } from "../../convex/lib/airtable"
-import { errorMessage } from "../../src/components/settings/errors"
+import { errorMessage } from "../../src/lib/errors"
 import {
   INBOUND_REASON_TEXT,
   INBOUND_STATUSES,

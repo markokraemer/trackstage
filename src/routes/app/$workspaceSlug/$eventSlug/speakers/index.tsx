@@ -42,6 +42,7 @@ import { RemovePersonDialog } from "@/components/dashboard/remove-person-dialog"
 import { AssignTaskDialog } from "@/components/dashboard/assign-task-dialog"
 import { RemindIncompleteButton } from "@/components/dashboard/remind-incomplete-button"
 import { appLink, legacyAppLink } from "@/lib/app-links"
+import { errorMessage } from "@/lib/errors"
 
 /**
  * Deep links into the roster. Both are how the ⌘K palette
@@ -265,7 +266,7 @@ function SpeakersPage() {
     } catch (error) {
       toast.error("Couldn't change their visibility", {
         description:
-          error instanceof Error ? error.message : "Please try again.",
+          errorMessage(error, "Please try again."),
       })
     } finally {
       setBulkVisibility(null)

@@ -29,6 +29,7 @@ import {
 import { StatusPill } from "@/components/shared/status-pill"
 import { appLink } from "@/lib/app-links"
 import { eventPath } from "@/lib/public-links"
+import { errorMessage } from "@/lib/errors"
 
 export interface PublishAgendaButtonProps {
   eventId: Id<"events">
@@ -94,7 +95,7 @@ export function PublishAgendaButton({
         published ? "Couldn't unpublish" : "Couldn't publish the schedule",
         {
           description:
-            error instanceof Error ? error.message : "Please try again.",
+            errorMessage(error, "Please try again."),
         },
       )
     } finally {

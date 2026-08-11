@@ -45,7 +45,7 @@ import { EmptyState } from "@/components/shared/empty-state"
 import { LabeledField } from "@/components/settings/labeled-field"
 import { ConfirmDeleteButton } from "@/components/settings/confirm-delete-button"
 import { CopyButton } from "@/components/settings/copy-button"
-import { errorMessage } from "@/components/settings/errors"
+import { errorMessage } from "@/lib/errors"
 
 export interface CreatedApiKey {
   keyId: Id<"apiKeys">

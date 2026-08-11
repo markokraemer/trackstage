@@ -9,10 +9,15 @@ import type { Doc } from "../_generated/dataModel"
 // weeks after the deadline the organizer set — sbek CFP-16.
 // ————————————————————————————————————————————————————————————————————————
 
-export interface FormWindow {
-  open: boolean
-  reason?: string
-}
+/**
+ * A discriminated union on purpose: a CLOSED window always carries the sentence
+ * the speaker reads. That sentence is thrown as `ConvexError` data — the only
+ * form Convex doesn't redact on a production deployment — so "closed with no
+ * reason" must not be representable.
+ */
+export type FormWindow =
+  | { open: true; reason?: undefined }
+  | { open: false; reason: string }
 
 export function isFormOpen(form: Doc<"forms">): FormWindow {
   if (form.status !== "open") {

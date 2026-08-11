@@ -6,6 +6,7 @@ import { createOpenRouter } from "@openrouter/ai-sdk-provider"
 import { api } from "@convex/_generated/api"
 import { fetchAuthMutation, fetchAuthQuery } from "@/lib/auth-server"
 import { loadMcpTools } from "@/lib/copilot-mcp"
+import { errorMessage } from "@/lib/errors"
 import {
   COPILOT_MCP_PATH,
   COPILOT_MODEL,
@@ -201,7 +202,7 @@ async function handlePost({
     // Tool failures are part of the conversation for an operator copilot —
     // seeing "you don't have access to this workspace" is the answer.
     onError: (error) =>
-      error instanceof Error ? error.message : "Something went wrong.",
+      errorMessage(error, "Something went wrong."),
   })
 }
 

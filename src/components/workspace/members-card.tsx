@@ -53,7 +53,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { StatusPill } from "@/components/shared/status-pill"
 import { LabeledField } from "@/components/settings/labeled-field"
 import { ConfirmDeleteButton } from "@/components/settings/confirm-delete-button"
-import { errorMessage } from "@/components/settings/errors"
+import { errorMessage } from "@/lib/errors"
 import {
   ROLE_HELP,
   canChangeRoles,

@@ -154,22 +154,39 @@ export function EventsView({ output }: ToolOutputProps) {
 
 export function EventCreatedView({ output }: ToolOutputProps) {
   const name = str(output.name) ?? "New event"
+  // create_event returns the workspace slug alongside the event slug, so the
+  // NEW event's own settings page is addressable straight from the receipt.
+  // Without both halves the canonical `/app/:ws/:event` path cannot be built,
+  // and we fall back to the bare legacy path (it redirects through whichever
+  // event is currently in context — right section, wrong event).
+  const workspaceSlug = str(output.workspaceSlug)
+  const eventSlug = str(output.slug)
+  const settingsLink =
+    workspaceSlug && eventSlug
+      ? appLink.settings({ workspaceSlug, eventSlug })
+      : legacyAppLink.settings
+  const publicUrl = str(output.publicUrl)
   return (
     <Banner icon={<RiCalendarEventLine size={16} />} title={`${name} created`}>
       <FieldGrid
         entries={[
           {
             label: "Slug",
-            value: <code className="font-mono">{str(output.slug) ?? "—"}</code>,
+            value: <code className="font-mono">{eventSlug ?? "—"}</code>,
           },
+          ...(publicUrl
+            ? [
+                {
+                  label: "Public page",
+                  value: <OpenLink href={publicUrl}>{publicUrl}</OpenLink>,
+                },
+              ]
+            : []),
         ]}
       />
       <div className="flex flex-wrap items-center gap-3 pt-1">
         <GoLink to={appLink.events}>Open Events</GoLink>
-        {/* create_event doesn't hand back the workspace's slug, so the new
-            event's own settings page can't be built here — the bare legacy
-            path redirects through whichever event is in context. */}
-        <GoLink to={legacyAppLink.settings}>Event settings</GoLink>
+        <GoLink to={settingsLink}>Event settings</GoLink>
       </div>
       <Note>
         Switch to it in the sidebar event switcher to point the rest of the app

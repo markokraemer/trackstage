@@ -136,6 +136,9 @@ import {
   StatusPill,
   SUBMISSION_STATUSES,
 } from "@/components/shared/status-pill"
+import { CopyLinkButton } from "@/components/dashboard/copy-link-button"
+import { PersonPicker } from "@/components/dashboard/person-picker"
+import { SubscribeMenu } from "@/components/public/subscribe-menu"
 
 export const Route = createFileRoute("/design-system")({
   component: DesignSystemPage,
@@ -397,6 +400,7 @@ function DesignSystemPage() {
   const [checked, setChecked] = useState(true)
   const [switched, setSwitched] = useState(true)
   const [surface, setSurface] = useState<SurfaceKey>("light")
+  const [pickerEmail, setPickerEmail] = useState("")
 
   return (
     <TooltipProvider>
@@ -1598,6 +1602,50 @@ function DesignSystemPage() {
                     </p>
                   </div>
                 </WizardShell>
+              </Sample>
+
+              {/* The three primitives every SHARING surface is built from —
+                  public pages, the forms builder, the portals card. They live
+                  here so nobody hand-rolls a fourth copy-to-clipboard button. */}
+              <Row>
+                <Sample
+                  label="CopyLinkButton"
+                  hint="Public links are never hidden behind a menu. Falls back to a toast carrying the URL when the Clipboard API is unavailable."
+                >
+                  <div className="flex flex-wrap items-center gap-2">
+                    <CopyLinkButton url="https://trackstage.dev/submit/ai-engineer/ai-summit-2026/main-cfp" />
+                    <CopyLinkButton
+                      url="https://trackstage.dev/e/ai-engineer/ai-summit-2026"
+                      label="Copy public page"
+                      variant="ghost"
+                    />
+                    <CopyLinkButton
+                      url="https://trackstage.dev/e/ai-engineer/ai-summit-2026"
+                      iconOnly
+                    />
+                  </div>
+                </Sample>
+                <Sample
+                  label="SubscribeMenu"
+                  hint="The live .ics feed, offered three ways because calendar apps disagree about which one they accept."
+                >
+                  <SubscribeMenu slug="ai-summit-2026" />
+                </Sample>
+              </Row>
+
+              <Sample
+                label="PersonPicker"
+                hint="One person graph per event, made visible: pick someone who already exists (portal, tasks and profile carry over) or type a new address. Idle here — with an eventId it searches the event's people."
+              >
+                <div className="w-full max-w-md">
+                  <PersonPicker
+                    eventId={undefined}
+                    email={pickerEmail}
+                    onPick={(person) => setPickerEmail(person.email)}
+                    onNewEmail={setPickerEmail}
+                    hint="Search by name, company or email."
+                  />
+                </div>
               </Sample>
 
               <Sample label="Sidebar navigation item states">

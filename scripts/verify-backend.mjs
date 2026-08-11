@@ -773,6 +773,103 @@ ok("the verify-created tasks are cleaned up",
   (await client.query(api.tasksAdmin.list, { eventId: main._id }))
     .every((t) => t.title !== savedTitle && t.title !== "Speaker agreement"))
 
+// ————— "Collect an answer" tasks —————
+// The organizer asks a question in the instructions, the speaker types a
+// reply, and the reply IS the completion. Asserted end to end because it is
+// the one task kind where the ANSWER — not a file, not a tick — is the thing
+// the organizer came for.
+section("Collect an answer tasks")
+const answerTask = await client.mutation(api.tasksAdmin.create, {
+  eventId: main._id, personIds: [myPersonId], kind: "answer",
+  title: "Tell us your t-shirt size",
+  instructions: "{{firstName}}, what size t-shirt do you wear?",
+})
+ok("an answer task can be assigned", answerTask.created === 1)
+const answerRowId = (await client.query(api.tasksAdmin.list, { eventId: main._id }))
+  .find((t) => t.person?.id === myPersonId && t.title === "Tell us your t-shirt size")?.id
+ok("the answer task is on the organizer's list", !!answerRowId)
+const portalAnswerTask = (await client.query(api.portal.home, { portalToken: PT }))
+  .tasks.find((t) => t.id === answerRowId)
+ok("the speaker sees it as an answer task", portalAnswerTask?.kind === "answer")
+ok("the question is personalised for them",
+  portalAnswerTask?.instructions === "Vera, what size t-shirt do you wear?",
+  portalAnswerTask?.instructions)
+await throws("an answer task can't be ticked off without answering", () =>
+  anonClient.mutation(api.portal.completeTask, { portalToken: PT, taskId: answerRowId }),
+  "type your answer")
+await throws("an empty answer is refused", () =>
+  anonClient.mutation(api.portal.answerTask, { portalToken: PT, taskId: answerRowId, response: "   " }),
+  "write your answer")
+await anonClient.mutation(api.portal.answerTask, {
+  portalToken: PT, taskId: answerRowId, response: "Large, please",
+})
+const answered = (await client.query(api.portal.home, { portalToken: PT }))
+  .tasks.find((t) => t.id === answerRowId)
+ok("sending the answer completes the task", !!answered?.completedAt)
+ok("the speaker can re-read their own answer", answered?.response === "Large, please")
+await anonClient.mutation(api.portal.answerTask, {
+  portalToken: PT, taskId: answerRowId, response: "Medium after all",
+})
+const organizerTaskRow = (await client.query(api.tasksAdmin.list, {
+  eventId: main._id, personId: myPersonId,
+})).find((t) => t.id === answerRowId)
+ok("the organizer reads the answer on the task", organizerTaskRow?.response === "Medium after all")
+ok("tasksAdmin.list can be scoped to one speaker",
+  (await client.query(api.tasksAdmin.list, { eventId: main._id, personId: myPersonId }))
+    .every((t) => t.person?.id === myPersonId))
+await client.mutation(api.tasksAdmin.create, {
+  eventId: main._id, personIds: [myPersonId], kind: "upload", title: "Not an answer task",
+})
+const fileTaskId = (await client.query(api.tasksAdmin.list, { eventId: main._id, personId: myPersonId }))
+  .find((t) => t.title === "Not an answer task")?.id
+await throws("a file task refuses a written answer", () =>
+  anonClient.mutation(api.portal.answerTask, {
+    portalToken: PT, taskId: fileTaskId, response: "here you go",
+  }), "written answer")
+await client.mutation(api.tasksAdmin.remove, { taskId: fileTaskId })
+await throws("another speaker's token can't answer this task", () =>
+  anonClient.mutation(api.portal.answerTask, {
+    portalToken: "not-a-real-token", taskId: answerRowId, response: "hello",
+  }))
+await client.mutation(api.tasksAdmin.remove, { taskId: answerRowId })
+
+// ————— Deleting a form whose only submissions are in the trash —————
+// The count that blocks the delete is LIVE submissions. A form showing "0
+// submissions" in the UI must be deletable, and the trashed rows survive it
+// (orphaned, not purged) so restoring from the trash still returns the work.
+section("Form deletion & the trash")
+const throwawayFormId = await client.mutation(api.forms.create, {
+  eventId: main._id, internalName: `Throwaway CFP ${Date.now().toString(36)}`, kind: "abstract",
+})
+const throwawayForm = await client.query(api.forms.get, { formId: throwawayFormId })
+const throwawayEmail = `trash-e2e-${Date.now().toString(36)}@example.com`
+const throwawayIdent = await client.mutation(api.submit.identify, {
+  slug: throwawayForm.slug, email: throwawayEmail,
+})
+const throwawayTrackQ = throwawayForm.questions.find((q) => q.isTrackQuestion)
+const throwawaySubmission = await client.mutation(api.submit.submit, {
+  slug: throwawayForm.slug, portalToken: throwawayIdent.portalToken,
+  title: "Throwaway Talk",
+  answers: {
+    title: "Throwaway Talk", description: "<p>Bound for the trash.</p>", format: "Talk",
+    [throwawayTrackQ.id]: throwawayTrackQ.options[0], level: "Introductory", language: "English",
+  },
+  participants: [{ firstName: "Trash", lastName: "Test", email: throwawayEmail, role: "speaker" }],
+})
+await throws("a form with a live submission still can't be deleted", () =>
+  client.mutation(api.forms.remove, { formId: throwawayFormId }), "submission")
+await client.mutation(api.submissions.remove, { submissionId: throwawaySubmission.submissionId })
+await client.mutation(api.forms.remove, { formId: throwawayFormId })
+ok("a form whose only submissions are trashed deletes",
+  !(await client.query(api.forms.list, { eventId: main._id })).some((f) => f._id === throwawayFormId))
+await client.mutation(api.submissions.restore, { submissionId: throwawaySubmission.submissionId })
+const orphanedSubmission = await client.query(api.submissions.get, {
+  submissionId: throwawaySubmission.submissionId,
+})
+ok("the trashed submission survives its form, orphaned rather than purged",
+  !!orphanedSubmission && !orphanedSubmission.formId, JSON.stringify(orphanedSubmission?.formId))
+await client.mutation(api.submissions.remove, { submissionId: throwawaySubmission.submissionId })
+
 // ————— Agenda + conflicts + auto-place —————
 section("Agenda")
 const board0 = await client.query(api.agenda.board, { eventId: main._id })
@@ -2159,7 +2256,10 @@ if (SITE_URL) {
 
   const tools = await rpc("tools/list", {})
   const toolNames = (tools.body?.result?.tools ?? []).map((t) => t.name)
-  ok("tools/list returns the full 31-tool surface", toolNames.length === 31, `got ${toolNames.length}: ${toolNames.join(", ")}`)
+  ok("tools/list returns the full 34-tool surface", toolNames.length === 34, `got ${toolNames.length}: ${toolNames.join(", ")}`)
+  ok("task-library tools present",
+    ["list_task_library", "save_task_template", "assign_task_from_template"].every((n) => toolNames.includes(n)),
+    toolNames.filter((n) => n.includes("task")).join(", "))
   ok("every tool has a description + inputSchema", (tools.body?.result?.tools ?? []).every((t) => t.description?.length > 20 && t.inputSchema?.type === "object"))
   ok("core tools present", ["list_events", "get_event_summary", "commit_decision_queue", "get_agenda", "list_speakers"].every((n) => toolNames.includes(n)))
   // The destructive half of the CRUD surface — the one gap the live-fire test

@@ -1,0 +1,27 @@
+{
+  "name": "trackstage-video-v2-gemini",
+  "version": "1.0.0",
+  "description": "High-energy SaaS launch video for Trackstage (Gemini variant)",
+  "private": true,
+  "dependencies": {
+    "@remotion/cli": "4.0.508",
+    "@remotion/google-fonts": "4.0.508",
+    "@remotion/media-utils": "4.0.508",
+    "@remotion/tailwind-v4": "4.0.508",
+    "@remotion/transitions": "4.0.508",
+    "react": "19.2.3",
+    "react-dom": "19.2.3",
+    "remotion": "4.0.508",
+    "tailwindcss": "4.0.0"
+  },
+  "devDependencies": {
+    "@types/react": "19.2.7",
+    "@types/web": "0.0.166",
+    "typescript": "5.9.3"
+  },
+  "scripts": {
+    "dev": "remotion studio",
+    "build": "remotion bundle",
+    "render": "remotion render src/index.ts TrackstageLaunch out/trackstage-launch-gemini.mp4 --concurrency 4"
+  }
+}

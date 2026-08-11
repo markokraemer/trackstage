@@ -23,7 +23,8 @@ function Page() {
         <Step title="Go to Settings → Integrations and press “Connect Airtable”.">
           <Shot
             src="airtable.png"
-            alt="The Integrations settings page with the Airtable card"
+            alt="The event's Integrations settings tab with the Airtable card and the Webhooks card below it"
+            caption="Event-scoped, like every tab on this page — each event mirrors into its own base."
           />
         </Step>
 

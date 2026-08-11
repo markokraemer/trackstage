@@ -155,10 +155,10 @@
                   "data": {
                     "conflicts": [],
                     "event": {
-                      "_id": "j970dka7yanxxzkj5t78b03bch8c92d9",
-                      "agenda_published_at": "2026-08-06T13:20:32.302Z",
+                      "_id": "j9739z1hp0jeem9e9e3fjevhyh8c9ybw",
+                      "agenda_published_at": "2026-08-11T17:14:08.751Z",
                       "background_url": null,
-                      "created_at": "2026-08-11T13:20:32.302Z",
+                      "created_at": "2026-08-11T17:12:51.276Z",
                       "description": "Two days for the people building AI systems that have to work on Monday morning. Practitioner talks on evaluation, agents, retrieval, inference infrastructure and the product decisions in between — no keynote fluff, no vendor pitches.",
                       "endsAt": 1791939600000,
                       "ends_at": "2026-10-14T01:00:00.000Z",
@@ -167,7 +167,7 @@
                         "translated_fields": false,
                         "webhooks": true
                       },
-                      "id": "j970dka7yanxxzkj5t78b03bch8c92d9",
+                      "id": "j9739z1hp0jeem9e9e3fjevhyh8c9ybw",
                       "logo_url": null,
                       "name": "AI Engineer Summit 2026",
                       "organization_id": "mn7fs8btg5szyhbkqdfhtd4xmn8c8xhg",
@@ -176,7 +176,7 @@
                         "always_show_tasks": false,
                         "extend_task_deadlines": true
                       },
-                      "public_url": "/e/ai-summit-2026",
+                      "public_url": "/e/ai-engineer/ai-summit-2026",
                       "slug": "ai-summit-2026",
                       "startsAt": 1791820800000,
                       "starts_at": "2026-10-12T16:00:00.000Z",
@@ -187,17 +187,17 @@
                       "website_url": "https://example.com/ai-summit-2026"
                     },
                     "published": true,
-                    "published_at": "2026-08-06T13:20:32.302Z",
+                    "published_at": "2026-08-11T17:14:08.751Z",
                     "rooms": [
                       {
                         "capacity": 300,
-                        "id": "js7aftf17fqe9qdk07xtanv7k58c9zj0",
+                        "id": "js7e6pc32kzkz2n9vtx0tfdgt98c983c",
                         "name": "Main Stage",
                         "order": 0
                       },
                       {
                         "capacity": 80,
-                        "id": "js76c4ar5qkeh0dxdeak9m1fmx8c9pk9",
+                        "id": "js77ghrmjkhtd3yt5gcnkyv6b98c9agv",
                         "name": "Workshop Room",
                         "order": 1
                       }
@@ -206,44 +206,55 @@
                       {
                         "duration_minutes": 60,
                         "ends_at": "2026-10-12T18:00:00.000Z",
-                        "id": "k57bv1b54m87xt0wce47j3p9g18c850w",
+                        "id": "k573rn1n1xzbgyt8mfgecmjf8s8c860k",
                         "is_public": true,
-                        "room_id": "js7aftf17fqe9qdk07xtanv7k58c9zj0",
+                        "room_id": "js7e6pc32kzkz2n9vtx0tfdgt98c983c",
                         "starts_at": "2026-10-12T17:00:00.000Z",
                         "title": "Building reliable agents: a practitioner's playbook",
-                        "track_id": "kd7cepm1y5wny1g2qtdeqjqxc18c9php"
+                        "track_id": "kd75nre1ar41qtvqe5gdahmjan8c99z4"
                       },
                       {
                         "duration_minutes": 45,
                         "ends_at": "2026-10-12T17:45:00.000Z",
-                        "id": "k57fv92rwbq3666gpp3rzek41x8c9nxn",
+                        "id": "k57ejg5b3cy5x668ynwnv4zzv98c86xx",
                         "is_public": true,
-                        "room_id": "js76c4ar5qkeh0dxdeak9m1fmx8c9pk9",
+                        "room_id": "js77ghrmjkhtd3yt5gcnkyv6b98c9agv",
                         "starts_at": "2026-10-12T17:00:00.000Z",
                         "title": "Evaluation harnesses for production LLMs",
-                        "track_id": "kd7cepm1y5wny1g2qtdeqjqxc18c9php"
+                        "track_id": "kd75nre1ar41qtvqe5gdahmjan8c99z4"
                       }
                     ],
                     "totals": {
                       "conflicts": 0,
-                      "scheduled": 6,
-                      "unscheduled": 0
+                      "scheduled": 9,
+                      "unscheduled": 3
                     },
                     "tracks": [
                       {
                         "color": "#2F5CE0",
-                        "id": "kd7cepm1y5wny1g2qtdeqjqxc18c9php",
+                        "id": "kd75nre1ar41qtvqe5gdahmjan8c99z4",
                         "name": "AI Engineering",
                         "order": 0
                       },
                       {
                         "color": "#1E9E6B",
-                        "id": "kd7abhh69p31762y4176dccpch8c9t9n",
+                        "id": "kd758jh1qebs0wnczdece87crs8c9b67",
                         "name": "Product",
                         "order": 1
                       }
                     ],
-                    "unscheduled": []
+                    "unscheduled": [
+                      {
+                        "id": "k57dqbgd0bw7jcx38ev4yzgga58c8097",
+                        "is_public": true,
+                        "title": "Auto A au-msox6115-tsrd9"
+                      },
+                      {
+                        "id": "k573wszc6p1amajvyqnk0bk9ch8c8zfy",
+                        "is_public": true,
+                        "title": "Auto B au-msox61ct-qhqam"
+                      }
+                    ]
                   }
                 }
               }
@@ -497,7 +508,7 @@
                       "blind": false,
                       "completed_count": 10,
                       "completion_pct": 63,
-                      "created_at": "2026-08-11T13:20:32.302Z",
+                      "created_at": "2026-08-11T17:12:51.276Z",
                       "criteria": [
                         {
                           "id": "overall",
@@ -516,7 +527,7 @@
                       ],
                       "due_at": "2026-09-26T00:00:00.000Z",
                       "evaluator_count": 2,
-                      "id": "kn77y3z6xkxc6hfkqqw085s0xd8c8byf",
+                      "id": "kn78t15cz0hksctdkaqtq8qjy98c83fp",
                       "name": "Round 1 — Programme Committee",
                       "opens_at": null,
                       "outstanding_count": 6,
@@ -526,8 +537,8 @@
                       "status": "open",
                       "submission_count": 8,
                       "submission_ids": [
-                        "k579a47q13fyxb5wxx7rndske58c9xrf",
-                        "k576660fnfj17k7ny5dv5t41ss8c87da"
+                        "k577j2h73c31tjh1x9gb2wz3sx8c8vpx",
+                        "k57cmp038ghevn9v7k8kps3k0x8c9adm"
                       ]
                     }
                   ],
@@ -548,7 +559,7 @@
                       "blind": false,
                       "completed_count": 10,
                       "completion_pct": 63,
-                      "created_at": "2026-08-11T13:20:32.302Z",
+                      "created_at": "2026-08-11T17:12:51.276Z",
                       "criteria": [
                         {
                           "id": "overall",
@@ -567,7 +578,7 @@
                       ],
                       "due_at": "2026-09-26T00:00:00.000Z",
                       "evaluator_count": 2,
-                      "id": "kn77y3z6xkxc6hfkqqw085s0xd8c8byf",
+                      "id": "kn78t15cz0hksctdkaqtq8qjy98c83fp",
                       "name": "Round 1 — Programme Committee",
                       "opens_at": null,
                       "outstanding_count": 6,
@@ -577,8 +588,8 @@
                       "status": "open",
                       "submission_count": 8,
                       "submission_ids": [
-                        "k579a47q13fyxb5wxx7rndske58c9xrf",
-                        "k576660fnfj17k7ny5dv5t41ss8c87da"
+                        "k577j2h73c31tjh1x9gb2wz3sx8c8vpx",
+                        "k57cmp038ghevn9v7k8kps3k0x8c9adm"
                       ]
                     }
                   ]
@@ -651,7 +662,7 @@
                     "blind": false,
                     "completed_count": 10,
                     "completion_pct": 63,
-                    "created_at": "2026-08-11T13:20:32.302Z",
+                    "created_at": "2026-08-11T17:12:51.276Z",
                     "criteria": [
                       {
                         "id": "overall",
@@ -674,18 +685,18 @@
                       {
                         "assigned_count": 8,
                         "assigned_submission_ids": [
-                          "k579a47q13fyxb5wxx7rndske58c9xrf",
-                          "k576660fnfj17k7ny5dv5t41ss8c87da"
+                          "k577j2h73c31tjh1x9gb2wz3sx8c8vpx",
+                          "k57cmp038ghevn9v7k8kps3k0x8c9adm"
                         ],
                         "completed_count": 6,
-                        "created_at": "2026-08-11T13:20:32.302Z",
+                        "created_at": "2026-08-11T17:12:51.276Z",
                         "custom_assignment": false,
                         "email": "alex.rivera@example.com",
-                        "id": "kx7c54q1e9fda7z86eb3vy0azn8c9swa",
+                        "id": "kx7dp5z6v7tck793fkqqpfyseh8c988r",
                         "last_reminded_at": null,
                         "name": "Alex Rivera",
                         "outstanding_count": 2,
-                        "plan_id": "kn77y3z6xkxc6hfkqqw085s0xd8c8byf",
+                        "plan_id": "kn78t15cz0hksctdkaqtq8qjy98c83fp",
                         "recused_count": 0,
                         "review_path": "/review/demo-eval-alex",
                         "token": "demo-eval-alex"
@@ -693,24 +704,24 @@
                       {
                         "assigned_count": 8,
                         "assigned_submission_ids": [
-                          "k579a47q13fyxb5wxx7rndske58c9xrf",
-                          "k576660fnfj17k7ny5dv5t41ss8c87da"
+                          "k577j2h73c31tjh1x9gb2wz3sx8c8vpx",
+                          "k57cmp038ghevn9v7k8kps3k0x8c9adm"
                         ],
                         "completed_count": 4,
-                        "created_at": "2026-08-11T13:20:32.302Z",
+                        "created_at": "2026-08-11T17:12:51.276Z",
                         "custom_assignment": false,
                         "email": "sam.okafor@example.com",
-                        "id": "kx7fb5re9mzwjkx7c0x4tyents8c9wds",
+                        "id": "kx711fkxzcpnegacg1sh85h5cn8c9ztm",
                         "last_reminded_at": null,
                         "name": "Sam Okafor",
                         "outstanding_count": 4,
-                        "plan_id": "kn77y3z6xkxc6hfkqqw085s0xd8c8byf",
+                        "plan_id": "kn78t15cz0hksctdkaqtq8qjy98c83fp",
                         "recused_count": 0,
                         "review_path": "/review/demo-eval-sam",
                         "token": "demo-eval-sam"
                       }
                     ],
-                    "id": "kn77y3z6xkxc6hfkqqw085s0xd8c8byf",
+                    "id": "kn78t15cz0hksctdkaqtq8qjy98c83fp",
                     "name": "Round 1 — Programme Committee",
                     "opens_at": null,
                     "outstanding_count": 6,
@@ -720,14 +731,14 @@
                     "status": "open",
                     "submission_count": 8,
                     "submission_ids": [
-                      "k579a47q13fyxb5wxx7rndske58c9xrf",
-                      "k576660fnfj17k7ny5dv5t41ss8c87da"
+                      "k577j2h73c31tjh1x9gb2wz3sx8c8vpx",
+                      "k57cmp038ghevn9v7k8kps3k0x8c9adm"
                     ],
                     "submissions": [
                       {
                         "average_score": 4.25,
                         "completed_count": 2,
-                        "id": "k579a47q13fyxb5wxx7rndske58c9xrf",
+                        "id": "k577j2h73c31tjh1x9gb2wz3sx8c8vpx",
                         "recused_count": 0,
                         "status": "pending",
                         "title": "Shipping LLM features when latency is the product"
@@ -735,7 +746,7 @@
                       {
                         "average_score": 4,
                         "completed_count": 2,
-                        "id": "k576660fnfj17k7ny5dv5t41ss8c87da",
+                        "id": "k57cmp038ghevn9v7k8kps3k0x8c9adm",
                         "recused_count": 0,
                         "status": "pending",
                         "title": "Vector databases at ten billion embeddings"
@@ -1130,12 +1141,12 @@
                   "data": [
                     {
                       "comment": "Strong, concrete and clearly grounded in real work. The latency-budget framing is the kind of thing attendees can apply on Monday.",
-                      "completed_at": "2026-08-06T13:20:32.302Z",
-                      "created_at": "2026-08-11T13:20:32.302Z",
+                      "completed_at": "2026-08-06T17:12:51.276Z",
+                      "created_at": "2026-08-11T17:12:51.276Z",
                       "evaluator_email": "alex.rivera@example.com",
-                      "evaluator_id": "kx7c54q1e9fda7z86eb3vy0azn8c9swa",
-                      "id": "ks70bvwtfc7qgzc6s89ghgvx318c9m1e",
-                      "plan_id": "kn77y3z6xkxc6hfkqqw085s0xd8c8byf",
+                      "evaluator_id": "kx7dp5z6v7tck793fkqqpfyseh8c988r",
+                      "id": "ks7615c6jpa1hz0sk6e5bzgvjn8c829a",
+                      "plan_id": "kn78t15cz0hksctdkaqtq8qjy98c83fp",
                       "plan_name": "Round 1 — Programme Committee",
                       "recusal_reason": null,
                       "recused": false,
@@ -1144,7 +1155,7 @@
                         "overall": 4,
                         "relevance": 5
                       },
-                      "session_id": "k579a47q13fyxb5wxx7rndske58c9xrf",
+                      "session_id": "k577j2h73c31tjh1x9gb2wz3sx8c8vpx",
                       "session_title": "Shipping LLM features when latency is the product",
                       "values": {}
                     }
@@ -1162,12 +1173,12 @@
                   "results": [
                     {
                       "comment": "Strong, concrete and clearly grounded in real work. The latency-budget framing is the kind of thing attendees can apply on Monday.",
-                      "completed_at": "2026-08-06T13:20:32.302Z",
-                      "created_at": "2026-08-11T13:20:32.302Z",
+                      "completed_at": "2026-08-06T17:12:51.276Z",
+                      "created_at": "2026-08-11T17:12:51.276Z",
                       "evaluator_email": "alex.rivera@example.com",
-                      "evaluator_id": "kx7c54q1e9fda7z86eb3vy0azn8c9swa",
-                      "id": "ks70bvwtfc7qgzc6s89ghgvx318c9m1e",
-                      "plan_id": "kn77y3z6xkxc6hfkqqw085s0xd8c8byf",
+                      "evaluator_id": "kx7dp5z6v7tck793fkqqpfyseh8c988r",
+                      "id": "ks7615c6jpa1hz0sk6e5bzgvjn8c829a",
+                      "plan_id": "kn78t15cz0hksctdkaqtq8qjy98c83fp",
                       "plan_name": "Round 1 — Programme Committee",
                       "recusal_reason": null,
                       "recused": false,
@@ -1176,7 +1187,7 @@
                         "overall": 4,
                         "relevance": 5
                       },
-                      "session_id": "k579a47q13fyxb5wxx7rndske58c9xrf",
+                      "session_id": "k577j2h73c31tjh1x9gb2wz3sx8c8vpx",
                       "session_title": "Shipping LLM features when latency is the product",
                       "values": {}
                     }
@@ -1242,18 +1253,18 @@
                     {
                       "assigned_count": 8,
                       "assigned_submission_ids": [
-                        "k579a47q13fyxb5wxx7rndske58c9xrf",
-                        "k576660fnfj17k7ny5dv5t41ss8c87da"
+                        "k577j2h73c31tjh1x9gb2wz3sx8c8vpx",
+                        "k57cmp038ghevn9v7k8kps3k0x8c9adm"
                       ],
                       "completed_count": 6,
-                      "created_at": "2026-08-11T13:20:32.302Z",
+                      "created_at": "2026-08-11T17:12:51.276Z",
                       "custom_assignment": false,
                       "email": "alex.rivera@example.com",
-                      "id": "kx7c54q1e9fda7z86eb3vy0azn8c9swa",
+                      "id": "kx7dp5z6v7tck793fkqqpfyseh8c988r",
                       "last_reminded_at": null,
                       "name": "Alex Rivera",
                       "outstanding_count": 2,
-                      "plan_id": "kn77y3z6xkxc6hfkqqw085s0xd8c8byf",
+                      "plan_id": "kn78t15cz0hksctdkaqtq8qjy98c83fp",
                       "plan_name": "Round 1 — Programme Committee",
                       "plan_round": 1,
                       "recused_count": 0,
@@ -1275,18 +1286,18 @@
                     {
                       "assigned_count": 8,
                       "assigned_submission_ids": [
-                        "k579a47q13fyxb5wxx7rndske58c9xrf",
-                        "k576660fnfj17k7ny5dv5t41ss8c87da"
+                        "k577j2h73c31tjh1x9gb2wz3sx8c8vpx",
+                        "k57cmp038ghevn9v7k8kps3k0x8c9adm"
                       ],
                       "completed_count": 6,
-                      "created_at": "2026-08-11T13:20:32.302Z",
+                      "created_at": "2026-08-11T17:12:51.276Z",
                       "custom_assignment": false,
                       "email": "alex.rivera@example.com",
-                      "id": "kx7c54q1e9fda7z86eb3vy0azn8c9swa",
+                      "id": "kx7dp5z6v7tck793fkqqpfyseh8c988r",
                       "last_reminded_at": null,
                       "name": "Alex Rivera",
                       "outstanding_count": 2,
-                      "plan_id": "kn77y3z6xkxc6hfkqqw085s0xd8c8byf",
+                      "plan_id": "kn78t15cz0hksctdkaqtq8qjy98c83fp",
                       "plan_name": "Round 1 — Programme Committee",
                       "plan_round": 1,
                       "recused_count": 0,
@@ -1632,11 +1643,11 @@
                   "data": [
                     {
                       "contains_pii": false,
-                      "createdAt": "2026-08-11T13:20:32.302Z",
+                      "createdAt": "2026-08-11T17:12:51.276Z",
                       "enabled": true,
                       "field_source": "standard",
                       "field_type": "short_text",
-                      "form_id": "jd7fb9kk14zexrz5ep8mbaawb98c9ap6",
+                      "form_id": "jd707nhwakpjzajqqnvc694k7s8c8skg",
                       "form_slug": "cfp",
                       "help": "Aim for something an attendee could choose from a schedule without extra context.",
                       "id": "title",
@@ -1645,7 +1656,7 @@
                       "public_name": "Session title",
                       "required": true,
                       "scope": "session",
-                      "updatedAt": "2026-08-11T13:20:32.302Z"
+                      "updatedAt": "2026-08-11T17:12:51.276Z"
                     }
                   ],
                   "pagination": {
@@ -1654,18 +1665,18 @@
                     "pageSize": 3,
                     "page_size": 3,
                     "totalPages": 6,
-                    "totalResults": 16,
+                    "totalResults": 17,
                     "total_pages": 6,
-                    "total_results": 16
+                    "total_results": 17
                   },
                   "results": [
                     {
                       "contains_pii": false,
-                      "createdAt": "2026-08-11T13:20:32.302Z",
+                      "createdAt": "2026-08-11T17:12:51.276Z",
                       "enabled": true,
                       "field_source": "standard",
                       "field_type": "short_text",
-                      "form_id": "jd7fb9kk14zexrz5ep8mbaawb98c9ap6",
+                      "form_id": "jd707nhwakpjzajqqnvc694k7s8c8skg",
                       "form_slug": "cfp",
                       "help": "Aim for something an attendee could choose from a schedule without extra context.",
                       "id": "title",
@@ -1674,7 +1685,7 @@
                       "public_name": "Session title",
                       "required": true,
                       "scope": "session",
-                      "updatedAt": "2026-08-11T13:20:32.302Z"
+                      "updatedAt": "2026-08-11T17:12:51.276Z"
                     }
                   ],
                   "unknownResource": false
@@ -2156,9 +2167,9 @@
                     "pageSize": 25,
                     "page_size": 25,
                     "totalPages": 1,
-                    "totalResults": 5,
+                    "totalResults": 6,
                     "total_pages": 1,
-                    "total_results": 5
+                    "total_results": 6
                   },
                   "results": [
                     {
@@ -2583,10 +2594,10 @@
                   "data": [
                     {
                       "close_at": "2026-09-16T06:59:00.000Z",
-                      "created_at": "2026-08-11T13:20:32.302Z",
-                      "draft_count": 3,
+                      "created_at": "2026-08-11T17:12:51.276Z",
+                      "draft_count": 4,
                       "external_title": "Call for Speakers",
-                      "id": "jd7fb9kk14zexrz5ep8mbaawb98c9ap6",
+                      "id": "jd707nhwakpjzajqqnvc694k7s8c8skg",
                       "internal_name": "CFP 2026 — main call",
                       "is_open": true,
                       "kind": "abstract",
@@ -2621,7 +2632,7 @@
                         "speaker_max": 3,
                         "speaker_min": 1
                       },
-                      "public_url": "/submit/ai-summit-2026/cfp",
+                      "public_url": "/submit/ai-engineer/ai-summit-2026/cfp",
                       "questions": [
                         {
                           "enabled": true,
@@ -2670,8 +2681,8 @@
                       "show_welcome_message": true,
                       "slug": "cfp",
                       "status": "open",
-                      "submission_count": 13,
-                      "updated_at": "2026-08-11T13:20:32.302Z",
+                      "submission_count": 15,
+                      "updated_at": "2026-08-11T17:12:51.276Z",
                       "welcome_message": "We're looking for practitioner talks: things you built, things that broke, and what you learned. You don't need to be a famous speaker — you need a real story and something the audience can use.\n\nThe call closes on 15 September 2026. You may submit up to three proposals, and you can save a draft and come back to it at any time."
                     }
                   ],
@@ -2680,18 +2691,18 @@
                     "current_page": 1,
                     "pageSize": 1,
                     "page_size": 1,
-                    "totalPages": 1,
-                    "totalResults": 1,
-                    "total_pages": 1,
-                    "total_results": 1
+                    "totalPages": 2,
+                    "totalResults": 2,
+                    "total_pages": 2,
+                    "total_results": 2
                   },
                   "results": [
                     {
                       "close_at": "2026-09-16T06:59:00.000Z",
-                      "created_at": "2026-08-11T13:20:32.302Z",
-                      "draft_count": 3,
+                      "created_at": "2026-08-11T17:12:51.276Z",
+                      "draft_count": 4,
                       "external_title": "Call for Speakers",
-                      "id": "jd7fb9kk14zexrz5ep8mbaawb98c9ap6",
+                      "id": "jd707nhwakpjzajqqnvc694k7s8c8skg",
                       "internal_name": "CFP 2026 — main call",
                       "is_open": true,
                       "kind": "abstract",
@@ -2726,7 +2737,7 @@
                         "speaker_max": 3,
                         "speaker_min": 1
                       },
-                      "public_url": "/submit/ai-summit-2026/cfp",
+                      "public_url": "/submit/ai-engineer/ai-summit-2026/cfp",
                       "questions": [
                         {
                           "enabled": true,
@@ -2775,8 +2786,8 @@
                       "show_welcome_message": true,
                       "slug": "cfp",
                       "status": "open",
-                      "submission_count": 13,
-                      "updated_at": "2026-08-11T13:20:32.302Z",
+                      "submission_count": 15,
+                      "updated_at": "2026-08-11T17:12:51.276Z",
                       "welcome_message": "We're looking for practitioner talks: things you built, things that broke, and what you learned. You don't need to be a famous speaker — you need a real story and something the audience can use.\n\nThe call closes on 15 September 2026. You may submit up to three proposals, and you can save a draft and come back to it at any time."
                     }
                   ]
@@ -2845,10 +2856,10 @@
                 "example": {
                   "data": {
                     "close_at": "2026-09-16T06:59:00.000Z",
-                    "created_at": "2026-08-11T13:20:32.302Z",
-                    "draft_count": 3,
+                    "created_at": "2026-08-11T17:12:51.276Z",
+                    "draft_count": 4,
                     "external_title": "Call for Speakers",
-                    "id": "jd7fb9kk14zexrz5ep8mbaawb98c9ap6",
+                    "id": "jd707nhwakpjzajqqnvc694k7s8c8skg",
                     "internal_name": "CFP 2026 — main call",
                     "is_open": true,
                     "kind": "abstract",
@@ -2883,7 +2894,7 @@
                       "speaker_max": 3,
                       "speaker_min": 1
                     },
-                    "public_url": "/submit/ai-summit-2026/cfp",
+                    "public_url": "/submit/ai-engineer/ai-summit-2026/cfp",
                     "questions": [
                       {
                         "enabled": true,
@@ -2932,8 +2943,8 @@
                     "show_welcome_message": true,
                     "slug": "cfp",
                     "status": "open",
-                    "submission_count": 13,
-                    "updated_at": "2026-08-11T13:20:32.302Z",
+                    "submission_count": 15,
+                    "updated_at": "2026-08-11T17:12:51.276Z",
                     "welcome_message": "We're looking for practitioner talks: things you built, things that broke, and what you learned. You don't need to be a famous speaker — you need a real story and something the audience can use.\n\nThe call closes on 15 September 2026. You may submit up to three proposals, and you can save a draft and come back to it at any time."
                   }
                 }
@@ -3886,9 +3897,9 @@
                     "pageSize": 25,
                     "page_size": 25,
                     "totalPages": 1,
-                    "totalResults": 3,
+                    "totalResults": 4,
                     "total_pages": 1,
-                    "total_results": 3
+                    "total_results": 4
                   },
                   "results": [
                     {
@@ -4322,11 +4333,11 @@
                   "data": [
                     {
                       "capacity": 300,
-                      "created_at": "2026-08-11T13:20:32.302Z",
-                      "id": "js7aftf17fqe9qdk07xtanv7k58c9zj0",
+                      "created_at": "2026-08-11T17:12:51.276Z",
+                      "id": "js7e6pc32kzkz2n9vtx0tfdgt98c983c",
                       "name": "Main Stage",
                       "order": 0,
-                      "updated_at": "2026-08-11T13:20:32.302Z"
+                      "updated_at": "2026-08-11T17:12:51.276Z"
                     }
                   ],
                   "pagination": {
@@ -4342,11 +4353,11 @@
                   "results": [
                     {
                       "capacity": 300,
-                      "created_at": "2026-08-11T13:20:32.302Z",
-                      "id": "js7aftf17fqe9qdk07xtanv7k58c9zj0",
+                      "created_at": "2026-08-11T17:12:51.276Z",
+                      "id": "js7e6pc32kzkz2n9vtx0tfdgt98c983c",
                       "name": "Main Stage",
                       "order": 0,
-                      "updated_at": "2026-08-11T13:20:32.302Z"
+                      "updated_at": "2026-08-11T17:12:51.276Z"
                     }
                   ],
                   "unknownResource": false
@@ -4752,7 +4763,7 @@
                 "schema": {
                   "type": "string"
                 },
-                "example": "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//Trackstage//Event Schedule//EN\r\nCALSCALE:GREGORIAN\r\nMETHOD:PUBLISH\r\nX-WR-CALNAME:AI Engineer Summit 2026\r\nBEGIN:VEVENT\r\nUID:k57b0wb4j5b8j46dk8v215dak58c95fe@ai-summit-2026.trackstage\r\nDTSTAMP:20260811T132048Z\r\nDTSTART:20261012T160000Z\r\nDTEND:20261012T164500Z\r\nSUMMARY:Opening keynote: the year AI engineering grew up\r\n…"
+                "example": "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//Trackstage//Event Schedule//EN\r\nCALSCALE:GREGORIAN\r\nMETHOD:PUBLISH\r\nX-WR-CALNAME:AI Engineer Summit 2026\r\nBEGIN:VEVENT\r\nUID:k578kk8rhs0zdvhtyrmcggq76d8c962r@ai-summit-2026.trackstage\r\nDTSTAMP:20260811T171608Z\r\nDTSTART:20261012T160000Z\r\nDTEND:20261012T164500Z\r\nSUMMARY:Agenda One ag-msox5b7k-bv298\r\n…"
               }
             }
           },
@@ -4822,7 +4833,7 @@
                       "name": "Accepted",
                       "order": 10,
                       "pipeline_status": "accepted",
-                      "status_id": "p575em9agrm0qgc0e10awc60ns8c9pzy",
+                      "status_id": "p57dd6gyry8afna0cg3nkyjeq18c8y2h",
                       "system": true,
                       "system_key": "accepted",
                       "updated_at": null,
@@ -4850,7 +4861,7 @@
                       "name": "Accepted",
                       "order": 10,
                       "pipeline_status": "accepted",
-                      "status_id": "p575em9agrm0qgc0e10awc60ns8c9pzy",
+                      "status_id": "p57dd6gyry8afna0cg3nkyjeq18c8y2h",
                       "system": true,
                       "system_key": "accepted",
                       "updated_at": null,
@@ -5070,88 +5081,52 @@
                 "example": {
                   "data": [
                     {
-                      "answers": {
-                        "description": "Four practitioners compare notes on the agent architectures they abandoned, the assumptions that did not survive production, and what they would build differently today.",
-                        "format": "Panel",
-                        "language": "English",
-                        "level": "Intermediate",
-                        "takeaways": "Honest post-mortems from four production agent systems.",
-                        "title": "Closing panel: what we got wrong about agents",
-                        "track": "Product"
-                      },
-                      "capacity": 300,
+                      "answers": {},
+                      "capacity": null,
                       "chairpersons": [],
-                      "created_at": "2026-08-11T13:20:32.302Z",
-                      "custom_fields": [
-                        {
-                          "created_at": "2026-08-11T13:20:32.302Z",
-                          "id": "description",
-                          "internal_name": "description",
-                          "name": "Session description",
-                          "type": "long_text",
-                          "value": "Four practitioners compare notes on the agent architectures they abandoned, the assumptions that did not survive production, and what they would build differently today.",
-                          "value_raw": "Four practitioners compare notes on the agent architectures they abandoned, the assumptions that did not survive production, and what they would build differently today."
-                        },
-                        {
-                          "created_at": "2026-08-11T13:20:32.302Z",
-                          "id": "format",
-                          "internal_name": "format",
-                          "name": "Format",
-                          "type": "dropdown",
-                          "value": "Panel",
-                          "value_raw": "Panel"
-                        }
-                      ],
-                      "decidedAt": 1785936032302,
-                      "decided_at": "2026-08-05T13:20:32.302Z",
+                      "created_at": "2026-08-11T17:14:10.028Z",
+                      "custom_fields": [],
+                      "decidedAt": null,
+                      "decided_at": null,
                       "deleted_at": null,
-                      "description": "Four practitioners compare notes on the agent architectures they abandoned, the assumptions that did not survive production, and what they would build differently today.",
-                      "durationMinutes": 60,
-                      "duration_minutes": 60,
-                      "endTime": 1791936000000,
-                      "ends_at": "2026-10-14T00:00:00.000Z",
-                      "format": {
-                        "id": "Panel",
-                        "name": "Panel"
-                      },
-                      "friendly_id": "SESS-84407",
-                      "friendly_id_raw": 84407,
-                      "id": "k579s906vr6pym1mtnn6w92wms8c9wpq",
+                      "description": "Created by the agenda e2e flow.",
+                      "durationMinutes": 45,
+                      "duration_minutes": 45,
+                      "endTime": null,
+                      "ends_at": null,
+                      "format": null,
+                      "friendly_id": "SESS-61254",
+                      "friendly_id_raw": 61254,
+                      "id": "k575bvbn1vs5tjv37p83a3zr118c9knw",
                       "is_abstract": false,
                       "is_public": true,
                       "kind": "session",
-                      "language": {
-                        "id": "English",
-                        "name": "English"
-                      },
-                      "level": {
-                        "id": "Intermediate",
-                        "name": "Intermediate"
-                      },
-                      "location": "Main Stage",
+                      "language": null,
+                      "level": null,
+                      "location": null,
                       "moderators": [],
-                      "notified_at": "2026-08-06T13:20:32.302Z",
+                      "notified_at": null,
                       "participants": [
                         {
-                          "about": "Noah is CTO at Fathom Robotics, where inference cost is a line item the board reads every month. He previously built pricing systems at a payments company.",
-                          "bio": "Noah is CTO at Fathom Robotics, where inference cost is a line item the board reads every month. He previously built pricing systems at a payments company.",
-                          "company": "Fathom Robotics",
-                          "company_name": "Fathom Robotics",
-                          "created_at": "2026-08-11T13:20:32.302Z",
-                          "email": "noah.blackwood@example.com",
-                          "firstName": "Noah",
-                          "first_name": "Noah",
-                          "friendly_id": "SPK-79642",
-                          "friendly_id_raw": 79642,
-                          "full_name": "Noah Blackwood",
-                          "headshotUrl": "https://neat-sparrow-926.eu-west-1.convex.cloud/api/storage/2df6428e-e227-4464-8adc-ffa74bab01ec",
-                          "id": "m97cet87b25dmrr3ej8hay0fw18c9qkz",
+                          "about": null,
+                          "bio": null,
+                          "company": null,
+                          "company_name": null,
+                          "created_at": "2026-08-11T17:14:10.028Z",
+                          "email": "agenda-msox6u0b-vfrcc@example.com",
+                          "firstName": "Aggie",
+                          "first_name": "Aggie",
+                          "friendly_id": "SPK-30339",
+                          "friendly_id_raw": 30339,
+                          "full_name": "Aggie Enda",
+                          "headshotUrl": null,
+                          "id": "m97dr3masanf2vmypr8zmdaems8c9mxs",
                           "is_public": true,
-                          "jobTitle": "Chief Technology Officer",
-                          "lastName": "Blackwood",
-                          "last_name": "Blackwood",
+                          "jobTitle": null,
+                          "lastName": "Enda",
+                          "last_name": "Enda",
                           "linkedin_url": null,
-                          "name": "Noah Blackwood",
+                          "name": "Aggie Enda",
                           "participant_role": {
                             "core_role": "speaker",
                             "name": "Speaker",
@@ -5159,82 +5134,39 @@
                             "slug": "speaker"
                           },
                           "phone_mobile": null,
-                          "photo_url": "https://neat-sparrow-926.eu-west-1.convex.cloud/api/storage/2df6428e-e227-4464-8adc-ffa74bab01ec",
+                          "photo_url": null,
                           "pronouns": null,
                           "salutation": null,
-                          "title": "Chief Technology Officer",
+                          "title": null,
                           "twitter_url": null,
-                          "updated_at": "2026-08-11T13:20:32.302Z",
-                          "website_url": null,
-                          "workflow_status": null
-                        },
-                        {
-                          "about": "Daniel builds clinical decision-support systems at Meridian Health, in a regulatory environment where 'we will fix it in the next deploy' is not an option.",
-                          "bio": "Daniel builds clinical decision-support systems at Meridian Health, in a regulatory environment where 'we will fix it in the next deploy' is not an option.",
-                          "company": "Meridian Health",
-                          "company_name": "Meridian Health",
-                          "created_at": "2026-08-11T13:20:32.302Z",
-                          "email": "daniel.okonkwo@example.com",
-                          "firstName": "Daniel",
-                          "first_name": "Daniel",
-                          "friendly_id": "SPK-51017",
-                          "friendly_id_raw": 51017,
-                          "full_name": "Daniel Okonkwo",
-                          "headshotUrl": "https://neat-sparrow-926.eu-west-1.convex.cloud/api/storage/58aece27-ac7c-4ce3-8bd5-fe95b31322b5",
-                          "id": "m97fear8swc7qhnsg26p275fqd8c80ry",
-                          "is_public": true,
-                          "jobTitle": "Director of AI",
-                          "lastName": "Okonkwo",
-                          "last_name": "Okonkwo",
-                          "linkedin_url": null,
-                          "name": "Daniel Okonkwo",
-                          "participant_role": {
-                            "core_role": "speaker",
-                            "name": "Speaker",
-                            "name_plural": "Speakers",
-                            "slug": "speaker"
-                          },
-                          "phone_mobile": null,
-                          "photo_url": "https://neat-sparrow-926.eu-west-1.convex.cloud/api/storage/58aece27-ac7c-4ce3-8bd5-fe95b31322b5",
-                          "pronouns": null,
-                          "salutation": null,
-                          "title": "Director of AI",
-                          "twitter_url": null,
-                          "updated_at": "2026-08-11T13:20:32.302Z",
+                          "updated_at": "2026-08-11T17:14:10.028Z",
                           "website_url": null,
                           "workflow_status": null
                         }
                       ],
                       "public_visible": true,
-                      "room": {
-                        "capacity": 300,
-                        "created_at": "2026-08-11T13:20:32.302Z",
-                        "id": "js7aftf17fqe9qdk07xtanv7k58c9zj0",
-                        "name": "Main Stage",
-                        "order": 0,
-                        "updated_at": "2026-08-11T13:20:32.302Z"
-                      },
+                      "room": null,
                       "speakers": [
                         {
-                          "about": "Noah is CTO at Fathom Robotics, where inference cost is a line item the board reads every month. He previously built pricing systems at a payments company.",
-                          "bio": "Noah is CTO at Fathom Robotics, where inference cost is a line item the board reads every month. He previously built pricing systems at a payments company.",
-                          "company": "Fathom Robotics",
-                          "company_name": "Fathom Robotics",
-                          "created_at": "2026-08-11T13:20:32.302Z",
-                          "email": "noah.blackwood@example.com",
-                          "firstName": "Noah",
-                          "first_name": "Noah",
-                          "friendly_id": "SPK-79642",
-                          "friendly_id_raw": 79642,
-                          "full_name": "Noah Blackwood",
-                          "headshotUrl": "https://neat-sparrow-926.eu-west-1.convex.cloud/api/storage/2df6428e-e227-4464-8adc-ffa74bab01ec",
-                          "id": "m97cet87b25dmrr3ej8hay0fw18c9qkz",
+                          "about": null,
+                          "bio": null,
+                          "company": null,
+                          "company_name": null,
+                          "created_at": "2026-08-11T17:14:10.028Z",
+                          "email": "agenda-msox6u0b-vfrcc@example.com",
+                          "firstName": "Aggie",
+                          "first_name": "Aggie",
+                          "friendly_id": "SPK-30339",
+                          "friendly_id_raw": 30339,
+                          "full_name": "Aggie Enda",
+                          "headshotUrl": null,
+                          "id": "m97dr3masanf2vmypr8zmdaems8c9mxs",
                           "is_public": true,
-                          "jobTitle": "Chief Technology Officer",
-                          "lastName": "Blackwood",
-                          "last_name": "Blackwood",
+                          "jobTitle": null,
+                          "lastName": "Enda",
+                          "last_name": "Enda",
                           "linkedin_url": null,
-                          "name": "Noah Blackwood",
+                          "name": "Aggie Enda",
                           "participant_role": {
                             "core_role": "speaker",
                             "name": "Speaker",
@@ -5242,117 +5174,64 @@
                             "slug": "speaker"
                           },
                           "phone_mobile": null,
-                          "photo_url": "https://neat-sparrow-926.eu-west-1.convex.cloud/api/storage/2df6428e-e227-4464-8adc-ffa74bab01ec",
+                          "photo_url": null,
                           "pronouns": null,
                           "salutation": null,
-                          "title": "Chief Technology Officer",
+                          "title": null,
                           "twitter_url": null,
-                          "updated_at": "2026-08-11T13:20:32.302Z",
-                          "website_url": null,
-                          "workflow_status": null
-                        },
-                        {
-                          "about": "Daniel builds clinical decision-support systems at Meridian Health, in a regulatory environment where 'we will fix it in the next deploy' is not an option.",
-                          "bio": "Daniel builds clinical decision-support systems at Meridian Health, in a regulatory environment where 'we will fix it in the next deploy' is not an option.",
-                          "company": "Meridian Health",
-                          "company_name": "Meridian Health",
-                          "created_at": "2026-08-11T13:20:32.302Z",
-                          "email": "daniel.okonkwo@example.com",
-                          "firstName": "Daniel",
-                          "first_name": "Daniel",
-                          "friendly_id": "SPK-51017",
-                          "friendly_id_raw": 51017,
-                          "full_name": "Daniel Okonkwo",
-                          "headshotUrl": "https://neat-sparrow-926.eu-west-1.convex.cloud/api/storage/58aece27-ac7c-4ce3-8bd5-fe95b31322b5",
-                          "id": "m97fear8swc7qhnsg26p275fqd8c80ry",
-                          "is_public": true,
-                          "jobTitle": "Director of AI",
-                          "lastName": "Okonkwo",
-                          "last_name": "Okonkwo",
-                          "linkedin_url": null,
-                          "name": "Daniel Okonkwo",
-                          "participant_role": {
-                            "core_role": "speaker",
-                            "name": "Speaker",
-                            "name_plural": "Speakers",
-                            "slug": "speaker"
-                          },
-                          "phone_mobile": null,
-                          "photo_url": "https://neat-sparrow-926.eu-west-1.convex.cloud/api/storage/58aece27-ac7c-4ce3-8bd5-fe95b31322b5",
-                          "pronouns": null,
-                          "salutation": null,
-                          "title": "Director of AI",
-                          "twitter_url": null,
-                          "updated_at": "2026-08-11T13:20:32.302Z",
+                          "updated_at": "2026-08-11T17:14:10.028Z",
                           "website_url": null,
                           "workflow_status": null
                         }
                       ],
-                      "startTime": 1791932400000,
-                      "starts_at": "2026-10-13T23:00:00.000Z",
+                      "startTime": null,
+                      "starts_at": null,
                       "status": "accepted",
-                      "submittedAt": 1786454432302.6272,
+                      "submittedAt": 1786468450028.5327,
                       "submitter": {
-                        "about": "Noah is CTO at Fathom Robotics, where inference cost is a line item the board reads every month. He previously built pricing systems at a payments company.",
-                        "bio": "Noah is CTO at Fathom Robotics, where inference cost is a line item the board reads every month. He previously built pricing systems at a payments company.",
-                        "company": "Fathom Robotics",
-                        "company_name": "Fathom Robotics",
-                        "created_at": "2026-08-11T13:20:32.302Z",
-                        "email": "noah.blackwood@example.com",
-                        "firstName": "Noah",
-                        "first_name": "Noah",
-                        "friendly_id": "SPK-79642",
-                        "friendly_id_raw": 79642,
-                        "full_name": "Noah Blackwood",
-                        "headshotUrl": "https://neat-sparrow-926.eu-west-1.convex.cloud/api/storage/2df6428e-e227-4464-8adc-ffa74bab01ec",
-                        "id": "m97cet87b25dmrr3ej8hay0fw18c9qkz",
+                        "about": null,
+                        "bio": null,
+                        "company": null,
+                        "company_name": null,
+                        "created_at": "2026-08-11T17:12:59.037Z",
+                        "email": "organizer@demo.sessionboard.dev",
+                        "firstName": "Dana",
+                        "first_name": "Dana",
+                        "friendly_id": "SPK-15933",
+                        "friendly_id_raw": 15933,
+                        "full_name": "Dana Organizer",
+                        "headshotUrl": null,
+                        "id": "m979ftpxy32jcbqm530dh7fsk58c8kqg",
                         "is_public": true,
-                        "jobTitle": "Chief Technology Officer",
-                        "lastName": "Blackwood",
-                        "last_name": "Blackwood",
+                        "jobTitle": null,
+                        "lastName": "Organizer",
+                        "last_name": "Organizer",
                         "linkedin_url": null,
-                        "name": "Noah Blackwood",
+                        "name": "Dana Organizer",
                         "participant_role": null,
                         "phone_mobile": null,
-                        "photo_url": "https://neat-sparrow-926.eu-west-1.convex.cloud/api/storage/2df6428e-e227-4464-8adc-ffa74bab01ec",
+                        "photo_url": null,
                         "pronouns": null,
                         "salutation": null,
-                        "title": "Chief Technology Officer",
+                        "title": null,
                         "twitter_url": null,
-                        "updated_at": "2026-08-11T13:20:32.302Z",
+                        "updated_at": "2026-08-11T17:12:59.037Z",
                         "website_url": null,
                         "workflow_status": null
                       },
                       "subsessions": [],
-                      "tags": [
-                        {
-                          "id": "panel",
-                          "name": "panel"
-                        },
-                        {
-                          "id": "agents",
-                          "name": "agents"
-                        }
-                      ],
-                      "title": "Closing panel: what we got wrong about agents",
-                      "track": {
-                        "color": "#1E9E6B",
-                        "created_at": "2026-08-11T13:20:32.302Z",
-                        "event_id": "j970dka7yanxxzkj5t78b03bch8c92d9",
-                        "id": "kd7abhh69p31762y4176dccpch8c9t9n",
-                        "name": "Product",
-                        "order": 1,
-                        "updated_at": "2026-08-11T13:20:32.302Z"
-                      },
-                      "trackColor": "#1E9E6B",
-                      "updated_at": "2026-08-11T13:20:32.302Z"
+                      "tags": [],
+                      "title": "Keyboard kb-msox6u0b-pgwxn",
+                      "track": null,
+                      "trackColor": null,
+                      "updated_at": "2026-08-11T17:14:10.028Z"
                     }
                   ],
                   "event": {
-                    "_id": "j970dka7yanxxzkj5t78b03bch8c92d9",
-                    "agenda_published_at": "2026-08-06T13:20:32.302Z",
+                    "_id": "j9739z1hp0jeem9e9e3fjevhyh8c9ybw",
+                    "agenda_published_at": "2026-08-11T17:14:08.751Z",
                     "background_url": null,
-                    "created_at": "2026-08-11T13:20:32.302Z",
+                    "created_at": "2026-08-11T17:12:51.276Z",
                     "description": "Two days for the people building AI systems that have to work on Monday morning. Practitioner talks on evaluation, agents, retrieval, inference infrastructure and the product decisions in between — no keynote fluff, no vendor pitches.",
                     "endsAt": 1791939600000,
                     "ends_at": "2026-10-14T01:00:00.000Z",
@@ -5361,7 +5240,7 @@
                       "translated_fields": false,
                       "webhooks": true
                     },
-                    "id": "j970dka7yanxxzkj5t78b03bch8c92d9",
+                    "id": "j9739z1hp0jeem9e9e3fjevhyh8c9ybw",
                     "logo_url": null,
                     "name": "AI Engineer Summit 2026",
                     "organization_id": "mn7fs8btg5szyhbkqdfhtd4xmn8c8xhg",
@@ -5370,7 +5249,7 @@
                       "always_show_tasks": false,
                       "extend_task_deadlines": true
                     },
-                    "public_url": "/e/ai-summit-2026",
+                    "public_url": "/e/ai-engineer/ai-summit-2026",
                     "slug": "ai-summit-2026",
                     "startsAt": 1791820800000,
                     "starts_at": "2026-10-12T16:00:00.000Z",
@@ -5385,95 +5264,59 @@
                     "current_page": 1,
                     "pageSize": 1,
                     "page_size": 1,
-                    "totalPages": 6,
-                    "totalResults": 6,
-                    "total_pages": 6,
-                    "total_results": 6
+                    "totalPages": 12,
+                    "totalResults": 12,
+                    "total_pages": 12,
+                    "total_results": 12
                   },
                   "results": [
                     {
-                      "answers": {
-                        "description": "Four practitioners compare notes on the agent architectures they abandoned, the assumptions that did not survive production, and what they would build differently today.",
-                        "format": "Panel",
-                        "language": "English",
-                        "level": "Intermediate",
-                        "takeaways": "Honest post-mortems from four production agent systems.",
-                        "title": "Closing panel: what we got wrong about agents",
-                        "track": "Product"
-                      },
-                      "capacity": 300,
+                      "answers": {},
+                      "capacity": null,
                       "chairpersons": [],
-                      "created_at": "2026-08-11T13:20:32.302Z",
-                      "custom_fields": [
-                        {
-                          "created_at": "2026-08-11T13:20:32.302Z",
-                          "id": "description",
-                          "internal_name": "description",
-                          "name": "Session description",
-                          "type": "long_text",
-                          "value": "Four practitioners compare notes on the agent architectures they abandoned, the assumptions that did not survive production, and what they would build differently today.",
-                          "value_raw": "Four practitioners compare notes on the agent architectures they abandoned, the assumptions that did not survive production, and what they would build differently today."
-                        },
-                        {
-                          "created_at": "2026-08-11T13:20:32.302Z",
-                          "id": "format",
-                          "internal_name": "format",
-                          "name": "Format",
-                          "type": "dropdown",
-                          "value": "Panel",
-                          "value_raw": "Panel"
-                        }
-                      ],
-                      "decidedAt": 1785936032302,
-                      "decided_at": "2026-08-05T13:20:32.302Z",
+                      "created_at": "2026-08-11T17:14:10.028Z",
+                      "custom_fields": [],
+                      "decidedAt": null,
+                      "decided_at": null,
                       "deleted_at": null,
-                      "description": "Four practitioners compare notes on the agent architectures they abandoned, the assumptions that did not survive production, and what they would build differently today.",
-                      "durationMinutes": 60,
-                      "duration_minutes": 60,
-                      "endTime": 1791936000000,
-                      "ends_at": "2026-10-14T00:00:00.000Z",
-                      "format": {
-                        "id": "Panel",
-                        "name": "Panel"
-                      },
-                      "friendly_id": "SESS-84407",
-                      "friendly_id_raw": 84407,
-                      "id": "k579s906vr6pym1mtnn6w92wms8c9wpq",
+                      "description": "Created by the agenda e2e flow.",
+                      "durationMinutes": 45,
+                      "duration_minutes": 45,
+                      "endTime": null,
+                      "ends_at": null,
+                      "format": null,
+                      "friendly_id": "SESS-61254",
+                      "friendly_id_raw": 61254,
+                      "id": "k575bvbn1vs5tjv37p83a3zr118c9knw",
                       "is_abstract": false,
                       "is_public": true,
                       "kind": "session",
-                      "language": {
-                        "id": "English",
-                        "name": "English"
-                      },
-                      "level": {
-                        "id": "Intermediate",
-                        "name": "Intermediate"
-                      },
-                      "location": "Main Stage",
+                      "language": null,
+                      "level": null,
+                      "location": null,
                       "moderators": [],
-                      "notified_at": "2026-08-06T13:20:32.302Z",
+                      "notified_at": null,
                       "participants": [
                         {
-                          "about": "Noah is CTO at Fathom Robotics, where inference cost is a line item the board reads every month. He previously built pricing systems at a payments company.",
-                          "bio": "Noah is CTO at Fathom Robotics, where inference cost is a line item the board reads every month. He previously built pricing systems at a payments company.",
-                          "company": "Fathom Robotics",
-                          "company_name": "Fathom Robotics",
-                          "created_at": "2026-08-11T13:20:32.302Z",
-                          "email": "noah.blackwood@example.com",
-                          "firstName": "Noah",
-                          "first_name": "Noah",
-                          "friendly_id": "SPK-79642",
-                          "friendly_id_raw": 79642,
-                          "full_name": "Noah Blackwood",
-                          "headshotUrl": "https://neat-sparrow-926.eu-west-1.convex.cloud/api/storage/2df6428e-e227-4464-8adc-ffa74bab01ec",
-                          "id": "m97cet87b25dmrr3ej8hay0fw18c9qkz",
+                          "about": null,
+                          "bio": null,
+                          "company": null,
+                          "company_name": null,
+                          "created_at": "2026-08-11T17:14:10.028Z",
+                          "email": "agenda-msox6u0b-vfrcc@example.com",
+                          "firstName": "Aggie",
+                          "first_name": "Aggie",
+                          "friendly_id": "SPK-30339",
+                          "friendly_id_raw": 30339,
+                          "full_name": "Aggie Enda",
+                          "headshotUrl": null,
+                          "id": "m97dr3masanf2vmypr8zmdaems8c9mxs",
                           "is_public": true,
-                          "jobTitle": "Chief Technology Officer",
-                          "lastName": "Blackwood",
-                          "last_name": "Blackwood",
+                          "jobTitle": null,
+                          "lastName": "Enda",
+                          "last_name": "Enda",
                           "linkedin_url": null,
-                          "name": "Noah Blackwood",
+                          "name": "Aggie Enda",
                           "participant_role": {
                             "core_role": "speaker",
                             "name": "Speaker",
@@ -5481,82 +5324,39 @@
                             "slug": "speaker"
                           },
                           "phone_mobile": null,
-                          "photo_url": "https://neat-sparrow-926.eu-west-1.convex.cloud/api/storage/2df6428e-e227-4464-8adc-ffa74bab01ec",
+                          "photo_url": null,
                           "pronouns": null,
                           "salutation": null,
-                          "title": "Chief Technology Officer",
+                          "title": null,
                           "twitter_url": null,
-                          "updated_at": "2026-08-11T13:20:32.302Z",
-                          "website_url": null,
-                          "workflow_status": null
-                        },
-                        {
-                          "about": "Daniel builds clinical decision-support systems at Meridian Health, in a regulatory environment where 'we will fix it in the next deploy' is not an option.",
-                          "bio": "Daniel builds clinical decision-support systems at Meridian Health, in a regulatory environment where 'we will fix it in the next deploy' is not an option.",
-                          "company": "Meridian Health",
-                          "company_name": "Meridian Health",
-                          "created_at": "2026-08-11T13:20:32.302Z",
-                          "email": "daniel.okonkwo@example.com",
-                          "firstName": "Daniel",
-                          "first_name": "Daniel",
-                          "friendly_id": "SPK-51017",
-                          "friendly_id_raw": 51017,
-                          "full_name": "Daniel Okonkwo",
-                          "headshotUrl": "https://neat-sparrow-926.eu-west-1.convex.cloud/api/storage/58aece27-ac7c-4ce3-8bd5-fe95b31322b5",
-                          "id": "m97fear8swc7qhnsg26p275fqd8c80ry",
-                          "is_public": true,
-                          "jobTitle": "Director of AI",
-                          "lastName": "Okonkwo",
-                          "last_name": "Okonkwo",
-                          "linkedin_url": null,
-                          "name": "Daniel Okonkwo",
-                          "participant_role": {
-                            "core_role": "speaker",
-                            "name": "Speaker",
-                            "name_plural": "Speakers",
-                            "slug": "speaker"
-                          },
-                          "phone_mobile": null,
-                          "photo_url": "https://neat-sparrow-926.eu-west-1.convex.cloud/api/storage/58aece27-ac7c-4ce3-8bd5-fe95b31322b5",
-                          "pronouns": null,
-                          "salutation": null,
-                          "title": "Director of AI",
-                          "twitter_url": null,
-                          "updated_at": "2026-08-11T13:20:32.302Z",
+                          "updated_at": "2026-08-11T17:14:10.028Z",
                           "website_url": null,
                           "workflow_status": null
                         }
                       ],
                       "public_visible": true,
-                      "room": {
-                        "capacity": 300,
-                        "created_at": "2026-08-11T13:20:32.302Z",
-                        "id": "js7aftf17fqe9qdk07xtanv7k58c9zj0",
-                        "name": "Main Stage",
-                        "order": 0,
-                        "updated_at": "2026-08-11T13:20:32.302Z"
-                      },
+                      "room": null,
                       "speakers": [
                         {
-                          "about": "Noah is CTO at Fathom Robotics, where inference cost is a line item the board reads every month. He previously built pricing systems at a payments company.",
-                          "bio": "Noah is CTO at Fathom Robotics, where inference cost is a line item the board reads every month. He previously built pricing systems at a payments company.",
-                          "company": "Fathom Robotics",
-                          "company_name": "Fathom Robotics",
-                          "created_at": "2026-08-11T13:20:32.302Z",
-                          "email": "noah.blackwood@example.com",
-                          "firstName": "Noah",
-                          "first_name": "Noah",
-                          "friendly_id": "SPK-79642",
-                          "friendly_id_raw": 79642,
-                          "full_name": "Noah Blackwood",
-                          "headshotUrl": "https://neat-sparrow-926.eu-west-1.convex.cloud/api/storage/2df6428e-e227-4464-8adc-ffa74bab01ec",
-                          "id": "m97cet87b25dmrr3ej8hay0fw18c9qkz",
+                          "about": null,
+                          "bio": null,
+                          "company": null,
+                          "company_name": null,
+                          "created_at": "2026-08-11T17:14:10.028Z",
+                          "email": "agenda-msox6u0b-vfrcc@example.com",
+                          "firstName": "Aggie",
+                          "first_name": "Aggie",
+                          "friendly_id": "SPK-30339",
+                          "friendly_id_raw": 30339,
+                          "full_name": "Aggie Enda",
+                          "headshotUrl": null,
+                          "id": "m97dr3masanf2vmypr8zmdaems8c9mxs",
                           "is_public": true,
-                          "jobTitle": "Chief Technology Officer",
-                          "lastName": "Blackwood",
-                          "last_name": "Blackwood",
+                          "jobTitle": null,
+                          "lastName": "Enda",
+                          "last_name": "Enda",
                           "linkedin_url": null,
-                          "name": "Noah Blackwood",
+                          "name": "Aggie Enda",
                           "participant_role": {
                             "core_role": "speaker",
                             "name": "Speaker",
@@ -5564,110 +5364,57 @@
                             "slug": "speaker"
                           },
                           "phone_mobile": null,
-                          "photo_url": "https://neat-sparrow-926.eu-west-1.convex.cloud/api/storage/2df6428e-e227-4464-8adc-ffa74bab01ec",
+                          "photo_url": null,
                           "pronouns": null,
                           "salutation": null,
-                          "title": "Chief Technology Officer",
+                          "title": null,
                           "twitter_url": null,
-                          "updated_at": "2026-08-11T13:20:32.302Z",
-                          "website_url": null,
-                          "workflow_status": null
-                        },
-                        {
-                          "about": "Daniel builds clinical decision-support systems at Meridian Health, in a regulatory environment where 'we will fix it in the next deploy' is not an option.",
-                          "bio": "Daniel builds clinical decision-support systems at Meridian Health, in a regulatory environment where 'we will fix it in the next deploy' is not an option.",
-                          "company": "Meridian Health",
-                          "company_name": "Meridian Health",
-                          "created_at": "2026-08-11T13:20:32.302Z",
-                          "email": "daniel.okonkwo@example.com",
-                          "firstName": "Daniel",
-                          "first_name": "Daniel",
-                          "friendly_id": "SPK-51017",
-                          "friendly_id_raw": 51017,
-                          "full_name": "Daniel Okonkwo",
-                          "headshotUrl": "https://neat-sparrow-926.eu-west-1.convex.cloud/api/storage/58aece27-ac7c-4ce3-8bd5-fe95b31322b5",
-                          "id": "m97fear8swc7qhnsg26p275fqd8c80ry",
-                          "is_public": true,
-                          "jobTitle": "Director of AI",
-                          "lastName": "Okonkwo",
-                          "last_name": "Okonkwo",
-                          "linkedin_url": null,
-                          "name": "Daniel Okonkwo",
-                          "participant_role": {
-                            "core_role": "speaker",
-                            "name": "Speaker",
-                            "name_plural": "Speakers",
-                            "slug": "speaker"
-                          },
-                          "phone_mobile": null,
-                          "photo_url": "https://neat-sparrow-926.eu-west-1.convex.cloud/api/storage/58aece27-ac7c-4ce3-8bd5-fe95b31322b5",
-                          "pronouns": null,
-                          "salutation": null,
-                          "title": "Director of AI",
-                          "twitter_url": null,
-                          "updated_at": "2026-08-11T13:20:32.302Z",
+                          "updated_at": "2026-08-11T17:14:10.028Z",
                           "website_url": null,
                           "workflow_status": null
                         }
                       ],
-                      "startTime": 1791932400000,
-                      "starts_at": "2026-10-13T23:00:00.000Z",
+                      "startTime": null,
+                      "starts_at": null,
                       "status": "accepted",
-                      "submittedAt": 1786454432302.6272,
+                      "submittedAt": 1786468450028.5327,
                       "submitter": {
-                        "about": "Noah is CTO at Fathom Robotics, where inference cost is a line item the board reads every month. He previously built pricing systems at a payments company.",
-                        "bio": "Noah is CTO at Fathom Robotics, where inference cost is a line item the board reads every month. He previously built pricing systems at a payments company.",
-                        "company": "Fathom Robotics",
-                        "company_name": "Fathom Robotics",
-                        "created_at": "2026-08-11T13:20:32.302Z",
-                        "email": "noah.blackwood@example.com",
-                        "firstName": "Noah",
-                        "first_name": "Noah",
-                        "friendly_id": "SPK-79642",
-                        "friendly_id_raw": 79642,
-                        "full_name": "Noah Blackwood",
-                        "headshotUrl": "https://neat-sparrow-926.eu-west-1.convex.cloud/api/storage/2df6428e-e227-4464-8adc-ffa74bab01ec",
-                        "id": "m97cet87b25dmrr3ej8hay0fw18c9qkz",
+                        "about": null,
+                        "bio": null,
+                        "company": null,
+                        "company_name": null,
+                        "created_at": "2026-08-11T17:12:59.037Z",
+                        "email": "organizer@demo.sessionboard.dev",
+                        "firstName": "Dana",
+                        "first_name": "Dana",
+                        "friendly_id": "SPK-15933",
+                        "friendly_id_raw": 15933,
+                        "full_name": "Dana Organizer",
+                        "headshotUrl": null,
+                        "id": "m979ftpxy32jcbqm530dh7fsk58c8kqg",
                         "is_public": true,
-                        "jobTitle": "Chief Technology Officer",
-                        "lastName": "Blackwood",
-                        "last_name": "Blackwood",
+                        "jobTitle": null,
+                        "lastName": "Organizer",
+                        "last_name": "Organizer",
                         "linkedin_url": null,
-                        "name": "Noah Blackwood",
+                        "name": "Dana Organizer",
                         "participant_role": null,
                         "phone_mobile": null,
-                        "photo_url": "https://neat-sparrow-926.eu-west-1.convex.cloud/api/storage/2df6428e-e227-4464-8adc-ffa74bab01ec",
+                        "photo_url": null,
                         "pronouns": null,
                         "salutation": null,
-                        "title": "Chief Technology Officer",
+                        "title": null,
                         "twitter_url": null,
-                        "updated_at": "2026-08-11T13:20:32.302Z",
+                        "updated_at": "2026-08-11T17:12:59.037Z",
                         "website_url": null,
                         "workflow_status": null
                       },
                       "subsessions": [],
-                      "tags": [
-                        {
-                          "id": "panel",
-                          "name": "panel"
-                        },
-                        {
-                          "id": "agents",
-                          "name": "agents"
-                        }
-                      ],
-                      "title": "Closing panel: what we got wrong about agents",
-                      "track": {
-                        "color": "#1E9E6B",
-                        "created_at": "2026-08-11T13:20:32.302Z",
-                        "event_id": "j970dka7yanxxzkj5t78b03bch8c92d9",
-                        "id": "kd7abhh69p31762y4176dccpch8c9t9n",
-                        "name": "Product",
-                        "order": 1,
-                        "updated_at": "2026-08-11T13:20:32.302Z"
-                      },
-                      "trackColor": "#1E9E6B",
-                      "updated_at": "2026-08-11T13:20:32.302Z"
+                      "tags": [],
+                      "title": "Keyboard kb-msox6u0b-pgwxn",
+                      "track": null,
+                      "trackColor": null,
+                      "updated_at": "2026-08-11T17:14:10.028Z"
                     }
                   ]
                 }
@@ -6418,88 +6165,52 @@
                 },
                 "example": {
                   "data": {
-                    "answers": {
-                      "description": "Four practitioners compare notes on the agent architectures they abandoned, the assumptions that did not survive production, and what they would build differently today.",
-                      "format": "Panel",
-                      "language": "English",
-                      "level": "Intermediate",
-                      "takeaways": "Honest post-mortems from four production agent systems.",
-                      "title": "Closing panel: what we got wrong about agents",
-                      "track": "Product"
-                    },
-                    "capacity": 300,
+                    "answers": {},
+                    "capacity": null,
                     "chairpersons": [],
-                    "created_at": "2026-08-11T13:20:32.302Z",
-                    "custom_fields": [
-                      {
-                        "created_at": "2026-08-11T13:20:32.302Z",
-                        "id": "description",
-                        "internal_name": "description",
-                        "name": "Session description",
-                        "type": "long_text",
-                        "value": "Four practitioners compare notes on the agent architectures they abandoned, the assumptions that did not survive production, and what they would build differently today.",
-                        "value_raw": "Four practitioners compare notes on the agent architectures they abandoned, the assumptions that did not survive production, and what they would build differently today."
-                      },
-                      {
-                        "created_at": "2026-08-11T13:20:32.302Z",
-                        "id": "format",
-                        "internal_name": "format",
-                        "name": "Format",
-                        "type": "dropdown",
-                        "value": "Panel",
-                        "value_raw": "Panel"
-                      }
-                    ],
-                    "decidedAt": 1785936032302,
-                    "decided_at": "2026-08-05T13:20:32.302Z",
+                    "created_at": "2026-08-11T17:14:10.028Z",
+                    "custom_fields": [],
+                    "decidedAt": null,
+                    "decided_at": null,
                     "deleted_at": null,
-                    "description": "Four practitioners compare notes on the agent architectures they abandoned, the assumptions that did not survive production, and what they would build differently today.",
-                    "durationMinutes": 60,
-                    "duration_minutes": 60,
-                    "endTime": 1791936000000,
-                    "ends_at": "2026-10-14T00:00:00.000Z",
-                    "format": {
-                      "id": "Panel",
-                      "name": "Panel"
-                    },
-                    "friendly_id": "SESS-84407",
-                    "friendly_id_raw": 84407,
-                    "id": "k579s906vr6pym1mtnn6w92wms8c9wpq",
+                    "description": "Created by the agenda e2e flow.",
+                    "durationMinutes": 45,
+                    "duration_minutes": 45,
+                    "endTime": null,
+                    "ends_at": null,
+                    "format": null,
+                    "friendly_id": "SESS-61254",
+                    "friendly_id_raw": 61254,
+                    "id": "k575bvbn1vs5tjv37p83a3zr118c9knw",
                     "is_abstract": false,
                     "is_public": true,
                     "kind": "session",
-                    "language": {
-                      "id": "English",
-                      "name": "English"
-                    },
-                    "level": {
-                      "id": "Intermediate",
-                      "name": "Intermediate"
-                    },
-                    "location": "Main Stage",
+                    "language": null,
+                    "level": null,
+                    "location": null,
                     "moderators": [],
-                    "notified_at": "2026-08-06T13:20:32.302Z",
+                    "notified_at": null,
                     "participants": [
                       {
-                        "about": "Noah is CTO at Fathom Robotics, where inference cost is a line item the board reads every month. He previously built pricing systems at a payments company.",
-                        "bio": "Noah is CTO at Fathom Robotics, where inference cost is a line item the board reads every month. He previously built pricing systems at a payments company.",
-                        "company": "Fathom Robotics",
-                        "company_name": "Fathom Robotics",
-                        "created_at": "2026-08-11T13:20:32.302Z",
-                        "email": "noah.blackwood@example.com",
-                        "firstName": "Noah",
-                        "first_name": "Noah",
-                        "friendly_id": "SPK-79642",
-                        "friendly_id_raw": 79642,
-                        "full_name": "Noah Blackwood",
-                        "headshotUrl": "https://neat-sparrow-926.eu-west-1.convex.cloud/api/storage/2df6428e-e227-4464-8adc-ffa74bab01ec",
-                        "id": "m97cet87b25dmrr3ej8hay0fw18c9qkz",
+                        "about": null,
+                        "bio": null,
+                        "company": null,
+                        "company_name": null,
+                        "created_at": "2026-08-11T17:14:10.028Z",
+                        "email": "agenda-msox6u0b-vfrcc@example.com",
+                        "firstName": "Aggie",
+                        "first_name": "Aggie",
+                        "friendly_id": "SPK-30339",
+                        "friendly_id_raw": 30339,
+                        "full_name": "Aggie Enda",
+                        "headshotUrl": null,
+                        "id": "m97dr3masanf2vmypr8zmdaems8c9mxs",
                         "is_public": true,
-                        "jobTitle": "Chief Technology Officer",
-                        "lastName": "Blackwood",
-                        "last_name": "Blackwood",
+                        "jobTitle": null,
+                        "lastName": "Enda",
+                        "last_name": "Enda",
                         "linkedin_url": null,
-                        "name": "Noah Blackwood",
+                        "name": "Aggie Enda",
                         "participant_role": {
                           "core_role": "speaker",
                           "name": "Speaker",
@@ -6507,82 +6218,39 @@
                           "slug": "speaker"
                         },
                         "phone_mobile": null,
-                        "photo_url": "https://neat-sparrow-926.eu-west-1.convex.cloud/api/storage/2df6428e-e227-4464-8adc-ffa74bab01ec",
+                        "photo_url": null,
                         "pronouns": null,
                         "salutation": null,
-                        "title": "Chief Technology Officer",
+                        "title": null,
                         "twitter_url": null,
-                        "updated_at": "2026-08-11T13:20:32.302Z",
-                        "website_url": null,
-                        "workflow_status": null
-                      },
-                      {
-                        "about": "Daniel builds clinical decision-support systems at Meridian Health, in a regulatory environment where 'we will fix it in the next deploy' is not an option.",
-                        "bio": "Daniel builds clinical decision-support systems at Meridian Health, in a regulatory environment where 'we will fix it in the next deploy' is not an option.",
-                        "company": "Meridian Health",
-                        "company_name": "Meridian Health",
-                        "created_at": "2026-08-11T13:20:32.302Z",
-                        "email": "daniel.okonkwo@example.com",
-                        "firstName": "Daniel",
-                        "first_name": "Daniel",
-                        "friendly_id": "SPK-51017",
-                        "friendly_id_raw": 51017,
-                        "full_name": "Daniel Okonkwo",
-                        "headshotUrl": "https://neat-sparrow-926.eu-west-1.convex.cloud/api/storage/58aece27-ac7c-4ce3-8bd5-fe95b31322b5",
-                        "id": "m97fear8swc7qhnsg26p275fqd8c80ry",
-                        "is_public": true,
-                        "jobTitle": "Director of AI",
-                        "lastName": "Okonkwo",
-                        "last_name": "Okonkwo",
-                        "linkedin_url": null,
-                        "name": "Daniel Okonkwo",
-                        "participant_role": {
-                          "core_role": "speaker",
-                          "name": "Speaker",
-                          "name_plural": "Speakers",
-                          "slug": "speaker"
-                        },
-                        "phone_mobile": null,
-                        "photo_url": "https://neat-sparrow-926.eu-west-1.convex.cloud/api/storage/58aece27-ac7c-4ce3-8bd5-fe95b31322b5",
-                        "pronouns": null,
-                        "salutation": null,
-                        "title": "Director of AI",
-                        "twitter_url": null,
-                        "updated_at": "2026-08-11T13:20:32.302Z",
+                        "updated_at": "2026-08-11T17:14:10.028Z",
                         "website_url": null,
                         "workflow_status": null
                       }
                     ],
                     "public_visible": true,
-                    "room": {
-                      "capacity": 300,
-                      "created_at": "2026-08-11T13:20:32.302Z",
-                      "id": "js7aftf17fqe9qdk07xtanv7k58c9zj0",
-                      "name": "Main Stage",
-                      "order": 0,
-                      "updated_at": "2026-08-11T13:20:32.302Z"
-                    },
+                    "room": null,
                     "speakers": [
                       {
-                        "about": "Noah is CTO at Fathom Robotics, where inference cost is a line item the board reads every month. He previously built pricing systems at a payments company.",
-                        "bio": "Noah is CTO at Fathom Robotics, where inference cost is a line item the board reads every month. He previously built pricing systems at a payments company.",
-                        "company": "Fathom Robotics",
-                        "company_name": "Fathom Robotics",
-                        "created_at": "2026-08-11T13:20:32.302Z",
-                        "email": "noah.blackwood@example.com",
-                        "firstName": "Noah",
-                        "first_name": "Noah",
-                        "friendly_id": "SPK-79642",
-                        "friendly_id_raw": 79642,
-                        "full_name": "Noah Blackwood",
-                        "headshotUrl": "https://neat-sparrow-926.eu-west-1.convex.cloud/api/storage/2df6428e-e227-4464-8adc-ffa74bab01ec",
-                        "id": "m97cet87b25dmrr3ej8hay0fw18c9qkz",
+                        "about": null,
+                        "bio": null,
+                        "company": null,
+                        "company_name": null,
+                        "created_at": "2026-08-11T17:14:10.028Z",
+                        "email": "agenda-msox6u0b-vfrcc@example.com",
+                        "firstName": "Aggie",
+                        "first_name": "Aggie",
+                        "friendly_id": "SPK-30339",
+                        "friendly_id_raw": 30339,
+                        "full_name": "Aggie Enda",
+                        "headshotUrl": null,
+                        "id": "m97dr3masanf2vmypr8zmdaems8c9mxs",
                         "is_public": true,
-                        "jobTitle": "Chief Technology Officer",
-                        "lastName": "Blackwood",
-                        "last_name": "Blackwood",
+                        "jobTitle": null,
+                        "lastName": "Enda",
+                        "last_name": "Enda",
                         "linkedin_url": null,
-                        "name": "Noah Blackwood",
+                        "name": "Aggie Enda",
                         "participant_role": {
                           "core_role": "speaker",
                           "name": "Speaker",
@@ -6590,110 +6258,57 @@
                           "slug": "speaker"
                         },
                         "phone_mobile": null,
-                        "photo_url": "https://neat-sparrow-926.eu-west-1.convex.cloud/api/storage/2df6428e-e227-4464-8adc-ffa74bab01ec",
+                        "photo_url": null,
                         "pronouns": null,
                         "salutation": null,
-                        "title": "Chief Technology Officer",
+                        "title": null,
                         "twitter_url": null,
-                        "updated_at": "2026-08-11T13:20:32.302Z",
-                        "website_url": null,
-                        "workflow_status": null
-                      },
-                      {
-                        "about": "Daniel builds clinical decision-support systems at Meridian Health, in a regulatory environment where 'we will fix it in the next deploy' is not an option.",
-                        "bio": "Daniel builds clinical decision-support systems at Meridian Health, in a regulatory environment where 'we will fix it in the next deploy' is not an option.",
-                        "company": "Meridian Health",
-                        "company_name": "Meridian Health",
-                        "created_at": "2026-08-11T13:20:32.302Z",
-                        "email": "daniel.okonkwo@example.com",
-                        "firstName": "Daniel",
-                        "first_name": "Daniel",
-                        "friendly_id": "SPK-51017",
-                        "friendly_id_raw": 51017,
-                        "full_name": "Daniel Okonkwo",
-                        "headshotUrl": "https://neat-sparrow-926.eu-west-1.convex.cloud/api/storage/58aece27-ac7c-4ce3-8bd5-fe95b31322b5",
-                        "id": "m97fear8swc7qhnsg26p275fqd8c80ry",
-                        "is_public": true,
-                        "jobTitle": "Director of AI",
-                        "lastName": "Okonkwo",
-                        "last_name": "Okonkwo",
-                        "linkedin_url": null,
-                        "name": "Daniel Okonkwo",
-                        "participant_role": {
-                          "core_role": "speaker",
-                          "name": "Speaker",
-                          "name_plural": "Speakers",
-                          "slug": "speaker"
-                        },
-                        "phone_mobile": null,
-                        "photo_url": "https://neat-sparrow-926.eu-west-1.convex.cloud/api/storage/58aece27-ac7c-4ce3-8bd5-fe95b31322b5",
-                        "pronouns": null,
-                        "salutation": null,
-                        "title": "Director of AI",
-                        "twitter_url": null,
-                        "updated_at": "2026-08-11T13:20:32.302Z",
+                        "updated_at": "2026-08-11T17:14:10.028Z",
                         "website_url": null,
                         "workflow_status": null
                       }
                     ],
-                    "startTime": 1791932400000,
-                    "starts_at": "2026-10-13T23:00:00.000Z",
+                    "startTime": null,
+                    "starts_at": null,
                     "status": "accepted",
-                    "submittedAt": 1786454432302.6272,
+                    "submittedAt": 1786468450028.5327,
                     "submitter": {
-                      "about": "Noah is CTO at Fathom Robotics, where inference cost is a line item the board reads every month. He previously built pricing systems at a payments company.",
-                      "bio": "Noah is CTO at Fathom Robotics, where inference cost is a line item the board reads every month. He previously built pricing systems at a payments company.",
-                      "company": "Fathom Robotics",
-                      "company_name": "Fathom Robotics",
-                      "created_at": "2026-08-11T13:20:32.302Z",
-                      "email": "noah.blackwood@example.com",
-                      "firstName": "Noah",
-                      "first_name": "Noah",
-                      "friendly_id": "SPK-79642",
-                      "friendly_id_raw": 79642,
-                      "full_name": "Noah Blackwood",
-                      "headshotUrl": "https://neat-sparrow-926.eu-west-1.convex.cloud/api/storage/2df6428e-e227-4464-8adc-ffa74bab01ec",
-                      "id": "m97cet87b25dmrr3ej8hay0fw18c9qkz",
+                      "about": null,
+                      "bio": null,
+                      "company": null,
+                      "company_name": null,
+                      "created_at": "2026-08-11T17:12:59.037Z",
+                      "email": "organizer@demo.sessionboard.dev",
+                      "firstName": "Dana",
+                      "first_name": "Dana",
+                      "friendly_id": "SPK-15933",
+                      "friendly_id_raw": 15933,
+                      "full_name": "Dana Organizer",
+                      "headshotUrl": null,
+                      "id": "m979ftpxy32jcbqm530dh7fsk58c8kqg",
                       "is_public": true,
-                      "jobTitle": "Chief Technology Officer",
-                      "lastName": "Blackwood",
-                      "last_name": "Blackwood",
+                      "jobTitle": null,
+                      "lastName": "Organizer",
+                      "last_name": "Organizer",
                       "linkedin_url": null,
-                      "name": "Noah Blackwood",
+                      "name": "Dana Organizer",
                       "participant_role": null,
                       "phone_mobile": null,
-                      "photo_url": "https://neat-sparrow-926.eu-west-1.convex.cloud/api/storage/2df6428e-e227-4464-8adc-ffa74bab01ec",
+                      "photo_url": null,
                       "pronouns": null,
                       "salutation": null,
-                      "title": "Chief Technology Officer",
+                      "title": null,
                       "twitter_url": null,
-                      "updated_at": "2026-08-11T13:20:32.302Z",
+                      "updated_at": "2026-08-11T17:12:59.037Z",
                       "website_url": null,
                       "workflow_status": null
                     },
                     "subsessions": [],
-                    "tags": [
-                      {
-                        "id": "panel",
-                        "name": "panel"
-                      },
-                      {
-                        "id": "agents",
-                        "name": "agents"
-                      }
-                    ],
-                    "title": "Closing panel: what we got wrong about agents",
-                    "track": {
-                      "color": "#1E9E6B",
-                      "created_at": "2026-08-11T13:20:32.302Z",
-                      "event_id": "j970dka7yanxxzkj5t78b03bch8c92d9",
-                      "id": "kd7abhh69p31762y4176dccpch8c9t9n",
-                      "name": "Product",
-                      "order": 1,
-                      "updated_at": "2026-08-11T13:20:32.302Z"
-                    },
-                    "trackColor": "#1E9E6B",
-                    "updated_at": "2026-08-11T13:20:32.302Z"
+                    "tags": [],
+                    "title": "Keyboard kb-msox6u0b-pgwxn",
+                    "track": null,
+                    "trackColor": null,
+                    "updated_at": "2026-08-11T17:14:10.028Z"
                   }
                 }
               }
@@ -8249,27 +7864,27 @@
                 "example": {
                   "data": [
                     {
-                      "about": "Noah is CTO at Fathom Robotics, where inference cost is a line item the board reads every month. He previously built pricing systems at a payments company.",
-                      "bio": "Noah is CTO at Fathom Robotics, where inference cost is a line item the board reads every month. He previously built pricing systems at a payments company.",
-                      "company": "Fathom Robotics",
-                      "company_name": "Fathom Robotics",
-                      "created_at": "2026-08-11T13:20:32.302Z",
-                      "email": "noah.blackwood@example.com",
-                      "firstName": "Noah",
-                      "first_name": "Noah",
-                      "friendly_id": "SPK-79642",
-                      "friendly_id_raw": 79642,
-                      "full_name": "Noah Blackwood",
-                      "headshotUrl": "https://neat-sparrow-926.eu-west-1.convex.cloud/api/storage/2df6428e-e227-4464-8adc-ffa74bab01ec",
-                      "id": "m97cet87b25dmrr3ej8hay0fw18c9qkz",
+                      "about": null,
+                      "bio": null,
+                      "company": null,
+                      "company_name": null,
+                      "created_at": "2026-08-11T17:14:10.028Z",
+                      "email": "agenda-msox6u0b-vfrcc@example.com",
+                      "firstName": "Aggie",
+                      "first_name": "Aggie",
+                      "friendly_id": "SPK-30339",
+                      "friendly_id_raw": 30339,
+                      "full_name": "Aggie Enda",
+                      "headshotUrl": null,
+                      "id": "m97dr3masanf2vmypr8zmdaems8c9mxs",
                       "is_public": true,
-                      "jobTitle": "Chief Technology Officer",
-                      "lastName": "Blackwood",
-                      "last_name": "Blackwood",
+                      "jobTitle": null,
+                      "lastName": "Enda",
+                      "last_name": "Enda",
                       "linkedin_url": null,
-                      "name": "Noah Blackwood",
+                      "name": "Aggie Enda",
                       "order": 0,
-                      "participant_id": "md727rrqremexvmzmxhsxfjj5h8c9v6e",
+                      "participant_id": "md79xkjw1x47n6w08w3wg979cs8c8gmm",
                       "participant_role": {
                         "core_role": "speaker",
                         "name": "Speaker",
@@ -8277,41 +7892,41 @@
                         "slug": "speaker"
                       },
                       "phone_mobile": null,
-                      "photo_url": "https://neat-sparrow-926.eu-west-1.convex.cloud/api/storage/2df6428e-e227-4464-8adc-ffa74bab01ec",
+                      "photo_url": null,
                       "pronouns": null,
                       "role": "speaker",
                       "salutation": null,
-                      "session_id": "k579s906vr6pym1mtnn6w92wms8c9wpq",
-                      "title": "Chief Technology Officer",
+                      "session_id": "k575bvbn1vs5tjv37p83a3zr118c9knw",
+                      "title": null,
                       "twitter_url": null,
-                      "updated_at": "2026-08-11T13:20:32.302Z",
+                      "updated_at": "2026-08-11T17:14:10.028Z",
                       "website_url": null,
                       "workflow_status": null
                     }
                   ],
                   "results": [
                     {
-                      "about": "Noah is CTO at Fathom Robotics, where inference cost is a line item the board reads every month. He previously built pricing systems at a payments company.",
-                      "bio": "Noah is CTO at Fathom Robotics, where inference cost is a line item the board reads every month. He previously built pricing systems at a payments company.",
-                      "company": "Fathom Robotics",
-                      "company_name": "Fathom Robotics",
-                      "created_at": "2026-08-11T13:20:32.302Z",
-                      "email": "noah.blackwood@example.com",
-                      "firstName": "Noah",
-                      "first_name": "Noah",
-                      "friendly_id": "SPK-79642",
-                      "friendly_id_raw": 79642,
-                      "full_name": "Noah Blackwood",
-                      "headshotUrl": "https://neat-sparrow-926.eu-west-1.convex.cloud/api/storage/2df6428e-e227-4464-8adc-ffa74bab01ec",
-                      "id": "m97cet87b25dmrr3ej8hay0fw18c9qkz",
+                      "about": null,
+                      "bio": null,
+                      "company": null,
+                      "company_name": null,
+                      "created_at": "2026-08-11T17:14:10.028Z",
+                      "email": "agenda-msox6u0b-vfrcc@example.com",
+                      "firstName": "Aggie",
+                      "first_name": "Aggie",
+                      "friendly_id": "SPK-30339",
+                      "friendly_id_raw": 30339,
+                      "full_name": "Aggie Enda",
+                      "headshotUrl": null,
+                      "id": "m97dr3masanf2vmypr8zmdaems8c9mxs",
                       "is_public": true,
-                      "jobTitle": "Chief Technology Officer",
-                      "lastName": "Blackwood",
-                      "last_name": "Blackwood",
+                      "jobTitle": null,
+                      "lastName": "Enda",
+                      "last_name": "Enda",
                       "linkedin_url": null,
-                      "name": "Noah Blackwood",
+                      "name": "Aggie Enda",
                       "order": 0,
-                      "participant_id": "md727rrqremexvmzmxhsxfjj5h8c9v6e",
+                      "participant_id": "md79xkjw1x47n6w08w3wg979cs8c8gmm",
                       "participant_role": {
                         "core_role": "speaker",
                         "name": "Speaker",
@@ -8319,14 +7934,14 @@
                         "slug": "speaker"
                       },
                       "phone_mobile": null,
-                      "photo_url": "https://neat-sparrow-926.eu-west-1.convex.cloud/api/storage/2df6428e-e227-4464-8adc-ffa74bab01ec",
+                      "photo_url": null,
                       "pronouns": null,
                       "role": "speaker",
                       "salutation": null,
-                      "session_id": "k579s906vr6pym1mtnn6w92wms8c9wpq",
-                      "title": "Chief Technology Officer",
+                      "session_id": "k575bvbn1vs5tjv37p83a3zr118c9knw",
+                      "title": null,
                       "twitter_url": null,
-                      "updated_at": "2026-08-11T13:20:32.302Z",
+                      "updated_at": "2026-08-11T17:14:10.028Z",
                       "website_url": null,
                       "workflow_status": null
                     }
@@ -9537,50 +9152,50 @@
                     {
                       "about": null,
                       "bio": null,
-                      "company": "Ridgeline",
-                      "company_name": "Ridgeline",
-                      "created_at": "2026-08-11T13:20:32.302Z",
-                      "email": "tom.beaumont@example.com",
-                      "firstName": "Tom",
-                      "first_name": "Tom",
-                      "friendly_id": "SPK-66194",
-                      "friendly_id_raw": 66194,
-                      "full_name": "Tom Beaumont",
-                      "headshotUrl": "https://neat-sparrow-926.eu-west-1.convex.cloud/api/storage/935ac2ab-4db3-4416-b22c-481b3b370731",
-                      "id": "m97cw1x74nerm7563x0zeqbfex8c9t7n",
+                      "company": null,
+                      "company_name": null,
+                      "created_at": "2026-08-11T17:14:48.792Z",
+                      "email": "cfp-draft-msox7kks-8e0nr@example.com",
+                      "firstName": "",
+                      "first_name": "",
+                      "friendly_id": "SPK-60354",
+                      "friendly_id_raw": 60354,
+                      "full_name": "Speaker",
+                      "headshotUrl": null,
+                      "id": "m97dgd2xwg3wncaq84cyqq5z558c8cs3",
                       "is_public": true,
-                      "jobTitle": "Developer Advocate",
-                      "lastName": "Beaumont",
-                      "last_name": "Beaumont",
+                      "jobTitle": null,
+                      "lastName": "",
+                      "last_name": "",
                       "linkedin_url": null,
-                      "name": "Tom Beaumont",
+                      "name": "Speaker",
                       "participant_role": null,
                       "phone_mobile": null,
-                      "photo_url": "https://neat-sparrow-926.eu-west-1.convex.cloud/api/storage/935ac2ab-4db3-4416-b22c-481b3b370731",
+                      "photo_url": null,
                       "pronouns": null,
                       "salutation": null,
                       "sessions": [
                         {
-                          "id": "k57fv92rwbq3666gpp3rzek41x8c9nxn",
+                          "id": "k57dxtqz8z037k1gvd9h9tej2d8c827k",
                           "role": "speaker",
-                          "startTime": 1791824400000,
-                          "starts_at": "2026-10-12T17:00:00.000Z",
-                          "status": "accepted",
-                          "title": "Evaluation harnesses for production LLMs"
+                          "startTime": null,
+                          "starts_at": null,
+                          "status": "draft",
+                          "title": "Draft Proposal t-msox7kks-of87p"
                         }
                       ],
-                      "title": "Developer Advocate",
+                      "title": null,
                       "twitter_url": null,
-                      "updated_at": "2026-08-11T13:20:32.302Z",
+                      "updated_at": "2026-08-11T17:14:48.792Z",
                       "website_url": null,
                       "workflow_status": null
                     }
                   ],
                   "event": {
-                    "_id": "j970dka7yanxxzkj5t78b03bch8c92d9",
-                    "agenda_published_at": "2026-08-06T13:20:32.302Z",
+                    "_id": "j9739z1hp0jeem9e9e3fjevhyh8c9ybw",
+                    "agenda_published_at": "2026-08-11T17:14:08.751Z",
                     "background_url": null,
-                    "created_at": "2026-08-11T13:20:32.302Z",
+                    "created_at": "2026-08-11T17:12:51.276Z",
                     "description": "Two days for the people building AI systems that have to work on Monday morning. Practitioner talks on evaluation, agents, retrieval, inference infrastructure and the product decisions in between — no keynote fluff, no vendor pitches.",
                     "endsAt": 1791939600000,
                     "ends_at": "2026-10-14T01:00:00.000Z",
@@ -9589,7 +9204,7 @@
                       "translated_fields": false,
                       "webhooks": true
                     },
-                    "id": "j970dka7yanxxzkj5t78b03bch8c92d9",
+                    "id": "j9739z1hp0jeem9e9e3fjevhyh8c9ybw",
                     "logo_url": null,
                     "name": "AI Engineer Summit 2026",
                     "organization_id": "mn7fs8btg5szyhbkqdfhtd4xmn8c8xhg",
@@ -9598,7 +9213,7 @@
                       "always_show_tasks": false,
                       "extend_task_deadlines": true
                     },
-                    "public_url": "/e/ai-summit-2026",
+                    "public_url": "/e/ai-engineer/ai-summit-2026",
                     "slug": "ai-summit-2026",
                     "startsAt": 1791820800000,
                     "starts_at": "2026-10-12T16:00:00.000Z",
@@ -9613,50 +9228,50 @@
                     "current_page": 1,
                     "pageSize": 1,
                     "page_size": 1,
-                    "totalPages": 14,
-                    "totalResults": 14,
-                    "total_pages": 14,
-                    "total_results": 14
+                    "totalPages": 26,
+                    "totalResults": 26,
+                    "total_pages": 26,
+                    "total_results": 26
                   },
                   "results": [
                     {
                       "about": null,
                       "bio": null,
-                      "company": "Ridgeline",
-                      "company_name": "Ridgeline",
-                      "created_at": "2026-08-11T13:20:32.302Z",
-                      "email": "tom.beaumont@example.com",
-                      "firstName": "Tom",
-                      "first_name": "Tom",
-                      "friendly_id": "SPK-66194",
-                      "friendly_id_raw": 66194,
-                      "full_name": "Tom Beaumont",
-                      "headshotUrl": "https://neat-sparrow-926.eu-west-1.convex.cloud/api/storage/935ac2ab-4db3-4416-b22c-481b3b370731",
-                      "id": "m97cw1x74nerm7563x0zeqbfex8c9t7n",
+                      "company": null,
+                      "company_name": null,
+                      "created_at": "2026-08-11T17:14:48.792Z",
+                      "email": "cfp-draft-msox7kks-8e0nr@example.com",
+                      "firstName": "",
+                      "first_name": "",
+                      "friendly_id": "SPK-60354",
+                      "friendly_id_raw": 60354,
+                      "full_name": "Speaker",
+                      "headshotUrl": null,
+                      "id": "m97dgd2xwg3wncaq84cyqq5z558c8cs3",
                       "is_public": true,
-                      "jobTitle": "Developer Advocate",
-                      "lastName": "Beaumont",
-                      "last_name": "Beaumont",
+                      "jobTitle": null,
+                      "lastName": "",
+                      "last_name": "",
                       "linkedin_url": null,
-                      "name": "Tom Beaumont",
+                      "name": "Speaker",
                       "participant_role": null,
                       "phone_mobile": null,
-                      "photo_url": "https://neat-sparrow-926.eu-west-1.convex.cloud/api/storage/935ac2ab-4db3-4416-b22c-481b3b370731",
+                      "photo_url": null,
                       "pronouns": null,
                       "salutation": null,
                       "sessions": [
                         {
-                          "id": "k57fv92rwbq3666gpp3rzek41x8c9nxn",
+                          "id": "k57dxtqz8z037k1gvd9h9tej2d8c827k",
                           "role": "speaker",
-                          "startTime": 1791824400000,
-                          "starts_at": "2026-10-12T17:00:00.000Z",
-                          "status": "accepted",
-                          "title": "Evaluation harnesses for production LLMs"
+                          "startTime": null,
+                          "starts_at": null,
+                          "status": "draft",
+                          "title": "Draft Proposal t-msox7kks-of87p"
                         }
                       ],
-                      "title": "Developer Advocate",
+                      "title": null,
                       "twitter_url": null,
-                      "updated_at": "2026-08-11T13:20:32.302Z",
+                      "updated_at": "2026-08-11T17:14:48.792Z",
                       "website_url": null,
                       "workflow_status": null
                     }
@@ -10314,7 +9929,7 @@
                       "name": "Accepted",
                       "order": 10,
                       "pipeline_status": "accepted",
-                      "status_id": "p575em9agrm0qgc0e10awc60ns8c9pzy",
+                      "status_id": "p57dd6gyry8afna0cg3nkyjeq18c8y2h",
                       "system": true,
                       "system_key": "accepted",
                       "updated_at": null,
@@ -10342,7 +9957,7 @@
                       "name": "Accepted",
                       "order": 10,
                       "pipeline_status": "accepted",
-                      "status_id": "p575em9agrm0qgc0e10awc60ns8c9pzy",
+                      "status_id": "p57dd6gyry8afna0cg3nkyjeq18c8y2h",
                       "system": true,
                       "system_key": "accepted",
                       "updated_at": null,
@@ -10881,43 +10496,32 @@
                 "example": {
                   "data": [
                     {
-                      "decidedAt": 1785936032302,
-                      "description": "Four practitioners compare notes on the agent architectures they abandoned, the assumptions that did not survive production, and what they would build differently today.",
-                      "format": "Panel",
-                      "id": "k579s906vr6pym1mtnn6w92wms8c9wpq",
-                      "kind": "session",
-                      "language": "English",
-                      "level": "Intermediate",
+                      "decidedAt": null,
+                      "description": "Staged by the copilot approval e2e flow.",
+                      "format": null,
+                      "id": "k5727ekra3cs2pf8tv3r3981cd8c8wn0",
+                      "kind": "abstract",
+                      "language": null,
+                      "level": null,
                       "speakers": [
                         {
-                          "company": "Fathom Robotics",
-                          "email": "noah.blackwood@example.com",
-                          "id": "m97cet87b25dmrr3ej8hay0fw18c9qkz",
-                          "jobTitle": "Chief Technology Officer",
-                          "name": "Noah Blackwood",
-                          "role": "speaker"
-                        },
-                        {
-                          "company": "Meridian Health",
-                          "email": "daniel.okonkwo@example.com",
-                          "id": "m97fear8swc7qhnsg26p275fqd8c80ry",
-                          "jobTitle": "Director of AI",
-                          "name": "Daniel Okonkwo",
+                          "company": null,
+                          "email": "copilot-msox8swb-mskn7@example.com",
+                          "id": "m977d1tr8w916yte0k0d14htvx8c9kby",
+                          "jobTitle": null,
+                          "name": "Cope Ilot",
                           "role": "speaker"
                         }
                       ],
-                      "status": "accepted",
-                      "submittedAt": 1786454432302.6272,
-                      "tags": [
-                        "panel",
-                        "agents"
-                      ],
-                      "title": "Closing panel: what we got wrong about agents",
-                      "track": "Product"
+                      "status": "pending",
+                      "submittedAt": 1786468541907.9358,
+                      "tags": [],
+                      "title": "Copilot Guard cg-msox8swb-bv3qd",
+                      "track": null
                     }
                   ],
                   "event": {
-                    "_id": "j970dka7yanxxzkj5t78b03bch8c92d9",
+                    "_id": "j9739z1hp0jeem9e9e3fjevhyh8c9ybw",
                     "endsAt": 1791939600000,
                     "name": "AI Engineer Summit 2026",
                     "slug": "ai-summit-2026",
@@ -10928,44 +10532,33 @@
                   "pagination": {
                     "currentPage": 1,
                     "pageSize": 1,
-                    "totalPages": 18,
-                    "totalResults": 18
+                    "totalPages": 29,
+                    "totalResults": 29
                   },
                   "results": [
                     {
-                      "decidedAt": 1785936032302,
-                      "description": "Four practitioners compare notes on the agent architectures they abandoned, the assumptions that did not survive production, and what they would build differently today.",
-                      "format": "Panel",
-                      "id": "k579s906vr6pym1mtnn6w92wms8c9wpq",
-                      "kind": "session",
-                      "language": "English",
-                      "level": "Intermediate",
+                      "decidedAt": null,
+                      "description": "Staged by the copilot approval e2e flow.",
+                      "format": null,
+                      "id": "k5727ekra3cs2pf8tv3r3981cd8c8wn0",
+                      "kind": "abstract",
+                      "language": null,
+                      "level": null,
                       "speakers": [
                         {
-                          "company": "Fathom Robotics",
-                          "email": "noah.blackwood@example.com",
-                          "id": "m97cet87b25dmrr3ej8hay0fw18c9qkz",
-                          "jobTitle": "Chief Technology Officer",
-                          "name": "Noah Blackwood",
-                          "role": "speaker"
-                        },
-                        {
-                          "company": "Meridian Health",
-                          "email": "daniel.okonkwo@example.com",
-                          "id": "m97fear8swc7qhnsg26p275fqd8c80ry",
-                          "jobTitle": "Director of AI",
-                          "name": "Daniel Okonkwo",
+                          "company": null,
+                          "email": "copilot-msox8swb-mskn7@example.com",
+                          "id": "m977d1tr8w916yte0k0d14htvx8c9kby",
+                          "jobTitle": null,
+                          "name": "Cope Ilot",
                           "role": "speaker"
                         }
                       ],
-                      "status": "accepted",
-                      "submittedAt": 1786454432302.6272,
-                      "tags": [
-                        "panel",
-                        "agents"
-                      ],
-                      "title": "Closing panel: what we got wrong about agents",
-                      "track": "Product"
+                      "status": "pending",
+                      "submittedAt": 1786468541907.9358,
+                      "tags": [],
+                      "title": "Copilot Guard cg-msox8swb-bv3qd",
+                      "track": null
                     }
                   ]
                 }
@@ -11052,9 +10645,9 @@
                     "pageSize": 25,
                     "page_size": 25,
                     "totalPages": 2,
-                    "totalResults": 30,
+                    "totalResults": 34,
                     "total_pages": 2,
-                    "total_results": 30
+                    "total_results": 34
                   },
                   "results": [
                     {
@@ -11484,24 +11077,24 @@
                 "example": {
                   "data": [
                     {
-                      "completed_at": null,
-                      "created_at": "2026-08-11T13:20:32.302Z",
-                      "due_at": "2026-08-31T13:20:32.302Z",
+                      "completed_at": "2026-08-11T17:13:27.578Z",
+                      "created_at": "2026-08-11T17:13:27.016Z",
+                      "due_at": null,
                       "form_id": null,
-                      "id": "k97d6ztp86e9fcwgjf4qjfv0e98c8gf1",
-                      "instructions": "PDF please, 16:9. We collect slides a week ahead so the AV team can test them.",
-                      "is_complete": false,
+                      "id": "k97578gjba94av0m8a9k2vcq2h8c9mjh",
+                      "instructions": "{{firstName}}, what size t-shirt do you wear?",
+                      "is_complete": true,
                       "is_overdue": false,
-                      "kind": "upload",
+                      "kind": "answer",
                       "session_id": null,
                       "session_title": null,
                       "speaker": {
-                        "email": "rafael.duarte@example.com",
-                        "full_name": "Rafael Duarte",
-                        "id": "m976snmfnmsydc4h8te6mj9vsd8c8xy4"
+                        "email": "tom.beaumont@example.com",
+                        "full_name": "Tom Beaumont",
+                        "id": "m977608gm4rp19avm350a6kgnn8c8r20"
                       },
-                      "speaker_id": "m976snmfnmsydc4h8te6mj9vsd8c8xy4",
-                      "title": "Upload your slides"
+                      "speaker_id": "m977608gm4rp19avm350a6kgnn8c8r20",
+                      "title": "What size t-shirt do you wear?"
                     }
                   ],
                   "pagination": {
@@ -11509,31 +11102,31 @@
                     "current_page": 1,
                     "pageSize": 1,
                     "page_size": 1,
-                    "totalPages": 18,
-                    "totalResults": 18,
-                    "total_pages": 18,
-                    "total_results": 18
+                    "totalPages": 19,
+                    "totalResults": 19,
+                    "total_pages": 19,
+                    "total_results": 19
                   },
                   "results": [
                     {
-                      "completed_at": null,
-                      "created_at": "2026-08-11T13:20:32.302Z",
-                      "due_at": "2026-08-31T13:20:32.302Z",
+                      "completed_at": "2026-08-11T17:13:27.578Z",
+                      "created_at": "2026-08-11T17:13:27.016Z",
+                      "due_at": null,
                       "form_id": null,
-                      "id": "k97d6ztp86e9fcwgjf4qjfv0e98c8gf1",
-                      "instructions": "PDF please, 16:9. We collect slides a week ahead so the AV team can test them.",
-                      "is_complete": false,
+                      "id": "k97578gjba94av0m8a9k2vcq2h8c9mjh",
+                      "instructions": "{{firstName}}, what size t-shirt do you wear?",
+                      "is_complete": true,
                       "is_overdue": false,
-                      "kind": "upload",
+                      "kind": "answer",
                       "session_id": null,
                       "session_title": null,
                       "speaker": {
-                        "email": "rafael.duarte@example.com",
-                        "full_name": "Rafael Duarte",
-                        "id": "m976snmfnmsydc4h8te6mj9vsd8c8xy4"
+                        "email": "tom.beaumont@example.com",
+                        "full_name": "Tom Beaumont",
+                        "id": "m977608gm4rp19avm350a6kgnn8c8r20"
                       },
-                      "speaker_id": "m976snmfnmsydc4h8te6mj9vsd8c8xy4",
-                      "title": "Upload your slides"
+                      "speaker_id": "m977608gm4rp19avm350a6kgnn8c8r20",
+                      "title": "What size t-shirt do you wear?"
                     }
                   ]
                 }
@@ -11600,24 +11193,24 @@
                 },
                 "example": {
                   "data": {
-                    "completed_at": null,
-                    "created_at": "2026-08-11T13:20:32.302Z",
-                    "due_at": "2026-08-31T13:20:32.302Z",
+                    "completed_at": "2026-08-11T17:13:27.578Z",
+                    "created_at": "2026-08-11T17:13:27.016Z",
+                    "due_at": null,
                     "form_id": null,
-                    "id": "k97d6ztp86e9fcwgjf4qjfv0e98c8gf1",
-                    "instructions": "PDF please, 16:9. We collect slides a week ahead so the AV team can test them.",
-                    "is_complete": false,
+                    "id": "k97578gjba94av0m8a9k2vcq2h8c9mjh",
+                    "instructions": "{{firstName}}, what size t-shirt do you wear?",
+                    "is_complete": true,
                     "is_overdue": false,
-                    "kind": "upload",
+                    "kind": "answer",
                     "session_id": null,
                     "session_title": null,
                     "speaker": {
-                      "email": "rafael.duarte@example.com",
-                      "full_name": "Rafael Duarte",
-                      "id": "m976snmfnmsydc4h8te6mj9vsd8c8xy4"
+                      "email": "tom.beaumont@example.com",
+                      "full_name": "Tom Beaumont",
+                      "id": "m977608gm4rp19avm350a6kgnn8c8r20"
                     },
-                    "speaker_id": "m976snmfnmsydc4h8te6mj9vsd8c8xy4",
-                    "title": "Upload your slides"
+                    "speaker_id": "m977608gm4rp19avm350a6kgnn8c8r20",
+                    "title": "What size t-shirt do you wear?"
                   }
                 }
               }
@@ -11964,12 +11557,12 @@
                   "data": [
                     {
                       "color": "#2F5CE0",
-                      "created_at": "2026-08-11T13:20:32.302Z",
-                      "event_id": "j970dka7yanxxzkj5t78b03bch8c92d9",
-                      "id": "kd7cepm1y5wny1g2qtdeqjqxc18c9php",
+                      "created_at": "2026-08-11T17:12:51.276Z",
+                      "event_id": "j9739z1hp0jeem9e9e3fjevhyh8c9ybw",
+                      "id": "kd75nre1ar41qtvqe5gdahmjan8c99z4",
                       "name": "AI Engineering",
                       "order": 0,
-                      "updated_at": "2026-08-11T13:20:32.302Z"
+                      "updated_at": "2026-08-11T17:12:51.276Z"
                     }
                   ],
                   "pagination": {
@@ -11985,12 +11578,12 @@
                   "results": [
                     {
                       "color": "#2F5CE0",
-                      "created_at": "2026-08-11T13:20:32.302Z",
-                      "event_id": "j970dka7yanxxzkj5t78b03bch8c92d9",
-                      "id": "kd7cepm1y5wny1g2qtdeqjqxc18c9php",
+                      "created_at": "2026-08-11T17:12:51.276Z",
+                      "event_id": "j9739z1hp0jeem9e9e3fjevhyh8c9ybw",
+                      "id": "kd75nre1ar41qtvqe5gdahmjan8c99z4",
                       "name": "AI Engineering",
                       "order": 0,
-                      "updated_at": "2026-08-11T13:20:32.302Z"
+                      "updated_at": "2026-08-11T17:12:51.276Z"
                     }
                   ],
                   "unknownResource": false
@@ -12407,10 +12000,10 @@
                 "example": {
                   "data": [
                     {
-                      "_id": "j9765mr4ke72nnd76x08sjfksx8c92qq",
+                      "_id": "j97fm841h9nzjtp5q9f99xggd58c9hth",
                       "agenda_published_at": null,
                       "background_url": null,
-                      "created_at": "2026-08-11T13:20:32.302Z",
+                      "created_at": "2026-08-11T17:12:51.276Z",
                       "description": "A single-track day for the people who maintain design systems, and everyone who has to live with them.",
                       "endsAt": 1793919600000,
                       "ends_at": "2026-11-05T23:00:00.000Z",
@@ -12419,7 +12012,7 @@
                         "translated_fields": false,
                         "webhooks": true
                       },
-                      "id": "j9765mr4ke72nnd76x08sjfksx8c92qq",
+                      "id": "j97fm841h9nzjtp5q9f99xggd58c9hth",
                       "logo_url": null,
                       "name": "Design Systems Day",
                       "organization_id": "mn7fs8btg5szyhbkqdfhtd4xmn8c8xhg",
@@ -12428,7 +12021,7 @@
                         "always_show_tasks": false,
                         "extend_task_deadlines": true
                       },
-                      "public_url": "/e/design-systems-day",
+                      "public_url": "/e/ai-engineer/design-systems-day",
                       "slug": "design-systems-day",
                       "startsAt": 1793887200000,
                       "starts_at": "2026-11-05T14:00:00.000Z",
@@ -12443,17 +12036,17 @@
                     "current_page": 1,
                     "pageSize": 1,
                     "page_size": 1,
-                    "totalPages": 39,
-                    "totalResults": 39,
-                    "total_pages": 39,
-                    "total_results": 39
+                    "totalPages": 95,
+                    "totalResults": 95,
+                    "total_pages": 95,
+                    "total_results": 95
                   },
                   "results": [
                     {
-                      "_id": "j9765mr4ke72nnd76x08sjfksx8c92qq",
+                      "_id": "j97fm841h9nzjtp5q9f99xggd58c9hth",
                       "agenda_published_at": null,
                       "background_url": null,
-                      "created_at": "2026-08-11T13:20:32.302Z",
+                      "created_at": "2026-08-11T17:12:51.276Z",
                       "description": "A single-track day for the people who maintain design systems, and everyone who has to live with them.",
                       "endsAt": 1793919600000,
                       "ends_at": "2026-11-05T23:00:00.000Z",
@@ -12462,7 +12055,7 @@
                         "translated_fields": false,
                         "webhooks": true
                       },
-                      "id": "j9765mr4ke72nnd76x08sjfksx8c92qq",
+                      "id": "j97fm841h9nzjtp5q9f99xggd58c9hth",
                       "logo_url": null,
                       "name": "Design Systems Day",
                       "organization_id": "mn7fs8btg5szyhbkqdfhtd4xmn8c8xhg",
@@ -12471,7 +12064,7 @@
                         "always_show_tasks": false,
                         "extend_task_deadlines": true
                       },
-                      "public_url": "/e/design-systems-day",
+                      "public_url": "/e/ai-engineer/design-systems-day",
                       "slug": "design-systems-day",
                       "startsAt": 1793887200000,
                       "starts_at": "2026-11-05T14:00:00.000Z",
@@ -12653,10 +12246,10 @@
                 },
                 "example": {
                   "data": {
-                    "_id": "j970dka7yanxxzkj5t78b03bch8c92d9",
-                    "agenda_published_at": "2026-08-06T13:20:32.302Z",
+                    "_id": "j9739z1hp0jeem9e9e3fjevhyh8c9ybw",
+                    "agenda_published_at": "2026-08-11T17:14:08.751Z",
                     "background_url": null,
-                    "created_at": "2026-08-11T13:20:32.302Z",
+                    "created_at": "2026-08-11T17:12:51.276Z",
                     "description": "Two days for the people building AI systems that have to work on Monday morning. Practitioner talks on evaluation, agents, retrieval, inference infrastructure and the product decisions in between — no keynote fluff, no vendor pitches.",
                     "endsAt": 1791939600000,
                     "ends_at": "2026-10-14T01:00:00.000Z",
@@ -12665,7 +12258,7 @@
                       "translated_fields": false,
                       "webhooks": true
                     },
-                    "id": "j970dka7yanxxzkj5t78b03bch8c92d9",
+                    "id": "j9739z1hp0jeem9e9e3fjevhyh8c9ybw",
                     "logo_url": null,
                     "name": "AI Engineer Summit 2026",
                     "organization_id": "mn7fs8btg5szyhbkqdfhtd4xmn8c8xhg",
@@ -12674,18 +12267,18 @@
                       "always_show_tasks": false,
                       "extend_task_deadlines": true
                     },
-                    "public_url": "/e/ai-summit-2026",
+                    "public_url": "/e/ai-engineer/ai-summit-2026",
                     "slug": "ai-summit-2026",
                     "startsAt": 1791820800000,
                     "starts_at": "2026-10-12T16:00:00.000Z",
                     "timezone": "America/Los_Angeles",
                     "totals": {
-                      "abstracts": 16,
-                      "accepted": 6,
-                      "forms": 1,
+                      "abstracts": 21,
+                      "accepted": 12,
+                      "forms": 2,
                       "rooms": 2,
-                      "scheduled": 6,
-                      "sessions": 2,
+                      "scheduled": 9,
+                      "sessions": 8,
                       "tracks": 3
                     },
                     "type": "Conference",
@@ -14784,7 +14377,7 @@
           "public_url": {
             "type": "string",
             "examples": [
-              "/e/ai-summit-2026"
+              "/e/ai-engineer/ai-summit-2026"
             ]
           },
           "portal_settings": {
@@ -15856,7 +15449,7 @@
           "public_url": {
             "type": "string",
             "examples": [
-              "/submit/ai-summit-2026/cfp"
+              "/submit/ai-engineer/ai-summit-2026/cfp"
             ],
             "description": "The canonical link an organizer shares."
           },
@@ -16075,9 +15668,15 @@
               "profile",
               "headshot",
               "upload",
-              "form",
+              "answer",
               "confirm"
-            ]
+            ],
+            "description": "How it gets ticked off. `answer` asks a question in `instructions` and the speaker types a reply."
+          },
+          "response": {
+            "type": "string",
+            "nullable": true,
+            "description": "Kind `answer` only: what the speaker wrote back."
           },
           "due_at": {
             "type": "string",
@@ -16650,7 +16249,7 @@
               "profile",
               "headshot",
               "upload",
-              "form",
+              "answer",
               "confirm"
             ],
             "default": "upload"

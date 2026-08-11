@@ -31,7 +31,6 @@ export type ProductShotVariant =
   | "dashboard"
   | "submissions"
   | "agenda"
-  | "agendaList"
   | "form"
   | "portal"
   | "program"
@@ -68,11 +67,6 @@ const SHOTS: Record<ProductShotVariant, ShotMeta> = {
     url: `${APP}/app/agenda`,
     alt: "The agenda day view: rooms as columns, sessions placed on a time grid, and a tray of accepted sessions still waiting for a slot.",
   },
-  agendaList: {
-    src: "/screenshots/agenda-list.png",
-    url: `${APP}/app/agenda`,
-    alt: "The agenda list view: every scheduled session in running order with its time, room and speakers.",
-  },
   form: {
     src: "/screenshots/form-builder.png",
     url: `${APP}/app/forms`,
@@ -90,7 +84,12 @@ const SHOTS: Record<ProductShotVariant, ShotMeta> = {
   },
 }
 
-/** Captures are taken at 1440×900 CSS pixels on a 2× device pixel ratio. */
+/**
+ * Every capture is a 16:10 frame of the running app — 1440×900 or 1600×1000
+ * CSS pixels, always on a 2× device pixel ratio. Only the RATIO is load-bearing
+ * here: it drives the aspect-ratio box below, so a shot re-taken at a different
+ * width swaps in without shifting the layout.
+ */
 const NATIVE = { width: 1440, height: 900 } as const
 
 export interface ProductShotProps extends React.ComponentProps<"figure"> {

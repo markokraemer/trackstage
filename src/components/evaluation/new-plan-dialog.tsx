@@ -45,6 +45,7 @@ import {
   SUBMISSION_STATUS_OPTIONS,
 } from "@/components/shared/status-pill"
 import { DatePickerField } from "@/components/evaluation/date-picker-field"
+import { errorMessage } from "@/lib/errors"
 
 /**
  * "New evaluation plan" (docs/SPEC.md §4.5). One dialog does the whole job:
@@ -344,7 +345,7 @@ export function NewPlanDialog({
           onCreated?.(planId)
         },
         onError: (mutationError: Error) => {
-          setError(mutationError.message)
+          setError(errorMessage(mutationError, "Please try again."))
         },
       },
     )

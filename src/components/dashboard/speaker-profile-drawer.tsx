@@ -51,6 +51,7 @@ import { useCurrentEvent } from "@/lib/current-event"
 import { SpeakerWorkflowSelect } from "@/components/dashboard/speaker-workflow-select"
 import type { SpeakerRosterRow } from "@/components/dashboard/speakers-table"
 import { RemovePersonButton } from "@/components/dashboard/remove-person-dialog"
+import { errorMessage } from "@/lib/errors"
 
 export interface SpeakerProfileDrawerProps {
   speaker: SpeakerRosterRow | null
@@ -160,7 +161,7 @@ export function SpeakerProfileDrawer({
       setPendingVisible(null)
       toast.error("Couldn't change their visibility", {
         description:
-          error instanceof Error ? error.message : "Please try again.",
+          errorMessage(error, "Please try again."),
       })
     }
   }
@@ -196,7 +197,7 @@ export function SpeakerProfileDrawer({
     } catch (error) {
       toast.error("Couldn't remove the photo", {
         description:
-          error instanceof Error ? error.message : "Please try again.",
+          errorMessage(error, "Please try again."),
       })
     } finally {
       setRemovingPhoto(false)
@@ -230,7 +231,7 @@ export function SpeakerProfileDrawer({
     } catch (error) {
       toast.error("Couldn't save the profile", {
         description:
-          error instanceof Error ? error.message : "Please try again.",
+          errorMessage(error, "Please try again."),
       })
     } finally {
       setSaving(false)
@@ -477,6 +478,12 @@ export function SpeakerProfileDrawer({
 
           <Separator />
 
+          {/* What you asked them for, and what came back — the tasks (with
+              their written answers) and then the files. */}
+          <SpeakerTasks personId={speaker.personId} name={speaker.name} />
+
+          <Separator />
+
           {/* What they've actually sent in (sbek SPK-10) — the answer to "did
               their slides ever arrive?", without leaving this drawer. */}
           <SpeakerFiles personId={speaker.personId} name={speaker.name} />
@@ -530,6 +537,89 @@ export function SpeakerProfileDrawer({
         </div>
       ) : null}
     </DrawerShell>
+  )
+}
+
+/**
+ * Everything this speaker was asked to do, and how far they got — the
+ * organizer's copy of their portal checklist.
+ *
+ * The part that only exists here: a "Collect an answer" task carries the words
+ * the speaker typed back. Asking a question and then having to hunt for the
+ * reply in an inbox is exactly the round trip this product exists to remove,
+ * so the answer sits under the question that produced it.
+ */
+function SpeakerTasks({
+  personId,
+  name,
+}: {
+  personId: Id<"people">
+  name: string
+}) {
+  const { event } = useCurrentEvent()
+  const { data: tasks, isPending } = useQuery(
+    convexQuery(
+      api.tasksAdmin.list,
+      event ? { eventId: event._id, personId } : "skip",
+    ),
+  )
+  const open = (tasks ?? []).filter((task) => !task.completedAt)
+
+  return (
+    <section className="flex flex-col gap-2">
+      <div className="flex items-baseline justify-between gap-2">
+        <h3 className="text-sm font-medium text-foreground">Tasks</h3>
+        {tasks && tasks.length > 0 ? (
+          <span className="text-xs text-muted-foreground tabular-nums">
+            {tasks.length - open.length} of {tasks.length} done
+          </span>
+        ) : null}
+      </div>
+
+      {isPending ? (
+        <Skeleton className="h-16 w-full rounded-lg" />
+      ) : !tasks || tasks.length === 0 ? (
+        <p className="rounded-lg border border-dashed border-border px-3 py-4 text-sm text-muted-foreground">
+          Nothing assigned to {name.split(" ")[0]} yet. &ldquo;Assign a
+          task&rdquo; below puts one in their portal.
+        </p>
+      ) : (
+        <ul className="divide-y divide-border rounded-lg border border-border">
+          {tasks.map((task) => (
+            <li key={task.id} className="flex flex-col gap-1 px-3 py-2.5">
+              <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+                <span className="text-sm font-medium text-foreground">
+                  {task.title}
+                </span>
+                <span
+                  className={
+                    task.completedAt
+                      ? "text-xs font-medium text-status-green-fg"
+                      : "text-xs text-muted-foreground"
+                  }
+                >
+                  {task.completedAt
+                    ? `Done ${relativeTime(task.completedAt)}`
+                    : task.dueAt
+                      ? `Due ${new Date(task.dueAt).toLocaleDateString()}`
+                      : "Open"}
+                </span>
+              </div>
+              {task.instructions ? (
+                <p className="text-xs text-muted-foreground">
+                  {task.instructions}
+                </p>
+              ) : null}
+              {task.response ? (
+                <p className="mt-0.5 rounded-md bg-muted/60 px-2 py-1.5 text-sm whitespace-pre-wrap text-foreground">
+                  {task.response}
+                </p>
+              ) : null}
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
   )
 }
 

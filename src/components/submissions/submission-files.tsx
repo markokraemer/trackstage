@@ -30,6 +30,7 @@ import { FileDropZone } from "@/components/shared/file-drop-zone"
 import { FileComments } from "@/components/shared/file-comments"
 import { FileList, FileRow } from "@/components/shared/file-row"
 import { downloadFilesBundle, uploadToStorage } from "@/lib/files"
+import { errorMessage } from "@/lib/errors"
 
 /**
  * Files tab of the submission drawer (docs/SPEC.md §4.4).
@@ -85,9 +86,7 @@ export function SubmissionFiles({
           : `Downloaded ${result.included} file${result.included === 1 ? "" : "s"}.`,
       )
     } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : "Could not build the bundle.",
-      )
+      toast.error(errorMessage(error, "Could not build the bundle."))
     } finally {
       setBundling(false)
     }
@@ -153,9 +152,7 @@ export function SubmissionFiles({
                             () => toast.success("File approved."),
                             (error: unknown) =>
                               toast.error(
-                                error instanceof Error
-                                  ? error.message
-                                  : "Could not approve that file.",
+                                errorMessage(error, "Could not approve that file."),
                               ),
                           )
                         }
@@ -195,9 +192,7 @@ export function SubmissionFiles({
                                 () => toast.success("File deleted."),
                                 (error: unknown) =>
                                   toast.error(
-                                    error instanceof Error
-                                      ? error.message
-                                      : "Could not delete that file.",
+                                    errorMessage(error, "Could not delete that file."),
                                   ),
                               )
                             }

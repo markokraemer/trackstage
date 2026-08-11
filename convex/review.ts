@@ -1,4 +1,4 @@
-import { v } from "convex/values"
+import { ConvexError, v } from "convex/values"
 import { mutation, query } from "./_generated/server"
 import type { MutationCtx, QueryCtx } from "./_generated/server"
 import type { Doc, Id } from "./_generated/dataModel"
@@ -20,14 +20,14 @@ const MAX_ROWS = 4000
 
 async function requireEvaluator(ctx: QueryCtx | MutationCtx, token: string) {
   const trimmed = token.trim()
-  if (!trimmed) throw new Error("Invalid or expired review link.")
+  if (!trimmed) throw new ConvexError("Invalid or expired review link.")
   const evaluator = await ctx.db
     .query("evaluators")
     .withIndex("by_token", (q) => q.eq("token", trimmed))
     .unique()
-  if (!evaluator) throw new Error("Invalid or expired review link.")
+  if (!evaluator) throw new ConvexError("Invalid or expired review link.")
   const plan = await ctx.db.get(evaluator.planId)
-  if (!plan) throw new Error("This evaluation plan no longer exists.")
+  if (!plan) throw new ConvexError("This evaluation plan no longer exists.")
   return { evaluator, plan }
 }
 
@@ -208,18 +208,18 @@ async function requireScorable(
 ) {
   const { evaluator, plan } = await requireEvaluator(ctx, token)
   if (plan.status !== "open") {
-    throw new Error("This evaluation round is closed.")
+    throw new ConvexError("This evaluation round is closed.")
   }
   if (roundNotYetOpen(plan)) {
-    throw new Error("This evaluation round hasn't opened yet.")
+    throw new ConvexError("This evaluation round hasn't opened yet.")
   }
   const assignedIds = assignedSubmissionIds(evaluator, plan)
   if (!assignedIds.includes(submissionId)) {
-    throw new Error("That submission is not assigned to you.")
+    throw new ConvexError("That submission is not assigned to you.")
   }
   const submission = await ctx.db.get(submissionId)
   if (!submission || submission.eventId !== plan.eventId) {
-    throw new Error("That submission no longer exists.")
+    throw new ConvexError("That submission no longer exists.")
   }
   return { evaluator, plan, assignedIds }
 }
@@ -270,13 +270,13 @@ export const submitScores = mutation({
     for (const [criterionId, value] of Object.entries(args.scores)) {
       const criterion = byId.get(criterionId)
       if (!criterion) {
-        throw new Error(`Unknown scoring criterion "${criterionId}".`)
+        throw new ConvexError(`Unknown scoring criterion "${criterionId}".`)
       }
       if (criterionType(criterion) !== "numeric") {
-        throw new Error(`"${criterion.label}" isn't a 1–5 rating.`)
+        throw new ConvexError(`"${criterion.label}" isn't a 1–5 rating.`)
       }
       if (!Number.isInteger(value) || value < 1 || value > 5) {
-        throw new Error("Scores must be whole numbers between 1 and 5.")
+        throw new ConvexError("Scores must be whole numbers between 1 and 5.")
       }
     }
 
@@ -285,16 +285,16 @@ export const submitScores = mutation({
     for (const [criterionId, raw] of Object.entries(args.values ?? {})) {
       const criterion = byId.get(criterionId)
       if (!criterion) {
-        throw new Error(`Unknown scoring criterion "${criterionId}".`)
+        throw new ConvexError(`Unknown scoring criterion "${criterionId}".`)
       }
       const type = criterionType(criterion)
       if (type === "numeric") {
-        throw new Error(`"${criterion.label}" is a 1–5 rating.`)
+        throw new ConvexError(`"${criterion.label}" is a 1–5 rating.`)
       }
       const value = raw.trim()
       if (!value) continue
       if (type === "select" && !(criterion.options ?? []).includes(value)) {
-        throw new Error(`"${value}" isn't one of the choices for "${criterion.label}".`)
+        throw new ConvexError(`"${value}" isn't one of the choices for "${criterion.label}".`)
       }
       values[criterionId] = value.slice(0, 4000)
     }
@@ -306,7 +306,7 @@ export const submitScores = mutation({
           ? criterion.id in args.scores
           : criterion.id in values
       if (!answered) {
-        throw new Error(`Please answer "${criterion.label}" before saving.`)
+        throw new ConvexError(`Please answer "${criterion.label}" before saving.`)
       }
     }
 
@@ -402,7 +402,7 @@ export const clearScores = mutation({
   handler: async (ctx, args) => {
     const { evaluator, plan } = await requireEvaluator(ctx, args.token)
     if (plan.status !== "open") {
-      throw new Error("This evaluation round is closed.")
+      throw new ConvexError("This evaluation round is closed.")
     }
     const mine = await myEvaluations(ctx, evaluator._id)
     const existing = mine.find(

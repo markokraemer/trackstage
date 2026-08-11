@@ -29,6 +29,7 @@ import {
 } from "@/components/ui/table"
 import { StatusPill } from "@/components/shared/status-pill"
 import { ProgressMeter } from "@/components/evaluation/progress-meter"
+import { errorMessage } from "@/lib/errors"
 import {
   CopyReviewLink,
   OpenReviewLink,
@@ -230,7 +231,7 @@ export function RemoveEvaluatorButton({
                   onError: (error: Error) => {
                     setOpen(false)
                     toast.error("Couldn't remove that evaluator", {
-                      description: error.message,
+                      description: errorMessage(error, "Please try again."),
                     })
                   },
                 },

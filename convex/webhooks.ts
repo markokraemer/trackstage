@@ -1,4 +1,4 @@
-import { v } from "convex/values"
+import { ConvexError, v } from "convex/values"
 import {
   internalAction,
   internalMutation,
@@ -444,17 +444,17 @@ async function requireHookAccess(
   minRole: "member" | "admin" = "member",
 ) {
   const hook = await ctx.db.get(webhookId)
-  if (!hook) throw new Error("That webhook no longer exists.")
+  if (!hook) throw new ConvexError("That webhook no longer exists.")
   await requireMembership(ctx, hook.organizationId, minRole)
   return hook
 }
 
 function validateSubscription(url: string, events: Array<string>): Array<string> {
   if (!/^https?:\/\//i.test(url.trim()))
-    throw new Error("Enter a full URL starting with https://")
+    throw new ConvexError("Enter a full URL starting with https://")
   const allowed = new Set<string>([...WEBHOOK_EVENT_TYPES, "*"])
   for (const type of events) {
-    if (!allowed.has(type)) throw new Error(`Unknown event type: ${type}`)
+    if (!allowed.has(type)) throw new ConvexError(`Unknown event type: ${type}`)
   }
   return events.length > 0 ? events : ["*"]
 }

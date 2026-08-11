@@ -91,6 +91,39 @@ export function ScheduleFields({
     return [...values].sort((a, b) => a - b)
   }, [duration])
 
+  /*
+   * Base UI renders `Select.Value` from the Root's `items` map, and falls back
+   * to the raw VALUE when there is none — which is why these four pickers used
+   * to sit closed reading "js73w24jts…", "2026-10-13", "540" and "45" instead
+   * of "Aula", "Mon, Oct 13", "9:00 AM" and "45 min". Every option list gets
+   * its value→label map, so a closed picker says the same words as the open
+   * one.
+   */
+  const roomItems = React.useMemo(
+    () => rooms.map((room) => ({ value: room._id, label: room.name })),
+    [rooms]
+  )
+  const dayItems = React.useMemo(
+    () => dayKeys.map((key) => ({ value: key, label: formatDayLabel(key) })),
+    [dayKeys]
+  )
+  const startItems = React.useMemo(
+    () =>
+      starts.map((minutes) => ({
+        value: String(minutes),
+        label: formatMinutes(minutes),
+      })),
+    [starts]
+  )
+  const durationItems = React.useMemo(
+    () =>
+      durations.map((minutes) => ({
+        value: String(minutes),
+        label: formatDuration(minutes),
+      })),
+    [durations]
+  )
+
   const commit = React.useCallback(
     async (next: {
       roomId: string
@@ -146,6 +179,7 @@ export function ScheduleFields({
       <Field>
         <FieldLabel htmlFor={`room-${session.id}`}>Room</FieldLabel>
         <Select
+          items={roomItems}
           value={roomId}
           onValueChange={(value) => change({ roomId: String(value) })}
           disabled={noRooms}
@@ -167,6 +201,7 @@ export function ScheduleFields({
         <Field>
           <FieldLabel htmlFor={`day-${session.id}`}>Day</FieldLabel>
           <Select
+            items={dayItems}
             value={dayKey}
             onValueChange={(value) => change({ dayKey: String(value) })}
           >
@@ -188,6 +223,7 @@ export function ScheduleFields({
         <Field>
           <FieldLabel htmlFor={`start-${session.id}`}>Start time</FieldLabel>
           <Select
+            items={startItems}
             value={String(startMinutes)}
             onValueChange={(value) => change({ startMinutes: Number(value) })}
           >
@@ -207,6 +243,7 @@ export function ScheduleFields({
         <Field>
           <FieldLabel htmlFor={`duration-${session.id}`}>Length</FieldLabel>
           <Select
+            items={durationItems}
             value={String(duration)}
             onValueChange={(value) => change({ duration: Number(value) })}
           >

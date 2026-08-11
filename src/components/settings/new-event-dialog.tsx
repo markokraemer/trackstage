@@ -35,7 +35,7 @@ import {
   slugifyInput,
 } from "@/components/settings/slug"
 import { setCurrentEventId, useCurrentEvent } from "@/lib/current-event"
-import { errorMessage } from "@/components/settings/errors"
+import { errorMessage } from "@/lib/errors"
 import { appLink, legacyAppLink } from "@/lib/app-links"
 
 /**

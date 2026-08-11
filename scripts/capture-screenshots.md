@@ -34,12 +34,17 @@ Then eyeball the PNGs before committing.
 | --- | --- | --- |
 | `dashboard.png` | Organizer dashboard | sign in → `/app` |
 | `submissions.png` | Submissions table (incl. staged queues) | `/app/submissions` |
-| `agenda-list.png` | Agenda, List view | `/app/agenda` → "List" |
 | `agenda.png` | Agenda, Day view | `/app/agenda` → "Day", grid scrolled onto the programme |
 | `form-builder.png` | Form builder, Submission questions step | `/app/forms` → first form → "Submission questions" |
 | `portal.png` | Speaker portal home | `/portal/t/demo-ava-nakamura` |
 | `public-schedule.png` | Published public schedule | `/e/ai-summit-2026` |
 | `agenda-flow.gif` | A real agenda drag, 4 frames | mouse down + move + drop on a day-grid card |
+
+`agenda-list.png` was retired on 2026-08-11: nothing referenced it, and the List
+view's **Room** cell renders the raw Convex room id instead of the room name
+(`SelectValue` in `src/components/agenda/list-view.tsx` has no matching item to
+label the value), so every capture of it photographed a defect. Re-add the shot
+once that renders a room name.
 
 `dashboard.png` is the hero shot; the rest are wired up in
 `src/components/marketing/product-shot.tsx` (the `SHOTS` registry, which also
@@ -180,14 +185,40 @@ Two things worth knowing:
   script tries decline before giving up; re-seed
   (`pnpm exec convex run seed:setup`) to restage both queues.
 
+## The shared dev database will pollute a capture
+
+The e2e `flows` project and the sbek eval kit both drive the same dev
+deployment, and **their fixtures are never cleaned up** — rows called
+`Copilot Guard cg-…`, `Outbox Proof t-…`, `Agenda One ag-…` / `Aggie Enda`, or a
+second `Capped CFP f-…` form pile up in the demo event. If a gate is running you
+cannot fix this with `seed:setup` either (you would yank the data out from under
+it). Two things that work:
+
+- **Submissions**: click the **Score** header once so the table sorts by score
+  descending. Every seeded submission carries a score and no fixture does, so
+  the real programme rises to the top and the shot is clean.
+- **Agenda / dashboard / public page**: nothing sorts the unscheduled tray, so
+  either wait for the gate to finish and re-seed, or take the still from the
+  launch-video captures (see below).
+
+## The launch-video captures are a second source
+
+`video/public/captures/*.png` (3200×2000) and `video/public/clips/*.mp4`
+(1600×1000) are shot by the launch-video pipeline at a calm moment, and several
+of them are homepage-grade. They are 16:10 like everything here, so they drop
+straight into `public/screenshots/` with no layout change. `agenda-flow.gif` is
+built from `video/public/clips/agenda.mp4` rather than from this script's drag
+frames — it is a real 9.5s drag with the conflict pre-warning in it:
+
+```sh
+ffmpeg -i video/public/clips/agenda.mp4 \
+  -lavfi "fps=12,scale=1200:-2:flags=lanczos,split[s0][s1];[s0]palettegen=max_colors=128:stats_mode=diff[p];[s1][p]paletteuse=dither=bayer:bayer_scale=3:diff_mode=rectangle" \
+  -loop 0 public/screenshots/agenda-flow.gif   # ≈1.6 MB
+```
+
 ## Known follow-ups
 
-Captured 2026-08-11, before the Attio design revamp lands across the app. Once
-the revamp and the in-app copilot ship, **re-run this script** — in particular:
+Refreshed 2026-08-11 (post-revamp, post URL-architecture). Still open:
 
-- the speaker portal's card headers are still solid brand blue (pre-revamp
-  chrome; they'll go neutral),
-- the organizer pages still show the lavender page-header banner,
-- the agenda tray contains a leftover test row from another agent's run,
-- there's no copilot screenshot yet; when the chat panel lands, add a step for
-  it and register the shot in `SHOTS`.
+- there is no copilot screenshot; when one is wanted, add a step here and
+  register the shot in `SHOTS`.

@@ -31,6 +31,7 @@ import { CopilotToolPart } from "@/components/copilot/copilot-tool-part"
 import { COPILOT_SUGGESTIONS } from "@/lib/copilot"
 import { setCopilotEventContext, useCopilotChat } from "@/lib/copilot-store"
 import { useCurrentEvent } from "@/lib/current-event"
+import { errorMessage } from "@/lib/errors"
 
 /**
  * The copilot conversation (docs/memory/RULES.md #24).
@@ -241,7 +242,7 @@ export function CopilotChat({
                       className="mt-0.5 shrink-0"
                     />
                     <span className="min-w-0">
-                      {error.message || "The copilot hit an error. Try again."}
+                      {errorMessage(error, "The copilot hit an error. Try again.")}
                     </span>
                   </div>
                 </MessageScrollerItem>

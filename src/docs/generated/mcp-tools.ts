@@ -49,7 +49,7 @@ export const MCP_TOOL_GROUPS: Array<McpToolGroup> = [
       {
         name: "create_event",
         title: "Create an event",
-        description: "Creates a new event in one of your workspaces. Requires the admin or owner role. If you belong to exactly one workspace you can omit organizationId. Dates are ISO-8601 strings, e.g. \"2026-09-14T09:00:00Z\"; set them if you plan to use auto_place_sessions later.",
+        description: "Creates a new event in one of your workspaces. Requires the admin or owner role. If you belong to exactly one workspace you can omit organizationId. Dates are ISO-8601 strings, e.g. \"2026-09-14T09:00:00Z\"; set them if you plan to use auto_place_sessions later. Returns the event id, its slug, the workspace slug and the canonical public URL of the program page.",
         readOnly: false,
         requiresConfirm: false,
         args: ["name","slug","organizationId","timezone","type","venue","description","websiteUrl","startsAt","endsAt"],
@@ -262,7 +262,7 @@ export const MCP_TOOL_GROUPS: Array<McpToolGroup> = [
       {
         name: "assign_task",
         title: "Assign a speaker task",
-        description: "Assigns an onboarding task to one or more speakers — it appears in their portal immediately. Kinds: profile (completes itself once their bio is filled in), headshot (completes on upload), upload (they send a file such as slides, you review it), confirm (one click to acknowledge). Assigning does not email anyone; run send_reminders for that.",
+        description: "Assigns an onboarding task to one or more speakers — it appears in their portal immediately. Kinds: profile (completes itself once their bio is filled in), headshot (completes on upload), upload (they send a file such as slides, you review it), answer (you ask a question in the instructions and they type a reply — their answer completes it and you can read it back), confirm (one click to acknowledge). Assigning does not email anyone; run send_reminders for that.",
         readOnly: false,
         requiresConfirm: false,
         args: ["event","speakers","title","kind","instructions","dueAt"],
@@ -276,6 +276,33 @@ export const MCP_TOOL_GROUPS: Array<McpToolGroup> = [
         requiresConfirm: false,
         args: ["taskId"],
         required: ["taskId"],
+      },
+      {
+        name: "list_task_library",
+        title: "List saved speaker tasks",
+        description: "Lists the event's reusable task library — the wording an organizer saved once and assigns all season, with each entry's id, title, kind and instructions. Read this before assign_task_from_template, and before writing a new task from scratch: reusing the saved wording keeps every speaker's portal consistent.",
+        readOnly: true,
+        requiresConfirm: false,
+        args: ["event"],
+        required: ["event"],
+      },
+      {
+        name: "save_task_template",
+        title: "Save a task to the library",
+        description: "Saves a reusable task into the event's library (or updates it, matching on the title — saving twice edits the wording rather than creating a near-duplicate). Instructions may carry {{firstName}} / {{sessionTitle}}, which resolve per speaker when their portal renders the task. This only writes the library; assign it with assign_task_from_template.",
+        readOnly: false,
+        requiresConfirm: false,
+        args: ["event","title","kind","instructions","alias"],
+        required: ["event","title"],
+      },
+      {
+        name: "assign_task_from_template",
+        title: "Assign a saved task to speakers",
+        description: "Assigns a task from the library to one or more speakers without retyping it — the saved wording is copied onto each speaker's task, so editing the library later never rewrites tasks already sent. Optionally bind it to one session, and anything they upload for it is filed against that session. Template ids come from list_task_library. Assigning does not email anyone; run send_reminders for that.",
+        readOnly: false,
+        requiresConfirm: false,
+        args: ["template","speakers","dueAt","submissionId"],
+        required: ["template","speakers"],
       },
       {
         name: "send_reminders",
@@ -341,4 +368,4 @@ export const MCP_TOOL_GROUPS: Array<McpToolGroup> = [
   },
 ]
 
-export const MCP_TOOL_COUNT = 31
+export const MCP_TOOL_COUNT = 34

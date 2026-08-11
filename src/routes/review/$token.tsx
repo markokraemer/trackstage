@@ -35,6 +35,7 @@ import {
 } from "@/components/ui/alert-dialog"
 import { Logo } from "@/components/brand/logo"
 import { ProgressMeter } from "@/components/evaluation/progress-meter"
+import { errorMessage } from "@/lib/errors"
 import {
   CriterionField,
   criterionIsRequired,
@@ -119,7 +120,7 @@ function ReviewPage() {
             This review link isn't valid
           </h1>
           <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-            {error.message.includes("no longer exists")
+            {errorMessage(error, "").includes("no longer exists")
               ? "The evaluation round this link belonged to has been deleted."
               : "The link may have been mistyped, replaced by a newer invite, or removed by the organizer."}{" "}
             Ask the event organizer to send you a fresh review link.

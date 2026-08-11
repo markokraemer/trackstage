@@ -6,7 +6,7 @@
 // for the sponsors page"), come back to it next week, and hand the identical
 // code to a colleague. That's all this table is: named, reusable configuration.
 
-import { v } from "convex/values"
+import { ConvexError, v } from "convex/values"
 import { mutation, query } from "./_generated/server"
 import { requireEventAccess } from "./lib/auth"
 
@@ -43,7 +43,7 @@ const embedRowValidator = v.object({
 
 function validWidget(widget: string): string {
   if (!(EMBED_WIDGETS as ReadonlyArray<string>).includes(widget)) {
-    throw new Error(`Unknown widget "${widget}".`)
+    throw new ConvexError(`Unknown widget "${widget}".`)
   }
   return widget
 }
@@ -51,7 +51,7 @@ function validWidget(widget: string): string {
 function validFormat(format: string | undefined): string | undefined {
   if (format === undefined) return undefined
   if (!(EMBED_FORMATS as ReadonlyArray<string>).includes(format)) {
-    throw new Error(`Unknown embed format "${format}".`)
+    throw new ConvexError(`Unknown embed format "${format}".`)
   }
   return format
 }
@@ -82,14 +82,14 @@ export const save = mutation({
   handler: async (ctx, args) => {
     await requireEventAccess(ctx, args.eventId)
     const name = args.name.trim()
-    if (!name) throw new Error("Give this embed a name.")
+    if (!name) throw new ConvexError("Give this embed a name.")
     const widget = validWidget(args.widget)
     const options = { ...args.options, format: validFormat(args.options.format) }
 
     if (args.embedId) {
       const existing = await ctx.db.get("embeds", args.embedId)
       if (!existing || existing.eventId !== args.eventId) {
-        throw new Error("That saved embed belongs to a different event.")
+        throw new ConvexError("That saved embed belongs to a different event.")
       }
       await ctx.db.patch(args.embedId, { name, widget, options })
       return args.embedId
@@ -108,7 +108,7 @@ export const remove = mutation({
   returns: v.null(),
   handler: async (ctx, args) => {
     const embed = await ctx.db.get("embeds", args.embedId)
-    if (!embed) throw new Error("Saved embed not found.")
+    if (!embed) throw new ConvexError("Saved embed not found.")
     await requireEventAccess(ctx, embed.eventId)
     await ctx.db.delete(args.embedId)
     return null

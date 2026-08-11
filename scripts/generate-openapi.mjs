@@ -1157,7 +1157,13 @@ const SCHEMAS = {
       instructions: { type: "string", nullable: true },
       kind: {
         type: "string",
-        enum: ["profile", "headshot", "upload", "form", "confirm"],
+        enum: ["profile", "headshot", "upload", "answer", "confirm"],
+        description: "How it gets ticked off. `answer` asks a question in `instructions` and the speaker types a reply.",
+      },
+      response: {
+        type: "string",
+        nullable: true,
+        description: "Kind `answer` only: what the speaker wrote back.",
       },
       due_at: ts("Deadline."),
       completed_at: ts("When the speaker ticked it off."),
@@ -1408,7 +1414,7 @@ const SCHEMAS = {
       instructions: { type: "string" },
       kind: {
         type: "string",
-        enum: ["profile", "headshot", "upload", "form", "confirm"],
+        enum: ["profile", "headshot", "upload", "answer", "confirm"],
         default: "upload",
       },
       due_at: { type: "string", description: "ISO-8601 or epoch milliseconds." },

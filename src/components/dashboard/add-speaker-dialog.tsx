@@ -33,6 +33,7 @@ import {
 } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
+import { errorMessage } from "@/lib/errors"
 import {
   Select,
   SelectContent,
@@ -119,7 +120,7 @@ export function AddSpeakerDialog({
     } catch (error) {
       toast.error("Couldn't add the speaker", {
         description:
-          error instanceof Error ? error.message : "Please try again.",
+          errorMessage(error, "Please try again."),
       })
     } finally {
       setSubmitting(false)

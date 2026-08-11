@@ -41,6 +41,7 @@ import { ChoiceValue, TrackValue } from "@/components/submissions/field-bits"
 import { AnswersEditor } from "@/components/submissions/answers-editor"
 import { ActivityTimeline } from "@/components/activity/activity-timeline"
 import { DeleteSubmissionButton } from "@/components/submissions/delete-submission-dialog"
+import { errorMessage } from "@/lib/errors"
 import {
   EMPTY_CELL,
   FORMAT_OPTIONS,
@@ -173,9 +174,7 @@ export function SubmissionDetailDrawer({
       })
       toast.success("Submission updated.")
     } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : "Could not save your changes."
-      )
+      toast.error(errorMessage(error, "Could not save your changes."))
     } finally {
       setSaving(false)
     }
@@ -201,11 +200,7 @@ export function SubmissionDetailDrawer({
       setDraft((current) =>
         current ? { ...current, publicVisible: !next } : current
       )
-      toast.error(
-        error instanceof Error
-          ? error.message
-          : "Could not change the visibility."
-      )
+      toast.error(errorMessage(error, "Could not change the visibility."))
     }
   }
 
@@ -222,9 +217,7 @@ export function SubmissionDetailDrawer({
       })
       toast.success("Status updated.")
     } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : "Could not change the status."
-      )
+      toast.error(errorMessage(error, "Could not change the status."))
     }
   }
 

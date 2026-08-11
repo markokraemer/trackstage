@@ -20,18 +20,28 @@ function Page() {
       lead="Decisions are two steps on purpose: stage them all, read the list once, then send."
     >
       <Steps>
-        <Step title="Open Submissions. The tabs across the top are the whole pipeline — All, Accepted, Accept Queue, Pending, Decline Queue, Declined, Withdrawn, Drafts.">
+        <Step title="Open Submissions. Two rows of tabs: what a thing IS, then where it stands.">
           <Shot
             src="walkthrough/19-first-submission.png"
-            alt="The Devcon Berlin submissions inbox with status tabs and one pending proposal"
-            caption="Search, plus track and status filters, sit above the table."
+            alt="The Devcon Berlin submissions inbox with kind tabs, status tabs and one pending proposal"
+            caption="Top row: All · Abstracts · Sessions. Second row: the pipeline. Search and a track filter sit above the table."
           />
+          <p className="doc-prose">
+            <strong>Abstracts</strong> arrived through one of your forms and are
+            waiting on you. <strong>Sessions</strong> are things you added
+            yourself — keynotes, sponsor slots, breaks — and they start out
+            accepted. The second row is the pipeline every abstract moves
+            along: All, Accepted, Accept Queue, Pending, Decline Queue,
+            Declined, Withdrawn, Drafts. The two combine, so “Abstracts +
+            Pending” is one click.
+          </p>
         </Step>
 
-        <Step title="Click a row to read the whole thing: the abstract, every answer, the speakers, uploaded files and any evaluator scores.">
+        <Step title="Click a row to read the whole thing. The drawer has five tabs: Details, People, Reviews, Files and History.">
           <Shot
             src="walkthrough/20-read-the-submission.png"
-            alt="The submission drawer for the Devcon Berlin proposal, showing the abstract and speaker"
+            alt="The submission drawer for the Devcon Berlin proposal, with Details, People, Reviews, Files and History tabs"
+            caption="Everything is editable in place, including the status pill at the top."
           />
         </Step>
 
@@ -58,11 +68,11 @@ function Page() {
           />
         </Step>
 
-        <Step title="At a real event this table is hundreds of rows deep — the same tabs, the same two-step decision.">
+        <Step title="At a real event this table runs to hundreds of rows — same tabs, same two-step decision, plus filters to cut it down.">
           <Shot
             src="submissions-inbox.png"
-            alt="A submissions table for a large event with many proposals across every status"
-            caption="A different, much larger event — so you can see how the pipeline reads at scale."
+            alt="A busier event's submissions table, filtered to accepted talks in one track, showing scores and speakers"
+            caption="A different, busier event, narrowed to Accepted in one track. The counts on both tab rows always report the whole event."
           />
         </Step>
       </Steps>

@@ -45,18 +45,19 @@ function Page() {
             />
           </Step>
 
-          <Step title="Press “Create your first event”. Name it — the web address is filled in for you.">
+          <Step title="Press “Create your first event”. Type the name — the public web address and your timezone fill themselves in.">
             <Shot
               src="walkthrough/03-create-event.png"
-              alt="The New event dialog with the name Devcon Berlin 2026 and a matching web address"
+              alt="The Create an event dialog with the name Devcon Berlin 2026, a matching web address and the Europe/Berlin timezone"
+              caption="Three fields. The grey line under the address is the page your speakers will get."
             />
           </Step>
 
-          <Step title="You land on the event’s settings. Add the dates, the timezone and the venue — this is what your public page and every calendar invite will say.">
+          <Step title="You land on the event’s settings. Add the dates and the venue — this is what your public page and every calendar invite will say.">
             <Shot
               src="walkthrough/04-event-details.png"
               alt="Event settings for Devcon Berlin 2026 with dates, timezone and venue filled in"
-              caption="All of it is editable later. Nothing here is a one-way door."
+              caption="The row above the title — Account · Workspace · Event — is the whole hierarchy. These tabs change this one event."
             />
           </Step>
 
@@ -78,8 +79,8 @@ function Page() {
           <Step title="Once submissions start arriving it fills in: counts by status, what is still unscheduled, and who owes you something.">
             <Shot
               src="gs-dashboard.png"
-              alt="A busy organizer dashboard for an event with hundreds of submissions"
-              caption="A different, much larger event — so you can see what the numbers look like at scale."
+              alt="A busy organizer dashboard: counts by status, speakers missing a bio or headshot, and submissions awaiting a decision"
+              caption="A different, busier event — so you can see what the numbers look like once a call has been open for a while."
             />
           </Step>
         </Steps>
@@ -87,9 +88,10 @@ function Page() {
 
       <div className="mt-10">
         <Callout tone="tip">
-          Every page in the app is scoped to the event in the switcher at the top
-          of the sidebar. If something looks empty, check you are on the right
-          event — see{" "}
+          Every page in the app belongs to one event, and the address bar says
+          which: <code>/app/{"{workspace}"}/{"{event}"}/…</code>. Switch events
+          from the block at the top of the sidebar — or just send someone the
+          link. If a page looks empty, check the name in that block first; see{" "}
           <DocLink to="/docs/guide/team-and-workspaces">Team &amp; workspaces</DocLink>.
         </Callout>
       </div>

@@ -14,6 +14,7 @@ import {
 } from "@remixicon/react"
 import type { RemixiconComponentType } from "@remixicon/react"
 import type { Doc } from "@convex/_generated/dataModel"
+import { errorMessage } from "@/lib/errors"
 
 /**
  * Form-builder domain model (docs/SPEC.md §4.2, docs/ux/02-form-builder.md).
@@ -299,13 +300,13 @@ export function makeQuestion(
 
 /* ------------------------------------------------------------ misc helpers */
 
-/** Convex throws `Error: [CONVEX ...] Uncaught Error: message` — show the message. */
-export function friendlyError(error: unknown, fallback: string): string {
-  const raw = error instanceof Error ? error.message : String(error ?? "")
-  const match = raw.match(/Uncaught Error:\s*([^\n]+)/)
-  const message = (match?.[1] ?? raw).replace(/\s+at handler.*$/s, "").trim()
-  return message.length > 0 && message.length < 240 ? message : fallback
-}
+/**
+ * The form builder's long-standing name for the shared extractor in
+ * `src/lib/errors.ts` — kept so its many call sites read the same, delegating
+ * so `ConvexError.data` (the only thing that survives a prod deployment) is
+ * read here too.
+ */
+export const friendlyError = errorMessage
 
 /**
  * The canonical public submission link, `/submit/:eventSlug/:formSlug`.

@@ -11,7 +11,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { DrawerShell } from "@/components/shared/drawer-shell"
 import { EmptyState } from "@/components/shared/empty-state"
 import { StatusPill } from "@/components/shared/status-pill"
-import { errorMessage } from "@/components/settings/errors"
+import { errorMessage } from "@/lib/errors"
 
 /** Which endpoint the drawer is currently showing. `null` closes it. */
 export interface WebhookDeliveriesDrawerTarget {

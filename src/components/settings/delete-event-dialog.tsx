@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { LabeledField } from "@/components/settings/labeled-field"
-import { errorMessage } from "@/components/settings/errors"
+import { errorMessage } from "@/lib/errors"
 import { clearCurrentEventId, useCurrentEventId } from "@/lib/current-event"
 import type { EventSummary } from "@/lib/current-event"
 

@@ -472,8 +472,12 @@ export default defineSchema({
     personId: v.id("people"),
     title: v.string(),
     instructions: v.optional(v.string()),
-    kind: v.string(), // profile | headshot | upload | form | confirm
+    kind: v.string(), // profile | headshot | upload | answer | confirm
     formId: v.optional(v.id("forms")),
+    // `answer` tasks only ("Collect an answer"): what the speaker typed back.
+    // The reply IS the proof of completion — submitting it sets `completedAt`
+    // — so the organizer reads the answer wherever they read the task.
+    response: v.optional(v.string()),
     // The session this task is about ("upload the slides for THIS talk"). Set
     // by the organizer when they assign it; every file uploaded against the
     // task inherits it, so speaker uploads surface on the session's Files tab
@@ -494,7 +498,7 @@ export default defineSchema({
     eventId: v.id("events"),
     title: v.string(),
     instructions: v.optional(v.string()),
-    kind: v.string(), // profile | headshot | upload | confirm
+    kind: v.string(), // profile | headshot | upload | answer | confirm
     /** What a portal calls this task, when it differs from the library name. */
     alias: v.optional(v.string()),
   }).index("by_eventId", ["eventId"]),

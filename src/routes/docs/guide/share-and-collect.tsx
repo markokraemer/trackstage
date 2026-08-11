@@ -23,9 +23,14 @@ function Page() {
         <Step title="On the Forms page press “Copy public link”, and paste it wherever your speakers are.">
           <Shot
             src="walkthrough/12-share-the-link.png"
-            alt="The Devcon Berlin Call for Speakers card with Copy public link, View and Edit"
+            alt="The Devcon Berlin Call for Speakers card with its public address, Copy public link, View and Edit"
             caption="“View” opens the exact page a speaker sees. Use it to proof-read."
           />
+          <p className="doc-prose">
+            The link is printed on the card so you can read it before you send
+            it: <code>/submit/{"{workspace}"}/{"{event}"}/{"{form}"}</code>. It
+            never changes unless you rename the form, so it is safe on a poster.
+          </p>
         </Step>
 
         <Step title="This is what they get: a five-step form — Welcome, Account, Submission, Participants, Review.">

@@ -21,6 +21,7 @@ import { Input } from "@/components/ui/input"
 import { CopyButton } from "@/components/settings/copy-button"
 import { CodeSnippet } from "@/components/settings/code-snippet"
 import { mcpEndpoint } from "@/lib/deployment-urls"
+import { errorMessage } from "@/lib/errors"
 
 /** What the snippets SHOW. The real key only ever exists in the copied text. */
 const MASKED_KEY = "sb_live_••••••••••••"
@@ -59,7 +60,7 @@ export function McpConnectCard({ apiKey }: { apiKey: string | null }) {
     } catch (error) {
       minting.current = null
       toast.error(
-        error instanceof Error && /20 API keys/.test(error.message)
+        /20 API keys/.test(errorMessage(error, ""))
           ? "You already have 20 API keys — revoke one above, then copy again."
           : "Couldn't create an API key — try again.",
       )

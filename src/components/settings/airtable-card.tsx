@@ -58,7 +58,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { EmptyState } from "@/components/shared/empty-state"
 import { LabeledField } from "@/components/settings/labeled-field"
 import { ConfirmDeleteButton } from "@/components/settings/confirm-delete-button"
-import { errorMessage } from "@/components/settings/errors"
+import { errorMessage } from "@/lib/errors"
 
 const TOKEN_HELP_URL = "https://airtable.com/create/tokens"
 const SCOPES = REQUIRED_SCOPES

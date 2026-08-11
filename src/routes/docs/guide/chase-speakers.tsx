@@ -24,16 +24,22 @@ function Page() {
         <Step title="Sending the acceptances put your first speaker on the Speakers page. It lists everyone on an accepted session and what each of them still owes you.">
           <Shot
             src="walkthrough/23-speakers.png"
-            alt="The Devcon Berlin speakers page with the newly accepted speaker"
+            alt="The Devcon Berlin speakers page with the newly accepted speaker, their task progress and what is still needed"
+            caption="“Still needed” is the short version: no bio, no headshot, no slides. Speakers who never applied can be added by hand or imported from a CSV."
           />
         </Step>
 
-        <Step title="Tick the speakers you mean and press “Assign task”.">
+        <Step title="Press “Assign task”, give it a title, and pick what the speaker actually has to do.">
           <Shot
             src="walkthrough/24-assign-a-task.png"
-            alt="The Assign a task dialog with a title, a task type and a due date"
-            caption="Four kinds: upload a file, update their profile, upload a headshot, confirm something."
+            alt="The Assign a task dialog: a task title and the five kinds of task a speaker can be given"
+            caption="Five kinds: upload a file, answer a question, update their profile, upload a headshot, confirm something. Instructions, a due date and the “Assign to” list follow underneath."
           />
+          <p className="doc-prose">
+            <strong>Assign to</strong> is further down the dialog — tick
+            everyone who needs to do this. Ticking rows in the table first
+            pre-fills it, and “Assign task to selected” appears above the list.
+          </p>
         </Step>
 
         <Step title="It appears in their portal immediately, with your instructions and the due date.">
@@ -55,8 +61,8 @@ function Page() {
         <Step title="Communications is the record: the Templates tab is what gets sent, the Outbox tab is what was sent.">
           <Shot
             src="communications.png"
-            alt="The Communications page showing email templates"
-            caption="Confirmation, acceptance, decline, waitlist and reminder — edit the wording, keep the merge fields."
+            alt="The Communications page showing the confirmation, acceptance, decline and waitlist email templates"
+            caption="Confirmation, acceptance, decline, waitlist and reminder — edit the wording, keep the merge fields. “Compose” sends a one-off to speakers you pick."
           />
         </Step>
       </Steps>

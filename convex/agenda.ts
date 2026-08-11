@@ -1,4 +1,4 @@
-import { v } from "convex/values"
+import { ConvexError, v } from "convex/values"
 import type { Doc, Id } from "./_generated/dataModel"
 import type { MutationCtx, QueryCtx } from "./_generated/server"
 import { mutation, query } from "./_generated/server"
@@ -254,17 +254,17 @@ export const schedule = mutation({
   },
   handler: async (ctx, args) => {
     const submission = await ctx.db.get(args.submissionId)
-    if (!submission) throw new Error("Session not found")
+    if (!submission) throw new ConvexError("Session not found")
     await requireEventAccess(ctx, submission.eventId)
     if (!isSchedulable(submission)) {
-      throw new Error("Only accepted sessions can be scheduled.")
+      throw new ConvexError("Only accepted sessions can be scheduled.")
     }
     const room = await ctx.db.get(args.roomId)
     if (!room || room.eventId !== submission.eventId) {
-      throw new Error("Room belongs to a different event.")
+      throw new ConvexError("Room belongs to a different event.")
     }
     if (args.durationMinutes < 5 || args.durationMinutes > 480) {
-      throw new Error("Duration must be between 5 minutes and 8 hours.")
+      throw new ConvexError("Duration must be between 5 minutes and 8 hours.")
     }
     await ctx.db.patch(args.submissionId, {
       roomId: args.roomId,
@@ -302,7 +302,7 @@ export const unschedule = mutation({
   args: { submissionId: v.id("submissions") },
   handler: async (ctx, args) => {
     const submission = await ctx.db.get(args.submissionId)
-    if (!submission) throw new Error("Session not found")
+    if (!submission) throw new ConvexError("Session not found")
     await requireEventAccess(ctx, submission.eventId)
     await ctx.db.patch(args.submissionId, {
       roomId: undefined,
@@ -346,7 +346,7 @@ export async function autoPlaceCore(
   {
     const eventId = event._id
     if (!event.startsAt || !event.endsAt) {
-      throw new Error("Set the event start and end dates first (Settings).")
+      throw new ConvexError("Set the event start and end dates first (Settings).")
     }
     const rooms = (
       await ctx.db
@@ -354,7 +354,7 @@ export async function autoPlaceCore(
         .withIndex("by_eventId", (q) => q.eq("eventId", eventId))
         .collect()
     ).sort((a, b) => a.order - b.order)
-    if (rooms.length === 0) throw new Error("Add at least one room first (Settings).")
+    if (rooms.length === 0) throw new ConvexError("Add at least one room first (Settings).")
 
     const accepted = await ctx.db
       .query("submissions")

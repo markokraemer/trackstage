@@ -18,6 +18,7 @@ import {
 import { Field, FieldDescription, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { Switch } from "@/components/ui/switch"
+import { errorMessage } from "@/lib/errors"
 
 /**
  * "Distribute evenly" (docs/SPEC.md §4.5, sbek ABS-05).
@@ -79,7 +80,7 @@ export function DistributeDialog({
         },
         onError: (error: Error) =>
           toast.error("Couldn't distribute the reviews", {
-            description: error.message,
+            description: errorMessage(error, "Please try again."),
           }),
       },
     )

@@ -23,8 +23,8 @@ function Page() {
         <Step title="Speakers get in with a link — from the confirmation after submitting, or from any email you send them. No password.">
           <Shot
             src="walkthrough/25-speaker-portal.png"
-            alt="The speaker portal home for the accepted Devcon Berlin speaker"
-            caption="Home shows what has been decided and what is still outstanding."
+            alt="The speaker portal home for the accepted Devcon Berlin speaker: their submission, profile completeness and open tasks"
+            caption="Your event's name, dates and venue sit across the top; Home shows what has been decided and what is still outstanding."
           />
         </Step>
 
@@ -42,8 +42,8 @@ function Page() {
         <Step title="Tasks is their to-do list from you: confirm the slot, upload slides, send a headshot.">
           <Shot
             src="walkthrough/26-speaker-tasks.png"
-            alt="The speaker portal Tasks tab with the headshot-and-bio task the organizer assigned"
-            caption="The task you assigned on the organizer side is already waiting here."
+            alt="The speaker portal Tasks tab: the task the organizer assigned, plus the three onboarding tasks acceptance created"
+            caption="Top of the list is the task the organizer assigned a minute ago — anything with a due date sorts first. The three below it were created automatically the moment the talk was accepted."
           />
         </Step>
 
@@ -65,8 +65,9 @@ function Page() {
 
       <div className="mt-10">
         <Callout tone="tip">
-          Want to see it yourself? Open the demo portal at <code>/portal</code>{" "}
-          and pick a seeded speaker.
+          Want to see it yourself? Open <code>/portal</code> and press{" "}
+          <strong>Open the demo speaker portal</strong> — that is a real speaker
+          on the sample event, with submissions, a profile and open tasks.
         </Callout>
       </div>
     </DocArticle>

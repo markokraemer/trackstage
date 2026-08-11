@@ -1,4 +1,4 @@
-import { v } from "convex/values"
+import { ConvexError, v } from "convex/values"
 import { mutation, query } from "./_generated/server"
 import { requireEventAccess } from "./lib/auth"
 
@@ -55,7 +55,7 @@ export const updateRoom = mutation({
   },
   handler: async (ctx, args) => {
     const room = await ctx.db.get(args.roomId)
-    if (!room) throw new Error("Room not found.")
+    if (!room) throw new ConvexError("Room not found.")
     await requireEventAccess(ctx, room.eventId)
     await ctx.db.patch(args.roomId, args.patch)
     return null
@@ -66,14 +66,14 @@ export const deleteRoom = mutation({
   args: { roomId: v.id("rooms") },
   handler: async (ctx, args) => {
     const room = await ctx.db.get(args.roomId)
-    if (!room) throw new Error("Room not found.")
+    if (!room) throw new ConvexError("Room not found.")
     await requireEventAccess(ctx, room.eventId, "admin")
     const scheduled = await ctx.db
       .query("submissions")
       .withIndex("by_roomId", (q) => q.eq("roomId", args.roomId))
       .first()
     if (scheduled) {
-      throw new Error(
+      throw new ConvexError(
         "This room has scheduled sessions. Move them to another room first.",
       )
     }
@@ -114,7 +114,7 @@ export const updateTrack = mutation({
   },
   handler: async (ctx, args) => {
     const track = await ctx.db.get(args.trackId)
-    if (!track) throw new Error("Track not found.")
+    if (!track) throw new ConvexError("Track not found.")
     await requireEventAccess(ctx, track.eventId)
     await ctx.db.patch(args.trackId, args.patch)
     return null
@@ -125,7 +125,7 @@ export const deleteTrack = mutation({
   args: { trackId: v.id("tracks") },
   handler: async (ctx, args) => {
     const track = await ctx.db.get(args.trackId)
-    if (!track) throw new Error("Track not found.")
+    if (!track) throw new ConvexError("Track not found.")
     await requireEventAccess(ctx, track.eventId, "admin")
     await ctx.db.delete(args.trackId)
     return null

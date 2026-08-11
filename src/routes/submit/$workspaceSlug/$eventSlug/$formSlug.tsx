@@ -34,6 +34,7 @@ import {
   validateParticipants,
 } from "@/components/submit/form-logic"
 import { emptyParticipant } from "@/components/submit/types"
+import { errorMessage } from "@/lib/errors"
 import type {
   AnswerValue,
   Answers,
@@ -411,9 +412,7 @@ function SubmitFlow({
       }
     } catch (error) {
       setAccountError(
-        error instanceof Error
-          ? error.message
-          : "We couldn't check that email. Please try again.",
+        errorMessage(error, "We couldn't check that email. Please try again."),
       )
     } finally {
       setIdentifying(false)
@@ -443,11 +442,7 @@ function SubmitFlow({
         )
       }
     } catch (error) {
-      toast.error(
-        error instanceof Error
-          ? error.message
-          : "We couldn't send that link. Please try again.",
-      )
+      toast.error(errorMessage(error, "We couldn't send that link. Please try again."))
     } finally {
       setIdentifying(false)
     }
@@ -590,9 +585,7 @@ function SubmitFlow({
         "Draft saved. Come back with the same email address to finish it.",
       )
     } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : "We couldn't save your draft.",
-      )
+      toast.error(errorMessage(error, "We couldn't save your draft."))
     } finally {
       setSavingDraft(false)
     }
@@ -642,9 +635,7 @@ function SubmitFlow({
       setSubmitted({ portalToken, email: email.trim() })
     } catch (error) {
       toast.error(
-        error instanceof Error
-          ? error.message
-          : "We couldn't submit your proposal. Please try again.",
+        errorMessage(error, "We couldn't submit your proposal. Please try again."),
       )
     } finally {
       setSubmitting(false)

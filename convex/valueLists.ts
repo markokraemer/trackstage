@@ -1,4 +1,4 @@
-import { v } from "convex/values"
+import { ConvexError, v } from "convex/values"
 import { mutation, query } from "./_generated/server"
 import type { Doc, Id } from "./_generated/dataModel"
 import type { MutationCtx, QueryCtx } from "./_generated/server"
@@ -156,8 +156,8 @@ async function editOptions(
 
 function clean(value: string): string {
   const trimmed = value.trim()
-  if (!trimmed) throw new Error("Enter a name.")
-  if (trimmed.length > 60) throw new Error("Keep it under 60 characters.")
+  if (!trimmed) throw new ConvexError("Enter a name.")
+  if (trimmed.length > 60) throw new ConvexError("Keep it under 60 characters.")
   return trimmed
 }
 
@@ -193,9 +193,9 @@ export const add = mutation({
       }
       return [...options, name]
     })
-    if (clashes.length > 0) throw new Error(`“${name}” is already on this list.`)
+    if (clashes.length > 0) throw new ConvexError(`“${name}” is already on this list.`)
     if (touched === 0) {
-      throw new Error(
+      throw new ConvexError(
         `No form on this event asks for a ${LIST_META[args.key].singular}. Add that question in the form builder first.`,
       )
     }
@@ -287,7 +287,7 @@ export const remove = mutation({
       options.splice(at, 1)
       return options
     })
-    if (touched === 0) throw new Error(`“${args.name}” is not on this list.`)
+    if (touched === 0) throw new ConvexError(`“${args.name}” is not on this list.`)
     await auditList(
       ctx,
       args.eventId,

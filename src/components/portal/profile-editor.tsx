@@ -19,6 +19,7 @@ import { HeadshotUploader } from "./headshot-uploader"
 import { usePortal } from "./portal-context"
 import type { PortalMe } from "./portal-context"
 import { initialsOf } from "./portal-utils"
+import { errorMessage } from "@/lib/errors"
 
 const BIO_MAX = 5000
 
@@ -152,11 +153,7 @@ export function ProfileEditor() {
         toast.success("Profile saved", { id: "portal-profile-save" })
       } catch (error) {
         setDraft((prev) => ({ ...prev, [key]: savedRef.current[key] }))
-        toast.error(
-          error instanceof Error
-            ? error.message
-            : "We couldn't save that just now.",
-        )
+        toast.error(errorMessage(error, "We couldn't save that just now."))
       } finally {
         setSaving(false)
       }

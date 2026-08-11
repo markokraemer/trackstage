@@ -67,6 +67,7 @@ import {
   isStatusTab,
 } from "@/components/submissions/constants"
 import type { StatusTabValue } from "@/components/submissions/constants"
+import { errorMessage } from "@/lib/errors"
 import {
   buildSubmissionsCsv,
   csvFilename,
@@ -297,9 +298,7 @@ function SubmissionsPage() {
           : undefined,
       })
     } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : "Could not change the status."
-      )
+      toast.error(errorMessage(error, "Could not change the status."))
     } finally {
       setPendingStatus((prev) => {
         const next = { ...prev }
@@ -324,11 +323,7 @@ function SubmissionsPage() {
       )
       setSelectedIds([])
     } catch (error) {
-      toast.error(
-        error instanceof Error
-          ? error.message
-          : "Could not move those submissions."
-      )
+      toast.error(errorMessage(error, "Could not move those submissions."))
     } finally {
       setBusy(false)
     }
@@ -344,11 +339,7 @@ function SubmissionsPage() {
           : `${result.committed} declined · ${result.notified} speaker email${result.notified === 1 ? "" : "s"} queued.`
       )
     } catch (error) {
-      toast.error(
-        error instanceof Error
-          ? error.message
-          : "Could not send those decisions."
-      )
+      toast.error(errorMessage(error, "Could not send those decisions."))
       throw error
     }
   }

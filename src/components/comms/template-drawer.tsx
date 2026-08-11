@@ -26,6 +26,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { DrawerShell } from "@/components/shared/drawer-shell"
 import { TEMPLATE_META, placeholders, sampleVars, templateLabel } from "./constants"
 import type { TemplateRow } from "./types"
+import { errorMessage } from "@/lib/errors"
 
 /**
  * Template editor drawer (docs/SPEC.md §4.9).
@@ -330,10 +331,5 @@ function insertAtCursor(
 }
 
 function messageOf(error: unknown): string {
-  if (error instanceof Error) {
-    // Convex prefixes thrown errors; keep the human half.
-    const match = /Uncaught Error:\s*(.*)/.exec(error.message)
-    return (match?.[1] ?? error.message).split("\n")[0]
-  }
-  return "Please try again."
+  return errorMessage(error, "Please try again.")
 }

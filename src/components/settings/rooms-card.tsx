@@ -26,7 +26,7 @@ import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { EmptyState } from "@/components/shared/empty-state"
 import { ConfirmDeleteButton } from "@/components/settings/confirm-delete-button"
-import { errorMessage } from "@/components/settings/errors"
+import { errorMessage } from "@/lib/errors"
 
 export interface RoomRecord {
   _id: string

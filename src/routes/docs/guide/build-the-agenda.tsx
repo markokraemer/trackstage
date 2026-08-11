@@ -29,11 +29,11 @@ function Page() {
           />
         </Step>
 
-        <Step title="Drag a card onto the grid — or click it and pick a day, a room and a start time. Both save the moment you finish.">
+        <Step title="Drag a card onto the grid — or click it and pick a room, a day and a start time. Both save the moment you finish.">
           <Shot
             src="walkthrough/28-schedule-a-session.png"
-            alt="The schedule popover for the talk, with day, room and start-time selects"
-            caption="The click-to-schedule path exists so the agenda works on a laptop trackpad, a tablet, or by keyboard."
+            alt="The schedule popover for the talk, with room, day, start-time and length pickers"
+            caption="The click-to-schedule path exists so the agenda works on a laptop trackpad, a tablet, or by keyboard. Focus a card and press Enter to place it with the arrow keys."
           />
         </Step>
 
@@ -44,21 +44,26 @@ function Page() {
           />
         </Step>
 
-        <Step title="Check Conflicts before you publish. It flags a room booked twice and a speaker in two overlapping sessions.">
+        <Step title="Check Conflicts before you publish. It watches for two things: a room booked twice, and a speaker in two overlapping sessions.">
           <Shot
             src="agenda-conflicts.png"
-            alt="The Conflicts view of a full programme, listing overlapping sessions"
-            caption="From a full event — one talk cannot clash with itself. Conflicts never block a drop; you decide."
+            alt="The Conflicts view of a fully scheduled event, reporting no clashes"
+            caption="From a full, published event with nothing clashing — which is what you want to see here. Anything that does clash appears the moment it happens, and conflicts never block a drop: you decide."
           />
         </Step>
       </Steps>
 
-      <div className="mt-10">
+      <div className="mt-10 space-y-3">
         <Callout tone="tip">
-          In a hurry? Ask the{" "}
-          <DocLink to="/docs/guide/ai-copilot">AI copilot</DocLink> to “auto-fill
-          the agenda” — it places everything that fits and tells you what did
-          not.
+          In a hurry? <strong>Auto-place</strong> in the toolbar fills the grid
+          for you — it places everything that fits and tells you what did not.
+          The <DocLink to="/docs/guide/ai-copilot">AI copilot</DocLink> can do
+          the same from a sentence.
+        </Callout>
+        <Callout tone="note">
+          Nothing here is public yet. The programme stays a private draft until
+          you press <strong>Publish agenda</strong> — see{" "}
+          <DocLink to="/docs/guide/publish-your-program">Publish your program</DocLink>.
         </Callout>
       </div>
     </DocArticle>

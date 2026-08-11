@@ -20,6 +20,7 @@ import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { formatById, widgetById } from "@/components/embeds/embed-config"
+import { errorMessage } from "@/lib/errors"
 
 export interface SavedEmbedsProps {
   embeds: Array<Doc<"embeds">> | undefined
@@ -46,7 +47,7 @@ export function SavedEmbeds({
     } catch (error) {
       toast.error("Couldn't delete that embed", {
         description:
-          error instanceof Error ? error.message : "Please try again.",
+          errorMessage(error, "Please try again."),
       })
     } finally {
       setRemoving(null)

@@ -14,6 +14,7 @@ import type { Id } from "@convex/_generated/dataModel"
 import { toast } from "sonner"
 
 import { cn } from "@/lib/utils"
+import { errorMessage } from "@/lib/errors"
 import {
   Select,
   SelectContent,
@@ -73,7 +74,7 @@ export function SpeakerWorkflowSelect({
     } catch (error) {
       toast.error("Couldn't update the status", {
         description:
-          error instanceof Error ? error.message : "Please try again.",
+          errorMessage(error, "Please try again."),
       })
     } finally {
       setPending(false)

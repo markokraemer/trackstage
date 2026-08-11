@@ -1,4 +1,4 @@
-import { v } from "convex/values"
+import { ConvexError, v } from "convex/values"
 import type { Doc, Id } from "./_generated/dataModel"
 import type { MutationCtx, QueryCtx } from "./_generated/server"
 import { mutation, query } from "./_generated/server"
@@ -61,6 +61,19 @@ function isTaskLocked(task: Doc<"tasks">, behavior: PortalBehavior): boolean {
 
 const TASK_LOCKED_MESSAGE =
   "The deadline for this task has passed, so it's closed. Email the organizers and they can reopen it for you."
+
+/**
+ * "Collect an answer": the organizer asks a question in the task instructions
+ * and the speaker types a reply. `form` is the dead kind this replaced — a few
+ * rows may still carry it, and reading them as an answer task is the only
+ * shape that lets a speaker ever finish them.
+ */
+function isAnswerTask(task: Doc<"tasks">): boolean {
+  return task.kind === "answer" || task.kind === "form"
+}
+
+/** How much prose a portal answer may carry — generous, but not a file dump. */
+const MAX_ANSWER_CHARS = 5000
 
 // ——— Staged queues are not speaker-facing —————————————————————————————————
 // `accept_queue` / `decline_queue` are the organizer's STAGED decisions: the
@@ -206,7 +219,7 @@ export const home = query({
   handler: async (ctx, args) => {
     const person = await requirePerson(ctx, args.portalToken)
     const event = await ctx.db.get(person.eventId)
-    if (!event) throw new Error("Event not found")
+    if (!event) throw new ConvexError("Event not found")
 
     // Submissions where I'm the submitter OR a participant.
     const asSubmitter = await ctx.db
@@ -303,7 +316,11 @@ export const home = query({
               // words here, at read time — one library task, personal wording.
               title: renderTaskText(t.title, taskVars) ?? t.title,
               instructions: renderTaskText(t.instructions, taskVars),
-              kind: t.kind,
+              // Legacy `form` rows read as `answer` (see isAnswerTask), so the
+              // portal renders one shape and the speaker can finish them.
+              kind: isAnswerTask(t) ? "answer" : t.kind,
+              /** Their own reply to an "answer" task, so they can re-read it. */
+              response: t.response,
               // The session this task is about, when the organizer bound it to
               // one — files uploaded here land on that session's Files tab.
               submissionId: t.submissionId,
@@ -384,7 +401,7 @@ export const updateSubmission = mutation({
   handler: async (ctx, args) => {
     const person = await requirePerson(ctx, args.portalToken)
     const submission = await ctx.db.get(args.submissionId)
-    if (!submission) throw new Error("Submission not found")
+    if (!submission) throw new ConvexError("Submission not found")
     const participants = await ctx.db
       .query("submissionParticipants")
       .withIndex("by_submissionId", (q) => q.eq("submissionId", args.submissionId))
@@ -392,7 +409,7 @@ export const updateSubmission = mutation({
     const isMine =
       submission.submitterId === person._id ||
       participants.some((p) => p.personId === person._id)
-    if (!isMine) throw new Error("You don't have access to this submission.")
+    if (!isMine) throw new ConvexError("You don't have access to this submission.")
     // Exactly the rules the portal already showed this speaker — decided
     // status, the event's "allow submission edits" switch, and the CFP's own
     // close date — so a save never fails with a surprise the UI didn't warn
@@ -405,7 +422,7 @@ export const updateSubmission = mutation({
       portalBehavior(event),
       event?.timezone,
     )
-    if (lock) throw new Error(lock.message)
+    if (lock) throw new ConvexError(lock.message)
     const { title, description, answers } = args.patch
     await ctx.db.patch(args.submissionId, {
       ...(title !== undefined ? { title } : {}),
@@ -451,10 +468,10 @@ export const withdrawSubmission = mutation({
     const person = await requirePerson(ctx, args.portalToken)
     const submission = await ctx.db.get(args.submissionId)
     if (!submission || submission.submitterId !== person._id) {
-      throw new Error("Submission not found.")
+      throw new ConvexError("Submission not found.")
     }
     if (submission.status === "accepted") {
-      throw new Error(
+      throw new ConvexError(
         "This submission was already accepted — contact the organizers to withdraw.",
       )
     }
@@ -481,14 +498,58 @@ export const completeTask = mutation({
   handler: async (ctx, args) => {
     const person = await requirePerson(ctx, args.portalToken)
     const task = await ctx.db.get(args.taskId)
-    if (!task || task.personId !== person._id) throw new Error("Task not found.")
+    if (!task || task.personId !== person._id) throw new ConvexError("Task not found.")
     if (!["confirm", "profile"].includes(task.kind)) {
-      throw new Error("Complete this task by uploading the requested file.")
+      throw new ConvexError(
+        isAnswerTask(task)
+          ? "Type your answer and send it — that's what completes this task."
+          : "Complete this task by uploading the requested file.",
+      )
     }
     // "Extend task deadlines" off ⇒ a past-due task is closed for good.
     const behavior = portalBehavior(await ctx.db.get(task.eventId))
-    if (isTaskLocked(task, behavior)) throw new Error(TASK_LOCKED_MESSAGE)
+    if (isTaskLocked(task, behavior)) throw new ConvexError(TASK_LOCKED_MESSAGE)
     await ctx.db.patch(args.taskId, { completedAt: Date.now() })
+    return null
+  },
+})
+
+/**
+ * "Collect an answer" (task kind `answer`): the speaker types a reply and
+ * sending it IS the completion — the answer is the proof, so it is stored on
+ * the task and the organizer reads it on the speaker's profile. Sending again
+ * replaces the answer (people re-read a question and improve their reply);
+ * an empty reply is refused rather than silently ticking the task off.
+ */
+export const answerTask = mutation({
+  args: {
+    portalToken: v.string(),
+    taskId: v.id("tasks"),
+    response: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const person = await requirePerson(ctx, args.portalToken)
+    const task = await ctx.db.get(args.taskId)
+    if (!task || task.personId !== person._id) {
+      throw new ConvexError("Task not found.")
+    }
+    if (!isAnswerTask(task)) {
+      throw new ConvexError("This task doesn't ask for a written answer.")
+    }
+    const response = args.response.trim()
+    if (!response) throw new ConvexError("Write your answer before sending it.")
+    if (response.length > MAX_ANSWER_CHARS) {
+      throw new ConvexError(
+        `That answer is a bit long — keep it under ${MAX_ANSWER_CHARS.toLocaleString()} characters.`,
+      )
+    }
+    // "Extend task deadlines" off ⇒ a past-due task is closed for good.
+    const behavior = portalBehavior(await ctx.db.get(task.eventId))
+    if (isTaskLocked(task, behavior)) throw new ConvexError(TASK_LOCKED_MESSAGE)
+    await ctx.db.patch(args.taskId, {
+      response,
+      completedAt: task.completedAt ?? Date.now(),
+    })
     return null
   },
 })
@@ -522,7 +583,7 @@ export const attachUpload = mutation({
 
     const meta = await storageMeta(ctx, args.storageId)
     if (!meta) {
-      throw new Error("That upload didn't finish — please try again.")
+      throw new ConvexError("That upload didn't finish — please try again.")
     }
     assertAllowedUpload(meta, args.filename)
 
@@ -531,7 +592,7 @@ export const attachUpload = mutation({
     const task = args.taskId ? await ctx.db.get(args.taskId) : null
     if (task && task.personId === person._id) {
       const behavior = portalBehavior(await ctx.db.get(task.eventId))
-      if (isTaskLocked(task, behavior)) throw new Error(TASK_LOCKED_MESSAGE)
+      if (isTaskLocked(task, behavior)) throw new ConvexError(TASK_LOCKED_MESSAGE)
     }
 
     // A task bound to a session files its uploads against that session, so the
@@ -602,7 +663,7 @@ async function requireOwnUpload(
   const person = await requirePerson(ctx, portalToken)
   const upload = await ctx.db.get(uploadId)
   if (!upload || upload.eventId !== person.eventId) {
-    throw new Error("File not found.")
+    throw new ConvexError("File not found.")
   }
   let mine = upload.personId === person._id
   if (!mine && upload.submissionId) {
@@ -618,7 +679,7 @@ async function requireOwnUpload(
       participants.some((p) => p.personId === person._id) ||
       submission?.submitterId === person._id
   }
-  if (!mine) throw new Error("You don't have access to this file.")
+  if (!mine) throw new ConvexError("You don't have access to this file.")
   return { person, upload }
 }
 

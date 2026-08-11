@@ -4,6 +4,7 @@ import { internal } from "./_generated/api"
 import { hashApiKey, keyPrefix } from "./apiKeys"
 import { signPayload } from "./webhooks"
 import { buildCalendar } from "./lib/apiIcs"
+import { humanMessage } from "./lib/errors"
 import {
   API_ROUTES,
   METADATA_WRITE_RESOURCES,
@@ -453,14 +454,18 @@ function readSessionInput(body: Record<string, unknown>): Record<string, unknown
 // ——— Error mapping ————————————————————————————————————————————————————————
 
 /**
- * Product errors are thrown as plain Errors with organizer-readable messages
- * (see convex/lib/auth.ts). Map them onto status codes without ever inventing
- * a new message — the message IS the API's error copy.
+ * Product errors are thrown as `ConvexError`s carrying an organizer-readable
+ * sentence as their data (see convex/lib/auth.ts). Map them onto status codes
+ * without ever inventing a new message — the message IS the API's error copy.
+ *
+ * `.data` FIRST, and that ordering is the whole point: Convex redacts the
+ * `message` of a thrown exception on a production deployment ("Server Error"),
+ * so reading `.message` here would ship `[Request ID: …] Server Error` to every
+ * API consumer on trackstage.app while looking perfect on dev. Only
+ * `ConvexError.data` is guaranteed to survive.
  */
 function mapThrown(e: unknown): Response {
-  const raw = e instanceof Error ? e.message : String(e)
-  // Convex prefixes uncaught errors; keep only what we wrote.
-  const message = raw.replace(/^\[.*?\]\s*/, "").split("\n")[0].trim()
+  const message = humanMessage(e, "")
   const lower = message.toLowerCase()
   if (lower.includes("don't have access") || lower.includes("requires the"))
     return errorResponse(message, 403)

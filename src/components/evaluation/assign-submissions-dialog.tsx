@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { StatusPill } from "@/components/shared/status-pill"
+import { errorMessage } from "@/lib/errors"
 
 /**
  * Hand-pick what one evaluator reviews (docs/SPEC.md §4.5, sbek ABS-06).
@@ -105,7 +106,7 @@ export function AssignSubmissionsDialog({
         },
         onError: (error: Error) =>
           toast.error("Couldn't save that assignment", {
-            description: error.message,
+            description: errorMessage(error, "Please try again."),
           }),
       },
     )

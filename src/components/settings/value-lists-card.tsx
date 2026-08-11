@@ -37,7 +37,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import { errorMessage } from "@/components/settings/errors"
+import { errorMessage } from "@/lib/errors"
 import { appLink, legacyAppLink } from "@/lib/app-links"
 import { useCurrentEvent } from "@/lib/current-event"
 

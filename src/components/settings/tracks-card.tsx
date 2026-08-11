@@ -32,7 +32,7 @@ import {
   nextTrackColor,
   trackColorName,
 } from "@/components/settings/track-color-picker"
-import { errorMessage } from "@/components/settings/errors"
+import { errorMessage } from "@/lib/errors"
 
 export interface TrackRecord {
   _id: string

@@ -53,6 +53,7 @@ import {
 } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
+import { errorMessage } from "@/lib/errors"
 import {
   Select,
   SelectContent,
@@ -243,7 +244,7 @@ export function ComposeDialog({
     } catch (error) {
       toast.error("Couldn't build the preview", {
         description:
-          error instanceof Error ? error.message : "Please try again.",
+          errorMessage(error, "Please try again."),
       })
     } finally {
       setSending(false)
@@ -278,7 +279,7 @@ export function ComposeDialog({
     } catch (error) {
       toast.error("Couldn't send", {
         description:
-          error instanceof Error ? error.message : "Please try again.",
+          errorMessage(error, "Please try again."),
       })
     } finally {
       setSending(false)

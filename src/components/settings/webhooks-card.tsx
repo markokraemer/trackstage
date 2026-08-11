@@ -65,7 +65,7 @@ import { EmptyState } from "@/components/shared/empty-state"
 import { StatusPill } from "@/components/shared/status-pill"
 import { LabeledField } from "@/components/settings/labeled-field"
 import { CopyButton } from "@/components/settings/copy-button"
-import { errorMessage } from "@/components/settings/errors"
+import { errorMessage } from "@/lib/errors"
 import type { WebhookDeliveriesDrawerTarget } from "@/components/settings/webhook-deliveries-drawer"
 import { WebhookDeliveriesDrawer } from "@/components/settings/webhook-deliveries-drawer"
 

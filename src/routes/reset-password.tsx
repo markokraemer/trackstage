@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/field"
 import { Logo } from "@/components/brand/logo"
 import { authClient } from "@/lib/auth-client"
+import { errorMessage } from "@/lib/errors"
 
 /** Better Auth's own minimum (`emailAndPassword.minPasswordLength`). */
 const MIN_PASSWORD_LENGTH = 8
@@ -84,7 +85,7 @@ function ResetPasswordPage() {
         throw new Error(resetError.message ?? "Could not reset your password")
       setDone(true)
     } catch (err) {
-      const message = err instanceof Error ? err.message : ""
+      const message = errorMessage(err, "")
       setError(
         /token|expired|invalid/i.test(message)
           ? "This reset link is no longer valid — links expire an hour after they're sent, and each one works once. Request a fresh one and we'll email it straight away."

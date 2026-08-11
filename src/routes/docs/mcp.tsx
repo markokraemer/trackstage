@@ -59,7 +59,8 @@ function McpPage() {
         Two ways in. <strong>Just add the URL</strong> and sign in with your
         browser — Claude and ChatGPT both do this, no key to paste. Or send an{" "}
         <strong>API key</strong> as a bearer token, which is what CLI clients
-        want. Create keys under Settings → API &amp; MCP.
+        want. Create keys under Account settings → API &amp; MCP (avatar menu →
+        Account settings), where they live — keys are personal, not per-event.
       </p>
 
       <div className="mt-3">
@@ -328,7 +329,7 @@ function KeyNote() {
     <p className="flex items-start gap-2 text-xs text-muted-foreground">
       <RiInformationLine size={14} aria-hidden className="mt-0.5 shrink-0" />
       Swap <code className="font-mono">{PLACEHOLDER_KEY}</code> for a key from
-      Settings → API &amp; MCP.
+      Account settings → API &amp; MCP.
     </p>
   )
 }

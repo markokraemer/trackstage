@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
 import { IMAGE_ACCEPT, formatBytes, validateFile } from "@/lib/files"
 import { usePortalUpload } from "./use-portal-upload"
+import { errorMessage } from "@/lib/errors"
 
 const MAX_BYTES = 5 * 1024 * 1024
 
@@ -46,9 +47,7 @@ export function HeadshotUploader({
       await upload(file, { isHeadshot: true }, setPercent)
       toast.success("Your headshot was updated.")
     } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : "We couldn't upload that photo.",
-      )
+      toast.error(errorMessage(error, "We couldn't upload that photo."))
     } finally {
       setPercent(null)
     }

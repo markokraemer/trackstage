@@ -1,5 +1,6 @@
 import type { Doc, Id } from "../_generated/dataModel"
 import type { MutationCtx, QueryCtx } from "../_generated/server"
+import { ConvexError } from "convex/values"
 
 // ————————————————————————————————————————————————————————————————————————
 // File storage layer. One place that knows how a stored blob becomes a thing
@@ -108,17 +109,17 @@ export function assertAllowedUpload(
   maxBytes: number = MAX_UPLOAD_BYTES,
 ): void {
   if (meta.size <= 0) {
-    throw new Error("That file is empty — please choose another one.")
+    throw new ConvexError("That file is empty — please choose another one.")
   }
   if (meta.size > maxBytes) {
-    throw new Error(
+    throw new ConvexError(
       `That file is ${formatBytes(meta.size)}. The limit is ${formatBytes(maxBytes)} — please upload a smaller one.`,
     )
   }
   const type = (meta.contentType ?? "").toLowerCase().split(";")[0].trim()
   if (type && ALLOWED_CONTENT_TYPES.has(type)) return
   if (ALLOWED_EXTENSIONS.has(extensionOf(filename))) return
-  throw new Error(
+  throw new ConvexError(
     "That file type isn't accepted. Upload an image, a PDF, a slide deck, a document or a zip.",
   )
 }
@@ -131,7 +132,7 @@ export function assertImageUpload(meta: StorageMeta, filename: string): void {
     isImageType(type) ||
     ["png", "jpg", "jpeg", "webp", "gif", "heic", "avif"].includes(ext)
   if (!looksLikeImage) {
-    throw new Error("That needs to be an image — a PNG, JPG or WebP.")
+    throw new ConvexError("That needs to be an image — a PNG, JPG or WebP.")
   }
 }
 

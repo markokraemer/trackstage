@@ -2276,3 +2276,174 @@ legacy public shape 307s to canonical. All links flow through
 Route files moved with git mv; sweeps over components/pages/e2e ran as three Sonnet
 subagents; verification: typecheck+lint+build, crawl + multi-tenant specs, two-tab
 browser check.
+
+## 2026-08-11 · ConvexError sweep — the production-only muted-refusal bug
+**Convex redacts the `message` of an ordinary `Error` on a PRODUCTION deployment.** Every
+`throw new Error("Add at least one room first (Settings).")` under `convex/` read perfectly
+against dev:neat-sparrow-926 and arrived on trackstage.app as
+`[Request ID: a1b2…] Server Error` — a wall of nothing where the organizer needed a
+sentence. The Airtable module had already been converted (its `AirtableError extends
+ConvexError`); this pass swept the rest.
+
+**What landed.**
+- **329 of 334 throws converted** to `ConvexError`, messages byte-identical (specs and
+  `scripts/verify-backend.mjs` assert on them). Biggest blocks: `apiV1.ts` 78, `mcp.ts` 39,
+  `evaluationsAdmin.ts` 21, `speakersAdmin.ts` 19, `submit.ts` 17, `tasksAdmin.ts` 16,
+  `workspaces.ts` 16, `submissions.ts` 14, `portal.ts` 13, `review.ts` 15, plus
+  `lib/auth.ts` (7 — the permission errors every organizer function funnels through).
+- **5 left as plain `Error`s on purpose** — invariants and plumbing no human is meant to
+  read: `lib/airtable.ts` "chunk size must be >= 1", `seed.ts` demo-user resolution,
+  `comms.ts` the raw Resend HTTP status (caught locally, stored on the outbox row),
+  `submissions.ts` "Failed to resolve submitter", `submit.ts` "Failed to create account".
+- **`convex/lib/formWindow.ts`** became a discriminated union — a CLOSED window now always
+  carries its reason, because that string is thrown as ConvexError data and "closed with no
+  reason" must not be representable.
+- **Two extractors, one per side of the wire.** `src/lib/errors.ts` (hoisted out of
+  `src/components/settings/errors.ts`, all 14 importers updated) and its server twin
+  `convex/lib/errors.ts::humanMessage`. Both read `.data` FIRST — the only field that
+  survives production — then `Uncaught …Error:`, then the first line, and both treat
+  "Server Error" as the ABSENCE of a message rather than one.
+- **~60 client catch-sites swept** across organizer, portal and public-CFP surfaces:
+  `error instanceof Error ? error.message : "…"` → `errorMessage(error, "…")`. Three
+  duplicate local extractors (`use-agenda-actions.ts::messageOf`,
+  `template-drawer.tsx::messageOf`, `forms-builder/model.ts::friendlyError`) now delegate
+  to the shared one, keeping their names for their call sites.
+- **HTTP layers verified, not assumed.** `apiHttp.ts::mapThrown` and
+  `mcp.ts::toolErrorMessage` both delegate to `humanMessage`, as does the per-operation
+  error inside `apiV1.ts`'s bulk endpoint.
+
+**Verification.** A probe against dev first established the shape (`errorData` carries the
+sentence verbatim; `errorMessage` reads `[Request ID: …] Server Error\nUncaught
+ConvexError: <sentence>` — so verify-backend's substring matching still passes on dev).
+After one `convex dev --once`: five refusals confirmed to arrive with `.data` intact —
+built-in-status delete, anonymous write, bad portal token ("Invalid or expired portal
+link."), public `submit.identify` bad email, and `DELETE /v1/…/statuses/{builtin}` which
+answered 400 with the full sentence in `error`/`message` (proof the data survives
+httpAction → runMutation). Browser spot-check on the running dev server: renaming a status
+to a duplicate toasted *"You already have a status called “Pending”."* and deleting an
+in-use room toasted *"This room has scheduled sessions. Move them to another room first."* —
+no request ids, no "Server Error". `pnpm typecheck` + `pnpm lint` clean.
+
+## 2026-08-11 · Marketing asset refresh (post-revamp, post-URL-architecture)
+Every image on the landing page and in the README was stale — pre-revamp portal chrome,
+a sidebar with no Embeds/Files, `/submit/cfp` URLs, and e2e fixture rows ("Quiet Talk /
+Quinn Quiet", "Verification Talk (edited)") photographed straight into the shots. All of
+`public/screenshots/*` was replaced:
+
+| Asset | Source | Why |
+| --- | --- | --- |
+| `dashboard.png` | `video/public/captures/dashboard.png` (3200×2000) | Launch-video capture at a calm moment: 4 stat cards incl. Unscheduled, Embeds/Files in the nav, honest seeded counts (18/10/16/0). The live DB was mid-gate and read 43/28/9/18. |
+| `public-schedule.png` | `video/public/captures/public-event.png` (3200×2000) | Old one predated the event description, the track filter chips and "Download the whole program", and showed sessions at 02:00 AM. |
+| `submissions.png` | fresh Playwright capture, 2880×1800 | **Sorted by Score descending** — see below. Real programme, both staged-queue banners, scores on screen. |
+| `form-builder.png` | fresh Playwright capture, 2880×1800 | Now shows the canonical `/submit/ai-engineer/ai-summit-2026/cfp` public path and the current nav. |
+| `portal.png` | fresh Playwright capture, 2880×1800 | The blue card headers are gone (neutral, post-revamp), the event logo no longer renders as a broken-image glyph, and the header carries date + venue. |
+| `agenda.png` | still frame 0 of `video/public/clips/agenda.mp4` (1600×1000) | The live tray is 18 rows of `Agenda One ag-… / Aggie Enda` fixtures and nothing sorts it. The clip's idle Day view is the same UI, clean. |
+| `agenda-flow.gif` | `video/public/clips/agenda.mp4` → ffmpeg (1200×750, 114 frames, 1.64 MB) | Replaces a 6-frame stitch with the real 9.5s drag: pick up → cross columns → red conflict pre-warning over the keynote → drop. |
+| `agenda-list.png` | **deleted** | Referenced by nothing, and every capture of it photographs a live defect (below). |
+
+**Live defect found, not fixed:** the agenda **List view's Room cell renders the raw
+Convex room id** (`js77zf8vytv9g8k019djf625298c946p`) instead of the room name.
+`src/components/agenda/list-view.tsx` feeds Base UI's `SelectValue` a `roomId` with no
+matching registered item to label it, so it falls back to printing the value; the Length
+select next to it looks fine only because its value *is* its label. Both the Aug-05 and
+today's captures show it, so it is not a data problem. Left alone (an e2e gate was
+driving the same deployment) — worth a one-line fix.
+
+**Capturing against a shared, polluted dev database.** The `flows` project and the sbek
+eval kit both write to the demo event and **neither cleans up**, so `Copilot Guard cg-…`,
+`Outbox Proof t-…`, `Agenda One ag-…` and a second `Capped CFP f-…` form accumulate; a
+`seed:setup` was off the table with a gate mid-run. The trick that worked, and is now
+baked into `scripts/capture-screenshots.mjs`: **sort the submissions table by Score
+descending** — every seeded submission has a score and no fixture does, so the real
+programme floats to the top and the shot is clean whatever else is in the database. There
+is no equivalent for the agenda's unscheduled tray, which is why `agenda.png` comes from
+the video clip.
+
+Script/doc changes that came with it: the List-view step is gone; the form-builder step
+matches `/forms/{id}` instead of the pre-URL-pass `/app/forms/{id}` (it had been silently
+skipping and shooting the forms *index*); `agenda-flow.gif` is now **opt-in behind
+`--gif`**, because that step performs a real drag — it mutates the demo agenda and would
+also clobber the better clip-derived GIF on every routine refresh.
+`scripts/capture-screenshots.md` documents the pollution workaround, the launch-video
+captures as a second source, and the exact ffmpeg line for the GIF. `product-shot.tsx`
+dropped the unused `agendaList` variant and now says out loud that only the 16:10 *ratio*
+is load-bearing, so a 1440-wide and a 1600-wide capture swap in interchangeably.
+
+**Verified** by driving `/` at 1440×900 with every lazy image forced to load: all six
+homepage images resolve 200, render at 544×340 / 1086×468 / 1152×496 (16:10 — no layout
+shift), zero console errors, zero horizontal overflow; each frame eyeballed at full size.
+`pnpm typecheck` clean, `pnpm lint` clean (6 pre-existing `no-shadow` warnings in
+`ui/calendar.tsx`).
+
+## 2026-08-11 · "Collect an answer" tasks, the MCP task library, and three small leaks
+A bundle of Marko-approved fixes across the tasks system, `convex/mcp.ts`, `convex/seed.ts`,
+`convex/forms.ts` and `/design-system`.
+
+**1. A task kind that asks a question (`answer`).** The organizer writes the question in
+the task instructions; the speaker types a reply in their portal; **sending the reply IS
+the completion** and the words are stored on the task (`tasks.response`), so the organizer
+reads the answer where they read the task. It replaces the dead `form` kind — nothing ever
+rendered that one, so a task created with it could never be finished; `convex/portal.ts`
+now reads any legacy `form` row as `answer` (`isAnswerTask`) rather than stranding it.
+`portal.answerTask` refuses an empty reply, refuses a non-answer task, respects the
+past-due lock, and re-sending replaces the answer (people re-read a question and improve
+their reply). `portal.completeTask` refuses an answer task with *"Type your answer and
+send it — that's what completes this task."* Merge fields work in the question, because
+read-time `taskVars` already renders `instructions`. Surfaces: the assign-task dialog's
+kind picker ("Collect an answer — they type a reply; their answer is the proof"), where
+the Instructions field **becomes** a required "Your question" for that kind; the portal
+task item (a textarea, then the answer folded down with "Change my answer"); a new
+**Tasks section in the organizer's speaker drawer**, which is where the answer is read —
+`tasksAdmin.list` grew an optional `personId` and returns `response`. The REST API
+(`convex/apiV1.ts`) now imports the app's `TASK_KINDS` instead of keeping its own drifting
+copy, and `GET /tasks` exposes `response`; the OpenAPI spec was regenerated.
+
+**2. MCP task-library tools** (`list_task_library`, `save_task_template`,
+`assign_task_from_template`) mirror the `tasksAdmin` template functions, so a model can
+reuse an organizer's saved wording instead of re-inventing it every time. `save_task_template`
+is idempotent on the title, like the "save to library" tick in the dialog. All three are
+non-destructive, so none needs a confirm. `create_event` now returns `workspaceSlug`,
+`organizationId` and the canonical `publicUrl` (`/e/:ws/:event`) — without the workspace
+half, nothing downstream could build a single link to what it had just created, which is
+exactly what broke the copilot's `create_event` view: it now links straight to the new
+event's settings and shows its public page. Tool docs regenerated (34 tools).
+
+**3. The assign-task template picker could print a raw Convex id.** Base UI's `SelectValue`
+renders the raw *value* whenever the item list can't label it (still loading, renamed
+underneath). Both selects in the dialog now resolve the label themselves and fall back to
+the sentinel's wording, so a submission/template id can never reach the screen.
+
+**4. `forms.remove` counted trashed submissions.** A form whose only entries were in the
+trash showed "0 submissions" and still refused to delete — a dead end with nothing on
+screen to explain it. Only LIVE submissions block now; the trashed ones are **orphaned,
+not purged** (`formId` cleared — it is optional precisely because manually added sessions
+have none), so restoring from the trash still returns the organizer's data. Deleting a
+form never destroys somebody's writing. Same rule applied to the MCP `delete_form`.
+
+**5. `seed:setup` left live Airtable tokens behind.** `purgeEvent` deleted everything
+*except* `airtableConnections` — the one row in the cascade that is a secret — plus
+`airtableRecordSync` and `auditLog`. All three are purged now, so seed's cascade matches
+`deleteEventCascade` in `convex/events.ts`.
+
+**6. `/design-system`** registers the public sharing primitives it was missing:
+`CopyLinkButton` (three variants), `SubscribeMenu` and `PersonPicker`. `TabsCount` was
+already there.
+
+**Verified** against the dev deployment with two targeted probes rather than the full
+suite (a flows gate + sbek were running): the answer-task lifecycle and the forms/trash
+rules pass **15/15** (assign → portal renders it as an answer task with the personalised
+question → empty reply refused → `completeTask` refused → answer sent completes it →
+re-answer → organizer reads it on `tasksAdmin.list` scoped to that person → a file task
+refuses a written answer → a bad token refuses), and the MCP surface **13/13** over the
+real `/mcp` endpoint with a live API key (34 tools, library list/save/idempotent-resave,
+unknown kind refused naming `answer`, assign-from-template, `create_event`'s slugs and
+canonical URL). Browser: assigned an answer task from the Speakers page (toast confirms),
+answered it as Tom Beaumont in his portal ("Your answer · Large, and no dietary
+requirements · Change my answer"), and read the question **and** the answer back in the
+organizer's speaker drawer under Tasks. Zero console errors on those screens.
+`/design-system` shows all three new samples; its only console error is a **pre-existing**
+react-day-picker hydration mismatch (`data-day="7/26/2026"` server vs `"26/07/2026"`
+client) in the Calendar sample — untouched by this work. New assertions live in
+`scripts/verify-backend.mjs` ("Collect an answer tasks", "Form deletion & the trash", and
+the tool count 31 → 34). `pnpm typecheck` + `pnpm lint` clean (6 pre-existing `no-shadow`
+warnings in `ui/calendar.tsx`).

@@ -6,6 +6,7 @@ import { RiMailSendLine } from "@remixicon/react"
 import { toast } from "sonner"
 
 import { Button } from "@/components/ui/button"
+import { errorMessage } from "@/lib/errors"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -71,7 +72,7 @@ export function RemindIncompleteButton({
     } catch (error) {
       toast.error("Couldn't send the reminders", {
         description:
-          error instanceof Error ? error.message : "Please try again.",
+          errorMessage(error, "Please try again."),
       })
     } finally {
       setSending(false)
