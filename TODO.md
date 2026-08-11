@@ -30,8 +30,8 @@ Source of truth for everything Marko asked + build status. Update continuously.
   every screen resolves the event through `src/lib/current-event.ts`
 - ⏳ AI agenda: auto-place scheduler (backend done: agenda.autoPlace) + UI button
 - ⏳ sbek gap follow-ups (from docs/reference/sbek-rubric.md GAPS): embed generator page
-  (/app/embeds, EMB-15) ✅in slice · itinerary widget ✅in slice · blind review (schema
-  flag added; evaluation UI + review.ts must respect it — VERIFY at integration) ·
+  (/app/embeds, EMB-15) ✅in slice · itinerary widget ✅in slice · blind review ✅DONE
+  (2026-08-11 — enforced in `review.queue`, switch in the plan dialog, badge on /review) ·
   organizer task creation ✅tasksAdmin · bulk email compose to filtered speakers
   ✅comms.composeBulk + Compose dialog · change history/restore on
   content edits (CNT-11 — decide: cheap audit-log table or accept the gap) · Speaker CRM
@@ -78,14 +78,31 @@ Source of truth for everything Marko asked + build status. Update continuously.
 - ⏳ Dev deployment has stray "MCP Test Event" from live-fire suite — reseed before demos
 
 ## MCP ergonomic fixes (from live-fire test — docs/reference/mcp-live-test.md)
-- ⏳ Add deletion tools: delete_event / delete_form / remove_task (the one asterisk on
-  "do everything via MCP")
-- ⏳ Fix list_speakers onlyWithOutstandingWork semantics (returned 11, model said 8)
-- ⏳ Merge/rename get_event_overview (loses tool-selection to get_event_summary/get_agenda)
-- ⏳ Cap verbose payloads (get_form/get_agenda/list_templates multi-KB) + normalize field
-  names (closeAt vs closesAt)
+**Fix pass shipped 2026-08-11 — surface is now 31 tools (was 27); fix-list items 1–8 done.**
+- ✅ Deletion tools: `delete_event` (admin + `confirm:true` + `confirmName` matching the
+  event name exactly; runs the web app's own cascade via the extracted
+  `events.deleteEventCascade`, storage sweep included, returns a receipt) ·
+  `delete_form` (admin + confirm; refuses any form with submissions, names
+  "close it instead") · `remove_task` (admin; inverse of assign_task). `complete_task`
+  deliberately NOT added — completion is the speaker's act in their portal
+- ✅ list_speakers semantics: `onlyWithOutstandingWork` = EXACTLY ≥1 incomplete task;
+  new `includeProfileGaps` opt-in; per-row `outstandingReason`; response states its own
+  counts (`summary` sentence + totalSpeakers/returned/withOpenTasks/withProfileGaps)
+- ✅ get_event_overview MERGED into get_event_summary (kept as a deprecated alias with an
+  identical payload); both descriptions now disclaim each other and get_agenda
+- ✅ Payload caps: get_form options ≤10 + "…N more" · get_agenda ≤40 rows each side +
+  `byRoom` roll-up + counts · list_templates 200-char previews + new `get_template` for
+  the full body. Field names normalized: `closeAt` and `acceptedNotScheduled` everywhere
+- ✅ Loopback links carry `linkWarning` ("demo URL — set SITE_URL in production"); the URL
+  itself stays machine-clean so copy-to-clipboard still works
+- ✅ Also from the fix list: send_test_email.to wording (no invented recipients) ·
+  create_form/update_form_settings echo `name`, add_manual_session echoes `format`/`track`
 - ✅ (fixed in test) arg validation + userId leak · error hygiene · template key guard
-- NOTE: loopback portal/public URLs resolve at prod SITE_URL
+- ⏭ NOT taken: trimming the tool count below Claude Code's deferral threshold (deletion +
+  caps were worth more than the one-off schema-fetch tax). Still open: collapsing
+  `get_public_form_link` into list_forms/get_form — the one redundant tool left
+- ⏳ Docs-only leftover: README Authorization section should say a revoked API key surfaces
+  in Claude Code as a "requires re-authorization" prompt (spec-correct, but surprising)
 
 ## Quality / hill-climb
 - ⏳ First full pass review vs screenshots + video (UX 1:1 check), then vs SPEC acceptance
@@ -111,10 +128,20 @@ From `docs/reference/coverage-matrix.md` (2026-08-11, 175 items · 124 covered �
 31 missing). Ranked by judging impact; items already tracked elsewhere in this file are NOT
 repeated here. Effort: XS <30min · S ~1h · M ~half day · L ~a day+.
 
-- ⏳ **[1] Submission confirmation email never sent** (sbek CFP-08) — `sendConfirmationEmail`
-  is stored in `forms.settings` and read by nothing; `convex/submit.ts` has no queue call. S
-- ⏳ **[2] `notifyEmails` never sent** — the whole Notifications wizard step is inert; stored
-  in `schema.ts:147`, no send path reads it. swyx demoed this step at [05:38]. S
+- ✅ **[1] Submission confirmation email** (sbek CFP-08) — DONE (2026-08-11). `submit.submit`
+  queues the `confirmation` template through `internal.comms.queueForPerson` for the submitter
+  **and** every speaker participant, carrying `submissionId` so `{{sessionTitle}}` resolves.
+  Gated on `participantConfig.sendConfirmationEmail`; the preview/@example.com rule is
+  inherited from the outbox. Isolated in try/catch — a mail failure can never lose a
+  submission.
+- ✅ **[2] `notifyEmails` organizer alerts** — DONE (2026-08-11). New
+  `platformEmails.sendSubmissionNotification` (direct transactional Resend, because these are
+  organizer addresses, not event `people`, so the outbox can't hold them) + a
+  `notifySubmissionAdmins(ctx, …)` helper called from `submit.submit` (`kind:"new"`) and
+  `portal.updateSubmission` (`kind:"updated"`). Scheduled fire-and-forget, deep-links to
+  `/app/submissions?id=…`. **Known v1 limit:** no dedupe window — three saved edits send three
+  alerts. Cheap fix later: a `lastNotifiedAt` stamp checked against one hour.
+- ⏳ **[2b] Dedupe updated-submission alerts** — one alert per submission per hour. XS
 - ⏳ **[4] Speaker edit-lock after CFP close** (sbek CFP-16) — `convex/portal.ts:updateSubmission`
   checks status but not `isFormOpen`. One call; `isFormOpen` already exists. XS
 - ✅ **[5] Explicit "Publish agenda / Go live" action** (sbek AIA-07 `handoff`) — DONE

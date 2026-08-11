@@ -1,8 +1,10 @@
 import { expect, test } from "@playwright/test"
 import { api } from "../../../convex/_generated/api.js"
+import type { Id } from "../../../convex/_generated/dataModel"
 import {
   ORGANIZER_STATE,
   armed,
+  createSubmission,
   clearToasts,
   expectToast,
   fillStable,
@@ -34,21 +36,19 @@ type Submission = {
 
 async function seedPending(
   organizer: Awaited<ReturnType<typeof organizerConvexClient>>,
-  eventId: string,
+  eventId: Id<"events">,
   title: string,
   email: string,
 ) {
-  const result = await organizer.mutation(api.submissions.addManual, {
+  return await createSubmission(organizer, {
     eventId,
-    kind: "abstract",
     title,
-    description: "Staged by the triage e2e flow.",
     status: "pending",
-    participants: [
-      { firstName: "Tria", lastName: "Ger", email, role: "speaker" },
-    ],
+    email,
+    firstName: "Tria",
+    lastName: "Ger",
+    description: "Staged by the triage e2e flow.",
   })
-  return typeof result === "string" ? result : result.submissionId
 }
 
 test.describe("triage and decisions", () => {
@@ -210,7 +210,7 @@ test.describe("triage and decisions", () => {
     const event = await mainEvent(organizer)
     const marker = unique("bulk")
     const titles = [`Bulk A ${marker}`, `Bulk B ${marker}`]
-    const ids: Array<string> = []
+    const ids: Array<Id<"submissions">> = []
     for (const title of titles) {
       ids.push(
         await seedPending(organizer, event._id, title, testEmail("bulk-decline")),

@@ -37,6 +37,7 @@ import type * as speakersAdmin from "../speakersAdmin.js";
 import type * as submissions from "../submissions.js";
 import type * as submit from "../submit.js";
 import type * as tasksAdmin from "../tasksAdmin.js";
+import type * as webhooks from "../webhooks.js";
 import type * as workspaces from "../workspaces.js";
 
 import type {
@@ -75,6 +76,7 @@ declare const fullApi: ApiFromModules<{
   submissions: typeof submissions;
   submit: typeof submit;
   tasksAdmin: typeof tasksAdmin;
+  webhooks: typeof webhooks;
   workspaces: typeof workspaces;
 }>;
 

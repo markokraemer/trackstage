@@ -53,8 +53,8 @@ function Page() {
         <Step title="Press “Send acceptances” (or “Send declines”) and confirm.">
           <Shot
             src="review-commit.png"
-            alt="The confirmation dialog before sending acceptances"
-            caption="Accepted speakers are emailed and get their onboarding tasks created."
+            alt="The confirmation dialog before sending a decision queue"
+            caption="The dialog counts what is about to go out. Accepted speakers also get their onboarding tasks created."
           />
         </Step>
       </Steps>

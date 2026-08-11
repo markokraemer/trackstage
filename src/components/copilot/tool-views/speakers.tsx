@@ -1,5 +1,6 @@
 import {
   RiCheckboxCircleLine,
+  RiDeleteBin6Line,
   RiKey2Line,
   RiMailSendLine,
   RiTaskLine,
@@ -261,6 +262,35 @@ export function RemindersSentView({ output }: ToolOutputProps) {
       <GoLink to="/app/communications" search={{ tab: "outbox" }}>
         Check the outbox
       </GoLink>
+    </Banner>
+  )
+}
+
+// ——— remove_task —————————————————————————————————————————————————————————
+
+/**
+ * The inverse of `assign_task`: a task retracted from a speaker's portal. It
+ * leads with WHOSE portal changed, because that is the fact an organizer needs
+ * if it turns out to have been the wrong call.
+ */
+export function TaskRemovedView({ output }: ToolOutputProps) {
+  return (
+    <Banner
+      tone="bad"
+      icon={<RiDeleteBin6Line size={16} />}
+      title={`${str(output.title) ?? "Task"} removed`}
+    >
+      <FieldGrid
+        entries={[
+          { label: "Speaker", value: str(output.speaker) ?? "—" },
+          {
+            label: "Was completed",
+            value: output.wasCompleted === true ? "Yes" : "No",
+          },
+        ]}
+      />
+      {str(output.note) ? <Note>{str(output.note)}</Note> : null}
+      <GoLink to="/app/speakers">Open Speakers</GoLink>
     </Banner>
   )
 }

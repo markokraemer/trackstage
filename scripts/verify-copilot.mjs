@@ -256,6 +256,11 @@ const PROMPTS = [
     text: "List the email templates.",
     expect: "list_templates",
   },
+  {
+    id: "template-detail",
+    text: "Show me the full accepted email template.",
+    expect: "get_template",
+  },
   { id: "outbox", text: "What's in the outbox?", expect: "list_outbox" },
   {
     id: "manual-session",
@@ -326,6 +331,23 @@ const APPROVALS = [
     id: "unschedule",
     text: "Take the first session on the agenda off its slot (unschedule it).",
     expect: "unschedule_session",
+  },
+  {
+    id: "remove-task",
+    text: "Remove the first outstanding task from the first speaker on the roster.",
+    expect: "remove_task",
+  },
+  {
+    id: "delete-form",
+    // Deleting the form this run created — never a seeded one.
+    text: 'Delete the CFP form called "Copilot Verification CFP".',
+    expect: "delete_form",
+  },
+  {
+    id: "delete-event",
+    // Same: only the throwaway event this run created.
+    text: 'Delete the event called "Copilot Verification Event".',
+    expect: "delete_event",
   },
 ]
 
@@ -456,8 +478,9 @@ async function main() {
     "set_submission_status", "commit_decision_queue", "add_manual_session",
     "get_agenda", "schedule_session", "unschedule_session",
     "auto_place_sessions", "list_speakers", "get_speaker_portal_link",
-    "assign_task", "send_reminders", "list_templates", "update_template",
-    "list_outbox", "send_test_email", "get_event_summary",
+    "assign_task", "send_reminders", "list_templates", "get_template",
+    "update_template", "list_outbox", "send_test_email", "delete_event",
+    "delete_form", "remove_task", "get_event_summary",
   ]
   const missing = ALL_TOOLS.filter((name) => !captured[name])
   console.log(

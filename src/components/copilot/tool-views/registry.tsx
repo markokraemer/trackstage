@@ -5,6 +5,7 @@ import {
   RiCalendarEventLine,
   RiCalendarScheduleLine,
   RiDashboardLine,
+  RiDeleteBin6Line,
   RiFileList3Line,
   RiInboxUnarchiveLine,
   RiKey2Line,
@@ -24,12 +25,14 @@ import type { DynamicToolUIPart, ToolUIPart } from "ai"
 import { JsonBlock, isRecord } from "@/components/copilot/tool-views/shared"
 import {
   EventCreatedView,
+  EventDeletedView,
   EventStatsView,
   EventsView,
   WorkspacesView,
 } from "@/components/copilot/tool-views/events"
 import {
   FormCreatedView,
+  FormDeletedView,
   FormDetailView,
   FormSettingsUpdatedView,
   FormsListView,
@@ -53,9 +56,11 @@ import {
   SpeakerPortalLinkView,
   SpeakersView,
   TaskAssignedView,
+  TaskRemovedView,
 } from "@/components/copilot/tool-views/speakers"
 import {
   OutboxView,
+  TemplateDetailView,
   TemplateUpdatedView,
   TemplatesView,
   TestEmailView,
@@ -72,7 +77,7 @@ import {
  * this registry must degrade gracefully, because a tool added to the MCP
  * server tomorrow will show up here with no entry at all.
  *
- * So: every one of the 27 tools has a view, and anything unknown falls back to
+ * So: every one of the 31 tools has a view, and anything unknown falls back to
  * a syntax-highlighted JSON block that is still honest about what happened.
  */
 
@@ -170,9 +175,18 @@ export const TOOL_VIEWS: Record<string, ToolViewSpec | undefined> = {
 
   // Comms
   list_templates: { icon: RiMailLine, OutputView: TemplatesView },
+  get_template: { icon: RiMailLine, OutputView: TemplateDetailView },
   update_template: { icon: RiMailCheckLine, OutputView: TemplateUpdatedView },
   list_outbox: { icon: RiMailSendLine, OutputView: OutboxView },
   send_test_email: { icon: RiMailCheckLine, OutputView: TestEmailView },
+
+  // Deletion. Each one draws a RECEIPT — what went, and how much of it — never
+  // a celebration, because none of it can be undone. The approval card in
+  // copilot-tool-part.tsx carries the real weight here: every one of these
+  // matches isDestructiveTool(), so none of them runs unconfirmed.
+  delete_event: { icon: RiDeleteBin6Line, OutputView: EventDeletedView },
+  delete_form: { icon: RiDeleteBin6Line, OutputView: FormDeletedView },
+  remove_task: { icon: RiDeleteBin6Line, OutputView: TaskRemovedView },
 }
 
 /** The icon for a tool, including ones we've never heard of. */

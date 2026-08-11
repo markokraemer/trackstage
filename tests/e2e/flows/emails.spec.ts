@@ -3,8 +3,10 @@ import { execFileSync } from "node:child_process"
 import { fileURLToPath } from "node:url"
 import { dirname, resolve } from "node:path"
 import { api } from "../../../convex/_generated/api.js"
+import type { Id } from "../../../convex/_generated/dataModel"
 import {
   MAIN_EVENT_NAME,
+  createSubmission,
   ORGANIZER_STATE,
   armed,
   clearToasts,
@@ -69,17 +71,20 @@ function convexEnv(name: string): string | null {
   }
 }
 
-async function outbox(client: Awaited<ReturnType<typeof organizerConvexClient>>, eventId: string) {
+async function outbox(
+  client: Awaited<ReturnType<typeof organizerConvexClient>>,
+  eventId: Id<"events">,
+) {
   return (await client.query(api.comms.listMessages, {
     eventId,
     limit: 500,
-  })) as Array<OutboxRow>
+  })) as unknown as Array<OutboxRow>
 }
 
 /** Wait until every message queued after `since` has stopped moving. */
 async function settledSince(
   client: Awaited<ReturnType<typeof organizerConvexClient>>,
-  eventId: string,
+  eventId: Id<"events">,
   since: number,
   { atLeast = 1 } = {},
 ) {
@@ -105,24 +110,14 @@ test.describe("emails", () => {
     // with another agent's reseed or a leftover queue.
     const speakerEmail = testEmail("mail-speaker")
     const title = `Outbox Proof ${unique("t")}`
-    const submissionId = await client.mutation(api.submissions.addManual, {
+    await createSubmission(client, {
       eventId: event._id,
-      kind: "abstract",
       title,
-      description: "Queued by the emails e2e flow.",
-      status: "pending",
-      participants: [
-        {
-          firstName: "Maily",
-          lastName: "Proof",
-          email: speakerEmail,
-          role: "speaker",
-        },
-      ],
-    })
-    await client.mutation(api.submissions.setStatus, {
-      submissionId: typeof submissionId === "string" ? submissionId : submissionId.submissionId,
       status: "accept_queue",
+      email: speakerEmail,
+      firstName: "Maily",
+      lastName: "Proof",
+      description: "Queued by the emails e2e flow.",
     })
 
     const since = Date.now() - 1

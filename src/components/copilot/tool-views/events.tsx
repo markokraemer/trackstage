@@ -1,6 +1,7 @@
 import {
   RiBuilding2Line,
   RiCalendarEventLine,
+  RiDeleteBin6Line,
   RiMapPin2Line,
 } from "@remixicon/react"
 
@@ -22,6 +23,7 @@ import {
   Tile,
   asArray,
   formatDate,
+  isRecord,
   num,
   str,
   strList,
@@ -378,5 +380,36 @@ export function EventStatsView({ output }: ToolOutputProps) {
         <GoLink to="/app/speakers">Speakers</GoLink>
       </div>
     </Panel>
+  )
+}
+
+// ——— delete_event ————————————————————————————————————————————————————————
+
+/**
+ * A receipt, not a celebration. `delete_event` is the most destructive thing
+ * on the MCP surface, so the view's whole job is to state plainly what is now
+ * gone — the tally the mutation counted BEFORE the cascade ran — rather than
+ * congratulate anyone. (The confirmation itself happens upstream, on the
+ * approval card: this only ever renders after a human said yes.)
+ */
+export function EventDeletedView({ output }: ToolOutputProps) {
+  const removed = isRecord(output.removed) ? output.removed : {}
+  const entries = [
+    { label: "Submissions", value: String(num(removed.submissions) ?? 0) },
+    { label: "Speakers", value: String(num(removed.people) ?? 0) },
+    { label: "Forms", value: String(num(removed.forms) ?? 0) },
+    { label: "Tasks", value: String(num(removed.tasks) ?? 0) },
+    { label: "Rooms", value: String(num(removed.rooms) ?? 0) },
+  ]
+  return (
+    <Banner
+      tone="bad"
+      icon={<RiDeleteBin6Line size={16} />}
+      title={`${str(output.name) ?? "Event"} deleted`}
+    >
+      <FieldGrid entries={entries} />
+      {str(output.note) ? <Note>{str(output.note)}</Note> : null}
+      <GoLink to="/app">Dashboard</GoLink>
+    </Banner>
   )
 }

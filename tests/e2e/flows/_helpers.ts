@@ -2,6 +2,7 @@ import { expect } from "@playwright/test"
 import type { Locator, Page } from "@playwright/test"
 import { ConvexHttpClient } from "convex/browser"
 import { api } from "../../../convex/_generated/api.js"
+import type { Id } from "../../../convex/_generated/dataModel"
 import { env, watchConsole } from "../utils"
 import type { ConsoleWatcher } from "../utils"
 
@@ -70,8 +71,7 @@ export async function clientFor(email: string, password: string) {
  * mid-run, which recreates the event with a brand-new id.
  */
 export async function mainEvent(client: ConvexHttpClient) {
-  const events: Array<{ _id: string; slug: string; name: string }> =
-    await client.query(api.events.list, {})
+  const events = await client.query(api.events.list, {})
   const main = events.find((e) => e.slug === MAIN_EVENT_SLUG)
   if (!main) {
     throw new Error(
@@ -79,6 +79,40 @@ export async function mainEvent(client: ConvexHttpClient) {
     )
   }
   return main
+}
+
+/**
+ * Create a submission the way an organizer would from the "+ Add submission"
+ * drawer, with one speaker attached. Specs use this instead of hand-rolling
+ * `addManual` so a signature change lands in exactly one place.
+ */
+export async function createSubmission(
+  client: ConvexHttpClient,
+  args: {
+    eventId: Id<"events">
+    title: string
+    status?: string
+    kind?: "abstract" | "session"
+    email?: string
+    firstName?: string
+    lastName?: string
+    description?: string
+  },
+): Promise<Id<"submissions">> {
+  return await client.mutation(api.submissions.addManual, {
+    eventId: args.eventId,
+    kind: args.kind ?? "abstract",
+    title: args.title,
+    description: args.description ?? "Created by the e2e flow suite.",
+    status: args.status ?? "pending",
+    speakerEmails: [
+      {
+        email: args.email ?? testEmail("speaker"),
+        firstName: args.firstName ?? "Testy",
+        lastName: args.lastName ?? "Speaker",
+      },
+    ],
+  })
 }
 
 // ——— UI plumbing ———————————————————————————————————————————————————————————
@@ -295,8 +329,8 @@ export async function until<T>(
     await new Promise((r) => setTimeout(r, interval))
   }
   const detail = lastError
-    ? `last error: ${String((lastError as Error).message ?? lastError).slice(0, 200)}`
-    : `last value: ${JSON.stringify(last)?.slice(0, 400)}`
+    ? `last error: ${String(lastError).slice(0, 200)}`
+    : `last value: ${String(JSON.stringify(last)).slice(0, 400)}`
   throw new Error(`timed out waiting for ${label} — ${detail}`)
 }
 

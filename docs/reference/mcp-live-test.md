@@ -223,25 +223,85 @@ for the copilot path). Verified: bogus keys now rejected; a prompt that said
 
 Ordered by how much each one moves the "an agent can run my conference" needle.
 
-1. **Separate `get_event_overview` from `get_event_summary`, or merge them.**
+> **Status (fix pass, 2026-08-11): 1–8 SHIPPED, 9 and 10 deliberately not taken.**
+> The surface is now **31 tools** (27 + `delete_event`, `delete_form`,
+> `remove_task`, `get_template`). `scripts/verify-backend.mjs` grew ~35
+> assertions covering every one of them — exact tool count, the deletion
+> guards, `list_speakers` count self-consistency, the payload caps and the
+> loopback warning. Per-item notes inline below.
+
+1. ✅ **FIXED — merged.** `get_event_overview` and `get_event_summary` are one
+   tool now: `get_event_summary` returns every dashboard number the overview
+   used to own (`totalSubmissions`, `outbox` counts by status, `agenda.conflictCount`,
+   forms with `formId`/`slug`/`closeAt`/`publicUrl`) on top of its narrative
+   fields. `get_event_overview` survives as a **deprecated alias** returning the
+   identical payload plus a `deprecated` note, so nothing that already calls it
+   breaks. Both descriptions now say what the tool is NOT — the summary
+   explicitly disclaims the timetable, `get_agenda` explicitly disclaims the
+   status numbers — which is the head-to-head the model kept losing.
+
+   **Separate `get_event_overview` from `get_event_summary`, or merge them.**
    They overlap ~80% and the model cannot tell them apart from names. Either fold
    `get_event_overview` into `get_event_summary` (26 tools, one obvious entry
    point) or rename it to something mechanically distinct
    (`get_event_counts`) and strip the narrative fields from it.
 
-2. **Fix `list_speakers` semantics.** Add a per-row `outstandingReason:
+2. ✅ **FIXED.** `onlyWithOutstandingWork` now means EXACTLY "has ≥1 incomplete
+   task" and nothing else; profile gaps are a separate opt-in,
+   `includeProfileGaps` (alone: exactly the incomplete profiles; combined: the
+   either-set). Every row carries `outstandingReason: ["open_tasks" |
+   "incomplete_profile"]`, and the response states its own arithmetic —
+   `summary` ("8 of 11 confirmed speaker(s) returned — filter: … Across the
+   whole roster: 8 with open tasks, 3 with an incomplete profile, 11 with
+   either"), plus `totalSpeakers` / `returned` / `withOpenTasks` /
+   `withProfileGaps` / `withOpenTasksOrProfileGaps`, all counted over the WHOLE
+   roster before filtering. The flag keeps its name (renaming it would have
+   broken the copilot and every existing script) but its description now spells
+   out the boundary. A model that miscounts the rows now contradicts a sentence
+   sitting next to them.
+
+   **Fix `list_speakers` semantics.** Add a per-row `outstandingReason:
    ["open_tasks" | "incomplete_profile"]`, and return
    `{withOpenTasks, withIncompleteProfile}` alongside `speakerCount`. Rename the
    flag to `onlyNeedingChasing` and say in the description that it includes
    speakers whose *profile* is incomplete even with zero tasks. This is the one
    place a model silently gave the operator a wrong number.
 
-3. **Warn when the deployment's site URL is a loopback host.** Every
+3. ✅ **FIXED.** Every payload that returns a link (`create_event`,
+   `list_forms`, `get_form`, `create_form`, `update_form_settings`,
+   `get_public_form_link`, `get_speaker_portal_link`, `get_event_summary` /
+   `get_event_overview`) carries a `linkWarning` when `SITE_URL` resolves to a
+   loopback host: *"http://localhost:3000 is a loopback address (demo URL — set
+   SITE_URL in production). Links below only work on the machine running
+   Sessionboard — don't send them to a speaker."* The URL itself is left
+   machine-clean rather than having the warning glued onto it — the copilot
+   renders `publicUrl` as a copy button, and a parenthetical inside the href
+   would hand the organizer a broken link to fix the problem of a broken link.
+
+   **Warn when the deployment's site URL is a loopback host.** Every
    `publicUrl` / `portalUrl` returned `http://localhost:3000/…`. Add a
    `warning: "SITE_URL is not configured — these links only work locally"` to the
    payloads that return links, so an agent never hands a user a dead URL.
 
-4. **Add the missing destructive half of the CRUD surface.** An MCP-only
+4. ✅ **FIXED — the asterisk is gone.** Three new tools: **`delete_event`**
+   (admin/owner + `confirm: true` + `confirmName` matching the event's name
+   exactly — LLM-safe double confirmation; the mismatch error deliberately does
+   NOT quote the correct name back, or the second confirmation would just be the
+   first one twice), **`delete_form`** (admin/owner + `confirm: true`, refuses
+   any form with submissions — drafts included — and names
+   `update_form_settings(status: "closed")` as the thing you probably wanted),
+   and **`remove_task`** (admin/owner, the inverse of `assign_task`; task ids
+   come from `list_speakers`). `delete_event` runs the web app's OWN cascade:
+   `events.remove`'s body was extracted to an exported `deleteEventCascade()`
+   in `convex/events.ts` and both callers now share it, storage sweep included,
+   so an MCP delete can never drift from a UI delete or leave orphaned blobs.
+   It returns a receipt counted before the cascade ran (submissions, forms,
+   people, tasks, rooms). `complete_task` was deliberately NOT added: completing
+   a task is the speaker's act in their portal, and an organizer-side "mark it
+   done" would let the model paper over exactly the outstanding work the
+   dashboard exists to surface.
+
+   **Add the missing destructive half of the CRUD surface.** An MCP-only
    operator can `create_event` and `create_form` but can never remove either —
    cleaning up this test required a direct `events.remove` call outside MCP.
    `delete_event` and `delete_form` (both `confirm: true`-guarded, exactly like
@@ -249,35 +309,74 @@ Ordered by how much each one moves the "an agent can run my conference" needle.
    Same for `complete_task` / `remove_task` — tasks can be assigned but never
    retracted.
 
-5. **Cap or paginate verbose payloads.** `get_form`, `get_agenda`, `list_speakers`
+5. ✅ **FIXED.** `get_form` caps each question's `options` at 10 and reports
+   `optionCount` + `optionsTruncated: "…N more"`. `get_agenda` caps scheduled
+   and unscheduled rows at 40 each, and leads with counts (`scheduledCount`,
+   `unscheduledCount`, `conflictCount`) plus a per-room roll-up (`byRoom`:
+   sessions, capacity, first/last start) that stays true regardless of the cap.
+   `list_templates` ships subject + a 200-character `bodyPreview` +
+   `bodyLength`/`bodyTruncated` instead of five full bodies, with the new
+   **`get_template`** tool as the named call for one full body. A
+   `verbosity` argument was rejected: an LLM will not reliably ask for the
+   cheap variant, so the cheap variant has to be the default.
+
+   **Cap or paginate verbose payloads.** `get_form`, `get_agenda`, `list_speakers`
    and `list_templates` return several KB and the model compresses them lossily.
    Either add a `verbosity: "compact" | "full"` argument or truncate long bodies
    (template `body`, submission `description`) with an explicit
    `"…truncated, call get_form for the full text"` marker.
 
-6. **`send_test_email.to`: change the description to "Omit to send to yourself.
+6. ✅ **FIXED.** The parameter now reads: *"Omit to send to yourself. Only set
+   this if the user named a specific address — never fill it in from your own
+   context."*
+
+   **`send_test_email.to`: change the description to "Omit to send to yourself.
    Only set this if the user named a specific address."** The current wording
    ("Defaults to your own address") invited the model to fill in an address from
    its own context.
 
-7. **Return the created object's display fields on create.** `create_form`
+7. ✅ **FIXED.** `create_form` echoes `name` and `kind`;
+   `update_form_settings` echoes `name`; `add_manual_session` echoes `format`
+   and `track`.
+
+   **Return the created object's display fields on create.** `create_form`
    returns `{formId, slug, publicUrl, status}` but not `name`, so a model that
    creates two forms in one turn cannot tell them apart without another call.
    Same for `add_manual_session` (no `format`/`track` echo).
 
-8. **Normalise field names across tools.** `list_forms`/`get_form` use `closeAt`;
+8. ✅ **FIXED.** `closeAt` everywhere (`get_event_summary` no longer says
+   `closesAt`), `acceptedNotScheduled` everywhere (`acceptedNotYetScheduled` is
+   gone with the merge). The verify suite asserts both by name, so a
+   reintroduction fails the build.
+
+   **Normalise field names across tools.** `list_forms`/`get_form` use `closeAt`;
    `get_event_summary` uses `closesAt` for the same value. `get_event_overview`
    uses `acceptedNotYetScheduled`, `get_event_summary` uses `acceptedNotScheduled`.
    Small, but it makes a model hedge.
 
-9. **Consider trimming the tool count below the client's deferral threshold.**
+9. ⏭ **NOT TAKEN — and the count went UP, to 31.** Deletion (#4) was worth
+   three tools and the payload caps (#5) needed a fourth; both buy more than
+   the deferral costs. The deferral tax is paid once per session in schema
+   fetches, whereas "the agent cannot delete anything" is a permanent hole in
+   the promise. Note the mitigation that *did* land: because Claude Code
+   selects on NAMES at first contact, every new tool is a plain verb_noun whose
+   name alone says what it does, and the deprecated alias now announces itself
+   in its own title so a model reaching for it by name is told to stop.
+   Collapsing `get_public_form_link` into `list_forms`/`get_form` remains open;
+   it is the one genuinely redundant tool left.
+
+   **Consider trimming the tool count below the client's deferral threshold.**
    27 tools makes Claude Code defer schemas, costing 1–7 wasted round trips per
    session before any real work happens. Folding the overlapping pairs (#1) and
    collapsing `get_public_form_link` into `list_forms`/`get_form` (both already
    return `publicUrl`) would get the surface to ~24 and make first contact
    cheaper.
 
-10. **Document the API-key-vs-OAuth 401 nuance.** Because the server always
+10. ⏳ **OPEN — docs only.** Behaviour is spec-correct and unchanged; the
+    README's Authorization section still needs the sentence about a revoked key
+    surfacing as a re-auth prompt in Claude Code.
+
+    **Document the API-key-vs-OAuth 401 nuance.** Because the server always
     answers 401 with the RFC 9728 `WWW-Authenticate` OAuth pointer, Claude Code
     renders a revoked *API key* as `MCP server "sessionboard" requires
     re-authorization (token expired)` — the server's much better message

@@ -2,6 +2,7 @@ import { expect, test } from "@playwright/test"
 import { fileURLToPath } from "node:url"
 import { dirname, resolve } from "node:path"
 import { api } from "../../../convex/_generated/api.js"
+import type { Id } from "../../../convex/_generated/dataModel"
 import {
   ORGANIZER_STATE,
   armed,
@@ -46,28 +47,28 @@ type RosterRow = {
 
 async function roster(
   organizer: Awaited<ReturnType<typeof organizerConvexClient>>,
-  eventId: string,
+  eventId: Id<"events">,
 ) {
   return (await organizer.query(api.dashboard.speakersRoster, {
     eventId,
-  })) as Array<RosterRow>
+  })) as unknown as Array<RosterRow>
 }
 
 /** A speaker with no bio and no headshot, freshly created for this run. */
 async function freshSpeaker(
   organizer: Awaited<ReturnType<typeof organizerConvexClient>>,
-  eventId: string,
+  eventId: Id<"events">,
   label: string,
 ) {
   const email = testEmail(label)
-  const added = (await organizer.mutation(api.speakersAdmin.addManual, {
+  const added = await organizer.mutation(api.speakersAdmin.addManual, {
     eventId,
     firstName: "Portia",
     lastName: `Portal${unique("p").slice(-4)}`,
     email,
     company: "Portal Co",
     workflowStatus: "confirmed",
-  })) as { personId: string; portalToken: string }
+  })
   return { ...added, email }
 }
 

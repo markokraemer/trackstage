@@ -317,7 +317,7 @@ export function ToolAlert({
   )
 }
 
-/** A positive receipt: "12 committed", "form created". */
+/** A receipt for something that happened: "12 committed", "form deleted". */
 export function Banner({
   icon,
   title,
@@ -327,7 +327,7 @@ export function Banner({
   icon?: ReactNode
   title: ReactNode
   children?: ReactNode
-  tone?: "good" | "warn" | "neutral"
+  tone?: "good" | "warn" | "neutral" | "bad"
 }) {
   return (
     <div
@@ -335,7 +335,8 @@ export function Banner({
         "flex items-start gap-2.5 rounded-lg border p-3",
         tone === "good" && "border-status-green-dot/40 bg-status-green-bg/40",
         tone === "warn" && "border-status-amber-dot/40 bg-status-amber-bg/50",
-        tone === "neutral" && "border-border bg-muted/40"
+        tone === "neutral" && "border-border bg-muted/40",
+        tone === "bad" && "border-status-red-dot/40 bg-status-red-bg/40"
       )}
     >
       <span
@@ -344,7 +345,8 @@ export function Banner({
           "mt-0.5 shrink-0",
           tone === "good" && "text-status-green-fg",
           tone === "warn" && "text-status-amber-fg",
-          tone === "neutral" && "text-muted-foreground"
+          tone === "neutral" && "text-muted-foreground",
+          tone === "bad" && "text-status-red-fg"
         )}
       >
         {icon ?? <RiCheckLine size={16} />}

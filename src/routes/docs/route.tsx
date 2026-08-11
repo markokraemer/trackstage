@@ -68,13 +68,22 @@ function DocsLayout() {
             Docs
           </Link>
 
+          {/* Below `sm` the row is just the logo and the menu — the two links
+              would push the header past the viewport on a 390px phone. */}
           <div className="ml-auto flex items-center gap-2">
-            <Button variant="ghost" size="sm" nativeButton={false} render={<Link to="/app" />}>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="max-sm:hidden"
+              nativeButton={false}
+              render={<Link to="/app" />}
+            >
               Open the app
             </Button>
             <Button
               variant="outline"
               size="sm"
+              className="max-sm:hidden"
               nativeButton={false}
               render={<a href={GITHUB_URL} {...EXTERNAL_LINK_PROPS} />}
             >
@@ -98,9 +107,29 @@ function DocsLayout() {
                       Browse the Sessionboard documentation.
                     </SheetDescription>
                   </SheetHeader>
-                  <nav className="overflow-y-auto p-3">
+                  <nav className="min-h-0 flex-1 overflow-y-auto p-3">
                     <DocsTree pathname={pathname} />
                   </nav>
+                  {/* The header links are hidden at this width — keep a way out. */}
+                  <div className="flex gap-2 border-t border-border p-3">
+                    <Button
+                      size="sm"
+                      className="flex-1"
+                      nativeButton={false}
+                      render={<Link to="/app" />}
+                    >
+                      Open the app
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="icon-sm"
+                      aria-label="Source on GitHub"
+                      nativeButton={false}
+                      render={<a href={GITHUB_URL} {...EXTERNAL_LINK_PROPS} />}
+                    >
+                      <RiGithubFill size={16} aria-hidden />
+                    </Button>
+                  </div>
                 </SheetContent>
               </Sheet>
             </div>

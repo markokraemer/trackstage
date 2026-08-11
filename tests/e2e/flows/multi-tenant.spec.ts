@@ -45,8 +45,7 @@ test.describe("multi-tenancy", () => {
     const freshName = `Tenant ${unique("t").slice(-5)}`
 
     const organizer = await organizerConvexClient()
-    const workspaces: Array<{ id: string; name: string; role: string }> =
-      await organizer.query(api.workspaces.mine, {})
+    const workspaces = await organizer.query(api.workspaces.mine, {})
     const demoWorkspace =
       workspaces.find((w) => w.name === DEMO_WORKSPACE_NAME) ?? workspaces[0]
     expect(demoWorkspace, "demo organizer must own a workspace").toBeTruthy()
@@ -92,14 +91,15 @@ test.describe("multi-tenancy", () => {
       // And the backend refuses directly, with this user's own credentials.
       const freshClient = await clientFor(freshEmail, PASSWORD)
       expect(await freshClient.query(api.events.list, {})).toEqual([])
-      const demoEvent = (
-        await organizer.query(api.events.list, {})
-      ).find((e: { slug: string }) => e.slug === "ai-summit-2026")
+      const demoEvent = (await organizer.query(api.events.list, {})).find(
+        (e) => e.slug === "ai-summit-2026",
+      )
+      expect(demoEvent, "the demo event must exist to test isolation").toBeTruthy()
       await expect(
-        freshClient.query(api.events.get, { eventId: demoEvent._id }),
+        freshClient.query(api.events.get, { eventId: demoEvent!._id }),
       ).rejects.toThrow(/access/i)
       await expect(
-        freshClient.query(api.submissions.counts, { eventId: demoEvent._id }),
+        freshClient.query(api.submissions.counts, { eventId: demoEvent!._id }),
       ).rejects.toThrow(/access/i)
     })
 
@@ -215,9 +215,9 @@ test.describe("multi-tenancy", () => {
       await expectToast(org, /role updated/i)
       await until(
         async () =>
-          (await organizer.query(api.workspaces.members, {
+          await organizer.query(api.workspaces.members, {
             organizationId: demoWorkspace.id,
-          })) as Array<{ email: string; role: string }>,
+          }),
         (rows) => rows.find((m) => m.email === freshEmail)?.role === "admin",
         { label: "role=admin in the members table" },
       )
@@ -258,10 +258,7 @@ test.describe("multi-tenancy", () => {
     // the team-management controls are simply not offered.
     const memberEmail = testEmail("member")
     const organizer = await organizerConvexClient()
-    const workspaces: Array<{ id: string; name: string }> = await organizer.query(
-      api.workspaces.mine,
-      {},
-    )
+    const workspaces = await organizer.query(api.workspaces.mine, {})
     const demoWorkspace =
       workspaces.find((w) => w.name === DEMO_WORKSPACE_NAME) ?? workspaces[0]
 
@@ -291,10 +288,9 @@ test.describe("multi-tenancy", () => {
 
       // And the backend refuses the mutation outright.
       const memberClient = await clientFor(memberEmail, PASSWORD)
-      const members: Array<{ _id: string; email: string }> =
-        await memberClient.query(api.workspaces.members, {
-          organizationId: demoWorkspace.id,
-        })
+      const members = await memberClient.query(api.workspaces.members, {
+        organizationId: demoWorkspace.id,
+      })
       const owner = members.find((m) => m.email.includes("organizer@demo"))
       if (owner) {
         await expect(
@@ -304,10 +300,9 @@ test.describe("multi-tenancy", () => {
         ).rejects.toThrow()
       }
     } finally {
-      const members: Array<{ _id: string; email: string }> =
-        await organizer.query(api.workspaces.members, {
-          organizationId: demoWorkspace.id,
-        })
+      const members = await organizer.query(api.workspaces.members, {
+        organizationId: demoWorkspace.id,
+      })
       const row = members.find((m) => m.email === memberEmail)
       if (row) {
         await organizer.mutation(api.workspaces.removeMember, {

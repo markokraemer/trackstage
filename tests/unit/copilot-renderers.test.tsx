@@ -84,6 +84,10 @@ const ALL_TOOLS = [
   "update_template",
   "list_outbox",
   "send_test_email",
+  "get_template",
+  "delete_event",
+  "delete_form",
+  "remove_task",
   "get_event_summary",
 ] as const
 
@@ -640,6 +644,60 @@ const SHAPES: Record<string, Payload> = {
       note: "Skipped speakers were already reminded in the last 20 hours.",
     },
   },
+  get_template: {
+    input: { event: "ai-summit-2026", key: "accepted" },
+    output: {
+      key: "accepted",
+      name: "Accepted",
+      subject: "You're in!",
+      body: "<p>Hi {{firstName}}, your talk was accepted.</p>",
+      customized: true,
+      variables: ["speakerName", "firstName", "sessionTitle"],
+      note: "Rewrite it with update_template, then proof it with send_test_email.",
+    },
+  },
+  delete_event: {
+    input: {
+      event: "throwaway-2026",
+      confirmName: "Throwaway 2026",
+      confirm: true,
+    },
+    output: {
+      deleted: true,
+      eventId: "evt_throwaway",
+      name: "Throwaway 2026",
+      slug: "throwaway-2026",
+      removed: {
+        submissions: 3,
+        forms: 1,
+        people: 4,
+        tasks: 2,
+        rooms: 1,
+      },
+      note: "The event and everything belonging to it are gone. This cannot be undone.",
+    },
+  },
+  delete_form: {
+    input: { form: "workshop-cfp", confirm: true },
+    output: {
+      deleted: true,
+      formId: "form_workshop",
+      name: "Workshop CFP",
+      slug: "workshop-cfp",
+      note: "The form is gone. Its public URL now 404s.",
+    },
+  },
+  remove_task: {
+    input: { taskId: "task_slides" },
+    output: {
+      removed: true,
+      taskId: "task_slides",
+      title: "Upload your slides",
+      speaker: "ada@example.com",
+      wasCompleted: false,
+      note: "It has disappeared from that speaker's portal.",
+    },
+  },
   list_templates: {
     input: { event: "ai-summit-2026" },
     output: {
@@ -648,14 +706,18 @@ const SHAPES: Record<string, Payload> = {
           key: "accepted",
           name: "Accepted",
           subject: "You're in!",
-          body: "<p>Hi {{firstName}}</p>",
+          bodyPreview: "<p>Hi {{firstName}}</p>",
+          bodyLength: 21,
+          bodyTruncated: false,
           customized: true,
         },
         {
           key: "reminder",
           name: "Reminder",
           subject: "A quick nudge",
-          body: "<p>Please finish your tasks.</p>",
+          bodyPreview: "<p>Please finish your tasks.</p>",
+          bodyLength: 32,
+          bodyTruncated: false,
           customized: false,
         },
       ],
@@ -750,10 +812,10 @@ function renderTool(toolName: string, payload: Payload) {
 afterEach(cleanup)
 
 describe("copilot tool-view registry", () => {
-  it("has a purpose-built view for all 27 MCP tools", () => {
+  it("has a purpose-built view for all 31 MCP tools", () => {
     const missing = ALL_TOOLS.filter((name) => !hasToolView(name))
     expect(missing).toEqual([])
-    expect(ALL_TOOLS.length).toBe(27)
+    expect(ALL_TOOLS.length).toBe(31)
   })
 
   it("does not register views for tools the MCP server doesn't expose", () => {
@@ -786,7 +848,7 @@ describe.each(ALL_TOOLS)("%s", (toolName) => {
     expect(payload, `no fixture for ${toolName}`).toBeTruthy()
     const { container } = renderTool(toolName, payload)
     // Something rendered…
-    expect(container.textContent?.trim().length ?? 0).toBeGreaterThan(0)
+    expect(container.textContent.trim().length).toBeGreaterThan(0)
     // …and it is not the JSON fallback (which would mean the view bailed).
     expect(container.querySelector("[data-view-fallback]")).toBeNull()
   })
@@ -1019,7 +1081,7 @@ describe("what each view actually says", () => {
     for (const [toolName, output] of cases) {
       const { container, unmount } = renderTool(toolName, { input: {}, output })
       expect(
-        container.textContent?.trim().length ?? 0,
+        container.textContent.trim().length,
         `${toolName} empty state`
       ).toBeGreaterThan(10)
       unmount()

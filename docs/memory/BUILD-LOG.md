@@ -354,10 +354,16 @@ and deleted event orphaned its blobs forever), and `events.logoId` was dead conf
   build-the-agenda · chase-speakers · publish-your-program · team-and-workspaces · airtable-sync ·
   ai-copilot. Every label in the copy was read off the real components (e.g. "Route answers to
   tracks", "Send acceptances", "Remind all incomplete", "Invite teammate", "Publish agenda").
-- **Screenshots** — `scripts/capture-screenshots.mjs` gained a `--docs` mode writing
-  `public/docs/*.png` at 1440×900 @2x, cropped to the dialog/drawer where a region reads better
-  than a full page. Every shot is best-effort and `<Shot>` degrades to a labelled placeholder,
-  so a missing capture can never break a page or the build.
+- **Screenshots — 32 in `public/docs/`** — `scripts/capture-screenshots.mjs` gained `--docs`
+  (and `--marketing`) modes, 1440×900 @2x, cropped to the dialog/drawer where a region reads
+  better than a full page. Every shot is best-effort and `<Shot>` degrades to a labelled
+  placeholder, so a missing capture can never break a page or the build.
+  **Gotcha worth remembering:** the first run silently shot a *different event* — this is a
+  shared dev database, and a concurrently-created "Copilot Verification" event won the default
+  selection, so the agenda/speakers/submissions shots were all empty states. The script now
+  self-heals via `gotoOrganizer()`, which re-checks the sidebar for "AI Engineer Summit 2026"
+  after every `/app/*` navigation and re-selects the event when it drifts. Verify captures by
+  eye before trusting them.
 - **OpenAPI accuracy method** — `public/docs/api/openapi.json` (3.1) was hand-authored against
   `convex/http.ts` (routing, bearer check, paging clamps, CORS, the RFC 5545 writer) and the
   four `internalQuery` projections in `convex/publicData.ts`, then **verified field-by-field
@@ -374,6 +380,10 @@ and deleted event orphaned its blobs forever), and `events.logoId` was dead conf
 - **Entry points** — landing footer "Developers" column now links Documentation / API reference /
   MCP server; the organizer avatar menu gained a "Docs" item; the speaker-portal avatar menu
   gained "How this works" → the portal guide page.
+- **Verified end to end** — a Playwright pass over all 14 routes: every page has an `<h1>`,
+  0 broken images, 0 undelivered-shot placeholders, no 4xx/5xx, no console errors, and no
+  horizontal scroll at 1440px or 390px (the header's "Open the app"/GitHub buttons move into
+  the mobile sheet below `sm`, which is what was overflowing a 390px phone).
 - **Reuse cleanup** — the `.convex.site` URL derivation was duplicated in
   `mcp-connect-card.tsx`; it now lives once in `src/lib/deployment-urls.ts` and both the
   settings card and the docs read it.
@@ -433,3 +443,58 @@ checks concurrently), `pnpm test` 117 passed, `tsc` clean in every file this sli
 Note for whoever runs the suite next: `convex run seed:setup` while a `verify-backend` run is
 in flight will fail it with "Session expired — please re-enter your email" (the portal token
 belongs to a purged person). Seed, then verify — never overlapping.
+
+- mcp-ergonomics slice (from `docs/reference/mcp-live-test.md`'s ranked fix list): items 1–8
+  shipped, surface **27 → 31 tools**, `convex/mcp.ts` only. **Deletion closes the one asterisk
+  on "do everything via MCP"** — `delete_event` (admin/owner + `confirm: true` + `confirmName`
+  matching the event's name exactly; the mismatch error deliberately does NOT quote the correct
+  name back, or the second confirmation is just the first one twice), `delete_form` (admin +
+  confirm; refuses any form with submissions, drafts included, and names
+  `update_form_settings(status:"closed")` as the thing you probably meant), `remove_task`
+  (admin; the inverse of `assign_task`, ids come from `list_speakers`). `delete_event` runs the
+  web app's OWN cascade: `events.remove`'s body was extracted to an exported
+  `deleteEventCascade()` in `convex/events.ts` and both callers share it, storage sweep
+  included, so an MCP delete can never drift from a UI delete or leave orphaned blobs; it
+  returns a receipt (submissions/forms/people/tasks/rooms) counted BEFORE the cascade ran.
+  `complete_task` was deliberately not added — completing a task is the speaker's act in their
+  portal, and an organizer-side "mark it done" would let a model paper over the exact
+  outstanding work the dashboard exists to surface. **`list_speakers` — the one place a model
+  gave a wrong number (11 rows reported as 8)** — now has `onlyWithOutstandingWork` meaning
+  EXACTLY "≥1 incomplete task" with profile gaps split out into `includeProfileGaps` (alone:
+  exactly the incomplete profiles; combined: either), per-row `outstandingReason`, and a
+  response that states its own arithmetic (`summary` sentence + `totalSpeakers`/`returned`/
+  `withOpenTasks`/`withProfileGaps`/`withOpenTasksOrProfileGaps`, all counted over the whole
+  roster before filtering) so a miscount contradicts a sentence sitting next to the rows.
+  **`get_event_overview` merged into `get_event_summary`** (it lost a head-to-head with
+  `get_agenda` for "pull the dashboard stats"): one `eventSummaryPayload()` now carries the
+  narrative AND every dashboard number (`totalSubmissions`, `outbox` by status,
+  `agenda.conflictCount`, forms with ids/links), with `get_event_overview` surviving as a
+  deprecated alias returning the identical payload plus a `deprecated` note — and both
+  descriptions now disclaim the other tool by name. **Payload caps** (the live-fire lesson that
+  anything >2KB gets compressed lossily before the user sees it): `get_form` options ≤10 +
+  `optionCount`/`optionsTruncated: "…N more"`; `get_agenda` ≤40 rows each side, leading with
+  counts and a per-room `byRoom` roll-up that stays true regardless of the cap; `list_templates`
+  ships subject + 200-char `bodyPreview` with the new **`get_template`** tool as the named call
+  for one full body (a `verbosity` arg was rejected — an LLM won't reliably ask for the cheap
+  variant, so cheap has to be the default). **Loopback links** now carry a `linkWarning`
+  ("…(demo URL — set SITE_URL in production)…") on every payload that returns one; the URL
+  itself stays machine-clean because the copilot renders `publicUrl` as a copy button and a
+  parenthetical inside the href would hand the organizer a broken link to fix the problem of a
+  broken link. Field names normalized (`closeAt`, `acceptedNotScheduled` everywhere) and
+  asserted by name so a reintroduction fails the build; `send_test_email.to` reworded so a model
+  stops inventing recipients; `create_form`/`update_form_settings` echo `name`,
+  `add_manual_session` echoes `format`/`track`. Downstream: `src/docs/generated/mcp-tools.ts`
+  regenerates clean at 31 (`node scripts/generate-mcp-tools.mjs --check`), the copilot registry
+  gained four real views (`EventDeletedView`/`FormDeletedView`/`TaskRemovedView` are RECEIPTS,
+  never celebrations, and all three match `isDestructiveTool()` so they stop at the approval
+  card; `TemplateDetailView` reuses the list's own `TemplateCard`), and `TemplatesView` now
+  reads `bodyPreview ?? body`. `scripts/verify-backend.mjs` grew ~35 MCP assertions: exact
+  31-tool count, deletion tools present, `list_speakers` counts self-consistent with its own
+  filters, the alias returning an identical payload, `closeAt`/`acceptedNotScheduled` by name,
+  every cap, the loopback warning, `delete_form` refused on the seeded `cfp` form and succeeding
+  on a throwaway, `delete_event` refused three ways (no `confirmName`, no `confirm`, wrong name)
+  then deleting a throwaway event it created, and `remove_task` round-tripping a real task.
+  NOTE: item 9 (trim the tool count below Claude Code's deferral threshold) was deliberately
+  NOT taken — the deferral tax is paid once per session in schema fetches, while "the agent
+  can't delete anything" is a permanent hole; collapsing `get_public_form_link` into
+  `list_forms`/`get_form` stays the one redundant tool left. Item 10 is docs-only and still open.

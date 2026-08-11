@@ -54,6 +54,20 @@ const SHORTCUT_KEY = "i"
 /** One arrow press. Shift multiplies it (see the handler). */
 const KEYBOARD_STEP = 24
 
+/**
+ * Base UI closes a dialog for several reasons; a non-modal work panel should
+ * only honour the deliberate ones. Clicking the table behind the copilot, or
+ * letting focus wander out of it, must not dismiss the conversation.
+ */
+function ignoreDismissal(setOpen: (open: boolean) => void) {
+  return (open: boolean, details: { reason?: string }) => {
+    if (!open && (details.reason === "outside-press" || details.reason === "focus-out")) {
+      return
+    }
+    setOpen(open)
+  }
+}
+
 export function CopilotPanel() {
   const { open, setOpen } = useCopilotPanel()
   const { event } = useCurrentEvent()
@@ -85,15 +99,15 @@ export function CopilotPanel() {
           know what screen the organizer came from the moment they open it. */}
       <CopilotAppContext />
       {/*
-        `dismissible={false}` is the other half of `modal={false}`. A non-modal
+        `ignoreDismissal` is the other half of `modal={false}`. A non-modal
         panel exists so the organizer can keep working in the table behind it —
-        but Base UI's default outside-press dismissal means the first click on
-        that table closes the copilot, which is the opposite of the point. It
-        also made the resize handle unusable: a drag that ends past the panel's
-        left edge counts as an outside press. Escape and the close button
-        remain the ways out.
+        but Base UI dismisses a dialog on outside press and focus-out by
+        default, so the first click on that table closed the copilot, which is
+        the opposite of the point. It also made the resize handle unusable: a
+        drag that ends past the panel's left edge counts as an outside press.
+        Escape and the close button remain the ways out.
       */}
-      <Sheet open={open} onOpenChange={setOpen} modal={false} dismissible={false}>
+      <Sheet open={open} onOpenChange={ignoreDismissal(setOpen)} modal={false}>
         <SheetContent
           side="right"
           showOverlay={false}

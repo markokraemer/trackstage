@@ -117,7 +117,10 @@ export function TemplatesView({ output }: ToolOutputProps) {
             name={str(row.name) ?? str(row.key) ?? "Template"}
             templateKey={str(row.key)}
             subject={str(row.subject)}
-            body={row.body}
+            // list_templates ships a 200-char `bodyPreview` (the full body is
+            // get_template's job); `body` is kept as a fallback so a captured
+            // pre-cap payload still renders.
+            body={row.bodyPreview ?? row.body}
             customized={bool(row.customized)}
           />
         ))}
@@ -287,5 +290,32 @@ export function TestEmailView({ output }: ToolOutputProps) {
         Check delivery in the outbox
       </GoLink>
     </Banner>
+  )
+}
+
+// ——— get_template ————————————————————————————————————————————————————————
+
+/**
+ * One template, read in full — the escape hatch that lets `list_templates`
+ * ship 200-character previews instead of several KB of prose. Reuses the same
+ * TemplateCard the list draws, so a template looks identical wherever it is
+ * read from.
+ */
+export function TemplateDetailView({ output }: ToolOutputProps) {
+  const customized = bool(output.customized) === true
+  return (
+    <Panel>
+      <TemplateCard
+        name={str(output.name) ?? "Template"}
+        templateKey={str(output.key)}
+        subject={str(output.subject)}
+        body={output.body}
+        customized={customized}
+      />
+      {str(output.note) ? <Note>{str(output.note)}</Note> : null}
+      <GoLink to="/app/communications" search={{ tab: "templates" }}>
+        Open Communications
+      </GoLink>
+    </Panel>
   )
 }

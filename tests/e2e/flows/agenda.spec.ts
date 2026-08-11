@@ -1,10 +1,12 @@
 import { expect, test } from "@playwright/test"
 import type { Page } from "@playwright/test"
 import { api } from "../../../convex/_generated/api.js"
+import type { Id } from "../../../convex/_generated/dataModel"
 import {
   MAIN_EVENT_SLUG,
   ORGANIZER_STATE,
   armed,
+  createSubmission,
   clearToasts,
   gotoApp,
   gotoStable,
@@ -31,36 +33,42 @@ import {
  */
 
 type Board = {
-  scheduled: Array<{ id: string; title: string; roomId: string; startsAt: number }>
+  scheduled: Array<{
+    id: string
+    title: string
+    roomId: Id<"rooms">
+    startsAt: number
+  }>
   unscheduled: Array<{ id: string; title: string }>
   conflicts: Array<{ kind: string }>
 }
 
 async function board(
   organizer: Awaited<ReturnType<typeof organizerConvexClient>>,
-  eventId: string,
+  eventId: Id<"events">,
 ) {
-  return (await organizer.query(api.agenda.board, { eventId })) as Board
+  return (await organizer.query(api.agenda.board, {
+    eventId,
+  })) as unknown as Board
 }
 
 /** Create an accepted (therefore schedulable) session. */
 async function acceptedSession(
   organizer: Awaited<ReturnType<typeof organizerConvexClient>>,
-  eventId: string,
+  eventId: Id<"events">,
   title: string,
   email = testEmail("agenda"),
 ) {
-  const result = await organizer.mutation(api.submissions.addManual, {
+  return await createSubmission(organizer, {
     eventId,
     kind: "session",
     title,
-    description: "Created by the agenda e2e flow.",
     status: "accepted",
-    participants: [
-      { firstName: "Aggie", lastName: "Enda", email, role: "speaker" },
-    ],
+    email,
+    firstName: "Aggie",
+    lastName: "Enda",
+    description: "Created by the agenda e2e flow.",
   })
-  return typeof result === "string" ? result : result.submissionId
 }
 
 /** Open a session's scheduling popover and commit a slot. */

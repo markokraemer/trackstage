@@ -196,6 +196,8 @@ export default defineSchema({
     // its presence is also what puts a manually added speaker (one with no
     // accepted submission yet) on the roster.
     workflowStatus: v.optional(v.string()),
+    // Last REST-API write (convex/apiV1.ts) — see submissions.updatedAt.
+    updatedAt: v.optional(v.number()),
   })
     .index("by_eventId", ["eventId"])
     .index("by_eventId_and_email", ["eventId", "email"])
@@ -224,6 +226,16 @@ export default defineSchema({
     roomId: v.optional(v.id("rooms")),
     startsAt: v.optional(v.number()),
     durationMinutes: v.optional(v.number()),
+    // Last REST-API write (convex/apiV1.ts). Surfaced as `updated_at` and used
+    // as the optimistic-concurrency token on PUT (mismatch ⇒ 409), exactly
+    // like Sessionboard's. Falls back to `_creationTime` when never written
+    // through the API.
+    updatedAt: v.optional(v.number()),
+    // Soft delete (REST API parity: DELETE /sessions/{id} + POST /restore).
+    // Set ⇒ the row is invisible to every organizer, portal and public read;
+    // the blob of history is kept so a mis-click is undoable. Nothing in the
+    // product UI sets this — only convex/apiV1.ts.
+    deletedAt: v.optional(v.number()),
   })
     .index("by_eventId", ["eventId"])
     .index("by_eventId_and_status", ["eventId", "status"])
@@ -308,6 +320,15 @@ export default defineSchema({
     // pending | approved | changes_requested
     approvalStatus: v.string(),
     reviewNote: v.optional(v.string()),
+    // ——— REST API session-file parity (convex/apiV1.ts) ———
+    // Display title, defaulting to `filename` when absent.
+    title: v.optional(v.string()),
+    // The session participant this file belongs to (their
+    // `assigned_participant_id`). Distinct from `personId`, which is whoever
+    // uploaded it.
+    assignedPersonId: v.optional(v.id("people")),
+    // Soft delete — DELETE .../files/{id}.
+    deletedAt: v.optional(v.number()),
   })
     .index("by_eventId", ["eventId"])
     .index("by_personId", ["personId"])
@@ -401,4 +422,85 @@ export default defineSchema({
     // pending sync at a time, cleared when that sync starts.
     syncScheduled: v.optional(v.boolean()),
   }).index("by_eventId", ["eventId"]),
+
+  // ——— Public REST API (convex/apiV1.ts + convex/webhooks.ts) ——————————————
+
+  // Outbound webhook endpoints. Event-scoped by default (an organizer wires
+  // their own automation to one event); `eventId: undefined` subscribes to
+  // every event in the workspace, which is what Sessionboard's org-level
+  // endpoints do.
+  webhooks: defineTable({
+    organizationId: v.id("organizations"),
+    eventId: v.optional(v.id("events")),
+    url: v.string(), // https:// only
+    // Signing secret (`whsec_…`). Shown in full on create and on rotate; the
+    // list endpoint masks it. HMAC-SHA256 over `${timestamp}.${body}`.
+    secret: v.string(),
+    // Subscribed event types, e.g. ["session.updated"]. `["*"]` = everything.
+    events: v.array(v.string()),
+    description: v.optional(v.string()),
+    enabled: v.boolean(),
+    createdAt: v.number(),
+    // Rolling health, so the settings UI and GET /webhooks can show a status
+    // without scanning the delivery log.
+    lastDeliveryAt: v.optional(v.number()),
+    lastStatus: v.optional(v.number()),
+    lastError: v.optional(v.string()),
+    consecutiveFailures: v.optional(v.number()),
+  })
+    .index("by_organizationId", ["organizationId"])
+    .index("by_eventId", ["eventId"]),
+
+  // Per-attempt delivery log (Sessionboard shows the same thing under
+  // "Monitoring"). Trimmed by the crons sweep so it cannot grow unbounded.
+  webhookDeliveries: defineTable({
+    webhookId: v.id("webhooks"),
+    organizationId: v.id("organizations"),
+    eventType: v.string(),
+    payload: v.string(), // the exact JSON body that was signed
+    // pending | success | failed
+    status: v.string(),
+    attempts: v.number(),
+    responseStatus: v.optional(v.number()),
+    error: v.optional(v.string()),
+    createdAt: v.number(),
+    deliveredAt: v.optional(v.number()),
+  })
+    .index("by_webhookId", ["webhookId"])
+    .index("by_organizationId", ["organizationId"])
+    // Retention sweep walks oldest-first without scanning the table.
+    .index("by_createdAt", ["createdAt"]),
+
+  // Token-bucket counters backing the documented 100 req / 15 min per
+  // (credential, category) limit. One row per window; stale rows are swept.
+  apiRateLimits: defineTable({
+    // sha-256 of the presenting credential — never the credential itself.
+    subject: v.string(),
+    bucket: v.string(), // entity_reads | session_writes | …
+    windowStart: v.number(),
+    count: v.number(),
+  }).index("by_subject_and_bucket", ["subject", "bucket"]),
+
+  // Two-phase (>50 MB) session-file uploads. POST …/files mints an intent and
+  // hands back a PUT URL on our own origin; the bytes land in Convex storage;
+  // POST …/files/{id}/complete promotes the intent into an `uploads` row.
+  // Intents are ephemeral — the crons sweep drops abandoned ones.
+  fileUploadIntents: defineTable({
+    eventId: v.id("events"),
+    submissionId: v.id("submissions"),
+    personId: v.id("people"),
+    filename: v.string(),
+    contentType: v.optional(v.string()),
+    sizeBytes: v.optional(v.number()),
+    title: v.optional(v.string()),
+    assignedPersonId: v.optional(v.id("people")),
+    // Set when replacing an existing file group, so `complete` versions it.
+    replacesUploadId: v.optional(v.id("uploads")),
+    // Filled by PUT …/files/{id}/bytes; `complete` refuses without it.
+    storageId: v.optional(v.id("_storage")),
+    createdAt: v.number(),
+  })
+    .index("by_submissionId", ["submissionId"])
+    .index("by_storageId", ["storageId"])
+    .index("by_createdAt", ["createdAt"]),
 })

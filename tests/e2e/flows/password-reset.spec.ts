@@ -60,7 +60,7 @@ test.describe("password reset", () => {
 
     // The password field and the demo-credentials card belong to sign-in, not
     // to this step — a reset form asking for a password is a confused form.
-    await expect(page.getByLabel("Password")).toHaveCount(0)
+    await expect(page.getByLabel("Password", { exact: true })).toHaveCount(0)
     await expect(page.getByText(/demo credentials/i)).toHaveCount(0)
 
     await requestReset(page, strangerEmail)
@@ -90,6 +90,16 @@ test.describe("password reset", () => {
     await page.getByRole("button", { name: /back to sign in/i }).click()
     await expect(page.getByRole("heading", { name: /^sign in$/i })).toBeVisible()
 
+    // The ordinary way in: the link on the sign-in card itself. (Retried —
+    // a click that lands before hydration is swallowed, and the dev server
+    // may full-reload under other agents' edits.)
+    await expect(async () => {
+      await page.getByRole("button", { name: /forgot password/i }).first().click()
+      await expect(
+        page.getByRole("heading", { name: /reset your password/i }),
+      ).toBeVisible({ timeout: 2_000 })
+    }).toPass({ timeout: 30_000 })
+
     watcher.assertClean("password reset request")
   })
 
@@ -105,8 +115,10 @@ test.describe("password reset", () => {
     // No password form to fill in — there is nothing this page could do with it.
     await expect(page.getByLabel("New password")).toHaveCount(0)
 
+    // The CTA is a real <a href> wearing Base UI's role="button" (the house
+    // pattern for button-styled navigation), so it is addressed by that role.
     await expect(async () => {
-      await page.getByRole("link", { name: /email me a new link/i }).click()
+      await page.getByRole("button", { name: /email me a new link/i }).click()
       await expect(
         page.getByRole("heading", { name: /reset your password/i }),
       ).toBeVisible({ timeout: 2_000 })
@@ -131,6 +143,11 @@ test.describe("password reset", () => {
     await expect(page.getByText(/no longer valid/i)).toBeVisible({ timeout: 20_000 })
     // Refused, but still recoverable — the user is not stranded on a dead page.
     await expect(page.getByRole("link", { name: /back to sign in/i })).toBeVisible()
+
+    // The server's 400 is the point of this test, and the browser logs every
+    // non-2xx to the console. Forget it — everything after this line is still
+    // held to a clean console.
+    watcher.reset()
 
     // A mismatch is caught locally, before the server is ever asked.
     await fillStable(page.getByLabel("Confirm password"), "something-else-2026")

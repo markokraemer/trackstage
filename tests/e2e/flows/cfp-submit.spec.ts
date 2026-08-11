@@ -85,7 +85,7 @@ async function answer(page: Page, question: Question, value?: string) {
 async function answerRequired(
   page: Page,
   questions: Array<Question>,
-  { skip = [] as Array<string>, values = {} as Record<string, string> } = {},
+  { skip = [], values = {} }: { skip?: Array<string>; values?: Record<string, string> } = {},
 ) {
   const filled: Record<string, string> = {}
   for (const question of questions) {

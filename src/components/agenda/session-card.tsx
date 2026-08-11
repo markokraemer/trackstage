@@ -4,6 +4,7 @@
  * same wherever an organizer meets it.
  */
 
+import type * as React from "react"
 import { RiErrorWarningLine, RiTimeLine, RiUser3Line } from "@remixicon/react"
 
 import { cn } from "@/lib/utils"
@@ -12,7 +13,12 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Separator } from "@/components/ui/separator"
 import { StatusPill } from "@/components/shared/status-pill"
 import type { AgendaConflict, AgendaRoom, AgendaSession } from "./agenda-model"
-import { NO_TRACK_COLOR, conflictKindLabel, speakerLabel } from "./agenda-model"
+import {
+  NO_TRACK_COLOR,
+  conflictKindLabel,
+  speakerLabel,
+  trackTint,
+} from "./agenda-model"
 import {
   formatDuration,
   formatTimeRange,
@@ -22,16 +28,64 @@ import {
 import { ScheduleFields } from "./schedule-fields"
 import { useAgendaActions } from "./use-agenda-actions"
 
+/**
+ * The Notion Calendar block recipe (docs/reference/design-references.md §4a).
+ *
+ * A session block is **not** a filled colour box: the surface is a ~9% tint of
+ * the track hue, a solid 4px bar runs down the left edge, and the title is set
+ * in the hue rather than in black. That is what lets a packed conference day
+ * stay calm while every block is still colour-coded by track.
+ *
+ * Active/dragging inverts it — solid saturated fill, white text — so "quiet
+ * tint = resting, solid fill = the one in your hand" reads without a legend.
+ *
+ * The colours travel to the contents as CSS custom properties so every view can
+ * put `sessionBlockStyle()` on whatever element it already had and drop
+ * `<SessionCardBody>` inside it unchanged.
+ */
+export interface SessionBlockState {
+  /** Flagged by the conflict pass — border/ring handled by the caller. */
+  conflicted?: boolean
+  /** The card in your hand: solid fill, white text. */
+  solid?: boolean
+}
+
+export function sessionBlockStyle(
+  session: Pick<AgendaSession, "track">,
+  state: SessionBlockState = {}
+): React.CSSProperties {
+  const hue = session.track?.color ?? NO_TRACK_COLOR
+  const tint = trackTint(hue)
+  if (state.solid) {
+    return {
+      backgroundColor: hue,
+      borderColor: hue,
+      "--sb-bar": "rgba(255,255,255,0.55)",
+      "--sb-title": "#ffffff",
+      "--sb-meta": "rgba(255,255,255,0.86)",
+    } as React.CSSProperties
+  }
+  return {
+    backgroundColor: tint.surface,
+    borderColor: state.conflicted
+      ? "var(--destructive)"
+      : `color-mix(in oklab, ${hue} 24%, #ffffff)`,
+    "--sb-bar": hue,
+    "--sb-title": tint.title,
+    "--sb-meta": tint.meta,
+  } as React.CSSProperties
+}
+
 export interface SessionCardBodyProps {
   session: AgendaSession
   timeZone: string
   roomName?: string
-  /** Very short cards hide the secondary lines rather than overflow. */
+  /** Very short cards collapse to one line rather than overflow. */
   density?: "roomy" | "tight"
   showTime?: boolean
 }
 
-/** Card contents: track colour edge, title, time, room, speakers. */
+/** Card contents: 4px track bar, saturated title, time, room, speakers. */
 export function SessionCardBody({
   session,
   timeZone,
@@ -39,42 +93,67 @@ export function SessionCardBody({
   density = "roomy",
   showTime = true,
 }: SessionCardBodyProps) {
-  const color = session.track?.color ?? NO_TRACK_COLOR
+  const time =
+    typeof session.startsAt === "number"
+      ? formatTimeRange(session.startsAt, session.durationMinutes, timeZone)
+      : null
+
   return (
     <>
       <span
         aria-hidden
         className="absolute inset-y-0 left-0 w-1 rounded-l-[7px]"
-        style={{ backgroundColor: color }}
+        style={{
+          backgroundColor: "var(--sb-bar, var(--muted-foreground))",
+        }}
       />
       <div className="flex min-w-0 flex-col gap-0.5 pl-2 text-left">
+        {/*
+         * Under ~30 minutes there is no room for a second line, so the time
+         * moves inline behind the title in the quieter tone — Notion's
+         * "OR Team Lunch 1PM" collapse.
+         */}
         <p
           className={cn(
-            "font-medium text-foreground",
+            "font-semibold",
             density === "tight"
               ? "truncate text-[11px] leading-4"
               : "line-clamp-2 text-xs leading-4"
           )}
+          style={{ color: "var(--sb-title, var(--foreground))" }}
         >
           {session.title}
+          {density === "tight" && showTime && time ? (
+            <span
+              className="ml-1.5 font-medium tabular-nums"
+              style={{ color: "var(--sb-meta, var(--muted-foreground))" }}
+            >
+              {time}
+            </span>
+          ) : null}
         </p>
-        {showTime && typeof session.startsAt === "number" ? (
-          <p className="truncate text-[11px] leading-4 text-muted-foreground">
-            {formatTimeRange(
-              session.startsAt,
-              session.durationMinutes,
-              timeZone
-            )}
+        {density !== "tight" && showTime && time ? (
+          <p
+            className="truncate text-[11px] leading-4 tabular-nums"
+            style={{ color: "var(--sb-meta, var(--muted-foreground))" }}
+          >
+            {time}
           </p>
         ) : null}
         {density === "roomy" ? (
           <>
             {roomName ? (
-              <p className="truncate text-[11px] leading-4 text-muted-foreground">
+              <p
+                className="truncate text-[11px] leading-4"
+                style={{ color: "var(--sb-meta, var(--muted-foreground))" }}
+              >
                 {roomName}
               </p>
             ) : null}
-            <p className="truncate text-[11px] leading-4 text-muted-foreground">
+            <p
+              className="truncate text-[11px] leading-4"
+              style={{ color: "var(--sb-meta, var(--muted-foreground))" }}
+            >
               {speakerLabel(session.speakers)}
             </p>
           </>

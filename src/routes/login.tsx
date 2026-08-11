@@ -162,6 +162,18 @@ function LoginPage() {
     setMode(next)
     setError(null)
     setResetSentTo(null)
+    // Keep the URL honest, so a reload (or a shared link) reopens the card in
+    // the state the person is actually looking at.
+    if ((modeFromUrl === "forgot") !== (next === "forgot")) {
+      void navigate({
+        to: "/login",
+        search: (prev) => ({
+          ...prev,
+          mode: next === "forgot" ? ("forgot" as const) : undefined,
+        }),
+        replace: true,
+      })
+    }
   }
 
   const heading =

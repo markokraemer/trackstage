@@ -1,5 +1,9 @@
 import type { ReactNode } from "react"
-import { RiFileList3Line, RiQuestionAnswerLine } from "@remixicon/react"
+import {
+  RiDeleteBin6Line,
+  RiFileList3Line,
+  RiQuestionAnswerLine,
+} from "@remixicon/react"
 
 import { StatusPill } from "@/components/shared/status-pill"
 import {
@@ -414,5 +418,29 @@ export function PublicFormLinkView({ output }: ToolOutputProps) {
         {str(output.note) ? <Note>{str(output.note)}</Note> : null}
       </Tile>
     </Panel>
+  )
+}
+
+// ——— delete_form —————————————————————————————————————————————————————————
+
+/**
+ * `delete_form` only ever succeeds on a form that collected nothing (anything
+ * with submissions is refused server-side and surfaces as a tool error), so
+ * the view can be a plain receipt: which form went, and the one consequence an
+ * organizer cares about — the public URL is now dead.
+ */
+export function FormDeletedView({ output }: ToolOutputProps) {
+  return (
+    <Banner
+      tone="bad"
+      icon={<RiDeleteBin6Line size={16} />}
+      title={`${str(output.name) ?? "Form"} deleted`}
+    >
+      <FieldGrid
+        entries={[{ label: "Slug", value: str(output.slug) ?? "—" }]}
+      />
+      {str(output.note) ? <Note>{str(output.note)}</Note> : null}
+      <GoLink to="/app/forms">Open Forms</GoLink>
+    </Banner>
   )
 }

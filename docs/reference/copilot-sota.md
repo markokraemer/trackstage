@@ -12,7 +12,7 @@ our copilot different from a chatbot bolted onto a SaaS:
 
 1. **Vercel AI SDK v7** (`ai`, `@ai-sdk/react`) — `useChat`, `DefaultChatTransport`,
    and native `toolApproval` for human-in-the-loop.
-2. **Our own MCP server as the ONLY tool source** (`convex/mcp.ts`, 27 tools). Tools
+2. **Our own MCP server as the ONLY tool source** (`convex/mcp.ts`, 31 tools). Tools
    are discovered at RUNTIME, so they arrive in the message stream as
    `dynamic-tool` parts carrying a `toolName` string — never a compile-time
    `tool-<name>` union. The copilot is a client of the same public surface Claude

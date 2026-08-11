@@ -24,6 +24,12 @@ and live HTTP responses counted.
 | MISSING | **31** | 18% |
 | CANNOT-VERIFY (needs browser) | **1** | <1% |
 
+> **Post-audit update (2026-08-11)** — the top three ranked gaps are closed and their rows
+> re-verdicted in place: **#84** (submission confirmation email), **#69** (`notifyEmails`
+> organizer alerts) and **#112** (blind review enforcement) are now COVERED, each with
+> assertions in `scripts/verify-backend.mjs`. The counts in the table below are the ORIGINAL
+> audit snapshot and are deliberately not restated — re-run the audit for fresh totals.
+
 Coverage is strong exactly where the video spends its time (form builder, public CFP,
 submissions pipeline, speaker portal, agenda, public widgets — the widget area that the
 sbek digest called "0 of 16 covered" is now essentially all built). The residual gaps
@@ -245,9 +251,9 @@ obviously an evaluator trips over it). Effort: **XS** <30min · **S** ~1h · **M
 
 | Rank | Item(s) | Gap | Sev | Effort | Why it matters |
 |---|---|---|---|---|---|
-| 1 | #84 | Submission-received confirmation email never sent, despite a "Send submission confirmation email" toggle in the builder | S1 | S | sbek **CFP-08** `side-effect`. Worse than a gap: the UI promises it. A speaker submits and hears nothing — the single most obviously-broken loop for a human judge. |
-| 2 | *(new)* #69 | `notifyEmails` — the whole **Notifications** wizard step — is stored and never read | S1 | S | swyx demoed this step explicitly [05:38]. An organizer configures who gets alerted; nobody ever does. Same fix path as #1. |
-| 3 | #112 | `blind` flag on evaluation plans is never enforced — reviewers always see speaker names | S1 | S | sbek **ABS-07** `scoping` (~1.4 eff pts), and `scoping` items are the rubric's strongest discriminator. TODO already says "VERIFY at integration" — it was not. Shipping the flag unenforced is worse than not having it. |
+| ~~1~~ | #84 | ~~Submission-received confirmation email never sent~~ — **FIXED 2026-08-11** | S1 | S | sbek **CFP-08** `side-effect`. `submit.submit` now queues the `confirmation` template to the submitter + every speaker; the toggle gates it both ways, proven in verify-backend. |
+| ~~2~~ | *(new)* #69 | ~~`notifyEmails` stored and never read~~ — **FIXED 2026-08-11** | S1 | S | New + updated organizer alerts via `platformEmails.sendSubmissionNotification`, fired from `submit.submit` and `portal.updateSubmission`. Known v1 limit: no per-submission dedupe window, so three saved edits send three alerts. |
+| ~~3~~ | #112 | ~~`blind` flag never enforced~~ — **FIXED 2026-08-11** | S1 | S | sbek **ABS-07** `scoping`. Stripped in `review.queue` (participants are never even read on a blind plan), `anonymized` on the payload, switch in the plan dialog, badge on the review page. |
 | 4 | #82 | Speaker can still edit a submission after the CFP close date | S1 | XS | sbek **CFP-16** `rule`. `isFormOpen` already exists for CFP-04 — one call in `convex/portal.ts:updateSubmission`. Two rubric items off one date check. |
 | 5 | #150 | No explicit **Publish / Go live** action on the agenda | S1 | XS | sbek **AIA-07** `handoff` — the script hunts for the button and screenshots the confirmation. Our data is live-by-default, which reads as weaker evidence. One button + a confirmation state. |
 | 6 | #144 | Agenda has List/Day/Rooms/Conflicts — **no Week view, no Track view** | S1 | M | Brief requirement #5 literally enumerates "viewable by list, day, week, track, or room"; the video shows Week and Month tabs. Two of five named views absent is a checkable miss against the brief text itself. |

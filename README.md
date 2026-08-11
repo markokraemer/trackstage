@@ -89,8 +89,10 @@ approval card first, and results render as real product UI, not prose.
 ## MCP
 
 A full [MCP](https://modelcontextprotocol.io) server ships with the product — operate
-your entire event from Claude, ChatGPT, Codex, or any MCP client. 27 tools across
-events, forms, submissions, decisions, agenda, speakers, and communications.
+your entire event from Claude, ChatGPT, Codex, or any MCP client. 31 tools across
+events, forms, submissions, decisions, agenda, speakers, and communications —
+including the destructive half (`delete_event`, `delete_form`, `remove_task`), which
+is double-confirmed rather than absent.
 
 ```sh
 claude mcp add trackstage --transport http https://<your-convex-site>/mcp \

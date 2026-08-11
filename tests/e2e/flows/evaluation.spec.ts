@@ -1,10 +1,11 @@
 import { expect, test } from "@playwright/test"
 import { api } from "../../../convex/_generated/api.js"
+import type { Id } from "../../../convex/_generated/dataModel"
 import {
   ORGANIZER_STATE,
   armed,
   clearToasts,
-  expectToast,
+  createSubmission,
   fillStable,
   gotoApp,
   gotoStable,
@@ -27,6 +28,15 @@ import {
  * to prove the token alone is enough.
  */
 
+/** Narrow a possibly-absent score entry without tripping the lint rules. */
+function hasScore(
+  map: Record<string, { avg: number; count: number } | undefined>,
+  id: string,
+) {
+  const entry = map[id]
+  return entry !== undefined && entry.count > 0
+}
+
 test.describe("evaluation", () => {
   test.use({ storageState: ORGANIZER_STATE })
 
@@ -41,28 +51,23 @@ test.describe("evaluation", () => {
     const marker = unique("ev")
     const planName = `E2E Plan ${marker}`
     const evaluatorEmail = testEmail("reviewer")
-    let planId: string | undefined
+    let planId: Id<"evaluationPlans"> | undefined
 
     // Two submissions of our own so the queue length is deterministic.
     const titles = [`Eval One ${marker}`, `Eval Two ${marker}`]
-    const submissionIds: Array<string> = []
+    const submissionIds: Array<Id<"submissions">> = []
     for (const title of titles) {
-      const result = await organizer.mutation(api.submissions.addManual, {
-        eventId: event._id,
-        kind: "abstract",
-        title,
-        description: "Created by the evaluation e2e flow.",
-        status: "pending",
-        participants: [
-          {
-            firstName: "Evan",
-            lastName: "Uator",
-            email: testEmail("eval-speaker"),
-            role: "speaker",
-          },
-        ],
-      })
-      submissionIds.push(typeof result === "string" ? result : result.submissionId)
+      submissionIds.push(
+        await createSubmission(organizer, {
+          eventId: event._id,
+          title,
+          status: "pending",
+          email: testEmail("eval-speaker"),
+          firstName: "Evan",
+          lastName: "Uator",
+          description: "Created by the evaluation e2e flow.",
+        }),
+      )
     }
 
     try {
@@ -102,24 +107,22 @@ test.describe("evaluation", () => {
 
       const plans = await until(
         async () =>
-          (await organizer.query(api.evaluationsAdmin.listPlans, {
+          await organizer.query(api.evaluationsAdmin.listPlans, {
             eventId: event._id,
-          })) as Array<{ _id: string; name: string }>,
+          }),
         (list) => list.some((p) => p.name === planName),
         { label: "the new plan was created" },
       )
       planId = plans.find((p) => p.name === planName)!._id
 
-      const detail = (await organizer.query(api.evaluationsAdmin.planDetail, {
+      const detail = await organizer.query(api.evaluationsAdmin.planDetail, {
         planId,
-      })) as {
-        evaluators: Array<{ email: string; token: string }>
-        submissionIds: Array<string>
-      }
+      })
+      const planSubmissionIds = detail.plan.submissionIds
       const evaluator = detail.evaluators.find((e) => e.email === evaluatorEmail)
       expect(evaluator, "the evaluator we typed was attached to the plan").toBeTruthy()
       expect(
-        detail.submissionIds.length,
+        planSubmissionIds.length,
         "the plan has submissions to review",
       ).toBeGreaterThan(0)
 
@@ -138,7 +141,7 @@ test.describe("evaluation", () => {
       const reviewerWatcher = armed(reviewer)
       await gotoStable(reviewer, `/review/${evaluator!.token}`, "networkidle")
 
-      const scored = detail.submissionIds.length >= 2 ? 2 : 1
+      const scored = planSubmissionIds.length >= 2 ? 2 : 1
       for (let i = 0; i < scored; i++) {
         const score = reviewer
           .getByRole("button", { name: /: 4 of 5/i })
@@ -162,9 +165,9 @@ test.describe("evaluation", () => {
       // Progress reflects what was scored.
       const progress = await until(
         async () =>
-          (await organizer.query(api.review.progress, {
+          await organizer.query(api.review.progress, {
             token: evaluator!.token,
-          })) as { done: number; total: number },
+          }),
         (p) => p.done >= scored,
         { timeout: 45_000, label: `${scored} submissions scored via the magic link` },
       )
@@ -180,13 +183,16 @@ test.describe("evaluation", () => {
         async () =>
           (await organizer.query(api.evaluationsAdmin.scoresBySubmission, {
             eventId: event._id,
-          })) as Record<string, { avg: number; count: number }>,
-        (map) => submissionIds.some((id) => (map[id]?.count ?? 0) > 0),
+          })) as unknown as Record<
+            string,
+            { avg: number; count: number } | undefined
+          >,
+        (map) => submissionIds.some((id) => hasScore(map, id)),
         { label: "scores rolled up to the organizer" },
       )
-      const withScore = submissionIds.find((id) => (scores[id]?.count ?? 0) > 0)!
-      expect(scores[withScore].avg).toBeGreaterThan(0)
-      expect(scores[withScore].avg).toBeLessThanOrEqual(5)
+      const withScore = submissionIds.find((id) => hasScore(scores, id))!
+      expect(scores[withScore]!.avg).toBeGreaterThan(0)
+      expect(scores[withScore]!.avg).toBeLessThanOrEqual(5)
 
       // …and the number is on screen in the plan/summary surfaces.
       await gotoStable(page, `/app/evaluation/${planId}`)
@@ -220,26 +226,22 @@ test.describe("evaluation", () => {
   test("scores outside 1–5 are rejected by the backend", async () => {
     const organizer = await organizerConvexClient()
     const event = await mainEvent(organizer)
-    const plans = (await organizer.query(api.evaluationsAdmin.listPlans, {
+    const plans = await organizer.query(api.evaluationsAdmin.listPlans, {
       eventId: event._id,
-    })) as Array<{ _id: string }>
+    })
     test.skip(plans.length === 0, "no seeded plan to probe")
-    const detail = (await organizer.query(api.evaluationsAdmin.planDetail, {
+    const detail = await organizer.query(api.evaluationsAdmin.planDetail, {
       planId: plans[0]._id,
-    })) as {
-      evaluators: Array<{ token: string }>
-      submissionIds: Array<string>
-      criteria: Array<{ id: string }>
-    }
+    })
     test.skip(
-      detail.evaluators.length === 0 || detail.submissionIds.length === 0,
+      detail.evaluators.length === 0 || detail.plan.submissionIds.length === 0,
       "seeded plan has no evaluator or no submissions",
     )
     await expect(
       organizer.mutation(api.review.submitScores, {
         token: detail.evaluators[0].token,
-        submissionId: detail.submissionIds[0],
-        scores: { [detail.criteria[0]?.id ?? "overall"]: 9 },
+        submissionId: detail.plan.submissionIds[0],
+        scores: { [detail.plan.criteria[0]?.id ?? "overall"]: 9 },
       }),
     ).rejects.toThrow()
   })

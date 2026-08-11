@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test"
 import { api } from "../../../convex/_generated/api.js"
+import type { Id } from "../../../convex/_generated/dataModel"
 import {
   ORGANIZER_STATE,
   advance,
@@ -37,16 +38,17 @@ test.describe("form builder", () => {
   }) => {
     const watcher = armed(page)
     const organizer = await organizerConvexClient()
-    const event = await mainEvent(organizer)
     const marker = unique("fb")
     const originalName = `Builder Form ${marker}`
     const renamedTo = `Renamed Form ${marker}`
     const triggerLabel = `Delivery mode ${marker}`
     const dependentLabel = `Room requirements ${marker}`
-    let formId: string | undefined
+    let formId: Id<"forms"> | undefined
 
     try {
       // ——— Create ————————————————————————————————————————————————————————
+      // The event the shell lands on is the one the form belongs to; the
+      // helper pins it to the demo event before we start.
       await gotoApp(page, "/app/forms")
       await page.getByRole("link", { name: /new form/i }).first().click()
       await expect(
@@ -55,7 +57,7 @@ test.describe("form builder", () => {
       await fillStable(page.getByLabel(/form name/i).first(), originalName)
       await page.getByRole("button", { name: /^create form$/i }).first().click()
       await expect(page).toHaveURL(/\/app\/forms\/[a-z0-9]+/i, { timeout: 45_000 })
-      formId = page.url().split("/").pop()!.split("?")[0]
+      formId = page.url().split("/").pop()!.split("?")[0] as Id<"forms">
       await expectToast(page, /form created/i, 30_000)
       await clearToasts(page)
 
@@ -129,14 +131,14 @@ test.describe("form builder", () => {
 
       // Everything above must have reached the database.
       const saved = await until(
-        async () => await organizer.query(api.forms.get, { formId }),
-        (form: { internalName: string; questions: Array<{ label: string; showIf?: unknown; required: boolean }> }) =>
+        async () => await organizer.query(api.forms.get, { formId: formId! }),
+        (form) =>
           form.internalName === renamedTo &&
           form.questions.some((q) => q.label === dependentLabel && !!q.showIf) &&
           form.questions.some((q) => q.label === triggerLabel && q.required),
         { label: "the builder's edits persisted" },
       )
-      const slug = (saved as { slug: string }).slug
+      const slug = saved.slug
 
       // ——— The public form is the real proof ————————————————————————————
       const publicPage = await context.newPage()
@@ -225,9 +227,9 @@ test.describe("form builder", () => {
     const watcher = armed(page)
     const organizer = await organizerConvexClient()
     const event = await mainEvent(organizer)
-    const forms = (await organizer.query(api.forms.list, {
+    const forms = await organizer.query(api.forms.list, {
       eventId: event._id,
-    })) as Array<{ _id: string; slug: string; internalName: string }>
+    })
     const cfp = forms.find((f) => f.slug === "cfp") ?? forms[0]
     test.skip(!cfp, "no form to inspect")
 
@@ -243,9 +245,7 @@ test.describe("form builder", () => {
     }
 
     // The backend enforces it too — the UI is not the only guard.
-    const full = (await organizer.query(api.forms.get, { formId: cfp._id })) as {
-      questions: Array<{ id: string; enabled: boolean }>
-    }
+    const full = await organizer.query(api.forms.get, { formId: cfp._id })
     await expect(
       organizer.mutation(api.forms.update, {
         formId: cfp._id,
