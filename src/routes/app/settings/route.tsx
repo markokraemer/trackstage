@@ -9,7 +9,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { TooltipProvider } from "@/components/ui/tooltip"
 import { EventSwitcher } from "@/components/settings/event-switcher"
 import { NewEventDialog } from "@/components/settings/new-event-dialog"
-import { useCurrentEvent } from "@/components/settings/current-event"
+import { useCurrentEvent } from "@/lib/current-event"
 import { formatZonedDateRange } from "@/components/settings/timezone"
 
 export const Route = createFileRoute("/app/settings")({

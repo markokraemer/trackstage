@@ -25,8 +25,8 @@ import {
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { LabeledField } from "@/components/settings/labeled-field"
-import { clearSelectedEvent } from "@/components/settings/current-event"
-import type { EventSummary } from "@/components/settings/current-event"
+import { clearCurrentEventId } from "@/lib/current-event"
+import type { EventSummary } from "@/lib/current-event"
 import { errorMessage } from "@/components/settings/errors"
 
 /**
@@ -47,7 +47,7 @@ export function DeleteEventCard({ event }: { event: EventSummary }) {
     if (!matches) return
     try {
       await remove.mutateAsync({ eventId: event._id })
-      clearSelectedEvent()
+      clearCurrentEventId()
       setOpen(false)
       toast.success(`“${event.name}” was deleted`)
       await navigate({ to: "/app/events" })

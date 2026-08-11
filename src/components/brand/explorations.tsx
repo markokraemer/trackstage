@@ -194,11 +194,13 @@ const DEBLUED_PALETTE: PaletteCandidate = {
 }
 
 /**
- * "Attio": the gold standard Marko named. Near-white warm-grey chrome, hairline
- * borders instead of fills, small-radius controls, a quiet three-step text
- * hierarchy and immaculate table craft — with his caveat applied: we take the
- * SYSTEM, not the density. Row heights, control sizes and padding stay exactly
- * where they are today, because Attio itself is too minuscule for organizers.
+ * "Attio": the gold standard (RULES.md #22). Values taken from the real Mobbin
+ * screens — near-white neutral chrome, hairline borders instead of fills, no
+ * tinted banners anywhere, colour carried by the DATA (tag tints, status dots)
+ * rather than the chrome — with the one caveat applied: we take the system,
+ * NOT the density. Controls and rows go UP, because Attio's are too little for
+ * a non-technical organizer. These hexes are the same ones written into
+ * docs/memory/DESIGN-REVAMP.md, so the preview and the rollout cannot drift.
  */
 const ATTIO_PALETTE: PaletteCandidate = {
   id: "attio",
@@ -211,35 +213,32 @@ const ATTIO_PALETTE: PaletteCandidate = {
   panelClassName:
     "[&_[data-slot=card]]:rounded-lg [&_[data-slot=card]]:shadow-none [&_button]:rounded-md [&_button]:h-9 [&_th]:py-3 [&_td]:py-4",
   tokens: {
-    "--background": "#fbfbfa",
+    "--background": "#fafafa",
     "--card": "#ffffff",
-    "--card-foreground": "#1b1b19",
-    "--foreground": "#1b1b19",
-    "--muted": "#f6f6f4",
-    "--muted-foreground": "#77776f",
-    "--accent": "#f6f6f4",
-    "--accent-foreground": "#1b1b19",
-    "--secondary": "#f6f6f4",
-    "--secondary-foreground": "#1b1b19",
-    "--border": "#e8e8e4",
-    "--input": "#deded8",
-    "--sidebar": "#f9f9f7",
-    "--sidebar-foreground": "#1b1b19",
-    "--sidebar-accent": "#efefeb",
-    "--sidebar-accent-foreground": "#1b1b19",
-    "--sidebar-border": "#e8e8e4",
-    "--status-green-bg": "#e8f1e9",
-    "--status-green-fg": "#33613c",
-    "--status-green-dot": "#4f8b5c",
-    "--status-amber-bg": "#f7efdc",
-    "--status-amber-fg": "#7a5a1e",
-    "--status-amber-dot": "#b98a2c",
-    "--status-gray-bg": "#f0f0ec",
-    "--status-gray-fg": "#5f5f58",
-    "--status-gray-dot": "#a3a39a",
-    "--status-blue-bg": "#eaefee",
-    "--status-blue-fg": "#2a504b",
-    "--status-blue-dot": "#6f938d",
+    "--card-foreground": "#17171a",
+    "--foreground": "#17171a",
+    "--muted": "#f7f7f8",
+    "--muted-foreground": "#6e6e76",
+    "--accent": "#f4f4f5",
+    "--accent-foreground": "#17171a",
+    "--secondary": "#f4f4f5",
+    "--secondary-foreground": "#17171a",
+    "--border": "#eaeaec",
+    "--input": "#e1e1e4",
+    "--sidebar": "#fafafa",
+    "--sidebar-foreground": "#17171a",
+    "--sidebar-accent": "#efeff1",
+    "--sidebar-accent-foreground": "#17171a",
+    "--sidebar-border": "#eaeaec",
+    "--status-green-dot": "#16a34a",
+    "--status-amber-dot": "#d97706",
+    "--status-red-dot": "#dc2626",
+    "--status-gray-bg": "#f4f4f5",
+    "--status-gray-fg": "#5f5f66",
+    "--status-gray-dot": "#a1a1aa",
+    "--status-blue-bg": "#f4f4f5",
+    "--status-blue-fg": "#5f5f66",
+    "--status-blue-dot": "#a1a1aa",
   },
 }
 
@@ -297,7 +296,7 @@ const FINALISTS: Array<{
   {
     badge: "F",
     name: "Attio",
-    swatches: ["#ffffff", "#fbfbfa", "#f9f9f7", "#e8e8e4", "#0f766e"],
+    swatches: ["#ffffff", "#fafafa", "#f4f4f5", "#eaeaec", "#0f766e"],
     pitch:
       "Attio's system adopted properly: warm near-white ramp, hairlines instead of fills, small radii, quiet type hierarchy — at our comfortable sizing, not Attio's.",
     cost: "The full neutral ramp plus radii. One commit, but the whole app wants a visual pass afterwards.",

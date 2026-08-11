@@ -19,6 +19,7 @@ import { MessageDrawer } from "@/components/comms/message-drawer"
 import { OutboxTable } from "@/components/comms/outbox-table"
 import { TemplateDrawer } from "@/components/comms/template-drawer"
 import { TemplateList } from "@/components/comms/template-list"
+import { useCurrentEvent } from "@/lib/current-event"
 
 /**
  * Communications — docs/SPEC.md §4.9.
@@ -57,10 +58,7 @@ function CommunicationsPage() {
     null,
   )
 
-  const { data: events, isPending: eventsLoading } = useQuery(
-    convexQuery(api.events.list, {}),
-  )
-  const event = events?.[0]
+  const { event, isLoading: eventsLoading } = useCurrentEvent()
   const eventId = event?._id
 
   const templatesQuery = useQuery(

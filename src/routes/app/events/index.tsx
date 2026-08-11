@@ -28,8 +28,8 @@ import { EmptyState } from "@/components/shared/empty-state"
 import { NewEventDialog } from "@/components/settings/new-event-dialog"
 import { CopyLinkButton } from "@/components/settings/copy-link-button"
 import { publicEventUrl } from "@/components/settings/slug"
-import { useCurrentEvent } from "@/components/settings/current-event"
-import type { EventSummary } from "@/components/settings/current-event"
+import { useCurrentEvent } from "@/lib/current-event"
+import type { EventSummary } from "@/lib/current-event"
 import {
   formatZonedDateRange,
   timezoneAbbreviation,

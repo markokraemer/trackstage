@@ -387,7 +387,12 @@ function DesignSystemPage() {
           <Separator orientation="vertical" className="mx-1 h-5" />
           <span className="text-sm text-muted-foreground">Design system</span>
           <div className="ml-auto">
-            <Button variant="outline" size="sm" render={<Link to="/login" />}>
+            <Button
+              variant="outline"
+              size="sm"
+              nativeButton={false}
+              render={<Link to="/login" />}
+            >
               Organizer demo
             </Button>
           </div>

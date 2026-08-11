@@ -29,7 +29,7 @@ import { LabeledField } from "@/components/settings/labeled-field"
 import { TimezoneSelect } from "@/components/settings/timezone-select"
 import { browserTimezone } from "@/components/settings/timezone"
 import { isValidSlug, publicEventUrl, slugify } from "@/components/settings/slug"
-import { selectEvent } from "@/components/settings/current-event"
+import { setCurrentEventId } from "@/lib/current-event"
 import { errorMessage } from "@/components/settings/errors"
 
 /**
@@ -99,7 +99,7 @@ export function NewEventDialog({
         slug: slug.trim(),
         timezone,
       })
-      selectEvent(eventId)
+      setCurrentEventId(eventId)
       toast.success(`“${name.trim()}” created — you're now working on it`)
       setOpen(false)
       setName("")

@@ -64,7 +64,7 @@ const DELIVERED_OR_PENDING = new Set<string>([
 
 // ——— Shared helpers (called directly; see Convex guidelines on helpers) ————
 
-async function resolveTemplate(
+export async function resolveTemplate(
   ctx: QueryCtx | MutationCtx,
   eventId: Id<"events">,
   key: string,

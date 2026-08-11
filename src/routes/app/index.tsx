@@ -16,7 +16,7 @@ import { EmptyState } from "@/components/shared/empty-state"
 import { buttonVariants } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useSession } from "@/lib/session"
-import { useCurrentEvent } from "@/components/dashboard/use-current-event"
+import { useCurrentEvent } from "@/lib/current-event"
 import { MetricCard, MetricCardSkeleton } from "@/components/dashboard/metric-card"
 import {
   StatusCountBar,

@@ -161,6 +161,21 @@ trail visible).
     between workspaces you belong to);
     (d) EVENT settings one level beneath (details, rooms & tracks) — clearly labeled
     as event-scoped. Never mix the levels; optimize how you manage everything.
+24. **AI copilot chat — the MCP's home** ("do whatever the fuck you want" surface):
+    full AI chat built with the Vercel AI SDK + shadcn AI Elements chat components
+    (state of the art), using OUR MCP server as its tool source — new session per
+    user, query anything, control/steer everything. Available BOTH as a chat page and
+    as a copilot side panel next to any screen in the app. Generative UI for tool
+    results; PROPER APPROVAL FLOWS for every destructive MCP action (commit queues,
+    deletes, bulk changes — confirm cards before execution). Fast model by default
+    (OpenRouter, configurable later). Same component library as everything else.
+25. **Landing = Attio's landing, 1:1 — THE core deliverable** ("one really good
+    landing page and that should be the core thing"): "the attio landing page is
+    beautiful. we can one-to-one take it over." Match the whole Attio vibe; SHOW THE
+    ACTUAL PRODUCT: literally capture real product screenshots and GIFs via the
+    Chromium browser MCP (drive the seeded app, record) and put them on the landing.
+    Use the Mobbin MCP EXTENSIVELY for component references (look at screens visually,
+    recreate as needed for the new design language). The AI chat surfaces there too.
 19. **Mandatory final reconciliation pass**: slice-per-agent parallelism will drift —
     different layouts, spacing, and interaction patterns per slice. Before ship, ONE
     agent reads and reworks the whole app end to end for coherent, standardized,

@@ -15,7 +15,7 @@ export const STATUSES = [
   "withdrawn",
 ] as const
 
-async function withJoins(ctx: QueryCtx, submission: Doc<"submissions">) {
+export async function withJoins(ctx: QueryCtx, submission: Doc<"submissions">) {
   const [participants, track, room, form] = await Promise.all([
     ctx.db
       .query("submissionParticipants")
@@ -223,7 +223,7 @@ export const commitQueue = mutation({
   },
 })
 
-async function ensureOnboardingTasks(
+export async function ensureOnboardingTasks(
   ctx: MutationCtx,
   eventId: Id<"events">,
   personId: Id<"people">,

@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router"
 
 import { EventDetailsForm } from "@/components/settings/event-details-form"
 import { DeleteEventCard } from "@/components/settings/delete-event-card"
-import { useCurrentEvent } from "@/components/settings/current-event"
+import { useCurrentEvent } from "@/lib/current-event"
 
 export const Route = createFileRoute("/app/settings/")({
   component: EventDetailsPage,

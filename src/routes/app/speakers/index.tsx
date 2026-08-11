@@ -12,7 +12,7 @@ import { DataToolbar } from "@/components/shared/data-toolbar"
 import { Button, buttonVariants } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { useCurrentEvent } from "@/components/dashboard/use-current-event"
+import { useCurrentEvent } from "@/lib/current-event"
 import {
   SpeakersTable,
   SpeakersTableSkeleton,

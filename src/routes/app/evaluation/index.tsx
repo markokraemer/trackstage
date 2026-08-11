@@ -26,6 +26,7 @@ import { AvgScoreBars } from "@/components/evaluation/avg-score-bars"
 import { PlanCard } from "@/components/evaluation/plan-card"
 import { NewPlanDialog } from "@/components/evaluation/new-plan-dialog"
 import { EvaluatorsTable } from "@/components/evaluation/evaluators-table"
+import { useCurrentEvent } from "@/lib/current-event"
 
 const TABS = ["summary", "plans", "evaluators"] as const
 type EvaluationTab = (typeof TABS)[number]
@@ -56,10 +57,7 @@ function EvaluationPage() {
   const [dialogOpen, setDialogOpen] = useState(false)
   const [evaluatorSearch, setEvaluatorSearch] = useState("")
 
-  const { data: events, isPending: eventsPending } = useQuery(
-    convexQuery(api.events.list, {}),
-  )
-  const event = events?.[0]
+  const { event, isLoading: eventsPending } = useCurrentEvent()
   const eventArgs = event ? { eventId: event._id } : "skip"
 
   const { data: summary } = useQuery(

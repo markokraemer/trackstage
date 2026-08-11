@@ -7,10 +7,9 @@ import {
   motion,
   useMotionValue,
   useReducedMotion,
-  useTransform
-  
+  useTransform,
 } from "motion/react"
-import type {MotionValue} from "motion/react";
+import type { MotionValue } from "motion/react"
 
 const WAVE_MS = 1.25
 

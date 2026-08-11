@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router"
 
 import { TeamCard } from "@/components/settings/team-card"
-import { useCurrentEvent } from "@/components/settings/current-event"
+import { useCurrentEvent } from "@/lib/current-event"
 
 export const Route = createFileRoute("/app/settings/team")({
   component: TeamPage,

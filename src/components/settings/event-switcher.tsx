@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { NewEventDialog } from "@/components/settings/new-event-dialog"
 import { formatZonedDateRange } from "@/components/settings/timezone"
-import type { EventSummary } from "@/components/settings/current-event"
+import type { EventSummary } from "@/lib/current-event"
 
 /**
  * Event switcher — the multi-event control (sbek CFP-17: "app supports ≥2

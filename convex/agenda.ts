@@ -1,6 +1,6 @@
 import { v } from "convex/values"
 import type { Doc, Id } from "./_generated/dataModel"
-import type { QueryCtx } from "./_generated/server"
+import type { MutationCtx, QueryCtx } from "./_generated/server"
 import { mutation, query } from "./_generated/server"
 import { requireEventAccess } from "./lib/auth"
 
@@ -34,7 +34,7 @@ export type Conflict = {
   submissionIds: [Id<"submissions">, Id<"submissions">]
 }
 
-async function computeConflicts(ctx: QueryCtx, eventId: Id<"events">) {
+export async function computeConflicts(ctx: QueryCtx, eventId: Id<"events">) {
   const scheduled = (
     await ctx.db
       .query("submissions")
@@ -223,23 +223,31 @@ export const unschedule = mutation({
 // "AI agenda" basics: greedy auto-placement of unscheduled accepted sessions
 // into free slots — earliest gap first, preferring emptier rooms, avoiding
 // speaker overlaps. Deterministic and explainable.
-export const autoPlace = mutation({
+/**
+ * The greedy auto-placement itself, split out from the public mutation so the
+ * MCP server (convex/mcp.ts) can run the SAME algorithm after authorizing via
+ * an API key instead of a browser session. Callers must have already
+ * authorized access to `event`.
+ */
+export async function autoPlaceCore(
+  ctx: MutationCtx,
+  event: Doc<"events">,
   args: {
-    eventId: v.id("events"),
-    dayStartHour: v.optional(v.number()), // event-local, default 9
-    dayEndHour: v.optional(v.number()), // default 18
-    defaultDurationMinutes: v.optional(v.number()), // default 45
-    gapMinutes: v.optional(v.number()), // default 15
+    dayStartHour?: number
+    dayEndHour?: number
+    defaultDurationMinutes?: number
+    gapMinutes?: number
   },
-  handler: async (ctx, args) => {
-    const { event } = await requireEventAccess(ctx, args.eventId)
+) {
+  {
+    const eventId = event._id
     if (!event.startsAt || !event.endsAt) {
       throw new Error("Set the event start and end dates first (Settings).")
     }
     const rooms = (
       await ctx.db
         .query("rooms")
-        .withIndex("by_eventId", (q) => q.eq("eventId", args.eventId))
+        .withIndex("by_eventId", (q) => q.eq("eventId", eventId))
         .collect()
     ).sort((a, b) => a.order - b.order)
     if (rooms.length === 0) throw new Error("Add at least one room first (Settings).")
@@ -247,7 +255,7 @@ export const autoPlace = mutation({
     const accepted = await ctx.db
       .query("submissions")
       .withIndex("by_eventId_and_status", (q) =>
-        q.eq("eventId", args.eventId).eq("status", "accepted"),
+        q.eq("eventId", eventId).eq("status", "accepted"),
       )
       .collect()
     const scheduled = accepted.filter((s) => s.startsAt !== undefined)
@@ -322,5 +330,19 @@ export const autoPlace = mutation({
       })
     }
     return { placed: placements.length, remaining: unscheduled.length - placements.length }
+  }
+}
+
+export const autoPlace = mutation({
+  args: {
+    eventId: v.id("events"),
+    dayStartHour: v.optional(v.number()), // event-local, default 9
+    dayEndHour: v.optional(v.number()), // default 18
+    defaultDurationMinutes: v.optional(v.number()), // default 45
+    gapMinutes: v.optional(v.number()), // default 15
+  },
+  handler: async (ctx, args) => {
+    const { event } = await requireEventAccess(ctx, args.eventId)
+    return await autoPlaceCore(ctx, event, args)
   },
 })

@@ -7,7 +7,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { RoomsCard } from "@/components/settings/rooms-card"
 import { TracksCard } from "@/components/settings/tracks-card"
-import { useCurrentEvent } from "@/components/settings/current-event"
+import { useCurrentEvent } from "@/lib/current-event"
 
 export const Route = createFileRoute("/app/settings/rooms-and-tracks")({
   component: RoomsAndTracksPage,

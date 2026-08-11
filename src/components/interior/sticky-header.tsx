@@ -7,10 +7,9 @@ import {
   useReducedMotion,
   useScroll,
   useSpring,
-  useTransform
-  
+  useTransform,
 } from "motion/react"
-import type {MotionValue} from "motion/react";
+import type { MotionValue } from "motion/react"
 
 const SMOOTH = { stiffness: 240, damping: 44, mass: 0.6 } as const
 

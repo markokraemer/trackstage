@@ -1,14 +1,7 @@
 "use client"
 
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState
-  
-} from "react"
-import type {ReactNode} from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import type { ReactNode } from "react"
 import { motion, useReducedMotion } from "motion/react"
 
 const CELL = {

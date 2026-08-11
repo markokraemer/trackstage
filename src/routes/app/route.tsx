@@ -5,12 +5,14 @@ import {
   createFileRoute,
   useNavigate,
 } from "@tanstack/react-router"
-import { useQuery } from "@tanstack/react-query"
-import { convexQuery, useConvexMutation } from "@convex-dev/react-query"
+import { useConvexMutation } from "@convex-dev/react-query"
 import { api } from "@convex/_generated/api"
 import {
   RiArrowDownSLine,
+  RiBuilding2Line,
+  RiCalendarEventLine,
   RiCalendarScheduleLine,
+  RiCheckLine,
   RiDashboardLine,
   RiExternalLinkLine,
   RiFileList3Line,
@@ -20,6 +22,7 @@ import {
   RiSettings3Line,
   RiStarLine,
   RiSurveyLine,
+  RiUserSettingsLine,
   RiUserVoiceLine,
 } from "@remixicon/react"
 import type { RemixiconComponentType } from "@remixicon/react"
@@ -39,10 +42,15 @@ import {
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { Logo, LogoMark } from "@/components/brand/logo"
+import { Logo } from "@/components/brand/logo"
+import { ShellEventSwitcher } from "@/components/shell/event-switcher"
 import { requireAuthed, useSession } from "@/lib/session"
+import { useCurrentEvent } from "@/lib/current-event"
 
 export const Route = createFileRoute("/app")({
   beforeLoad: ({ context, location }) => {
@@ -95,7 +103,14 @@ const NAV_GROUPS: Array<NavGroup> = [
   },
   {
     label: "Setup",
-    items: [{ label: "Settings", to: "/app/settings", icon: RiSettings3Line }],
+    items: [
+      { label: "Events", to: "/app/events", icon: RiCalendarEventLine },
+      {
+        label: "Event settings",
+        to: "/app/settings",
+        icon: RiSettings3Line,
+      },
+    ],
   },
 ]
 
@@ -119,10 +134,8 @@ function OrganizerLayout() {
     }
   }, [status, ensureWorkspace])
 
-  const { data: events } = useQuery(
-    convexQuery(api.events.list, status === "authenticated" ? {} : "skip")
-  )
-  const event = events?.[0]
+  // "Which event am I looking at?" is app-wide state (src/lib/current-event).
+  const { event, workspace, workspaces, selectWorkspace } = useCurrentEvent()
 
   if (status !== "authenticated") {
     return (
@@ -189,7 +202,7 @@ function OrganizerLayout() {
               </span>
               <RiArrowDownSLine aria-hidden />
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-56">
+            <DropdownMenuContent align="end" className="w-64">
               <DropdownMenuGroup>
                 <DropdownMenuLabel className="text-foreground">
                   <span className="block truncate font-medium">
@@ -199,7 +212,51 @@ function OrganizerLayout() {
                     {session?.email}
                   </span>
                 </DropdownMenuLabel>
+                <DropdownMenuItem render={<Link to="/app/account" />}>
+                  <RiUserSettingsLine aria-hidden />
+                  Account settings
+                </DropdownMenuItem>
               </DropdownMenuGroup>
+
+              <DropdownMenuSeparator />
+
+              <DropdownMenuGroup>
+                <DropdownMenuLabel className="text-muted-foreground">
+                  {workspace?.name ?? "Workspace"}
+                </DropdownMenuLabel>
+                <DropdownMenuItem render={<Link to="/app/workspace" />}>
+                  <RiBuilding2Line aria-hidden />
+                  Workspace settings
+                </DropdownMenuItem>
+                {workspaces.length > 1 ? (
+                  <DropdownMenuSub>
+                    <DropdownMenuSubTrigger>
+                      <RiArrowDownSLine aria-hidden className="-rotate-90" />
+                      Switch workspace
+                    </DropdownMenuSubTrigger>
+                    <DropdownMenuSubContent className="w-56">
+                      {workspaces.map((row) => (
+                        <DropdownMenuItem
+                          key={row.id}
+                          onClick={() => {
+                            if (!selectWorkspace(row.id)) {
+                              void navigate({ to: "/app/events" })
+                            }
+                          }}
+                        >
+                          <span className="min-w-0 flex-1 truncate">
+                            {row.name}
+                          </span>
+                          {row.id === workspace?.id ? (
+                            <RiCheckLine aria-hidden className="text-primary" />
+                          ) : null}
+                        </DropdownMenuItem>
+                      ))}
+                    </DropdownMenuSubContent>
+                  </DropdownMenuSub>
+                ) : null}
+              </DropdownMenuGroup>
+
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={signOut}>
                 <RiLogoutBoxRLine aria-hidden />
@@ -214,20 +271,7 @@ function OrganizerLayout() {
         {/* Tier 2 — event-scoped left sidebar */}
         <aside className="sticky top-14 h-[calc(100svh-3.5rem)] w-16 shrink-0 overflow-y-auto border-r border-sidebar-border bg-sidebar md:w-60">
           <div className="border-b border-sidebar-border p-3 max-md:px-2">
-            <div className="flex items-center gap-2.5 rounded-lg bg-card px-2.5 py-2 ring-1 ring-border max-md:justify-center max-md:px-1">
-              <LogoMark size={26} variant="boxed" />
-              <div className="min-w-0 max-md:sr-only">
-                <p className="truncate text-sm font-semibold text-foreground">
-                  {event?.name ?? "No event yet"}
-                </p>
-                <p className="truncate text-xs text-muted-foreground">
-                  {event
-                    ? (formatEventDates(event.startsAt, event.endsAt) ??
-                      "Dates not set")
-                    : "Create one in Settings"}
-                </p>
-              </div>
-            </div>
+            <ShellEventSwitcher />
           </div>
 
           <nav aria-label="Main" className="px-3 pt-2 pb-6 max-md:px-2">
@@ -282,26 +326,4 @@ function initials(value: string): string {
   if (parts.length === 0) return "?"
   if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase()
   return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
-}
-
-/** "Oct 12–14, 2026" / "Oct 30 – Nov 2, 2026" / "Oct 12, 2026". */
-function formatEventDates(
-  startsAt?: number,
-  endsAt?: number
-): string | undefined {
-  if (!startsAt) return undefined
-  const start = new Date(startsAt)
-  const month = (date: Date) =>
-    date.toLocaleDateString("en-US", { month: "short" })
-  if (!endsAt) {
-    return `${month(start)} ${start.getDate()}, ${start.getFullYear()}`
-  }
-  const end = new Date(endsAt)
-  if (start.getFullYear() === end.getFullYear()) {
-    if (start.getMonth() === end.getMonth()) {
-      return `${month(start)} ${start.getDate()}–${end.getDate()}, ${end.getFullYear()}`
-    }
-    return `${month(start)} ${start.getDate()} – ${month(end)} ${end.getDate()}, ${end.getFullYear()}`
-  }
-  return `${month(start)} ${start.getDate()}, ${start.getFullYear()} – ${month(end)} ${end.getDate()}, ${end.getFullYear()}`
 }

@@ -38,13 +38,14 @@ export function useTaskSteps({
 
   const rows = steps.map((step, i) => ({
     ...step,
-    status: (i < current
-      ? "done"
-      : i === current && failed
-        ? "error"
-        : i === current && !complete
-          ? "active"
-          : "pending"),
+    status:
+      i < current
+        ? "done"
+        : i === current && failed
+          ? "error"
+          : i === current && !complete
+            ? "active"
+            : "pending",
   }))
 
   const active = rows.find((r) => r.status === "active")

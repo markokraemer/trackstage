@@ -40,7 +40,7 @@ import { TimezoneSelect } from "@/components/settings/timezone-select"
 import { DateTimePicker } from "@/components/settings/date-time-picker"
 import { CopyLinkButton } from "@/components/settings/copy-link-button"
 import { isValidSlug, publicEventUrl, slugify } from "@/components/settings/slug"
-import type { EventSummary } from "@/components/settings/current-event"
+import type { EventSummary } from "@/lib/current-event"
 
 /** Plain-English event types — the select in docs/ux/01 image25. */
 export const EVENT_TYPES = [

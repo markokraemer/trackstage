@@ -234,7 +234,8 @@ function ActionFeedback() {
 
 const emailValidator = (value: string) => {
   if (!value.trim()) return "Email is required"
-  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(value)) return "That isn’t a valid email"
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(value))
+    return "That isn’t a valid email"
   return null
 }
 
@@ -343,7 +344,10 @@ function Async() {
   const [loaded, setLoaded] = useState(3)
 
   useEffect(() => {
-    const id = setInterval(() => setStep((s) => (s + 1) % (TASKS.length + 1)), 1400)
+    const id = setInterval(
+      () => setStep((s) => (s + 1) % (TASKS.length + 1)),
+      1400
+    )
     return () => clearInterval(id)
   }, [])
 
@@ -370,7 +374,11 @@ function Async() {
               <p className="text-muted-foreground">3 evaluators assigned</p>
             </div>
           </SkeletonSwap>
-          <Button size="sm" variant="outline" onClick={() => setReady((r) => !r)}>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => setReady((r) => !r)}
+          >
             {ready ? "Reset" : "Load"}
           </Button>
         </div>
@@ -417,7 +425,11 @@ function Async() {
         use="Speaker onboarding checklist and long organizer jobs (bulk decisions)."
         tall
       >
-        <TaskSteps steps={TASKS} current={step} label="Processing submissions" />
+        <TaskSteps
+          steps={TASKS}
+          current={step}
+          label="Processing submissions"
+        />
       </Demo>
     </Group>
   )
@@ -532,7 +544,10 @@ function Notifications() {
         use="Speakers on a session, evaluators in a plan, org members in settings."
       >
         <div className="space-y-3">
-          <PresenceAvatars people={PEOPLE.slice(0, visible)} label="Evaluators" />
+          <PresenceAvatars
+            people={PEOPLE.slice(0, visible)}
+            label="Evaluators"
+          />
           <div className="flex gap-2">
             <Button
               size="xs"
@@ -557,7 +572,9 @@ function Notifications() {
         use="Evaluator discussion threads and organizer↔speaker message threads."
       >
         <div className="space-y-3">
-          <TypingIndicator typists={PEOPLE.slice(0, typing).map((p) => p.name)} />
+          <TypingIndicator
+            typists={PEOPLE.slice(0, typing).map((p) => p.name)}
+          />
           <div className="flex gap-2">
             <Button
               size="xs"
@@ -599,7 +616,12 @@ function Notifications() {
 
 const COMMANDS = [
   { id: "new-abstract", label: "New abstract", shortcut: ["N"] },
-  { id: "agenda", label: "Go to agenda", hint: "Program", shortcut: ["G", "A"] },
+  {
+    id: "agenda",
+    label: "Go to agenda",
+    hint: "Program",
+    shortcut: ["G", "A"],
+  },
   { id: "forms", label: "Open form builder", hint: "Collect & Review" },
   { id: "invite", label: "Invite a member", hint: "Settings" },
   { id: "export", label: "Export submissions as CSV" },
@@ -1154,8 +1176,8 @@ function Content() {
       >
         <ShowMore lines={3} label="Abstract">
           <p className="text-sm text-muted-foreground">
-            Agents are easy to demo and hard to ship. This talk walks through the
-            three failure modes we hit taking an agent from a notebook to
+            Agents are easy to demo and hard to ship. This talk walks through
+            the three failure modes we hit taking an agent from a notebook to
             production — silent tool errors, unbounded context growth, and
             evaluation drift — and the small, boring engineering practices that
             fixed each one. You’ll leave with a checklist you can run against

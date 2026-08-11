@@ -23,7 +23,7 @@ import {
   FieldLabel,
   FieldTitle,
 } from "@/components/ui/field"
-import { useCurrentEvent } from "@/components/dashboard/use-current-event"
+import { useCurrentEvent } from "@/lib/current-event"
 import {
   BuilderField,
   InfoNote,

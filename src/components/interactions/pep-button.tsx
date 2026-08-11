@@ -101,7 +101,7 @@ export function PepButton({
         style={{ transformPerspective: 340 }}
         className={cn(
           buttonVariants({ variant, size }),
-          "relative w-full active:translate-y-0 group-focus-visible/pep:ring-3 group-focus-visible/pep:ring-ring/50",
+          "relative w-full group-focus-visible/pep:ring-3 group-focus-visible/pep:ring-ring/50 active:translate-y-0",
           className
         )}
       >

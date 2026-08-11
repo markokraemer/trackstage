@@ -13,7 +13,7 @@ import { buttonVariants } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Card } from "@/components/ui/card"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { useCurrentEvent } from "@/components/dashboard/use-current-event"
+import { useCurrentEvent } from "@/lib/current-event"
 import { FormCard } from "@/components/forms-builder/form-card"
 import { friendlyError } from "@/components/forms-builder/model"
 
