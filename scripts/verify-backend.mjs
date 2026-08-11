@@ -1654,9 +1654,19 @@ if (SITE_URL) {
   ok("DELETE /levels/{name} removes it", (await call("DELETE", `/event/${EV}/levels/Parity%20Level`)).status === 204)
   const statuses = await call("GET", `/event/${EV}/statuses`)
   ok("GET /statuses lists the system pipeline", statuses.status === 200 && statuses.json.results.some((s) => s.id === "accept_queue" && s.system === true))
+  // Statuses became real CRUD in the API-parity pass: a custom status is a
+  // label bound to a pipeline category (default "pending"), soft-deletable
+  // and restorable — mirror that lifecycle here.
   const statusWrite = await call("POST", `/event/${EV}/statuses/create`, { body: { name: "Custom" } })
-  ok("custom session statuses are refused with a clear reason",
-    statusWrite.status === 400 && /system-defined/i.test(statusWrite.json.error), JSON.stringify(statusWrite.json))
+  ok("custom session statuses are creatable via the API",
+    statusWrite.status === 201 && statusWrite.json.system === false && statusWrite.json.pipeline_status === "pending",
+    JSON.stringify(statusWrite.json))
+  const statusId = statusWrite.json.id
+  const statusDelete = await call("DELETE", `/event/${EV}/statuses/${statusId}`)
+  ok("custom status soft-deletes", statusDelete.status === 204)
+  const statusRestore = await call("POST", `/event/${EV}/statuses/${statusId}/restore`, { body: {} })
+  ok("deleted status restores", statusRestore.status === 200)
+  await call("DELETE", `/event/${EV}/statuses/${statusId}`)
 
   // ——— Speakers ———
   const speakerSearch = await call("POST", `/event/${EV}/speakers?pageSize=3`, { body: {} })
