@@ -889,9 +889,16 @@ ok("hidden session leaves the public sessions list", !(await listedSessionIds())
 ok("hidden session's public page resolves to nothing",
   (await client.query(api.publicData.sessionDetail, { slug: SLUG, submissionId: String(hideTarget._id) })).session === null)
 ok("hidden session leaves the .ics feed", !icsIds().includes(String(hideTarget._id)))
+// The published-programme default of the real REST API (legacy read-only token).
+const v1Public = async (path) => {
+  const res = await fetch(`${SITE_URL}/v1/event/${SLUG}${path}`, {
+    headers: { Authorization: `Bearer ${env.PUBLIC_API_TOKEN ?? "demo-api-token"}` },
+  })
+  return await res.json()
+}
 ok("hidden session leaves the public JSON API",
-  !convexRun("publicData:apiSessionsPage", { slug: SLUG, page: 1, pageSize: 200 })
-    .data.some((s) => String(s.id) === String(hideTarget._id)))
+  !((await v1Public("/sessions?pageSize=100")).data ?? [])
+    .some((s) => String(s.id) === String(hideTarget._id)))
 const hiddenDoc = await client.query(api.submissions.get, { submissionId: hideTarget._id })
 ok("hidden session is still accepted for the organizer", hiddenDoc.status === "accepted" && hiddenDoc.publicVisible === false)
 const boardWhileHidden = await client.query(api.agenda.board, { eventId: main._id })
@@ -920,8 +927,8 @@ ok("hidden speaker leaves every session's speaker list",
 ok("hidden speaker's public itinerary is blank",
   (await client.query(api.publicData.speakerItinerary, { slug: SLUG, personId: String(speakerTarget._id) })).speaker === null)
 ok("hidden speaker leaves the public JSON API",
-  !convexRun("publicData:apiSpeakersPage", { slug: SLUG, page: 1, pageSize: 500 })
-    .data.some((s) => String(s.id) === String(speakerTarget._id)))
+  !((await v1Public("/speakers?public=true&pageSize=100")).data ?? [])
+    .some((s) => String(s.id) === String(speakerTarget._id)))
 ok("hidden speaker leaves the .ics feed's speaker lists",
   !convexRun("publicData:icsFeed", publicSlug).events.some((e) => e.speakers.includes(speakerTarget.name)))
 if (theirSessionId) {
