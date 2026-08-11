@@ -70,10 +70,11 @@ function MessageScrollerItem({
     <MessageScrollerPrimitive.Item
       data-slot="message-scroller-item"
       scrollAnchor={scrollAnchor}
-      className={cn(
-        "min-w-0 shrink-0 [contain-intrinsic-size:auto_10rem] [content-visibility:auto]",
-        className
-      )}
+      // No `content-visibility:auto` here: estimated sizes for off-screen
+      // turns make `scrollHeight` a guess, so "scroll to end" lands short and
+      // the scrollbar jumps as real heights stream in. Transcripts are
+      // bounded; correct geometry beats the paint saving.
+      className={cn("min-w-0 shrink-0", className)}
       {...props}
     />
   )
@@ -105,8 +106,7 @@ function MessageScrollerButton({
     >
       {children ?? (
         <>
-          <RiArrowDownLine
-          />
+          <RiArrowDownLine />
           <span className="sr-only">
             {direction === "end" ? "Scroll to end" : "Scroll to start"}
           </span>

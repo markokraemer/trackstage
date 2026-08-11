@@ -11,13 +11,10 @@ import { Bubble, BubbleContent } from "@/components/ui/bubble"
 import { Marker, MarkerContent, MarkerIcon } from "@/components/ui/marker"
 import { Message, MessageContent } from "@/components/ui/message"
 import {
-  MessageScroller,
-  MessageScrollerButton,
-  MessageScrollerContent,
-  MessageScrollerItem,
-  MessageScrollerProvider,
-  MessageScrollerViewport,
-} from "@/components/ui/message-scroller"
+  Conversation,
+  ConversationContent,
+  ConversationScrollButton,
+} from "@/components/ai-elements/conversation"
 import { Loader } from "@/components/ai-elements/loader"
 import { MessageResponse } from "@/components/ai-elements/message"
 import {
@@ -45,13 +42,20 @@ import { errorMessage } from "@/lib/errors"
  * instance out of src/lib/copilot-store.ts, so navigating away from a screen
  * — or from the panel to the full page — never loses the thread.
  *
- * THE CHROME IS SHADCN'S CHAT PRIMITIVES (June 2026 release), per rule #17:
- * `MessageScroller` owns the transcript's scroll behaviour — anchored turns,
- * following a streamed reply only while the reader is at the live edge, and a
- * jump-to-latest control — which is exactly the class of thing that is easy to
- * get subtly wrong by hand. `Message`/`Bubble` lay out the rows (user turns as
- * bubbles, assistant turns full-width so tables and tool cards get the width
- * they need) and `Marker` carries the system/status rows.
+ * THE TRANSCRIPT SCROLLS ON AI ELEMENTS' `Conversation` (use-stick-to-bottom),
+ * per Marko's 2026-08-12 direction to lean on the AI Elements chat handling
+ * wholesale: conversation flows top-down, streaming follows only while the
+ * reader is at the live edge, ANY scroll away (wheel, touch, scrollbar drag)
+ * escapes the follow, and ↓ returns to the true end. Its predecessor —
+ * shadcn's `MessageScroller` in `last-anchor` mode — pinned each new question
+ * to the TOP of the viewport by growing a phantom spacer under the reply and
+ * re-anchored on every resize, which is exactly what Marko screenshotted
+ * (2026-08-11): giant blank voids, and a finished reply whose tail sat below
+ * the fold and could not be scrolled to (scrollbar drags never counted as
+ * user intent, so the next resize yanked the viewport back). `Message`/
+ * `Bubble` lay out the rows (user turns as bubbles, assistant turns
+ * full-width so tables and tool cards get the width they need) and `Marker`
+ * carries the system/status rows.
  *
  * AI ELEMENTS STAYS for the AI-specific parts shadcn deliberately does not
  * ship: the composer (`prompt-input`), the tool visualisation and the
@@ -111,6 +115,25 @@ export function CopilotChat({
   } = useChat<UIMessage>({ chat })
 
   const busy = status === "submitted" || status === "streaming"
+
+  // "Thinking…" must cover every silent moment, not just the pre-stream one.
+  // Between tool calls — result landed, next step still being decided — the
+  // status is "streaming" but nothing on screen moves, which reads as a hang
+  // (Marko, 2026-08-12). So: show the marker whenever the copilot is busy and
+  // the newest visible thing is NOT something that animates on its own —
+  // i.e. hide it only while text is actually flowing or a tool frame is
+  // already pulsing "Preparing/Running".
+  const lastMessage = messages.at(-1)
+  const lastPart =
+    lastMessage?.role === "assistant" ? lastMessage.parts.at(-1) : undefined
+  const tailIsLive =
+    (lastPart?.type === "text" && lastPart.text.length > 0) ||
+    (lastPart !== undefined &&
+      isToolUIPart(lastPart) &&
+      (lastPart.state === "input-streaming" ||
+        lastPart.state === "input-available" ||
+        lastPart.state === "approval-requested"))
+  const showThinking = busy && !tailIsLive
 
   // Typing past an approval card is an answer: decline it. Without this, the
   // pending tool call never gets a result and the NEXT request dies with
@@ -172,119 +195,122 @@ export function CopilotChat({
 
   return (
     <div className={cn("flex min-h-0 flex-1 flex-col", className)}>
-      <MessageScrollerProvider
-        autoScroll
-        defaultScrollPosition="last-anchor"
-        scrollPreviousItemPeek={64}
-      >
-        <MessageScroller className="min-h-0 flex-1">
-          <MessageScrollerViewport>
-            <MessageScrollerContent
-              aria-busy={status === "streaming"}
-              className={cn("gap-6", isPage ? "p-6" : "p-4", columnClass)}
-            >
-              {isEmpty && pending ? (
-                // A saved conversation on its way back from Convex. Drawing
-                // the empty state here would flash "ask me anything" over a
-                // chat that already has fifty messages in it.
-                <CopilotTranscriptSkeleton />
-              ) : null}
+      {/* `initial="instant"`: a reopened thread starts AT its latest turn —
+          animating a 50-message scroll on mount is a light show, not UX. */}
+      <Conversation className="min-h-0 flex-1" initial="instant">
+        <ConversationContent
+          aria-busy={status === "streaming"}
+          scrollClassName="scroll-fade-b scrollbar-thin overscroll-contain"
+          className={cn(
+            // `*:shrink-0` matters: without it the flex column can squeeze a
+            // turn, and the shrink lands entirely on the tool cards (their
+            // `overflow-hidden` zeroes the min-height floor), silently
+            // CLIPPING a finished card mid-list — the "renders correctly,
+            // then truncates" defect from Marko's screenshots. A transcript
+            // row must never pay for its neighbours' height.
+            "flex min-h-full flex-col gap-5 *:shrink-0",
+            // Extra tail room so a finished reply sits comfortably clear
+            // of the composer instead of kissing the fade.
+            isPage ? "p-6 pb-10" : "p-4 pb-8",
+            columnClass
+          )}
+        >
+          {isEmpty && pending ? (
+            // A saved conversation on its way back from Convex. Drawing
+            // the empty state here would flash "ask me anything" over a
+            // chat that already has fifty messages in it.
+            <CopilotTranscriptSkeleton />
+          ) : null}
 
-              {isEmpty && !pending ? (
-                <CopilotEmptyState
-                  variant={variant}
-                  headline={headline}
-                  eventName={event?.name}
-                  slim={slimEmptyState}
-                  onPick={ask}
-                />
-              ) : null}
+          {isEmpty && !pending ? (
+            <CopilotEmptyState
+              variant={variant}
+              headline={headline}
+              eventName={event?.name}
+              slim={slimEmptyState}
+              onPick={ask}
+            />
+          ) : null}
 
-              {messages.map((message) => {
-                const isUser = message.role === "user"
-                return (
-                  <MessageScrollerItem
-                    key={message.id}
-                    messageId={message.id}
-                    scrollAnchor={isUser}
-                  >
-                    <Message align={isUser ? "end" : "start"}>
-                      <MessageContent>
-                        {isUser ? (
-                          <Bubble variant="tinted" align="end">
-                            <BubbleContent>
-                              {message.parts
-                                .map((part) =>
-                                  part.type === "text" ? part.text : ""
-                                )
-                                .join("")}
-                            </BubbleContent>
-                          </Bubble>
-                        ) : (
-                          message.parts.map((part, index) => {
-                            const key = `${message.id}-${index}`
+          {messages.map((message) => {
+            const isUser = message.role === "user"
+            return (
+              <Message key={message.id} align={isUser ? "end" : "start"}>
+                <MessageContent>
+                  {isUser ? (
+                    <Bubble variant="tinted" align="end">
+                      <BubbleContent>
+                        {message.parts
+                          .map((part) =>
+                            part.type === "text" ? part.text : ""
+                          )
+                          .join("")}
+                      </BubbleContent>
+                    </Bubble>
+                  ) : (
+                    message.parts.map((part, index) => {
+                      const key = `${message.id}-${index}`
 
-                            if (part.type === "text") {
-                              return part.text ? (
-                                <MessageResponse key={key}>
-                                  {part.text}
-                                </MessageResponse>
-                              ) : null
-                            }
+                      if (part.type === "text") {
+                        // `copilot-prose` (src/styles.css): chat-scale
+                        // markdown — quiet inline code, compact lists,
+                        // headings that don't tower over a 14px column.
+                        return part.text ? (
+                          <MessageResponse key={key} className="copilot-prose">
+                            {part.text}
+                          </MessageResponse>
+                        ) : null
+                      }
 
-                            if (part.type === "reasoning") return null
+                      if (part.type === "reasoning") return null
 
-                            // Covers static (`tool-<name>`) and dynamic parts.
-                            if (isToolUIPart(part)) {
-                              return (
-                                <CopilotToolPart
-                                  key={key}
-                                  part={part}
-                                  disabled={busy}
-                                  onApprovalResponse={approve}
-                                />
-                              )
-                            }
+                      // Covers static (`tool-<name>`) and dynamic parts.
+                      if (isToolUIPart(part)) {
+                        return (
+                          <CopilotToolPart
+                            key={key}
+                            part={part}
+                            disabled={busy}
+                            onApprovalResponse={approve}
+                          />
+                        )
+                      }
 
-                            return null
-                          })
-                        )}
-                      </MessageContent>
-                    </Message>
-                  </MessageScrollerItem>
-                )
-              })}
+                      return null
+                    })
+                  )}
+                </MessageContent>
+              </Message>
+            )
+          })}
 
-              {status === "submitted" ? (
-                <MessageScrollerItem messageId="copilot-status">
-                  <Marker role="status">
-                    <MarkerIcon>
-                      <Loader size={14} />
-                    </MarkerIcon>
-                    <MarkerContent className="shimmer">Thinking…</MarkerContent>
-                  </Marker>
-                </MessageScrollerItem>
-              ) : null}
+          {showThinking ? (
+            <Marker role="status">
+              <MarkerIcon>
+                <Loader size={14} />
+              </MarkerIcon>
+              <MarkerContent className="shimmer">Thinking…</MarkerContent>
+            </Marker>
+          ) : null}
 
-              {error ? (
-                <MessageScrollerItem messageId="copilot-error">
-                  <div className="flex items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">
-                    <RiErrorWarningLine
-                      size={16}
-                      aria-hidden
-                      className="mt-0.5 shrink-0"
-                    />
-                    <span className="min-w-0">
-                      {errorMessage(error, "The copilot hit an error. Try again.")}
-                    </span>
-                  </div>
-                </MessageScrollerItem>
-              ) : null}
-            </MessageScrollerContent>
-          </MessageScrollerViewport>
-          <MessageScrollerButton />
-        </MessageScroller>
-      </MessageScrollerProvider>
+          {error ? (
+            <div className="flex items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">
+              <RiErrorWarningLine
+                size={16}
+                aria-hidden
+                className="mt-0.5 shrink-0"
+              />
+              <span className="min-w-0">
+                {errorMessage(error, "The copilot hit an error. Try again.")}
+              </span>
+            </div>
+          ) : null}
+        </ConversationContent>
+        <ConversationScrollButton
+          aria-label="Scroll to latest"
+          className="bottom-3 shadow-sm"
+        />
+      </Conversation>
 
       <div
         className={cn(
