@@ -51,3 +51,11 @@ Format: date · decision · why · status.
   The affordance is a context menu that *offers* the design system alongside SVG/PNG
   download and copy-as-SVG (Vercel/Linear). New `ui/context-menu.tsx` on Base UI. ✅
 
+- **2026-08-11 · Docs built natively in Fumadocs' style, not on Fumadocs itself** —
+  rule 27 named Fumadocs; the docs agent verified TanStack Start support exists but
+  requires 4 new deps + RootProvider/global-CSS changes it was barred from making
+  mid-flight. Shipped: native /docs (14 routes) matching Fumadocs' look on our tokens,
+  Scalar embedded, MCP tool table generated from convex/mcp.ts (drift-proof, --check
+  in place). Converting to real Fumadocs remains possible post-deadline (NEEDS-DEPS
+  in BUILD-LOG); the user-visible outcome — simple docs w/ screenshots + accurate
+  API/MCP references — is delivered. ⏳ optional swap
