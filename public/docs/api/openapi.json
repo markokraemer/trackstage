@@ -11,7 +11,7 @@
     },
     "contact": {
       "name": "Trackstage",
-      "url": "https://github.com/markokraemer/sessionboard"
+      "url": "https://github.com/markokraemer/trackstage"
     }
   },
   "servers": [
@@ -445,7 +445,7 @@
           "Event Settings"
         ],
         "summary": "Search fields",
-        "description": "Same data as the list form, with the search body Sessionboard clients send.\n\n**Scope** `read:events` — enforced only when the presenting key declares a scope set; an unscoped key acts with its owner's workspace permissions.\n\n**Rate limit** 100 requests / 15 minutes in the `entity_reads` bucket.",
+        "description": "Same data as the list form, with the search body Trackstage clients send.\n\n**Scope** `read:events` — enforced only when the presenting key declares a scope set; an unscoped key acts with its owner's workspace permissions.\n\n**Rate limit** 100 requests / 15 minutes in the `entity_reads` bucket.",
         "parameters": [
           {
             "$ref": "#/components/parameters/eventRef"
@@ -778,7 +778,7 @@
           "Event Settings"
         ],
         "summary": "Search formats",
-        "description": "Same data as the list form, with the search body Sessionboard clients send.\n\n**Scope** `read:events` — enforced only when the presenting key declares a scope set; an unscoped key acts with its owner's workspace permissions.\n\n**Rate limit** 100 requests / 15 minutes in the `entity_reads` bucket.",
+        "description": "Same data as the list form, with the search body Trackstage clients send.\n\n**Scope** `read:events` — enforced only when the presenting key declares a scope set; an unscoped key acts with its owner's workspace permissions.\n\n**Rate limit** 100 requests / 15 minutes in the `entity_reads` bucket.",
         "parameters": [
           {
             "$ref": "#/components/parameters/eventRef"
@@ -1111,7 +1111,7 @@
           "Event Settings"
         ],
         "summary": "Search languages",
-        "description": "Same data as the list form, with the search body Sessionboard clients send.\n\n**Scope** `read:events` — enforced only when the presenting key declares a scope set; an unscoped key acts with its owner's workspace permissions.\n\n**Rate limit** 100 requests / 15 minutes in the `entity_reads` bucket.",
+        "description": "Same data as the list form, with the search body Trackstage clients send.\n\n**Scope** `read:events` — enforced only when the presenting key declares a scope set; an unscoped key acts with its owner's workspace permissions.\n\n**Rate limit** 100 requests / 15 minutes in the `entity_reads` bucket.",
         "parameters": [
           {
             "$ref": "#/components/parameters/eventRef"
@@ -1444,7 +1444,7 @@
           "Event Settings"
         ],
         "summary": "Search levels",
-        "description": "Same data as the list form, with the search body Sessionboard clients send.\n\n**Scope** `read:events` — enforced only when the presenting key declares a scope set; an unscoped key acts with its owner's workspace permissions.\n\n**Rate limit** 100 requests / 15 minutes in the `entity_reads` bucket.",
+        "description": "Same data as the list form, with the search body Trackstage clients send.\n\n**Scope** `read:events` — enforced only when the presenting key declares a scope set; an unscoped key acts with its owner's workspace permissions.\n\n**Rate limit** 100 requests / 15 minutes in the `entity_reads` bucket.",
         "parameters": [
           {
             "$ref": "#/components/parameters/eventRef"
@@ -1779,7 +1779,7 @@
           "Event Settings"
         ],
         "summary": "Search rooms",
-        "description": "Same data as the list form, with the search body Sessionboard clients send.\n\n**Scope** `read:events` — enforced only when the presenting key declares a scope set; an unscoped key acts with its owner's workspace permissions.\n\n**Rate limit** 100 requests / 15 minutes in the `entity_reads` bucket.",
+        "description": "Same data as the list form, with the search body Trackstage clients send.\n\n**Scope** `read:events` — enforced only when the presenting key declares a scope set; an unscoped key acts with its owner's workspace permissions.\n\n**Rate limit** 100 requests / 15 minutes in the `entity_reads` bucket.",
         "parameters": [
           {
             "$ref": "#/components/parameters/eventRef"
@@ -2146,7 +2146,7 @@
           "Event Settings"
         ],
         "summary": "Search session statuses",
-        "description": "Same data as the list form, with the search body Sessionboard clients send.\n\n**Scope** `read:events` — enforced only when the presenting key declares a scope set; an unscoped key acts with its owner's workspace permissions.\n\n**Rate limit** 100 requests / 15 minutes in the `entity_reads` bucket.",
+        "description": "Same data as the list form, with the search body Trackstage clients send.\n\n**Scope** `read:events` — enforced only when the presenting key declares a scope set; an unscoped key acts with its owner's workspace permissions.\n\n**Rate limit** 100 requests / 15 minutes in the `entity_reads` bucket.",
         "parameters": [
           {
             "$ref": "#/components/parameters/eventRef"
@@ -4012,7 +4012,7 @@
           "Speakers"
         ],
         "summary": "Search speakers",
-        "description": "Same data as the list form, with the search body Sessionboard clients send.\n\n**Scope** `read:contacts` — enforced only when the presenting key declares a scope set; an unscoped key acts with its owner's workspace permissions.",
+        "description": "Same data as the list form, with the search body Trackstage clients send.\n\n**Scope** `read:contacts` — enforced only when the presenting key declares a scope set; an unscoped key acts with its owner's workspace permissions.",
         "parameters": [
           {
             "$ref": "#/components/parameters/eventRef"
@@ -4337,7 +4337,7 @@
           "Event Settings"
         ],
         "summary": "Search statuses",
-        "description": "Same data as the list form, with the search body Sessionboard clients send.\n\n**Scope** `read:events` — enforced only when the presenting key declares a scope set; an unscoped key acts with its owner's workspace permissions.\n\n**Rate limit** 100 requests / 15 minutes in the `entity_reads` bucket.",
+        "description": "Same data as the list form, with the search body Trackstage clients send.\n\n**Scope** `read:events` — enforced only when the presenting key declares a scope set; an unscoped key acts with its owner's workspace permissions.\n\n**Rate limit** 100 requests / 15 minutes in the `entity_reads` bucket.",
         "parameters": [
           {
             "$ref": "#/components/parameters/eventRef"
@@ -4725,7 +4725,7 @@
           "Event Settings"
         ],
         "summary": "Search tags",
-        "description": "Same data as the list form, with the search body Sessionboard clients send.\n\n**Scope** `read:events` — enforced only when the presenting key declares a scope set; an unscoped key acts with its owner's workspace permissions.\n\n**Rate limit** 100 requests / 15 minutes in the `entity_reads` bucket.",
+        "description": "Same data as the list form, with the search body Trackstage clients send.\n\n**Scope** `read:events` — enforced only when the presenting key declares a scope set; an unscoped key acts with its owner's workspace permissions.\n\n**Rate limit** 100 requests / 15 minutes in the `entity_reads` bucket.",
         "parameters": [
           {
             "$ref": "#/components/parameters/eventRef"
@@ -5062,7 +5062,7 @@
           "Event Settings"
         ],
         "summary": "Search tracks",
-        "description": "Same data as the list form, with the search body Sessionboard clients send.\n\n**Scope** `read:events` — enforced only when the presenting key declares a scope set; an unscoped key acts with its owner's workspace permissions.\n\n**Rate limit** 100 requests / 15 minutes in the `entity_reads` bucket.",
+        "description": "Same data as the list form, with the search body Trackstage clients send.\n\n**Scope** `read:events` — enforced only when the presenting key declares a scope set; an unscoped key acts with its owner's workspace permissions.\n\n**Rate limit** 100 requests / 15 minutes in the `entity_reads` bucket.",
         "parameters": [
           {
             "$ref": "#/components/parameters/eventRef"
@@ -6136,7 +6136,7 @@
     "schemas": {
       "Error": {
         "type": "object",
-        "description": "Every failure uses this shape. `error` and `message` are the same human sentence — `error` is where this API has always put it, `message` is where Sessionboard clients look. `code` is the machine-readable name.",
+        "description": "Every failure uses this shape. `error` and `message` are the same human sentence — `error` is where this API has always put it, `message` is where Trackstage clients look. `code` is the machine-readable name.",
         "required": [
           "error",
           "code",
@@ -6172,7 +6172,7 @@
       },
       "Pagination": {
         "type": "object",
-        "description": "Carries both spellings: camelCase (what this API has always returned) and snake_case (what Sessionboard's CRUD proxy returns). They always hold the same values.",
+        "description": "Carries both spellings: camelCase (what this API has always returned) and snake_case (what Trackstage's CRUD proxy returns). They always hold the same values.",
         "properties": {
           "currentPage": {
             "type": "integer",
@@ -6226,7 +6226,7 @@
       },
       "CustomFieldValue": {
         "type": "object",
-        "description": "One answer to one CFP question. `value` is the flattened string Sessionboard clients expect; `value_raw` is the untouched JSON, so multi-selects and structured answers are never lossy.",
+        "description": "One answer to one CFP question. `value` is the flattened string Trackstage clients expect; `value_raw` is the untouched JSON, so multi-selects and structured answers are never lossy.",
         "properties": {
           "id": {
             "type": "string",
@@ -6542,7 +6542,7 @@
       },
       "Session": {
         "type": "object",
-        "description": "A session or abstract. The union of Sessionboard's `Session` shape and every field this API returned before parity, so it is a strict superset of both.",
+        "description": "A session or abstract. The union of Trackstage's `Session` shape and every field this API returned before parity, so it is a strict superset of both.",
         "properties": {
           "id": {
             "type": "string"
@@ -6706,7 +6706,7 @@
           "subsessions": {
             "type": "array",
             "items": {},
-            "description": "Always empty — this product has no parent/child sessions. Present so clients written against Sessionboard can iterate it without a guard."
+            "description": "Always empty — this product has no parent/child sessions. Present so clients written against Trackstage can iterate it without a guard."
           },
           "files": {
             "type": "array",
@@ -8156,7 +8156,7 @@
       },
       "SessionsPage": {
         "type": "object",
-        "description": "Paginated envelope. `data` and `results` are the same array — `data` is what this API has always returned, `results` is what Sessionboard's search endpoints return.",
+        "description": "Paginated envelope. `data` and `results` are the same array — `data` is what this API has always returned, `results` is what Trackstage's search endpoints return.",
         "properties": {
           "data": {
             "type": "array",
@@ -8180,7 +8180,7 @@
       },
       "SessionStatusesPage": {
         "type": "object",
-        "description": "Paginated envelope. `data` and `results` are the same array — `data` is what this API has always returned, `results` is what Sessionboard's search endpoints return.",
+        "description": "Paginated envelope. `data` and `results` are the same array — `data` is what this API has always returned, `results` is what Trackstage's search endpoints return.",
         "properties": {
           "data": {
             "type": "array",
@@ -8201,7 +8201,7 @@
       },
       "SpeakersPage": {
         "type": "object",
-        "description": "Paginated envelope. `data` and `results` are the same array — `data` is what this API has always returned, `results` is what Sessionboard's search endpoints return.",
+        "description": "Paginated envelope. `data` and `results` are the same array — `data` is what this API has always returned, `results` is what Trackstage's search endpoints return.",
         "properties": {
           "data": {
             "type": "array",
@@ -8225,7 +8225,7 @@
       },
       "SubmissionsPage": {
         "type": "object",
-        "description": "Paginated envelope. `data` and `results` are the same array — `data` is what this API has always returned, `results` is what Sessionboard's search endpoints return.",
+        "description": "Paginated envelope. `data` and `results` are the same array — `data` is what this API has always returned, `results` is what Trackstage's search endpoints return.",
         "properties": {
           "data": {
             "type": "array",
@@ -8249,7 +8249,7 @@
       },
       "EventsPage": {
         "type": "object",
-        "description": "Paginated envelope. `data` and `results` are the same array — `data` is what this API has always returned, `results` is what Sessionboard's search endpoints return.",
+        "description": "Paginated envelope. `data` and `results` are the same array — `data` is what this API has always returned, `results` is what Trackstage's search endpoints return.",
         "properties": {
           "data": {
             "type": "array",
@@ -8270,7 +8270,7 @@
       },
       "FieldsPage": {
         "type": "object",
-        "description": "Paginated envelope. `data` and `results` are the same array — `data` is what this API has always returned, `results` is what Sessionboard's search endpoints return.",
+        "description": "Paginated envelope. `data` and `results` are the same array — `data` is what this API has always returned, `results` is what Trackstage's search endpoints return.",
         "properties": {
           "data": {
             "type": "array",
@@ -8291,7 +8291,7 @@
       },
       "MetadataPage": {
         "type": "object",
-        "description": "Paginated envelope. `data` and `results` are the same array — `data` is what this API has always returned, `results` is what Sessionboard's search endpoints return.",
+        "description": "Paginated envelope. `data` and `results` are the same array — `data` is what this API has always returned, `results` is what Trackstage's search endpoints return.",
         "properties": {
           "data": {
             "type": "array",

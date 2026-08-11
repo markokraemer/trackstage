@@ -158,11 +158,20 @@ export interface AgendaDragMachine {
   cancel: () => void
 }
 
-/** Auto-scroll tuned for a tall time grid: gentle, wide, on both axes. */
+/**
+ * Auto-scroll tuned for a tall time grid: gentle, wide, on both axes.
+ *
+ * `ReversedTreeOrder` is the load-bearing part. dnd-kit's default walks the
+ * scroll ancestors outermost-first, so carrying a session to the bottom of the
+ * screen scrolls the *page* — the toolbar slides away and the grid stays put.
+ * Reversed makes the time grid itself scroll first, which is what every
+ * calendar does and what an organizer reaching for 6 PM expects.
+ */
 export const AGENDA_AUTO_SCROLL = {
   threshold: { x: 0.18, y: 0.2 },
   acceleration: 16,
   interval: 5,
+  order: TraversalOrder.ReversedTreeOrder,
 } as const
 
 export function useDragMachine(

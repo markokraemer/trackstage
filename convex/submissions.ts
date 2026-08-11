@@ -2,9 +2,11 @@ import { v } from "convex/values"
 import { internal } from "./_generated/api"
 import type { Doc, Id } from "./_generated/dataModel"
 import type { MutationCtx, QueryCtx } from "./_generated/server"
-import { mutation, query } from "./_generated/server"
+import { internalMutation, mutation, query } from "./_generated/server"
 import { scheduleAirtableSync } from "./airtable"
 import { randomToken, requireEventAccess } from "./lib/auth"
+import type { AuditActor } from "./lib/audit"
+import { record as recordAudit, statusChangeSummary } from "./lib/audit"
 import { emitWebhook } from "./webhooks"
 import { enrichUploads } from "./lib/files"
 
@@ -133,6 +135,43 @@ export const get = query({
   },
 })
 
+/**
+ * The one place a submission's status changes outside a queue commit.
+ *
+ * Everything that stages a decision funnels through here — the table's inline
+ * picker, the drawer, bulk actions, and the experimental Airtable pull-back
+ * (via `setStatusInternal`) — so the side-effects can never drift apart:
+ * the patch, the outbound webhook, and the audit row are written together.
+ *
+ * `actor` is what makes the history readable: absent it resolves to the
+ * signed-in organizer; the Airtable pull passes "Airtable" so a row that
+ * moved itself is attributable.
+ */
+async function applyStatusChange(
+  ctx: MutationCtx,
+  submission: Doc<"submissions">,
+  status: string,
+  actor?: AuditActor,
+): Promise<void> {
+  await ctx.db.patch(submission._id, { status })
+  // Outbound webhooks (convex/webhooks.ts) — fire-and-forget, never blocks.
+  await emitWebhook(ctx, submission.eventId, "submission.updated", {
+    id: submission._id,
+    title: submission.title,
+    status,
+    previous_status: submission.status,
+  })
+  await recordAudit(ctx, {
+    eventId: submission.eventId,
+    entity: submission.kind === "session" ? "session" : "submission",
+    entityId: submission._id,
+    action: "status_changed",
+    summary: `${statusChangeSummary(submission.status, status)} · ${submission.title}`,
+    meta: { from: submission.status, to: status, title: submission.title },
+    actor,
+  })
+}
+
 // Inline status change from the table (staging — no emails fired here).
 export const setStatus = mutation({
   args: {
@@ -146,13 +185,35 @@ export const setStatus = mutation({
     const submission = await ctx.db.get(args.submissionId)
     if (!submission) throw new Error("Submission not found")
     await requireEventAccess(ctx, submission.eventId)
-    await ctx.db.patch(args.submissionId, { status: args.status })
-    // Outbound webhooks (convex/webhooks.ts) — fire-and-forget, never blocks.
-    await emitWebhook(ctx, submission.eventId, "submission.updated", {
-      id: args.submissionId,
-      title: submission.title,
-      status: args.status,
-      previous_status: submission.status,
+    await applyStatusChange(ctx, submission, args.status)
+    return null
+  },
+})
+
+/**
+ * Same semantics, for callers that have already authorized the change and
+ * carry their own attribution — today that is the experimental inbound
+ * Airtable sync (convex/airtable.ts `applyInbound`). It exists so an
+ * integration can never reach past the domain logic with a raw patch and
+ * quietly skip the webhook and the audit row.
+ */
+export const setStatusInternal = internalMutation({
+  args: {
+    submissionId: v.id("submissions"),
+    status: v.string(),
+    actorType: v.string(),
+    actorLabel: v.string(),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    if (!STATUSES.includes(args.status as (typeof STATUSES)[number])) {
+      throw new Error(`Invalid status: ${args.status}`)
+    }
+    const submission = await ctx.db.get(args.submissionId)
+    if (!submission) throw new Error("Submission not found")
+    await applyStatusChange(ctx, submission, args.status, {
+      type: args.actorType as AuditActor["type"],
+      label: args.actorLabel,
     })
     return null
   },
@@ -173,13 +234,7 @@ export const bulkSetStatus = mutation({
       const submission = await ctx.db.get(id)
       if (!submission) continue
       await requireEventAccess(ctx, submission.eventId)
-      await ctx.db.patch(id, { status: args.status })
-      await emitWebhook(ctx, submission.eventId, "submission.updated", {
-        id,
-        title: submission.title,
-        status: args.status,
-        previous_status: submission.status,
-      })
+      await applyStatusChange(ctx, submission, args.status)
     }
     return { updated: args.submissionIds.length }
   },
@@ -234,6 +289,22 @@ export const commitQueue = mutation({
           await ensureOnboardingTasks(ctx, args.eventId, personId)
         }
       }
+      // Per-submission history: committing a queue is the moment a decision
+      // becomes real (the email goes out), so it earns its own row on every
+      // record rather than one summary line the organizer has to interpret.
+      await recordAudit(ctx, {
+        eventId: args.eventId,
+        entity: submission.kind === "session" ? "session" : "submission",
+        entityId: submission._id,
+        action: "decision_committed",
+        summary: `${statusChangeSummary(submission.status, accepting ? "accepted" : "declined")} and the speaker was emailed · ${submission.title}`,
+        meta: {
+          from: submission.status,
+          to: accepting ? "accepted" : "declined",
+          notified: notifyIds.length,
+          title: submission.title,
+        },
+      })
     }
     // Decisions change every mirrored row's Status — one debounced sync.
     await scheduleAirtableSync(ctx, args.eventId)
@@ -399,6 +470,14 @@ export const addManual = mutation({
       args.kind === "abstract" ? "submission.created" : "session.created",
       { id: submissionId, title: args.title.trim(), status, kind: args.kind },
     )
+    await recordAudit(ctx, {
+      eventId: args.eventId,
+      entity: args.kind === "session" ? "session" : "submission",
+      entityId: submissionId,
+      action: "created",
+      summary: `${args.kind === "session" ? "Session" : "Abstract"} added manually · ${args.title.trim()}`,
+      meta: { status, kind: args.kind, title: args.title.trim() },
+    })
     return submissionId
   },
 })
@@ -433,6 +512,22 @@ export const updateDetails = mutation({
       submission.kind === "abstract" ? "submission.updated" : "session.updated",
       { id: args.submissionId, title: rest.title ?? submission.title },
     )
+    // Field names only — the History tab answers "what was touched, by whom",
+    // and storing every old value would turn a log into a version store.
+    const changed = Object.keys(args.patch).filter(
+      (key) => args.patch[key as keyof typeof args.patch] !== undefined,
+    )
+    await recordAudit(ctx, {
+      eventId: submission.eventId,
+      entity: submission.kind === "session" ? "session" : "submission",
+      entityId: args.submissionId,
+      action: "updated",
+      summary:
+        changed.length > 0
+          ? `Updated ${changed.join(", ")} · ${rest.title ?? submission.title}`
+          : `Updated · ${submission.title}`,
+      meta: { fields: changed, title: rest.title ?? submission.title },
+    })
     return null
   },
 })

@@ -162,12 +162,22 @@ async function walkTo(
           timeout: 30_000,
         })
         break
-      case "account":
-        await fillStable(page.locator("#submit-email"), email)
+      case "account": {
+        // The email field is disabled while the identify mutation is in
+        // flight; filling it then hangs until the test times out.
+        const input = page.locator("#submit-email")
+        if (!(await input.isEnabled().catch(() => false))) {
+          await page.waitForTimeout(500)
+          break
+        }
+        if ((await input.inputValue().catch(() => "")) !== email) {
+          await fillStable(input, email)
+        }
         await advance(page, /^continue$/i, heading(page, /your submission/i), {
           timeout: 30_000,
         }).catch(() => {})
         break
+      }
       case "submission":
         await onSubmission?.()
         await advance(page, /^continue$/i, heading(page, /^participants$/i), {
@@ -197,7 +207,11 @@ async function walkTo(
 
 async function goToAccountStep(page: Page, email: string) {
   await walkTo(page, "account", { email })
-  await fillStable(page.locator("#submit-email"), email)
+  const input = page.locator("#submit-email")
+  await expect(input).toBeEnabled({ timeout: 30_000 })
+  if ((await input.inputValue().catch(() => "")) !== email) {
+    await fillStable(input, email)
+  }
 }
 
 async function goToSubmissionStep(page: Page, email: string) {

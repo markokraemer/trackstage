@@ -14,6 +14,7 @@ import type * as apiHttp from "../apiHttp.js";
 import type * as apiKeys from "../apiKeys.js";
 import type * as apiRoutes from "../apiRoutes.js";
 import type * as apiV1 from "../apiV1.js";
+import type * as audit from "../audit.js";
 import type * as auth from "../auth.js";
 import type * as comms from "../comms.js";
 import type * as crons from "../crons.js";
@@ -59,6 +60,7 @@ declare const fullApi: ApiFromModules<{
   apiKeys: typeof apiKeys;
   apiRoutes: typeof apiRoutes;
   apiV1: typeof apiV1;
+  audit: typeof audit;
   auth: typeof auth;
   comms: typeof comms;
   crons: typeof crons;

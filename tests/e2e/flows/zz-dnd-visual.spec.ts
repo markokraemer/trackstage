@@ -197,10 +197,13 @@ test("edge auto-scroll: dragging to the bottom edge scrolls the grid", async ({ 
     return { chain, windowY: window.scrollY, doc: document.scrollingElement?.scrollTop }
   })
   console.log("scroll chain after:", JSON.stringify(after, null, 1))
+  const gridTop = await page.evaluate(() => {
+    const el = document.querySelector('[class*="overflow-auto"]') as HTMLElement | null
+    return el ? el.scrollTop : -1
+  })
+  console.log("grid scrollTop:", gridTop)
   await page.screenshot({ path: `${OUT}/a1-autoscroll.png` })
   await page.mouse.up()
   await page.waitForTimeout(500)
-  expect(after!, "auto-scroll must move the grid at the bottom edge").toBeGreaterThan(
-    (before?.top ?? 0),
-  )
+  expect(gridTop, "auto-scroll must move the grid at the bottom edge").toBeGreaterThan(0)
 })

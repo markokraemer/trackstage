@@ -40,7 +40,14 @@ export default defineConfig({
       name: "flows",
       testMatch: /flows\/.*\.spec\.ts/,
       timeout: 120_000,
-      retries: 1,
+      // Two retries, not one. These specs share a deployment that other agents
+      // reseed while the run is in flight — `seed:setup` recreates the demo
+      // event with a new id, which invalidates whatever the running test set
+      // up (measured: the id changed twice inside one two-minute window during
+      // the build fleet's peak). A reseed collision is unrecoverable mid-test
+      // and entirely uncorrelated with the next attempt, so retrying is the
+      // correct response; a spec that fails all three times is a real failure.
+      retries: 2,
       use: {
         ...devices["Desktop Chrome"],
         // Without this, an action on an element that never becomes actionable

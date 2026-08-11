@@ -19,7 +19,7 @@ export const Route = createFileRoute("/docs/self-host")({
 })
 
 const RUN_LOCALLY = `git clone https://github.com/markokraemer/trackstage
-cd sessionboard
+cd trackstage
 pnpm install`
 
 const PROVISION = `pnpm dev:setup   # signs you in to Convex and provisions a free backend`

@@ -132,20 +132,6 @@ async function safeShot(name, fn) {
   }
 }
 
-/**
- * Wait for a step to actually arrive before typing into it. The dev server is
- * shared with other agents' HMR, and the Convex dev deployment can take ten
- * seconds to answer a cold mutation, so every wizard transition is a wait on
- * the next heading rather than a fixed sleep.
- */
-async function waitForHeading(page, pattern, timeout = 60000) {
-  await page
-    .getByRole("heading", { name: pattern })
-    .first()
-    .waitFor({ state: "visible", timeout })
-  await page.waitForTimeout(400)
-}
-
 /** Fill a controlled input, retrying until React actually keeps the value. */
 async function fillSticky(page, selector, value) {
   const field = typeof selector === "string" ? page.locator(selector) : selector
@@ -404,55 +390,136 @@ async function buildForm(page, state) {
   })
 }
 
-/** 13–17 — one real talk, submitted through the public form as a speaker. */
+// ——— The public form is a state machine, not a straight line ————————————
+//
+// The wizard is server-rendered: a Continue click that lands before React has
+// hydrated submits natively, the browser reloads, and the wizard silently
+// resets to Welcome. `tests/e2e/flows/cfp-submit.spec.ts` documents this and
+// solves it the only way that isn't a coin flip — look at which step is on
+// screen, do the next right thing, repeat. This does the same, and shoots each
+// step the first time it sees it.
+
+const SUBMIT_STEPS = [
+  ["success", /thank you for submitting/i],
+  ["review", /review and submit/i],
+  ["participants", /^participants$/i],
+  ["talk", /your submission/i],
+  ["account", /your email address/i],
+] // anything else ⇒ "welcome"
+
+const SUBMIT_ORDER = ["welcome", "account", "talk", "participants", "review", "success"]
+
+async function currentSubmitStep(page) {
+  for (const [name, pattern] of SUBMIT_STEPS) {
+    const visible = await page
+      .getByRole("heading", { name: pattern })
+      .first()
+      .isVisible()
+      .catch(() => false)
+    if (visible) return name
+  }
+  return "welcome"
+}
+
+/** 13–18 — one real talk, submitted through the public form as a speaker. */
 async function submitATalk(context, state) {
   // A speaker is not the organizer: their own clean browser context.
   const speaker = await context.browser().newContext(CONTEXT_OPTS)
   const page = await speaker.newPage()
+  const seen = new Set()
+  const deadline = Date.now() + 240_000
+
+  const continueOn = () =>
+    page.getByRole("button", { name: /^continue$/i }).first().click({ timeout: 6000 })
+
   try {
     await page.goto(`${BASE}/submit/${state.formSlug}`, { waitUntil: "networkidle" })
-    await safeShot("13-submit-welcome", () => shot(page, "13-submit-welcome"))
+    await settle(page, 1500)
 
-    await click(page, page.getByRole("button", { name: /^continue$/i }), "submit: welcome → account")
-    await fillSticky(page, "#submit-email", TALK.email)
-    await safeShot("14-submit-account", () => shot(page, "14-submit-account"))
-    await click(page, page.getByRole("button", { name: /^continue$/i }), "submit: account → talk")
-    await waitForHeading(page, /your submission/i)
+    while (Date.now() < deadline) {
+      const step = await currentSubmitStep(page)
 
-    await fillSticky(page, "#question-title", TALK.title)
-    await fillSticky(page, "#question-description", TALK.abstract)
-    await pickOption(page, "#question-format", /^talk$/i).catch(() => log("skipped: format"))
-    await pickOption(page, "#question-track", TRACKS[0]).catch(() => log("skipped: track"))
-    await safeShot("15-submit-talk", () => shot(page, "15-submit-talk"))
+      if (step === "welcome") {
+        if (!seen.has("welcome")) {
+          seen.add("welcome")
+          await safeShot("13-submit-welcome", () => shot(page, "13-submit-welcome"))
+        }
+        await continueOn().catch(() => {})
+        await page.waitForTimeout(1200)
+        continue
+      }
 
-    await click(page, page.getByRole("button", { name: /^continue$/i }), "submit: talk → participants")
-    await waitForHeading(page, /^participants$/i)
+      if (step === "account") {
+        await fillSticky(page, "#submit-email", TALK.email).catch(() => {})
+        if (!seen.has("account")) {
+          seen.add("account")
+          await safeShot("14-submit-account", () => shot(page, "14-submit-account"))
+        }
+        await continueOn().catch(() => {})
+        // `submit.identify` can take a while on a cold dev deployment.
+        await page.waitForTimeout(6000)
+        continue
+      }
 
-    await fillSticky(page, "#participant-0-firstName", TALK.firstName)
-    await fillSticky(page, "#participant-0-lastName", TALK.lastName)
-    await fillSticky(page, "#participant-0-jobTitle", TALK.jobTitle).catch(() => {})
-    await fillSticky(page, "#participant-0-company", TALK.company).catch(() => {})
-    await safeShot("16-submit-speaker", () => shot(page, "16-submit-speaker"))
+      if (step === "talk") {
+        await fillSticky(page, "#question-title", TALK.title).catch(() => {})
+        await fillSticky(page, "#question-description", TALK.abstract).catch(() => {})
+        await pickOption(page, "#question-format", /^talk$/i).catch(() => {})
+        await pickOption(page, "#question-track", TRACKS[0]).catch(() => {})
+        if (!seen.has("talk")) {
+          seen.add("talk")
+          await safeShot("15-submit-talk", () => shot(page, "15-submit-talk"))
+        }
+        await continueOn().catch(() => {})
+        await page.waitForTimeout(1500)
+        continue
+      }
 
-    await click(page, page.getByRole("button", { name: /^continue$/i }), "submit: participants → review")
-    await waitForHeading(page, /review and submit/i)
-    await safeShot("17-submit-review", () => shot(page, "17-submit-review"))
+      if (step === "participants") {
+        await fillSticky(page, "#participant-0-firstName", TALK.firstName).catch(() => {})
+        await fillSticky(page, "#participant-0-lastName", TALK.lastName).catch(() => {})
+        await fillSticky(page, "#participant-0-jobTitle", TALK.jobTitle).catch(() => {})
+        await fillSticky(page, "#participant-0-company", TALK.company).catch(() => {})
+        if (!seen.has("participants")) {
+          seen.add("participants")
+          await safeShot("16-submit-speaker", () => shot(page, "16-submit-speaker"))
+        }
+        await continueOn().catch(() => {})
+        await page.waitForTimeout(1500)
+        continue
+      }
 
-    await click(page, page.getByRole("button", { name: /^submit$/i }), "submitted the talk")
-    // The success card auto-redirects to the portal after 3s — stop it first.
-    await page.waitForTimeout(700)
-    await tryClick(page, page.getByRole("button", { name: /stay here/i }), "stay on the success card")
-    await safeShot("18-submitted", () => shot(page, "18-submitted"))
+      if (step === "review") {
+        if (!seen.has("review")) {
+          seen.add("review")
+          await safeShot("17-submit-review", () => shot(page, "17-submit-review"))
+        }
+        await page
+          .getByRole("button", { name: /^submit$/i })
+          .first()
+          .click({ timeout: 6000 })
+          .catch(() => {})
+        await page.waitForTimeout(3000)
+        continue
+      }
 
-    const portalHref = await page
-      .locator("a[href^='/portal/t/']")
-      .first()
-      .getAttribute("href")
-      .catch(() => null)
-    if (portalHref) {
-      state.portalUrl = `${BASE}${portalHref}`
-      log(`speaker portal token captured`)
+      // success
+      // The card auto-redirects to the portal after a few seconds — stop it.
+      await tryClick(page, page.getByRole("button", { name: /stay here/i }), "stay on the success card")
+      await safeShot("18-submitted", () => shot(page, "18-submitted"))
+      const portalHref = await page
+        .locator("a[href^='/portal/t/']")
+        .first()
+        .getAttribute("href")
+        .catch(() => null)
+      if (portalHref) {
+        state.portalUrl = `${BASE}${portalHref}`
+        log("captured the speaker's portal link")
+      }
+      log(`submitted "${TALK.title}"`)
+      return
     }
+    throw new Error("the public form never reached the success step")
   } finally {
     await speaker.close()
   }
