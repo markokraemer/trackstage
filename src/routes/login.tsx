@@ -21,6 +21,7 @@ import {
 import { Logo } from "@/components/brand/logo"
 import { authClient } from "@/lib/auth-client"
 import { invalidateAuthMemo } from "@/lib/auth-memo"
+import { markFreshSignup } from "@/lib/onboarding-storage"
 import { useSession } from "@/lib/session"
 import { errorMessage } from "@/lib/errors"
 
@@ -78,6 +79,14 @@ function LoginPage() {
   const [pending, setPending] = useState(false)
   /** Set once the reset request came back — the card becomes a receipt. */
   const [resetSentTo, setResetSentTo] = useState<string | null>(null)
+  /**
+   * Hard-verification mode only (`REQUIRE_EMAIL_VERIFICATION` on the
+   * deployment): sign-in came back 403 EMAIL_NOT_VERIFIED. The server has
+   * already auto-sent a fresh confirm link at that point, so the card
+   * becomes a "check your inbox" receipt. Never set in soft mode.
+   */
+  const [verifySentTo, setVerifySentTo] = useState<string | null>(null)
+  const [resending, setResending] = useState(false)
 
   const goToApp = () => {
     if (!redirectTo) {
@@ -126,6 +135,13 @@ function LoginPage() {
         return
       }
       if (mode === "signup") {
+        // Mirror the server's minimum before the round trip — same rule the
+        // reset-password page applies, same copy as the field description.
+        if (password.length < 8) {
+          setError("Use at least 8 characters for your password.")
+          setPending(false)
+          return
+        }
         const { error: signUpError } = await authClient.signUp.email({
           name: name.trim() || email.split("@")[0],
           email: email.trim(),
@@ -137,6 +153,10 @@ function LoginPage() {
         })
         if (signUpError)
           throw new Error(signUpError.message ?? "Sign-up failed")
+        // The very first paint of /app must be the onboarding takeover, not a
+        // flash of the shell — this hint is what lets it win the race with
+        // the queries that would prove it (src/components/onboarding).
+        markFreshSignup()
       } else {
         const { error: signInError } = await authClient.signIn.email({
           email: email.trim(),
@@ -154,12 +174,22 @@ function LoginPage() {
       goToApp()
     } catch (err) {
       const message = errorMessage(err, "")
+      // Deployment has REQUIRE_EMAIL_VERIFICATION on: the server refused the
+      // sign-in AND already mailed a fresh confirm link — show the receipt,
+      // not an error.
+      if (mode === "signin" && /not verified|verify your email/i.test(message)) {
+        setVerifySentTo(email.trim())
+        setPending(false)
+        return
+      }
       setError(
         /invalid|incorrect|credential/i.test(message)
           ? "That email and password don't match. Try the demo credentials below."
           : /exist/i.test(message)
             ? "An account with that email already exists — sign in instead."
-            : message || "Something went wrong. Please try again."
+            : /too many|rate limit/i.test(message)
+              ? "Too many attempts — wait a minute, then try again."
+              : message || "Something went wrong. Please try again."
       )
       setPending(false)
     }
@@ -169,14 +199,29 @@ function LoginPage() {
     setError(null)
     setMode("signin")
     setResetSentTo(null)
+    setVerifySentTo(null)
     setEmail(DEMO_EMAIL)
     setPassword(DEMO_PASSWORD)
+  }
+
+  const resendVerification = async () => {
+    if (!verifySentTo || resending) return
+    setResending(true)
+    try {
+      await authClient.sendVerificationEmail({
+        email: verifySentTo,
+        callbackURL: "/app",
+      })
+    } finally {
+      setResending(false)
+    }
   }
 
   const switchMode = (next: Mode) => {
     setMode(next)
     setError(null)
     setResetSentTo(null)
+    setVerifySentTo(null)
     // Keep the URL honest, so a reload (or a shared link) reopens the card in
     // the state the person is actually looking at.
     if ((modeFromUrl === "forgot") !== (next === "forgot")) {
@@ -229,16 +274,18 @@ function LoginPage() {
         <Card className="gap-0 p-6">
           <div className="mb-5 space-y-1 text-center">
             <h1 className="font-heading text-lg font-semibold tracking-tight">
-              {resetSentTo ? "Check your email" : heading}
+              {resetSentTo || verifySentTo ? "Check your email" : heading}
             </h1>
             <p className="text-sm text-muted-foreground">
               {resetSentTo
                 ? `If an account exists for ${resetSentTo}, a reset link is on its way.`
-                : subheading}
+                : verifySentTo
+                  ? `Confirm your email to sign in — we just sent a fresh link to ${verifySentTo}.`
+                  : subheading}
             </p>
           </div>
 
-          {mode === "forgot" ? null : (
+          {mode === "forgot" || verifySentTo ? null : (
             <Tabs
               value={mode}
               onValueChange={(value) => switchMode(value as Mode)}
@@ -255,7 +302,39 @@ function LoginPage() {
             </Tabs>
           )}
 
-          {resetSentTo ? (
+          {verifySentTo ? (
+            <div className="space-y-5">
+              <Alert>
+                <AlertTitle>Confirm your email first</AlertTitle>
+                <AlertDescription>
+                  This deployment requires a confirmed email before signing
+                  in. Open the link we just emailed you, then sign in again.
+                  Nothing in your inbox? Check spam, or resend it.
+                </AlertDescription>
+              </Alert>
+              <Button
+                type="button"
+                size="lg"
+                variant="outline"
+                className="w-full"
+                disabled={resending}
+                onClick={() => void resendVerification()}
+              >
+                <RiMailSendLine aria-hidden />
+                {resending ? "Sending…" : "Resend the link"}
+              </Button>
+              <Button
+                type="button"
+                size="lg"
+                variant="ghost"
+                className="w-full"
+                onClick={() => switchMode("signin")}
+              >
+                <RiArrowLeftLine aria-hidden />
+                Back to sign in
+              </Button>
+            </div>
+          ) : resetSentTo ? (
             <div className="space-y-5">
               <Alert>
                 <AlertTitle>Reset link sent</AlertTitle>
@@ -395,7 +474,7 @@ function LoginPage() {
           )}
         </Card>
 
-        {mode === "forgot" ? null : (
+        {mode === "forgot" || verifySentTo ? null : (
         <Card className="mt-4 gap-0 bg-accent px-4 py-4 ring-primary/15">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
