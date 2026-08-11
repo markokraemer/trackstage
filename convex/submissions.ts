@@ -572,12 +572,10 @@ export const updateDetails = mutation({
       (key) => args.patch[key as keyof typeof args.patch] !== undefined,
     )
     // Field names for everything — the History tab's job is "what was touched,
-    // by whom". But for the two fields an organizer actually rewrites, the
-    // wording that was there before is kept alongside, because "Jordan changed
-    // the abstract" is only half an answer when what you need is the paragraph
-    // back. Deliberately just these two: a log that snapshotted every field on
-    // every write would be a version store wearing a log's clothes.
-    const previous = restorableBefore(submission, args.patch)
+    // by whom". But when the edit rewrote the wording, the previous wording is
+    // kept as a version row, because "Jordan changed the abstract" is only half
+    // an answer when what you need is the paragraph back.
+    const versionId = await snapshotWording(ctx, submission, args.patch)
     await recordAudit(ctx, {
       eventId: submission.eventId,
       entity: submission.kind === "session" ? "session" : "submission",
@@ -590,50 +588,70 @@ export const updateDetails = mutation({
       meta: {
         fields: changed,
         title: rest.title ?? submission.title,
-        ...(previous ? { previous } : {}),
+        // Strings only. `clampMeta` JSON-stringifies anything nested and trims
+        // it to 500 characters — which is exactly how the first attempt at
+        // this shipped a Restore button that could never restore anything.
+        ...(versionId ? { versionId, previousTitle: submission.title } : {}),
       },
     })
     return null
   },
 })
 
-/** The wording fields History can put back, and what they were called. */
-const RESTORABLE_FIELDS = {
-  title: "title",
-  description: "description",
-} as const
-
-type RestorableField = keyof typeof RESTORABLE_FIELDS
+/** How many previous wordings we keep per submission before dropping the oldest. */
+const MAX_VERSIONS_PER_SUBMISSION = 50
 
 /**
- * The old values of any wording field this patch is about to overwrite —
- * `null` when the edit didn't touch either, so ordinary field changes stay
- * cheap and the History row carries no restore offer it can't honour.
+ * Keep the wording this patch is about to overwrite, and return the row's id —
+ * or `null` when the edit didn't touch the title or the description, so
+ * ordinary field changes stay cheap and the History row offers no restore it
+ * couldn't honour.
  */
-function restorableBefore(
+async function snapshotWording(
+  ctx: MutationCtx,
   submission: Doc<"submissions">,
   patch: { title?: string; description?: string },
-): Record<string, string> | null {
-  const before: Record<string, string> = {}
-  for (const field of Object.keys(RESTORABLE_FIELDS) as Array<RestorableField>) {
-    const next = patch[field]
-    const current = submission[field] ?? ""
-    if (next !== undefined && next !== current) before[field] = current
+): Promise<Id<"submissionVersions"> | null> {
+  const titleChanged =
+    patch.title !== undefined && patch.title !== submission.title
+  const descriptionChanged =
+    patch.description !== undefined &&
+    patch.description !== (submission.description ?? "")
+  if (!titleChanged && !descriptionChanged) return null
+
+  const versionId = await ctx.db.insert("submissionVersions", {
+    eventId: submission.eventId,
+    submissionId: submission._id,
+    title: submission.title,
+    description: submission.description ?? "",
+  })
+
+  // History is worth keeping, not hoarding: a heavily-edited abstract would
+  // otherwise grow a row per keystroke-batch forever.
+  const all = await ctx.db
+    .query("submissionVersions")
+    .withIndex("by_submissionId", (q) => q.eq("submissionId", submission._id))
+    .collect()
+  if (all.length > MAX_VERSIONS_PER_SUBMISSION) {
+    const oldest = all
+      .sort((a, b) => a._creationTime - b._creationTime)
+      .slice(0, all.length - MAX_VERSIONS_PER_SUBMISSION)
+    for (const row of oldest) await ctx.db.delete("submissionVersions", row._id)
   }
-  return Object.keys(before).length > 0 ? before : null
+  return versionId
 }
 
 /**
  * Put a previous wording back (sbek CNT-11).
  *
- * Restoring is itself an edit, not a rewind: it writes forward and logs a row
- * of its own, so the History tab never loses the fact that someone undid
- * something — and the version you just replaced becomes restorable in turn.
+ * Restoring is itself an edit, not a rewind: it writes forward and snapshots
+ * what it replaced, so the version you just overwrote becomes restorable in
+ * turn and the history never loses the fact that somebody undid something.
  */
 export const restoreFromHistory = mutation({
   args: {
     submissionId: v.id("submissions"),
-    auditId: v.id("auditLog"),
+    versionId: v.id("submissionVersions"),
   },
   returns: v.object({ restored: v.array(v.string()) }),
   handler: async (ctx, args) => {
@@ -641,38 +659,24 @@ export const restoreFromHistory = mutation({
     if (!submission) throw new ConvexError("Submission not found")
     await requireEventAccess(ctx, submission.eventId)
 
-    const entry = await ctx.db.get(args.auditId)
-    // Belt and braces: the row has to belong to this event AND this record,
-    // or a caller could read any submission's old text by guessing an id.
-    if (
-      !entry ||
-      entry.eventId !== submission.eventId ||
-      entry.entityId !== args.submissionId
-    ) {
-      throw new ConvexError("That history entry doesn't belong to this record")
-    }
-
-    const previous = (entry.meta?.previous ?? null) as Record<
-      string,
-      unknown
-    > | null
-    if (!previous) {
-      throw new ConvexError("There's no earlier wording saved on that entry")
+    const version = await ctx.db.get(args.versionId)
+    // The version has to belong to this record, or a caller could read any
+    // submission's old text by guessing an id.
+    if (!version || version.submissionId !== args.submissionId) {
+      throw new ConvexError("That version doesn't belong to this record")
     }
 
     const patch: { title?: string; description?: string } = {}
-    for (const field of Object.keys(RESTORABLE_FIELDS) as Array<RestorableField>) {
-      const value = previous[field]
-      if (typeof value === "string" && value !== (submission[field] ?? "")) {
-        patch[field] = value
-      }
+    if (version.title !== submission.title) patch.title = version.title
+    if (version.description !== (submission.description ?? "")) {
+      patch.description = version.description
     }
     const restored = Object.keys(patch)
     if (restored.length === 0) {
       throw new ConvexError("That version is already the current one")
     }
 
-    const before = restorableBefore(submission, patch)
+    const replacedId = await snapshotWording(ctx, submission, patch)
     await ctx.db.patch(args.submissionId, { ...patch, updatedAt: Date.now() })
     await emitWebhook(
       ctx,
@@ -691,7 +695,9 @@ export const restoreFromHistory = mutation({
       meta: {
         fields: restored,
         title: patch.title ?? submission.title,
-        ...(before ? { previous: before } : {}),
+        ...(replacedId
+          ? { versionId: replacedId, previousTitle: submission.title }
+          : {}),
       },
     })
     return { restored }

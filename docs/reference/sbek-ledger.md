@@ -18,13 +18,13 @@ config change landed after it).
 
 | Area | Weight | Baseline | Rerun-1 (150 turns) | Notes |
 | --- | --- | --- | --- | --- |
-| Call for Papers | 25 | 74.2 / 86.8 | **83.8 / 97.4** | Turn budget was most of the gap |
-| Abstract Management | 20 | 86.0 / 89.3 | **94.6 / 100** | |
-| Speaker Management | 20 | 90.6 / 97.0 | not rerun | |
-| Content Management | 15 | 77.1 / 77.4 | **82.3 / 100** | Coverage 77 → 100 |
+| Call for Papers | 25 | 74.2 / 86.8 | **83.8 / 97.4** | rerun-2: **90.3 / 94.7** |
+| Abstract Management | 20 | 86.0 / 89.3 | **94.6 / 100** | rerun-2: **96.4 / 100** |
+| Speaker Management | 20 | 90.6 / 97.0 | not rerun | rerun-2: **96.9 / 97** |
+| Content Management | 15 | 77.1 / 77.4 | **82.3 / 100** | rerun-2: **85.5 / 100** |
 | AI Agenda | 10 | 100 / 100 | not rerun | Maxed |
 | Public widgets / Embeds | 10 | 95.7 / 100 | not rerun | |
-| **Overall (best per area)** | | **86.3** | **~89.9** | Composite of best-per-area scores |
+| **Overall (best per area)** | | **86.3** | **~89.9** | rerun-2 composite: **93.6** |
 
 Rerun-1 (`runs/2026-08-11T16-47-12`) ran CFP + CNT + ABS only, at 150 turns, against the
 code as it stood *before* any of the fixes below. Almost all of its gain is coverage: the
@@ -268,3 +268,68 @@ handlers, so the per-session Files tab is untouched.
 | CFP-06 / CFP-09 | — | Judge-couldn't-see: the scenarios work in two different events, so the speaker's own submission is never checked on the organizer side. Evidence artefact, not a product gap |
 | ABS-14 | — | `not_found`: no AI review capability. Deliberate — swyx struck AI-assisted review from scope |
 | — | — | Evaluator name shown as raw email in progress views. (The X/Twitter autosave race and the profile-task auto-tick are fixed — see the Speaker Management table.) |
+
+
+---
+
+## Cycle 4 — rerun-2 (`runs/2026-08-11T18-41-41`), and a regression of my own
+
+All twelve scenarios completed. Composite of best-per-area scores: **93.6%**
+(CFP 90.3 · ABS 96.4 · SPK 96.9 · CNT 85.5 · AIA 100 · EMB 95.7).
+
+Batch 3 was deployed mid-run, so Content Management was judged against it — which is
+how the following got caught in the same cycle it shipped.
+
+### The Restore button I shipped could never restore anything · **product** · FIXED
+
+> *"Content version history 'Restore this version' is non-functional... fails every
+> attempt with the misleading error 'Couldn't restore that version — That version is
+> already the current one'... the UI advertises a capability that does not work."*
+> (major defect)
+
+Root cause, and it is a good lesson about writing through a shared helper without
+reading it: `convex/lib/audit.ts::clampMeta` passes strings, numbers, booleans and
+arrays through, and for anything else does `trim(JSON.stringify(value), 500)`. The
+nested `meta.previous` object I was writing therefore landed in the database as a
+**JSON string**. Client-side `Object.keys()` then walked that string's *character
+indices* — every one of which is a string — so the button rendered on every entry.
+Server-side `previous["title"]` was `undefined`, no field ever differed, and the guard
+fired. The two halves failed in exactly the way that makes a feature look present and
+behave inert.
+
+The 500-character clamp also means the audit log could never have carried an abstract:
+a restore that silently returns two thirds of a paragraph is worse than no restore.
+So the wording now lives in its own table:
+
+- **`submissionVersions`** — `{eventId, submissionId, title, description}`, one row per
+  edit that actually changed the wording, capped at 50 per submission (oldest dropped).
+- The audit row carries `versionId` and `previousTitle` — **strings**, which is all
+  `clampMeta` can be trusted with — and the button only renders when `versionId` is
+  genuinely a string.
+- `restoreFromHistory(submissionId, versionId)` verifies the version belongs to the
+  record, snapshots what it replaces, patches, and logs its own entry — so the version
+  you just overwrote becomes restorable in turn.
+
+### Also in this batch
+
+| Defect | Severity | Fix |
+| --- | --- | --- |
+| *"Portal profile autosave-on-blur is unreliable: a bio edit was silently lost with no error shown"* — reported in rerun-1 (X/Twitter URL) and again in rerun-2 (bio) | major | The editor only ever committed on blur, and reloading or closing a tab never fires one. Now also autosaves 1.5s after the last keystroke; names stay blur-only so a debounce can't scold someone mid-way through retyping a required field |
+| *"/logout returns a 404 page, and the account-menu Sign out item repeatedly lost its element reference, forcing workarounds to switch identities"* | minor | A real `/logout` route that signs out and hands over to `/login` either way |
+
+### Judged suspect / not acted on
+
+- **SPK: "Communications → Outbox hangs in a perpetual loading skeleton"** (major) —
+  this is the outbox `isHtml` validator crash, fixed on prod in `2cd9e09` *after* these
+  scenarios ran. Stale; re-measure rather than re-fix.
+- **CNT-08: no positive sent-count observed** — the run hit the 24-hour dedup path
+  ("5 speakers were reminded in the last day"), so the receipt showed the no-op message.
+  Environment residue, not a defect; the receipt itself now persists.
+- **Portal heading vs active tab** — both the heading and the tab strip derive from one
+  `activeTab` value in a single render, so they cannot actually disagree; the capture is
+  a mid-transition artifact.
+- **CFP-06 / CFP-09** — the scenarios work in two different events, so the speaker's own
+  record is never the one inspected organizer-side. An evidence artifact of the run,
+  unchanged across three runs now.
+- **ABS-14 `not_found`** — no AI review triage. Deliberate: swyx struck AI-assisted
+  review from scope.

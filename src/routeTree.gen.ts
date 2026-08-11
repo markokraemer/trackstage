@@ -14,6 +14,7 @@ import { Route as AppRouteRouteImport } from './routes/app/route'
 import { Route as DesignSystemRouteImport } from './routes/design-system'
 import { Route as DocsRouteRouteImport } from './routes/docs/route'
 import { Route as LoginRouteImport } from './routes/login'
+import { Route as LogoutRouteImport } from './routes/logout'
 import { Route as PortalRouteRouteImport } from './routes/portal/route'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as DotwellKnownOauthAuthorizationServerRouteImport } from './routes/[.]well-known/oauth-authorization-server'
@@ -122,6 +123,11 @@ const DocsRouteRoute = DocsRouteRouteImport.update({
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LogoutRoute = LogoutRouteImport.update({
+  id: '/logout',
+  path: '/logout',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PortalRouteRoute = PortalRouteRouteImport.update({
@@ -592,6 +598,7 @@ export interface FileRoutesByFullPath {
   '/portal': typeof PortalRouteRouteWithChildren
   '/design-system': typeof DesignSystemRoute
   '/login': typeof LoginRoute
+  '/logout': typeof LogoutRoute
   '/reset-password': typeof ResetPasswordRoute
   '/.well-known/oauth-authorization-server': typeof DotwellKnownOauthAuthorizationServerRoute
   '/api/chat': typeof ApiChatRoute
@@ -680,6 +687,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/design-system': typeof DesignSystemRoute
   '/login': typeof LoginRoute
+  '/logout': typeof LogoutRoute
   '/reset-password': typeof ResetPasswordRoute
   '/.well-known/oauth-authorization-server': typeof DotwellKnownOauthAuthorizationServerRoute
   '/api/chat': typeof ApiChatRoute
@@ -769,6 +777,7 @@ export interface FileRoutesById {
   '/portal': typeof PortalRouteRouteWithChildren
   '/design-system': typeof DesignSystemRoute
   '/login': typeof LoginRoute
+  '/logout': typeof LogoutRoute
   '/reset-password': typeof ResetPasswordRoute
   '/.well-known/oauth-authorization-server': typeof DotwellKnownOauthAuthorizationServerRoute
   '/api/chat': typeof ApiChatRoute
@@ -862,6 +871,7 @@ export interface FileRouteTypes {
     | '/portal'
     | '/design-system'
     | '/login'
+    | '/logout'
     | '/reset-password'
     | '/.well-known/oauth-authorization-server'
     | '/api/chat'
@@ -950,6 +960,7 @@ export interface FileRouteTypes {
     | '/'
     | '/design-system'
     | '/login'
+    | '/logout'
     | '/reset-password'
     | '/.well-known/oauth-authorization-server'
     | '/api/chat'
@@ -1038,6 +1049,7 @@ export interface FileRouteTypes {
     | '/portal'
     | '/design-system'
     | '/login'
+    | '/logout'
     | '/reset-password'
     | '/.well-known/oauth-authorization-server'
     | '/api/chat'
@@ -1130,6 +1142,7 @@ export interface RootRouteChildren {
   PortalRouteRoute: typeof PortalRouteRouteWithChildren
   DesignSystemRoute: typeof DesignSystemRoute
   LoginRoute: typeof LoginRoute
+  LogoutRoute: typeof LogoutRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
   DotwellKnownOauthAuthorizationServerRoute: typeof DotwellKnownOauthAuthorizationServerRoute
   ApiChatRoute: typeof ApiChatRoute
@@ -1178,6 +1191,13 @@ declare module '@tanstack/react-router' {
       path: '/login'
       fullPath: '/login'
       preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/logout': {
+      id: '/logout'
+      path: '/logout'
+      fullPath: '/logout'
+      preLoaderRoute: typeof LogoutRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/portal': {
@@ -2012,6 +2032,7 @@ const rootRouteChildren: RootRouteChildren = {
   PortalRouteRoute: PortalRouteRouteWithChildren,
   DesignSystemRoute: DesignSystemRoute,
   LoginRoute: LoginRoute,
+  LogoutRoute: LogoutRoute,
   ResetPasswordRoute: ResetPasswordRoute,
   DotwellKnownOauthAuthorizationServerRoute:
     DotwellKnownOauthAuthorizationServerRoute,

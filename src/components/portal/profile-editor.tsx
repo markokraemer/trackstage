@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import { useConvexMutation } from "@convex-dev/react-query"
 import { api } from "@convex/_generated/api"
 import { toast } from "sonner"
@@ -183,6 +183,33 @@ export function ProfileEditor() {
     },
     [portalToken, updateProfile],
   )
+
+  /**
+   * Autosave while they type, not only when they leave the field.
+   *
+   * Blur alone looked fine and lost work: typing a bio and then reloading, or
+   * closing the tab, never fires a blur, so the edit vanished with no error —
+   * the speaker's own words, gone, and nothing on screen ever said so. A quiet
+   * second and a half after the last keystroke is enough to be sure they have
+   * stopped, and blur still commits immediately so nothing waits when they
+   * move on deliberately.
+   *
+   * Names are left to blur: they are required, and a debounce would scold
+   * someone mid-way through clearing a field they were about to retype.
+   */
+  useEffect(() => {
+    const pending = (Object.keys(draft) as Array<keyof Draft>).filter((key) => {
+      if (draft[key] === savedRef.current[key]) return false
+      if (key === "firstName" || key === "lastName") return false
+      return true
+    })
+    if (pending.length === 0) return
+
+    const timer = window.setTimeout(() => {
+      for (const key of pending) void commit(key, draft[key])
+    }, 1500)
+    return () => window.clearTimeout(timer)
+  }, [draft, commit])
 
   const textField = (key: keyof Draft) => ({
     value: draft[key],

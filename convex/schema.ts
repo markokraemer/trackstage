@@ -737,6 +737,22 @@ export default defineSchema({
   // `eventId` is absent for workspace-level rows (API-key lifecycle), which is
   // why `organizationId` — always known — is the one required scope. Both the
   // event feed and the workspace feed read from their own index.
+  // Previous wording of a submission, so the History tab's "Restore this
+  // version" has something real to put back.
+  //
+  // This is deliberately NOT the audit log. `meta` there is clamped to 500
+  // characters per value, which is fine for a receipt and silently ruinous for
+  // an abstract — a restore that quietly returns two thirds of a paragraph is
+  // worse than no restore at all. One row per edit that actually changed the
+  // title or the description; the audit row points at it by id.
+  submissionVersions: defineTable({
+    eventId: v.id("events"),
+    submissionId: v.id("submissions"),
+    /** The wording as it stood BEFORE the edit this row was written for. */
+    title: v.string(),
+    description: v.string(),
+  }).index("by_submissionId", ["submissionId"]),
+
   auditLog: defineTable({
     organizationId: v.id("organizations"),
     eventId: v.optional(v.id("events")),

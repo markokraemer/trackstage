@@ -804,20 +804,19 @@ function RestoreVersionButton({
   const [busy, setBusy] = useState(false)
   const restore = useConvexMutation(api.submissions.restoreFromHistory)
 
-  const previous = row.meta?.previous as Record<string, unknown> | undefined
-  const fields = previous
-    ? Object.keys(previous).filter((key) => typeof previous[key] === "string")
-    : []
-  if (fields.length === 0) return null
+  // Only the entries that actually banked a version offer to put one back.
+  const versionId = row.meta?.versionId
+  if (typeof versionId !== "string") return null
 
-  const preview = typeof previous?.title === "string" ? previous.title : null
+  const preview =
+    typeof row.meta?.previousTitle === "string" ? row.meta.previousTitle : null
 
   async function onRestore() {
     setBusy(true)
     try {
       const result = await restore({
         submissionId,
-        auditId: row._id as Id<"auditLog">,
+        versionId: versionId as Id<"submissionVersions">,
       })
       toast.success(
         `Restored the earlier ${result.restored.join(" and ")}`,
