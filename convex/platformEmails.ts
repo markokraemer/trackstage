@@ -3,7 +3,7 @@ import { internal } from "./_generated/api"
 import type { Id } from "./_generated/dataModel"
 import { internalAction, internalQuery } from "./_generated/server"
 import type { MutationCtx } from "./_generated/server"
-import { emailFrom, siteUrl } from "./lib/email"
+import { emailFrom, siteUrl, escapeHtml } from "./lib/email"
 
 // Platform-level (non-event) emails: workspace invites, organizer alerts, and
 // any future account-lifecycle mail. Event-scoped SPEAKER comms live in
@@ -98,9 +98,9 @@ export const sendWorkspaceInvite = internalAction({
       subject: `${args.inviterName} invited you to ${args.workspaceName} on Trackstage`,
       html: [
         `<p>Hi,</p>`,
-        `<p><strong>${args.inviterName}</strong> invited you to join the <strong>${args.workspaceName}</strong> workspace on Trackstage as ${args.role === "admin" ? "an admin" : "a member"}.</p>`,
+        `<p><strong>${escapeHtml(args.inviterName)}</strong> invited you to join the <strong>${escapeHtml(args.workspaceName)}</strong> workspace on Trackstage as ${args.role === "admin" ? "an admin" : "a member"}.</p>`,
         args.eventScope
-          ? `<p>You'll have access to <strong>${args.eventScope}</strong>.</p>`
+          ? `<p>You'll have access to <strong>${escapeHtml(args.eventScope)}</strong>.</p>`
           : `<p>You'll have access to every event in the workspace.</p>`,
         `<p>Trackstage is where the team manages the call for speakers, reviews submissions, and builds the event agenda.</p>`,
         emailButton(loginUrl, "Create your account"),
@@ -182,8 +182,8 @@ export const sendSubmissionNotification = internalAction({
     const who = args.submitterName ? ` by ${args.submitterName}` : ""
     const subject = `${verb}: “${args.submissionTitle}” — ${args.eventName}`
     const html = [
-      `<p>${verb}${who} for <strong>${args.eventName}</strong>${args.formName ? ` via ${args.formName}` : ""}.</p>`,
-      `<p style="font-size:17px;margin:18px 0 6px"><strong>${args.submissionTitle}</strong></p>`,
+      `<p>${verb}${escapeHtml(who)} for <strong>${escapeHtml(args.eventName)}</strong>${args.formName ? ` via ${escapeHtml(args.formName)}` : ""}.</p>`,
+      `<p style="font-size:17px;margin:18px 0 6px"><strong>${escapeHtml(args.submissionTitle)}</strong></p>`,
       emailButton(args.link, "Open in Trackstage"),
       `<p style="color:#6b7280;font-size:13px">You're receiving this because your address is on this form's notification list. Change it in the form builder's Notifications step.</p>`,
     ].join("\n")
@@ -349,7 +349,7 @@ export const sendEvaluatorReminder = internalAction({
       previewNote: `review link: ${reviewUrl}`,
       html: [
         `<p>Hi ${args.evaluatorName ?? "there"},</p>`,
-        `<p>Thanks for helping review <strong>${args.eventName}</strong>. You still have <strong>${args.outstanding} ${noun}</strong> to score in <strong>${args.planName}</strong>.${due}</p>`,
+        `<p>Thanks for helping review <strong>${escapeHtml(args.eventName)}</strong>. You still have <strong>${args.outstanding} ${noun}</strong> to score in <strong>${escapeHtml(args.planName)}</strong>.${due}</p>`,
         emailButton(reviewUrl, "Open my review queue"),
         `<p>Your link is private to you — no account or password needed. Scores you have already saved are still there.</p>`,
       ].join("\n"),

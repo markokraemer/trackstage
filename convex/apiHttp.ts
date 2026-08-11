@@ -585,6 +585,15 @@ export const handleApiRequest = httpAction(async (ctx, req) => {
       401,
     )
 
+  // Every authenticated GET pays the entity_reads bucket at the door — list
+  // endpoints that skipped their own enforceRateLimit call were unlimited
+  // (adversarial-review F4). Routes that also charge a bucket themselves
+  // simply pay twice, which only ever makes the limit stricter.
+  if (req.method === "GET") {
+    const doorGate = await enforceRateLimit(ctx, credential, "entity_reads")
+    if (doorGate.limited) return doorGate.limited
+  }
+
   // POST is overloaded for search on this API, so "write" is decided per route
   // rather than per method; the guard below is only about the demo token.
   const denyDemoWrite = (): Response | null =>

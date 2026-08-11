@@ -241,6 +241,8 @@ export function emailFromAddress(): string {
 // client agrees on.
 
 export type BrandedEmailInput = {
+  /** True when the TEMPLATE was authored as HTML (decided pre-render). */
+  isHtml?: boolean
   /** The rendered subject — used for the preheader/title only. */
   subject: string
   /** The rendered body: plain text, or HTML if the composer wrote HTML. */
@@ -295,9 +297,14 @@ function textToHtml(body: string): string {
  */
 export function renderBrandedEmail(input: BrandedEmailInput): string {
   const eventName = escapeHtml(input.eventName || "Trackstage")
-  const content = looksLikeHtml(input.body)
-    ? input.body
-    : textToHtml(input.body)
+  // `isHtml` is decided from the TEMPLATE body (before per-recipient merge
+  // fields are rendered in): a speaker-typed title containing an HTML-ish
+  // token must never flip a plain-text email into raw-HTML mode — that both
+  // broke rendering and let submitted text inject markup into mail sent from
+  // our verified domain (adversarial-review F2/F3, 2026-08-11). Callers that
+  // don't know pass undefined and we fall back to sniffing.
+  const isHtml = input.isHtml ?? looksLikeHtml(input.body)
+  const content = isHtml ? input.body : textToHtml(input.body)
 
   const header = input.logoUrl
     ? `<img src="${escapeHtml(input.logoUrl)}" alt="${eventName}" height="36" style="display:block;max-height:36px;border:0;outline:none;text-decoration:none;" />`

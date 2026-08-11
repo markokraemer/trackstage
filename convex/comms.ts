@@ -198,6 +198,8 @@ export async function queueMessage(
 ): Promise<Id<"messages">> {
   const rendered = await renderMessageFor(ctx, args)
 
+  const template =
+    args.override ?? (await resolveTemplate(ctx, args.eventId, args.templateKey))
   return await ctx.db.insert("messages", {
     eventId: args.eventId,
     personId: args.personId,
@@ -205,6 +207,8 @@ export async function queueMessage(
     toEmail: rendered.toEmail,
     subject: rendered.subject,
     body: rendered.body,
+    // Decided from the TEMPLATE, pre-render (adversarial-review F3).
+    isHtml: looksLikeHtml(template.body),
     submissionId: args.submissionId,
     icsAttached: rendered.icsAttached,
     scheduledAt: Date.now(),
@@ -427,6 +431,7 @@ export const messageHtml = query({
     return renderBrandedEmail({
       subject: message.subject,
       body: message.body,
+      isHtml: message.isHtml,
       eventName: brand.eventName,
       logoUrl: brand.logoUrl,
       portalLink: brand.portalLink,
@@ -967,6 +972,7 @@ export const remindIncompleteSpeakers = mutation({
 // ——— Delivery ————————————————————————————————————————————————————————————
 
 const claimedMessageValidator = v.object({
+  isHtml: v.optional(v.boolean()),
   messageId: v.id("messages"),
   toEmail: v.string(),
   subject: v.string(),
@@ -1022,6 +1028,7 @@ export const claimPending = internalMutation({
     for (const m of claimable) {
       claimed.push({
         messageId: m._id,
+        isHtml: m.isHtml,
         toEmail: m.toEmail,
         subject: m.subject,
         body: m.body,
@@ -1179,12 +1186,14 @@ export const deliverPending = internalAction({
           html: renderBrandedEmail({
             subject: message.subject,
             body: message.body,
+            isHtml: message.isHtml,
             eventName: message.brand.eventName,
             logoUrl: message.brand.logoUrl,
             portalLink: message.brand.portalLink,
           }),
         }
-        if (!looksLikeHtml(message.body)) payload.text = message.body
+        if (!(message.isHtml ?? looksLikeHtml(message.body)))
+          payload.text = message.body
         if (ics && context) {
           payload.attachments = [
             {

@@ -599,6 +599,9 @@ export default defineSchema({
     body: v.string(),
     submissionId: v.optional(v.id("submissions")),
     icsAttached: v.boolean(),
+    // True when the template was authored as HTML — decided BEFORE merge
+    // fields render, so recipient-typed text can never flip the mode.
+    isHtml: v.optional(v.boolean()),
     scheduledAt: v.optional(v.number()),
     sentAt: v.optional(v.number()),
     status: v.string(), // scheduled | sent | failed | preview

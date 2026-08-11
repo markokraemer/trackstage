@@ -2775,9 +2775,22 @@ async function checkDispatcher(routes, settingsResources) {
   return problems
 }
 
-/** Reads the dev deployment URL the same way the backend suite does. */
+/** Dev deployment URL (probing only), same source as the backend suite. */
 async function readSiteUrl() {
   const env = await readFile(resolve(root, ".env.local"), "utf8").catch(() => "")
+  const line = env.split("\n").find((l) => l.startsWith("VITE_CONVEX_SITE_URL"))
+  return line ? line.slice(line.indexOf("=") + 1).trim() : null
+}
+
+/**
+ * PRODUCTION deployment URL from the committed .env.production. The COMMITTED
+ * spec must advertise prod: it is served from trackstage.app, where Scalar's
+ * "Try it" sends the reader's real key to whatever `servers[0]` says — baking
+ * the dev URL here aimed real prod keys (and deletes!) at the dev deployment
+ * (adversarial-review finding F1, 2026-08-11).
+ */
+async function readProdSiteUrl() {
+  const env = await readFile(resolve(root, ".env.production"), "utf8").catch(() => "")
   const line = env.split("\n").find((l) => l.startsWith("VITE_CONVEX_SITE_URL"))
   return line ? line.slice(line.indexOf("=") + 1).trim() : null
 }
@@ -3405,7 +3418,11 @@ async function main() {
   // captured rows rather than from a second, drifting set of fixtures.
   examples = deriveWriteExamples(examples)
 
-  const spec = buildSpec(routes, examples, siteUrl)
+  // The committed spec advertises PRODUCTION; the dev URL is only for --live
+  // probing (adversarial-review F1: Scalar "Try it" sends real keys to
+  // servers[0]).
+  const prodSiteUrl = await readProdSiteUrl()
+  const spec = buildSpec(routes, examples, prodSiteUrl ?? siteUrl)
   await mkdir(dirname(OUT), { recursive: true })
   await writeFile(OUT, `${JSON.stringify(spec, null, 2)}\n`)
   console.log(
