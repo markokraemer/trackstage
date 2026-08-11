@@ -89,6 +89,10 @@ const ALL_TOOLS = [
   "delete_form",
   "remove_task",
   "get_event_summary",
+  // Task library (product-fixes wave, 2026-08-11).
+  "list_task_library",
+  "save_task_template",
+  "assign_task_from_template",
 ] as const
 
 type Payload = { input: unknown; output: unknown }
@@ -621,6 +625,49 @@ const SHAPES: Record<string, Payload> = {
       note: "A private magic link — it signs this speaker straight into their portal.",
     },
   },
+  list_task_library: {
+    input: { event: "ai-summit-2026" },
+    output: {
+      templates: [
+        {
+          id: "nx70000000000000000000000000000t1",
+          title: "Upload your slides",
+          kind: "upload",
+          alias: null,
+          instructions: "PDF or Keynote, 16:9.",
+        },
+      ],
+      note: "Assign one with assign_task_from_template.",
+    },
+  },
+  save_task_template: {
+    input: {
+      event: "ai-summit-2026",
+      title: "Confirm your travel plans",
+      kind: "confirm",
+      instructions: "{{firstName}}, confirm you can be on site 45 minutes early.",
+    },
+    output: {
+      id: "nx70000000000000000000000000000t2",
+      title: "Confirm your travel plans",
+      updated: false,
+      note: "Saved to the library — idempotent on title.",
+    },
+  },
+  assign_task_from_template: {
+    input: {
+      event: "ai-summit-2026",
+      template: "nx70000000000000000000000000000t1",
+      speakers: ["ada@example.com"],
+    },
+    output: {
+      created: 1,
+      title: "Upload your slides",
+      kind: "upload",
+      assignedTo: ["ada@example.com"],
+      note: "Speakers see it in their portal immediately.",
+    },
+  },
   assign_task: {
     input: {
       event: "ai-summit-2026",
@@ -815,7 +862,7 @@ describe("copilot tool-view registry", () => {
   it("has a purpose-built view for all 31 MCP tools", () => {
     const missing = ALL_TOOLS.filter((name) => !hasToolView(name))
     expect(missing).toEqual([])
-    expect(ALL_TOOLS.length).toBe(31)
+    expect(ALL_TOOLS.length).toBe(34)
   })
 
   it("does not register views for tools the MCP server doesn't expose", () => {

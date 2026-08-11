@@ -1,8 +1,14 @@
 name: Deploy
 
+# RELEASE MODEL (Marko, 2026-08-11): `master` is the integration branch — every
+# push runs CI only. Releasing to production is a deliberate act, either:
+#   · promote:  git push origin master:prod     (fast-forward the prod branch)
+#   · or the Actions tab → Deploy → "Run workflow" (releases the chosen ref)
+# A push to `prod` runs CI, and this workflow deploys once that CI is green.
+#
 # Production deploy: Convex backend first (schema + functions), then the
 # Cloudflare Worker that serves the app. Runs only after the CI workflow has
-# gone green for the same commit on master.
+# gone green for the same commit on prod.
 #
 # `workflow_run` is used instead of `needs:` because CI lives in its own file;
 # every step below therefore checks out the exact SHA CI validated, never
@@ -25,7 +31,7 @@ on:
   workflow_run:
     workflows: [CI]
     types: [completed]
-    branches: [master]
+    branches: [prod]
   workflow_dispatch:
 
 concurrency:

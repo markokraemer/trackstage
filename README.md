@@ -163,8 +163,16 @@ belong and are never in the repo:
 | `convex env set … --prod` | `BETTER_AUTH_SECRET` · `RESEND_API_KEY` · `EMAIL_FROM` · `SITE_URL` (your app origin — required for MCP OAuth and every emailed link) · `PUBLIC_API_TOKEN` · `EXTRA_TRUSTED_ORIGINS` (optional) |
 | `wrangler secret put …` | `OPENROUTER_API_KEY` (the copilot runs in the Worker) |
 
-Pushing to `master` does all of this automatically: **CI** (typecheck · lint · unit
-tests) gates **Deploy** (Convex → build → Worker → production smoke test). See
+`master` is the integration branch — every push runs **CI** (typecheck · lint ·
+unit tests). Releasing to production is one deliberate step:
+
+```sh
+git push origin master:prod   # promote master to production
+```
+
+A push to `prod` re-runs CI and, once green, **Deploy** ships it (Convex → build →
+Worker → production smoke test). The Actions tab's "Deploy → Run workflow" button
+releases any ref manually. See
 `.github/workflows/`. CI needs three repo secrets: `CONVEX_DEPLOY_KEY`
 (`pnpm exec convex deployment token create github-actions --prod`),
 `CLOUDFLARE_API_TOKEN` (scoped: Workers Scripts R/W, Workers Observability Write,
