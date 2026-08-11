@@ -67,7 +67,7 @@ function LoginPage() {
     try {
       if (mode === "signup") {
         const { error: signUpError } = await authClient.signUp.email({
-          name: name.trim() || email.split("@")[0]!,
+          name: name.trim() || email.split("@")[0],
           email: email.trim(),
           password,
         })
@@ -102,8 +102,8 @@ function LoginPage() {
   }
 
   return (
-    <main className="flex min-h-svh flex-col items-center justify-center bg-background px-4 py-12">
-      <div className="w-full max-w-[400px]">
+    <main className="flex min-h-svh flex-col items-center justify-center bg-background py-12">
+      <div className="container-card">
         <Link
           to="/"
           className="mb-6 flex justify-center rounded-md outline-none focus-visible:ring-3 focus-visible:ring-ring/50"

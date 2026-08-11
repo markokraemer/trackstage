@@ -12,17 +12,19 @@
 // created from a mutation — `ctx.storage.store` is action-only — so `run`
 // schedules `attachDemoAssets` to fill them in immediately afterwards.
 
-import { v, type Infer } from "convex/values"
+import { v  } from "convex/values"
+import type {Infer} from "convex/values";
 import { internal } from "./_generated/api"
 import type { Id } from "./_generated/dataModel"
 import {
   internalAction,
   internalMutation,
-  mutation,
-  type MutationCtx,
+  mutation
+  
 } from "./_generated/server"
+import type {MutationCtx} from "./_generated/server";
 import { requireUser } from "./lib/auth"
-import { authComponent, createAuth } from "./auth"
+import { createAuth } from "./auth"
 import { DEFAULT_TEMPLATES, portalLinkFor, renderTemplate } from "./lib/email"
 
 // ——— Demo constants ———————————————————————————————————————————————————————

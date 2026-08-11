@@ -3,7 +3,13 @@ import { useQuery, useMutation } from "@tanstack/react-query"
 import { convexQuery, useConvexMutation } from "@convex-dev/react-query"
 import { api } from "@convex/_generated/api"
 import type { Id } from "@convex/_generated/dataModel"
-import { RiDeleteBinLine, RiTeamLine, RiUserAddLine } from "@remixicon/react"
+import {
+  RiAddLine,
+  RiBuilding2Line,
+  RiDeleteBinLine,
+  RiTeamLine,
+  RiUserAddLine,
+} from "@remixicon/react"
 import { toast } from "sonner"
 
 import { Button } from "@/components/ui/button"
@@ -124,15 +130,187 @@ export function TeamCard({
   }
 
   return (
-    <MemberList
-      key={workspace.id}
-      organizationId={workspace.id}
-      workspaceName={workspace.name}
-      myRole={workspace.role}
-      myEmail={session?.email ?? ""}
-      workspaces={workspaces ?? []}
-      onWorkspaceChange={setOrganizationId}
-    />
+    <div className="flex flex-col gap-6">
+      <WorkspaceCard
+        key={`ws-${workspace.id}`}
+        organizationId={workspace.id}
+        name={workspace.name}
+        myRole={workspace.role}
+        workspaces={workspaces ?? []}
+        onWorkspaceChange={setOrganizationId}
+      />
+      <MemberList
+        key={workspace.id}
+        organizationId={workspace.id}
+        workspaceName={workspace.name}
+        myRole={workspace.role}
+        myEmail={session?.email ?? ""}
+      />
+    </div>
+  )
+}
+
+/**
+ * Workspace identity: rename it, switch between the ones you belong to, or
+ * start a new one (`convex/workspaces.ts` update / create).
+ */
+function WorkspaceCard({
+  organizationId,
+  name,
+  myRole,
+  workspaces,
+  onWorkspaceChange,
+}: {
+  organizationId: string
+  name: string
+  myRole: string
+  workspaces: Array<{ id: string; name: string; role: string }>
+  onWorkspaceChange: (id: string) => void
+}) {
+  const [draft, setDraft] = useState(name)
+  const [creating, setCreating] = useState(false)
+  const [newName, setNewName] = useState("")
+
+  const update = useMutation({
+    mutationFn: useConvexMutation(api.workspaces.update),
+  })
+  const create = useMutation({
+    mutationFn: useConvexMutation(api.workspaces.create),
+  })
+
+  const canRename = myRole === "owner" || myRole === "admin"
+  const isDirty = draft.trim() !== name && draft.trim().length > 0
+
+  async function rename(event: React.FormEvent) {
+    event.preventDefault()
+    if (!isDirty) return
+    try {
+      await update.mutateAsync({
+        organizationId: organizationId as Id<"organizations">,
+        patch: { name: draft.trim() },
+      })
+      toast.success("Workspace renamed")
+    } catch (error) {
+      setDraft(name)
+      toast.error(errorMessage(error, "Couldn't rename the workspace."))
+    }
+  }
+
+  async function submitCreate(event: React.FormEvent) {
+    event.preventDefault()
+    if (!newName.trim()) return
+    try {
+      const created = await create.mutateAsync({ name: newName.trim() })
+      onWorkspaceChange(created.organizationId)
+      setCreating(false)
+      setNewName("")
+      toast.success(`“${newName.trim()}” created`)
+    } catch (error) {
+      toast.error(errorMessage(error, "Couldn't create that workspace."))
+    }
+  }
+
+  return (
+    <Card>
+      <CardHeader className="border-b">
+        <CardTitle className="flex items-center gap-2">
+          <RiBuilding2Line size={18} aria-hidden className="text-primary" />
+          Workspace
+        </CardTitle>
+        <CardDescription>
+          A workspace holds your events and the people who work on them. Most
+          teams only ever need one.
+        </CardDescription>
+        <CardAction className="flex items-center gap-2">
+          {workspaces.length > 1 ? (
+            <Select
+              value={organizationId}
+              onValueChange={(value) => onWorkspaceChange(String(value))}
+            >
+              <SelectTrigger size="sm" aria-label="Workspace">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {workspaces.map((row) => (
+                  <SelectItem key={row.id} value={row.id}>
+                    {row.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          ) : null}
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => setCreating(true)}
+          >
+            <RiAddLine size={15} aria-hidden />
+            New workspace
+          </Button>
+        </CardAction>
+      </CardHeader>
+
+      <CardContent>
+        <form onSubmit={rename} className="flex flex-wrap items-end gap-3">
+          <LabeledField
+            label="Workspace name"
+            htmlFor="workspace-name"
+            className="min-w-56 flex-1"
+            description="Shown on invites and in the workspace switcher."
+          >
+            <Input
+              id="workspace-name"
+              value={draft}
+              disabled={!canRename}
+              onChange={(event) => setDraft(event.target.value)}
+            />
+          </LabeledField>
+          <Button
+            type="submit"
+            variant="outline"
+            disabled={!canRename || !isDirty || update.isPending}
+          >
+            {update.isPending ? "Saving…" : "Save name"}
+          </Button>
+        </form>
+      </CardContent>
+
+      <Dialog open={creating} onOpenChange={setCreating}>
+        <DialogContent>
+          <form onSubmit={submitCreate} noValidate className="flex flex-col gap-6">
+            <DialogHeader>
+              <DialogTitle>Create a workspace</DialogTitle>
+              <DialogDescription>
+                Use a separate workspace when a different team runs a different
+                set of events. Nothing is shared between workspaces.
+              </DialogDescription>
+            </DialogHeader>
+            <LabeledField
+              label="Workspace name"
+              htmlFor="new-workspace-name"
+              required
+            >
+              <Input
+                id="new-workspace-name"
+                value={newName}
+                autoComplete="off"
+                placeholder="Acme Events"
+                onChange={(event) => setNewName(event.target.value)}
+              />
+            </LabeledField>
+            <DialogFooter>
+              <DialogClose render={<Button type="button" variant="outline" />}>
+                Cancel
+              </DialogClose>
+              <Button type="submit" disabled={create.isPending}>
+                {create.isPending ? "Creating…" : "Create workspace"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+    </Card>
   )
 }
 
@@ -141,15 +319,11 @@ function MemberList({
   workspaceName,
   myRole,
   myEmail,
-  workspaces,
-  onWorkspaceChange,
 }: {
   organizationId: string
   workspaceName: string
   myRole: string
   myEmail: string
-  workspaces: Array<{ id: string; name: string; role: string }>
-  onWorkspaceChange: (id: string) => void
 }) {
   const { data: members } = useQuery(
     convexQuery(api.workspaces.members, {
@@ -189,23 +363,6 @@ function MemberList({
           more people.
         </CardDescription>
         <CardAction className="flex items-center gap-2">
-          {workspaces.length > 1 ? (
-            <Select
-              value={organizationId}
-              onValueChange={(value) => onWorkspaceChange(String(value))}
-            >
-              <SelectTrigger size="sm" aria-label="Workspace">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {workspaces.map((row) => (
-                  <SelectItem key={row.id} value={row.id}>
-                    {row.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          ) : null}
           <AddMemberDialog
             organizationId={organizationId}
             workspaceName={workspaceName}
@@ -392,8 +549,8 @@ function AddMemberDialog({
             <DialogHeader>
               <DialogTitle>Add a teammate</DialogTitle>
               <DialogDescription>
-                They'll get access to every event in {workspaceName} the next
-                time they sign in with this email address.
+                We'll email them an invite. They get access to every event in{" "}
+                {workspaceName} as soon as they sign in with this address.
               </DialogDescription>
             </DialogHeader>
 

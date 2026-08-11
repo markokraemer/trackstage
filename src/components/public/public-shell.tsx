@@ -60,7 +60,7 @@ export function PublicShell({ event, embed, children }: PublicShellProps) {
     <div className="flex min-h-svh flex-col bg-background">
       {embed ? null : (
         <header className="border-b border-border bg-card">
-          <div className="mx-auto w-full max-w-5xl px-4 pt-6 pb-0 sm:px-6">
+          <div className="container-page pt-6 pb-0">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div className="min-w-0">
                 <h1 className="font-heading text-xl leading-tight font-semibold tracking-tight text-balance text-foreground sm:text-2xl">
@@ -130,14 +130,14 @@ export function PublicShell({ event, embed, children }: PublicShellProps) {
 
       <main
         className={cn(
-          "mx-auto w-full max-w-5xl flex-1 px-4 sm:px-6",
+          "container-page flex-1",
           embed ? "py-4" : "py-6 sm:py-8",
         )}
       >
         {children}
       </main>
 
-      <footer className="mx-auto w-full max-w-5xl px-4 pb-6 sm:px-6">
+      <footer className="container-page pb-6">
         <a
           href="/"
           target={embed ? "_blank" : undefined}

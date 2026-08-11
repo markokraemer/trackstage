@@ -131,7 +131,7 @@ function PortalLayout() {
         {/* Event-branded header — the speaker should always know whose event
             this is, and who they are signed in as. */}
         <header className="sticky top-0 z-40 border-b border-border bg-card">
-          <div className="mx-auto flex h-14 max-w-5xl items-center gap-3 px-4">
+          <div className="container-page flex h-14 items-center gap-3">
             <Link
               to="/portal"
               className="flex min-w-0 items-center gap-2.5 rounded-md outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
@@ -194,7 +194,7 @@ function PortalLayout() {
           </div>
         </header>
 
-        <div className="mx-auto max-w-5xl px-4 pt-5 pb-16">
+        <div className="container-page pt-5 pb-16">
           {/* Event context strip */}
           <div className="mb-4 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
             {dates ? (
@@ -230,7 +230,7 @@ function PortalSkeleton() {
   return (
     <div className="min-h-svh bg-background">
       <div className="h-14 border-b border-border bg-card" />
-      <div className="mx-auto max-w-5xl px-4 pt-5">
+      <div className="container-page pt-5">
         <Skeleton className="h-4 w-52" />
         <Skeleton className="mt-4 h-11 w-full max-w-md rounded-xl" />
         <div className="mt-6 grid gap-4 lg:grid-cols-[1.2fr_1fr]">

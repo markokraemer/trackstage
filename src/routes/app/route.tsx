@@ -135,7 +135,7 @@ function OrganizerLayout() {
   return (
     <div className="min-h-svh bg-background">
       {/* Tier 1 — slim global top bar */}
-      <header className="sticky top-0 z-40 flex h-14 items-center gap-3 border-b border-border bg-card px-4">
+      <header className="container-app sticky top-0 z-40 flex h-14 items-center gap-3 border-b border-border bg-card">
         <Link
           to="/app"
           aria-label="Sessionboard home"
@@ -272,7 +272,7 @@ function OrganizerLayout() {
         </aside>
 
         {/* Tier 3 — content */}
-        <main className="min-w-0 flex-1 p-6">
+        <main className="container-app min-w-0 flex-1 py-6">
           <Outlet />
         </main>
       </div>

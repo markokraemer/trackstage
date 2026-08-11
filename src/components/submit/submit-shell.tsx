@@ -31,8 +31,8 @@ export function SubmitShell({
   children,
 }: SubmitShellProps) {
   return (
-    <main className="min-h-svh bg-background px-4 py-8 sm:py-12">
-      <div className={cn("mx-auto w-full max-w-2xl", className)}>
+    <main className="min-h-svh bg-background py-8 sm:py-12">
+      <div className={cn("container-narrow", className)}>
         <div className="mb-5 flex items-center gap-2.5">
           <LogoMark size={32} variant="boxed" />
           <div className="min-w-0">

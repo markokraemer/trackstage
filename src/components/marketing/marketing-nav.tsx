@@ -43,7 +43,7 @@ export function MarketingNav() {
     <header className="sticky top-0 z-40 w-full border-b border-border/70 bg-card/85 backdrop-blur-md">
       <nav
         aria-label="Main"
-        className="mx-auto flex h-16 w-full max-w-6xl items-center gap-4 px-4 sm:px-6"
+        className="container-page flex h-16 items-center gap-4"
       >
         <Link
           to="/"
@@ -60,6 +60,7 @@ export function MarketingNav() {
               variant="ghost"
               size="sm"
               className="text-muted-foreground hover:text-foreground"
+              nativeButton={false}
               render={<a href={link.href} />}
             >
               {link.label}
@@ -69,6 +70,7 @@ export function MarketingNav() {
             variant="ghost"
             size="sm"
             className="text-muted-foreground hover:text-foreground"
+            nativeButton={false}
             render={<Link to="/design-system" />}
           >
             Design
@@ -81,6 +83,7 @@ export function MarketingNav() {
             size="icon-sm"
             aria-label="Sessionboard on GitHub"
             className="hidden text-muted-foreground hover:text-foreground sm:inline-flex"
+            nativeButton={false}
             render={<a href={GITHUB_URL} {...EXTERNAL_LINK_PROPS} />}
           >
             <RiGithubFill aria-hidden />
@@ -89,11 +92,12 @@ export function MarketingNav() {
             variant="outline"
             size="sm"
             className="hidden sm:inline-flex"
+            nativeButton={false}
             render={<Link to="/login" />}
           >
             Log in
           </Button>
-          <Button size="sm" render={<Link to="/login" />}>
+          <Button size="sm" nativeButton={false} render={<Link to="/login" />}>
             Get started
           </Button>
 
@@ -120,6 +124,7 @@ export function MarketingNav() {
                 {NAV_LINKS.map((link) => (
                   <SheetClose
                     key={link.href}
+                    nativeButton={false}
                     render={
                       <a
                         href={link.href}
@@ -131,6 +136,7 @@ export function MarketingNav() {
                   </SheetClose>
                 ))}
                 <SheetClose
+                  nativeButton={false}
                   render={
                     <Link
                       to="/design-system"
@@ -146,16 +152,22 @@ export function MarketingNav() {
                 <Button
                   variant="outline"
                   className="w-full"
+                  nativeButton={false}
                   render={<Link to="/login" />}
                 >
                   Log in
                 </Button>
-                <Button className="mt-2 w-full" render={<Link to="/login" />}>
+                <Button
+                  className="mt-2 w-full"
+                  nativeButton={false}
+                  render={<Link to="/login" />}
+                >
                   Get started
                 </Button>
                 <Button
                   variant="ghost"
                   className="mt-2 w-full"
+                  nativeButton={false}
                   render={<a href={GITHUB_URL} {...EXTERNAL_LINK_PROPS} />}
                 >
                   <RiGithubFill aria-hidden />

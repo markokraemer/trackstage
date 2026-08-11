@@ -98,7 +98,9 @@ function RootComponent() {
   return (
     <ConvexBetterAuthProvider
       client={context.convexClient}
-      authClient={authClient}
+      // Cast: the provider's AuthClient type predates the convexClient plugin
+      // generics; runtime shape is exactly what it expects.
+      authClient={authClient as unknown as React.ComponentProps<typeof ConvexBetterAuthProvider>["authClient"]}
       initialToken={context.token}
     >
       <Outlet />

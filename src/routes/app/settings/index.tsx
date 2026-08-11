@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router"
 
 import { EventDetailsForm } from "@/components/settings/event-details-form"
+import { DeleteEventCard } from "@/components/settings/delete-event-card"
 import { useCurrentEvent } from "@/components/settings/current-event"
 
 export const Route = createFileRoute("/app/settings/")({
@@ -11,6 +12,11 @@ export const Route = createFileRoute("/app/settings/")({
 function EventDetailsPage() {
   const { event } = useCurrentEvent()
   if (!event) return null
-  // Remount on event switch so the draft never leaks across events.
-  return <EventDetailsForm key={event._id} event={event} />
+  return (
+    <div className="flex flex-col gap-8">
+      {/* Remount on event switch so the draft never leaks across events. */}
+      <EventDetailsForm key={event._id} event={event} />
+      <DeleteEventCard key={`danger-${event._id}`} event={event} />
+    </div>
+  )
 }

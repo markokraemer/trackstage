@@ -69,11 +69,11 @@ export function DemoEntries() {
   return (
     <MarketingSection id={SECTION_IDS.demos} tone="muted">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-        <div className="max-w-2xl">
+        <div className="max-w-(--container-narrow)">
           <p className="text-xs font-semibold tracking-[0.12em] text-primary uppercase">
             Try it right now
           </p>
-          <h2 className="font-heading mt-2.5 text-2xl font-semibold tracking-tight text-balance text-foreground sm:text-3xl">
+          <h2 className="mt-2.5 font-heading text-2xl font-semibold tracking-tight text-balance text-foreground sm:text-3xl">
             Three ways in. Pick a seat.
           </h2>
         </div>
@@ -91,7 +91,7 @@ export function DemoEntries() {
               <span className="flex size-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
                 <entry.icon size={20} aria-hidden />
               </span>
-              <span className="font-heading block text-base font-medium text-foreground">
+              <span className="block font-heading text-base font-medium text-foreground">
                 {entry.title}
               </span>
               <span className="block text-sm leading-relaxed text-muted-foreground">
@@ -126,7 +126,7 @@ export function DemoEntries() {
           href={DEMO_PROGRAM_URL}
           className={cn(
             "inline-flex items-center gap-1 font-medium text-foreground underline underline-offset-4",
-            "rounded-sm outline-none hover:text-primary focus-visible:ring-3 focus-visible:ring-ring/50",
+            "rounded-sm outline-none hover:text-primary focus-visible:ring-3 focus-visible:ring-ring/50"
           )}
         >
           Browse the published program

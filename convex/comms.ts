@@ -11,7 +11,8 @@
 // body — the demo-safe path judges evaluate. Delivery is claim-based so two
 // overlapping `deliverPending` runs can never send the same email twice.
 
-import { v, type Infer } from "convex/values"
+import { v  } from "convex/values"
+import type {Infer} from "convex/values";
 import { internal } from "./_generated/api"
 import type { Doc, Id } from "./_generated/dataModel"
 import {
@@ -19,10 +20,11 @@ import {
   internalMutation,
   internalQuery,
   mutation,
-  query,
-  type MutationCtx,
-  type QueryCtx,
+  query
+  
+  
 } from "./_generated/server"
+import type {MutationCtx, QueryCtx} from "./_generated/server";
 import { requireEventAccess } from "./lib/auth"
 import {
   DEFAULT_TEMPLATES,
@@ -30,9 +32,10 @@ import {
   emailFrom,
   emailFromAddress,
   portalLinkFor,
-  renderTemplate,
-  type TemplateDefinition,
+  renderTemplate
+  
 } from "./lib/email"
+import type {TemplateDefinition} from "./lib/email";
 import { buildIcs } from "./lib/ics"
 
 // ——— Constants ————————————————————————————————————————————————————————————
@@ -238,8 +241,15 @@ export const listTemplates = query({
       .withIndex("by_eventId", (q) => q.eq("eventId", args.eventId))
       .take(200)
 
-    const rows = stored.map((t) => ({
-      templateId: t._id as Id<"emailTemplates"> | null,
+    const rows: Array<{
+      templateId: Id<"emailTemplates"> | null
+      key: string
+      name: string
+      subject: string
+      body: string
+      isDefault: boolean
+    }> = stored.map((t) => ({
+      templateId: t._id,
       key: t.key,
       name: t.name,
       subject: t.subject,

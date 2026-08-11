@@ -61,6 +61,7 @@ export function Pricing({ stripeCheckoutUrl }: PricingProps) {
               variant="outline"
               size="lg"
               className="w-full"
+              nativeButton={false}
               render={<a href={GITHUB_URL} {...EXTERNAL_LINK_PROPS} />}
             >
               <RiGithubFill aria-hidden />
@@ -78,7 +79,12 @@ export function Pricing({ stripeCheckoutUrl }: PricingProps) {
           summary="The hosted demo, loaded with a full event. Click everything — you can't break anything that matters."
           points={DEMO_POINTS}
           action={
-            <Button size="lg" className="w-full" render={<Link to="/login" />}>
+            <Button
+              size="lg"
+              className="w-full"
+              nativeButton={false}
+              render={<Link to="/login" />}
+            >
               Open the demo
             </Button>
           }
@@ -130,7 +136,7 @@ function PlanCard({
     <Card
       className={cn(
         "h-full gap-0 px-6 py-6",
-        featured && "ring-2 ring-primary lg:-mt-3 lg:pb-8",
+        featured && "ring-2 ring-primary lg:-mt-3 lg:pb-8"
       )}
     >
       <div className="flex items-center justify-between gap-2">

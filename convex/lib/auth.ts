@@ -20,9 +20,9 @@ export type AuthedUser = { userId: string; email: string; name?: string }
 export async function requireUser(
   ctx: QueryCtx | MutationCtx,
 ): Promise<AuthedUser> {
+  // getAuthUser throws when unauthenticated (typed non-null).
   const user = await authComponent.getAuthUser(ctx)
-  if (!user) throw new Error("Not signed in.")
-  return { userId: user._id, email: user.email, name: user.name ?? undefined }
+  return { userId: user._id, email: user.email, name: user.name || undefined }
 }
 
 export async function requireMembership(

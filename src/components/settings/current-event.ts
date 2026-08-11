@@ -58,6 +58,17 @@ export function selectEvent(eventId: string): void {
   for (const listener of listeners) listener()
 }
 
+/** Forget the stored choice (after deleting the event in context). */
+export function clearSelectedEvent(): void {
+  if (typeof window === "undefined") return
+  try {
+    window.localStorage.removeItem(STORAGE_KEY)
+  } catch {
+    /* ignore */
+  }
+  for (const listener of listeners) listener()
+}
+
 /** The stored id, or `null` on the server / before a choice is made. */
 export function useSelectedEventId(): string | null {
   return useSyncExternalStore(

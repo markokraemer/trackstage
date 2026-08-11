@@ -38,7 +38,7 @@ export function useSession(): UseSessionResult {
 
   const session: OrganizerSession | null = data?.user
     ? {
-        name: data.user.name ?? "",
+        name: data.user.name || "",
         email: data.user.email,
         token: "",
       }

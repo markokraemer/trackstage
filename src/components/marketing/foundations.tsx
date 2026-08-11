@@ -21,31 +21,31 @@ const FOUNDATIONS: Array<Foundation> = [
   {
     title: "Workspaces & roles",
     description:
-      "Your team and your events live in one workspace. Invite people, give them the access that fits, switch workspaces in a click.",
+      "Your team and your events in one workspace. Invite people, set who can do what, switch workspaces in a click.",
     icon: RiTeamLine,
   },
   {
     title: "Sign-in done properly",
     description:
-      "Accounts, sessions, invites and password resets are handled by Better Auth — not something we improvised on a Saturday.",
+      "Accounts, sessions, invites and password resets handled by Better Auth — not improvised on a Saturday.",
     icon: RiShieldKeyholeLine,
   },
   {
     title: "An open API",
     description:
-      "Read sessions and speakers as JSON, or subscribe to the .ics feed. Wire it into your site, your app, your Airtable.",
+      "Sessions and speakers as JSON, plus an .ics feed. Wire it into your site, your app, your Airtable.",
     icon: RiCodeSSlashLine,
   },
   {
     title: "Host it yourself",
     description:
-      "MIT licensed. Clone it, run it on your own infrastructure, change whatever you want. No one can take it away.",
+      "MIT licensed. Run it on your own infrastructure and change whatever you want. Nobody can take it away.",
     icon: RiServerLine,
   },
   {
     title: "Fast, everywhere",
     description:
-      "Runs on the edge with a realtime database behind it, so the app keeps up with you instead of the other way round.",
+      "Edge-deployed with a realtime database behind it, so the app keeps up with you — not the other way round.",
     icon: RiFlashlightLine,
   },
 ]

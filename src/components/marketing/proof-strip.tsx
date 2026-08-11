@@ -35,7 +35,7 @@ export function ProofStrip() {
           ))}
         </ul>
 
-        <p className="max-w-xl text-xs leading-relaxed text-muted-foreground/80">
+        <p className="container-reading text-xs leading-relaxed text-muted-foreground/80">
           No customer logos on this page — the project is brand new and we
           aren&rsquo;t going to borrow anyone else&rsquo;s. Run an event on it
           and yours goes here first.

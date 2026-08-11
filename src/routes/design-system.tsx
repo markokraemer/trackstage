@@ -20,6 +20,7 @@ import type { RemixiconComponentType } from "@remixicon/react"
 
 import { cn } from "@/lib/utils"
 import { Logo, LogoMark, Wordmark } from "@/components/brand/logo"
+import { InteractionsCatalog } from "@/components/interactions/catalog"
 import {
   BRAND_PRIMARY,
   brandSvg,
@@ -137,6 +138,7 @@ const SECTIONS = [
   { id: "brand", label: "Brand & assets" },
   { id: "color", label: "Color" },
   { id: "typography", label: "Typography" },
+  { id: "layout", label: "Layout & width" },
   { id: "shape", label: "Shape & elevation" },
   { id: "buttons", label: "Buttons" },
   { id: "forms", label: "Form controls" },
@@ -145,7 +147,48 @@ const SECTIONS = [
   { id: "feedback", label: "Feedback" },
   { id: "overlays", label: "Overlays" },
   { id: "patterns", label: "App patterns" },
+  { id: "interactions", label: "Interactions" },
+  { id: "explorations", label: "Explorations" },
 ] as const
+
+/** The one container system — mirrors the `--container-*` tokens in styles.css. */
+const CONTAINERS: Array<{
+  utility: string
+  token: string
+  width: string
+  use: string
+}> = [
+  {
+    utility: "container-app",
+    token: "--container-app",
+    width: "100% − gutter",
+    use: "Organizer app content and its top bar. Full-bleed inside the shell so tables get every pixel.",
+  },
+  {
+    utility: "container-page",
+    token: "--container-page",
+    width: "72rem",
+    use: "Every public surface: marketing bands, event pages, speaker portal, review queue.",
+  },
+  {
+    utility: "container-narrow",
+    token: "--container-narrow",
+    width: "42rem",
+    use: "Single-column forms — the public submit flow, create-form screens.",
+  },
+  {
+    utility: "container-card",
+    token: "--container-card",
+    width: "25rem",
+    use: "Centred entry cards: sign in, portal magic-link, invalid-link states.",
+  },
+  {
+    utility: "container-reading",
+    token: "--container-reading",
+    width: "65ch",
+    use: "Prose measure. Width only — no gutter, no centring — so it caps a paragraph in place.",
+  },
+]
 
 type SurfaceKey = "light" | "dark" | "primary"
 
@@ -283,7 +326,7 @@ function DesignSystemPage() {
   return (
     <TooltipProvider>
       <div className="min-h-svh bg-background">
-        <header className="sticky top-0 z-40 flex h-14 items-center gap-3 border-b border-border bg-card px-6">
+        <header className="container-app sticky top-0 z-40 flex h-14 items-center gap-3 border-b border-border bg-card">
           <Link
             to="/"
             className="rounded-md outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
@@ -299,7 +342,7 @@ function DesignSystemPage() {
           </div>
         </header>
 
-        <div className="mx-auto flex w-full max-w-7xl gap-10 px-6 py-10">
+        <div className="container-page flex gap-10 py-10">
           <nav
             aria-label="Sections"
             className="sticky top-24 hidden h-fit w-48 shrink-0 lg:block"
@@ -326,7 +369,7 @@ function DesignSystemPage() {
               <h1 className="font-heading text-3xl font-semibold tracking-tight">
                 Sessionboard design system
               </h1>
-              <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
+              <p className="container-reading mt-2 text-sm text-muted-foreground">
                 Every token, primitive, and app pattern in one place. Light mode
                 only, primary blue <code className="font-mono">#2F5CE0</code>,
                 8px controls and 12px cards. Components are shadcn on Base UI —
@@ -694,6 +737,107 @@ function DesignSystemPage() {
                   </div>
                 </Sample>
               </Row>
+            </Section>
+
+            {/* --------------------------------------------------- LAYOUT */}
+            <Section
+              id="layout"
+              title="Layout & width"
+              description="One width system for the whole product. Five tokens in src/styles.css, four container utilities, no page-level max-w-* anywhere else. A page-level wrapper picks exactly one container; anything inside it that needs a cap uses the token directly so it does not pick up a second gutter."
+            >
+              <Sample label="The tokens">
+                <div className="divide-y divide-border">
+                  {CONTAINERS.map((container) => (
+                    <div
+                      key={container.token}
+                      className="flex flex-wrap items-baseline gap-x-4 gap-y-1 py-3 first:pt-0 last:pb-0"
+                    >
+                      <code className="font-mono text-sm font-medium text-foreground">
+                        .{container.utility}
+                      </code>
+                      <code className="font-mono text-xs text-muted-foreground">
+                        {container.token}
+                      </code>
+                      <span className="ml-auto font-mono text-xs tabular-nums text-foreground">
+                        {container.width}
+                      </span>
+                      <p className="w-full text-sm text-muted-foreground">
+                        {container.use}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </Sample>
+
+              <Sample label="Relative widths — the same viewport, four containers">
+                <div className="space-y-2.5">
+                  {[
+                    { label: "container-app", pct: "100%" },
+                    { label: "container-page", pct: "90%" },
+                    { label: "container-narrow", pct: "52%" },
+                    { label: "container-card", pct: "31%" },
+                  ].map((bar) => (
+                    <div key={bar.label} className="flex items-center gap-3">
+                      <span className="w-40 shrink-0 font-mono text-xs text-muted-foreground">
+                        {bar.label}
+                      </span>
+                      <span className="h-7 flex-1 rounded-md bg-muted">
+                        <span
+                          className="block h-full rounded-md bg-primary/15 ring-1 ring-primary/25"
+                          style={{ width: bar.pct }}
+                        />
+                      </span>
+                    </div>
+                  ))}
+                </div>
+                <p className="mt-3 text-xs text-muted-foreground">
+                  Illustrative proportions at a wide viewport. Every container
+                  centres itself and carries the page gutter —{" "}
+                  <code className="font-mono">1rem</code>, stepping up to{" "}
+                  <code className="font-mono">1.5rem</code> at{" "}
+                  <code className="font-mono">sm</code>. The token values are
+                  content widths: the gutter is added on top, so the readable
+                  column is identical on every route.
+                </p>
+              </Sample>
+
+              <Row>
+                <Sample label="Do — one container per page wrapper">
+                  <pre className="overflow-x-auto rounded-lg bg-muted p-3 font-mono text-xs leading-relaxed">
+                    {`<main className="container-page py-8">
+  <h1>…</h1>
+  <p className="container-reading">…</p>
+</main>`}
+                  </pre>
+                  <p className="mt-3 text-xs text-muted-foreground">
+                    Width, centring, and gutter come from one class. Prose caps
+                    itself with the reading measure, in place.
+                  </p>
+                </Sample>
+
+                <Sample label="Don't — bespoke widths per route">
+                  <pre className="overflow-x-auto rounded-lg bg-muted p-3 font-mono text-xs leading-relaxed">
+                    {`<main className="mx-auto w-full max-w-5xl px-4 sm:px-6">
+<main className="mx-auto max-w-6xl px-4">
+<main className="mx-auto max-w-7xl px-6">`}
+                  </pre>
+                  <p className="mt-3 text-xs text-muted-foreground">
+                    Three routes, three widths, three gutters — and because some
+                    put the padding on the container and some on the parent, the
+                    content column differed even where the max-width matched.
+                  </p>
+                </Sample>
+              </Row>
+
+              <Sample label="Exceptions — what the system does not govern">
+                <p className="text-sm text-muted-foreground">
+                  Component-internal widths stay with their component: dialog
+                  and drawer sizes (
+                  <code className="font-mono">sm:max-w-lg</code>), table-cell
+                  truncation caps, toolbar search fields, and chart columns.
+                  They size to their content, not to the page.
+                </p>
+              </Sample>
             </Section>
 
             {/* ---------------------------------------------------- SHAPE */}
@@ -1303,6 +1447,15 @@ function DesignSystemPage() {
                 </div>
               </Sample>
             </Section>
+
+            {/* --------------------------------------------- INTERACTIONS */}
+            <Section
+              id="interactions"
+              title="Interactions"
+              description="The interior.dev micro-interaction library, adopted end to end and restyled onto our tokens — same motion, our design language. Every tile below is live; the caption says where it belongs in the product. Import from @/components/interactions; the full map lives in docs/memory/INTERACTIONS.md."
+            >
+              <InteractionsCatalog />
+            </Section>
           </div>
         </div>
       </div>
@@ -1329,7 +1482,7 @@ function Section({
         {title}
       </h2>
       {description ? (
-        <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
+        <p className="container-reading mt-1 text-sm text-muted-foreground">
           {description}
         </p>
       ) : null}

@@ -3,8 +3,11 @@ import { createFileRoute } from "@tanstack/react-router"
 import { MarketingNav } from "@/components/marketing/marketing-nav"
 import { Hero } from "@/components/marketing/hero"
 import { DemoEntries } from "@/components/marketing/demo-entries"
-import { FeatureGrid } from "@/components/marketing/feature-grid"
-import { StorySection } from "@/components/marketing/story-section"
+import { ProofStrip } from "@/components/marketing/proof-strip"
+import { FeatureSections } from "@/components/marketing/feature-sections"
+import { Foundations } from "@/components/marketing/foundations"
+import { Pricing } from "@/components/marketing/pricing"
+import { OpenSource } from "@/components/marketing/open-source"
 import { MarketingFooter } from "@/components/marketing/marketing-footer"
 
 /**
@@ -21,22 +24,33 @@ export const Route = createFileRoute("/")({
       {
         name: "description",
         content:
-          "CFP forms, speaker portal, review, agenda builder and speaker comms in one fast, open-source tool. No enterprise sales calls.",
+          "Collect talks, review them, run the speaker portal, build the agenda and send every email — one fast, open-source tool. No enterprise sales call.",
       },
     ],
   }),
   component: LandingPage,
 })
 
+/**
+ * Marketing homepage.
+ *
+ * Section order mirrors how a visitor decides: what is it (hero) → prove it
+ * (live demos, above everything else per docs/memory/RULES.md 18f) → who it's
+ * for → what it does (six feature rows) → is it solid → what it costs → who
+ * built it and why.
+ */
 function LandingPage() {
   return (
     <div className="flex min-h-svh flex-col bg-background">
       <MarketingNav />
       <main className="flex-1">
-        <Hero stripeCheckoutUrl={STRIPE_CHECKOUT_URL} />
+        <Hero />
         <DemoEntries />
-        <FeatureGrid />
-        <StorySection />
+        <ProofStrip />
+        <FeatureSections />
+        <Foundations />
+        <Pricing stripeCheckoutUrl={STRIPE_CHECKOUT_URL} />
+        <OpenSource />
       </main>
       <MarketingFooter />
     </div>

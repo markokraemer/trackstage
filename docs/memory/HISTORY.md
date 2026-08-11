@@ -1,0 +1,85 @@
+# Prompt history — everything Marko asked, in order
+
+A distillation of every individual ask from the very beginning, top to bottom. This is
+the narrative memory; RULES.md is the things circled as important along the way.
+
+1. **Kickoff**: set up the base scaffold; check the competition brief for tech-stack
+   guidance.
+2. **Stack question**: is Cloudflare required, or can we use InstantDB / Convex /
+   Supabase? Also: initialize with shadcn.
+3. **"Yea let's go full CONVEX"** → then confirmed the trio: **Convex, Next.js, shadcn**.
+4. **Proper shadcn init** with his preset (`b7BYM32MS`); asked which base is current —
+   Base UI vs Radix vs Aria; he guessed (correctly) Base UI is the new standard.
+5. **Monorepo**: he generally wants monorepos going forward, set up properly ("but
+   sure") → later reversed: single full-stack app, no monorepo.
+6. **Use latest everything** — whatever is up-to-date and best (thought Next 17 existed;
+   16.3 was latest).
+7. **Convex agent tooling**: read docs.convex.dev/ai pages; install ALL plugins —
+   Claude Code, Codex, and the general ai-files — "make the way of working together the
+   best possible".
+8. Ran `pnpm dev:setup` himself (interactive Convex login); asked "are we all done now?"
+9. **Pushback**: the assumed data structures felt premature ("we didn't even start
+   development"); wanted `pnpm dev` running to try the frontend.
+10. **Full ingestion directive**: watch the walkthrough video end-to-end via OpenRouter
+    with **Gemini 3.6 Flash** (his model choice), read the brief HTML + all images in
+    depth, build a complete project plan/map, then recreate the UX/UI matching the
+    screenshots. Confirmed twice: must be gemini-3.6-flash via OpenRouter with visual
+    cues; then asked for ONE big combined prompt (transcript + everything).
+11. **Hardcore focus**: full video, full spec, miss nothing functionally; UX/UI is THE
+    priority — non-technical, organizer-friendly, simple, clear flows, less is more,
+    same structure as Sessionboard.
+12. **1:1 UX copy**: same indentations, style, light mode default; proper component
+    pickers (real calendars etc.); this organizer-friendliness is our differentiator
+    (competitors aren't).
+13. **Git flow**: init GitHub repo, commit+push continuously, never a Claude co-author;
+    AGENTS.md as centralized continuously-updated context; create spec artifacts.
+14. **Build everything end-to-end**: use Workflow tool + subagents (Opus/Sonnet 5
+    inside, Fable for final passes), be a hardcore orchestrator; after first pass,
+    hill-climb against swyx's eval kit; clone the Forge repo (sbek) preemptively.
+15. **Landing page**: really good and simple; CTAs: open source, sign up/demo, and a
+    joke "Declare the winner" → $10k Stripe checkout link (he supplies the link).
+16. **Airtable sync** (from brief/clarifications): one-click connect, near-real-time
+    one-way mirror; requirement ticked, fine to do at the end.
+17. **Process**: ultra-think/ultra-work, many subagents + workflows in parallel; track
+    everything in TODO.md; **git repo = source of truth for all context/rules/specs**.
+18. **Nothing is sacred**: refactor anything anytime; best engineering + UX practices.
+19. **shadcn-first strictly**: always import the shadcn component and modify it in
+    depth; push this rule into all running subagents.
+20. **Design system as artifact**: /design-system page with ALL components; custom
+    logo; full brand centralized (later expanded: every variant, SVG/PNG downloads,
+    social/OG/favicon assets).
+21. **Screens must match images**: proper homepage, organizer app, speaker portal;
+    shell structure per screenshots; **Opus 5 for all subagents**.
+22. **Backend completeness + deterministic testing**: finish everything, verify all of
+    it deterministically and fast (no manual web testing at that stage); let running
+    agents complete.
+23. **Better Auth pivot** (after a login hiccup): use Better Auth via the official
+    Convex integration for EVERYTHING; full multi-tenancy, roles, proper authz —
+    "100% enterprise-ready"; hardcore refactor. Asked why TanStack over React Router
+    (satisfied: deliberate choice, Better Auth supports it).
+24. **Launch-ready ambition**: actually kill Sessionboard — way beyond the video pitch;
+    not a demo.
+25. **Reconciliation rule** (added by him directly): one agent does a final
+    read-and-rework pass over everything before ship; /design-system is the contract.
+26. **UI e2e testing strategy** (after a MenuGroupContext crash): full deterministic
+    `pnpm test` variants covering every flow top-to-bottom, deepest parts; combine with
+    the sbek hill-climb; mirror the eval kit so it can't disappear.
+27. **Resend everywhere**: his API key; ALL emails perfect — speaker comms, account/
+    workspace invites, the full multi-tenant lifecycle; persist as spec.
+28. **Landing v2**: rip sessionboard.com's structure, custom graphics, placeholder
+    platform screenshots, log in + "buy now $10k one-time" (voluntary/joke), open
+    source stated. Then amended: **not too enterprise-y**, human tone, live demo
+    entries stay prominent.
+29. **Housekeeping**: rename the brief folder into docs/ as the initial scrape.
+30. **Multi-tenant completeness**: full account settings, org settings, user/member
+    management, easy org switching — "everything, everything, everything". Then:
+    reassurance that all core basics (create events etc.) work correctly.
+31. **Design language evolution**: right-click logo → /design-system (brand-assets
+    affordance); fix inconsistent container widths; he now dislikes Inter ("super
+    basic"); adopt **interior.dev** components end-to-end (all of them, in depth,
+    "top tier… less boring, more interactive") incl. press-depth on a really creative
+    landing. Then amended: stay corporate-standard, **keep current language for now,
+    build an exploration of candidates he picks from**.
+32. **This document**: keep a full prompt history from A to Z (docs/memory/HISTORY.md);
+    RULES.md stays but reframed — not hardcore rules, a distillation of what was
+    circled as important.

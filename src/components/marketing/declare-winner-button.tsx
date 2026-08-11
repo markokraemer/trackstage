@@ -4,8 +4,10 @@ import { RiTrophyLine } from "@remixicon/react"
 import { Button } from "@/components/ui/button"
 import { EXTERNAL_LINK_PROPS } from "@/components/marketing/links"
 
-export interface DeclareWinnerButtonProps
-  extends Pick<React.ComponentProps<typeof Button>, "variant" | "size"> {
+export interface DeclareWinnerButtonProps extends Pick<
+  React.ComponentProps<typeof Button>,
+  "variant" | "size"
+> {
   /** Stripe Checkout link. Empty string = not configured yet. */
   checkoutUrl: string
   label?: string
@@ -39,6 +41,7 @@ export function DeclareWinnerButton({
         variant={variant}
         size={size}
         className={className}
+        nativeButton={false}
         render={<a href={checkoutUrl} {...EXTERNAL_LINK_PROPS} />}
       >
         {content}

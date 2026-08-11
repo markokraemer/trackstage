@@ -148,7 +148,7 @@ export const identify = mutation({
 })
 
 async function validateSubmission(
-  ctx: MutationCtx,
+  _ctx: MutationCtx,
   form: Doc<"forms">,
   answers: Record<string, unknown>,
   participants: Array<{

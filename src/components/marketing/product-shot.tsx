@@ -28,13 +28,7 @@ import { StatusPill } from "@/components/shared/status-pill"
  */
 
 export type ProductShotVariant =
-  | "dashboard"
-  | "form"
-  | "review"
-  | "portal"
-  | "agenda"
-  | "comms"
-  | "program"
+  "dashboard" | "form" | "review" | "portal" | "agenda" | "comms" | "program"
 
 export interface ProductShotProps extends React.ComponentProps<"figure"> {
   variant?: ProductShotVariant
@@ -99,7 +93,7 @@ export function ProductShot({
         elevation === "lg"
           ? "shadow-[0_24px_60px_-24px_rgb(27_30_39/0.35)]"
           : "shadow-[0_12px_32px_-18px_rgb(27_30_39/0.30)]",
-        className,
+        className
       )}
       {...props}
     >
@@ -154,14 +148,12 @@ function BrowserChrome({ url }: { url: string }) {
 /* ------------------------------------------------------------------------- */
 
 /** A neutral placeholder bar — stands in for a line of copy. */
-function Bar({
-  w = "w-full",
-  className,
-}: {
-  w?: string
-  className?: string
-}) {
-  return <span className={cn("block h-2 rounded-full bg-foreground/10", w, className)} />
+function Bar({ w = "w-full", className }: { w?: string; className?: string }) {
+  return (
+    <span
+      className={cn("block h-2 rounded-full bg-foreground/10", w, className)}
+    />
+  )
 }
 
 function NavItem({
@@ -177,7 +169,7 @@ function NavItem({
         "flex h-6 items-center rounded-md px-2 text-[11px] font-medium",
         active
           ? "bg-sidebar-accent text-sidebar-accent-foreground"
-          : "text-muted-foreground",
+          : "text-muted-foreground"
       )}
     >
       {label}
@@ -204,7 +196,7 @@ function Panel({
     <div
       className={cn(
         "rounded-lg bg-card p-3 ring-1 ring-foreground/10",
-        className,
+        className
       )}
     >
       {children}
@@ -215,7 +207,7 @@ function Panel({
 function Stat({ value, label }: { value: string; label: string }) {
   return (
     <Panel className="p-2.5">
-      <span className="font-heading block text-lg leading-tight font-semibold tracking-tight text-foreground">
+      <span className="block font-heading text-lg leading-tight font-semibold tracking-tight text-foreground">
         {value}
       </span>
       <span className="mt-0.5 block truncate text-[10px] text-muted-foreground">
@@ -238,7 +230,7 @@ function TrackChip({ label, index }: { label: string; index: number }) {
       <span
         className={cn(
           "size-1.5 rounded-full",
-          TRACK_COLORS[index % TRACK_COLORS.length],
+          TRACK_COLORS[index % TRACK_COLORS.length]
         )}
       />
       {label}
@@ -267,7 +259,7 @@ function FakeButton({
         "inline-flex h-6 items-center rounded-md px-2 text-[10px] font-medium",
         tone === "primary"
           ? "bg-primary text-primary-foreground"
-          : "bg-muted text-muted-foreground",
+          : "bg-muted text-muted-foreground"
       )}
     >
       {label}
@@ -297,10 +289,26 @@ const BODY = "min-h-[248px] p-3 sm:min-h-[300px] sm:p-4"
 
 function DashboardMock() {
   const rows = [
-    { title: "Shipping agents that don't break", track: "Agents", status: "pending" },
-    { title: "Evals for production LLM apps", track: "Evals", status: "accept_queue" },
-    { title: "RAG is dead, long live RAG", track: "Retrieval", status: "accepted" },
-    { title: "The infra behind 10M tokens/s", track: "Infra", status: "pending" },
+    {
+      title: "Shipping agents that don't break",
+      track: "Agents",
+      status: "pending",
+    },
+    {
+      title: "Evals for production LLM apps",
+      track: "Evals",
+      status: "accept_queue",
+    },
+    {
+      title: "RAG is dead, long live RAG",
+      track: "Retrieval",
+      status: "accepted",
+    },
+    {
+      title: "The infra behind 10M tokens/s",
+      track: "Infra",
+      status: "pending",
+    },
   ]
 
   return (
@@ -346,10 +354,7 @@ function DashboardMock() {
           </div>
           <ul className="divide-y divide-border/70">
             {rows.map((row, index) => (
-              <li
-                key={row.title}
-                className="flex items-center gap-2 px-3 py-2"
-              >
+              <li key={row.title} className="flex items-center gap-2 px-3 py-2">
                 <span className="min-w-0 flex-1 truncate text-[11px] text-foreground">
                   {row.title}
                 </span>
@@ -386,7 +391,7 @@ function FormMock() {
               "flex items-center gap-2 rounded-md px-2 py-1.5 text-[10px]",
               index === 2
                 ? "bg-foreground text-background"
-                : "text-muted-foreground",
+                : "text-muted-foreground"
             )}
           >
             <span
@@ -396,7 +401,7 @@ function FormMock() {
                   ? "bg-status-green-bg text-status-green-fg"
                   : index === 2
                     ? "bg-background/20 text-background"
-                    : "bg-muted text-muted-foreground",
+                    : "bg-muted text-muted-foreground"
               )}
             >
               {index < 2 ? <RiCheckLine size={9} /> : index + 1}
@@ -428,7 +433,8 @@ function FormMock() {
             Conditional logic
           </span>
           <p className="mt-1 text-[10px] leading-relaxed text-muted-foreground">
-            Show <span className="text-foreground">“Which agent framework?”</span>{" "}
+            Show{" "}
+            <span className="text-foreground">“Which agent framework?”</span>{" "}
             only when Track is <span className="text-foreground">Agents</span>.
           </p>
         </div>
@@ -451,8 +457,16 @@ function FormMock() {
 
 function ReviewMock() {
   const rows = [
-    { title: "Evals for production LLM apps", score: "4.6", status: "accept_queue" },
-    { title: "The infra behind 10M tokens/s", score: "4.2", status: "accept_queue" },
+    {
+      title: "Evals for production LLM apps",
+      score: "4.6",
+      status: "accept_queue",
+    },
+    {
+      title: "The infra behind 10M tokens/s",
+      score: "4.2",
+      status: "accept_queue",
+    },
     { title: "Prompt engineering is a job", score: "3.1", status: "pending" },
     { title: "Our vector DB migration", score: "2.4", status: "decline_queue" },
   ]
@@ -470,7 +484,11 @@ function ReviewMock() {
       <div className="flex flex-wrap gap-1.5">
         <StatusPill status="pending" size="sm" label="Pending · 42" />
         <StatusPill status="accept_queue" size="sm" label="Accept queue · 12" />
-        <StatusPill status="decline_queue" size="sm" label="Decline queue · 8" />
+        <StatusPill
+          status="decline_queue"
+          size="sm"
+          label="Decline queue · 8"
+        />
       </div>
 
       <Panel className="p-0">
@@ -486,7 +504,7 @@ function ReviewMock() {
               <span className="min-w-0 flex-1 truncate text-[11px] text-foreground">
                 {row.title}
               </span>
-              <span className="hidden w-20 items-center -space-x-1.5 sm:flex">
+              <span className="hidden w-20 items-center gap-0.5 sm:flex">
                 <Initials value="AK" />
                 <Initials value="RM" />
                 <Initials value="JT" />
@@ -545,7 +563,7 @@ function PortalMock() {
                   "flex size-4 shrink-0 items-center justify-center rounded-[5px]",
                   task.done
                     ? "bg-primary text-primary-foreground"
-                    : "bg-card ring-1 ring-input",
+                    : "bg-card ring-1 ring-input"
                 )}
               >
                 {task.done ? <RiCheckLine size={10} /> : null}
@@ -555,7 +573,7 @@ function PortalMock() {
                   "min-w-0 flex-1 truncate text-[11px]",
                   task.done
                     ? "text-muted-foreground line-through"
-                    : "text-foreground",
+                    : "text-foreground"
                 )}
               >
                 {task.label}
@@ -617,7 +635,9 @@ function AgendaMock() {
 
         {slots.map(([time, ...rooms], rowIndex) => (
           <div key={time} className="contents">
-            <span className="pt-1 text-[9px] text-muted-foreground">{time}</span>
+            <span className="pt-1 text-[9px] text-muted-foreground">
+              {time}
+            </span>
             {rooms.map((session, roomIndex) => (
               <div
                 key={`${time}-${roomIndex}`}
@@ -629,7 +649,7 @@ function AgendaMock() {
                     : "bg-muted/60",
                   rowIndex === 1 && roomIndex === 1
                     ? "ring-2 ring-status-red-dot/60"
-                    : "",
+                    : ""
                 )}
               >
                 {session ? (
@@ -637,7 +657,7 @@ function AgendaMock() {
                     <span
                       className={cn(
                         "mb-1 block h-1 w-6 rounded-full",
-                        TRACK_COLORS[roomIndex % TRACK_COLORS.length],
+                        TRACK_COLORS[roomIndex % TRACK_COLORS.length]
                       )}
                     />
                     <span className="block truncate text-[9px] leading-tight text-foreground">
@@ -734,7 +754,7 @@ function ProgramMock() {
   return (
     <div className={cn("space-y-3", BODY)}>
       <div className="rounded-lg bg-accent/60 p-3">
-        <span className="font-heading block text-sm font-semibold text-foreground">
+        <span className="block font-heading text-sm font-semibold text-foreground">
           AI Summit 2026
         </span>
         <span className="mt-0.5 block text-[10px] text-muted-foreground">
@@ -771,7 +791,7 @@ function ProgramMock() {
                   {session.room}
                 </span>
               </span>
-              <span className="flex -space-x-1.5">
+              <span className="flex gap-0.5">
                 <Initials value="RM" />
                 {index % 2 === 0 ? <Initials value="JT" /> : null}
               </span>

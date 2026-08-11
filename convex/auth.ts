@@ -1,6 +1,7 @@
 import { betterAuth } from "better-auth/minimal"
 import { organization } from "better-auth/plugins"
-import { createClient, type GenericCtx } from "@convex-dev/better-auth"
+import { createClient  } from "@convex-dev/better-auth"
+import type {GenericCtx} from "@convex-dev/better-auth";
 import { convex } from "@convex-dev/better-auth/plugins"
 import authConfig from "./auth.config"
 import { components } from "./_generated/api"

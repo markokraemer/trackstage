@@ -54,8 +54,8 @@ async function computeConflicts(ctx: QueryCtx, eventId: Id<"events">) {
   // Room double-bookings.
   for (let i = 0; i < scheduled.length; i++) {
     for (let j = i + 1; j < scheduled.length; j++) {
-      const a = scheduled[i]!
-      const b = scheduled[j]!
+      const a = scheduled[i]
+      const b = scheduled[j]
       if (!overlaps(a.startsAt!, a.durationMinutes!, b.startsAt!, b.durationMinutes!)) {
         continue
       }
@@ -84,8 +84,8 @@ async function computeConflicts(ctx: QueryCtx, eventId: Id<"events">) {
   for (const [personId, sessions] of speakerMap) {
     for (let i = 0; i < sessions.length; i++) {
       for (let j = i + 1; j < sessions.length; j++) {
-        const a = sessions[i]!
-        const b = sessions[j]!
+        const a = sessions[i]
+        const b = sessions[j]
         if (overlaps(a.startsAt!, a.durationMinutes!, b.startsAt!, b.durationMinutes!)) {
           const person = await ctx.db.get(personId as Id<"people">)
           const name = person

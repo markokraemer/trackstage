@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test"
+import type { Page } from "@playwright/test"
 import {
   ORGANIZER_STATE,
   assertNoErrorBoundary,
@@ -16,16 +17,19 @@ import {
  * them to LIVE as slices land (integration duty).
  */
 
-const PUBLIC_LIVE = ["/", "/login", "/design-system"]
-const PUBLIC_PENDING = [
+const PUBLIC_LIVE = [
+  "/",
+  "/login",
+  "/design-system",
   "/submit/cfp",
   "/e/ai-summit-2026",
   "/e/ai-summit-2026/speakers",
   "/e/ai-summit-2026/sessions",
   "/portal",
 ]
-const APP_LIVE = ["/app"]
-const APP_PENDING = [
+const PUBLIC_PENDING: string[] = []
+const APP_LIVE = [
+  "/app",
   "/app/submissions",
   "/app/forms",
   "/app/evaluation",
@@ -36,9 +40,10 @@ const APP_PENDING = [
   "/app/events",
   "/app/embeds",
 ]
+const APP_PENDING: string[] = []
 
 async function visit(
-  page: import("@playwright/test").Page,
+  page: Page,
   route: string,
   { allow404 }: { allow404: boolean },
 ) {
@@ -84,12 +89,12 @@ test.describe("token personas", () => {
   test("speaker portal via magic link renders clean", async ({ page }) => {
     const { portalToken } = await demoFixtures()
     test.skip(!portalToken, "no seeded portal token")
-    await visit(page, `/portal/t/${portalToken}`, { allow404: true })
+    await visit(page, `/portal/t/${portalToken}`, { allow404: false })
   })
 
   test("evaluator review via magic link renders clean", async ({ page }) => {
     const { reviewToken } = await demoFixtures()
     test.skip(!reviewToken, "no seeded evaluator token")
-    await visit(page, `/review/${reviewToken}`, { allow404: true })
+    await visit(page, `/review/${reviewToken}`, { allow404: false })
   })
 })

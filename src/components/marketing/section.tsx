@@ -14,8 +14,6 @@ export interface MarketingSectionProps extends React.ComponentProps<"section"> {
   tone?: "default" | "muted"
   /** Vertical rhythm. `tight` is for strips (logo row), `default` for bands. */
   spacing?: "default" | "tight"
-  /** Container width. `wide` fits product graphics, `default` fits prose. */
-  width?: "default" | "wide"
   /** Bottom hairline. Off for the last band before the footer. */
   bordered?: boolean
   containerClassName?: string
@@ -26,15 +24,9 @@ const SPACING = {
   tight: "py-10 sm:py-12",
 } as const
 
-const WIDTH = {
-  default: "max-w-6xl",
-  wide: "max-w-7xl",
-} as const
-
 export function MarketingSection({
   tone = "default",
   spacing = "default",
-  width = "default",
   bordered = true,
   className,
   containerClassName,
@@ -44,17 +36,16 @@ export function MarketingSection({
   return (
     <section
       className={cn(
-        "w-full scroll-mt-16 px-4 sm:px-6",
+        "w-full scroll-mt-16",
         SPACING[spacing],
         tone === "muted" ? "bg-background" : "bg-card",
         bordered && "border-b border-border/70",
-        className,
+        className
       )}
       {...props}
     >
-      <div className={cn("mx-auto w-full", WIDTH[width], containerClassName)}>
-        {children}
-      </div>
+      {/* One width for every band — `--container-page` (docs/memory/RULES.md #20e). */}
+      <div className={cn("container-page", containerClassName)}>{children}</div>
     </section>
   )
 }
@@ -77,9 +68,9 @@ export function SectionIntro({
   return (
     <div
       className={cn(
-        "max-w-2xl",
+        "max-w-(--container-narrow)",
         align === "center" && "mx-auto text-center",
-        className,
+        className
       )}
     >
       {eyebrow ? (
@@ -87,7 +78,7 @@ export function SectionIntro({
           {eyebrow}
         </p>
       ) : null}
-      <h2 className="font-heading mt-2.5 text-3xl font-semibold tracking-tight text-balance text-foreground sm:text-4xl">
+      <h2 className="mt-2.5 font-heading text-3xl font-semibold tracking-tight text-balance text-foreground sm:text-4xl">
         {title}
       </h2>
       {description ? (

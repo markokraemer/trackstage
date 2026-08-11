@@ -38,8 +38,8 @@ export const ensure = mutation({
 
     const existing = await myMemberships(ctx)
     if (existing.length > 0) {
-      const org = await ctx.db.get(existing[0]!.organizationId)
-      return { organizationId: existing[0]!.organizationId, slug: org?.slug }
+      const org = await ctx.db.get(existing[0].organizationId)
+      return { organizationId: existing[0].organizationId, slug: org?.slug }
     }
     const name =
       args.name ?? `${user.name ?? user.email.split("@")[0]}'s workspace`

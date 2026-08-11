@@ -148,7 +148,7 @@ export function FeatureSections() {
                 <p className="mt-4 text-xs font-semibold tracking-[0.12em] text-primary uppercase">
                   {feature.eyebrow}
                 </p>
-                <h3 className="font-heading mt-2 text-2xl font-semibold tracking-tight text-balance text-foreground sm:text-3xl">
+                <h3 className="mt-2 font-heading text-2xl font-semibold tracking-tight text-balance text-foreground sm:text-3xl">
                   {feature.title}
                 </h3>
                 <p className="mt-3.5 text-base leading-relaxed text-pretty text-muted-foreground">

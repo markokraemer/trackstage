@@ -50,8 +50,8 @@ export function PortalSignedOut({
   }
 
   return (
-    <main className="flex min-h-svh flex-col items-center justify-center bg-background px-4 py-12">
-      <div className="w-full max-w-lg">
+    <main className="flex min-h-svh flex-col items-center justify-center bg-background py-12">
+      <div className="container-card">
         <div className="flex flex-col items-center text-center">
           <Logo size="sm" />
           <div className="mt-6 flex size-12 items-center justify-center rounded-xl bg-accent text-primary">

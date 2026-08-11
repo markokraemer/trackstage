@@ -35,12 +35,12 @@ export async function organizerConvexClient(): Promise<ConvexHttpClient> {
     body: JSON.stringify(DEMO_ORGANIZER),
   })
   if (!res.ok) throw new Error(`demo sign-in failed: ${res.status}`)
-  const cookies = res.headers.getSetCookie?.() ?? []
+  const cookies = res.headers.getSetCookie()
   const jwt = cookies
     .find((c) => c.includes("convex_jwt="))
     ?.match(/convex_jwt=([^;]+)/)?.[1]
   if (!jwt) throw new Error("no convex_jwt in sign-in response")
-  const client = new ConvexHttpClient(env.VITE_CONVEX_URL!)
+  const client = new ConvexHttpClient(env.VITE_CONVEX_URL)
   client.setAuth(decodeURIComponent(jwt))
   return client
 }

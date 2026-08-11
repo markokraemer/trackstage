@@ -1,7 +1,10 @@
-# Standing rules from Marko (procedural memory)
+# Things Marko circled as important (procedural memory)
 
-Directives given during development. These are binding until changed. Newest last.
-Agents: read this before working; add new directives the moment Marko states them.
+Not hardcore laws — a distillation of the directives and preferences he flagged along
+the way, kept current so agents work the way he wants. The full narrative of every ask
+in order lives in [HISTORY.md](HISTORY.md). Newest last; amend the moment he says
+something that matters, and soften/reverse entries when he changes his mind (keep the
+trail visible).
 
 1. **Stack**: TanStack Start + Convex + shadcn/ui — confirmed "full CONVEX", "CONVEX,
    NEXTJS, SHADCN UI" then switched Next.js → TanStack Start after in-depth evaluation.
@@ -82,8 +85,9 @@ Agents: read this before working; add new directives the moment Marko states the
     full lockup, wordmark-only, mono/inverse), DOWNLOAD buttons for each as SVG and PNG,
     social-media profile asset (1:1), OG/banner asset, favicon sizes — everything we
     could potentially need, all generated from the single source component.
-    **Font: Inter, deliberately** ("the boring font" — Marko's words, keep it). Headings
-    may use tighter tracking/weight for character, but no font swap without his say-so.
+    ~~Font: Inter, deliberately~~ **REVERSED 2026-08-11 (rule 20): Marko now hates
+    Inter ("so super fucking basic… makes everything look boring"). New distinctive
+    type system required.**
 18e. **All emails via Resend, perfectly handled** (key provided by Marko, set as
     RESEND_API_KEY on the Convex deployment): speaker comms (decisions, confirmations,
     reminders, .ics invites), workspace/member invites, and every email the full
@@ -104,6 +108,32 @@ Agents: read this before working; add new directives the moment Marko states the
     stays), manage everything for the active organization: rename it, invite/remove
     members, change roles, personal profile (name/password) via Better Auth. The whole
     spiel — nothing missing.
+20. **New design language — distinctive, not "vibe-coded", chosen by Marko**: Marko:
+    everything looks "very vibe-coding and very chatzian style"; he dislikes Inter. BUT
+    (amended): stay corporate-standard, matching the software's vibe, and **KEEP the
+    current design language for now** — build an EXPLORATION of a few concrete
+    candidate languages (type pairings + feel) on /design-system for Marko to choose
+    from; only after he picks do we roll it out. Components still adopted now:
+    (a) exploration of distinctive type systems (no app-wide swap yet);
+    **LEADING HYPOTHESIS (from his Luma screenshots): the current UX/UI is actually
+    liked — it's just TOO BLUE ("maybe it's just too blue… that's why it's a bit too
+    sassy"). Luma's direction resonates: simple, neutral-first, minimal chrome, accent
+    used sparingly — but less playful, "boring business sauce". The exploration must
+    star a "De-blued" candidate: identical structure, neutral gray chrome, blue
+    reserved for primary actions/links/focus only.**
+    (b) **adopt interior.dev components/animations end-to-end** (https://www.interior.dev/docs
+    — press-depth etc., "top tier, making the web less boring and more interactive") —
+    go through ALL offered components and take over the core ones + their animations
+    "to add some pep"; (c) landing page gets a really, really creative UX/UI pass
+    (Fable-grade) using these; (d) **right-click on the logo anywhere → /design-system**
+    (the classic "download the logo" affordance); (e) **fix the inconsistent container
+    widths across the site** — one consistent width system.
+21. **Full MCP server** ("quite important to include"): Sessionboard must expose a
+    complete MCP server so you can talk to and configure your ENTIRE Sessionboard from
+    Claude/Codex/anywhere — interact with everything (events, forms, submissions,
+    decisions, agenda, speakers, comms) in depth. Auth via Better Auth (its MCP/OAuth
+    plugin) so connecting "just works perfectly". Also counts toward the brief's API
+    bonus.
 19. **Mandatory final reconciliation pass**: slice-per-agent parallelism will drift —
     different layouts, spacing, and interaction patterns per slice. Before ship, ONE
     agent reads and reworks the whole app end to end for coherent, standardized,

@@ -107,7 +107,7 @@ function NewFormPage() {
         description="Two quick choices and you're in the builder — you can change both later."
       />
 
-      <Card className="max-w-2xl gap-6 p-6">
+      <Card className="max-w-(--container-narrow) gap-6 p-6">
         <form onSubmit={(formEvent) => void submit(formEvent)} className="flex flex-col gap-6">
           <BuilderField
             htmlFor={`${id}-name`}

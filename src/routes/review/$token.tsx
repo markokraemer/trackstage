@@ -85,7 +85,7 @@ function ReviewPage() {
   if (isError) {
     return (
       <ReviewShell>
-        <Card className="mx-auto max-w-lg p-8 text-center">
+        <Card className="mx-auto w-full max-w-(--container-card) p-8 text-center">
           <div className="mx-auto mb-4 flex size-11 items-center justify-center rounded-xl bg-status-red-bg text-status-red-fg">
             <RiErrorWarningLine size={20} aria-hidden />
           </div>
@@ -460,7 +460,7 @@ function ReviewShell({
   return (
     <div className="min-h-svh bg-background">
       <header className="border-b border-border bg-card">
-        <div className="mx-auto flex h-14 max-w-5xl items-center justify-between gap-3 px-4">
+        <div className="container-page flex h-14 items-center justify-between gap-3">
           <Logo size="sm" />
           {eventName ? (
             <p className="truncate text-sm text-muted-foreground">
@@ -469,7 +469,7 @@ function ReviewShell({
           ) : null}
         </div>
       </header>
-      <main className="mx-auto flex max-w-5xl flex-col gap-5 px-4 py-8">
+      <main className="container-page flex flex-col gap-5 py-8">
         {children}
       </main>
     </div>
