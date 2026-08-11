@@ -8,6 +8,7 @@ import {
   RiEyeLine,
   RiEyeOffLine,
   RiFileTextLine,
+  RiHistoryLine,
   RiStarLine,
   RiTeamLine,
 } from "@remixicon/react"
@@ -39,6 +40,7 @@ import type { StatusChoice } from "@/components/submissions/status-picker"
 import { TagInput } from "@/components/submissions/tag-input"
 import { ChoiceValue, TrackValue } from "@/components/submissions/field-bits"
 import { AnswersEditor } from "@/components/submissions/answers-editor"
+import { ActivityTimeline } from "@/components/activity/activity-timeline"
 import { DeleteSubmissionButton } from "@/components/submissions/delete-submission-dialog"
 import {
   EMPTY_CELL,
@@ -292,6 +294,10 @@ export function SubmissionDetailDrawer({
             <TabsTrigger value="files">
               <RiAttachment2 aria-hidden />
               Files
+            </TabsTrigger>
+            <TabsTrigger value="history">
+              <RiHistoryLine aria-hidden />
+              History
             </TabsTrigger>
           </TabsList>
         }
@@ -714,10 +720,68 @@ export function SubmissionDetailDrawer({
                 title={submission.title}
               />
             </TabsContent>
+
+            <TabsContent value="history">
+              <SubmissionHistory
+                eventId={submission.eventId}
+                submissionId={submission._id}
+                entity={submission.kind === "session" ? "session" : "submission"}
+                active={tab === "history"}
+              />
+            </TabsContent>
           </>
         )}
       </DrawerShell>
     </Tabs>
+  )
+}
+
+/**
+ * History tab (sbek CNT-11). Every decision, edit and agent action on THIS
+ * record, newest first — the answer to "who moved this to Declined, and when".
+ * Loaded only while the tab is open: a drawer opened to skim details should
+ * not pay for a feed nobody looked at.
+ */
+function SubmissionHistory({
+  eventId,
+  submissionId,
+  entity,
+  active,
+}: {
+  eventId: Id<"events">
+  submissionId: Id<"submissions">
+  entity: string
+  active: boolean
+}) {
+  const { data: rows, isPending } = useQuery(
+    convexQuery(
+      api.audit.forEntity,
+      active ? { eventId, entity, entityId: submissionId } : "skip"
+    )
+  )
+
+  if (isPending || !rows) {
+    return (
+      <div className="flex flex-col gap-3">
+        <Skeleton className="h-10 w-full" />
+        <Skeleton className="h-10 w-full" />
+        <Skeleton className="h-10 w-3/4" />
+      </div>
+    )
+  }
+
+  return (
+    <ActivityTimeline
+      rows={rows}
+      emptyState={
+        <EmptyState
+          variant="plain"
+          icon={RiHistoryLine}
+          title="Nothing has happened yet"
+          description="Status changes, edits by the speaker, decisions you commit and anything an AI agent or the API does to this submission all appear here with who did it and when."
+        />
+      }
+    />
   )
 }
 

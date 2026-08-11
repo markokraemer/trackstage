@@ -188,8 +188,16 @@ repeated here. Effort: XS <30min · S ~1h · M ~half day · L ~a day+.
   now ship: `?view=list|day|week|track|rooms` (+ conflicts). Week = 7 day columns at half
   zoom; Track = the day grid with tracks as columns, parallel same-track sessions laned
   side by side, plus a "No track" column when needed.
-- ⏳ **[7] Content-approval gate on sessions** (sbek CNT-12 `rule`) — distinct from the existing
-  `uploads.approvalStatus` file review; unapproved content must stay out of public output. M
+- ✅ **[7] Content-approval gate on sessions** (sbek CNT-12 `rule`) — DONE, and deliberately
+  NOT as a workflow: the real product's answer is two booleans on the records, so we shipped
+  the same. `submissions.publicVisible` ("Show on public schedule", the twin of their
+  `Display Session` checkbox) + `people.publicVisible` (their per-participant eye icon), both
+  optional and absent ⇒ visible. `convex/publicData.ts` filters both in `loadProgram`, which
+  every public surface projects from — schedule, speaker gallery, sessions list, session
+  detail, speaker itinerary, the JSON API pages and the `.ics` feed. Switch in the submission
+  drawer (saves instantly), switch in the speaker profile drawer, bulk Show/Hide + a "Hidden
+  publicly" tab on the roster. `speakersAdmin.setPublicVisibility` / `hiddenFromPublic`.
+  Distinct from `uploads.approvalStatus` file review, which stays as it is.
 - ✅ **[8] Manual "Add speaker" + speaker workflow status + organizer-side bio/headshot edit**
   (sbek SPK-02 w3 / SPK-04 / CNT-10) — DONE (parity wave 1): `convex/speakersAdmin.ts`
   (addManual / updateProfile / setWorkflowStatus), optional `people.workflowStatus` +
@@ -263,10 +271,15 @@ Effort: XS <30min · S ~1h · M ~half day · L ~a day+.
   `Subject · Type · User · Action · Field · New Value · Occurred At` table surfaced globally
   (a History page) and inline on each session + speaker. Also the right home for MCP/copilot
   writes ("every agent action appears in the record's activity feed" is literally their model).
-- ⏳ **[L4] Per-participant public visibility** (S1 · S) — the eye icon on a session participant:
-  `submissionParticipants.isPublic`, filtered out of `publicData` + the REST API (`is_public`),
-  toggled from the submission drawer. Embargoed-keynote case; half of sbek CNT-12 at speaker
-  granularity.
+- ✅ **[L4] Public visibility at both granularities** (S1 · S) — DONE. Landed as
+  `people.publicVisible` (per PERSON, not per `submissionParticipants` row: an embargoed
+  speaker is embargoed everywhere, and one flag beats N rows to keep in sync) plus
+  `submissions.publicVisible`. Both filtered in `convex/publicData.ts::loadProgram`, so the
+  schedule, gallery, sessions list, session page, itineraries, JSON API and `.ics` feed all
+  honour them; the organizer's agenda, roster, portal, tasks and emails do not change.
+  Toggles: eye switch in the speaker profile drawer + bulk Show/Hide + "Hidden publicly" tab
+  on the roster; "Show on public schedule" switch in the submission drawer. Both directions
+  covered in `scripts/verify-backend.mjs` (`Public visibility flags`). See also [7].
 - ⏳ **[L5] Agenda settings** (S1 · M) — Day Start/End · **Interval** · **Session Format →
   Default Duration** (dropping a "Lightning Talk" auto-sets 15 min) · which **statuses** appear
   on the agenda · **Room Visibility** (show all / select individual). Also the config the AI

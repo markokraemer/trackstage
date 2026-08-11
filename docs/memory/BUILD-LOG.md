@@ -866,3 +866,24 @@ the organizers" instead of a save that would fail, past-due tasks shown as close
 switches with plain-English on/off explainers that save instantly. 20 new suite checks in
 `scripts/verify-backend.mjs` (`Unique contacts`, `Speaker portal behaviour`), including
 "submit twice with different bios → the first one survives".
+
+## 2026-08-11 — Public visibility flags (product-map delta #4, sbek CNT-12)
+
+Copied the real product's answer to "keep unapproved content out of public output" exactly:
+two optional booleans, not an approval workflow. `submissions.publicVisible` is their
+`Display Session` checkbox, `people.publicVisible` is their per-participant eye icon; both
+absent ⇒ visible, so nothing that already exists changes. The filter lives in
+`convex/publicData.ts::loadProgram` — the single loader every public surface projects from —
+so the schedule, speaker gallery, sessions list, session page, speaker itineraries, both
+paginated JSON API pages and the `.ics` feed honour it in one place. Hiding a speaker drops
+them from their sessions' speaker lists but leaves the session public; hiding a session
+leaves the speaker public. Nothing organizer-facing moves: status stays `accepted`, the
+session stays on the agenda, the speaker stays on the roster with their portal, tasks and
+emails. Toggles are instant-save switches (rule 26): "Show on public schedule" in the
+submission drawer, "Show in public gallery" in the speaker profile drawer, plus bulk
+Show/Hide and a "Hidden publicly" tab on the roster backed by the tiny reactive
+`speakersAdmin.hiddenFromPublic` query. 22 new suite checks (`Public visibility flags`)
+assert both directions, including "hidden → absent from the .ics feed" and
+"un-hiding brings it straight back". NOTE for whoever owns `speakers-table.tsx`: an eye
+column in the roster row is the one piece of their UI we did not copy — it needs
+`publicVisible` on `dashboard.speakersRoster`, which was outside this pass's ownership.

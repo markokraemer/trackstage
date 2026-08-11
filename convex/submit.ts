@@ -428,11 +428,10 @@ export const submit = mutation({
         .query("submissions")
         .withIndex("by_submitterId", (q) => q.eq("submitterId", person._id))
         .collect()
+      // KI-2: the builder copy promises the cap counts saved drafts too —
+      // count everything on this form except the draft being promoted now.
       const submitted = mine.filter(
-        (s) =>
-          s.formId === form._id &&
-          s.status !== "draft" &&
-          s._id !== args.draftId,
+        (s) => s.formId === form._id && s._id !== args.draftId,
       )
       if (submitted.length >= form.settings.limitPerUser) {
         throw new Error(
