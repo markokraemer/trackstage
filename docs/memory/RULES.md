@@ -161,6 +161,9 @@ trail visible).
     between workspaces you belong to);
     (d) EVENT settings one level beneath (details, rooms & tracks) — clearly labeled
     as event-scoped. Never mix the levels; optimize how you manage everything.
+    REFINEMENT 2 (Marko): WORKSPACE settings page acts as the org hub — shows all
+    events belonging to the workspace; clicking an event drills into that event's
+    settings. Clean visual separation across the hierarchy.
     REFINEMENT (Marko): ACCOUNT settings render as a little MODAL (user-settings
     profile modal from the avatar menu — tabs: Profile / Security / API & MCP, which
     also resolves the api-mcp relocation); WORKSPACE and EVENT settings stay separate
@@ -188,6 +191,13 @@ trail visible).
     debounced persistence. This is also the judged differentiator — swyx's #1
     complaint about Sessionboard is slowness. Measured at reconciliation: no visible
     wait on any common interaction.
+27. **Documentation — Fumadocs, hyper-minimal**: full docs available: (a) USER docs —
+    "technical specification English std 100": super simple, straightforward, the
+    average flow described WITH SCREENSHOTS, icons/logos, hyper-comprehensible, never
+    gigantic text; (b) API docs — generated OpenAPI + an accurate Scalar API
+    reference; (c) MCP docs — show everything that's part of it. Fumadocs for the
+    whole thing. Every API action must also be available through MCP (full parity).
+    Don't overdo visuals; minimal and clean.
 19. **Mandatory final reconciliation pass**: slice-per-agent parallelism will drift —
     different layouts, spacing, and interaction patterns per slice. Before ship, ONE
     agent reads and reworks the whole app end to end for coherent, standardized,

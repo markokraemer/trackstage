@@ -143,3 +143,11 @@ the narrative memory; RULES.md is the things circled as important along the way.
     workspace + event settings remain full pages — visual separation between levels.
 49. **Copilot SOTA maxing**: research pure-play copilot libraries (assistant-ui,
     CopilotKit) and max/use them — sent down to the copilot agent.
+50. **Workspace settings = org hub** (events listed inside, click-through to event
+    settings) + **everything end-to-end tested**: multi-tenant invites, email arrival,
+    submissions, forms, evaluation, agenda, speakers, all flows in depth, hill climb —
+    "every single thing that comes to mind, done properly".
+51. **Docs mandate**: Fumadocs docs site — hyper-simple user docs w/ screenshots,
+    OpenAPI + Scalar API reference, MCP docs showing everything; every API action
+    available via MCP too. Task-type dropdown confusion + full-page modal flagged
+    (behavior explanations + dead "form" kind removal + proper dialog sizing).
