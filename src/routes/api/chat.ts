@@ -145,7 +145,33 @@ async function handlePost({
   }
 
   const openrouter = createOpenRouter({ apiKey })
-  const modelMessages = await convertToModelMessages(messages, { tools })
+  // Self-healing: a tool call whose approval card was never answered (the
+  // organizer just typed past it) has no result, and `convertToModelMessages`
+  // hard-fails on that ("Tool result is missing for tool call …"). The client
+  // declines pending approvals on its next send, but history from before that
+  // fix — or any other dangling call — must degrade gracefully, never 400.
+  const sanitized = messages.map((message) => ({
+    ...message,
+    parts: message.parts.map((part) => {
+      const p = part as { type: string; state?: string; [k: string]: unknown }
+      const isTool =
+        p.type === "dynamic-tool" || p.type.startsWith("tool-")
+      if (
+        isTool &&
+        (p.state === "approval-requested" || p.state === "input-available")
+      ) {
+        const { approval: _approval, ...rest } = p
+        return {
+          ...rest,
+          state: "output-error",
+          errorText:
+            "The organizer moved on without approving this call — treat it as declined and do not re-issue it.",
+        } as typeof part
+      }
+      return part
+    }),
+  }))
+  const modelMessages = await convertToModelMessages(sanitized, { tools })
 
   const result = streamText({
     model: openrouter(COPILOT_MODEL),

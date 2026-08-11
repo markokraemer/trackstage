@@ -94,21 +94,41 @@ export function CopilotChat({
 
   const busy = status === "submitted" || status === "streaming"
 
+  // Typing past an approval card is an answer: decline it. Without this, the
+  // pending tool call never gets a result and the NEXT request dies with
+  // "Tool result is missing for tool call …" — the organizer ignoring a card
+  // must never break the conversation.
+  const declinePendingApprovals = useCallback(() => {
+    for (const message of messages) {
+      for (const part of message.parts) {
+        if (
+          isToolUIPart(part) &&
+          part.state === "approval-requested" &&
+          !part.approval.isAutomatic
+        ) {
+          addToolApprovalResponse({ id: part.approval.id, approved: false })
+        }
+      }
+    }
+  }, [messages, addToolApprovalResponse])
+
   const submit = useCallback(
     (message: PromptInputMessage) => {
       const text = message.text.trim()
       if (!text || busy) return
+      declinePendingApprovals()
       void sendMessage({ text })
     },
-    [busy, sendMessage]
+    [busy, sendMessage, declinePendingApprovals]
   )
 
   const ask = useCallback(
     (text: string) => {
       if (busy) return
+      declinePendingApprovals()
       void sendMessage({ text })
     },
-    [busy, sendMessage]
+    [busy, sendMessage, declinePendingApprovals]
   )
 
   const approve = useCallback(
