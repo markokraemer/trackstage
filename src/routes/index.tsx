@@ -11,6 +11,7 @@ import { Pricing } from "@/components/marketing/pricing"
 import { OpenSource } from "@/components/marketing/open-source"
 import { ClosingCta } from "@/components/marketing/closing-cta"
 import { MarketingFooter } from "@/components/marketing/marketing-footer"
+import { PRODUCT_NAME } from "@/components/marketing/links"
 
 /**
  * TODO(Marko): paste the $10,000 Stripe Checkout link here.
@@ -22,7 +23,9 @@ const STRIPE_CHECKOUT_URL = ""
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Sessionboard OSS — open-source speaker & program management" },
+      {
+        title: `${PRODUCT_NAME} OSS — open-source speaker & program management`,
+      },
       {
         name: "description",
         content:
@@ -49,7 +52,9 @@ export const Route = createFileRoute("/")({
  */
 function LandingPage() {
   return (
-    <div className="flex min-h-svh flex-col bg-background">
+    // `bg-card`: the only place the wrapper shows is behind the transparent
+    // nav, which sits over the white hero — it must not read as a grey band.
+    <div className="flex min-h-svh flex-col bg-card">
       <MarketingNav />
       <main className="flex-1">
         <Hero />

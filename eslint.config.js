@@ -32,7 +32,6 @@ export default [
       "@typescript-eslint/no-unnecessary-condition": "off",
       "@typescript-eslint/method-signature-style": "off",
       "import/consistent-type-specifier-style": "off",
-      "react-hooks/exhaustive-deps": "off",
     },
   },
   {

@@ -18,6 +18,7 @@ import { Separator } from "@/components/ui/separator"
 import {
   EXTERNAL_LINK_PROPS,
   GITHUB_URL,
+  PRODUCT_NAME,
   SECTION_IDS,
 } from "@/components/marketing/links"
 
@@ -83,7 +84,7 @@ export function MarketingNav() {
       >
         <Link
           to="/"
-          aria-label="Sessionboard home"
+          aria-label={`${PRODUCT_NAME} home`}
           className="mr-4 rounded-md outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
         >
           <Logo size="md" />
@@ -101,7 +102,7 @@ export function MarketingNav() {
           <a
             href={GITHUB_URL}
             {...EXTERNAL_LINK_PROPS}
-            aria-label="Sessionboard on GitHub"
+            aria-label={`${PRODUCT_NAME} on GitHub`}
             className={cn(NAV_LINK_CLASS, "hidden sm:inline-flex")}
           >
             <RiGithubFill size={18} aria-hidden />

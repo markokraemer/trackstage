@@ -47,9 +47,9 @@ test.describe("organizer shell", () => {
   test("shell shows event context, nav, and user menu", async ({ page }) => {
     const watcher = watchConsole(page)
     await page.goto("/app")
-    await expect(page.getByText(/AI Engineer Summit 2026/i).first()).toBeVisible({
-      timeout: 15_000,
-    })
+    await expect(
+      page.getByRole("button", { name: /switch event/i }).first(),
+    ).toBeVisible({ timeout: 15_000 })
     for (const item of [
       "Dashboard",
       "Submissions",
@@ -65,7 +65,7 @@ test.describe("organizer shell", () => {
       ).toBeVisible()
     }
     // User menu opens without Base UI context errors (regression: MenuGroupContext).
-    await page.getByText(DEMO_ORGANIZER.email).first().click()
+    await page.getByRole("button", { name: /account menu/i }).first().click()
     await expect(page.getByText(/sign out/i).first()).toBeVisible()
     watcher.assertClean("/app shell")
   })
@@ -87,24 +87,29 @@ test.describe("hierarchy", () => {
 
     const switcher = page.getByRole("button", { name: /switch event/i }).first()
     await expect(switcher).toBeVisible({ timeout: 15_000 })
-    await expect(switcher).toContainText(/AI Engineer Summit 2026/i)
 
+    // Land on a known event first — the deployment carries more than the two
+    // seeded ones, and a fresh browser starts on whichever comes back first.
     await switcher.click()
-    const summit = page
+    const items = page.getByRole("menuitem")
+    expect(await items.count()).toBeGreaterThanOrEqual(2)
+    await page
       .getByRole("menuitem", { name: /AI Engineer Summit 2026/i })
       .first()
-    const designDay = page
+      .click()
+    await expect(switcher).toContainText(/AI Engineer Summit 2026/i)
+
+    // Switching moves the shell's event context.
+    await switcher.click()
+    await page
       .getByRole("menuitem", { name: /Design Systems Day/i })
       .first()
-    await expect(summit).toBeVisible()
-    await expect(designDay).toBeVisible()
-
-    await designDay.click()
+      .click()
     await expect(switcher).toContainText(/Design Systems Day/i, {
       timeout: 10_000,
     })
 
-    // Put the shell back so the rest of the suite sees the seeded summit.
+    // Put it back so the rest of the suite sees the main seeded event.
     await switcher.click()
     await page
       .getByRole("menuitem", { name: /AI Engineer Summit 2026/i })
@@ -120,7 +125,7 @@ test.describe("hierarchy", () => {
   }) => {
     const watcher = watchConsole(page)
     await page.goto("/app")
-    await page.getByText(DEMO_ORGANIZER.email).first().click()
+    await page.getByRole("button", { name: /account menu/i }).first().click()
     await page
       .getByRole("menuitem", { name: /account settings/i })
       .first()

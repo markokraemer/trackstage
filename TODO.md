@@ -38,6 +38,12 @@ Source of truth for everything Marko asked + build status. Update continuously.
   personal API keys (`sb_live_…`, hashed) + Better Auth OAuth 2.1 (DCR + PKCE) so Claude/
   ChatGPT "add connector by URL" just works; Settings → API & MCP tab with per-client
   setup snippets; verify-backend MCP section green (122/122)
+- ✅ AI copilot chat (rule 24 — the MCP's home): `/api/chat` (AI SDK v7 `streamText` +
+  OpenRouter `google/gemini-3.5-flash`) loads OUR MCP tools over Streamable HTTP with a
+  server-managed per-user key; destructive tools gated by v7 `toolApproval:
+  "user-approval"` + `addToolApprovalResponse`; AI Elements chat UI with generative tool
+  results; side panel (⌘I) on every organizer screen + full page at `/app/copilot`,
+  conversation shared and persisted per event
 - ⏳ Seed: rich demo world, judge-friendly demo-mode links
 - 💤 Airtable one-click one-way sync (submissions/speakers/sessions rows; idempotent;
   swyx: read-only mirror is enough — their automations fire on new rows)
@@ -72,6 +78,56 @@ Source of truth for everything Marko asked + build status. Update continuously.
 - ⏳ README: product tour, self-host, API docs, screenshots
 - ⏳ Submission: fill swyx's form, flip repo public, submissionNotes for sbek config
 - ⏳ Manual verification prep: .ics imports (Google/Apple/Outlook), email previews
+
+## Coverage audit gaps
+From `docs/reference/coverage-matrix.md` (2026-08-11, 175 items · 124 covered · 19 partial ·
+31 missing). Ranked by judging impact; items already tracked elsewhere in this file are NOT
+repeated here. Effort: XS <30min · S ~1h · M ~half day · L ~a day+.
+
+- ⏳ **[1] Submission confirmation email never sent** (sbek CFP-08) — `sendConfirmationEmail`
+  is stored in `forms.settings` and read by nothing; `convex/submit.ts` has no queue call. S
+- ⏳ **[2] `notifyEmails` never sent** — the whole Notifications wizard step is inert; stored
+  in `schema.ts:147`, no send path reads it. swyx demoed this step at [05:38]. S
+- ⏳ **[4] Speaker edit-lock after CFP close** (sbek CFP-16) — `convex/portal.ts:updateSubmission`
+  checks status but not `isFormOpen`. One call; `isFormOpen` already exists. XS
+- ⏳ **[5] Explicit "Publish agenda / Go live" action** (sbek AIA-07 `handoff`) — sbek's script
+  hunts for the button; our live-by-default data reads as weaker evidence. XS
+- ⏳ **[6] Agenda Week view + Track view** — brief #5 enumerates "list, day, week, track, or
+  room"; we ship List/Day/Rooms/Conflicts. Two named views absent. M
+- ⏳ **[7] Content-approval gate on sessions** (sbek CNT-12 `rule`) — distinct from the existing
+  `uploads.approvalStatus` file review; unapproved content must stay out of public output. M
+- ⏳ **[8] Manual "Add speaker" + speaker workflow status + organizer-side bio/headshot edit**
+  (sbek SPK-02 w3 / SPK-04 / CNT-10) — roster is derive-only today. M
+- ⏳ **[10] Event logo + background image upload** — `events.logoId` exists in schema, no UI;
+  public site/embed headers are text-only as a result. S
+- ⏳ **[11] Submissions table: Columns chooser · Saved Views · Import Sessions · Export XLSX ·
+  Download files bundle** — all in the brief screenshots + video Options menu [03:56]. M
+- ⏳ **[12] Embed generator: saved-embeds list + format picker** (styled HTML / basic HTML /
+  JSON / XML / iCal) — last mile of sbek EMB-15, the rubric's highest-value single item. M
+- ⏳ **[13] Portal forms as a task type** — task kind `form` is an enum value with no build or
+  fill path; the brief has a 5-screenshot "Portal > Forms" section (+ confirmation email). M
+- ⏳ **[14] Files library page** (sbek CNT-13) — `tasksAdmin.listUploads` is already written and
+  has no UI consumer. Thin read-model page. S
+- ⏳ **[15] Scorecard depth**: dropdown + free-text criteria types (ABS-03 w3), criteria weights
+  (ABS-04), per-reviewer caps / auto-distribute / track-filtered bulk assign (ABS-06). M
+- ⏳ **[16] Evaluation tabs + reviewer ops**: Evaluator Tags tab, My Evaluations tab, bulk-remind
+  lagging reviewers (ABS-09), conflict-of-interest/recusal (ABS-12). M
+- ⏳ **[17] `autoRedirectToPortal` honoured nowhere** — wire it in `src/routes/submit/$slug.tsx`
+  or remove the toggle; a settings switch that does nothing reads as broken. XS
+- ⏳ **[18] Abstracts vs Sessions view switcher** + table/drawer fields Client Session ID,
+  Starts/Ends At, Capacity, CEU Credits, Location, Notified. M
+- ⏳ **[19] Email theme (custom HTML/CSS header/footer)**; Settings sub-nav has no route to
+  Email templates (they live only under Communications); dashboard has no Today / Review
+  Progress / Speaker Tracking / Submissions Pipeline sub-tabs. M
+- ⏳ **[20] Portal profile fidelity** — rich-text biography, Honorific/Gender/Address fields,
+  Facebook link. S
+- ⏳ **[22] Form builder fidelity** — Abstract-section heading/instructions, US-vs-International
+  phone option, min/max for Chairperson/Moderator, cross-field character limits. M
+  (multi-language toggle deliberately skipped — swyx: "we only care about English")
+- 💤 Exhibitors & Sponsors toggles/metric — shown at [02:46] but swyx scopes that column OUT.
+- ⚠️ **PARTIAL risk, not a new task**: `evaluationPlans` assigns `submissionIds[]` and
+  evaluators plan-wide, so two evaluators on one plan share an identical queue — sbek ABS-05
+  (`scoping`) may read as PARTIAL. Fold into [15] if per-reviewer assignment is built.
 
 ## Standing process
 - ✅ Git repo = source of truth; commit+push incrementally; no Claude co-author

@@ -215,3 +215,100 @@ will notice. `S2` = a surface swyx demoed on screen; an evaluator hunting for it
 | 173 | Airtable persistence/sync (bonus). | BRIEF bonus, RULES 15 | **COVERED** | `convex/airtable.ts:1-580` | One-way Airtable sync for Submissions, Speakers, and Sessions |
 | 174 | Cloudflare deploy (bonus). | BRIEF bonus | **COVERED** | `wrangler.jsonc:1-10` | Cloudflare Worker setup via `wrangler.jsonc` and `wrangler deploy` script |
 | 175 | Open-source repo + deployed site reachable. | BRIEF submission rules | **COVERED** | `git remote -v` | Git repo at `https://github.com/markokraemer/sessionboard.git` and app running at `http://localhost:3000/` |
+---
+
+## Auditor's own spot-checks (Claude, independent of Gemini)
+
+Every one of these confirmed the evaluator's verdict, and three found a *worse* problem
+than the item as written:
+
+| Check | Result |
+|---|---|
+| `logoId` in `convex/schema.ts:100` vs any upload UI | schema field exists, **no upload control anywhere** — confirms #3 |
+| `sendConfirmationEmail` | set in `convex/schema.ts:138`, `forms.ts:37/67`, seeded true — **read by nothing**; `convex/submit.ts` has no `queueForPerson`/`scheduler` call. Confirms #84 |
+| `notifyEmails` | stored (`schema.ts:147`), edited in the Notifications wizard step, **never read by any send path** — the entire Notifications step is inert. *New finding, not on the checklist* |
+| `autoRedirectToPortal` | plumbed through `submit.ts:81/418` to the client but `rg autoRedirect src/routes/submit/$slug.tsx` → no hits. Confirms #65 |
+| `blind` | `schema.ts:230` only; `rg blind convex/review.ts src/routes/review src/components/evaluation` → **zero hits**. Confirms #112 |
+| `evaluationPlans.criteria` | `v.object({id, label})` — no `type`, no `weight`. Confirms #108/#109 |
+| Plan assignment shape | `submissionIds[]` is plan-wide and `evaluators` are plan-wide, so two evaluators on one plan see an identical queue. #110 is COVERED only in the single-evaluator case — treat as **PARTIAL** for sbek ABS-05 |
+| Agenda views | `src/routes/app/agenda/index.tsx` = List · Day · Rooms · Conflicts. No Week, **no Track view** — brief #5 enumerates "list, day, week, track, or room". Confirms #144 and widens it |
+| `rg -n publish convex/agenda.ts src/routes/app/agenda` | zero hits. Confirms #150 |
+| `tasksAdmin.*` consumers | only `src/components/dashboard/assign-task-dialog.tsx`; `listUploads`/`reviewUpload` have **no organizer page**. Confirms #123 |
+| Airtable | `convex/airtable.ts` + `convex/lib/airtable.ts` + `src/components/settings/airtable-card.tsx` — full connect/sync/disconnect UI. Confirms #173 (this card **landed mid-audit**, see churn note) |
+| REST API | live `curl` against `…convex.site/v1/event/ai-summit-2026/sessions` returned paginated JSON with nested speakers. Confirms #142 |
+
+## Ranked GAP LIST — fix before submission
+
+Ranked by judging impact (explicit brief requirement × sbek item type/weight × how
+obviously an evaluator trips over it). Effort: **XS** <30min · **S** ~1h · **M** ~half day ·
+**L** ~a day+.
+
+| Rank | Item(s) | Gap | Sev | Effort | Why it matters |
+|---|---|---|---|---|---|
+| 1 | #84 | Submission-received confirmation email never sent, despite a "Send submission confirmation email" toggle in the builder | S1 | S | sbek **CFP-08** `side-effect`. Worse than a gap: the UI promises it. A speaker submits and hears nothing — the single most obviously-broken loop for a human judge. |
+| 2 | *(new)* #69 | `notifyEmails` — the whole **Notifications** wizard step — is stored and never read | S1 | S | swyx demoed this step explicitly [05:38]. An organizer configures who gets alerted; nobody ever does. Same fix path as #1. |
+| 3 | #112 | `blind` flag on evaluation plans is never enforced — reviewers always see speaker names | S1 | S | sbek **ABS-07** `scoping` (~1.4 eff pts), and `scoping` items are the rubric's strongest discriminator. TODO already says "VERIFY at integration" — it was not. Shipping the flag unenforced is worse than not having it. |
+| 4 | #82 | Speaker can still edit a submission after the CFP close date | S1 | XS | sbek **CFP-16** `rule`. `isFormOpen` already exists for CFP-04 — one call in `convex/portal.ts:updateSubmission`. Two rubric items off one date check. |
+| 5 | #150 | No explicit **Publish / Go live** action on the agenda | S1 | XS | sbek **AIA-07** `handoff` — the script hunts for the button and screenshots the confirmation. Our data is live-by-default, which reads as weaker evidence. One button + a confirmation state. |
+| 6 | #144 | Agenda has List/Day/Rooms/Conflicts — **no Week view, no Track view** | S1 | M | Brief requirement #5 literally enumerates "viewable by list, day, week, track, or room"; the video shows Week and Month tabs. Two of five named views absent is a checkable miss against the brief text itself. |
+| 7 | #121 | No content-approval gate on sessions — everything accepted is instantly public | S1 | M | sbek **CNT-12** `rule`, the highest-leverage item in a 15%-weight area. Note: `uploads.approvalStatus` exists but that's file review, a different gate. |
+| 8 | #128, #130, #125 | No manual **Add speaker**, no speaker workflow status, no organizer-side edit of a speaker's bio/headshot | S1 | M | sbek **SPK-02** (w3, highest in its area), **SPK-04**, **CNT-10**. The roster is derive-only: an organizer who wants to add a confirmed keynote speaker by hand simply cannot. |
+| 9 | #134 | No general bulk-email composer to filtered speakers | S1 | M | sbek **SPK-13** (w3 `bulk`). Only decision emails and the task reminder exist. Already flagged in TODO as "add backend compose fn at integration" — still open. |
+| 10 | #3 | No logo / background-image upload on event settings | S2 | S | swyx demoed it [02:50]; `events.logoId` already exists in schema; branding also feeds the public site + embeds, which currently render text-only headers. |
+| 11 | #24, #27, #30, #40 | No Columns chooser, no Saved Views, no Import Sessions / Export XLSX / files bundle | S2 | M | All four are in the brief's own screenshots (`05-abstracts-review-column-chooser`, `-import-export`) and the video's Options menu [03:56]. Columns chooser is the one a judge reaches for first. |
+| 12 | #154 | Embed generator has no **saved embeds list** and no **format picker** (styled-HTML/basic-HTML/JSON/XML/iCal) | S2 | M | sbek **EMB-15** (w3 `handoff`, the rubric's single most consequential item). The type picker, field toggles and Get-code snippet are there — this is the last mile of the highest-value item. |
+| 13 | #97, #98 | Task kind `form` exists in the schema but a speaker can't fill a form inside a task, and there's no portal-form confirmation email | S2 | M | The brief devotes a whole screenshot section to **Portal > Forms** (5 images). Today it's an enum value with no path. |
+| 14 | #123 | No central **Files library** page (backend `tasksAdmin.listUploads` already written) | S2 | S | sbek **CNT-13**; cheapest remaining CNT point — a thin read-model page over an existing query. |
+| 15 | #108, #109, #111 | Scorecards are 1–5 numeric only (no dropdown/free-text criteria), no criteria weights, no per-reviewer caps/auto-distribute | S2 | M | sbek **ABS-03** (w3), **ABS-04**, **ABS-06**. ABS-03 is the highest-weight evaluation item after ABS-01/10. |
+| 16 | #105, #103, #114, #116 | No Evaluator Tags tab, no My Evaluations tab, no reviewer bulk-reminder, no COI/recusal | S3 | M | Evaluator Tags and My Evaluations are named tabs in the video [07:42]; ABS-09/ABS-12 are 1-weight rubric items. |
+| 17 | #65 | `autoRedirectToPortal` toggle is honoured nowhere | S3 | XS | A settings toggle that lies. Either wire it or delete it — an evaluator toggling it and seeing no change reads as broken. |
+| 18 | #22, #23, #29 | No Abstracts/Sessions view switcher; table and Add-drawer lack Client Session ID, Starts/Ends At, Capacity, CEU Credits, Location, Notified | S3 | M | swyx's canonical Abstracts vs Sessions distinction [03:24] is invisible in our UI, and Client Session ID is a column he showed by name. |
+| 19 | #7, #5, #13 | No email-theme HTML/CSS editor; settings sub-nav missing Portals/Submission forms/Email templates/Integrations; dashboard has no Today / Review Progress / Speaker Tracking / Submissions Pipeline sub-tabs | S3 | M | All shown on screen. The settings sub-nav delta is partly our deliberate flattening — but Email Templates being unreachable from Settings is a genuine dead end (they live only under Communications). |
+| 20 | #89, #90 | Portal profile: bio is a plain textarea (video shows rich text), missing Honorific/Gender/Address and the Facebook link | S3 | S | swyx walked the profile field-by-field [07:27]. Cheap fidelity. |
+| 21 | #122, #119, #124, #129, #136 | No content change-history/restore, no file comments, no bulk ZIP, no speaker CSV import, no travel/logistics fields | S3 | L | sbek CNT-11/CNT-05/CNT-14, SPK-03/SPK-15. Five 1–2-weight items; only worth it after ranks 1–15. |
+| 22 | #47, #50, #56, #67, #68 | Form builder: no Abstract-section heading/instructions, no US-vs-International phone option, no min/max for Chairperson/Moderator, no cross-field char limits, no multi-language toggle | S4 | M | All demoed, all small. #68 is explicitly discounted by swyx ("we only care about English"); #50 is the one he actually opened a modal to show. |
+| 23 | #4, #9 | No Exhibitors & Sponsors toggles / metric card | S4 | XS | Shown at [02:46] but swyx explicitly scopes the sponsor/CRM column OUT. Safe to skip; listed for completeness. |
+| 24 | #172 | Speaker CRM area (12 items, 19 extra-credit points) absent | S4 | L | Optional area — a defensible deliberate trade, already a TODO decision item. |
+
+### Cross-check against `TODO.md`
+
+**Already tracked** (do not double-count): blind review verify (rank 3), bulk email compose
+(rank 9), content-management depth / file versions + approval UI (partially rank 7 & 14),
+change history CNT-11 (rank 21), Speaker CRM (rank 24), multi-event switcher (now COVERED),
+AI auto-place UI (now COVERED), embed generator + itinerary (now COVERED), public API (COVERED).
+
+**Genuinely new** → appended to `TODO.md` under "## Coverage audit gaps": ranks 1, 2, 4, 5, 6,
+8, 10, 11, 12, 13, 15, 16, 17, 18, 19, 20, 22, and the CNT-12 session-level approval gate as
+distinct from the existing upload-approval work.
+
+## CANNOT-VERIFY list — hand to the e2e / browser pass
+
+Statically the code is present for all of these; only a real browser (or a real inbox) can
+prove the behaviour. This is the work order for the Playwright/sbek pass:
+
+| # | What must be driven interactively |
+|---|---|
+| 16 | Perceived speed: no full-page spinners, sub-second navigations (swyx's #1 complaint). Measure route transitions in Chromium. |
+| 143, 152 | Drag a card from the Unscheduled tray onto the Day grid; verify it persists across reload. |
+| 147, 148, 149 | Create a deliberate room overlap and a speaker double-booking; assert the warning appears <1s and clears when the session is moved. |
+| 151 | Click Auto-place and assert ≥1 unscheduled session lands on the grid. |
+| 31, 33, 34 | Inline status pill → Save; bulk-select → Accept Queue; commit the queue and assert emails appear in the Outbox and the portal flips status. |
+| 54, 79 | Conditional (`showIf`) question actually shows/hides live in the public form; validation toast + red outlines fire. |
+| 53 | dnd-kit question reordering persists after save. |
+| 74, 83 | Passwordless account step end-to-end; speaker edits a submission and the organizer sees the edit. |
+| 91, 92, 120 | Headshot + file upload round-trip through Convex storage; constraint messaging renders. |
+| 137, 138, 141 | Real Resend delivery (needs a non-`@example.com` inbox) — and that the daily reminder cron actually fires. |
+| 139, 140 | Import the generated `.ics` into Google Calendar, Apple Calendar and Outlook; confirm LOCATION carries the room. |
+| 165, 166 | Personal schedule (localStorage) survives a reload and the `.ics` export opens. |
+| 153, 155, 171 | Paste the generated `<iframe>` into a third-party page and confirm it renders; check mobile widths. |
+| 106, 107 | Reviewer magic link → score + comment → organizer sees it and the completion donut moves. |
+| 18 | Cross-event isolation: sign in, switch events, assert no bleed (code path exists via `requireEventAccess`). |
+
+## Notes on churn (5 agents editing `src/` during this audit)
+
+- `src/components/settings/airtable-card.tsx` and `src/routes/app/settings/api-mcp.tsx`
+  appeared **mid-run** — items #173 and the API/MCP settings tab flipped from absent to
+  present while the audit was executing. Any MISSING verdict in this matrix is a snapshot
+  as of this run; re-verify ranks 10–20 before acting if a slice landed since.
+- Verdicts were produced from live source, so they reflect whatever was on disk at read
+  time; the evidence column names the file so re-checking is cheap.

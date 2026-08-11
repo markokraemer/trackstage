@@ -1,9 +1,8 @@
-import { Link, useNavigate } from "@tanstack/react-router"
+import { Link } from "@tanstack/react-router"
 import { RiArrowRightLine, RiGithubFill } from "@remixicon/react"
 
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
-import { PepButton } from "@/components/interactions"
 import { DISPLAY_HEADING } from "@/components/marketing/section"
 import { EXTERNAL_LINK_PROPS, GITHUB_URL } from "@/components/marketing/links"
 
@@ -17,8 +16,6 @@ import { EXTERNAL_LINK_PROPS, GITHUB_URL } from "@/components/marketing/links"
  * between them.
  */
 export function ClosingCta() {
-  const navigate = useNavigate()
-
   return (
     <section className="relative w-full overflow-hidden bg-foreground py-20 sm:py-24">
       <div
@@ -41,14 +38,19 @@ export function ClosingCta() {
         </p>
 
         <div className="mt-9 flex w-full flex-col items-stretch justify-center gap-2.5 sm:w-auto sm:flex-row sm:items-center">
-          <PepButton
+          {/*
+           * Plain Button, deliberately: press-depth stays on the hero CTA only
+           * (Marko, 2026-08-11 — "not really necessary… looks a bit odd").
+           */}
+          <Button
             size="lg"
             className="px-5"
-            onClick={() => navigate({ to: "/login" })}
+            nativeButton={false}
+            render={<Link to="/login" />}
           >
             Get started free
             <RiArrowRightLine aria-hidden />
-          </PepButton>
+          </Button>
           <Button
             variant="outline"
             size="lg"

@@ -1,7 +1,12 @@
+import { useCallback, useState } from "react"
 import { motion, useReducedMotion } from "motion/react"
 
 import { cn } from "@/lib/utils"
-import { useBlurUpImage } from "@/components/interactions"
+import {
+  DEMO_EVENT_SLUG,
+  PRODUCT_APP_HOST,
+  PRODUCT_SITE_HOST,
+} from "@/components/marketing/links"
 
 /**
  * ProductShot — the product imagery for the marketing page.
@@ -18,8 +23,8 @@ import { useBlurUpImage } from "@/components/interactions"
  * ship — and re-running the script is the only way to update it.
  *
  * The frame is a neutral browser chrome plus a hairline ring; the image itself
- * fades up from a flat tint via `BlurUpImage` (interior.dev, per
- * docs/memory/INTERACTIONS.md).
+ * fades up from a flat tint with interior.dev's blur-up mechanic (see
+ * `BlurUpShot` below, and docs/memory/INTERACTIONS.md).
  */
 
 export type ProductShotVariant =
@@ -37,41 +42,44 @@ interface ShotMeta {
   alt: string
 }
 
+const APP = PRODUCT_APP_HOST
+const SITE = PRODUCT_SITE_HOST
+
 /** Source of truth for what each capture shows. Alt text describes the pixels. */
 const SHOTS: Record<ProductShotVariant, ShotMeta> = {
   dashboard: {
     src: "/screenshots/dashboard.png",
-    url: "app.sessionboard.dev/app",
+    url: `${APP}/app`,
     alt: "The organizer dashboard: submission, accepted-speaker and outstanding-task counts, the submission status pipeline, and a list of which speakers to chase first.",
   },
   submissions: {
     src: "/screenshots/submissions.png",
-    url: "app.sessionboard.dev/app/submissions",
+    url: `${APP}/app/submissions`,
     alt: "The submissions table: status tabs, staged accept and decline queues waiting to be sent, and every submission with its status, track, format and speakers.",
   },
   agenda: {
     src: "/screenshots/agenda.png",
-    url: "app.sessionboard.dev/app/agenda",
+    url: `${APP}/app/agenda`,
     alt: "The agenda day view: rooms as columns, sessions placed on a time grid, and a tray of accepted sessions still waiting for a slot.",
   },
   agendaList: {
     src: "/screenshots/agenda-list.png",
-    url: "app.sessionboard.dev/app/agenda",
+    url: `${APP}/app/agenda`,
     alt: "The agenda list view: every scheduled session in running order with its time, room and speakers.",
   },
   form: {
     src: "/screenshots/form-builder.png",
-    url: "app.sessionboard.dev/app/forms",
+    url: `${APP}/app/forms`,
     alt: "The call-for-speakers form builder: a six-step rail, the submission questions with Required and Enabled toggles, and a note explaining how the Track answer routes a submission.",
   },
   portal: {
     src: "/screenshots/portal.png",
-    url: "sessionboard.dev/portal",
+    url: `${SITE}/portal`,
     alt: "The speaker portal: a speaker's own submissions with their statuses, a profile-completeness checklist, and the tasks they still owe the organizers.",
   },
   program: {
     src: "/screenshots/public-schedule.png",
-    url: "sessionboard.dev/e/ai-summit-2026",
+    url: `${SITE}/e/${DEMO_EVENT_SLUG}`,
     alt: "The published public schedule: day tabs, sessions with track and format tags, times, rooms and speakers, and an add-to-calendar action.",
   },
 }
@@ -137,13 +145,18 @@ export function ProductShot({
   )
 }
 
+/** interior.dev's blur-up timing, kept exactly (docs/memory/INTERACTIONS.md). */
 const DEVELOP = { duration: 0.65, ease: [0.23, 1, 0.32, 1] } as const
 
 /**
- * `useBlurUpImage` (interior.dev) driving our own markup — per
- * docs/memory/INTERACTIONS.md the hook is the reusable half, so the frame keeps
- * square corners and a token background instead of the packaged component's
- * rounded, fixed-radius box.
+ * The blur-up reveal: a flat tint resolves into the screenshot.
+ *
+ * This is interior.dev's `blur-up-image` mechanic and timing, but driven by the
+ * image's own `load` event rather than `useBlurUpImage`. That hook tracks the
+ * element through a ref, and the ref never lands on `motion.img` here — every
+ * shot stayed frozen at `blur(16px)` with the hook wired up. `onLoad` cannot
+ * miss, and the callback ref still catches an image the browser had already
+ * cached before React attached anything.
  */
 function BlurUpShot({
   src,
@@ -159,8 +172,17 @@ function BlurUpShot({
   priority: boolean
 }) {
   const reduced = useReducedMotion()
-  const { ref, status, instant } = useBlurUpImage({ src })
-  const shown = status !== "loading"
+  const [shown, setShown] = useState(false)
+  /** True when the image was already in cache — reveal without the animation. */
+  const [instant, setInstant] = useState(false)
+
+  const attach = useCallback((node: HTMLImageElement | null) => {
+    if (node?.complete && node.naturalWidth > 0) {
+      setInstant(true)
+      setShown(true)
+    }
+  }, [])
+
   const still = reduced === true || instant
 
   return (
@@ -169,7 +191,7 @@ function BlurUpShot({
       className="relative w-full overflow-hidden bg-muted"
     >
       <motion.img
-        ref={ref}
+        ref={attach}
         src={src}
         alt={alt}
         width={NATIVE.width}
@@ -178,6 +200,8 @@ function BlurUpShot({
         fetchPriority={priority ? "high" : undefined}
         decoding="async"
         draggable={false}
+        onLoad={() => setShown(true)}
+        onError={() => setShown(true)}
         className={cn(
           "absolute inset-0 size-full object-cover",
           anchorTop ? "object-top" : "object-center"

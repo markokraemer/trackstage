@@ -17,6 +17,7 @@ import {
   GITHUB_README_URL,
   MCP_ENDPOINT_PATH,
   MCP_TOOL_COUNT,
+  PRODUCT_NAME,
   PUBLIC_API_PREFIX,
   PUBLIC_ICS_PATH,
   SECTION_IDS,
@@ -124,7 +125,7 @@ export function PlatformSection() {
             Ask for it instead of clicking for it
           </h3>
           <p className="mt-3.5 text-base leading-relaxed text-pretty text-muted-foreground">
-            Sessionboard ships {MCP_TOOL_COUNT} MCP tools over OAuth at{" "}
+            {PRODUCT_NAME} ships {MCP_TOOL_COUNT} MCP tools over OAuth at{" "}
             <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-[13px] text-foreground">
               {MCP_ENDPOINT_PATH}
             </code>

@@ -1,6 +1,7 @@
 import { LogoMarquee } from "@/components/interactions"
 import type { LogoMarqueeItem } from "@/components/interactions"
 import { MarketingSection } from "@/components/marketing/section"
+import { PRODUCT_NAME } from "@/components/marketing/links"
 
 /**
  * Social proof, honestly. We have no customers to name yet, so instead of
@@ -34,7 +35,7 @@ export function ProofStrip() {
 
         <LogoMarquee
           items={EVENT_TYPES}
-          label="Kinds of event Sessionboard is built for"
+          label={`Kinds of event ${PRODUCT_NAME} is built for`}
           speed={26}
           className="border-0 shadow-none [mask-image:linear-gradient(to_right,transparent,black_8%,black_92%,transparent)]"
         />

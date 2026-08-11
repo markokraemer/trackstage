@@ -278,6 +278,7 @@ export function SpeakersTable({
                         Assign a task
                       </DropdownMenuItem>
                       <DropdownMenuItem
+                        nativeButton={false}
                         render={<a href={`mailto:${row.email}`} />}
                       >
                         <RiMailLine aria-hidden />

@@ -48,7 +48,9 @@ export function PageHeader({
             {title}
           </h1>
           {description ? (
-            <p
+            // A <div>, not a <p>: descriptions carry skeletons and chips, and a
+            // block element inside <p> is a hydration error.
+            <div
               className={cn(
                 "text-sm",
                 variant === "banner"
@@ -57,7 +59,7 @@ export function PageHeader({
               )}
             >
               {description}
-            </p>
+            </div>
           ) : null}
         </div>
         {actions ? (

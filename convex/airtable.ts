@@ -48,8 +48,8 @@ import {
   speakerFields,
   submissionFields,
   validateCredentials,
-  type AirtableRecordPayload,
 } from "./lib/airtable"
+import type { AirtableRecordPayload } from "./lib/airtable"
 
 /** How long we let writes settle before the on-write sync fires. */
 const SYNC_DEBOUNCE_MS = 5_000
@@ -541,7 +541,7 @@ export const syncEvent = internalAction({
       const message =
         error instanceof AirtableError
           ? error.message
-          : `Sync failed: ${String((error as Error)?.message ?? error)}`
+          : `Sync failed: ${error instanceof Error ? error.message : String(error)}`
       await ctx.runMutation(internal.airtable.finishSync, {
         eventId: args.eventId,
         error: message,

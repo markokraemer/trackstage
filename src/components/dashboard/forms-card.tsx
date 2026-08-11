@@ -101,6 +101,7 @@ export function FormsCard({ forms, className }: FormsCardProps) {
                   <Button
                     variant="ghost"
                     size="sm"
+                    nativeButton={false}
                     render={
                       <a
                         href={`/submit/${form.slug}`}

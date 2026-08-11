@@ -20,6 +20,7 @@
     "test:all": "pnpm test && pnpm test:backend && pnpm test:e2e"
   },
   "dependencies": {
+    "@ai-sdk/mcp": "^2.0.29",
     "@ai-sdk/react": "^4.0.61",
     "@base-ui/react": "^1.7.0",
     "@convex-dev/better-auth": "^0.12.5",
