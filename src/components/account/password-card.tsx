@@ -91,7 +91,10 @@ export function PasswordCard() {
 
       <CardContent>
         <form onSubmit={submit} noValidate className="flex flex-col gap-5">
-          <div className="grid items-start gap-5 md:grid-cols-3">
+          {/* Stacked on purpose: three-across put the middle field's helper
+              text between label and input and broke every baseline. Changing
+              a password is sequential — one focused column reads best. */}
+          <div className="flex max-w-sm flex-col gap-5">
             <LabeledField
               label="Current password"
               htmlFor="current-password"
