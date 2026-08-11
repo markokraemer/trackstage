@@ -372,8 +372,11 @@ test.describe("agenda", () => {
       // their retries) can leave seeded sessions overlapping, and those
       // pre-existing conflicts are not this feature's fault. What auto-place
       // guarantees is that nothing IT placed conflicts with anything.
+      const placedIds = new Set(ids.map(String))
       expect(
-        after.conflicts.filter((c) => ids.includes(c.a.id) || ids.includes(c.b.id)),
+        after.conflicts.filter(
+          (c) => placedIds.has(String(c.a.id)) || placedIds.has(String(c.b.id)),
+        ),
         "auto-place must never create a conflict",
       ).toEqual([])
       await clearToasts(page)
