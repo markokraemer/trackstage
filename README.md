@@ -1,143 +1,149 @@
-# Sessionboard OSS
+<p align="center">
+  <img src="public/favicon.svg" width="56" alt="Trackstage logo" />
+</p>
 
-An open-source alternative to [Sessionboard](https://www.sessionboard.com) — conference speaker, CFP, and program management. Built for the "$10,000 Kill My SaaS" competition (brief in `docs/initial-brief/`).
+<h1 align="center">Trackstage</h1>
 
-The flow it covers: **event → call for speakers → submission → review & decision → speaker onboarding → scheduled agenda → published program.**
+<p align="center">
+  Open-source speaker &amp; program management for conferences.<br/>
+  Call for speakers → review → speaker portal → agenda → published program. One fast tool.
+</p>
 
-## Stack
+<p align="center">
+  <a href="https://trackstage.app">trackstage.app</a> ·
+  <a href="#try-it">Try it</a> ·
+  <a href="#self-host">Self-host</a> ·
+  <a href="#api">API</a> ·
+  <a href="#mcp">MCP</a> ·
+  <a href="#ai-copilot">AI copilot</a>
+</p>
 
-| Layer | Choice | Why |
-| --- | --- | --- |
-| Framework | [TanStack Start](https://tanstack.com/start) v1 (React 19, Vite 8) | Native Cloudflare Workers target, sub-second builds, type-safe routing |
-| Backend | [Convex](https://convex.dev) | Reactive queries, scheduled functions for reminders, built-in file storage |
-| UI | [shadcn/ui](https://ui.shadcn.com) on [Base UI](https://base-ui.com) | Base UI is the current shadcn default primitive layer |
-| Hosting | Cloudflare Workers via `@cloudflare/vite-plugin` | No adapter — Start compiles straight to a Worker |
+![Trackstage dashboard — live submission counts, outstanding speaker tasks, and pacing at a glance](public/screenshots/dashboard.png)
 
-## Requirements covered
+## Why
 
-Per the brief (items 7–9 and AI-assisted review were struck by the organizer):
+Event teams pay $40k+/yr for closed speaker-management software they can't customize.
+Trackstage is the open alternative: the same job — collecting talk submissions,
+reviewing them, chasing speakers, building the schedule — without the enterprise sales
+call. Built for non-technical event producers: plain-English screens, safe defaults,
+and everything updates live.
 
-1. Custom call-for-speakers forms with conditional logic and category-based track routing
-2. Self-service speaker portal — bios, headshots, slides, supporting documents
-3. Automated templated speaker communications, reminders, and `.ics` calendar invites
-4. Submission evaluation and scoring workflows across multiple rounds
-5. Drag-and-drop agenda building with conflict detection across rooms and tracks; list, day, week, track, and room views
-6. Real-time dashboard of speakers with outstanding onboarding tasks
+## Try it
 
-Bonus targets: Cloudflare deploy, a public API, and speed.
-
-## Getting started
-
-```sh
-pnpm install
-pnpm dev:setup   # provisions a Convex deployment (interactive login) and writes .env.local
-pnpm dev         # http://localhost:3000
-```
-
-Run `pnpm dev:convex` alongside `pnpm dev` to push backend function changes as you edit them.
-
-## Deploy
-
-```sh
-pnpm deploy      # convex deploy && wrangler deploy
-```
-
-Set `VITE_CONVEX_URL` in the Worker environment to the production Convex URL.
-
-## Layout
-
-```
-convex/          Convex schema and server functions (queries, mutations, crons, HTTP API)
-src/routes/      File-based routes — organizer app, public CFP, speaker portal
-src/components/  UI components (shadcn/ui in components/ui)
-src/router.tsx   Router + Convex/TanStack Query integration
-```
-
-## Scripts
-
-| Command | Purpose |
+| I want to… | Go to |
 | --- | --- |
-| `pnpm dev` | Vite dev server |
-| `pnpm dev:convex` | Watch and push Convex functions |
-| `pnpm build` | Production build |
-| `pnpm preview` | Build, then serve the Worker locally via Wrangler |
-| `pnpm typecheck` | `tsc --noEmit` |
-| `pnpm test` | Vitest |
+| Run an event (organizer demo) | `/login` — demo credentials shown on the page |
+| Submit a talk (public CFP) | `/submit/cfp` |
+| See what speakers see | `/portal` — magic link, no password |
+| Browse a published program | `/e/ai-summit-2026` |
+| Read the docs | `/docs` |
+
+## What's inside
+
+**Call for speakers** — a form builder with conditional questions and track routing.
+Speakers submit through a five-step public flow; drafts, per-person limits, and
+deadlines are actually enforced.
+
+**Review & decisions** — triage submissions across status tabs, stage accept/decline
+queues, then commit once: emails go out, onboarding tasks appear in each speaker's
+portal, and statuses flip everywhere instantly.
+
+**Speaker portal** — passwordless. Speakers edit their talk, complete their profile,
+upload headshots and slides (versioned, with organizer approval), and tick off tasks.
+
+**Agenda builder** — drag talks onto a day × room grid with live conflict detection
+(room clashes *and* double-booked speakers), auto-placement, and an explicit publish
+step for the public schedule.
+
+![Dragging a session onto the agenda grid — it snaps into a 15-minute slot, and conflicts flag in red the moment they exist](public/screenshots/agenda-flow.gif)
+
+**Communications** — templated emails with placeholders, reminder sweeps, and `.ics`
+calendar invites (room details included once assigned). Real sending via Resend;
+seeded demo recipients render as inspectable previews instead.
+
+**Multi-tenant workspaces** — organizations own events; members carry roles
+(owner / admin / member) with invites by email. Authentication via
+[Better Auth](https://better-auth.com); authorization enforced in every function.
+
+**Airtable sync** — one-click connect: submissions, speakers, and sessions mirror into
+your base as rows (idempotent upserts), so your existing Airtable automations fire on
+every new submission.
+
+<details>
+<summary><b>More screenshots</b></summary>
+
+| | |
+| --- | --- |
+| ![Submissions triage table](public/screenshots/submissions.png) | ![Form builder — questions step](public/screenshots/form-builder.png) |
+| ![Agenda day view](public/screenshots/agenda.png) | ![Speaker portal](public/screenshots/portal.png) |
+
+</details>
+
+## AI copilot
+
+Press <kbd>⌘I</kbd> anywhere in the app. The copilot talks to Trackstage through its own
+MCP server — ask anything ("who hasn't finished onboarding?") or hand it work ("create a
+CFP form", "schedule the unscheduled talks"). Destructive actions always stop at an
+approval card first, and results render as real product UI, not prose.
 
 ## MCP
 
-Sessionboard ships a full [Model Context Protocol](https://modelcontextprotocol.io) server,
-so you can run your whole event from Claude, ChatGPT, Codex or any MCP client — "how many
-talks are still pending?", "accept everything in the queue", "auto-fill the agenda", "which
-speakers still owe me slides?".
-
-**Endpoint:** `https://<your-convex-site>.convex.site/mcp` (MCP Streamable HTTP, JSON-RPC
-over POST). Your deployment's URL is shown in **Settings → API & MCP**.
-
-**27 tools**, covering everything the organizer app does:
-
-| Area | Tools |
-| --- | --- |
-| Workspaces & events | `list_workspaces` · `list_events` · `create_event` · `get_event_overview` |
-| Forms | `list_forms` · `get_form` · `create_form` · `update_form_settings` · `get_public_form_link` |
-| Submissions & decisions | `list_submissions` · `get_submission` · `set_submission_status` · `commit_decision_queue` · `add_manual_session` |
-| Agenda | `get_agenda` · `schedule_session` · `unschedule_session` · `auto_place_sessions` |
-| Speakers & tasks | `list_speakers` · `get_speaker_portal_link` · `assign_task` · `send_reminders` |
-| Communications | `list_templates` · `update_template` · `list_outbox` · `send_test_email` |
-| Meta | `get_event_summary` |
-
-Every `event` argument accepts an event id **or** its slug. Decisions stay two-step on
-purpose: `set_submission_status` only stages them, and `commit_decision_queue` — which
-actually emails speakers — refuses to run without `confirm: true`.
-
-### Connecting
-
-**Claude Code** (or any client that can send a header) — create a key in
-**Settings → API & MCP**, then:
+A full [MCP](https://modelcontextprotocol.io) server ships with the product — operate
+your entire event from Claude, ChatGPT, Codex, or any MCP client. 27 tools across
+events, forms, submissions, decisions, agenda, speakers, and communications.
 
 ```sh
-claude mcp add sessionboard --transport http \
-  https://<your-convex-site>.convex.site/mcp \
-  --header "Authorization: Bearer sb_live_..."
+claude mcp add trackstage --transport http https://<your-convex-site>/mcp \
+  --header "Authorization: Bearer <key from Settings → API & MCP>"
 ```
 
-**Claude / ChatGPT connectors** — add a custom connector by URL and paste the endpoint.
-Sessionboard is a full OAuth 2.1 authorization server (dynamic client registration +
-authorization code + PKCE, via Better Auth's MCP plugin), so you just sign in with your
-Sessionboard account in the browser. No key to copy.
+**Claude / ChatGPT connectors** need no key at all: add the `/mcp` URL as a custom
+connector and sign in — it's a real OAuth 2.1 authorization server (dynamic client
+registration + PKCE). An API key is an *identity*, not a capability: every tool call
+runs the same workspace-membership checks as the web app, keys are stored as hashes,
+shown once, and revoke instantly. Per-client setup snippets (Codex TOML, generic JSON)
+live in **Settings → API & MCP** and `/docs/mcp`.
 
-**Codex** — in `~/.codex/config.toml`:
+## API
 
-```toml
-[mcp_servers.sessionboard]
-url = "https://<your-convex-site>.convex.site/mcp"
-http_headers = { Authorization = "Bearer sb_live_..." }
+REST, Bearer-authenticated, paginated like you'd expect:
+
+```sh
+curl -H "Authorization: Bearer demo-api-token" \
+  https://<your-convex-site>/v1/event/ai-summit-2026/sessions
 ```
 
-**Any other client:**
+`/v1/event/{slug}/sessions · /speakers · /submissions`, plus an open
+`/schedule.ics` calendar feed. OpenAPI spec + interactive reference at `/docs/api`.
 
-```json
-{
-  "mcpServers": {
-    "sessionboard": {
-      "type": "http",
-      "url": "https://<your-convex-site>.convex.site/mcp",
-      "headers": { "Authorization": "Bearer sb_live_..." }
-    }
-  }
-}
+## Self-host
+
+```sh
+git clone https://github.com/markokraemer/sessionboard && cd sessionboard
+pnpm install
+pnpm dev:setup                    # provisions a free Convex backend (interactive login)
+pnpm dev                          # http://localhost:3000
+pnpm exec convex run seed:setup   # demo data + organizer account
 ```
 
-### Authorization
+Deploy with `pnpm deploy` (Convex + Cloudflare Workers). Optional env:
+`RESEND_API_KEY` (real email) · `SITE_URL` (your app origin — required for MCP OAuth) ·
+`PUBLIC_API_TOKEN` · `OPENROUTER_API_KEY` (copilot).
 
-An API key is an *identity*, not a capability: it resolves to your user account, and every
-tool call then runs the same workspace-membership checks as the web app
-(`convex/lib/auth.ts`). A key can never reach a workspace you're not a member of, and
-admin-only actions (like committing a decision queue) still require the admin role. Only a
-sha-256 hash of each key is stored — the plaintext is shown once, at creation, and revoking
-a key takes effect immediately.
+## Stack & testing
 
-### REST API
+TanStack Start (React 19) · [Convex](https://convex.dev) (reactive database, file
+storage, crons) · Better Auth · shadcn/ui on Base UI · Cloudflare Workers.
 
-The same data is also available over plain HTTP — see `/v1/event/{slug}/sessions`,
-`/speakers`, `/submissions` and the no-auth `/schedule.ics` feed in `convex/http.ts`.
+```sh
+pnpm test          # unit
+pnpm test:backend  # 129 live end-to-end backend checks (auth, scoping, rules, files, MCP)
+pnpm test:e2e      # Playwright: route crawler + per-flow suites
+```
+
+## About
+
+Built for [swyx's "$10,000 Kill My SaaS"](https://luma.com/ls-06v7): clone an
+enterprise speaker-management SaaS in a weekend, open source, judged by the team that
+would actually use it. MIT licensed. The design system lives at `/design-system` —
+right-click the logo, anywhere.
