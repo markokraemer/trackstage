@@ -1,22 +1,29 @@
 name: CI
 
-# Fast, hermetic gate on every push and PR to master: typecheck, lint, unit
-# tests. Everything here runs with no network credentials and no deployment.
+# The full gate. Nothing deploys anywhere until this workflow is green:
+#   · verify — fast, hermetic checks: typecheck, lint, OpenAPI drift, unit tests
+#   · e2e    — the complete Playwright flows suite (tests/e2e/flows) against a
+#              LOCAL anonymous Convex backend booted inside the runner, so the
+#              run is hermetic: no cloud deployment, no shared seed data, no
+#              secrets required. Every user journey (CFP submit, triage,
+#              evaluation, agenda, portal, emails, MCP/REST, password reset,
+#              multi-tenancy) is driven through the real UI.
 #
-# Deliberately NOT run here:
-#   • `pnpm test:backend` (scripts/verify-backend.mjs) — it drives a LIVE Convex
-#     deployment and mutates seeded data. Running it per-PR would have every
-#     concurrent run fighting over the same prod/dev data.
-#   • `pnpm test:e2e` (Playwright) — it boots `pnpm dev`, which needs a live
-#     Convex deployment plus browser binaries.
-# Both are run against the real deployment by hand (or a future scheduled
-# workflow) — see README "Verify before claiming done".
+# Deploy workflows (deploy.yml → trackstage.app, deploy-dev.yml →
+# dev.trackstage.app) trigger via workflow_run on THIS workflow's success, so
+# a red e2e job blocks every deploy — that is the point.
+#
+# `pnpm test:backend` (scripts/verify-backend.mjs) still runs only by hand: it
+# drives a live cloud deployment and mutates its seed data.
+#
+# Branches: `main` is canonical; `master` mirrors it during the transition
+# (local sessions still push master); `prod` is the release branch.
 
 on:
   push:
-    branches: [master, prod]
+    branches: [main, master, prod]
   pull_request:
-    branches: [master]
+    branches: [main, master]
   workflow_dispatch:
 
 concurrency:
@@ -58,3 +65,131 @@ jobs:
 
       - name: Unit tests
         run: pnpm test
+
+  e2e:
+    name: e2e flows (Playwright · local Convex)
+    runs-on: ubuntu-latest
+    needs: verify
+    timeout-minutes: 40
+    env:
+      # Makes `convex dev` run a local anonymous backend (127.0.0.1:3210/3211)
+      # non-interactively, with no Convex account or deploy key.
+      CONVEX_AGENT_MODE: anonymous
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Playwright Chromium
+        run: pnpm exec playwright install --with-deps chromium
+
+      # `convex dev` spawns the local backend as a subprocess and keeps it
+      # alive while it watches — so it stays running in the background for the
+      # whole job. Readiness = the CLI can talk to the deployment.
+      - name: Start local Convex backend (anonymous)
+        run: |
+          nohup pnpm exec convex dev --tail-logs disable > convex-dev.log 2>&1 &
+          echo "waiting for the local Convex backend…"
+          for i in $(seq 1 90); do
+            if pnpm exec convex env list > /dev/null 2>&1; then
+              echo "backend is up"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "::error::local Convex backend never came up"
+          tail -n 100 convex-dev.log
+          exit 1
+
+      # Runtime config the functions expect. SITE_URL/PUBLIC_API_TOKEN have
+      # localhost-friendly defaults in code; these make the rest explicit.
+      # RESEND_API_KEY is deliberately ABSENT: every outbox message settles as
+      # "preview" and the flows suite asserts against the outbox tables — a CI
+      # run can never send real mail.
+      - name: Configure deployment env vars
+        run: |
+          pnpm exec convex env set BETTER_AUTH_SECRET "$(openssl rand -base64 32)"
+          pnpm exec convex env set SITE_URL http://localhost:3000
+          pnpm exec convex env set AIRTABLE_DEMO_MODE 1
+
+      # The first function push happens asynchronously inside `convex dev`;
+      # seeding succeeds only once it has landed, so this doubles as the
+      # push-completion barrier.
+      - name: Seed demo data
+        run: |
+          for i in $(seq 1 40); do
+            if pnpm exec convex run seed:setup > seed.log 2>&1; then
+              echo "seeded"
+              exit 0
+            fi
+            sleep 5
+          done
+          echo "::error::seed:setup never succeeded"
+          cat seed.log
+          tail -n 200 convex-dev.log
+          exit 1
+
+      # `convex dev` wrote CONVEX_DEPLOYMENT (+ VITE_CONVEX_URL) into the
+      # runner's .env.local; both the vite dev server and tests/e2e/utils.ts
+      # read the rest from there too.
+      - name: Point app + tests at the local backend
+        env:
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+        run: |
+          touch .env.local
+          grep -q '^VITE_CONVEX_URL='      .env.local || echo 'VITE_CONVEX_URL=http://127.0.0.1:3210'       >> .env.local
+          grep -q '^VITE_CONVEX_SITE_URL=' .env.local || echo 'VITE_CONVEX_SITE_URL=http://127.0.0.1:3211'  >> .env.local
+          grep -q '^VITE_SITE_URL='        .env.local || echo 'VITE_SITE_URL=http://localhost:3000'         >> .env.local
+          # Optional: lets copilot.spec exercise the real model; when the
+          # secret is absent the spec detects "not configured" and skips.
+          if [ -n "$OPENROUTER_API_KEY" ]; then
+            echo "OPENROUTER_API_KEY=$OPENROUTER_API_KEY" >> .env.local
+          fi
+          grep -v OPENROUTER .env.local
+
+      - name: Start app dev server
+        run: |
+          nohup pnpm dev > vite-dev.log 2>&1 &
+          echo "waiting for http://localhost:3000 …"
+          for i in $(seq 1 60); do
+            if curl -sf -o /dev/null http://localhost:3000/login; then
+              echo "app is up"
+              exit 0
+            fi
+            sleep 3
+          done
+          echo "::error::app dev server never answered on :3000"
+          tail -n 100 vite-dev.log
+          exit 1
+
+      # The full flows suite (`--project=flows` pulls in its `setup`
+      # dependency, which signs the organizer in through the real UI). The
+      # seed above already ran, so global-setup skips its reseed.
+      - name: Playwright flows
+        run: pnpm exec playwright test --project=flows
+        env:
+          SB_SKIP_SEED: "1"
+
+      - name: Upload test artifacts
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-artifacts
+          if-no-files-found: ignore
+          retention-days: 7
+          path: |
+            tests/e2e/.results
+            playwright-report
+            convex-dev.log
+            vite-dev.log
+            seed.log
