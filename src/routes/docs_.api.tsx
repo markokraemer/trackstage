@@ -3,7 +3,7 @@ import { RiArrowLeftLine, RiDownloadLine, RiRobot2Line } from "@remixicon/react"
 
 import { Logo } from "@/components/brand/logo"
 import { ScalarReference } from "@/components/docs/scalar-reference"
-import { Button } from "@/components/ui/button"
+import { buttonVariants } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 import { EXTERNAL_LINK_PROPS } from "@/components/marketing/links"
 
@@ -37,15 +37,10 @@ function ApiReferencePage() {
     <div className="min-h-svh bg-background">
       <header className="sticky top-0 z-50 border-b border-border bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80">
         <div className="flex h-12 items-center gap-3 px-4">
-          <Button
-            variant="ghost"
-            size="sm"
-            nativeButton={false}
-            render={<Link to="/docs" />}
-          >
+          <Link to="/docs" className={buttonVariants({ variant: "ghost", size: "sm" })}>
             <RiArrowLeftLine size={16} aria-hidden />
             Docs
-          </Button>
+          </Link>
           <Separator orientation="vertical" className="h-5 max-sm:hidden" />
           <Link
             to="/"
@@ -59,25 +54,21 @@ function ApiReferencePage() {
           </span>
 
           <div className="ml-auto flex items-center gap-2">
-            <Button
-              variant="ghost"
-              size="sm"
-              className="max-sm:hidden"
-              nativeButton={false}
-              render={<Link to="/docs/mcp" />}
+            <Link
+              to="/docs/mcp"
+              className={buttonVariants({ variant: "ghost", size: "sm", className: "max-sm:hidden" })}
             >
               <RiRobot2Line size={16} aria-hidden />
               MCP server
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              nativeButton={false}
-              render={<a href={SPEC_URL} {...EXTERNAL_LINK_PROPS} />}
+            </Link>
+            <a
+              href={SPEC_URL}
+              {...EXTERNAL_LINK_PROPS}
+              className={buttonVariants({ variant: "outline", size: "sm" })}
             >
               <RiDownloadLine size={16} aria-hidden />
               openapi.json
-            </Button>
+            </a>
           </div>
         </div>
       </header>

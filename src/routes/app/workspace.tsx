@@ -39,6 +39,7 @@ export const Route = createFileRoute("/app/workspace")({
  * workspace, and the switcher lives in the account menu next to Sign out.
  */
 function WorkspaceSettingsPage() {
+  const navigate = Route.useNavigate()
   const { session } = useSession()
   const { workspaces, workspace, events, selectWorkspace, isLoading } =
     useCurrentEvent()
@@ -65,7 +66,14 @@ function WorkspaceSettingsPage() {
   return (
     <TooltipProvider>
       <div className="flex flex-col gap-6">
-        <SettingsLevelNav level="workspace" />
+        <SettingsLevelNav
+          level="workspace"
+          onOpenAccountSettings={() =>
+            void navigate({
+              search: (prev) => ({ ...prev, account: "profile" }),
+            })
+          }
+        />
 
         <PageHeader
           title={

@@ -5,7 +5,7 @@ import { convexQuery } from "@convex-dev/react-query"
 import { api } from "@convex/_generated/api"
 import { RiFileList3Line, RiFilter3Line } from "@remixicon/react"
 
-import { Button } from "@/components/ui/button"
+import { Button, buttonVariants } from "@/components/ui/button"
 import {
   Select,
   SelectContent,
@@ -156,14 +156,14 @@ function SessionsPage() {
               : "Once the organizer accepts sessions they show up here with their full description, speakers, time and room."
           }
           action={
-            <Button nativeButton={false}
-              variant="outline"
-              render={
-                <Link to="/e/$slug" params={{ slug }} search={(prev) => prev} />
-              }
+            <Link
+              to="/e/$slug"
+              params={{ slug }}
+              search={(prev) => prev}
+              className={buttonVariants({ variant: "outline" })}
             >
               View the schedule
-            </Button>
+            </Link>
           }
         />
       ) : sessions.length === 0 ? (

@@ -4,7 +4,7 @@ import { RiGithubFill, RiMenuLine } from "@remixicon/react"
 
 import { cn } from "@/lib/utils"
 import { Logo } from "@/components/brand/logo"
-import { Button } from "@/components/ui/button"
+import { Button, buttonVariants } from "@/components/ui/button"
 import {
   Sheet,
   SheetClose,
@@ -90,18 +90,19 @@ export function MarketingNav() {
           >
             <RiGithubFill size={18} aria-hidden />
           </a>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="hidden text-muted-foreground hover:text-foreground sm:inline-flex"
-            nativeButton={false}
-            render={<Link to="/login" />}
+          <Link
+            to="/login"
+            className={buttonVariants({
+              variant: "ghost",
+              size: "sm",
+              className: "hidden text-muted-foreground hover:text-foreground sm:inline-flex",
+            })}
           >
             Log in
-          </Button>
-          <Button size="sm" nativeButton={false} render={<Link to="/login" />}>
+          </Link>
+          <Link to="/login" className={buttonVariants({ size: "sm" })}>
             Get started
-          </Button>
+          </Link>
 
           <Sheet open={open} onOpenChange={setOpen}>
             <SheetTrigger
@@ -138,30 +139,26 @@ export function MarketingNav() {
 
                 <Separator className="my-3" />
 
-                <Button
-                  variant="outline"
-                  className="w-full"
-                  nativeButton={false}
-                  render={<Link to="/login" />}
+                <Link
+                  to="/login"
+                  className={buttonVariants({ variant: "outline", className: "w-full" })}
                 >
                   Log in
-                </Button>
-                <Button
-                  className="mt-2 w-full"
-                  nativeButton={false}
-                  render={<Link to="/login" />}
+                </Link>
+                <Link
+                  to="/login"
+                  className={buttonVariants({ className: "mt-2 w-full" })}
                 >
                   Get started
-                </Button>
-                <Button
-                  variant="ghost"
-                  className="mt-2 w-full"
-                  nativeButton={false}
-                  render={<a href={GITHUB_URL} {...EXTERNAL_LINK_PROPS} />}
+                </Link>
+                <a
+                  href={GITHUB_URL}
+                  {...EXTERNAL_LINK_PROPS}
+                  className={buttonVariants({ variant: "ghost", className: "mt-2 w-full" })}
                 >
                   <RiGithubFill aria-hidden />
                   GitHub
-                </Button>
+                </a>
               </div>
             </SheetContent>
           </Sheet>

@@ -17,7 +17,19 @@ export type SettingsLevel = "account" | "workspace" | "event"
  *
  *     Account (you) · Workspace (your team + its events) · Event (this event)
  */
-export function SettingsLevelNav({ level }: { level: SettingsLevel }) {
+export function SettingsLevelNav({
+  level,
+  onOpenAccountSettings,
+}: {
+  level: SettingsLevel
+  /**
+   * Account settings is a modal now, not a page (docs/memory/RULES.md 23b) —
+   * the caller opens it (via its own route-scoped navigate, so the `?account=`
+   * search param stays correctly typed) instead of this shared component
+   * navigating away from Workspace/Event settings.
+   */
+  onOpenAccountSettings: () => void
+}) {
   const { event, workspace } = useCurrentEvent()
 
   const items = [
@@ -26,7 +38,7 @@ export function SettingsLevelNav({ level }: { level: SettingsLevel }) {
       label: "Account",
       detail: "You",
       icon: RiUserSettingsLine,
-      to: "/app/account",
+      to: undefined,
     },
     {
       value: "workspace" as const,
@@ -47,21 +59,36 @@ export function SettingsLevelNav({ level }: { level: SettingsLevel }) {
   return (
     <Tabs value={level} aria-label="Settings level">
       <TabsList variant="line" className="h-auto flex-wrap">
-        {items.map((item) => (
-          <TabsTrigger
-            key={item.value}
-            value={item.value}
-            nativeButton={false}
-            className="gap-2"
-            render={<Link to={item.to} />}
-          >
-            <item.icon size={15} aria-hidden />
-            <span className="font-medium">{item.label}</span>
-            <span className="max-w-40 truncate text-xs text-muted-foreground max-sm:hidden">
-              {item.detail}
-            </span>
-          </TabsTrigger>
-        ))}
+        {items.map((item) =>
+          item.to ? (
+            <TabsTrigger
+              key={item.value}
+              value={item.value}
+              nativeButton={false}
+              className="gap-2"
+              render={<Link to={item.to} />}
+            >
+              <item.icon size={15} aria-hidden />
+              <span className="font-medium">{item.label}</span>
+              <span className="max-w-40 truncate text-xs text-muted-foreground max-sm:hidden">
+                {item.detail}
+              </span>
+            </TabsTrigger>
+          ) : (
+            <TabsTrigger
+              key={item.value}
+              value={item.value}
+              className="gap-2"
+              onClick={onOpenAccountSettings}
+            >
+              <item.icon size={15} aria-hidden />
+              <span className="font-medium">{item.label}</span>
+              <span className="max-w-40 truncate text-xs text-muted-foreground max-sm:hidden">
+                {item.detail}
+              </span>
+            </TabsTrigger>
+          )
+        )}
       </TabsList>
     </Tabs>
   )

@@ -14,7 +14,7 @@ import {
 
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
+import { buttonVariants } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 import { EmptyState } from "@/components/shared/empty-state"
 import { SpeakerAvatar } from "@/components/public/speaker-avatar"
@@ -55,21 +55,19 @@ function SessionDetailPage() {
   const { event, session } = data
 
   const backLink = (
-    <Button nativeButton={false}
-      variant="ghost"
-      size="sm"
-      className="-ml-2 w-fit text-muted-foreground"
-      render={
-        <Link
-          to="/e/$slug/sessions"
-          params={{ slug }}
-          search={(prev) => prev}
-        />
-      }
+    <Link
+      to="/e/$slug/sessions"
+      params={{ slug }}
+      search={(prev) => prev}
+      className={buttonVariants({
+        variant: "ghost",
+        size: "sm",
+        className: "-ml-2 w-fit text-muted-foreground",
+      })}
     >
       <RiArrowLeftLine aria-hidden />
       Back to all sessions
-    </Button>
+    </Link>
   )
 
   if (!session) {
@@ -81,14 +79,14 @@ function SessionDetailPage() {
           title="This session isn't available"
           description="It may have been withdrawn or isn't part of the published program. Browse the full schedule to find what you're looking for."
           action={
-            <Button nativeButton={false}
-              variant="outline"
-              render={
-                <Link to="/e/$slug" params={{ slug }} search={(prev) => prev} />
-              }
+            <Link
+              to="/e/$slug"
+              params={{ slug }}
+              search={(prev) => prev}
+              className={buttonVariants({ variant: "outline" })}
             >
               View the schedule
-            </Button>
+            </Link>
           }
         />
       </div>
@@ -198,19 +196,14 @@ function SessionDetailPage() {
               ) : null}
 
               <div className="flex flex-wrap items-center gap-2">
-                <Button nativeButton={false}
-                  variant="outline"
-                  size="sm"
-                  render={
-                    <Link
-                      to="/e/$slug/itinerary/$personId"
-                      params={{ slug, personId: speaker._id }}
-                      search={(prev) => prev}
-                    />
-                  }
+                <Link
+                  to="/e/$slug/itinerary/$personId"
+                  params={{ slug, personId: speaker._id }}
+                  search={(prev) => prev}
+                  className={buttonVariants({ variant: "outline", size: "sm" })}
                 >
                   View their schedule
-                </Button>
+                </Link>
                 {speaker.links?.linkedin ? (
                   <SpeakerLink href={speaker.links.linkedin} label="LinkedIn" />
                 ) : null}
@@ -252,40 +245,36 @@ function SessionDetailPage() {
             className="flex flex-wrap items-center justify-between gap-2"
           >
             {data.prev ? (
-              <Button nativeButton={false}
-                variant="ghost"
-                size="sm"
-                className="max-w-[45%] text-muted-foreground"
-                render={
-                  <Link
-                    to="/e/$slug/sessions/$sessionId"
-                    params={{ slug, sessionId: data.prev._id }}
-                    search={(prev) => prev}
-                  />
-                }
+              <Link
+                to="/e/$slug/sessions/$sessionId"
+                params={{ slug, sessionId: data.prev._id }}
+                search={(prev) => prev}
+                className={buttonVariants({
+                  variant: "ghost",
+                  size: "sm",
+                  className: "max-w-[45%] text-muted-foreground",
+                })}
               >
                 <RiArrowLeftSLine aria-hidden />
                 <span className="truncate">{data.prev.title}</span>
-              </Button>
+              </Link>
             ) : (
               <span />
             )}
             {data.next ? (
-              <Button nativeButton={false}
-                variant="ghost"
-                size="sm"
-                className="ml-auto max-w-[45%] text-muted-foreground"
-                render={
-                  <Link
-                    to="/e/$slug/sessions/$sessionId"
-                    params={{ slug, sessionId: data.next._id }}
-                    search={(prev) => prev}
-                  />
-                }
+              <Link
+                to="/e/$slug/sessions/$sessionId"
+                params={{ slug, sessionId: data.next._id }}
+                search={(prev) => prev}
+                className={buttonVariants({
+                  variant: "ghost",
+                  size: "sm",
+                  className: "ml-auto max-w-[45%] text-muted-foreground",
+                })}
               >
                 <span className="truncate">{data.next.title}</span>
                 <RiArrowRightSLine aria-hidden />
-              </Button>
+              </Link>
             ) : null}
           </nav>
         </>
@@ -296,14 +285,14 @@ function SessionDetailPage() {
 
 function SpeakerLink({ href, label }: { href: string; label: string }) {
   return (
-    <Button nativeButton={false}
-      variant="ghost"
-      size="sm"
-      className="text-muted-foreground"
-      render={<a href={href} target="_blank" rel="noreferrer noopener" />}
+    <a
+      href={href}
+      target="_blank"
+      rel="noreferrer noopener"
+      className={buttonVariants({ variant: "ghost", size: "sm", className: "text-muted-foreground" })}
     >
       <RiExternalLinkLine aria-hidden />
       {label}
-    </Button>
+    </a>
   )
 }

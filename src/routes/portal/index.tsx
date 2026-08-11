@@ -9,7 +9,7 @@ import {
 
 import { cn } from "@/lib/utils"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Button, buttonVariants } from "@/components/ui/button"
+import { buttonVariants } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
 import { PanelCard } from "@/components/portal/panel-card"
 import { SubmissionCard } from "@/components/portal/submission-card"
@@ -259,15 +259,10 @@ function PortalHomePage() {
         )}
 
         {openTasks.length > 0 ? (
-          <Button
-            size="sm"
-            className="w-fit"
-            nativeButton={false}
-            render={<Link to="/portal/tasks" />}
-          >
+          <Link to="/portal/tasks" className={buttonVariants({ size: "sm", className: "w-fit" })}>
             Go to my tasks
             <RiArrowRightLine aria-hidden />
-          </Button>
+          </Link>
         ) : null}
       </PanelCard>
       )}

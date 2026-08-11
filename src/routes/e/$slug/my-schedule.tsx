@@ -4,7 +4,7 @@ import { convexQuery } from "@convex-dev/react-query"
 import { api } from "@convex/_generated/api"
 import { RiBookmarkLine } from "@remixicon/react"
 
-import { Button } from "@/components/ui/button"
+import { Button, buttonVariants } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 import { EmptyState } from "@/components/shared/empty-state"
 import { WidgetHeader } from "@/components/public/public-shell"
@@ -88,27 +88,24 @@ function MySchedulePage() {
           }
           description="Tap the bookmark on any session to build your own agenda. It stays in this browser — no account needed — and you can export it all to your calendar."
           action={
-            <Button nativeButton={false}
-              render={
-                <Link to="/e/$slug" params={{ slug }} search={(prev) => prev} />
-              }
+            <Link
+              to="/e/$slug"
+              params={{ slug }}
+              search={(prev) => prev}
+              className={buttonVariants({})}
             >
               Browse the schedule
-            </Button>
+            </Link>
           }
           secondaryAction={
-            <Button nativeButton={false}
-              variant="outline"
-              render={
-                <Link
-                  to="/e/$slug/sessions"
-                  params={{ slug }}
-                  search={(prev) => prev}
-                />
-              }
+            <Link
+              to="/e/$slug/sessions"
+              params={{ slug }}
+              search={(prev) => prev}
+              className={buttonVariants({ variant: "outline" })}
             >
               See all sessions
-            </Button>
+            </Link>
           }
         />
       ) : (

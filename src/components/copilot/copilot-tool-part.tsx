@@ -82,12 +82,12 @@ export function CopilotToolPart({
       <Confirmation
         approval={part.approval}
         state={part.state}
-        className="border-status-amber-dot/40 bg-status-amber-bg/40"
+        className="border-primary/20 bg-primary/10"
       >
         <div className="flex items-start gap-2.5">
           <span
             aria-hidden
-            className="mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-md bg-status-amber-bg text-status-amber-fg"
+            className="mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary"
           >
             {emails ? (
               <RiMailSendLine size={16} />

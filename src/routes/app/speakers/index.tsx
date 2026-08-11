@@ -38,6 +38,7 @@ import type { SpeakerRosterRow } from "@/components/dashboard/speakers-table"
 import { AddSpeakerDialog } from "@/components/dashboard/add-speaker-dialog"
 import { ImportSpeakersDialog } from "@/components/dashboard/import-speakers-dialog"
 import { SpeakerProfileDrawer } from "@/components/dashboard/speaker-profile-drawer"
+import { RemovePersonDialog } from "@/components/dashboard/remove-person-dialog"
 import { AssignTaskDialog } from "@/components/dashboard/assign-task-dialog"
 import { RemindIncompleteButton } from "@/components/dashboard/remind-incomplete-button"
 import { APP_ROUTES } from "@/components/dashboard/app-routes"
@@ -103,6 +104,7 @@ function SpeakersPage() {
   const [addOpen, setAddOpen] = useState(false)
   const [importOpen, setImportOpen] = useState(false)
   const [editing, setEditing] = useState<SpeakerRosterRow | null>(null)
+  const [removing, setRemoving] = useState<SpeakerRosterRow | null>(null)
   /** Non-null while a bulk show/hide is in flight (sbek CNT-12). */
   const [bulkVisibility, setBulkVisibility] = useState<boolean | null>(null)
 
@@ -449,6 +451,7 @@ function SpeakersPage() {
           onSelectedChange={setSelected}
           onAssignTask={(personId) => openAssign([personId])}
           onEditProfile={setEditing}
+          onRemovePerson={setRemoving}
         />
       )}
 
@@ -482,6 +485,16 @@ function SpeakersPage() {
         onOpenChange={(next) => {
           if (!next) setEditing(null)
         }}
+      />
+
+      <RemovePersonDialog
+        open={removing !== null}
+        onOpenChange={(next) => {
+          if (!next) setRemoving(null)
+        }}
+        personId={removing?.personId ?? null}
+        name={removing?.name ?? ""}
+        onRemoved={() => setSelected((prev) => prev.filter((id) => id !== String(removing?.personId)))}
       />
     </div>
   )

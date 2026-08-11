@@ -8,7 +8,7 @@ import {
 } from "@remixicon/react"
 
 import { cn } from "@/lib/utils"
-import { Button } from "@/components/ui/button"
+import { Button, buttonVariants } from "@/components/ui/button"
 import {
   Popover,
   PopoverContent,
@@ -198,16 +198,13 @@ export function StatusPicker({
         </div>
 
         <div className="mt-3 flex items-center justify-between gap-2">
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            nativeButton={false}
-            render={<Link to="/app/settings/statuses" />}
+          <Link
+            to="/app/settings/statuses"
+            className={buttonVariants({ variant: "ghost", size: "sm" })}
           >
             <RiSettings3Line aria-hidden />
             Edit statuses
-          </Button>
+          </Link>
           <div className="flex items-center gap-2">
             <Button
               type="button"

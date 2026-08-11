@@ -3,7 +3,7 @@ import { RiCheckLine, RiExternalLinkLine, RiFileCopyLine } from "@remixicon/reac
 import { toast } from "sonner"
 
 import { cn } from "@/lib/utils"
-import { Button } from "@/components/ui/button"
+import { Button, buttonVariants } from "@/components/ui/button"
 
 /** The magic link an evaluator uses — no login, straight into their queue. */
 export function reviewLinkPath(token: string): string {
@@ -89,16 +89,14 @@ export function OpenReviewLink({
   className?: string
 }) {
   return (
-    <Button nativeButton={false}
-      variant="ghost"
-      size="sm"
-      className={className}
-      render={
-        <a href={reviewLinkPath(token)} target="_blank" rel="noreferrer" />
-      }
+    <a
+      href={reviewLinkPath(token)}
+      target="_blank"
+      rel="noreferrer"
+      className={buttonVariants({ variant: "ghost", size: "sm", className })}
     >
       <RiExternalLinkLine aria-hidden />
       {label}
-    </Button>
+    </a>
   )
 }

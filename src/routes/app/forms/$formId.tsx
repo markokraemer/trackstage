@@ -175,19 +175,15 @@ function FormEditor({
         }
         actions={
           <>
-            <Button nativeButton={false}
-              variant="outline"
-              render={
-                <a
-                  href={publicFormPath(form.slug)}
-                  target="_blank"
-                  rel="noreferrer"
-                />
-              }
+            <a
+              href={publicFormPath(form.slug)}
+              target="_blank"
+              rel="noreferrer"
+              className={buttonVariants({ variant: "outline" })}
             >
               <RiExternalLinkLine aria-hidden />
               View form
-            </Button>
+            </a>
             <CopyLinkButton slug={form.slug} label="Copy link" />
             <Button
               onClick={() =>

@@ -2,7 +2,7 @@ import { useNavigate } from "@tanstack/react-router"
 import { RiArrowRightLine, RiGithubFill } from "@remixicon/react"
 
 import { cn } from "@/lib/utils"
-import { Button } from "@/components/ui/button"
+import { buttonVariants } from "@/components/ui/button"
 import { PepButton, TextReveal } from "@/components/interactions"
 import { ProductShot } from "@/components/marketing/product-shot"
 import { DISPLAY_HEADING, GridBackdrop } from "@/components/marketing/section"
@@ -63,16 +63,14 @@ export function Hero() {
               Get started free
               <RiArrowRightLine aria-hidden />
             </PepButton>
-            <Button
-              variant="outline"
-              size="lg"
-              className="px-5"
-              nativeButton={false}
-              render={<a href={GITHUB_URL} {...EXTERNAL_LINK_PROPS} />}
+            <a
+              href={GITHUB_URL}
+              {...EXTERNAL_LINK_PROPS}
+              className={buttonVariants({ variant: "outline", size: "lg", className: "px-5" })}
             >
               <RiGithubFill aria-hidden />
               Star on GitHub
-            </Button>
+            </a>
           </div>
         </div>
 

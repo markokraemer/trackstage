@@ -1,5 +1,5 @@
 import { useState } from "react"
-import { createFileRoute } from "@tanstack/react-router"
+import { Link, createFileRoute } from "@tanstack/react-router"
 import { useQuery } from "@tanstack/react-query"
 import { convexQuery } from "@convex-dev/react-query"
 import {
@@ -13,7 +13,7 @@ import type { Id } from "@convex/_generated/dataModel"
 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
+import { Button, buttonVariants } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { TooltipProvider } from "@/components/ui/tooltip"
 import { EmptyState } from "@/components/shared/empty-state"
@@ -108,7 +108,9 @@ function CommunicationsPage() {
           title="Create your event first"
           description="Emails are written per event — acceptances, declines, waitlist notes and task reminders all carry the event's name and its speaker portal links."
           action={
-            <Button nativeButton={false} render={<a href="/app/settings" />}>Go to Settings</Button>
+            <Link to="/app/settings" className={buttonVariants({})}>
+              Go to Settings
+            </Link>
           }
         />
       </div>

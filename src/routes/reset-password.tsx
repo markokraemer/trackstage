@@ -6,7 +6,7 @@ import {
   RiMailSendLine,
 } from "@remixicon/react"
 
-import { Button } from "@/components/ui/button"
+import { Button, buttonVariants } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card } from "@/components/ui/card"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
@@ -143,15 +143,14 @@ function ResetPasswordPage() {
                   can't be used any more. We'll send you another one.
                 </AlertDescription>
               </Alert>
-              <Button
-                size="lg"
-                className="w-full"
-                nativeButton={false}
-                render={<Link to="/login" search={{ mode: "forgot" }} />}
+              <Link
+                to="/login"
+                search={{ mode: "forgot" }}
+                className={buttonVariants({ size: "lg", className: "w-full" })}
               >
                 <RiMailSendLine aria-hidden />
                 Email me a new link
-              </Button>
+              </Link>
             </div>
           ) : (
             <form onSubmit={onSubmit} noValidate>

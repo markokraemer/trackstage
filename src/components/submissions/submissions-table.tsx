@@ -25,6 +25,7 @@ import {
   Table,
   TableBody,
   TableCell,
+  TableFooter,
   TableHead,
   TableHeader,
   TableRow,
@@ -103,6 +104,20 @@ export function SubmissionsTable({
     rows.length > 0 && rows.every((row) => selected.has(row._id))
   const someSelected = rows.some((row) => selected.has(row._id))
 
+  // Column-footer aggregation (docs/reference/design-references.md — Attio's
+  // column-footer register): average of whatever scores are loaded for the
+  // rows currently rendered, so the number always matches what's on screen.
+  const scoredValues = scores
+    ? rows.flatMap((row) => {
+        const avg = row._id in scores ? scores[row._id].avg : null
+        return avg === null ? [] : [avg]
+      })
+    : []
+  const avgScore =
+    scoredValues.length > 0
+      ? scoredValues.reduce((sum, value) => sum + value, 0) / scoredValues.length
+      : null
+
   if (loading) {
     return (
       <div className="flex flex-col gap-2 p-4">
@@ -154,7 +169,7 @@ export function SubmissionsTable({
                 onClick={() => onSortChange("submitted")}
               />
             </TableHead>
-            <TableHead className="w-12 pr-4" />
+            <TableHead className="sticky right-0 z-20 w-12 bg-card pr-4" />
           </TableRow>
         </TableHeader>
 
@@ -174,7 +189,7 @@ export function SubmissionsTable({
               <TableRow
                 key={row._id}
                 data-state={isSelected ? "selected" : undefined}
-                className="h-14"
+                className="group h-14"
               >
                 <TableCell className="pl-4">
                   <Checkbox
@@ -283,61 +298,118 @@ export function SubmissionsTable({
                   {relativeDate(row._creationTime)}
                 </TableCell>
 
-                <TableCell className="pr-4 text-right">
-                  <DropdownMenu>
-                    <DropdownMenuTrigger
-                      render={
+                <TableCell className="sticky right-0 z-[1] bg-card pr-4 text-right group-hover:bg-muted group-data-[state=selected]:bg-muted">
+                  <div className="flex items-center justify-end gap-1">
+                    {status === "pending" ? (
+                      <>
                         <Button
+                          type="button"
                           variant="ghost"
-                          size="icon-sm"
-                          aria-label={`Actions for ${row.title}`}
-                        />
-                      }
-                    >
-                      <RiMore2Fill aria-hidden />
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="w-56">
-                      <DropdownMenuItem
+                          size="xs"
+                          aria-label={`Stage ${row.title} for acceptance`}
+                          className="text-status-green-fg opacity-0 group-hover:opacity-100 focus-visible:opacity-100"
+                          onClick={(event) => {
+                            event.stopPropagation()
+                            void onStatusChange(row._id, {
+                              status: "accept_queue",
+                            })
+                          }}
+                        >
+                          ✓ Accept
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="xs"
+                          aria-label={`Stage ${row.title} for decline`}
+                          className="text-status-red-fg opacity-0 group-hover:opacity-100 focus-visible:opacity-100"
+                          onClick={(event) => {
+                            event.stopPropagation()
+                            void onStatusChange(row._id, {
+                              status: "decline_queue",
+                            })
+                          }}
+                        >
+                          ✕ Decline
+                        </Button>
+                      </>
+                    ) : null}
+                    <DropdownMenu>
+                      <DropdownMenuTrigger
                         render={
-                          <Link
-                            from="/app/submissions/"
-                            to="/app/submissions"
-                            search={(prev) => ({ ...prev, id: row._id })}
+                          <Button
+                            variant="ghost"
+                            size="icon-sm"
+                            aria-label={`Actions for ${row.title}`}
                           />
                         }
                       >
-                        View details
-                      </DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                      {QUICK_MOVES.map((quick) => (
+                        <RiMore2Fill aria-hidden />
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="w-56">
                         <DropdownMenuItem
-                          key={quick}
-                          onClick={() =>
-                            void onStatusChange(row._id, { status: quick })
+                          render={
+                            <Link
+                              from="/app/submissions/"
+                              to="/app/submissions"
+                              search={(prev) => ({ ...prev, id: row._id })}
+                            />
                           }
                         >
-                          Move to {systemStatusOption(statuses, quick).name}
+                          View details
                         </DropdownMenuItem>
-                      ))}
-                      {onDelete ? (
-                        <>
-                          <DropdownMenuSeparator />
+                        <DropdownMenuSeparator />
+                        {QUICK_MOVES.map((quick) => (
                           <DropdownMenuItem
-                            variant="destructive"
-                            onClick={() => onDelete(row)}
+                            key={quick}
+                            onClick={() =>
+                              void onStatusChange(row._id, { status: quick })
+                            }
                           >
-                            <RiDeleteBin6Line aria-hidden />
-                            Delete submission
+                            Move to {systemStatusOption(statuses, quick).name}
                           </DropdownMenuItem>
-                        </>
-                      ) : null}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+                        ))}
+                        {onDelete ? (
+                          <>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                              variant="destructive"
+                              onClick={() => onDelete(row)}
+                            >
+                              <RiDeleteBin6Line aria-hidden />
+                              Delete submission
+                            </DropdownMenuItem>
+                          </>
+                        ) : null}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
                 </TableCell>
               </TableRow>
             )
           })}
         </TableBody>
+
+        <TableFooter className="bg-transparent">
+          <TableRow className="h-10 hover:bg-transparent">
+            <TableCell className="pl-4" />
+            <TableCell />
+            <TableCell className="font-normal text-xs text-muted-foreground">
+              {rows.length} submission{rows.length === 1 ? "" : "s"}
+              {selectedIds.length > 0
+                ? ` · ${selectedIds.length} selected`
+                : ""}
+            </TableCell>
+            <TableCell />
+            <TableCell />
+            <TableCell className="text-right font-normal text-xs text-muted-foreground tabular-nums">
+              {avgScore !== null ? `${formatScore(avgScore)} avg` : null}
+            </TableCell>
+            <TableCell />
+            <TableCell />
+            <TableCell className="sticky right-0 z-[1] bg-card pr-4" />
+          </TableRow>
+        </TableFooter>
       </Table>
     </TooltipProvider>
   )

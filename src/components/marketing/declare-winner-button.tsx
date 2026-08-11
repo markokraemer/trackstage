@@ -1,7 +1,7 @@
 import { toast } from "sonner"
 import { RiTrophyLine } from "@remixicon/react"
 
-import { Button } from "@/components/ui/button"
+import { Button, buttonVariants } from "@/components/ui/button"
 import { EXTERNAL_LINK_PROPS } from "@/components/marketing/links"
 
 export interface DeclareWinnerButtonProps extends Pick<
@@ -37,15 +37,13 @@ export function DeclareWinnerButton({
 
   if (checkoutUrl) {
     return (
-      <Button
-        variant={variant}
-        size={size}
-        className={className}
-        nativeButton={false}
-        render={<a href={checkoutUrl} {...EXTERNAL_LINK_PROPS} />}
+      <a
+        href={checkoutUrl}
+        {...EXTERNAL_LINK_PROPS}
+        className={buttonVariants({ variant, size, className })}
       >
         {content}
-      </Button>
+      </a>
     )
   }
 

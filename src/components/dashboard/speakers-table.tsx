@@ -1,5 +1,6 @@
 import { useState } from "react"
 import {
+  RiDeleteBin6Line,
   RiEdit2Line,
   RiExternalLinkLine,
   RiListCheck3,
@@ -76,6 +77,8 @@ export interface SpeakersTableProps {
   onAssignTask: (personId: Id<"people">) => void
   /** Opens the organizer-side profile drawer (bio, title, headshot note). */
   onEditProfile?: (row: SpeakerRosterRow) => void
+  /** Opens the remove-person confirmation for this row. */
+  onRemovePerson?: (row: SpeakerRosterRow) => void
   className?: string
 }
 
@@ -92,6 +95,7 @@ export function SpeakersTable({
   onSelectedChange,
   onAssignTask,
   onEditProfile,
+  onRemovePerson,
   className,
 }: SpeakersTableProps) {
   const [now] = useState(() => Date.now())
@@ -140,7 +144,7 @@ export function SpeakersTable({
             <TableHead>Sessions</TableHead>
             <TableHead>Tasks</TableHead>
             <TableHead>Still needed</TableHead>
-            <TableHead className="w-10 text-right">
+            <TableHead className="sticky right-0 z-20 w-10 bg-card pr-4 text-right">
               <span className="sr-only">Actions</span>
             </TableHead>
           </TableRow>
@@ -153,7 +157,11 @@ export function SpeakersTable({
                 ? Math.round((row.tasks.done / row.tasks.total) * 100)
                 : 100
             return (
-              <TableRow key={id} data-state={selected.includes(id) ? "selected" : undefined}>
+              <TableRow
+                key={id}
+                className="group"
+                data-state={selected.includes(id) ? "selected" : undefined}
+              >
                 <TableCell>
                   <Checkbox
                     aria-label={`Select ${row.name}`}
@@ -260,7 +268,7 @@ export function SpeakersTable({
                   <MissingPills missing={row.missing} />
                 </TableCell>
 
-                <TableCell className="text-right">
+                <TableCell className="sticky right-0 z-[1] bg-card pr-4 text-right group-hover:bg-muted group-data-[state=selected]:bg-muted">
                   <DropdownMenu>
                     <DropdownMenuTrigger
                       render={
@@ -311,6 +319,18 @@ export function SpeakersTable({
                         <RiMailLine aria-hidden />
                         Email {row.name.split(" ")[0]}
                       </DropdownMenuItem>
+                      {onRemovePerson ? (
+                        <>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem
+                            variant="destructive"
+                            onClick={() => onRemovePerson(row)}
+                          >
+                            <RiDeleteBin6Line aria-hidden />
+                            Remove person
+                          </DropdownMenuItem>
+                        </>
+                      ) : null}
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </TableCell>

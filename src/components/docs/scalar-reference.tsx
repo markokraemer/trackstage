@@ -1,7 +1,7 @@
 import * as React from "react"
 import { RiExternalLinkLine } from "@remixicon/react"
 
-import { Button } from "@/components/ui/button"
+import { buttonVariants } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { EXTERNAL_LINK_PROPS } from "@/components/marketing/links"
 
@@ -104,16 +104,14 @@ export function ScalarReference({ specUrl }: { specUrl: string }) {
             The interactive reference could not load. The specification itself is
             right here.
           </p>
-          <Button
-            variant="outline"
-            size="sm"
-            className="mt-3"
-            nativeButton={false}
-            render={<a href={specUrl} {...EXTERNAL_LINK_PROPS} />}
+          <a
+            href={specUrl}
+            {...EXTERNAL_LINK_PROPS}
+            className={buttonVariants({ variant: "outline", size: "sm", className: "mt-3" })}
           >
             <RiExternalLinkLine size={16} aria-hidden />
             Open openapi.json
-          </Button>
+          </a>
         </div>
       </div>
     )

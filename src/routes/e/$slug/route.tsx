@@ -4,7 +4,7 @@ import { convexQuery } from "@convex-dev/react-query"
 import { api } from "@convex/_generated/api"
 import { RiCalendarEventLine } from "@remixicon/react"
 
-import { Button } from "@/components/ui/button"
+import { buttonVariants } from "@/components/ui/button"
 import { EmptyState } from "@/components/shared/empty-state"
 import { PublicShell } from "@/components/public/public-shell"
 import { validateWidgetSearch } from "@/components/public/widget-search"
@@ -56,9 +56,9 @@ function PublicEventLayout() {
           title="We couldn't find that event"
           description={`No public event is published at "${slug}". Check the link with the organizer — it may have changed.`}
           action={
-            <Button nativeButton={false} render={<Link to="/" />} variant="outline">
+            <Link to="/" className={buttonVariants({ variant: "outline" })}>
               Go to Trackstage
-            </Button>
+            </Link>
           }
           className="max-w-lg"
         />

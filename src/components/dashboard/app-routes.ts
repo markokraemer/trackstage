@@ -11,6 +11,7 @@ export const APP_ROUTES: Record<
   | "dashboard"
   | "submissions"
   | "forms"
+  | "agenda"
   | "speakers"
   | "communications"
   | "settings",
@@ -19,6 +20,7 @@ export const APP_ROUTES: Record<
   dashboard: "/app",
   submissions: "/app/submissions",
   forms: "/app/forms",
+  agenda: "/app/agenda",
   speakers: "/app/speakers",
   communications: "/app/communications",
   settings: "/app/settings",

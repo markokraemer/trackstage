@@ -11,7 +11,7 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
-import { Button, buttonVariants } from "@/components/ui/button"
+import { buttonVariants } from "@/components/ui/button"
 import { StatusPill } from "@/components/shared/status-pill"
 import { EmptyState } from "@/components/shared/empty-state"
 import { CopyLinkButton } from "@/components/dashboard/copy-link-button"
@@ -98,21 +98,15 @@ export function FormsCard({ forms, className }: FormsCardProps) {
                     label="Copy link"
                     toastMessage={`Public link for "${form.name}" copied`}
                   />
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    nativeButton={false}
-                    render={
-                      <a
-                        href={`/submit/${form.slug}`}
-                        target="_blank"
-                        rel="noreferrer"
-                      />
-                    }
+                  <a
+                    href={`/submit/${form.slug}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className={buttonVariants({ variant: "ghost", size: "sm" })}
                   >
                     <RiExternalLinkLine aria-hidden />
                     View
-                  </Button>
+                  </a>
                 </div>
               </div>
             ))}

@@ -30,6 +30,7 @@ import { emitWebhook } from "./webhooks"
 import { record as recordAudit } from "./lib/audit"
 import {
   assertImageUpload,
+  deleteUploadRow,
   nextVersion,
   releaseBlob,
   replaceHeadshot,
@@ -47,6 +48,8 @@ const workflowStatusValidator = v.union(
 
 /** Ceiling on a single event's people scan (matches convex/dashboard.ts). */
 const MAX_PEOPLE = 4000
+/** Ceiling on the submission/task/upload scans `removePerson` runs. */
+const MAX_ROWS = 4000
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
@@ -861,6 +864,99 @@ export const setWorkflowStatus = mutation({
         previousWorkflowStatus: person.workflowStatus ?? "none",
       },
     })
+    return null
+  },
+})
+
+// ——— Remove a person from the roster ——————————————————————————————————————
+// There was no way to undo a mis-added test account or a duplicate CSV row —
+// only edit-in-place. This is the escape hatch, gated the same way as every
+// other speaker mutation in this file (an event member, nothing higher).
+
+/**
+ * Delete a person outright. Refuses while they're still the submitter or a
+ * participant on any LIVE (non-deleted) submission — detach them there
+ * first, so a click here can never silently orphan a talk that's still in
+ * the pipeline. Once cleared:
+ *
+ *   · their tasks are deleted
+ *   · their uploaded files are deleted, blob included (lib/files.deleteUploadRow,
+ *     the same helper every other upload-delete path in this codebase uses)
+ *   · any leftover `submissionParticipants` rows are deleted too — the only
+ *     way one can still exist at this point is on a submission that was
+ *     itself already soft-deleted
+ *   · outbox messages already sent in their name are KEPT. They're a record
+ *     of what was mailed, not live state, and convex/comms.ts already
+ *     renders a "(deleted person)" fallback for a dangling `personId` — the
+ *     same tolerance convex/seed.ts leans on for its own purges.
+ */
+export const removePerson = mutation({
+  args: { personId: v.id("people") },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const person = await ctx.db.get("people", args.personId)
+    if (!person) throw new Error("Speaker not found.")
+    await requireEventAccess(ctx, person.eventId)
+    const name = `${person.firstName} ${person.lastName}`.trim() || person.email
+
+    const participations = await ctx.db
+      .query("submissionParticipants")
+      .withIndex("by_personId", (q) => q.eq("personId", args.personId))
+      .take(MAX_ROWS)
+    const submitted = await ctx.db
+      .query("submissions")
+      .withIndex("by_submitterId", (q) => q.eq("submitterId", args.personId))
+      .take(MAX_ROWS)
+
+    const liveSubmissionIds = new Set<Id<"submissions">>()
+    for (const submission of submitted) {
+      if (submission.deletedAt === undefined) liveSubmissionIds.add(submission._id)
+    }
+    for (const row of participations) {
+      const submission = await ctx.db.get(row.submissionId)
+      if (submission && submission.deletedAt === undefined) {
+        liveSubmissionIds.add(submission._id)
+      }
+    }
+    if (liveSubmissionIds.size > 0) {
+      const count = liveSubmissionIds.size
+      throw new Error(
+        `${name} is on ${count} submission${count === 1 ? "" : "s"}. Remove them from those submissions first.`,
+      )
+    }
+
+    const tasks = await ctx.db
+      .query("tasks")
+      .withIndex("by_personId", (q) => q.eq("personId", args.personId))
+      .take(MAX_ROWS)
+    for (const task of tasks) await ctx.db.delete("tasks", task._id)
+
+    const uploads = await ctx.db
+      .query("uploads")
+      .withIndex("by_personId", (q) => q.eq("personId", args.personId))
+      .take(MAX_ROWS)
+    for (const upload of uploads) await deleteUploadRow(ctx, upload)
+
+    // Only rows left over from an already-soft-deleted submission survive
+    // the live check above — drop them so nothing points at this person.
+    for (const row of participations) {
+      await ctx.db.delete("submissionParticipants", row._id)
+    }
+
+    await recordAudit(ctx, {
+      eventId: person.eventId,
+      entity: "speaker",
+      entityId: args.personId,
+      action: "deleted",
+      summary: `Speaker removed · ${name}`,
+      meta: {
+        email: person.email,
+        tasksRemoved: tasks.length,
+        uploadsRemoved: uploads.length,
+      },
+    })
+
+    await ctx.db.delete("people", args.personId)
     return null
   },
 })

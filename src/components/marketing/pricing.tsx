@@ -3,7 +3,7 @@ import { RiCheckLine, RiGithubFill } from "@remixicon/react"
 
 import { cn } from "@/lib/utils"
 import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
+import { buttonVariants } from "@/components/ui/button"
 import {
   DISPLAY_HEADING,
   MarketingSection,
@@ -57,16 +57,14 @@ export function Pricing({ stripeCheckoutUrl }: PricingProps) {
           summary="Clone the repo and run the whole thing yourself."
           points={OPEN_SOURCE_POINTS}
           action={
-            <Button
-              variant="outline"
-              size="lg"
-              className="w-full"
-              nativeButton={false}
-              render={<a href={GITHUB_URL} {...EXTERNAL_LINK_PROPS} />}
+            <a
+              href={GITHUB_URL}
+              {...EXTERNAL_LINK_PROPS}
+              className={buttonVariants({ variant: "outline", size: "lg", className: "w-full" })}
             >
               <RiGithubFill aria-hidden />
               Get it on GitHub
-            </Button>
+            </a>
           }
         />
 
@@ -79,14 +77,9 @@ export function Pricing({ stripeCheckoutUrl }: PricingProps) {
           summary="The hosted demo, loaded with a full event. Click everything."
           points={DEMO_POINTS}
           action={
-            <Button
-              size="lg"
-              className="w-full"
-              nativeButton={false}
-              render={<Link to="/login" />}
-            >
+            <Link to="/login" className={buttonVariants({ size: "lg", className: "w-full" })}>
               Open the demo
-            </Button>
+            </Link>
           }
         />
 

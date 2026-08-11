@@ -5,7 +5,7 @@ import { api } from "@convex/_generated/api"
 import { RiArrowLeftLine, RiCalendarEventLine } from "@remixicon/react"
 
 import { Card } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
+import { buttonVariants } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 import { EmptyState } from "@/components/shared/empty-state"
 import { WidgetHeader } from "@/components/public/public-shell"
@@ -42,21 +42,19 @@ function ItineraryPage() {
   const { event, speaker, days, unscheduled } = data
 
   const backLink = (
-    <Button nativeButton={false}
-      variant="ghost"
-      size="sm"
-      className="-ml-2 w-fit text-muted-foreground"
-      render={
-        <Link
-          to="/e/$slug/speakers"
-          params={{ slug }}
-          search={(prev) => prev}
-        />
-      }
+    <Link
+      to="/e/$slug/speakers"
+      params={{ slug }}
+      search={(prev) => prev}
+      className={buttonVariants({
+        variant: "ghost",
+        size: "sm",
+        className: "-ml-2 w-fit text-muted-foreground",
+      })}
     >
       <RiArrowLeftLine aria-hidden />
       Back to speakers
-    </Button>
+    </Link>
   )
 
   if (!speaker) {
@@ -134,14 +132,14 @@ function ItineraryPage() {
               : `${speaker.name} doesn't have a published session time yet. Check the full schedule for what's already announced.`
           }
           action={
-            <Button nativeButton={false}
-              variant="outline"
-              render={
-                <Link to="/e/$slug" params={{ slug }} search={(prev) => prev} />
-              }
+            <Link
+              to="/e/$slug"
+              params={{ slug }}
+              search={(prev) => prev}
+              className={buttonVariants({ variant: "outline" })}
             >
               View the schedule
-            </Button>
+            </Link>
           }
         />
       ) : (

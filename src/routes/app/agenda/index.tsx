@@ -32,7 +32,7 @@ import {
 
 import { api } from "@convex/_generated/api"
 import { Badge } from "@/components/ui/badge"
-import { Button, buttonVariants } from "@/components/ui/button"
+import { buttonVariants } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
@@ -212,15 +212,15 @@ function AgendaPage() {
       actions={
         <>
           {event ? (
-            <Button nativeButton={false}
-              variant="outline"
-              render={
-                <a href={`/e/${event.slug}`} target="_blank" rel="noreferrer" />
-              }
+            <a
+              href={`/e/${event.slug}`}
+              target="_blank"
+              rel="noreferrer"
+              className={buttonVariants({ variant: "outline" })}
             >
               <RiExternalLinkLine aria-hidden />
               View public agenda
-            </Button>
+            </a>
           ) : null}
           {/*
             The other place a finished agenda goes: the organizer's own site.
@@ -269,7 +269,7 @@ function AgendaPage() {
           ) : null}
           <Tooltip>
             <TooltipTrigger
-              render={<Button nativeButton={false} render={<Link to={SUBMISSIONS_PATH} />} />}
+              render={<Link to={SUBMISSIONS_PATH} className={buttonVariants({})} />}
             >
               <RiAddLine aria-hidden />
               Add session
@@ -307,9 +307,9 @@ function AgendaPage() {
           title="Create your event first"
           description="The agenda is built from your event's days, rooms, and accepted sessions. Set up the event — name, dates, rooms and tracks — and this page fills itself in."
           action={
-            <Button nativeButton={false} render={<Link to={SETTINGS_PATH} />}>
+            <Link to={SETTINGS_PATH} className={buttonVariants({})}>
               Go to event settings
-            </Button>
+            </Link>
           }
         />
       </div>

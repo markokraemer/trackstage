@@ -88,10 +88,14 @@ Source of truth for everything Marko asked + build status. Update continuously.
   queues → agenda drag → portal → evaluation), then keep green through reconciliation
 
 ## Integration-gate flags (from hierarchy agent handoff)
-- ⏳ ~10 remaining `render={<a>/<Link>}` without nativeButton={false} (evaluation, agenda,
-  submissions, marketing, public) — crawler will catch; sweep at reconciliation
+- ✅ `render={<a>/<Link>}` sweep — DONE at reconciliation (2026-08-11), and one better:
+  Base UI `Button` stamps role="button" even with nativeButton={false}, so ALL
+  Button-wrapped links (34 files) became plain `<Link>/<a>` + `buttonVariants`; only
+  TabsTrigger/DropdownMenuItem render-links remain (correct roles)
 - ⏳ /app intermittent SSR error "null useRef" from copilot/ai-elements dependency — investigate
-- ⏳ Move /app/settings/api-mcp → /app/account/api-mcp (account-level by nature)
+- ✅ /app/settings/api-mcp relocated — DONE at reconciliation: account settings is now a
+  MODAL (avatar menu; Profile / Security / API & MCP tabs; `?account=` deep-linkable from
+  any /app page; old URLs redirect). API & MCP removed from event-settings nav
 - ✅ Dev deployment collects agent/e2e artifacts — `seed:setup` now purges them (agent
   events by name, e2e fixtures by the `unique()` marker on any event). Reseed before
   demos: see the RELEASE GATE line under **Ship**
@@ -134,6 +138,18 @@ Source of truth for everything Marko asked + build status. Update continuously.
 - ⏳ Re-run scripts/capture-screenshots.mjs + capture-walkthrough: form-builder.png shows
   an error state, in-shot sidebar still reads "Sessionboard" (pre-rename). Run after
   deploy agent lands + dev server settles.
+
+## Reconciliation pass (rule 19) — run 2026-08-11, see BUILD-LOG
+- ✅ role=button link sweep · account-settings modal + api-mcp relocation · submissions
+  inline ✓/✕ queue staging + footer aggregations + sticky actions column (also fixed the
+  ACTUAL clip on the speakers roster) · evaluation plan delete · organizer remove-speaker
+  (refuses while on live submissions, else cascades) · dashboard "Unscheduled" card ·
+  cold-load shell skeleton instead of "Loading…" · copilot approval tiles → bg-primary/10 ·
+  forms row Edit → outline (one primary per view) · dead publicData queries deleted
+- ⏳ Follow-ups filed: workspace page should LIST events with click-through (rule 23
+  refinement 2, only a count today) · submissions footer count = page slice (pass
+  totalCount) · eval tab count style "(2)" vs plain-number tabs · noUncheckedIndexedAccess
+  = 316 errors, needs its own wave
 
 ## Quality / hill-climb
 - ⏳ First full pass review vs screenshots + video (UX 1:1 check), then vs SPEC acceptance

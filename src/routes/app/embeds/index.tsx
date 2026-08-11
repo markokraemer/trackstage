@@ -20,7 +20,7 @@ import {
 
 import { cn } from "@/lib/utils"
 import { Card } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
+import { Button, buttonVariants } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
@@ -342,19 +342,15 @@ function EmbedsPage() {
         description="Export a feed of your agenda, sessions, or speakers to place in your app or website."
         actions={
           activeSlug ? (
-            <Button nativeButton={false}
-              variant="outline"
-              render={
-                <a
-                  href={`/e/${activeSlug}`}
-                  target="_blank"
-                  rel="noreferrer"
-                />
-              }
+            <a
+              href={`/e/${activeSlug}`}
+              target="_blank"
+              rel="noreferrer"
+              className={buttonVariants({ variant: "outline" })}
             >
               <RiExternalLinkLine aria-hidden />
               View public page
-            </Button>
+            </a>
           ) : null
         }
       />
@@ -745,19 +741,15 @@ function EmbedsPage() {
                     />
                     <CopyButton value={deliverable.value} label="Copy" />
                     {format.id === "link" ? (
-                      <Button nativeButton={false}
-                        variant="outline"
-                        render={
-                          <a
-                            href={relativeUrl || "#"}
-                            target="_blank"
-                            rel="noreferrer"
-                          />
-                        }
+                      <a
+                        href={relativeUrl || "#"}
+                        target="_blank"
+                        rel="noreferrer"
+                        className={buttonVariants({ variant: "outline" })}
                       >
                         <RiExternalLinkLine aria-hidden />
                         Open
-                      </Button>
+                      </a>
                     ) : null}
                   </div>
                 ) : (
@@ -801,19 +793,15 @@ function EmbedsPage() {
                         className="min-w-0 flex-1 font-mono text-xs"
                       />
                       <CopyButton value={publicUrl} label="Copy link" />
-                      <Button nativeButton={false}
-                        variant="outline"
-                        render={
-                          <a
-                            href={relativeUrl || "#"}
-                            target="_blank"
-                            rel="noreferrer"
-                          />
-                        }
+                      <a
+                        href={relativeUrl || "#"}
+                        target="_blank"
+                        rel="noreferrer"
+                        className={buttonVariants({ variant: "outline" })}
                       >
                         <RiExternalLinkLine aria-hidden />
                         Open
-                      </Button>
+                      </a>
                     </div>
                   </Field>
                 </>

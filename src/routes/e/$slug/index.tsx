@@ -107,14 +107,14 @@ function SchedulePage() {
                 : "Sessions appear here as soon as the organizer accepts them and gives them a time slot. Check back soon."
           }
           action={
-            <Button nativeButton={false}
-              variant="outline"
-              render={
-                <Link to="/e/$slug/speakers" params={{ slug }} search={(prev) => prev} />
-              }
+            <Link
+              to="/e/$slug/speakers"
+              params={{ slug }}
+              search={(prev) => prev}
+              className={buttonVariants({ variant: "outline" })}
             >
               Meet the speakers
-            </Button>
+            </Link>
           }
         />
       ) : (
@@ -132,23 +132,18 @@ function SchedulePage() {
                   <RiArrowLeftSLine aria-hidden />
                 </Button>
               ) : (
-                <Button nativeButton={false}
-                  variant="outline"
-                  size="icon-sm"
+                <Link
+                  to="/e/$slug"
+                  params={{ slug }}
+                  search={(prev) => ({
+                    ...prev,
+                    day: days[activeIndex - 1].date,
+                  })}
                   aria-label="Previous day"
-                  render={
-                    <Link
-                      to="/e/$slug"
-                      params={{ slug }}
-                      search={(prev) => ({
-                        ...prev,
-                        day: days[activeIndex - 1].date,
-                      })}
-                    />
-                  }
+                  className={buttonVariants({ variant: "outline", size: "icon-sm" })}
                 >
                   <RiArrowLeftSLine aria-hidden />
-                </Button>
+                </Link>
               )
             ) : null}
 
@@ -189,23 +184,18 @@ function SchedulePage() {
                   <RiArrowRightSLine aria-hidden />
                 </Button>
               ) : (
-                <Button nativeButton={false}
-                  variant="outline"
-                  size="icon-sm"
+                <Link
+                  to="/e/$slug"
+                  params={{ slug }}
+                  search={(prev) => ({
+                    ...prev,
+                    day: days[activeIndex + 1].date,
+                  })}
                   aria-label="Next day"
-                  render={
-                    <Link
-                      to="/e/$slug"
-                      params={{ slug }}
-                      search={(prev) => ({
-                        ...prev,
-                        day: days[activeIndex + 1].date,
-                      })}
-                    />
-                  }
+                  className={buttonVariants({ variant: "outline", size: "icon-sm" })}
                 >
                   <RiArrowRightSLine aria-hidden />
-                </Button>
+                </Link>
               )
             ) : null}
           </div>

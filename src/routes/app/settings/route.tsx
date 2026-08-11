@@ -39,7 +39,6 @@ const TABS = [
     label: "Integrations",
     to: "/app/settings/integrations",
   },
-  { value: "api-mcp", label: "API & MCP", to: "/app/settings/api-mcp" },
   { value: "activity", label: "Activity", to: "/app/settings/activity" },
 ] as const
 
@@ -51,6 +50,7 @@ const TABS = [
  * sidebar changes which event these tabs are editing.
  */
 function SettingsLayout() {
+  const navigate = Route.useNavigate()
   const { event, isLoading } = useCurrentEvent()
   const pathname = useRouterState({ select: (state) => state.location.pathname })
 
@@ -65,7 +65,14 @@ function SettingsLayout() {
   return (
     <TooltipProvider>
       <div className="flex flex-col gap-6">
-        <SettingsLevelNav level="event" />
+        <SettingsLevelNav
+          level="event"
+          onOpenAccountSettings={() =>
+            void navigate({
+              search: (prev) => ({ ...prev, account: "profile" }),
+            })
+          }
+        />
 
         <PageHeader
           title={event ? `Event settings — ${event.name}` : "Event settings"}

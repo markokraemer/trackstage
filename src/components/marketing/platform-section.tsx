@@ -8,7 +8,7 @@ import {
 } from "@remixicon/react"
 import type { RemixiconComponentType } from "@remixicon/react"
 
-import { Button } from "@/components/ui/button"
+import { buttonVariants } from "@/components/ui/button"
 import { MarketingSection, SectionIntro } from "@/components/marketing/section"
 import {
   MCP_ENDPOINT_PATH,
@@ -96,14 +96,10 @@ export function PlatformSection() {
       </div>
 
       <div className="mt-7">
-        <Button
-          variant="outline"
-          nativeButton={false}
-          render={<Link to="/docs" />}
-        >
+        <Link to="/docs" className={buttonVariants({ variant: "outline" })}>
           <RiTerminalBoxLine aria-hidden />
           Read the docs
-        </Button>
+        </Link>
       </div>
     </MarketingSection>
   )

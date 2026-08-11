@@ -1,35 +1,15 @@
-import { useState } from "react"
-import { createFileRoute } from "@tanstack/react-router"
-
-import type { CreatedApiKey } from "@/components/settings/api-keys-card"
-import { ApiKeysCard } from "@/components/settings/api-keys-card"
-import { McpConnectCard } from "@/components/settings/mcp-connect-card"
-import { McpCapabilitiesCard } from "@/components/settings/mcp-capabilities-card"
-import { RestApiCard } from "@/components/settings/rest-api-card"
-
-export const Route = createFileRoute("/app/settings/api-mcp")({
-  component: ApiMcpPage,
-})
+import { createFileRoute, redirect } from "@tanstack/react-router"
 
 /**
- * Settings → API & MCP (docs/memory/RULES.md 21 — "a PERFECT MCP and API").
- * The plaintext key from a fresh `apiKeys.create` call is held here for the
- * lifetime of the page so the connect snippets below can drop it straight
- * in, instead of making the organizer copy-paste it themselves.
+ * `/app/settings/api-mcp` moved — API keys are personal, not event-level, so
+ * they live in the account-settings modal now (docs/memory/RULES.md 21 + 23b).
+ *
+ * The route file stays as a redirect so old bookmarks and deep links from the
+ * eval kit keep resolving: it forwards to the shell with `?account=api-mcp`,
+ * which `/app`'s search-param reader opens as the modal, on the API & MCP tab.
  */
-function ApiMcpPage() {
-  const [createdKey, setCreatedKey] = useState<CreatedApiKey | null>(null)
-
-  return (
-    <div className="flex flex-col gap-6">
-      <ApiKeysCard
-        createdKey={createdKey}
-        onCreated={setCreatedKey}
-        onDismissCreated={() => setCreatedKey(null)}
-      />
-      <McpConnectCard apiKey={createdKey?.key ?? null} />
-      <McpCapabilitiesCard />
-      <RestApiCard />
-    </div>
-  )
-}
+export const Route = createFileRoute("/app/settings/api-mcp")({
+  beforeLoad: () => {
+    throw redirect({ to: "/app", search: { account: "api-mcp" } })
+  },
+})

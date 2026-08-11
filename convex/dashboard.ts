@@ -225,6 +225,16 @@ export const overview = query({
     forms.sort((a, b) => a.name.localeCompare(b.name))
 
     const acceptedSpeakerCount = sessionsByPerson.size
+
+    // Accepted sessions still waiting for a room and a time — the agenda's
+    // to-do number, surfaced on the dashboard so nobody publishes half a
+    // programme (same definition as agenda's "Not scheduled" tray).
+    const unscheduledAccepted = submissions.filter(
+      (s) =>
+        s.status === "accepted" &&
+        (s.startsAt === undefined || s.roomId === undefined)
+    ).length
+
     return {
       // Greeting data for the dashboard header.
       viewer: { name: user.name ?? user.email, email: user.email },
@@ -240,6 +250,7 @@ export const overview = query({
       statusCounts,
       acceptedSpeakerCount,
       outstandingTaskCount,
+      unscheduledAccepted,
       speakersMissing: { bio: missingBio, headshot: missingHeadshot },
       topSpeakersByOutstandingTasks: chaseList.slice(0, TOP_SPEAKERS),
       pacing,

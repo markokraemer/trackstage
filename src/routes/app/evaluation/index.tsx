@@ -26,7 +26,9 @@ import { MetricCard } from "@/components/evaluation/metric-card"
 import { CompletionDonut } from "@/components/evaluation/completion-donut"
 import { AvgScoreBars } from "@/components/evaluation/avg-score-bars"
 import { PlanCard } from "@/components/evaluation/plan-card"
+import type { PlanCardData } from "@/components/evaluation/plan-card"
 import { NewPlanDialog } from "@/components/evaluation/new-plan-dialog"
+import { DeletePlanDialog } from "@/components/evaluation/delete-plan-dialog"
 import { EvaluatorsTable } from "@/components/evaluation/evaluators-table"
 import {
   buildSubmissionsCsv,
@@ -63,6 +65,7 @@ function EvaluationPage() {
   const navigate = useNavigate({ from: Route.fullPath })
   const [dialogOpen, setDialogOpen] = useState(false)
   const [evaluatorSearch, setEvaluatorSearch] = useState("")
+  const [deleting, setDeleting] = useState<PlanCardData | null>(null)
 
   const { event, isLoading: eventsPending } = useCurrentEvent()
   const eventArgs = event ? { eventId: event._id } : "skip"
@@ -294,6 +297,7 @@ function EvaluationPage() {
                     totalEvaluations: plan.totalEvaluations,
                     avgScore: plan.avgScore,
                   }}
+                  onDelete={setDeleting}
                 />
               ))}
             </div>
@@ -360,6 +364,15 @@ function EvaluationPage() {
             search: undefined,
           })
         }
+      />
+
+      <DeletePlanDialog
+        open={deleting !== null}
+        onOpenChange={(next) => {
+          if (!next) setDeleting(null)
+        }}
+        planId={(deleting?._id ?? null) as Id<"evaluationPlans"> | null}
+        name={deleting?.name ?? ""}
       />
     </div>
   )

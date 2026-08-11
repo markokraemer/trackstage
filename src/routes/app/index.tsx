@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query"
 import { convexQuery } from "@convex-dev/react-query"
 import { api } from "@convex/_generated/api"
 import {
+  RiCalendarScheduleLine,
   RiFileList3Line,
   RiListCheck3,
   RiSettings3Line,
@@ -141,7 +142,7 @@ function DashboardPage() {
       />
 
       {/* ——— Metric cards ——— */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {data ? (
           <>
             <MetricCard
@@ -168,9 +169,18 @@ function DashboardPage() {
               to={APP_ROUTES.speakers}
               linkLabel="Chase them"
             />
+            <MetricCard
+              label="Unscheduled"
+              value={data.unscheduledAccepted}
+              icon={RiCalendarScheduleLine}
+              hint="Accepted, but no room or time yet."
+              to={APP_ROUTES.agenda}
+              linkLabel="Open agenda"
+            />
           </>
         ) : (
           <>
+            <MetricCardSkeleton />
             <MetricCardSkeleton />
             <MetricCardSkeleton />
             <MetricCardSkeleton />

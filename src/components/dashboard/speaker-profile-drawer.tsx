@@ -29,7 +29,7 @@ import {
 import { toast } from "sonner"
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Button } from "@/components/ui/button"
+import { Button, buttonVariants } from "@/components/ui/button"
 import {
   Field,
   FieldDescription,
@@ -49,6 +49,7 @@ import { initialsOf, relativeTime } from "@/components/dashboard/format"
 import { useCurrentEvent } from "@/lib/current-event"
 import { SpeakerWorkflowSelect } from "@/components/dashboard/speaker-workflow-select"
 import type { SpeakerRosterRow } from "@/components/dashboard/speakers-table"
+import { RemovePersonButton } from "@/components/dashboard/remove-person-dialog"
 
 export interface SpeakerProfileDrawerProps {
   speaker: SpeakerRosterRow | null
@@ -240,6 +241,14 @@ export function SpeakerProfileDrawer({
       description="Your changes overwrite what's on the public speaker page. The speaker can still edit the same fields in their own portal."
       footer={
         <>
+          {speaker ? (
+            <RemovePersonButton
+              personId={speaker.personId}
+              name={speaker.name}
+              onRemoved={() => onOpenChange(false)}
+            />
+          ) : null}
+          <span className="flex-1" />
           <Button
             variant="outline"
             onClick={() => onOpenChange(false)}
@@ -471,20 +480,15 @@ export function SpeakerProfileDrawer({
           <Separator />
 
           <div className="flex flex-wrap items-center gap-2">
-            <Button nativeButton={false}
-              variant="outline"
-              size="sm"
-              render={
-                <a
-                  href={`/portal/t/${speaker.portalToken}`}
-                  target="_blank"
-                  rel="noreferrer"
-                />
-              }
+            <a
+              href={`/portal/t/${speaker.portalToken}`}
+              target="_blank"
+              rel="noreferrer"
+              className={buttonVariants({ variant: "outline", size: "sm" })}
             >
               <RiExternalLinkLine aria-hidden />
               Open their portal
-            </Button>
+            </a>
             {speaker.missing.length > 0 ? (
               <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
                 <RiImageLine size={14} aria-hidden />

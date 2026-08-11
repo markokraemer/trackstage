@@ -14,7 +14,7 @@ import {
 } from "@remixicon/react"
 
 import { Logo } from "@/components/brand/logo"
-import { Button } from "@/components/ui/button"
+import { Button, buttonVariants } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 import {
   Sheet,
@@ -72,25 +72,20 @@ function DocsLayout() {
           {/* Below `sm` the row is just the logo and the menu — the two links
               would push the header past the viewport on a 390px phone. */}
           <div className="ml-auto flex items-center gap-2">
-            <Button
-              variant="ghost"
-              size="sm"
-              className="max-sm:hidden"
-              nativeButton={false}
-              render={<Link to="/app" />}
+            <Link
+              to="/app"
+              className={buttonVariants({ variant: "ghost", size: "sm", className: "max-sm:hidden" })}
             >
               Open the app
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              className="max-sm:hidden"
-              nativeButton={false}
-              render={<a href={GITHUB_URL} {...EXTERNAL_LINK_PROPS} />}
+            </Link>
+            <a
+              href={GITHUB_URL}
+              {...EXTERNAL_LINK_PROPS}
+              className={buttonVariants({ variant: "outline", size: "sm", className: "max-sm:hidden" })}
             >
               <RiGithubFill size={16} aria-hidden />
               GitHub
-            </Button>
+            </a>
 
             <div className="lg:hidden">
               <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
@@ -113,23 +108,17 @@ function DocsLayout() {
                   </nav>
                   {/* The header links are hidden at this width — keep a way out. */}
                   <div className="flex gap-2 border-t border-border p-3">
-                    <Button
-                      size="sm"
-                      className="flex-1"
-                      nativeButton={false}
-                      render={<Link to="/app" />}
-                    >
+                    <Link to="/app" className={buttonVariants({ size: "sm", className: "flex-1" })}>
                       Open the app
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="icon-sm"
+                    </Link>
+                    <a
+                      href={GITHUB_URL}
+                      {...EXTERNAL_LINK_PROPS}
                       aria-label="Source on GitHub"
-                      nativeButton={false}
-                      render={<a href={GITHUB_URL} {...EXTERNAL_LINK_PROPS} />}
+                      className={buttonVariants({ variant: "outline", size: "icon-sm" })}
                     >
                       <RiGithubFill size={16} aria-hidden />
-                    </Button>
+                    </a>
                   </div>
                 </SheetContent>
               </Sheet>

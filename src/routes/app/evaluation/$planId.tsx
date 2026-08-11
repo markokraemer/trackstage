@@ -19,7 +19,7 @@ import {
 import { toast } from "sonner"
 
 import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
+import { Button, buttonVariants } from "@/components/ui/button"
 import {
   Card,
   CardContent,
@@ -45,6 +45,7 @@ import type { EvaluatorRow } from "@/components/evaluation/evaluators-table"
 import { AddEvaluatorForm } from "@/components/evaluation/add-evaluator-form"
 import { DistributeDialog } from "@/components/evaluation/distribute-dialog"
 import { AssignSubmissionsDialog } from "@/components/evaluation/assign-submissions-dialog"
+import { DeletePlanButton } from "@/components/evaluation/delete-plan-dialog"
 
 /**
  * Evaluation plan detail (docs/SPEC.md §4.5): who is reviewing, how far they
@@ -79,10 +80,14 @@ function PlanDetailPage() {
   const [assigning, setAssigning] = useState<EvaluatorRow | null>(null)
 
   const backButton = (
-    <Button nativeButton={false} variant="outline" size="sm" render={<Link to="/app/evaluation" search={{ tab: "plans" }} />}>
+    <Link
+      to="/app/evaluation"
+      search={{ tab: "plans" }}
+      className={buttonVariants({ variant: "outline", size: "sm" })}
+    >
       <RiArrowLeftLine aria-hidden />
       All plans
-    </Button>
+    </Link>
   )
 
   if (isError) {
@@ -94,9 +99,13 @@ function PlanDetailPage() {
           title="We couldn't find that plan"
           description="It may have been deleted. Head back to Evaluation to see the plans that are still running."
           action={
-            <Button nativeButton={false} render={<Link to="/app/evaluation" search={{ tab: "plans" }} />}>
+            <Link
+              to="/app/evaluation"
+              search={{ tab: "plans" }}
+              className={buttonVariants({})}
+            >
               Back to Evaluation
-            </Button>
+            </Link>
           }
         />
       </div>
@@ -195,6 +204,7 @@ function PlanDetailPage() {
         actions={
           <>
             {backButton}
+            <DeletePlanButton planId={plan._id} name={plan.name} />
             <Button
               variant={closed ? "outline" : "default"}
               disabled={closePlan.isPending}

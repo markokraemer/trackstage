@@ -111,24 +111,19 @@ export function FormCard({
 
         <div className="flex shrink-0 flex-wrap items-center gap-2">
           <CopyLinkButton slug={form.slug} size="sm" />
-          <Button nativeButton={false}
-            variant="outline"
-            size="sm"
-            render={
-              <a
-                href={publicFormPath(form.slug)}
-                target="_blank"
-                rel="noreferrer"
-              />
-            }
+          <a
+            href={publicFormPath(form.slug)}
+            target="_blank"
+            rel="noreferrer"
+            className={buttonVariants({ variant: "outline", size: "sm" })}
           >
             <RiExternalLinkLine aria-hidden />
             View
-          </Button>
+          </a>
           <Link
             to="/app/forms/$formId"
             params={{ formId: form._id }}
-            className={buttonVariants({ size: "sm" })}
+            className={buttonVariants({ variant: "outline", size: "sm" })}
           >
             <RiPencilLine aria-hidden />
             Edit

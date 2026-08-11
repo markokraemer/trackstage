@@ -7,7 +7,7 @@ import {
 } from "@remixicon/react"
 
 import { cn } from "@/lib/utils"
-import { Button } from "@/components/ui/button"
+import { Button, buttonVariants } from "@/components/ui/button"
 import {
   Sheet,
   SheetContent,
@@ -140,16 +140,15 @@ export function CopilotPanel() {
             >
               <RiAddLine size={16} aria-hidden />
             </Button>
-            <Button
-              variant="ghost"
-              size="icon-sm"
+            <Link
+              to="/app/copilot"
+              onClick={() => setOpen(false)}
               aria-label="Open full page"
               title="Open full page"
-              nativeButton={false}
-              render={<Link to="/app/copilot" onClick={() => setOpen(false)} />}
+              className={buttonVariants({ variant: "ghost", size: "icon-sm" })}
             >
               <RiExpandDiagonalLine size={16} aria-hidden />
-            </Button>
+            </Link>
             {/* Leaves room for SheetContent's built-in close button. */}
             <span aria-hidden className="w-7" />
           </header>

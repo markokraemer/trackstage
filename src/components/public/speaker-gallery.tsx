@@ -8,7 +8,7 @@ import {
 
 import { cn } from "@/lib/utils"
 import { Card } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
+import { Button, buttonVariants } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 import {
   Dialog,
@@ -306,19 +306,16 @@ export function SpeakerDetailDialog({
               <DialogClose render={<Button variant="outline" />}>
                 Close
               </DialogClose>
-              <Button nativeButton={false}
-                render={
-                  <Link
-                    to="/e/$slug/itinerary/$personId"
-                    params={{ slug: event.slug, personId: speaker._id }}
-                    search={(prev) => prev}
-                    onClick={onClose}
-                  />
-                }
+              <Link
+                to="/e/$slug/itinerary/$personId"
+                params={{ slug: event.slug, personId: speaker._id }}
+                search={(prev) => prev}
+                onClick={onClose}
+                className={buttonVariants({})}
               >
                 <RiUserVoiceLine aria-hidden />
                 View full schedule
-              </Button>
+              </Link>
             </DialogFooter>
           </>
         ) : null}

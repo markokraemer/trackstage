@@ -3,17 +3,25 @@ import { format, isBefore } from "date-fns"
 import {
   RiArrowRightLine,
   RiCalendarEventLine,
+  RiDeleteBin6Line,
   RiEyeOffLine,
   RiFileList3Line,
   RiGroupLine,
+  RiMoreLine,
   RiStarLine,
 } from "@remixicon/react"
 import type { RemixiconComponentType } from "@remixicon/react"
 
 import { cn } from "@/lib/utils"
 import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
+import { Button, buttonVariants } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import { StatusPill } from "@/components/shared/status-pill"
 import { ProgressMeter } from "@/components/evaluation/progress-meter"
 
@@ -39,7 +47,14 @@ export interface PlanCardData {
  * badges (Open/Closed)"). Built on the shadcn `Card` + `Badge` primitives and
  * the shared `StatusPill`, so Open/Closed reads identically everywhere.
  */
-export function PlanCard({ plan }: { plan: PlanCardData }) {
+export function PlanCard({
+  plan,
+  onDelete,
+}: {
+  plan: PlanCardData
+  /** Opens the delete-plan confirmation for this plan. */
+  onDelete?: (plan: PlanCardData) => void
+}) {
   const due = plan.dueAt === undefined ? undefined : new Date(plan.dueAt)
   const overdue =
     due !== undefined && plan.status === "open" && isBefore(due, new Date())
@@ -73,7 +88,33 @@ export function PlanCard({ plan }: { plan: PlanCardData }) {
             {plan.blind ? " Evaluators won't see who submitted." : ""}
           </p>
         </div>
-        <StatusPill status={plan.status} />
+        <div className="flex shrink-0 items-center gap-1.5">
+          <StatusPill status={plan.status} />
+          {onDelete ? (
+            <DropdownMenu>
+              <DropdownMenuTrigger
+                render={
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    aria-label={`Actions for ${plan.name}`}
+                  />
+                }
+              >
+                <RiMoreLine aria-hidden />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-48">
+                <DropdownMenuItem
+                  variant="destructive"
+                  onClick={() => onDelete(plan)}
+                >
+                  <RiDeleteBin6Line aria-hidden />
+                  Delete plan
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          ) : null}
+        </div>
       </div>
 
       <div className="mt-4 flex flex-wrap gap-x-5 gap-y-2">
@@ -110,16 +151,14 @@ export function PlanCard({ plan }: { plan: PlanCardData }) {
             ? `${overdue ? "Was due" : "Due"} ${format(due, "MMM d, yyyy")}`
             : "No due date"}
         </p>
-        <Button nativeButton={false}
-          variant="ghost"
-          size="sm"
-          render={
-            <Link to="/app/evaluation/$planId" params={{ planId: plan._id }} />
-          }
+        <Link
+          to="/app/evaluation/$planId"
+          params={{ planId: plan._id }}
+          className={buttonVariants({ variant: "ghost", size: "sm" })}
         >
           Open plan
           <RiArrowRightLine aria-hidden />
-        </Button>
+        </Link>
       </div>
     </Card>
   )

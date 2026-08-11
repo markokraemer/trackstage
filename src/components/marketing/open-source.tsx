@@ -6,7 +6,7 @@ import {
 } from "@remixicon/react"
 
 import { cn } from "@/lib/utils"
-import { Button } from "@/components/ui/button"
+import { buttonVariants } from "@/components/ui/button"
 import {
   DISPLAY_HEADING,
   MarketingSection,
@@ -65,31 +65,22 @@ export function OpenSource() {
           </p>
 
           <div className="flex flex-wrap gap-2.5 pt-2">
-            <Button
-              nativeButton={false}
-              render={<a href={GITHUB_URL} {...EXTERNAL_LINK_PROPS} />}
-            >
+            <a href={GITHUB_URL} {...EXTERNAL_LINK_PROPS} className={buttonVariants({})}>
               <RiGithubFill aria-hidden />
               Read the source
-            </Button>
-            <Button
-              variant="outline"
-              nativeButton={false}
-              render={<Link to="/design-system" />}
-            >
+            </a>
+            <Link to="/design-system" className={buttonVariants({ variant: "outline" })}>
               <RiPaletteLine aria-hidden />
               Browse the design system
-            </Button>
-            <Button
-              variant="ghost"
-              nativeButton={false}
-              render={
-                <a href={KILL_MY_SAAS_POST_URL} {...EXTERNAL_LINK_PROPS} />
-              }
+            </Link>
+            <a
+              href={KILL_MY_SAAS_POST_URL}
+              {...EXTERNAL_LINK_PROPS}
+              className={buttonVariants({ variant: "ghost" })}
             >
               The original brief
               <RiArrowRightUpLine aria-hidden />
-            </Button>
+            </a>
           </div>
         </div>
       </div>

@@ -17,7 +17,7 @@ import {
 } from "@remixicon/react"
 import { toast } from "sonner"
 
-import { Button } from "@/components/ui/button"
+import { Button, buttonVariants } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import {
   DropdownMenu,
@@ -355,9 +355,9 @@ function SubmissionsPage() {
           title="Create your event first"
           description="Submissions belong to an event. Set up your event name, dates, and tracks, then publish a call for papers to start collecting talks."
           action={
-            <Button nativeButton={false} render={<a href="/app/settings" />}>
+            <Link to="/app/settings" className={buttonVariants({})}>
               Go to event settings
-            </Button>
+            </Link>
           }
         />
       </div>
@@ -405,17 +405,13 @@ function SubmissionsPage() {
           onCommit={() => handleCommit("accept_queue")}
           secondaryAction={
             tab === "all" ? (
-              <Button nativeButton={false}
-                variant="outline"
-                render={
-                  <Link
-                    to="/app/submissions"
-                    search={{ status: "accept_queue" }}
-                  />
-                }
+              <Link
+                to="/app/submissions"
+                search={{ status: "accept_queue" }}
+                className={buttonVariants({ variant: "outline" })}
               >
                 Review the queue
-              </Button>
+              </Link>
             ) : null
           }
         />
@@ -428,17 +424,13 @@ function SubmissionsPage() {
           onCommit={() => handleCommit("decline_queue")}
           secondaryAction={
             tab === "all" ? (
-              <Button nativeButton={false}
-                variant="outline"
-                render={
-                  <Link
-                    to="/app/submissions"
-                    search={{ status: "decline_queue" }}
-                  />
-                }
+              <Link
+                to="/app/submissions"
+                search={{ status: "decline_queue" }}
+                className={buttonVariants({ variant: "outline" })}
               >
                 Review the queue
-              </Button>
+              </Link>
             ) : null
           }
         />
@@ -514,7 +506,7 @@ function SubmissionsPage() {
                   Deleted submissions
                   {counts?.deleted ? ` (${counts.deleted})` : ""}
                 </DropdownMenuItem>
-                <DropdownMenuItem render={<a href="/app/forms" />}>
+                <DropdownMenuItem render={<Link to="/app/forms" />}>
                   <RiFileList3Line aria-hidden />
                   Manage submission forms
                 </DropdownMenuItem>
@@ -563,17 +555,13 @@ function SubmissionsPage() {
               }
               description={kindHint(kind)}
               action={
-                <Button nativeButton={false}
-                  variant="outline"
-                  render={
-                    <Link
-                      to="/app/submissions"
-                      search={{ status: search.status, track: search.track }}
-                    />
-                  }
+                <Link
+                  to="/app/submissions"
+                  search={{ status: search.status, track: search.track }}
+                  className={buttonVariants({ variant: "outline" })}
                 >
                   Show all {kindCounts.all}
-                </Button>
+                </Link>
               }
               secondaryAction={
                 kind === "session" ? (
@@ -582,9 +570,9 @@ function SubmissionsPage() {
                     Add session
                   </Button>
                 ) : (
-                  <Button nativeButton={false} variant="outline" render={<a href="/app/forms" />}>
+                  <Link to="/app/forms" className={buttonVariants({ variant: "outline" })}>
                     Share your form link
-                  </Button>
+                  </Link>
                 )
               }
             />
@@ -602,9 +590,9 @@ function SubmissionsPage() {
               }
               secondaryAction={
                 tab === "all" ? (
-                  <Button nativeButton={false} variant="outline" render={<a href="/app/forms" />}>
+                  <Link to="/app/forms" className={buttonVariants({ variant: "outline" })}>
                     Share your form link
-                  </Button>
+                  </Link>
                 ) : null
               }
             />

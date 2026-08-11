@@ -2,7 +2,7 @@ import { Link } from "@tanstack/react-router"
 import { RiArrowRightLine, RiGithubFill } from "@remixicon/react"
 
 import { cn } from "@/lib/utils"
-import { Button } from "@/components/ui/button"
+import { buttonVariants } from "@/components/ui/button"
 import { DISPLAY_HEADING } from "@/components/marketing/section"
 import { EXTERNAL_LINK_PROPS, GITHUB_URL } from "@/components/marketing/links"
 
@@ -43,25 +43,23 @@ export function ClosingCta() {
            * Plain Button, deliberately: press-depth stays on the hero CTA only
            * (Marko, 2026-08-11 — "not really necessary… looks a bit odd").
            */}
-          <Button
-            size="lg"
-            className="px-5"
-            nativeButton={false}
-            render={<Link to="/login" />}
-          >
+          <Link to="/login" className={buttonVariants({ size: "lg", className: "px-5" })}>
             Get started free
             <RiArrowRightLine aria-hidden />
-          </Button>
-          <Button
-            variant="outline"
-            size="lg"
-            className="border-background/25 bg-transparent px-5 text-background hover:bg-background/10 hover:text-background"
-            nativeButton={false}
-            render={<a href={GITHUB_URL} {...EXTERNAL_LINK_PROPS} />}
+          </Link>
+          <a
+            href={GITHUB_URL}
+            {...EXTERNAL_LINK_PROPS}
+            className={buttonVariants({
+              variant: "outline",
+              size: "lg",
+              className:
+                "border-background/25 bg-transparent px-5 text-background hover:bg-background/10 hover:text-background",
+            })}
           >
             <RiGithubFill aria-hidden />
             Read the source
-          </Button>
+          </a>
         </div>
       </div>
     </section>

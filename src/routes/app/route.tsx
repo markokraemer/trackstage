@@ -49,16 +49,35 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Logo } from "@/components/brand/logo"
+import { Skeleton } from "@/components/ui/skeleton"
 import {
   CopilotPanel,
   CopilotTriggerButton,
 } from "@/components/copilot/copilot-panel"
 import { ShellEventSwitcher } from "@/components/shell/event-switcher"
 import { GlobalSearch } from "@/components/shell/global-search"
+import {
+  AccountSettingsDialog,
+  isAccountSettingsTab,
+} from "@/components/shell/account-settings-dialog"
+import type { AccountSettingsTab } from "@/components/shell/account-settings-dialog"
 import { requireAuthed, useSession } from "@/lib/session"
 import { useCurrentEvent } from "@/lib/current-event"
 
+interface AppSearch {
+  /**
+   * Which account-settings tab is open, if any (undefined ⇒ dialog closed).
+   * Declared on this layout route rather than a leaf route so it survives
+   * navigation between `/app/*` pages and keeps the modal deep-linkable —
+   * e.g. `/app/submissions?account=api-mcp` opens the modal over Submissions.
+   */
+  account?: AccountSettingsTab
+}
+
 export const Route = createFileRoute("/app")({
+  validateSearch: (search: Record<string, unknown>): AppSearch => ({
+    account: isAccountSettingsTab(search.account) ? search.account : undefined,
+  }),
   beforeLoad: ({ context, location }) => {
     requireAuthed(context.isAuthenticated, location.href)
   },
@@ -124,8 +143,26 @@ const NAV_GROUPS: Array<NavGroup> = [
 ]
 
 function OrganizerLayout() {
-  const navigate = useNavigate()
+  const navigate = Route.useNavigate()
+  const routerNavigate = useNavigate()
   const { session, status, signOut } = useSession()
+  const { account: accountTab } = Route.useSearch()
+
+  // `to: "."` = stay on the CURRENT page (submissions, agenda, …) and only
+  // touch the `account` search param — Route.useNavigate() would resolve a
+  // search-only update against `/app` and yank the user to the dashboard.
+  function openAccountSettings(tab: AccountSettingsTab) {
+    void routerNavigate({
+      to: ".",
+      search: (prev) => ({ ...prev, account: tab }),
+    })
+  }
+  function closeAccountSettings() {
+    void routerNavigate({
+      to: ".",
+      search: (prev) => ({ ...prev, account: undefined }),
+    })
+  }
 
   // beforeLoad guards SSR + client navigations; this covers a session that
   // expires while the tab is open.
@@ -147,9 +184,35 @@ function OrganizerLayout() {
   const { event, workspace, workspaces, selectWorkspace } = useCurrentEvent()
 
   if (status !== "authenticated") {
+    // Cold-load fallback while the session resolves: a shell-shaped skeleton
+    // (top bar + sidebar + content blocks) instead of a bare "Loading…" page,
+    // so the app appears to paint instantly (rule 26 — skeletons shaped like
+    // their content, never a spinner or a blank screen).
     return (
-      <div className="flex min-h-svh items-center justify-center bg-background">
-        <p className="text-sm text-muted-foreground">Loading…</p>
+      <div className="min-h-svh bg-background" aria-busy="true">
+        <div className="container-app relative flex h-14 items-center gap-3 border-b border-border bg-card">
+          <Logo size="sm" className="max-md:[&>span:last-child]:sr-only" />
+          <Skeleton className="absolute left-1/2 h-8 w-64 -translate-x-1/2 lg:w-80" />
+          <Skeleton className="ml-auto size-8 rounded-full" />
+        </div>
+        <div className="flex">
+          <div className="h-[calc(100svh-3.5rem)] w-16 shrink-0 border-r border-sidebar-border bg-sidebar p-3 md:w-60">
+            <Skeleton className="mb-6 h-12 w-full" />
+            {Array.from({ length: 8 }, (_, i) => (
+              <Skeleton key={i} className="mb-2 h-8 w-full" />
+            ))}
+          </div>
+          <div className="flex-1 p-8">
+            <Skeleton className="mb-2 h-8 w-64" />
+            <Skeleton className="mb-8 h-4 w-96 max-w-full" />
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              {Array.from({ length: 4 }, (_, i) => (
+                <Skeleton key={i} className="h-36 w-full" />
+              ))}
+            </div>
+          </div>
+        </div>
+        <p className="sr-only">Loading…</p>
       </div>
     )
   }
@@ -257,8 +320,7 @@ function OrganizerLayout() {
                   </span>
                 </DropdownMenuLabel>
                 <DropdownMenuItem
-                  nativeButton={false}
-                  render={<Link to="/app/account" />}
+                  onClick={() => openAccountSettings("profile")}
                 >
                   <RiUserSettingsLine aria-hidden />
                   Account settings
@@ -376,6 +438,17 @@ function OrganizerLayout() {
 
       {/* Mounted at the shell so the conversation survives navigation. */}
       <CopilotPanel />
+
+      {/* Mounted at the shell (not a route) so it opens over whatever page
+          you were on — its tab lives in the URL via ?account=, above. */}
+      <AccountSettingsDialog
+        open={accountTab !== undefined}
+        tab={accountTab ?? "profile"}
+        onOpenChange={(nextOpen) => {
+          if (!nextOpen) closeAccountSettings()
+        }}
+        onTabChange={openAccountSettings}
+      />
     </div>
   )
 }

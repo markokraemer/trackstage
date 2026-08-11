@@ -35,7 +35,7 @@ import {
   socialAvatarSvg,
 } from "@/components/brand/assets"
 import type { BrandTone, BrandVariant } from "@/components/brand/assets"
-import { Button } from "@/components/ui/button"
+import { Button, buttonVariants } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -405,14 +405,9 @@ function DesignSystemPage() {
           <Separator orientation="vertical" className="mx-1 h-5" />
           <span className="text-sm text-muted-foreground">Design system</span>
           <div className="ml-auto">
-            <Button
-              variant="outline"
-              size="sm"
-              nativeButton={false}
-              render={<Link to="/login" />}
-            >
+            <Link to="/login" className={buttonVariants({ variant: "outline", size: "sm" })}>
               Organizer demo
-            </Button>
+            </Link>
           </div>
         </header>
 
