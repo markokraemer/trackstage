@@ -27,16 +27,17 @@ import { armed, fillStable, gotoStable, signUpApi, testEmail, unique } from "./_
 
 const RECEIPT = /check your email/i
 
-/** Open the sign-in card and switch it to "forgot password" mode. */
+/**
+ * Open the reset card by URL. `?mode=forgot` exists precisely so this state
+ * survives a reload (and can be linked to from the expired-link page) — which
+ * also makes it the only entry point a spec can trust while the dev server is
+ * hot-reloading under other agents' edits.
+ */
 async function openForgotMode(page: Page) {
-  await gotoStable(page, "/login", "networkidle")
-  // Pre-hydration clicks are swallowed — retry until the email-only form is up.
-  await expect(async () => {
-    await page.getByRole("button", { name: /forgot password/i }).first().click()
-    await expect(
-      page.getByRole("heading", { name: /reset your password/i }),
-    ).toBeVisible({ timeout: 2_000 })
-  }).toPass({ timeout: 30_000 })
+  await gotoStable(page, "/login?mode=forgot", "networkidle")
+  await expect(
+    page.getByRole("heading", { name: /reset your password/i }),
+  ).toBeVisible({ timeout: 30_000 })
 }
 
 async function requestReset(page: Page, email: string) {

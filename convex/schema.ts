@@ -79,6 +79,14 @@ export default defineSchema({
     // like a personal key. Never returned by `list`, never shown in the UI,
     // and its blast radius equals the signed-in session that minted it.
     secret: v.optional(v.string()),
+    // REST API scopes (convex/apiV1.ts), mirroring Sessionboard's token
+    // scopes: read:events, read:sessions, read:contacts, read:media,
+    // write:sessions, write:fields, write:metadata, write:events,
+    // write:webhooks. UNSET means "no scope restriction" — the key acts with
+    // exactly the permissions its owner's org membership grants, which is the
+    // pre-existing behaviour every MCP key relies on. Once set, it is enforced
+    // as an additional narrowing on top of membership (never a widening).
+    scopes: v.optional(v.array(v.string())),
   })
     .index("by_keyHash", ["keyHash"])
     .index("by_userId", ["userId"]),
