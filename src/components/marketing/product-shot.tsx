@@ -207,13 +207,17 @@ function BlurUpShot({
           anchorTop ? "object-top" : "object-center"
         )}
         initial={false}
-        animate={
-          still
-            ? { opacity: shown ? 1 : 0 }
-            : shown
-              ? { opacity: 1, filter: "blur(0px)", scale: 1 }
-              : { opacity: 0, filter: "blur(16px)", scale: 1.04 }
-        }
+        /*
+         * Every property is listed in BOTH states on purpose. Swapping to a
+         * smaller object (what interior's component does for its instant path)
+         * leaves the dropped property stuck at its last value — which is how
+         * every shot ended up permanently blurred.
+         */
+        animate={{
+          opacity: shown ? 1 : 0,
+          filter: shown ? "blur(0px)" : "blur(16px)",
+          scale: shown ? 1 : 1.04,
+        }}
         transition={still ? { duration: 0 } : DEVELOP}
       />
     </div>
