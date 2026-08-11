@@ -51,7 +51,8 @@ queues, then commit once: emails go out, onboarding tasks appear in each speaker
 portal, and statuses flip everywhere instantly.
 
 **Speaker portal** — passwordless. Speakers edit their talk, complete their profile,
-upload headshots and slides (versioned, with organizer approval), and tick off tasks.
+upload headshots and slides (versioned, previewable in place, with organizer
+approval), and tick off tasks.
 
 **Agenda builder** — drag talks onto a day × room grid with live conflict detection
 (room clashes *and* double-booked speakers), auto-placement, and an explicit publish

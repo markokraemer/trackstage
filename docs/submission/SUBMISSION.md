@@ -31,8 +31,9 @@ one-click Airtable sync.
 
 1. **Speed.** The complaint that started the competition was sluggishness. Every
    interaction here is optimistic and instant on a reactive backend (Convex, AWS
-   us-east-1), served from Cloudflare's edge, email via Resend us-east-1. No spinners
-   where a click should just work.
+   us-east-1), served by a Cloudflare Worker with Smart Placement pinning SSR next to
+   that backend, email via Resend us-east-1. No spinners where a click should just
+   work.
 2. **An MCP server that is the whole product, plus a built-in copilot.** 84 tools in 12
    groups over OAuth 2.1 (add the URL to Claude/ChatGPT as a connector and sign in — no
    key paste). Every write refuses without `confirm: true`, so destructive power is
