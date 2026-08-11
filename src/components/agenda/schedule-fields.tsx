@@ -179,6 +179,10 @@ export function ScheduleFields({
       <Field>
         <FieldLabel htmlFor={`room-${session.id}`}>Room</FieldLabel>
         <Select
+          // Inside a Popover: non-modal (the app default since the sbek
+          // overlay fix) lets the open list count as an OUTSIDE interaction,
+          // dismissing the popover mid-pick. Modal keeps the popover alive.
+          modal
           items={roomItems}
           value={roomId}
           onValueChange={(value) => change({ roomId: String(value) })}
@@ -200,7 +204,7 @@ export function ScheduleFields({
       {dayKeys.length > 1 ? (
         <Field>
           <FieldLabel htmlFor={`day-${session.id}`}>Day</FieldLabel>
-          <Select
+          <Select modal
             items={dayItems}
             value={dayKey}
             onValueChange={(value) => change({ dayKey: String(value) })}
@@ -222,7 +226,7 @@ export function ScheduleFields({
       <div className="grid grid-cols-2 gap-3">
         <Field>
           <FieldLabel htmlFor={`start-${session.id}`}>Start time</FieldLabel>
-          <Select
+          <Select modal
             items={startItems}
             value={String(startMinutes)}
             onValueChange={(value) => change({ startMinutes: Number(value) })}
@@ -242,7 +246,7 @@ export function ScheduleFields({
 
         <Field>
           <FieldLabel htmlFor={`duration-${session.id}`}>Length</FieldLabel>
-          <Select
+          <Select modal
             items={durationItems}
             value={String(duration)}
             onValueChange={(value) => change({ duration: Number(value) })}
