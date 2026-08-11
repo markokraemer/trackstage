@@ -265,3 +265,28 @@ writes for zero region gain. `keen-eagle-41` stays canonical prod. Speed action
 taken instead: Cloudflare Smart Placement on the prod Worker (wrangler.jsonc) so
 SSR runs near the us-east backend. Only the DEV deployment remains in eu-west-1
 (later phase).
+
+## Settings IA: account + workspace are MODALS, event stays the only settings PAGE (2026-08-12)
+Marko hated `/app/:ws/workspace` ("it just redirects you to the workspace
+settings page and you have no fucking idea what to do there") and the
+Account | Workspace | Event sibling-tab row on settings pages. New IA:
+- ONE settings page — the event's (sidebar → Settings). Account and workspace
+  settings open as wide modals over whatever page you're on, Linear-style,
+  driven by shell-level search params validated on the `/app` route:
+  `?settings=account|workspace`, `settingsTab`, `invite`, `inviteEvent`
+  (namespaced — several pages already own `tab`). Host:
+  `src/components/shell/settings-dialogs.tsx`; entries: avatar menu (both).
+- Every legacy address resolves into the modals, no dead links: `/app/account`
+  (+`?tab=`) and `/app/:ws/workspace` (+`?invite=1&event=`) redirect to the best
+  real page (event dashboard, else the no-events screen in place) with the right
+  modal open; `settings/api-mcp` lands on event settings + account modal.
+- Team is a FIRST-CLASS TAB, never a scroll-to card (Marko: "just have a Team
+  tab instead … such an important screen"): workspace modal = General / Team /
+  Events; event settings gets the same Team tab (`settings/team` route) —
+  ONE component (`MembersCard`, optional `scopeEvent`) in both hosts, same
+  mutations, invite CTA pre-scoping the event. `EventTeamCard` and the
+  redirect-y "teammates live in Workspace settings" copy are gone.
+- Member rows show email verification as a quiet tooltip dot, consumed
+  optionally from `workspaces.members.emailVerified` (auth work, separate).
+- Switching workspace INSIDE the modal keeps the modal open on the new
+  workspace; the sidebar/avatar switchers still navigate plainly.
