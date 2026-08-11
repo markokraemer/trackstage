@@ -37,7 +37,7 @@ Source of truth for everything Marko asked + build status. Update continuously.
   content edits (CNT-11 — decide: cheap audit-log table or accept the gap) · Speaker CRM
   optional area (19pts extra credit, needs cross-event speaker reuse — decide after v1)
 - ⏳ Public API (/v1) + README docs (bonus)
-- ✅ MCP server (rule 21): 27 tools over MCP Streamable HTTP at `{CONVEX_SITE_URL}/mcp`,
+- ✅ MCP server (rule 21): 31 tools over MCP Streamable HTTP at `{CONVEX_SITE_URL}/mcp`,
   personal API keys (`sb_live_…`, hashed) + Better Auth OAuth 2.1 (DCR + PKCE) so Claude/
   ChatGPT "add connector by URL" just works; Settings → API & MCP tab with per-client
   setup snippets; verify-backend MCP section green (122/122)
@@ -57,8 +57,16 @@ Source of truth for everything Marko asked + build status. Update continuously.
 ## Emails (rule 18e — Resend key live on deployment)
 - ✅ Speaker comms via Resend (real recipients send; @example.com demo → preview)
 - ✅ Workspace invite emails (addMember → platformEmails.sendWorkspaceInvite)
-- ⏳ Password reset email via Better Auth sendResetPassword wiring
-- ⏳ Verify a real delivery end-to-end to Marko's inbox (needs a real recipient)
+- ✅ Password reset, end to end: `emailAndPassword.sendResetPassword` → `requireActionCtx(ctx)`
+  → scheduled `platformEmails.sendPasswordReset` (shared `sendTransactionalEmail` helper);
+  "Forgot password?" + `/login?mode=forgot` receipt; `/reset-password` route incl. the
+  expired-link page. Proven live by `scripts/verify-password-reset.mjs` (14/14: real emailed
+  link → new password signs in, old one 401s, token can't be replayed, no account enumeration)
+  + `tests/e2e/flows/password-reset.spec.ts` (4/4)
+- ✅ Verified a real delivery end-to-end (Resend accepted, `sent: true`, to marko@kortix.ai)
+- 🔨 **Resend account is still in TEST MODE — blocks all real mail.** `EMAIL_FROM` is
+  `onboarding@resend.dev`, so Resend 403s every recipient except marko@kortix.ai. Verify a
+  domain at resend.com/domains and set `EMAIL_FROM` to it (one-time config, needs Marko)
 
 ## Testing (harness live)
 - ✅ pnpm test (vitest unit, ics 7/7) · pnpm test:backend (78/78) · pnpm test:e2e

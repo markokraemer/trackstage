@@ -405,6 +405,7 @@ function AgendaPage() {
               rooms={board.rooms}
               sessions={daySessions}
               unscheduled={filteredUnscheduled}
+              boardSessions={scheduledAll}
               conflicts={conflicts}
               conflictIds={conflictIds}
               dayKey={selectedDay}
@@ -419,6 +420,7 @@ function AgendaPage() {
           {view === "week" ? (
             <WeekView
               sessions={filteredScheduled}
+              boardSessions={scheduledAll}
               rooms={board.rooms}
               conflicts={conflicts}
               conflictIds={conflictIds}
@@ -441,8 +443,10 @@ function AgendaPage() {
               tracks={board.tracks}
               rooms={board.rooms}
               sessions={daySessions}
+              boardSessions={scheduledAll}
               conflicts={conflicts}
               conflictIds={conflictIds}
+              dayKey={selectedDay}
               dayKeys={dayKeys}
               timeZone={timeZone}
               windowStartMinutes={startMinutes}
@@ -455,8 +459,10 @@ function AgendaPage() {
             <RoomsView
               rooms={board.rooms}
               sessions={daySessions}
+              boardSessions={scheduledAll}
               conflicts={conflicts}
               conflictIds={conflictIds}
+              dayKey={selectedDay}
               dayKeys={dayKeys}
               timeZone={timeZone}
               windowStartMinutes={startMinutes}

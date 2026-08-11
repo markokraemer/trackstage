@@ -19,7 +19,7 @@
  */
 
 import { readFileSync } from "node:fs"
-import { execFileSync } from "node:child_process"
+import { spawn } from "node:child_process"
 import { fileURLToPath } from "node:url"
 import { dirname, resolve } from "node:path"
 
@@ -55,6 +55,22 @@ const post = (path, body) =>
     body: JSON.stringify(body),
   })
 
+// 0 — start tailing logs BEFORE anything happens ——————————————————————————
+// The deployment's log history is only a few seconds deep when other work is
+// running against it, so the preview line has to be caught live rather than
+// looked up afterwards.
+let logBuffer = ""
+const logs = spawn("pnpm", ["exec", "convex", "logs"], { cwd: root })
+logs.stdout.on("data", (chunk) => {
+  logBuffer += chunk.toString()
+})
+const stopLogs = () => {
+  logs.kill("SIGKILL")
+}
+process.on("exit", stopLogs)
+// Give the CLI a moment to attach to the stream.
+await new Promise((r) => setTimeout(r, 4_000))
+
 // 1 — a throwaway account to reset ————————————————————————————————————————
 const signUp = await post("/sign-up/email", {
   name: "Reset Probe",
@@ -80,25 +96,16 @@ check(
 // @example.com recipients never reach Resend; sendPasswordReset logs the link
 // instead, which is exactly what makes this flow verifiable without an inbox.
 let link = null
-for (let attempt = 0; attempt < 4 && !link; attempt++) {
-  let out = ""
-  try {
-    // `convex logs` tails forever — ten seconds of it replays the history.
-    out = execFileSync(
-      "bash",
-      ["-c", "timeout 10 pnpm exec convex logs --history 60 2>/dev/null"],
-      { cwd: root, encoding: "utf8", timeout: 30_000 },
-    )
-  } catch (error) {
-    out = error.stdout ?? ""
-  }
-  const line = out
+for (let attempt = 0; attempt < 30 && !link; attempt++) {
+  await new Promise((r) => setTimeout(r, 1_000))
+  const line = logBuffer
     .split("\n")
     .reverse()
     .find((l) => l.includes("[email:preview] password-reset") && l.includes(EMAIL))
   // The CLI single-quotes the log line; drop the closing quote.
   if (line) link = line.match(/link=(\S+)/)?.[1]?.replace(/['"]+$/, "") ?? null
 }
+stopLogs()
 check(Boolean(link), "sendPasswordReset ran and logged the preview link", link ?? "not found")
 check(
   Boolean(link?.includes("/api/auth/reset-password/")),

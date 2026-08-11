@@ -5,7 +5,7 @@
       "events": [
         {
           "endsAt": "2026-10-14T01:00:00.000Z",
-          "eventId": "j97a0k3hz4qb3pmpamb3g72cg58c89bv",
+          "eventId": "j972cy9qbmve3d3c85p0bjmnzh8c8tv3",
           "name": "AI Engineer Summit 2026",
           "organizationId": "mn7fs8btg5szyhbkqdfhtd4xmn8c8xhg",
           "organizationName": "AI Engineer",
@@ -43,8 +43,21 @@
           "yourRole": "owner"
         },
         {
+          "endsAt": null,
+          "eventId": "j970hvs1kjqc185cp9ebm43sdn8c885g",
+          "name": "Copilot Verification Event",
+          "organizationId": "mn7fs8btg5szyhbkqdfhtd4xmn8c8xhg",
+          "organizationName": "AI Engineer",
+          "slug": "copilot-verification-event-3",
+          "startsAt": null,
+          "timezone": "UTC",
+          "type": null,
+          "venue": null,
+          "yourRole": "owner"
+        },
+        {
           "endsAt": "2026-11-05T23:00:00.000Z",
-          "eventId": "j9749c4hp4v9r8zsgpykxqgqx18c8xex",
+          "eventId": "j974s9qpdjwa6wyaw6z79961a98c9ams",
           "name": "Design Systems Day",
           "organizationId": "mn7fs8btg5szyhbkqdfhtd4xmn8c8xhg",
           "organizationName": "AI Engineer",
@@ -211,20 +224,22 @@
       "event": "ai-summit-2026"
     },
     "output": {
+      "formCount": 1,
       "forms": [
         {
           "closeAt": "2026-09-16T06:59:00.000Z",
           "draftCount": 3,
           "externalTitle": "Call for Speakers — AI Engineer Summit 2026",
-          "formId": "jd70qeexqcjc6pyp60x3509azx8c9bwn",
+          "formId": "jd73phacyyzmagrpmvddn4mge98c80tq",
           "kind": "abstract",
           "name": "CFP 2026 — main call",
           "publicUrl": "http://localhost:3000/submit/cfp",
           "slug": "cfp",
           "status": "open",
-          "submissionCount": 14
+          "submissionCount": 15
         }
-      ]
+      ],
+      "linkWarning": "http://localhost:3000 is a loopback address (demo URL — set SITE_URL in production). Links below only work on the machine running Sessionboard — don't send them to a speaker."
     }
   },
   "get_form": {
@@ -752,7 +767,13 @@
       "onlyWithOutstandingWork": true
     },
     "output": {
-      "speakerCount": 11,
+      "filter": {
+        "includeProfileGaps": false,
+        "means": "speakers with ≥1 incomplete task",
+        "onlyWithOutstandingWork": true
+      },
+      "returned": 7,
+      "speakerCount": 7,
       "speakers": [
         {
           "company": "Orbit Cloud",
@@ -763,21 +784,25 @@
             "slides"
           ],
           "name": "Liam Ferguson",
+          "outstandingReason": [
+            "open_tasks",
+            "incomplete_profile"
+          ],
           "outstandingTasks": [
             {
-              "dueAt": "2026-08-14T02:18:54.204Z",
+              "dueAt": "2026-08-14T02:51:05.017Z",
               "kind": "confirm",
-              "taskId": "k971183w856pkqgj9qz2hyfx4n8c97ej",
+              "taskId": "k979s0e1m4hpb7mmgtkhyqerz18c9bjz",
               "title": "Confirm your biography"
             },
             {
-              "dueAt": "2026-08-31T02:18:54.204Z",
+              "dueAt": "2026-08-31T02:51:05.017Z",
               "kind": "upload",
-              "taskId": "k975025vskv0mmgj7m96j7akgs8c9vcb",
+              "taskId": "k975f6sqm2rymxcktsqmey13fs8c83f5",
               "title": "Upload your slides"
             }
           ],
-          "personId": "m97er2a2dm7qvzzpmkfzc4q4m98c8epy",
+          "personId": "m97dcc60qqjywe7tvxxtakncz18c8zc0",
           "sessions": [
             "Serving four hundred models on one GPU fleet"
           ]
@@ -791,21 +816,25 @@
             "slides"
           ],
           "name": "Rafael Duarte",
+          "outstandingReason": [
+            "open_tasks",
+            "incomplete_profile"
+          ],
           "outstandingTasks": [
             {
-              "dueAt": "2026-08-13T02:18:54.204Z",
+              "dueAt": "2026-08-13T02:51:05.017Z",
               "kind": "headshot",
-              "taskId": "k97az3jjgm6ay55581qn8e01hh8c8k2g",
+              "taskId": "k975j68gcc65qjxnvtdv8e01418c8kqs",
               "title": "Upload your headshot"
             },
             {
-              "dueAt": "2026-08-31T02:18:54.204Z",
+              "dueAt": "2026-08-31T02:51:05.017Z",
               "kind": "upload",
-              "taskId": "k973x98m87m1w6ka9py9ew5x758c9h13",
+              "taskId": "k97bdd4nneqczez6hzmttp9nrh8c8ett",
               "title": "Upload your slides"
             }
           ],
-          "personId": "m97a4h66ztpsbccytex8f9nsrx8c8y8p",
+          "personId": "m9702hy57p6pbmhysetqw2c2598c80tn",
           "sessions": [
             "What users actually do with your AI feature"
           ]
@@ -819,21 +848,25 @@
             "slides"
           ],
           "name": "Sofia Marchetti",
+          "outstandingReason": [
+            "open_tasks",
+            "incomplete_profile"
+          ],
           "outstandingTasks": [
             {
-              "dueAt": "2026-08-09T02:18:54.204Z",
+              "dueAt": "2026-08-09T02:51:05.017Z",
               "kind": "headshot",
-              "taskId": "k9724s86z1tvgdhhjfb4qvjrnn8c9f6q",
+              "taskId": "k97e2wc8bnvrgnhc4rcpnn635x8c88xa",
               "title": "Upload your headshot"
             },
             {
-              "dueAt": "2026-08-31T02:18:54.204Z",
+              "dueAt": "2026-08-31T02:51:05.017Z",
               "kind": "upload",
-              "taskId": "k97cknnp7xd6z2mtd1r049apt98c992n",
+              "taskId": "k97fnhakc7zp2r8r8232b5p7kh8c8b1f",
               "title": "Upload your slides"
             }
           ],
-          "personId": "m975v1cfhkknfjf8k6bs5wjp8h8c8fj5",
+          "personId": "m9742xqxqmt10e51dd4e01jm7n8c9f0d",
           "sessions": [
             "Building reliable agents: a practitioner's playbook"
           ]
@@ -847,21 +880,25 @@
             "slides"
           ],
           "name": "Tom Beaumont",
+          "outstandingReason": [
+            "open_tasks",
+            "incomplete_profile"
+          ],
           "outstandingTasks": [
             {
-              "dueAt": "2026-08-12T02:18:54.204Z",
+              "dueAt": "2026-08-12T02:51:05.017Z",
               "kind": "confirm",
-              "taskId": "k970rh5tyh8qxedhgv3my5xre58c83vw",
+              "taskId": "k97e9fmx246pa6sat32w4hkb298c87b5",
               "title": "Confirm your biography"
             },
             {
-              "dueAt": "2026-08-31T02:18:54.204Z",
+              "dueAt": "2026-08-31T02:51:05.017Z",
               "kind": "upload",
-              "taskId": "k97ekwvhz1drne72911nxdw5v18c9fe5",
+              "taskId": "k97chdzw856ye5fyefyzz41n7x8c8wpv",
               "title": "Upload your slides"
             }
           ],
-          "personId": "m979n4k78za4wg003x9rcz2kp58c9e2q",
+          "personId": "m97drwk30v7y1fdzb1713ejce98c85fs",
           "sessions": [
             "Evaluation harnesses for production LLMs"
           ]
@@ -874,15 +911,19 @@
             "slides"
           ],
           "name": "Ava Nakamura",
+          "outstandingReason": [
+            "open_tasks",
+            "incomplete_profile"
+          ],
           "outstandingTasks": [
             {
-              "dueAt": "2026-08-13T02:18:54.204Z",
+              "dueAt": "2026-08-13T02:51:05.017Z",
               "kind": "upload",
-              "taskId": "k974fphk8afxhrwtfh6p64vt6n8c8x7q",
+              "taskId": "k97d64x3e46s2g03ch0yrq6gyx8c92sc",
               "title": "Upload your slides"
             }
           ],
-          "personId": "m97b7jbjh9g7a2ccyrypbmmzk18c91rf",
+          "personId": "m977exq5cemva9zyq5k8p781718c9f0n",
           "sessions": [
             "Building reliable agents: a practitioner's playbook",
             "Closing panel: what we got wrong about agents"
@@ -896,39 +937,22 @@
             "slides"
           ],
           "name": "Noah Blackwood",
+          "outstandingReason": [
+            "open_tasks",
+            "incomplete_profile"
+          ],
           "outstandingTasks": [
             {
               "dueAt": null,
               "kind": "upload",
-              "taskId": "k974jsfwt7yje72j7cd8evb2bx8c84t7",
+              "taskId": "k972tkf2bjasq83hqqr2dfks518c89rd",
               "title": "Upload your slides"
             }
           ],
-          "personId": "m97cg007swhmeevh62zbwvkwf18c9hqq",
+          "personId": "m97e4vbn3gkqgg42ht41knjgsn8c8szc",
           "sessions": [
             "Cost modelling for inference-heavy products",
             "Closing panel: what we got wrong about agents"
-          ]
-        },
-        {
-          "company": null,
-          "email": "verify-e2e-mso17mas@example.com",
-          "jobTitle": "QA Engineer",
-          "missingProfileItems": [
-            "headshot"
-          ],
-          "name": "Vera Efftest",
-          "outstandingTasks": [
-            {
-              "dueAt": null,
-              "kind": "headshot",
-              "taskId": "k97at3jsctbx4k37xwydjr0xch8c8xvq",
-              "title": "Upload your headshot"
-            }
-          ],
-          "personId": "m978v19xqt5w3a1y9s1w7w68z18c8hx9",
-          "sessions": [
-            "Verification Talk (edited)"
           ]
         },
         {
@@ -939,62 +963,29 @@
             "slides"
           ],
           "name": "Yara Haddad",
+          "outstandingReason": [
+            "open_tasks",
+            "incomplete_profile"
+          ],
           "outstandingTasks": [
             {
               "dueAt": null,
               "kind": "upload",
-              "taskId": "k977gtzhphcd9bnvp460gz45118c9sxw",
+              "taskId": "k97b09ne03w113bb8v1b3pz8vx8c9pz1",
               "title": "Upload your slides"
             }
           ],
-          "personId": "m975d29akmk5hbq80zpb69ve4s8c87zh",
+          "personId": "m97f5w857pxh933fd2rgx85kes8c9rtc",
           "sessions": [
             "Structured output without the sadness"
           ]
-        },
-        {
-          "company": "Meridian Health",
-          "email": "daniel.okonkwo@example.com",
-          "jobTitle": "Director of AI",
-          "missingProfileItems": [
-            "slides"
-          ],
-          "name": "Daniel Okonkwo",
-          "outstandingTasks": [],
-          "personId": "m979knpctxe6brpwepr9j0tzdd8c881m",
-          "sessions": [
-            "Closing panel: what we got wrong about agents"
-          ]
-        },
-        {
-          "company": "Runway Analytics",
-          "email": "elena.petrova@example.com",
-          "jobTitle": "Product Lead",
-          "missingProfileItems": [
-            "slides"
-          ],
-          "name": "Elena Petrova",
-          "outstandingTasks": [],
-          "personId": "m9793mse2rmc9wgapbn2de69p58c9268",
-          "sessions": [
-            "What users actually do with your AI feature"
-          ]
-        },
-        {
-          "company": "Institute for Applied ML",
-          "email": "hana.kobayashi@example.com",
-          "jobTitle": "Research Engineer",
-          "missingProfileItems": [
-            "slides"
-          ],
-          "name": "Hana Kobayashi",
-          "outstandingTasks": [],
-          "personId": "m974kv274874q0t7h00bpfhdxx8c8rpd",
-          "sessions": [
-            "Evaluation harnesses for production LLMs"
-          ]
         }
-      ]
+      ],
+      "summary": "7 of 12 confirmed speaker(s) returned — filter: speakers with ≥1 incomplete task. Across the whole roster: 7 with open tasks, 10 with an incomplete profile, 10 with either.",
+      "totalSpeakers": 12,
+      "withOpenTasks": 7,
+      "withOpenTasksOrProfileGaps": 10,
+      "withProfileGaps": 10
     }
   },
   "get_speaker_portal_link": {
@@ -1456,6 +1447,27 @@
       "note": "Moved back to the unscheduled tray.",
       "submissionId": "k577w0cj51kqs87n309pwe3wbh8c8na1",
       "title": "Structured output without the sadness"
+    }
+  },
+  "get_template": {
+    "input": {
+      "event": "ai-summit-2026",
+      "key": "accepted"
+    },
+    "output": {
+      "body": "Hi {{firstName}},\n\nGreat news: “{{sessionTitle}}” has been accepted for {{eventName}}. We had a strong field this year and we're genuinely excited to have you on the programme.\n\nA few next steps so we can get you ready:\n\n1. Open your speaker portal: {{portalLink}}\n2. Confirm your biography and upload a headshot — both appear on the public programme.\n3. Work through the tasks listed in the portal before their due dates (slides, travel details, and anything else we need from you).\n\nIf your session has already been scheduled you'll find a calendar invite attached to this email, and the exact time and room in the portal.\n\nPlease let us know if anything changes on your side — we'd rather hear early.\n\nWelcome aboard,\nThe {{eventName}} programme team",
+      "customized": true,
+      "key": "accepted",
+      "name": "Submission accepted",
+      "note": "Rewrite it with update_template, then proof it with send_test_email.",
+      "subject": "Congratulations — “{{sessionTitle}}” is in the {{eventName}} programme",
+      "variables": [
+        "speakerName",
+        "firstName",
+        "sessionTitle",
+        "eventName",
+        "portalLink"
+      ]
     }
   }
 }

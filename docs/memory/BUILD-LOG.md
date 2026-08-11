@@ -498,3 +498,52 @@ belongs to a purged person). Seed, then verify — never overlapping.
   NOT taken — the deferral tax is paid once per session in schema fetches, while "the agent
   can't delete anything" is a permanent hole; collapsing `get_public_form_link` into
   `list_forms`/`get_form` stays the one redundant tool left. Item 10 is docs-only and still open.
+
+## 2026-08-11 — Password reset, end to end (rule 18e: no missing email surface)
+
+The last account-lifecycle email that didn't exist. Better Auth had `emailAndPassword`
+enabled but no `sendResetPassword`, so "Forgot password?" was unbuildable and a locked-out
+organizer had no way back in.
+
+- **The Convex + Better Auth email pattern.** `sendResetPassword` closes over the `ctx`
+  passed to `createAuth`, which is a `GenericCtx` — it can be a query ctx, where there is no
+  scheduler and no `fetch`. The component ships `requireActionCtx` (`@convex-dev/better-auth/utils`)
+  for exactly this: the reset endpoint only ever runs over HTTP, i.e. inside an httpAction, so
+  narrowing at call time is sound. From there the send is **scheduled**, not awaited
+  (`scheduler.runAfter(0, internal.platformEmails.sendPasswordReset, …)`): Resend latency must
+  not sit in the user's request, and a mail failure must never become a non-200 — the endpoint
+  answers "if this email exists, check your inbox" either way, and that non-disclosure is the
+  whole point. `resetPasswordTokenExpiresIn` is a named constant mirrored into the email copy,
+  so "expires in 60 minutes" can't drift from the truth.
+- **`sendTransactionalEmail` extracted** in `convex/platformEmails.ts` — one door to Resend for
+  every platform email, with the `@example.*` preview rule (RFC 2606 addresses hard-bounce and
+  burn sender reputation) applied once instead of per-email. `emailButton()` gives them one CTA
+  style. The submission-notification work landing in parallel adopted both.
+- **The preview log carries the link** (`previewNote`, preview branch ONLY, never on a real
+  send). That single decision is what makes the flow verifiable without an inbox — and it's
+  also what lets a demo account complete a reset on a deployment that can't send mail.
+- **UI.** `login.tsx` gains a third mode, `forgot`, reachable from a "Forgot password?" link on
+  the sign-in card AND from `/login?mode=forgot` — URL-driven so the state survives a reload
+  and can be linked to. It submits to `requestPasswordReset({ email, redirectTo: "/reset-password" })`
+  and turns into a receipt ("Check your email — if an account exists for …"). New
+  `/reset-password` route: Better Auth's callback validates the token server-side and redirects
+  here with `?token=…`, or with `?error=INVALID_TOKEN`, so **an expired link is a page, not a
+  broken form** ("This link has expired" + "Email me a new link" → back to `?mode=forgot`).
+- **Verified for real, not asserted.** `scripts/verify-password-reset.mjs` (14/14, stable over
+  3 runs) walks the whole thing against the live deployment: sign up a throwaway `@example.com`
+  organizer → request → **read the preview log for the link Better Auth actually built** →
+  follow it → 302 to `/reset-password?token=…` → set a new password → new password signs in →
+  **old one 401s** → **the token can't be replayed (400)** → an address with no account gets a
+  byte-identical 200 (no enumeration). It tails `convex logs` live rather than reading history,
+  because the deployment's history is only seconds deep while other agents are working.
+  `tests/e2e/flows/password-reset.spec.ts` covers the browser half (4/4): identical receipt for
+  a real vs. non-existent account, expired-link page, forged token refused in plain English,
+  local password-mismatch catch — clean console throughout, with one deliberate `watcher.reset()`
+  after the intended 400.
+- **A real Resend delivery was proven** (`sent: true` to marko@kortix.ai). ⚠️ **Deployment
+  finding, affects EVERY email, not just this one:** the Resend account is still in test mode —
+  `EMAIL_FROM` is `onboarding@resend.dev` and Resend 403s any recipient other than
+  marko@kortix.ai ("verify a domain at resend.com/domains"). So `organizer@demo.sessionboard.dev`
+  and every seeded speaker currently fail at the provider (logged as `[email:failed]`, never
+  surfaced to the user). Verifying a domain + changing `EMAIL_FROM` is a one-time config step
+  and is the only thing between this and real delivery.

@@ -66,7 +66,7 @@ function patchSession(
 ): void {
   for (const { args, value } of localStore.getAllQueries(api.agenda.board)) {
     if (!value) continue
-    const board = value as AgendaBoard
+    const board = value
     const all = [...board.scheduled, ...board.unscheduled]
     if (!all.some((session) => session.id === submissionId)) continue
     localStore.setQuery(
@@ -113,7 +113,7 @@ export function useAgendaActions() {
       api.agenda.board
     )) {
       if (!value) continue
-      const board = value as AgendaBoard
+      const board = value
       const all = [...board.scheduled, ...board.unscheduled]
       if (!all.some((session) => session.id === args.submissionId)) continue
       const track = trackId

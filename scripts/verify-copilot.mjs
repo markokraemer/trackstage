@@ -209,7 +209,9 @@ const PROMPTS = [
   },
   {
     id: "overview",
-    text: "Give me the dashboard stats for this event using get_event_overview.",
+    // get_event_summary answers the same question, so the tool has to be
+    // named unambiguously or the model reasonably reaches for the other one.
+    text: "Call the get_event_overview tool for this event (not get_event_summary) and show me what it returns.",
     expect: "get_event_overview",
   },
   { id: "forms", text: "List the CFP forms.", expect: "list_forms" },
@@ -463,10 +465,16 @@ async function main() {
     const ran = approvalTurn.tools.find(
       (t) => t.toolName === prompt.expect && t.state === "output-available",
     )
+    const errored = approvalTurn.tools.find(
+      (t) => t.toolName === prompt.expect && t.state === "output-error",
+    )
     check(
       `${prompt.id} → ran after approval`,
       Boolean(ran),
-      ran ? "" : approvalTurn.tools.map((t) => `${t.toolName}:${t.state}`).join(", "),
+      ran
+        ? ""
+        : (errored?.errorText ??
+            approvalTurn.tools.map((t) => `${t.toolName}:${t.state}`).join(", ")),
     )
   }
 

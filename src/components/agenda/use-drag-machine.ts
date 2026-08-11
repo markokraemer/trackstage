@@ -148,14 +148,12 @@ export function useDragMachine(
     columns,
     sessions,
     boardSessions,
-    rooms,
     timeZone,
     windowStartMinutes,
     windowEndMinutes,
     pixelsPerMinute,
     orientation = "vertical",
     columnOf,
-    onCommit,
   } = options
 
   const [drag, setDrag] = React.useState<DragState | null>(null)
@@ -225,13 +223,21 @@ export function useDragMachine(
     [clampMinutes, timeZone]
   )
 
-  const placement = React.useMemo(() => resolve(drag), [drag, resolve])
+  // `columns` and `boardSessions` are read through the ref, but they belong in
+  // the deps: an optimistic board update mid-drag must move the ghost and
+  // re-check the warnings on the very next render.
+  const placement = React.useMemo(
+    () => resolve(drag),
+    [drag, resolve, columns, boardSessions]
+  )
 
   /** Where a session sits right now, in this view's coordinates. */
   const locate = React.useCallback(
     (session: AgendaSession): { columnKey: string; minutes: number } | null => {
+      const list = latest.current.columns
+      // A tray session belongs to no column yet — start it in the first one.
       const columnKey =
-        columnOf(session) ?? latest.current.columns[0]?.key ?? null
+        columnOf(session) ?? (list.length > 0 ? list[0].key : undefined)
       if (!columnKey) return null
       const minutes = isScheduled(session)
         ? minutesIntoDay(session.startsAt, timeZone)

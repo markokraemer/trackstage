@@ -518,7 +518,7 @@ export const getForm = internalQuery({
         // ever sees it. Ten is enough to characterise the question — the count
         // says how many were held back.
         const options = question.options ?? null
-        const truncated = options !== null && options.length > MAX_OPTIONS
+        const held = options === null ? 0 : options.length - MAX_OPTIONS
         return {
           id: question.id,
           label: question.label,
@@ -526,11 +526,11 @@ export const getForm = internalQuery({
           required: question.required,
           enabled: question.enabled,
           locked: question.locked,
-          options: truncated ? options!.slice(0, MAX_OPTIONS) : options,
-          ...(truncated
+          options: options === null ? null : options.slice(0, MAX_OPTIONS),
+          ...(options !== null && held > 0
             ? {
-                optionCount: options!.length,
-                optionsTruncated: `…${options!.length - MAX_OPTIONS} more`,
+                optionCount: options.length,
+                optionsTruncated: `…${held} more`,
               }
             : {}),
           showIf: question.showIf ?? null,
