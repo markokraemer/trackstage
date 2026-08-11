@@ -50,3 +50,37 @@ Agents: read this before working; add new directives the moment Marko states the
 16. **Work style**: ultra-think, ultra-work — divide across many subagents (Task tool)
     and Workflow runs in parallel; push many frontiers simultaneously. Track all of
     Marko's asks in TODO.md at repo root.
+17. **shadcn-first components, always**: strictly adhere to Base UI + shadcn standards.
+    ALWAYS import the shadcn component from `src/components/ui/*` as the base and
+    modify/extend it in depth — never hand-roll a UI primitive that shadcn already
+    provides. Applies to every agent working on UI; include it in every UI subagent
+    prompt.
+18a. **Opus 5 for all subagents** on this project (Fable for final passes where needed).
+18b. **Shell structure matches the screenshots**: organizer app uses Sessionboard's
+    3-tier structure — top bar (search + avatar), left sidebar with event context +
+    grouped nav sections (section labels like "Program"), tinted page-header banner
+    (~#EEF1FC lavender) per docs/ux/01 — while keeping our flattened, simplified item
+    set. Homepage, organizer app, and speaker portal must each be proper, complete,
+    and match the reference images' structure.
+18c. **Better Auth end-to-end + enterprise multi-tenancy**: authentication is Better
+    Auth via the official `@convex-dev/better-auth` component (TanStack Start guide) —
+    email/password + the organization plugin. Organizations own events; members have
+    roles (owner/admin/member); every organizer function authorizes via the authed
+    user's org membership, never ad-hoc tokens. Speaker portal + evaluator magic links
+    stay token-based by design (passwordless personas). Must be "100% enterprise-ready":
+    full authn, multi-tenancy, roles, proper authz stack.
+18d. **Launch-ready product, not a demo**: the goal is to actually kill Sessionboard —
+    go way beyond what the video pitched. Follow swyx's requirements for structure and
+    scope priorities, but authentication, multi-tenancy, platform architecture, and
+    polish must be end-to-end launch-ready in every regard. Build like real customers
+    sign up tomorrow.
+18. **Design system is a first-class artifact**: maintain it properly and centralize the
+    full brand in it. There must be a `/design-system` page laying out ALL components
+    (every variant/state), the design tokens, and the brand: a custom logo (create one),
+    colors, type. Everything brand-related lives centralized there.
+    Brand section must include the complete asset kit: every logo variant (mark-only,
+    full lockup, wordmark-only, mono/inverse), DOWNLOAD buttons for each as SVG and PNG,
+    social-media profile asset (1:1), OG/banner asset, favicon sizes — everything we
+    could potentially need, all generated from the single source component.
+    **Font: Inter, deliberately** ("the boring font" — Marko's words, keep it). Headings
+    may use tighter tracking/weight for character, but no font swap without his say-so.

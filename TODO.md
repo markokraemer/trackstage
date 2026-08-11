@@ -12,14 +12,23 @@ Source of truth for everything Marko asked + build status. Update continuously.
 - ✅ Convex schema v2 (SPEC §5 + rubric amendments) pushed
 - 🔨 Backend contract: auth/events done; forms/submit/submissions/agenda/portal (orchestrator);
   comms+ics+seed (agent); evaluations+dashboard+public+API (agent)
-- 🔨 Foundation UI: tokens, shell, login, shared primitives (agent)
+- 🔨 Foundation UI: tokens, shell, login, shared primitives + custom logo/brand +
+  /design-system page with all components laid out (agent; rules 17/18)
 - 🔨 sbek rubric digest → docs/reference/sbek-rubric.md (agent)
 - ⏳ UI slices via Workflow: form builder · public submit flow · submissions table ·
   decisions/queues · agenda (drag-drop + conflicts) · speaker portal · dashboard/speakers ·
   evaluation · communications · public widgets (schedule/speakers/sessions/itinerary/gallery)
-- ⏳ Content management depth: file versions + approval flow UI (sbek area, 15%)
+- ⏳ Content management depth: file versions + approval flow UI (sbek area, 15%) —
+  backend done (uploads versioning + tasksAdmin.reviewUpload); needs organizer UI surface
 - ⏳ Multi-event support surfaced in UI (event switcher; scoping proven) — sbek judged
-- ⏳ AI agenda: auto-place scheduler + conflict assistance (sbek area, 10%)
+- ⏳ AI agenda: auto-place scheduler (backend done: agenda.autoPlace) + UI button
+- ⏳ sbek gap follow-ups (from docs/reference/sbek-rubric.md GAPS): embed generator page
+  (/app/embeds, EMB-15) ✅in slice · itinerary widget ✅in slice · blind review (schema
+  flag added; evaluation UI + review.ts must respect it — VERIFY at integration) ·
+  organizer task creation ✅tasksAdmin · bulk email compose to filtered speakers (comms
+  slice will flag; add backend compose fn at integration) · change history/restore on
+  content edits (CNT-11 — decide: cheap audit-log table or accept the gap) · Speaker CRM
+  optional area (19pts extra credit, needs cross-event speaker reuse — decide after v1)
 - ⏳ Public API (/v1) + README docs (bonus)
 - ⏳ Seed: rich demo world, judge-friendly demo-mode links
 - 💤 Airtable one-click one-way sync (submissions/speakers/sessions rows; idempotent;

@@ -1,47 +1,36 @@
-import { v } from "convex/values"
-import { mutation, query } from "./_generated/server"
-import { randomToken, requireOrganizer, sha256Hex } from "./lib/auth"
+import { betterAuth } from "better-auth/minimal"
+import { organization } from "better-auth/plugins"
+import { createClient, type GenericCtx } from "@convex-dev/better-auth"
+import { convex } from "@convex-dev/better-auth/plugins"
+import authConfig from "./auth.config"
+import { components } from "./_generated/api"
+import { query } from "./_generated/server"
+import type { DataModel } from "./_generated/dataModel"
 
-export const login = mutation({
-  args: { email: v.string(), password: v.string() },
-  handler: async (ctx, args) => {
-    const organizer = await ctx.db
-      .query("organizers")
-      .withIndex("by_email", (q) => q.eq("email", args.email.toLowerCase().trim()))
-      .unique()
-    if (!organizer) throw new Error("No organizer account with that email.")
-    const hash = await sha256Hex(args.password)
-    if (hash !== organizer.passwordHash) throw new Error("Incorrect password.")
-    const token = randomToken()
-    await ctx.db.insert("orgSessions", {
-      token,
-      organizerId: organizer._id,
-      createdAt: Date.now(),
-    })
-    return { token, name: organizer.name, email: organizer.email }
-  },
-})
+const siteUrl = process.env.SITE_URL ?? "http://localhost:3000"
 
-export const logout = mutation({
-  args: { sessionToken: v.string() },
-  handler: async (ctx, args) => {
-    const session = await ctx.db
-      .query("orgSessions")
-      .withIndex("by_token", (q) => q.eq("token", args.sessionToken))
-      .unique()
-    if (session) await ctx.db.delete(session._id)
-    return null
-  },
-})
+export const authComponent = createClient<DataModel>(components.betterAuth)
 
-export const me = query({
-  args: { sessionToken: v.string() },
-  handler: async (ctx, args) => {
-    try {
-      const organizer = await requireOrganizer(ctx, args.sessionToken)
-      return { name: organizer.name, email: organizer.email }
-    } catch {
-      return null
-    }
+export const createAuth = (ctx: GenericCtx<DataModel>) => {
+  return betterAuth({
+    baseURL: siteUrl,
+    database: authComponent.adapter(ctx),
+    emailAndPassword: {
+      enabled: true,
+      requireEmailVerification: false,
+    },
+    plugins: [
+      // Multi-tenancy: organizations own events; members carry roles
+      // (owner | admin | member). See convex/lib/auth.ts for authorization.
+      organization(),
+      convex({ authConfig }),
+    ],
+  })
+}
+
+export const getCurrentUser = query({
+  args: {},
+  handler: async (ctx) => {
+    return await authComponent.safeGetAuthUser(ctx)
   },
 })

@@ -38,8 +38,29 @@ const participantFieldValidator = v.object({
 })
 
 export default defineSchema({
+  // ——— Multi-tenancy ————————————————————————————————————————————————————
+  // Authentication is Better Auth (the @convex-dev/better-auth component
+  // owns users/sessions). Authorization is explicit here: organizations own
+  // events; members carry roles. userId = Better Auth user id.
+  organizations: defineTable({
+    name: v.string(),
+    slug: v.string(),
+  }).index("by_slug", ["slug"]),
+
+  members: defineTable({
+    organizationId: v.id("organizations"),
+    userId: v.string(),
+    email: v.string(),
+    role: v.string(), // owner | admin | member
+  })
+    .index("by_organizationId", ["organizationId"])
+    .index("by_userId", ["userId"])
+    .index("by_email", ["email"])
+    .index("by_organizationId_and_userId", ["organizationId", "userId"]),
+
   // ——— Core setup ———————————————————————————————————————————————————————
   events: defineTable({
+    organizationId: v.id("organizations"),
     name: v.string(),
     slug: v.string(),
     type: v.optional(v.string()), // Conference | Summit | Meetup | …
@@ -50,7 +71,9 @@ export default defineSchema({
     startsAt: v.optional(v.number()), // epoch ms
     endsAt: v.optional(v.number()),
     logoId: v.optional(v.id("_storage")),
-  }).index("by_slug", ["slug"]),
+  })
+    .index("by_slug", ["slug"])
+    .index("by_organizationId", ["organizationId"]),
 
   rooms: defineTable({
     eventId: v.id("events"),
@@ -65,21 +88,6 @@ export default defineSchema({
     color: v.string(), // hex
     order: v.number(),
   }).index("by_eventId", ["eventId"]),
-
-  // ——— Organizer auth (simple team model: organizers see all events) ————
-  organizers: defineTable({
-    email: v.string(),
-    name: v.string(),
-    // SHA-256 hex of the password. Demo accounts are seeded; this is a
-    // competition demo, not a hardened auth system.
-    passwordHash: v.string(),
-  }).index("by_email", ["email"]),
-
-  orgSessions: defineTable({
-    token: v.string(),
-    organizerId: v.id("organizers"),
-    createdAt: v.number(),
-  }).index("by_token", ["token"]),
 
   // ——— CFP forms ————————————————————————————————————————————————————————
   forms: defineTable({
@@ -191,6 +199,8 @@ export default defineSchema({
     submissionIds: v.array(v.id("submissions")),
     dueAt: v.optional(v.number()),
     status: v.string(), // open | closed
+    // Blind review: evaluators see submissions without speaker identities.
+    blind: v.optional(v.boolean()),
   }).index("by_eventId", ["eventId"]),
 
   evaluators: defineTable({

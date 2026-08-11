@@ -1,12 +1,26 @@
 import { v } from "convex/values"
 import { mutation, query } from "./_generated/server"
-import { requireOrganizer } from "./lib/auth"
+import { myMemberships, requireEventAccess, requireMembership } from "./lib/auth"
 
 export const list = query({
-  args: { sessionToken: v.string() },
-  handler: async (ctx, args) => {
-    await requireOrganizer(ctx, args.sessionToken)
-    return await ctx.db.query("events").collect()
+  args: {},
+  handler: async (ctx) => {
+    // Events across every organization the signed-in user belongs to.
+    const memberships = await myMemberships(ctx)
+    const rows = []
+    for (const membership of memberships) {
+      const organization = await ctx.db.get(membership.organizationId)
+      const events = await ctx.db
+        .query("events")
+        .withIndex("by_organizationId", (q) =>
+          q.eq("organizationId", membership.organizationId),
+        )
+        .collect()
+      for (const event of events) {
+        rows.push({ ...event, organizationName: organization?.name ?? "" })
+      }
+    }
+    return rows
   },
 })
 
@@ -26,16 +40,16 @@ export const getBySlug = query({
 })
 
 export const get = query({
-  args: { sessionToken: v.string(), eventId: v.id("events") },
+  args: { eventId: v.id("events") },
   handler: async (ctx, args) => {
-    await requireOrganizer(ctx, args.sessionToken)
-    return await ctx.db.get(args.eventId)
+    const { event } = await requireEventAccess(ctx, args.eventId)
+    return event
   },
 })
 
 export const create = mutation({
   args: {
-    sessionToken: v.string(),
+    organizationId: v.id("organizations"),
     name: v.string(),
     slug: v.string(),
     timezone: v.string(),
@@ -47,22 +61,20 @@ export const create = mutation({
     endsAt: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    await requireOrganizer(ctx, args.sessionToken)
-    const { sessionToken: _sessionToken, ...fields } = args
+    await requireMembership(ctx, args.organizationId, "admin")
     const existing = await ctx.db
       .query("events")
-      .withIndex("by_slug", (q) => q.eq("slug", fields.slug))
+      .withIndex("by_slug", (q) => q.eq("slug", args.slug))
       .unique()
     if (existing) {
-      throw new Error(`An event with the slug "${fields.slug}" already exists.`)
+      throw new Error(`An event with the slug "${args.slug}" already exists.`)
     }
-    return await ctx.db.insert("events", fields)
+    return await ctx.db.insert("events", args)
   },
 })
 
 export const update = mutation({
   args: {
-    sessionToken: v.string(),
     eventId: v.id("events"),
     patch: v.object({
       name: v.optional(v.string()),
@@ -77,7 +89,7 @@ export const update = mutation({
     }),
   },
   handler: async (ctx, args) => {
-    await requireOrganizer(ctx, args.sessionToken)
+    await requireEventAccess(ctx, args.eventId, "admin")
     await ctx.db.patch(args.eventId, args.patch)
     return null
   },
