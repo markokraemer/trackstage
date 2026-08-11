@@ -43,16 +43,15 @@ export function Hero() {
               "mt-7 text-[2.5rem] leading-[1.02] text-balance sm:text-6xl lg:text-[4.25rem]"
             )}
           >
-            <TextReveal text="Run your call for speakers." />{" "}
+            <TextReveal text="Call for papers, agenda and speaker management." />{" "}
             <span className="text-muted-foreground/55">
-              <TextReveal text="Not your inbox." />
+              <TextReveal text="In one fast, simple tool." />
             </span>
           </h1>
 
           <p className="mt-6 max-w-xl text-base leading-relaxed text-pretty text-muted-foreground sm:text-lg">
-            The open-source Sessionboard alternative. Collect talks, review
-            them, build the agenda and send every email — fast, simple, with an
-            AI copilot built in.
+            The open-source Sessionboard alternative. Free, fast and easy to
+            run — and your speakers will love it too.
           </p>
 
           <div className="mt-9 flex w-full flex-col items-stretch justify-center gap-2.5 sm:w-auto sm:flex-row sm:items-center">

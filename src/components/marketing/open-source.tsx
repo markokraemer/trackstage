@@ -38,13 +38,13 @@ export function OpenSource() {
             "max-w-md text-3xl leading-[1.05] text-balance sm:text-4xl lg:text-[2.75rem]"
           )}
         >
-          Built in the open, to be taken and kept.
+          Open source, and yours to keep.
         </h2>
 
         <div className="space-y-4 text-base leading-relaxed text-muted-foreground">
           <p>
-            Speaker and program management has been an enterprise category:
-            tools like{" "}
+            Software for running a call for papers has always been sold the
+            same way. Tools like{" "}
             <a
               href={SESSIONBOARD_URL}
               {...EXTERNAL_LINK_PROPS}
@@ -52,13 +52,14 @@ export function OpenSource() {
             >
               Sessionboard
             </a>{" "}
-            are sold on a call, priced in five figures a year, and most teams
+            start with a sales call, cost five figures a year, and most teams
             use a fraction of what they pay for.
           </p>
           <p>
-            Trackstage is the open-source alternative: the same jobs, rebuilt
-            for the people who actually produce events — and fast. Code, design
-            system and build log are all in the repo.
+            Trackstage does the same jobs, free and in the open — rebuilt to be
+            simple enough to use without training, and fast enough that you
+            never wait for it. The code, the design system and the build log
+            are all public.
           </p>
 
           <div className="flex flex-wrap gap-2.5 pt-2">

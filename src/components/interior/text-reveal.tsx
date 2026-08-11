@@ -118,11 +118,32 @@ export function TextReveal({
       amount,
     })
 
-  return (
-    <span ref={ref} className={`text-foreground ${className}`}>
-      <span className="sr-only">{text}</span>
+  /**
+   * The text must appear in the DOM exactly ONCE.
+   *
+   * This used to render a `sr-only` copy of the whole string beside an
+   * `aria-hidden` split copy. CSS hid the first one, so it looked right — but
+   * every consumer that reads text rather than pixels (innerText, copy/paste,
+   * select-all, reader mode, scrapers, OG/SEO crawlers, browser-agent evals)
+   * saw the headline twice: "Not your inbox. Not your inbox." (Marko,
+   * 2026-08-12). Splitting by word already leaves real, space-separated text
+   * nodes, which read correctly on their own — so the duplicate copy only
+   * survives for `by="character"`, where per-letter spans genuinely need it.
+   */
+  const needsAccessibleCopy = by === "character"
 
-      <span aria-hidden="true">
+  /*
+   * Colour INHERITS — this root deliberately does not pin `text-foreground`.
+   * Callers set the tone on the element around it (the hero headline wraps its
+   * second clause in `text-muted-foreground/55`), and a hardcoded
+   * `text-foreground` here silently won that fight: the two-tone headline
+   * rendered flat black.
+   */
+  return (
+    <span ref={ref} className={className}>
+      {needsAccessibleCopy ? <span className="sr-only">{text}</span> : null}
+
+      <span aria-hidden={needsAccessibleCopy ? "true" : undefined}>
         {groups.map((group, g) => (
           <Fragment key={group.key}>
             {g > 0 ? " " : null}

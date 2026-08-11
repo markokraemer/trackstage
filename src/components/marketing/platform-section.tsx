@@ -33,22 +33,24 @@ interface Surface {
  */
 const SURFACES: Array<Surface> = [
   {
-    icon: RiCodeSSlashLine,
-    title: "Read API",
-    description: "Sessions, speakers and submissions as paginated JSON.",
-    meta: `GET ${PUBLIC_API_PREFIX}/sessions`,
+    icon: RiRobot2Line,
+    title: "AI assistant",
+    description: `Connect Claude, ChatGPT or Codex and ask in plain English. ${MCP_TOOL_COUNT} things it can do — and it asks you before it changes anything.`,
+    meta: `POST ${MCP_ENDPOINT_PATH}`,
   },
   {
     icon: RiCalendarCheckLine,
     title: "Calendar feed",
-    description: "The whole programme as .ics. No key needed.",
+    description:
+      "Subscribe to the whole program in Google or Apple Calendar. No key needed.",
     meta: `GET ${PUBLIC_ICS_PATH}`,
   },
   {
-    icon: RiRobot2Line,
-    title: "MCP server",
-    description: `${MCP_TOOL_COUNT} tools over OAuth. Anything that changes data asks first.`,
-    meta: `POST ${MCP_ENDPOINT_PATH}`,
+    icon: RiCodeSSlashLine,
+    title: "Read API",
+    description:
+      "Put the schedule on your own website. Talks, speakers and proposals as JSON.",
+    meta: `GET ${PUBLIC_API_PREFIX}/sessions`,
   },
 ]
 
@@ -57,16 +59,16 @@ export function PlatformSection() {
     <MarketingSection id={SECTION_IDS.platform} tone="muted">
       <SectionIntro
         icon={RiPlugLine}
-        eyebrow="Developers & agents"
+        eyebrow="AI & developers"
         title={
           <>
-            Your event, addressable.{" "}
+            Ask an AI to run your event.{" "}
             <span className="text-muted-foreground/55">
-              By your site, your scripts, and your agent.
+              Or plug it into your own website.
             </span>
           </>
         }
-        description={`Point your website at the API, subscribe to the calendar feed, or connect Claude, ChatGPT and Codex straight to ${PRODUCT_NAME}.`}
+        description={`Connect Claude, ChatGPT or Codex to ${PRODUCT_NAME} and ask it to chase late speakers, schedule a talk or email everyone. Your website and your calendar can read the program too.`}
       />
 
       <div className="mt-12 grid overflow-hidden rounded-2xl border border-border bg-card lg:grid-cols-3">

@@ -73,8 +73,9 @@ function CredRow({ label, value }: { label: string; value: string }) {
 
 const DEMO_ENTRIES: Array<DemoEntry> = [
   {
-    title: "Use the demo account",
-    description: "The organizer app: submissions, review, agenda, emails.",
+    title: "The organizer app",
+    description:
+      "Proposals, reviews, the agenda and the emails — the whole thing. Sign in with the demo account below.",
     cta: "Open the organizer app",
     icon: RiUserSettingsLine,
     to: "/login",
@@ -86,16 +87,18 @@ const DEMO_ENTRIES: Array<DemoEntry> = [
     ),
   },
   {
-    title: "Speaker portal",
-    description: "What a speaker sees after they're accepted. No password.",
+    title: "The speaker portal",
+    description:
+      "What a speaker sees once they're accepted: their talks, their profile, their to-do list. No password.",
     cta: "Open the speaker portal",
     icon: RiMicLine,
     href: DEMO_PORTAL_URL,
   },
   {
-    title: "Submit a talk",
-    description: "The public CFP form, end to end. No account needed.",
-    cta: "Open the CFP form",
+    title: "The submission form",
+    description:
+      "The public form a speaker fills in to propose a talk, start to finish. No account needed.",
+    cta: "Open the submission form",
     icon: RiSendPlaneLine,
     href: DEMO_CFP_URL,
   },
@@ -127,10 +130,11 @@ export function DemoEntries() {
             "max-w-md text-3xl leading-[1.05] text-balance sm:text-4xl"
           )}
         >
-          Try it live. Pick a seat.
+          See it working, right now.
         </h2>
         <p className="max-w-sm text-sm leading-relaxed text-pretty text-muted-foreground sm:text-right">
-          A pre-loaded demo event, open to everyone. Nothing to install.
+          A real demo conference with real data in it. Open to anyone, nothing
+          to install.
         </p>
       </div>
 

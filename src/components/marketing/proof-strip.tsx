@@ -22,7 +22,7 @@ export function ProofStrip() {
     <MarketingSection spacing="tight">
       <div className="flex flex-col items-center gap-6 text-center">
         <p className="text-sm font-medium text-muted-foreground">
-          Built for the people who actually produce events
+          Made for the people who run events
         </p>
 
         <ul className="flex flex-wrap items-center justify-center gap-x-2.5 gap-y-2">

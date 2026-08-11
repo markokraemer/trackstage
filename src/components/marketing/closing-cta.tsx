@@ -32,10 +32,11 @@ export function ClosingCta() {
             "max-w-2xl text-3xl leading-[1.05] text-balance text-background sm:text-4xl lg:text-[2.75rem]"
           )}
         >
-          Your next call for speakers opens in about ten seconds.
+          Ready to open your call for papers?
         </h2>
         <p className="mt-5 max-w-xl text-base leading-relaxed text-pretty text-background/70">
-          Open the demo, then run your own event on the same code.
+          Try the demo first, then run your own event on exactly the same code.
+          Free either way.
         </p>
 
         <div className="mt-9 flex w-full flex-col items-stretch justify-center gap-2.5 sm:w-auto sm:flex-row sm:items-center">

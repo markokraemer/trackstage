@@ -92,7 +92,7 @@ export const Route = createRootRouteWithContext<RouterContext>()({
       {
         name: "description",
         content:
-          "Open-source speaker and program management: call for speakers, review, speaker portal, and agenda building.",
+          "Call for papers, agenda and speaker management in one fast, simple tool. The open-source Sessionboard alternative.",
       },
       { name: "theme-color", content: "#2F5CE0" },
       { property: "og:type", content: "website" },
@@ -100,7 +100,8 @@ export const Route = createRootRouteWithContext<RouterContext>()({
       { property: "og:title", content: "Trackstage" },
       {
         property: "og:description",
-        content: "Open-source speaker and program management.",
+        content:
+          "Call for papers, agenda and speaker management in one fast, simple tool.",
       },
       { property: "og:image", content: "/og-image.png" },
       { property: "og:image:width", content: "1200" },
@@ -109,7 +110,8 @@ export const Route = createRootRouteWithContext<RouterContext>()({
       { name: "twitter:title", content: "Trackstage" },
       {
         name: "twitter:description",
-        content: "Open-source speaker and program management.",
+        content:
+          "Call for papers, agenda and speaker management in one fast, simple tool.",
       },
       { name: "twitter:image", content: "/og-image.png" },
     ],

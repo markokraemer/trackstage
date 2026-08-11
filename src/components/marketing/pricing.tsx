@@ -50,8 +50,8 @@ export function Pricing() {
     <MarketingSection id={SECTION_IDS.pricing} tone="muted">
       <SectionIntro
         align="center"
-        title="Simple, honest pricing"
-        description="Every feature, both ways. No seats, no tiers, no quote-on-request."
+        title="Free, either way"
+        description="You get every feature whichever way you run it. No seats, no tiers, nobody to call."
       />
 
       {/* Three flat cells in one bordered container — the house plan table. */}
@@ -60,7 +60,7 @@ export function Pricing() {
           name="Self-host"
           price="$0"
           cadence="forever"
-          summary="Clone the repo and run the whole thing on your own infrastructure."
+          summary="Run the whole thing on your own servers. Download it and go."
           points={SELF_HOST_POINTS}
           action={
             <a
@@ -80,7 +80,7 @@ export function Pricing() {
           name="Cloud"
           price="$0"
           cadence="while in beta"
-          summary="The hosted version. Sign up and run your event today."
+          summary="We host it for you. Sign up and run your event today."
           points={CLOUD_POINTS}
           action={
             <Link to="/login" className={buttonVariants({ size: "lg", className: "w-full" })}>

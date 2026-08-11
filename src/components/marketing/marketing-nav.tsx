@@ -119,7 +119,7 @@ export function MarketingNav() {
                   <Logo size="sm" />
                 </SheetTitle>
                 <SheetDescription>
-                  Open-source program management.
+                  Call for papers, agenda and speaker management.
                 </SheetDescription>
               </SheetHeader>
 

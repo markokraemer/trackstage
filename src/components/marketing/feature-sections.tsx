@@ -36,27 +36,35 @@ interface Pillar {
   description: string
 }
 
-/** The four moments of a CFP, as the header row of the showcase block. */
+/**
+ * The four jobs, as the header row of the showcase block. Each title names the
+ * job in plain words and each line says what actually happens — no metaphors
+ * (copy pass, 2026-08-12).
+ */
 const PILLARS: Array<Pillar> = [
   {
     icon: RiInboxUnarchiveLine,
-    title: "Collect",
-    description: "One public form. Submissions arrive sorted by track.",
+    title: "Collect proposals",
+    description:
+      "One public form. Every talk that comes in lands in one list, sorted by track.",
   },
   {
     icon: RiScalesLine,
-    title: "Decide",
-    description: "Evaluators score. You stage accepts, then send.",
+    title: "Review and decide",
+    description:
+      "Your reviewers score the talks. You accept or decline, then send the news.",
   },
   {
     icon: RiCalendarScheduleLine,
-    title: "Schedule",
-    description: "Drag sessions into rooms. Clashes flag themselves.",
+    title: "Build the agenda",
+    description:
+      "Drag each talk into a room and a time. Double-bookings are flagged for you.",
   },
   {
     icon: RiMailSendLine,
-    title: "Communicate",
-    description: "Templated emails, with the calendar invite attached.",
+    title: "Email your speakers",
+    description:
+      "Ready-made emails send themselves, with the calendar invite attached.",
   },
 ]
 
@@ -77,36 +85,36 @@ interface FeatureRow {
 const FEATURES: Array<FeatureRow> = [
   {
     eyebrow: "Form builder",
-    title: "Build the call for speakers in an afternoon",
+    title: "Collect proposals with a form you build yourself",
     description:
-      "A six-step wizard writes your public form — your questions, your tracks, conditional follow-ups.",
+      "A step-by-step wizard writes your public submission form: your questions, your tracks, your deadline. Nothing to code, and you can change it after it's live.",
     icon: RiSurveyLine,
     shot: "form",
     link: { label: "See the live form", href: DEMO_CFP_URL },
   },
   {
     eyebrow: "Agenda",
-    title: "Drag a session into a room. That's the whole thing.",
+    title: "Build the agenda by dragging talks into place",
     description:
-      "List, day, rooms and conflicts on one board. Double-bookings flag themselves as you drag.",
+      "See the whole program by day, by room, or by conflict. Double-book a room or a speaker and it tells you the moment you drop the talk.",
     icon: RiCalendarScheduleLine,
     shot: "agendaGif",
     link: { label: "Open the agenda", to: "/login" },
   },
   {
     eyebrow: "Speaker portal",
-    title: "Speakers keep their own details up to date",
+    title: "Every speaker gets their own portal",
     description:
-      "One link, no password: they see their talks, their profile and exactly what's still outstanding.",
+      "One link, no password. Speakers see their talks, keep their bio and photo up to date, and work through a checklist of what you still need from them.",
     icon: RiUserVoiceLine,
     shot: "portal",
     link: { label: "Open the speaker portal", href: DEMO_PORTAL_URL },
   },
   {
     eyebrow: "Public program",
-    title: "Your schedule, published the moment you're ready",
+    title: "Publish the schedule when you're ready",
     description:
-      "A fast public schedule with session and speaker pages, personal itineraries and calendar files.",
+      "A public program with a page for every talk and every speaker, a personal itinerary for each attendee, and calendar files that just work.",
     icon: RiGlobalLine,
     shot: "program",
     link: { label: "See a published program", href: DEMO_PROGRAM_URL },
@@ -121,13 +129,13 @@ export function FeatureSections() {
         eyebrow="The product"
         title={
           <>
-            Everything a call for speakers needs.{" "}
+            From first proposal to final schedule.{" "}
             <span className="text-muted-foreground/55">
-              Nothing it doesn&rsquo;t.
+              All in one place.
             </span>
           </>
         }
-        description="The whole call-for-speakers workflow, in fewer clicks."
+        description="Four jobs, one tool: collect the proposals, review and decide, build the agenda, and keep your speakers informed."
       />
 
       <ShowcaseBlock />

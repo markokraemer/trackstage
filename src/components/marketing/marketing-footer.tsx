@@ -88,7 +88,8 @@ export function MarketingFooter() {
               className="[&_[data-slot=wordmark]]:text-background"
             />
             <p className="mt-4 text-sm leading-relaxed text-background/60">
-              Open-source speaker &amp; program management.
+              Open-source software for your call for papers, your agenda and
+              your speakers.
             </p>
           </div>
 

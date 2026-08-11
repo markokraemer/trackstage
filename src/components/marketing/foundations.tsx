@@ -22,13 +22,13 @@ interface Foundation {
  */
 const FOUNDATIONS: Array<Foundation> = [
   {
-    title: "Workspaces & roles",
-    description: "Your team, your events, one workspace.",
+    title: "Your whole team",
+    description: "Invite colleagues. Everyone works in one place.",
     icon: RiTeamLine,
   },
   {
-    title: "Sign-in done properly",
-    description: "Better Auth accounts, invites and resets.",
+    title: "Proper sign-in",
+    description: "Real accounts, team invites, password resets.",
     icon: RiShieldKeyholeLine,
   },
   {
@@ -42,13 +42,13 @@ const FOUNDATIONS: Array<Foundation> = [
     icon: RiServerLine,
   },
   {
-    title: "Fast, everywhere",
-    description: "Edge-deployed, realtime, instant for everyone.",
+    title: "Fast everywhere",
+    description: "Changes appear instantly, wherever your team is.",
     icon: RiFlashlightLine,
   },
   {
-    title: "Plain words",
-    description: "Written for producers, not procurement.",
+    title: "No jargon",
+    description: "Written for event organizers, not IT departments.",
     icon: RiTranslate2,
   },
 ]
@@ -58,7 +58,7 @@ export function Foundations() {
     <MarketingSection>
       <SectionIntro
         eyebrow="Foundations"
-        title="The unglamorous parts, taken seriously"
+        title="The boring parts, done properly"
       />
 
       <div className="mt-12 grid gap-x-10 gap-y-10 sm:grid-cols-2 lg:grid-cols-3">
