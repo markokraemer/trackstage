@@ -169,22 +169,29 @@ belong and are never in the repo:
 | `convex env set … --prod` | `BETTER_AUTH_SECRET` · `RESEND_API_KEY` · `EMAIL_FROM` · `SITE_URL` (your app origin — required for MCP OAuth and every emailed link) · `PUBLIC_API_TOKEN` · `EXTRA_TRUSTED_ORIGINS` (optional) |
 | `wrangler secret put …` | `OPENROUTER_API_KEY` (the copilot runs in the Worker) |
 
-`master` is the integration branch — every push runs **CI** (typecheck · lint ·
-OpenAPI spec up to date · unit tests). Releasing to production is one deliberate
-step:
+`main` is the dev branch (`master` mirrors it during the transition); `prod` is
+the release branch. Every push runs the full **CI** gate — typecheck · lint ·
+OpenAPI spec up to date · unit tests, then the **complete Playwright e2e flows
+suite** against a hermetic local Convex backend booted inside the runner. A
+green run on `main`/`master` auto-deploys staging:
+**https://dev.trackstage.app** (Worker `trackstage-dev`, built against the dev
+Convex deployment). Releasing to production is one deliberate step:
 
 ```sh
-git push origin master:prod   # promote master to production
+git push origin main:prod   # promote main to production
 ```
 
-A push to `prod` re-runs CI and, once green, **Deploy** ships it (Convex → build →
-Worker → production smoke test). The Actions tab's "Deploy → Run workflow" button
-releases any ref manually. See
-`.github/workflows/`. CI needs three repo secrets: `CONVEX_DEPLOY_KEY`
+A push to `prod` re-runs the same full CI gate (e2e included) and, once green,
+**Deploy** ships it (Convex → build → Worker → production smoke test) — nothing
+reaches production without the whole suite passing. The Actions tab's "Deploy →
+Run workflow" button releases any ref manually and is the escape hatch if the
+e2e gate ever wrongly blocks an urgent release. See
+`.github/workflows/`. Deploys need three repo secrets: `CONVEX_DEPLOY_KEY`
 (`pnpm exec convex deployment token create github-actions --prod`),
 `CLOUDFLARE_API_TOKEN` (scoped: Workers Scripts R/W, Workers KV R/W, Workers
 Observability Write, Account Settings Read, Workers Routes Write + Zone DNS Write)
-and `CLOUDFLARE_ACCOUNT_ID`.
+and `CLOUDFLARE_ACCOUNT_ID`; optional `OPENROUTER_API_KEY` keeps the staging
+copilot (and the copilot e2e spec) live.
 
 Verify a deploy at any time:
 

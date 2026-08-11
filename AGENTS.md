@@ -150,6 +150,23 @@ pnpm typecheck && pnpm lint && pnpm build
 prove the Worker boots; check both. Every flow must work via ordinary links/forms/buttons
 (the judge is a browser agent).
 
+## CI/CD (release model)
+
+- **`main` is the canonical dev branch; `master` mirrors it for now** (local sessions
+  may keep pushing `master` — CI triggers on both; push both when convenient:
+  `git push origin master master:main`). `prod` is the release branch.
+- **CI (`.github/workflows/ci.yml`) is the full gate on every push/PR:** typecheck ·
+  lint · OpenAPI drift · unit tests, then the complete Playwright **e2e flows suite**
+  run hermetically in the runner (anonymous local Convex backend on 127.0.0.1:3210,
+  seeded via `seed:setup`, no cloud data touched, no mail ever sent — no RESEND key).
+- **Green CI on `main`/`master` auto-deploys staging → https://dev.trackstage.app**
+  (`deploy-dev.yml`, Worker `trackstage-dev`, built from `.env.staging` against the
+  dev Convex deployment).
+- **Promote to production:** `git push origin main:prod` (or `master:prod`). The push
+  re-runs the full CI gate — e2e included — and only then `deploy.yml` ships
+  Convex prod → build → Worker → smoke. Nothing reaches prod without the whole suite
+  passing; manual `workflow_dispatch` on Deploy is the documented escape hatch.
+
 ## Stack facts
 
 TanStack Start v1 + Convex + shadcn/ui on **Base UI (not Radix — no react-hook-form
@@ -160,7 +177,7 @@ Routes in `src/routes` (file-based; never edit `routeTree.gen.ts`). Convex wired
 
 ## Working agreements
 
-- Commit and push incrementally to GitHub (`master` branch). **Never add a Claude
-  co-author trailer.**
+- Commit and push incrementally to GitHub (`main` is canonical; `master` mirrors it —
+  `git push origin master master:main`). **Never add a Claude co-author trailer.**
 - Keep this file updated when decisions, learnings, or scope changes land.
 - Deep specs live in `docs/`; this file holds only the always-needed facts.
