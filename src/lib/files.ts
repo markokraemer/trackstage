@@ -263,3 +263,38 @@ export async function downloadFilesBundle(
   saveBlob(createZip(entries), zipFilename)
   return { included: entries.length, skipped }
 }
+
+/**
+ * The newest upload in each version slot.
+ *
+ * The Files library lists every version — that is what a library is for — but a
+ * bundle is a handover, and handing the AV team both v1 and v2 of the same deck
+ * (arriving as "slides.pdf" and "slides (2).pdf") is how the wrong talk gets
+ * projected. One file per slot, the one that supersedes the rest.
+ *
+ * The slot rule mirrors `convex/lib/files.ts::slotKey`, which is the authority:
+ * a task owns its own versions, otherwise a submission owns them per speaker,
+ * otherwise they belong to the person.
+ */
+export function latestVersionsOnly<
+  TFile extends {
+    version: number
+    personId: string
+    taskId?: string
+    submissionId?: string
+  },
+>(files: Array<TFile>): Array<TFile> {
+  const best = new Map<string, TFile>()
+  for (const file of files) {
+    const slot = file.taskId
+      ? `task:${file.taskId}`
+      : file.submissionId
+        ? `submission:${file.submissionId}:${file.personId}`
+        : `person:${file.personId}`
+    const current = best.get(slot)
+    if (!current || file.version > current.version) best.set(slot, file)
+  }
+  // Keep the caller's ordering rather than the Map's insertion quirks.
+  const keep = new Set([...best.values()])
+  return files.filter((file) => keep.has(file))
+}

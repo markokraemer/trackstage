@@ -333,3 +333,56 @@ So the wording now lives in its own table:
   unchanged across three runs now.
 - **ABS-14 `not_found`** — no AI review triage. Deliberate: swyx struck AI-assisted
   review from scope.
+
+
+---
+
+## Cycle 5 — verifying the email class for real, and what it turned up
+
+### Persona addresses now point at an inbox we can read
+
+`~/Projects/kortix/sbek/evalconfig.json` `personaEmails` moved from
+`markokraemer.mail+sbek-*@gmail.com` (a mailbox this session cannot read) to
+`marko+sbek-*@kortix.ai` (one it can). Plus-addressed delivery was **proved before
+being relied on** — a real acceptance email reached `marko+sbek-speaker@kortix.ai` and
+was read back from the inbox.
+
+That converts the whole email class — CFP-08, CFP-14, CNT-08, ABS-09, SPK-06 — from
+"a human must check an inbox" into evidence collectable on every run, to be folded into
+`manual-results.json` and `pnpm run finalize`.
+
+> **This is our local self-eval config only.** The official judge run will use its own
+> addresses, so nothing may be hard-coded server-side. Verified: the *only*
+> address-dependent behaviour in the product is that RFC 2606 reserved domains
+> (`@example.com/.org/.net`) render as outbox previews instead of sending, because they
+> hard-bounce and would damage the sending domain's reputation. Every real address
+> delivers through the same path.
+
+### Email delivery is genuinely working
+
+Prod `SITE_URL` is `https://trackstage.app`, `RESEND_API_KEY` and `EMAIL_FROM` are set,
+and `hello@trackstage.app` is DKIM/SPF verified. A live reminder email delivered to a
+real inbox with correct rendering and a working portal link.
+
+**A scare worth recording:** a test render came back with
+`http://localhost:3000/portal/t/…`. Checked before reporting — the **Trackstage MCP
+server is bound to the dev deployment**, where `SITE_URL` *is* localhost. No prod bug.
+Consequence: those MCP tools cannot be used to verify prod behaviour.
+
+### CNT-14 — the bundle was shipping superseded versions · **product** · FIXED
+
+Downloading the bundle from prod and unzipping it proved the ZIP is real (correct
+`%PDF-` payload, name and size). Reading `tasksAdmin.listUploads` then showed the
+library returns **every** version with no latest-only filter — so "Download all"
+bundled v1 *and* v2 of the same deck. `uniqueZipName` renames the collision to
+"slides (2).pdf" rather than losing it, which is worse than a clash: nothing tells the
+AV team which of the two to project.
+
+The checklist's own pass condition is *"verify it contains only the LATEST version of
+slides.pdf"*. Now `latestVersionsOnly()` filters the bundle to one file per version
+slot — task, else submission-per-speaker, else person, mirroring
+`convex/lib/files.ts::slotKey` — and seven unit tests pin the semantics, including that
+co-speakers on one submission both survive.
+
+The library still *lists* every version, which is correct: a library is a history, a
+bundle is a handover.

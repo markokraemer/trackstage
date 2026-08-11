@@ -29,7 +29,7 @@ import type { FileLibraryRow } from "@/components/dashboard/files-table"
 import { FilePreviewDialog } from "@/components/shared/file-preview-dialog"
 import { appLink, legacyAppLink } from "@/lib/app-links"
 import { useCurrentEvent } from "@/lib/current-event"
-import { downloadFilesBundle } from "@/lib/files"
+import { downloadFilesBundle, latestVersionsOnly } from "@/lib/files"
 import { errorMessage } from "@/lib/errors"
 
 /**
@@ -130,9 +130,11 @@ function FilesPage() {
    */
   const chosen = useMemo(
     () =>
-      selected.length > 0
-        ? visible.filter((row) => selected.includes(row.id))
-        : visible,
+      latestVersionsOnly(
+        selected.length > 0
+          ? visible.filter((row) => selected.includes(row.id))
+          : visible,
+      ),
     [visible, selected],
   )
 
@@ -194,7 +196,7 @@ function FilesPage() {
             {selected.length > 0 ? (
               <Button
                 size="sm"
-                variant="ghost"
+                variant="outline"
                 onClick={() => setSelected([])}
               >
                 Clear selection
@@ -202,7 +204,6 @@ function FilesPage() {
             ) : null}
             <Button
               size="sm"
-              variant="outline"
               disabled={bundling || chosen.length === 0}
               onClick={() => void downloadAll()}
             >
