@@ -223,12 +223,46 @@ month-by-month (9 clicks to reach May 2027)"*.
 year are `<select>`s. The dropdown styling was already in the component; only the default
 was wrong.
 
+## Cycle 3 — the two named "half absent" criteria
+
+Batch 2 verified live on prod before rerun-2 was launched: submissions actions column
+216 → 112px with the Score header hit-testable, calendar Month/Year `<select>`s (May 2027
+reached in two picks instead of nine clicks), and the reminder dialog persisting as its
+own receipt.
+
+### CNT-11 — History can put a version back · **product** · FIXED
+
+*"Content change history is audit-only: the session History panel records who/when for
+each edit but offers no restore, rollback or diff action... the agent had to retype the
+old text manually."* (major defect, and the half that capped the item)
+
+The audit log deliberately stored field *names* only, on the reasoning that keeping old
+values "would turn a log into a version store". That reasoning holds for structured
+fields and not for wording: "Jordan changed the abstract" is half an answer when what you
+need is the paragraph back. `updateDetails` now keeps the previous `title` and
+`description` — and only those two — on the audit row when it overwrites them, and the
+History tab renders "Before this edit the title was …" with a **Restore this version**
+button on exactly the entries that carry one.
+
+`restoreFromHistory` writes forward and logs its own entry rather than rewinding the log,
+so the version you just replaced becomes restorable in turn and the history never loses
+the fact that somebody undid something. The audit row is checked to belong to both this
+event and this record before its contents are read back.
+
+### CNT-14 — bulk download can be scoped · **product** · FIXED
+
+*"There are no per-file checkboxes, no deselection, and no grouping dialog."*
+
+The Files library gets a checkbox column (select-all with an indeterminate state), and
+the button names its own scope: **"Download N selected"** when rows are ticked,
+**"Download all"** when they are not — where "all" has always meant exactly what the
+filters are showing. `FilesTable` only grows the column when a caller passes selection
+handlers, so the per-session Files tab is untouched.
+
 ## Still open, ranked by what they would earn
 
 | Item | Weight | Gap |
 | --- | --- | --- |
-| CNT-11 | — | History is audit-only: no restore, rollback or diff. "The restore half of the criterion is therefore absent." Needs a "Restore this version" action on the History tab |
-| CNT-14 | — | Bulk download can't be scoped: no per-file checkboxes, no grouping. Needs multi-select + "Download selected" in the Files library |
 | EMB-15 | — | Four named gaps (branding/CSS, XML, per-embed enable/disable, per-field selection) — a toggle alone would not flip it |
 | ABS-09 | — | The reminder control exists and is state-aware; the agent has never had turns left to click it |
 | CFP-06 / CFP-09 | — | Judge-couldn't-see: the scenarios work in two different events, so the speaker's own submission is never checked on the organizer side. Evidence artefact, not a product gap |

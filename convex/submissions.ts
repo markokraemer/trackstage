@@ -564,11 +564,16 @@ export const updateDetails = mutation({
       submission.kind === "abstract" ? "submission.updated" : "session.updated",
       { id: args.submissionId, title: rest.title ?? submission.title },
     )
-    // Field names only — the History tab answers "what was touched, by whom",
-    // and storing every old value would turn a log into a version store.
     const changed = Object.keys(args.patch).filter(
       (key) => args.patch[key as keyof typeof args.patch] !== undefined,
     )
+    // Field names for everything — the History tab's job is "what was touched,
+    // by whom". But for the two fields an organizer actually rewrites, the
+    // wording that was there before is kept alongside, because "Jordan changed
+    // the abstract" is only half an answer when what you need is the paragraph
+    // back. Deliberately just these two: a log that snapshotted every field on
+    // every write would be a version store wearing a log's clothes.
+    const previous = restorableBefore(submission, args.patch)
     await recordAudit(ctx, {
       eventId: submission.eventId,
       entity: submission.kind === "session" ? "session" : "submission",
@@ -578,9 +583,114 @@ export const updateDetails = mutation({
         changed.length > 0
           ? `Updated ${changed.map((key) => DETAIL_FIELD_LABELS[key] ?? key).join(", ")} · ${rest.title ?? submission.title}`
           : `Updated · ${submission.title}`,
-      meta: { fields: changed, title: rest.title ?? submission.title },
+      meta: {
+        fields: changed,
+        title: rest.title ?? submission.title,
+        ...(previous ? { previous } : {}),
+      },
     })
     return null
+  },
+})
+
+/** The wording fields History can put back, and what they were called. */
+const RESTORABLE_FIELDS = {
+  title: "title",
+  description: "description",
+} as const
+
+type RestorableField = keyof typeof RESTORABLE_FIELDS
+
+/**
+ * The old values of any wording field this patch is about to overwrite —
+ * `null` when the edit didn't touch either, so ordinary field changes stay
+ * cheap and the History row carries no restore offer it can't honour.
+ */
+function restorableBefore(
+  submission: Doc<"submissions">,
+  patch: { title?: string; description?: string },
+): Record<string, string> | null {
+  const before: Record<string, string> = {}
+  for (const field of Object.keys(RESTORABLE_FIELDS) as Array<RestorableField>) {
+    const next = patch[field]
+    const current = submission[field] ?? ""
+    if (next !== undefined && next !== current) before[field] = current
+  }
+  return Object.keys(before).length > 0 ? before : null
+}
+
+/**
+ * Put a previous wording back (sbek CNT-11).
+ *
+ * Restoring is itself an edit, not a rewind: it writes forward and logs a row
+ * of its own, so the History tab never loses the fact that someone undid
+ * something — and the version you just replaced becomes restorable in turn.
+ */
+export const restoreFromHistory = mutation({
+  args: {
+    submissionId: v.id("submissions"),
+    auditId: v.id("auditLog"),
+  },
+  returns: v.object({ restored: v.array(v.string()) }),
+  handler: async (ctx, args) => {
+    const submission = await ctx.db.get(args.submissionId)
+    if (!submission) throw new ConvexError("Submission not found")
+    await requireEventAccess(ctx, submission.eventId)
+
+    const entry = await ctx.db.get(args.auditId)
+    // Belt and braces: the row has to belong to this event AND this record,
+    // or a caller could read any submission's old text by guessing an id.
+    if (
+      !entry ||
+      entry.eventId !== submission.eventId ||
+      entry.entityId !== args.submissionId
+    ) {
+      throw new ConvexError("That history entry doesn't belong to this record")
+    }
+
+    const previous = (entry.meta?.previous ?? null) as Record<
+      string,
+      unknown
+    > | null
+    if (!previous) {
+      throw new ConvexError("There's no earlier wording saved on that entry")
+    }
+
+    const patch: { title?: string; description?: string } = {}
+    for (const field of Object.keys(RESTORABLE_FIELDS) as Array<RestorableField>) {
+      const value = previous[field]
+      if (typeof value === "string" && value !== (submission[field] ?? "")) {
+        patch[field] = value
+      }
+    }
+    const restored = Object.keys(patch)
+    if (restored.length === 0) {
+      throw new ConvexError("That version is already the current one")
+    }
+
+    const before = restorableBefore(submission, patch)
+    await ctx.db.patch(args.submissionId, { ...patch, updatedAt: Date.now() })
+    await emitWebhook(
+      ctx,
+      submission.eventId,
+      submission.kind === "abstract" ? "submission.updated" : "session.updated",
+      { id: args.submissionId, title: patch.title ?? submission.title },
+    )
+    await recordAudit(ctx, {
+      eventId: submission.eventId,
+      entity: submission.kind === "session" ? "session" : "submission",
+      entityId: args.submissionId,
+      action: "restored",
+      summary: `Restored the earlier ${restored
+        .map((key) => DETAIL_FIELD_LABELS[key] ?? key)
+        .join(" and ")} · ${patch.title ?? submission.title}`,
+      meta: {
+        fields: restored,
+        title: patch.title ?? submission.title,
+        ...(before ? { previous: before } : {}),
+      },
+    })
+    return { restored }
   },
 })
 

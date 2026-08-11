@@ -88,10 +88,18 @@ export function ActivityTimeline({
   rows,
   emptyState,
   className,
+  renderAction,
 }: {
   rows: Array<ActivityRow>
   emptyState?: React.ReactNode
   className?: string
+  /**
+   * An optional control for a single entry — the submission drawer hangs
+   * "Restore this version" here. Passed in rather than built in, because the
+   * event-wide feed shows rows from a dozen record types and can't act on any
+   * of them.
+   */
+  renderAction?: (row: ActivityRow) => React.ReactNode
 }) {
   if (rows.length === 0) return <>{emptyState ?? null}</>
 
@@ -134,6 +142,7 @@ export function ActivityTimeline({
                   </Badge>
                 ) : null}
               </p>
+              {renderAction ? renderAction(row) : null}
             </div>
           </li>
         )

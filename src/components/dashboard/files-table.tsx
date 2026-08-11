@@ -8,6 +8,7 @@ import { toast } from "sonner"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
+import { Checkbox } from "@/components/ui/checkbox"
 import { Skeleton } from "@/components/ui/skeleton"
 import {
   Table,
@@ -38,6 +39,13 @@ export interface FilesTableProps {
   rows: Array<FileLibraryRow>
   /** Approve a file in place — the same mutation the submission drawer uses. */
   onApprove?: (row: FileLibraryRow) => void
+  /**
+   * Ticked rows, by file id. Omit both of these and the checkbox column
+   * disappears — the per-session Files tab lists three files and has no use
+   * for it.
+   */
+  selectedIds?: Array<string>
+  onSelectedChange?: (ids: Array<string>) => void
   className?: string
 }
 
@@ -51,13 +59,46 @@ export interface FilesTableProps {
  * `file-row.tsx`) so a file reads identically here, in the speaker portal and
  * in the submission drawer.
  */
-export function FilesTable({ rows, onApprove, className }: FilesTableProps) {
+export function FilesTable({
+  rows,
+  onApprove,
+  selectedIds,
+  onSelectedChange,
+  className,
+}: FilesTableProps) {
+  const selectable = selectedIds !== undefined && onSelectedChange !== undefined
+  const selected = new Set(selectedIds ?? [])
+  const allSelected = rows.length > 0 && rows.every((row) => selected.has(row.id))
+  const someSelected = rows.some((row) => selected.has(row.id))
+
+  function toggle(id: string, checked: boolean) {
+    if (!onSelectedChange) return
+    const next = new Set(selected)
+    if (checked) next.add(id)
+    else next.delete(id)
+    onSelectedChange([...next])
+  }
+
   return (
     <Card className={cn("overflow-x-auto p-0 py-0", className)}>
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>File</TableHead>
+            {selectable ? (
+              <TableHead className="w-10 pl-4">
+                <Checkbox
+                  aria-label="Select every file in this view"
+                  checked={allSelected}
+                  indeterminate={someSelected && !allSelected}
+                  onCheckedChange={(value) =>
+                    onSelectedChange(
+                      value === true ? rows.map((row) => row.id) : [],
+                    )
+                  }
+                />
+              </TableHead>
+            ) : null}
+            <TableHead className="w-full">File</TableHead>
             <TableHead>Speaker</TableHead>
             <TableHead>Session</TableHead>
             <TableHead>Uploaded</TableHead>
@@ -70,7 +111,15 @@ export function FilesTable({ rows, onApprove, className }: FilesTableProps) {
         </TableHeader>
         <TableBody>
           {rows.map((row) => (
-            <FileTableRow key={row.id} row={row} onApprove={onApprove} />
+            <FileTableRow
+              key={row.id}
+              row={row}
+              onApprove={onApprove}
+              selected={selectable ? selected.has(row.id) : undefined}
+              onSelectedChange={
+                selectable ? (checked) => toggle(row.id, checked) : undefined
+              }
+            />
           ))}
         </TableBody>
       </Table>
@@ -81,9 +130,13 @@ export function FilesTable({ rows, onApprove, className }: FilesTableProps) {
 function FileTableRow({
   row,
   onApprove,
+  selected,
+  onSelectedChange,
 }: {
   row: FileLibraryRow
   onApprove?: (row: FileLibraryRow) => void
+  selected?: boolean
+  onSelectedChange?: (checked: boolean) => void
 }) {
   const [downloading, setDownloading] = useState(false)
   const { eventRef } = useCurrentEvent()
@@ -110,7 +163,16 @@ function FileTableRow({
   }
 
   return (
-    <TableRow>
+    <TableRow data-state={selected ? "selected" : undefined}>
+      {onSelectedChange ? (
+        <TableCell className="pl-4">
+          <Checkbox
+            aria-label={`Select ${row.filename}`}
+            checked={selected === true}
+            onCheckedChange={(value) => onSelectedChange(value === true)}
+          />
+        </TableCell>
+      ) : null}
       <TableCell>
         <div className="flex items-center gap-2.5">
           <span

@@ -4,6 +4,7 @@ import { convexQuery, useConvexMutation } from "@convex-dev/react-query"
 import { api } from "@convex/_generated/api"
 import type { Id } from "@convex/_generated/dataModel"
 import {
+  RiArrowGoBackLine,
   RiAttachment2,
   RiEyeLine,
   RiEyeOffLine,
@@ -40,6 +41,7 @@ import { TagInput } from "@/components/submissions/tag-input"
 import { ChoiceValue, TrackValue } from "@/components/submissions/field-bits"
 import { AnswersEditor } from "@/components/submissions/answers-editor"
 import { ActivityTimeline } from "@/components/activity/activity-timeline"
+import type { ActivityRow } from "@/components/activity/activity-timeline"
 import { DeleteSubmissionButton } from "@/components/submissions/delete-submission-dialog"
 import { errorMessage } from "@/lib/errors"
 import {
@@ -768,6 +770,9 @@ function SubmissionHistory({
   return (
     <ActivityTimeline
       rows={rows}
+      renderAction={(row) => (
+        <RestoreVersionButton submissionId={submissionId} row={row} />
+      )}
       emptyState={
         <EmptyState
           variant="plain"
@@ -777,6 +782,81 @@ function SubmissionHistory({
         />
       }
     />
+  )
+}
+
+/**
+ * "Restore this version" (sbek CNT-11) — offered only on the entries that
+ * actually carry the wording they replaced, so the control never appears
+ * where it couldn't do anything.
+ *
+ * Restoring writes forward and logs its own entry rather than rewinding the
+ * log, which means the text you just replaced becomes restorable in turn and
+ * the history never loses the fact that somebody undid something.
+ */
+function RestoreVersionButton({
+  submissionId,
+  row,
+}: {
+  submissionId: Id<"submissions">
+  row: ActivityRow
+}) {
+  const [busy, setBusy] = useState(false)
+  const restore = useConvexMutation(api.submissions.restoreFromHistory)
+
+  const previous = row.meta?.previous as Record<string, unknown> | undefined
+  const fields = previous
+    ? Object.keys(previous).filter((key) => typeof previous[key] === "string")
+    : []
+  if (fields.length === 0) return null
+
+  const preview = typeof previous?.title === "string" ? previous.title : null
+
+  async function onRestore() {
+    setBusy(true)
+    try {
+      const result = await restore({
+        submissionId,
+        auditId: row._id as Id<"auditLog">,
+      })
+      toast.success(
+        `Restored the earlier ${result.restored.join(" and ")}`,
+        { description: "The version you replaced is now the one you can put back." },
+      )
+    } catch (error) {
+      toast.error("Couldn't restore that version", {
+        description: errorMessage(error, "Please try again."),
+      })
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <div className="mt-2 rounded-lg border border-border bg-muted/40 px-3 py-2">
+      <p className="text-xs text-muted-foreground">
+        Before this edit
+        {preview ? (
+          <>
+            {" "}
+            the title was &ldquo;
+            <span className="text-foreground">{preview}</span>&rdquo;
+          </>
+        ) : null}
+        .
+      </p>
+      <Button
+        type="button"
+        variant="outline"
+        size="xs"
+        className="mt-1.5"
+        disabled={busy}
+        onClick={() => void onRestore()}
+      >
+        <RiArrowGoBackLine aria-hidden />
+        {busy ? "Restoring…" : "Restore this version"}
+      </Button>
+    </div>
   )
 }
 

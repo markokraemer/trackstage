@@ -72,6 +72,8 @@ function FilesPage() {
   const [status, setStatus] = useState<string>(ANY_STATUS)
   const [kind, setKind] = useState<string>(ANY_KIND)
   const [bundling, setBundling] = useState(false)
+  /** Ticked files, by upload id — what "Download N selected" bundles. */
+  const [selected, setSelected] = useState<Array<string>>([])
 
   const { data: rows } = useQuery(
     convexQuery(
@@ -117,13 +119,26 @@ function FilesPage() {
     }
   }
 
-  /** "Download files bundle" over exactly what the filters show. */
+  /**
+   * The bundle is whatever you have said you want: the files you ticked, or —
+   * when you have ticked nothing — exactly what the filters are showing. One
+   * button, and it names its own scope, so "Download all" can never quietly
+   * mean something broader than the screen in front of you.
+   */
+  const chosen = useMemo(
+    () =>
+      selected.length > 0
+        ? visible.filter((row) => selected.includes(row.id))
+        : visible,
+    [visible, selected],
+  )
+
   async function downloadAll() {
-    if (visible.length === 0) return
+    if (chosen.length === 0) return
     setBundling(true)
     try {
       const result = await downloadFilesBundle(
-        visible.map((row) => ({ url: row.url, filename: row.filename })),
+        chosen.map((row) => ({ url: row.url, filename: row.filename })),
         `${event?.slug ?? "event"}-files.zip`,
       )
       toast.success(
@@ -172,15 +187,30 @@ function FilesPage() {
             : "Everything your speakers have uploaded — slides, headshots and signed forms."
         }
         actions={
-          <Button
-            size="sm"
-            variant="outline"
-            disabled={bundling || visible.length === 0}
-            onClick={() => void downloadAll()}
-          >
-            <RiFolderDownloadLine aria-hidden />
-            {bundling ? "Preparing…" : "Download all"}
-          </Button>
+          <div className="flex flex-wrap items-center gap-2">
+            {selected.length > 0 ? (
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => setSelected([])}
+              >
+                Clear selection
+              </Button>
+            ) : null}
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={bundling || chosen.length === 0}
+              onClick={() => void downloadAll()}
+            >
+              <RiFolderDownloadLine aria-hidden />
+              {bundling
+                ? "Preparing…"
+                : selected.length > 0
+                  ? `Download ${selected.length} selected`
+                  : "Download all"}
+            </Button>
+          </div>
         }
       />
 
@@ -271,7 +301,12 @@ function FilesPage() {
           }
         />
       ) : (
-        <FilesTable rows={visible} onApprove={(row) => void approve(row)} />
+        <FilesTable
+          rows={visible}
+          onApprove={(row) => void approve(row)}
+          selectedIds={selected}
+          onSelectedChange={setSelected}
+        />
       )}
     </div>
   )
