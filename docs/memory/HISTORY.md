@@ -171,3 +171,9 @@ the narrative memory; RULES.md is the things circled as important along the way.
     UX analysis), deep-crawl the product onboarding docs, and build an in-depth
     map of the actual software being cloned — full UX/UI understanding beyond the
     API reference. Feeds the parity loop.
+57. **Loop + goal confirmed; frame-by-frame vision**: self-paced completion loop
+    running with the 100%-parity goal as its stop condition; continuous product
+    learning (API reference + all videos via Gemini 3.6 Flash) upgraded with
+    frame-by-frame vision analysis of walkthrough videos. End state restated:
+    full product-parity clone that just works — very UX-friendly, simple,
+    intuitive, whole flow very clear.
