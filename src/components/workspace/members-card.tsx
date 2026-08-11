@@ -245,7 +245,10 @@ export function MembersCard({
           Team
           <Badge variant="secondary">{rows.length}</Badge>
         </CardTitle>
-        <CardDescription>
+        {/* On phones the description takes the FULL width under the
+            title+button row — beside the button it squeezed into a tall
+            skinny column of one-word lines. */}
+        <CardDescription className="max-sm:col-span-2">
           {scopeEvent ? (
             <>
               Who can open{" "}
@@ -268,7 +271,7 @@ export function MembersCard({
             ? ` ${limited} member${limited === 1 ? " is" : "s are"} limited to specific events.`
             : ""}
         </CardDescription>
-        <CardAction>
+        <CardAction className="max-sm:row-span-1">
           <Button
             type="button"
             size="sm"
