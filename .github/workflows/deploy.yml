@@ -1,10 +1,16 @@
 name: Deploy
 
-# RELEASE MODEL (Marko, 2026-08-11): `master` is the integration branch — every
-# push runs CI only. Releasing to production is a deliberate act, either:
-#   · promote:  git push origin master:prod     (fast-forward the prod branch)
+# RELEASE MODEL (Marko, 2026-08-11): `main` is the dev branch (`master`
+# mirrors it during the transition). Every push runs the FULL CI gate —
+# typecheck, lint, unit tests AND the complete Playwright e2e flows suite —
+# and a green run auto-deploys staging (deploy-dev.yml → dev.trackstage.app).
+# Releasing to production is a deliberate act, either:
+#   · promote:  git push origin main:prod      (master:prod works too)
 #   · or the Actions tab → Deploy → "Run workflow" (releases the chosen ref)
-# A push to `prod` runs CI, and this workflow deploys once that CI is green.
+# A push to `prod` re-runs the same full CI gate, and this workflow deploys
+# once that CI is green — so NOTHING reaches production without the whole
+# test suite passing. The manual "Run workflow" dispatch is the documented
+# escape hatch if the e2e gate ever wrongly blocks an urgent release.
 #
 # Production deploy: Convex backend first (schema + functions), then the
 # Cloudflare Worker that serves the app. Runs only after the CI workflow has

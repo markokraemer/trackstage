@@ -1,0 +1,112 @@
+name: Deploy Dev
+
+# Staging: every commit that passes the FULL CI gate (typecheck · lint · unit
+# tests · complete e2e flows suite) on `main` (or its `master` mirror) is
+# deployed to https://dev.trackstage.app automatically.
+#
+# What it deploys: the Worker `trackstage-dev` (env.dev in wrangler.jsonc),
+# built with `pnpm build:staging` → .env.staging, which points the bundle at
+# the shared DEV Convex deployment (dev:neat-sparrow-926). The Convex backend
+# itself is NOT deployed here — dev functions are pushed continuously by local
+# `convex dev` sessions; staging exists to exercise the real Worker build of
+# the frontend against that same backend.
+#
+# `workflow_run` (not `needs:`) because CI lives in its own file; the checkout
+# below pins the exact SHA CI validated.
+#
+# Required repository secrets (same ones the production deploy uses):
+#   CLOUDFLARE_API_TOKEN    Worker deploy perms + Routes/DNS for the
+#                           dev.trackstage.app custom-domain attach
+#   CLOUDFLARE_ACCOUNT_ID   account the Worker lives in
+#   OPENROUTER_API_KEY      optional — copilot model key for the staging Worker
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main, master]
+  workflow_dispatch:
+
+# main and master usually mirror the same commit — if both trigger, keep only
+# the newest deploy.
+concurrency:
+  group: deploy-dev
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    name: Cloudflare Worker (staging)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      github.event.workflow_run.conclusion == 'success'
+    environment:
+      name: dev
+      url: https://dev.trackstage.app
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.ref }}
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build app (mode=staging → .env.staging, CLOUDFLARE_ENV=dev)
+        run: pnpm build:staging
+
+      - name: Deploy Cloudflare Worker (trackstage-dev)
+        run: pnpm exec wrangler deploy
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+      # Keeps the staging copilot working; harmless no-op re-put each deploy.
+      - name: Set copilot key on the staging Worker
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+        run: |
+          if [ -n "$OPENROUTER_API_KEY" ]; then
+            printf '%s' "$OPENROUTER_API_KEY" | pnpm exec wrangler secret put OPENROUTER_API_KEY --name trackstage-dev
+          else
+            echo "OPENROUTER_API_KEY secret not set — staging copilot stays unconfigured"
+          fi
+
+      # First deploy after a custom-domain attach can need a minute for the
+      # cert — retry once before calling it red.
+      - name: Smoke-test dev.trackstage.app
+        env:
+          APP_URL: https://dev.trackstage.app
+          CONVEX_SITE_URL: https://neat-sparrow-926.eu-west-1.convex.site
+        run: |
+          node scripts/smoke-production.mjs || {
+            echo "first smoke attempt failed — retrying in 90s (cert/DNS warm-up)"
+            sleep 90
+            node scripts/smoke-production.mjs
+          }
+
+      - name: Summary
+        if: always()
+        run: |
+          {
+            echo "### Staging deployed"
+            echo ""
+            echo "- App: https://dev.trackstage.app"
+            echo "- Fallback: https://trackstage-dev.kortix.workers.dev"
+            echo "- Convex (dev): https://neat-sparrow-926.eu-west-1.convex.cloud"
+            echo "- Commit: \`${{ github.event.workflow_run.head_sha || github.sha }}\`"
+          } >> "$GITHUB_STEP_SUMMARY"

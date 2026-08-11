@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite dev --port 3000",
     "build": "vite build",
+    "build:staging": "CLOUDFLARE_ENV=dev vite build --mode staging",
     "preview": "vite build && wrangler dev",
     "test": "vitest run",
     "lint": "eslint",

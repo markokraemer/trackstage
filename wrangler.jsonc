@@ -15,5 +15,17 @@
   "routes": [{ "pattern": "trackstage.app", "custom_domain": true }],
   // Declaring `routes` would otherwise turn the workers.dev URL off; keep it
   // on so https://trackstage.kortix.workers.dev remains a working fallback.
-  "workers_dev": true
+  "workers_dev": true,
+  // Staging Worker: dev.trackstage.app, deployed by deploy-dev.yml on every
+  // green CI run of main/master. Built with `CLOUDFLARE_ENV=dev vite build
+  // --mode staging` (.env.staging → the shared DEV Convex deployment
+  // neat-sparrow-926), so it never touches production data.
+  "env": {
+    "dev": {
+      "name": "trackstage-dev",
+      "routes": [{ "pattern": "dev.trackstage.app", "custom_domain": true }],
+      "workers_dev": true,
+      "observability": { "enabled": true }
+    }
+  }
 }

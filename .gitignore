@@ -18,5 +18,8 @@ todos.json
 !.env.example
 # Public build-time config for production deploys (no secrets) — see the file header.
 !.env.production
+# Same, for the dev.trackstage.app staging Worker (deploy-dev.yml).
+!.env.staging
 tests/e2e/.auth/
 tests/e2e/.results/
+playwright-report/
