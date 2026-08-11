@@ -249,3 +249,19 @@ exemption removed. Swyx's clarification still holds where it was actually
 aimed — ACCEPTANCE itself never locks editing while the CFP is open.
 Organizers can still reopen editing anytime via portalSettings
 (allowSubmissionEdits) — that's the escape hatch for post-deadline fixes.
+
+## Prod region: already US East — migration verified as a no-op (2026-08-12)
+Directive: migrate prod (`keen-eagle-41`) from eu-west-1 to US East before judging.
+Investigation found the premise stale: the platform API reports `keen-eagle-41` as
+`aws-us-east-1` (it was provisioned 2026-08-11 02:53 UTC, AFTER Marko flipped the
+team default region to US East), confirmed by a control test (dev
+`neat-sparrow-926` correctly reports `aws-eu-west-1`) and by latency signature
+(min TTFB from EU: prod ~181ms vs EU dev ~113ms — a transatlantic gap). A full
+rehearsal migration WAS performed to be sure the path works (new us-east prod
+`colorful-oriole-432`: snapshot import incl. file storage + betterAuth component
+tables (jwks/sessions), env vars, functions, seed:setup — full parity verified),
+then deleted as redundant; cutting over would only have invalidated post-export
+writes for zero region gain. `keen-eagle-41` stays canonical prod. Speed action
+taken instead: Cloudflare Smart Placement on the prod Worker (wrangler.jsonc) so
+SSR runs near the us-east backend. Only the DEV deployment remains in eu-west-1
+(later phase).

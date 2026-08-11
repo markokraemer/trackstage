@@ -2749,3 +2749,24 @@ mid-session (`CONVEX_DEPLOYMENT=local:local-…`, `127.0.0.1` URLs), which is wh
 `dev:neat-sparrow-926` with the OPENROUTER key preserved. Worth watching — it can silently
 point a dev session at an empty database.
 
+
+## 2026-08-12 — Prod region migration: verified already US East, rehearsed, no-op'd
+
+Tasked with migrating prod Convex (keen-eagle-41) EU→US East for judge latency.
+Found `npx convex deployment create --region us` + `deployment token create`
+(region is per-deployment now, team slug is `kortix`, not marko-kraemer-bb1a2).
+Rehearsed the full migration into a fresh us-east prod deployment
+(colorful-oriole-432): snapshot export `--include-file-storage` → import
+`--replace-all` (576 docs, 20 storage files, betterAuth component incl. jwks +
+65 sessions), all 6 env vars copied value-identical, functions deployed via a
+minted deploy key, `seed:setup` ran clean. Parity: 29 app tables + 10 auth
+component tables count-identical, spot-check event doc byte-identical.
+THEN the region check: platform API (`GET /v1/deployments/{name}`) says
+keen-eagle-41 is **aws-us-east-1 already** — provisioned after Marko's team
+default-region flip; latency probe agrees (prod == new us deployment ~181ms min
+TTFB from EU, EU dev ~113ms). Control: neat-sparrow-926 reports aws-eu-west-1.
+So: no cutover. Deleted the duplicate deployment + its deploy key
+(POST /v1/deployments/{name}/delete; the v1 platform API works with the CLI's
+~/.convex/config.json token). Old prod untouched throughout; CONVEX_DEPLOY_KEY
+secret unchanged. Shipped instead: Smart Placement on the prod Worker + region
+notes in .env.production. Promoted master→prod (carries hill-climb batch 4).

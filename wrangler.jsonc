@@ -7,6 +7,11 @@
   "observability": {
     "enabled": true
   },
+  // Smart Placement: SSR does several Convex roundtrips per request, so let
+  // Cloudflare run the Worker near the backend (aws-us-east-1) instead of near
+  // the visitor — fewer transatlantic hops per page for the US-based judge.
+  // Falls back to default placement automatically when it wouldn't help.
+  "placement": { "mode": "smart" },
   // Production custom domain. Cloudflare provisions the DNS record and the
   // certificate from this declaration on `wrangler deploy` — the zone
   // (trackstage.app) lives in the same account as the Worker.
