@@ -826,6 +826,10 @@ export const run = internalMutation({
       timezone: "America/Los_Angeles",
       startsAt: pt(2026, 10, 12, 9, 0),
       endsAt: pt(2026, 10, 13, 18, 0),
+      // The demo event's programme is live (sbek AIA-07). Design Systems Day
+      // deliberately stays unpublished — it's the fixture that proves the
+      // publish gate actually gates.
+      agendaPublishedAt: now - 5 * DAY,
     })
 
     // — Rooms & tracks ————————————————————————————————————————————————————

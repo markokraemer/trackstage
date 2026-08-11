@@ -8,8 +8,10 @@ export interface PageHeaderProps
   /** Right-side actions — primary button last. */
   actions?: React.ReactNode
   /**
-   * `banner` (default) = the tinted lavender panel used across the organizer
-   * app (docs/ux/01 synthesis — module headers get their own tinted banner).
+   * `banner` (default) = the module header used across the organizer app.
+   * After the Attio revamp (RULES.md #22) it is a NEUTRAL HAIRLINE, not a
+   * tinted panel: the title sits on the page and a 1px rule closes it off.
+   * There is no tinted banner anywhere in the product any more.
    * `plain` = bare heading, for drawers, public pages, and nested sections.
    */
   variant?: "banner" | "plain"
@@ -36,8 +38,7 @@ export function PageHeader({
       data-variant={variant}
       className={cn(
         "flex flex-col gap-4",
-        variant === "banner" &&
-          "rounded-xl border border-primary/10 bg-accent px-5 py-4",
+        variant === "banner" && "border-b border-border pb-4",
         className,
       )}
       {...props}
@@ -50,14 +51,7 @@ export function PageHeader({
           {description ? (
             // A <div>, not a <p>: descriptions carry skeletons and chips, and a
             // block element inside <p> is a hydration error.
-            <div
-              className={cn(
-                "text-sm",
-                variant === "banner"
-                  ? "text-foreground/70"
-                  : "text-muted-foreground",
-              )}
-            >
+            <div className="text-sm text-muted-foreground">
               {description}
             </div>
           ) : null}

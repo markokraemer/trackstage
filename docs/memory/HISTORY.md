@@ -126,3 +126,6 @@ the narrative memory; RULES.md is the things circled as important along the way.
 42. **Press-depth 3D button: optional, not forced** — "not really necessary… looks a
     bit odd" but "gives the whole thing a bit of depth on the landing". Keep on landing
     hero only where it works; don't force elsewhere.
+43. **Copilot generative UI**: after first live use (listed + created a form) — every
+    MCP tool call needs its own nice UX/UI using our actual components; panel draggable
+    wider; research AI SDK generative-UI best practices; e2e in-chat experiences.

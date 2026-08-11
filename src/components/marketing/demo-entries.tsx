@@ -84,7 +84,7 @@ export function DemoEntries() {
         >
           Three ways in. Pick a seat.
         </h2>
-        <p className="max-w-sm text-sm leading-relaxed text-muted-foreground sm:text-right">
+        <p className="max-w-sm text-sm leading-relaxed text-pretty text-muted-foreground sm:text-right">
           Everything below runs on a pre-loaded demo event. Nothing to install,
           nothing to configure, nothing you can break.
         </p>

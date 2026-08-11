@@ -63,6 +63,25 @@
     --color-status-blue-fg: var(--status-blue-fg);
     --color-status-blue-dot: var(--status-blue-dot);
 
+    /* Accent ramp — hover/active/tint steps derived from --primary once. */
+    --color-primary-hover: var(--primary-hover);
+    --color-primary-active: var(--primary-active);
+    --color-primary-surface: var(--primary-surface);
+    --color-primary-surface-hover: var(--primary-surface-hover);
+    --color-primary-border: var(--primary-border);
+
+    /* Categorical tag tints — colour that carries DATA, never chrome. */
+    --color-tag-blue-bg: var(--tag-blue-bg);
+    --color-tag-blue-fg: var(--tag-blue-fg);
+    --color-tag-green-bg: var(--tag-green-bg);
+    --color-tag-green-fg: var(--tag-green-fg);
+    --color-tag-amber-bg: var(--tag-amber-bg);
+    --color-tag-amber-fg: var(--tag-amber-fg);
+    --color-tag-purple-bg: var(--tag-purple-bg);
+    --color-tag-purple-fg: var(--tag-purple-fg);
+    --color-tag-gray-bg: var(--tag-gray-bg);
+    --color-tag-gray-fg: var(--tag-gray-fg);
+
     /* 8px on controls, 12px on cards. */
     --radius-sm: 0.25rem;
     --radius-md: 0.5rem;
@@ -74,64 +93,116 @@
 }
 
 :root {
-    /* Surfaces & text */
-    --background: #f8fafc;
-    --foreground: #1b1e27;
-    --card: #ffffff;
-    --card-foreground: #1b1e27;
-    --popover: #ffffff;
-    --popover-foreground: #1b1e27;
+    /*
+     * ------------------------------------------------------------- COLOUR
+     * Attio revamp (docs/memory/RULES.md #22, docs/memory/DESIGN-REVAMP.md).
+     * Two rules govern everything below:
+     *   1. CHROME IS NEUTRAL — every derived neutral is chroma ≤ 2. The old
+     *      slate ramp leaked the accent hue into backgrounds, borders, muted
+     *      text and even the "black"; that is what read as "too blue".
+     *   2. COLOUR CARRIES DATA — the accent is permitted in exactly five
+     *      places: primary buttons, links, the active sidebar item, the
+     *      selected-row/filter indicator, and `--chart-1`. Status and tag
+     *      tokens carry meaning; nothing else is allowed to be coloured.
+     */
 
-    /* Brand */
-    --primary: #2f5ce0;
+    /* Surfaces & text */
+    --background: #fafafa;
+    --foreground: #17171a;
+    --card: #ffffff;
+    --card-foreground: #17171a;
+    --popover: #ffffff;
+    --popover-foreground: #17171a;
+
+    /* Brand — Petrol. White text on it measures 6.03:1 (AA, docs/reference/
+     * design-references.md §10). This is the ONLY line where the brand hue is
+     * decided; `--ring`, `--sidebar-primary` and `--chart-1` follow it. */
+    --primary: #0f6e70;
     --primary-foreground: #ffffff;
-    --secondary: #f1f5f9;
-    --secondary-foreground: #1b1e27;
-    --muted: #f1f5f9;
-    --muted-foreground: #64748b;
-    --accent: #eef1fc;
-    --accent-foreground: #1e3fa8;
+    --primary-hover: #0d5f60;
+    --primary-active: #0b5153;
+    --primary-surface: #eef5f5;
+    --primary-surface-hover: #e0ecec;
+    --primary-border: #b7d4d4;
+
+    --secondary: #f4f4f5;
+    --secondary-foreground: #17171a;
+    --muted: #f7f7f8;
+    --muted-foreground: #6e6e76;
+    --accent: #f4f4f5;
+    --accent-foreground: #17171a;
     --destructive: #dc2626;
 
     /* Lines & focus */
-    --border: #e5e7eb;
-    --input: #dfe3ea;
-    --ring: #2f5ce0;
+    --border: #eaeaec;
+    --input: #e1e1e4;
+    --ring: var(--primary);
     --radius: 0.5rem;
 
-    /* Charts */
-    --chart-1: #2f5ce0;
-    --chart-2: #7d9bf2;
-    --chart-3: #22c55e;
-    --chart-4: #f59e0b;
-    --chart-5: #94a3b8;
+    /* Charts — one accent ramp, then the semantic three. */
+    --chart-1: var(--primary);
+    --chart-2: #5fa3a4;
+    --chart-3: #16a34a;
+    --chart-4: #d97706;
+    --chart-5: #a1a1aa;
 
-    /* Sidebar */
-    --sidebar: #f1f5f9;
-    --sidebar-foreground: #1b1e27;
-    --sidebar-primary: #2f5ce0;
+    /* Sidebar — near-white neutral panel, never a tinted one. */
+    --sidebar: #fafafa;
+    --sidebar-foreground: #17171a;
+    --sidebar-primary: var(--primary);
     --sidebar-primary-foreground: #ffffff;
-    --sidebar-accent: #e4ebfc;
-    --sidebar-accent-foreground: #1e3fa8;
-    --sidebar-border: #e2e8f0;
-    --sidebar-ring: #2f5ce0;
+    --sidebar-accent: #efeff1;
+    --sidebar-accent-foreground: #17171a;
+    --sidebar-border: #eaeaec;
+    --sidebar-ring: var(--primary);
 
-    /* Status pills */
-    --status-green-bg: #d1fae5;
-    --status-green-fg: #065f46;
-    --status-green-dot: #059669;
+    /*
+     * Status. The dot is what tables render (StatusPill `variant="dot"`); the
+     * bg/fg pairs stay for staged emphasis (queue banners, drawer headers).
+     * Green is TRUE green, not emerald: emerald sits 33° from Petrol in LAB
+     * and would read as one family with the accent.
+     */
+    --status-green-bg: #dcfce7;
+    --status-green-fg: #166534;
+    --status-green-dot: #16a34a;
     --status-amber-bg: #fef3c7;
     --status-amber-fg: #92400e;
     --status-amber-dot: #d97706;
     --status-red-bg: #fee2e2;
     --status-red-fg: #991b1b;
     --status-red-dot: #dc2626;
-    --status-gray-bg: #f1f5f9;
-    --status-gray-fg: #475569;
-    --status-gray-dot: #94a3b8;
-    --status-blue-bg: #e4ebfc;
-    --status-blue-fg: #1e3fa8;
-    --status-blue-dot: #2f5ce0;
+    --status-gray-bg: #f4f4f5;
+    --status-gray-fg: #5f5f66;
+    --status-gray-dot: #a1a1aa;
+    /* "blue" is now a neutral tone — Active/Scheduled must not read as a link. */
+    --status-blue-bg: #f4f4f5;
+    --status-blue-fg: #5f5f66;
+    --status-blue-dot: #a1a1aa;
+
+    /*
+     * Categorical tag tints — soft background, dark text. THIS is what colour
+     * is for after the revamp: track, format, level, language, free tags.
+     * Never use them for state; state is the status ramp above.
+     */
+    --tag-blue-bg: #e6f0fb;
+    --tag-blue-fg: #1d4e89;
+    --tag-green-bg: #e7f4ec;
+    --tag-green-fg: #256040;
+    --tag-amber-bg: #fbf0dc;
+    --tag-amber-fg: #7a5a1e;
+    --tag-purple-bg: #f3eafb;
+    --tag-purple-fg: #5b2f9a;
+    --tag-gray-bg: #f4f4f5;
+    --tag-gray-fg: #5f5f66;
+
+    /*
+     * ------------------------------------------------------------- SIZING
+     * We take Attio's system, NOT Attio's density (RULES.md #22): organizers
+     * are not power users. 40px controls, 36px compact controls, 44px rows.
+     */
+    --control-h: 2.5rem;
+    --control-h-sm: 2.25rem;
+    --row-h: 2.75rem;
 
     /*
      * ------------------------------------------------------------------ WIDTH

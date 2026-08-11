@@ -15,6 +15,10 @@ import { Badge } from "@/components/ui/badge"
  * "undecided" (Pending + Decline Queue), red = final decline, gray = Draft /
  * Withdrawn. Queue states are staged decisions, so they carry a ring to read as
  * provisional next to their committed sibling.
+ *
+ * DEFAULT IS `variant="dot"` (RULES.md #22): a coloured dot plus a plain ink
+ * label. Filled pills are opt-in via `variant="pill"` and are reserved for the
+ * places where staged emphasis is the message.
  */
 
 /** Submission pipeline statuses, in pipeline order. Matches `convex/schema.ts`. */
@@ -150,6 +154,14 @@ export interface StatusPillProps
   label?: string
   /** Leading dot. On by default — it carries the meaning at a glance. */
   dot?: boolean
+  /**
+   * `dot` (default, RULES.md #22) = a small coloured dot plus a plain ink
+   * label, which is how Attio renders state in tables and detail panes. It
+   * keeps rows calm and reserves filled surfaces for real emphasis.
+   * `pill` = the filled tinted pill; use it where the emphasis is the point
+   * (accept/decline queue banners, drawer headers, a lone status in a card).
+   */
+  variant?: "dot" | "pill"
 }
 
 export function StatusPill({
@@ -157,6 +169,7 @@ export function StatusPill({
   label,
   dot = true,
   size = "default",
+  variant = "dot",
   className,
   ...props
 }: StatusPillProps) {
@@ -164,10 +177,36 @@ export function StatusPill({
   const tone: Tone = key in STATUS_TONES ? STATUS_TONES[key] : "gray"
   const staged = STAGED.has(key)
 
+  if (variant === "dot") {
+    return (
+      <Badge
+        variant="ghost"
+        data-slot="status-pill"
+        data-variant="dot"
+        data-status={status}
+        className={cn(
+          "gap-1.5 bg-transparent px-0 font-medium text-foreground hover:bg-transparent",
+          size === "sm" ? "h-5 text-[11px]" : "h-6 text-xs",
+          className,
+        )}
+        {...props}
+      >
+        {dot ? (
+          <span
+            aria-hidden
+            className={cn("size-2 shrink-0 rounded-full", DOT_CLASS[tone])}
+          />
+        ) : null}
+        {label ?? statusLabel(status)}
+      </Badge>
+    )
+  }
+
   return (
     <Badge
       variant="secondary"
       data-slot="status-pill"
+      data-variant="pill"
       data-status={status}
       className={cn(statusPillVariants({ tone, size, staged }), className)}
       {...props}

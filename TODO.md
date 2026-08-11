@@ -45,8 +45,11 @@ Source of truth for everything Marko asked + build status. Update continuously.
   results; side panel (⌘I) on every organizer screen + full page at `/app/copilot`,
   conversation shared and persisted per event
 - ⏳ Seed: rich demo world, judge-friendly demo-mode links
-- 💤 Airtable one-click one-way sync (submissions/speakers/sessions rows; idempotent;
-  swyx: read-only mirror is enough — their automations fire on new rows)
+- ✅ Airtable one-click one-way sync (rule 15): Settings → Integrations, PAT + base ID,
+  auto-creates Submissions/Speakers/Sessions, idempotent PATCH upsert on the
+  "Sessionboard ID" column, on-write (~5s debounced) + every-5-min cron. Needs a REAL
+  Airtable PAT from Marko for a live end-to-end proof; `AIRTABLE_DEMO_MODE=1` on the
+  deployment makes it demo-able without one
 
 ## Emails (rule 18e — Resend key live on deployment)
 - ✅ Speaker comms via Resend (real recipients send; @example.com demo → preview)

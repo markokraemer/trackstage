@@ -36,7 +36,7 @@ export function EmptyState({
   const body = (
     <>
       {Icon ? (
-        <div className="mb-4 flex size-11 items-center justify-center rounded-xl bg-accent text-accent-foreground">
+        <div className="mb-4 flex size-11 items-center justify-center rounded-xl border border-border bg-muted text-muted-foreground">
           <Icon size={20} aria-hidden />
         </div>
       ) : null}

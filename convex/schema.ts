@@ -98,6 +98,10 @@ export default defineSchema({
     startsAt: v.optional(v.number()), // epoch ms
     endsAt: v.optional(v.number()),
     logoId: v.optional(v.id("_storage")),
+    // Go-live gate for the public program (sbek AIA-07). Unset ⇒ the public
+    // pages render "Schedule coming soon" with no sessions, however many are
+    // accepted and scheduled internally. Set by agenda.publishAgenda.
+    agendaPublishedAt: v.optional(v.number()),
   })
     .index("by_slug", ["slug"])
     .index("by_organizationId", ["organizationId"]),
@@ -171,6 +175,11 @@ export default defineSchema({
     ),
     // Opaque token for passwordless portal access (magic link).
     portalToken: v.string(),
+    // Organizer-managed speaker workflow (sbek SPK-04): invited | confirmed |
+    // dropped. Only ever set for people the organizer manages as speakers —
+    // its presence is also what puts a manually added speaker (one with no
+    // accepted submission yet) on the roster.
+    workflowStatus: v.optional(v.string()),
   })
     .index("by_eventId", ["eventId"])
     .index("by_eventId_and_email", ["eventId", "email"])
@@ -317,6 +326,29 @@ export default defineSchema({
     .index("by_eventId", ["eventId"])
     .index("by_personId", ["personId"])
     .index("by_status", ["status"]),
+
+  // ——— Embeds ———————————————————————————————————————————————————————————
+  // A named, reusable widget configuration (sbek EMB-15). The embed itself is
+  // still just a URL into the public site — nothing is "published" and there
+  // is no cache to wait for — but organizers need to name a configuration,
+  // come back to it, and hand the same snippet to a colleague.
+  embeds: defineTable({
+    eventId: v.id("events"),
+    name: v.string(),
+    // agenda | itinerary | sessions | speaker-gallery | speaker-list
+    widget: v.string(),
+    options: v.object({
+      // Delivery format of the snippet: iframe | html | link | json | ics
+      format: v.optional(v.string()),
+      hideDescriptions: v.optional(v.boolean()),
+      hideSpeakers: v.optional(v.boolean()),
+      hideImages: v.optional(v.boolean()),
+      hideSearch: v.optional(v.boolean()),
+      /** Track NAME (public URLs filter by name, not id). */
+      track: v.optional(v.string()),
+      height: v.optional(v.number()),
+    }),
+  }).index("by_eventId", ["eventId"]),
 
   // ——— Integrations —————————————————————————————————————————————————————
   // One-way Airtable mirror (docs/memory/RULES.md 15, convex/airtable.ts).

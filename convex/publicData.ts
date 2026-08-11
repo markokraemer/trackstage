@@ -108,9 +108,17 @@ async function eventBySlug(ctx: QueryCtx, slug: string) {
  * rooms/tracks, and their speakers (headshot URLs resolved). Every public
  * query below is a projection of this so the shapes never drift apart.
  */
+/**
+ * Copy shown on every public surface while the program is still a draft.
+ * Organizers flip this with agenda.publishAgenda (sbek AIA-07).
+ */
+export const UNPUBLISHED_MESSAGE = "Schedule coming soon"
+
 async function loadProgram(ctx: QueryCtx, slug: string) {
   const event = await eventBySlug(ctx, slug)
   if (!event) return null
+  // Not published yet ⇒ the event exists publicly, its program does not.
+  const published = event.agendaPublishedAt !== undefined
 
   const roomRows = await ctx.db
     .query("rooms")
@@ -210,6 +218,9 @@ async function loadProgram(ctx: QueryCtx, slug: string) {
   const logoUrl = event.logoId ? await ctx.storage.getUrl(event.logoId) : null
 
   return {
+    published,
+    /** Non-null exactly when the program is still a draft. */
+    publicMessage: published ? null : UNPUBLISHED_MESSAGE,
     event: {
       _id: event._id,
       name: event.name,
@@ -288,13 +299,18 @@ export const schedule = query({
   handler: async (ctx, args) => {
     const program = await loadProgram(ctx, args.slug)
     if (!program) return null
-    const { event, sessions, rooms, tracks } = program
+    const { event, rooms, tracks } = program
+    // Draft program: the event page still renders (name, dates, venue), the
+    // schedule itself does not exist publicly yet.
+    const sessions = program.published ? program.sessions : []
 
     const days = groupByDay(sessions, event.timezone)
     const unscheduled = sessions.filter((s) => s.startsAt === undefined)
 
     return {
       event,
+      publicMessage: program.publicMessage,
+      published: program.published,
       days,
       // Only surfaced when there is actually something to show.
       unscheduled: unscheduled.length > 0 ? unscheduled : [],
@@ -323,7 +339,8 @@ export const speakers = query({
     const byId = new Map(sessions.map((s) => [s._id, s]))
 
     const rows = program.speakers.map((speaker) => {
-      const ids = sessionsByPerson.get(speaker._id) ?? []
+      // Speakers stay public while the program is a draft; their *slots* don't.
+      const ids = program.published ? (sessionsByPerson.get(speaker._id) ?? []) : []
       const mine = ids
         .map((id) => byId.get(id))
         .filter((s): s is PublicSession => Boolean(s))
@@ -352,7 +369,13 @@ export const speakers = query({
         a.lastName.localeCompare(b.lastName) ||
         a.firstName.localeCompare(b.firstName)
     )
-    return { event, speakers: rows, totalResults: rows.length }
+    return {
+      event,
+      publicMessage: program.publicMessage,
+      published: program.published,
+      speakers: rows,
+      totalResults: rows.length,
+    }
   },
 })
 
@@ -365,9 +388,12 @@ export const sessionsList = query({
   handler: async (ctx, args) => {
     const program = await loadProgram(ctx, args.slug)
     if (!program) return null
-    const { event, sessions, tracks } = program
+    const { event, tracks } = program
+    const sessions = program.published ? program.sessions : []
     return {
       event,
+      publicMessage: program.publicMessage,
+      published: program.published,
       sessions,
       totalResults: sessions.length,
       facets: {
@@ -388,14 +414,25 @@ export const sessionDetail = query({
   handler: async (ctx, args) => {
     const program = await loadProgram(ctx, args.slug)
     if (!program) return null
+    const blank = {
+      event: program.event,
+      publicMessage: program.publicMessage,
+      published: program.published,
+      session: null,
+      prev: null,
+      next: null,
+    }
+    if (!program.published) return blank
     const id = ctx.db.normalizeId("submissions", args.submissionId)
-    if (!id) return { event: program.event, session: null }
+    if (!id) return blank
     const session = program.sessions.find((s) => s._id === id) ?? null
-    if (!session) return { event: program.event, session: null }
+    if (!session) return blank
 
     const index = program.sessions.findIndex((s) => s._id === id)
     return {
       event: program.event,
+      publicMessage: program.publicMessage,
+      published: program.published,
       session: {
         ...session,
         dayLabel:
@@ -433,13 +470,25 @@ export const speakerItinerary = query({
       ? (program.speakers.find((s) => s._id === id) ?? null)
       : null
     if (!speaker || !id) {
-      return { event: program.event, speaker: null, days: [], unscheduled: [] }
+      return {
+        event: program.event,
+        publicMessage: program.publicMessage,
+        published: program.published,
+        speaker: null,
+        days: [],
+        unscheduled: [],
+        totalResults: 0,
+      }
     }
 
-    const ids = new Set(program.sessionsByPerson.get(id) ?? [])
+    const ids = new Set(
+      program.published ? (program.sessionsByPerson.get(id) ?? []) : [],
+    )
     const mine = program.sessions.filter((s) => ids.has(s._id))
     return {
       event: program.event,
+      publicMessage: program.publicMessage,
+      published: program.published,
       speaker,
       days: groupByDay(mine, program.event.timezone),
       unscheduled: mine.filter((s) => s.startsAt === undefined),

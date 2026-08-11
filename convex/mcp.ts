@@ -19,6 +19,7 @@ import { ensureOnboardingTasks, withJoins } from "./submissions"
 import { queueMessage, queueTaskReminders } from "./comms"
 import {
   DEFAULT_TEMPLATES,
+  TEMPLATE_KEYS,
   defaultTemplate,
   portalLinkFor,
   siteUrl,
@@ -1460,7 +1461,13 @@ export const updateTemplate = internalMutation({
   handler: async (ctx, args) => {
     const event = await resolveEvent(ctx, args.userId, args.event)
     const key = args.key.trim()
-    if (!key) throw new Error("A template key is required.")
+    // Templates are a closed set: the Communications screen only renders these
+    // five, and anything else would be an invisible row that never sends.
+    if (!(TEMPLATE_KEYS as ReadonlyArray<string>).includes(key)) {
+      throw new Error(
+        `Unknown template key "${args.key}". One of: ${TEMPLATE_KEYS.join(", ")}.`,
+      )
+    }
     const existing = await ctx.db
       .query("emailTemplates")
       .withIndex("by_eventId_and_key", (q) =>
@@ -1522,6 +1529,11 @@ export const sendTestEmail = internalMutation({
   returns: v.any(),
   handler: async (ctx, args) => {
     const event = await resolveEvent(ctx, args.userId, args.event)
+    if (!(TEMPLATE_KEYS as ReadonlyArray<string>).includes(args.key.trim())) {
+      throw new Error(
+        `Unknown template key "${args.key}". One of: ${TEMPLATE_KEYS.join(", ")}.`,
+      )
+    }
     const member = await membershipFor(ctx, args.userId, event.organizationId!)
     const toEmail = (args.to ?? member.email).trim()
 

@@ -161,9 +161,11 @@ export const board = query({
     return {
       event: {
         name: event.name,
+        slug: event.slug,
         timezone: event.timezone,
         startsAt: event.startsAt,
         endsAt: event.endsAt,
+        agendaPublishedAt: event.agendaPublishedAt ?? null,
       },
       rooms,
       tracks,
@@ -171,6 +173,45 @@ export const board = query({
       unscheduled,
       conflicts,
     }
+  },
+})
+
+// ——— Publish / go live (sbek AIA-07) ————————————————————————————————————
+// Scheduling is an internal draft until the organizer says so. Publishing is
+// one reversible flag on the event; every public query in convex/publicData.ts
+// reads it, so unpublishing pulls the whole program back behind
+// "Schedule coming soon" without touching a single session.
+
+export const publishAgenda = mutation({
+  args: { eventId: v.id("events") },
+  returns: v.object({
+    agendaPublishedAt: v.number(),
+    sessionCount: v.number(),
+  }),
+  handler: async (ctx, args) => {
+    const { event } = await requireEventAccess(ctx, args.eventId, "admin")
+    const now = Date.now()
+    await ctx.db.patch(args.eventId, { agendaPublishedAt: now })
+    const accepted = await ctx.db
+      .query("submissions")
+      .withIndex("by_eventId_and_status", (q) =>
+        q.eq("eventId", event._id).eq("status", "accepted"),
+      )
+      .collect()
+    return {
+      agendaPublishedAt: now,
+      sessionCount: accepted.filter((s) => s.startsAt !== undefined).length,
+    }
+  },
+})
+
+export const unpublishAgenda = mutation({
+  args: { eventId: v.id("events") },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    await requireEventAccess(ctx, args.eventId, "admin")
+    await ctx.db.patch(args.eventId, { agendaPublishedAt: undefined })
+    return null
   },
 })
 

@@ -195,7 +195,23 @@ working portal links; scheduling produces a valid .ics that imports into Google/
 `emailTemplates` eventId, key, name, subject, body.
 `messages` eventId, personId, templateKey, subject, body, submissionId?, icsAttached,
   scheduledAt, sentAt, status, error.
+`airtableConnections` eventId, token (the organizer's PAT — never returned by any query,
+  only `maskToken()`ed), baseId, status(connected|error), demo?, lastSyncAt?, lastError?,
+  recordCounts{submissions,speakers,sessions}?, syncScheduled? (on-write debounce latch).
 Indexes follow Convex naming (`by_field1_and_field2`), all fields in name.
+
+### 5.1 Airtable mirror (bonus — rule 15)
+One-way and idempotent, per swyx's clarification that a read-only mirror is enough
+(his team's automations fire "once a new row lands"). Settings → Integrations takes a
+personal access token + base ID, verifies them live, and creates three tables in the
+organizer's own base — **Submissions**, **Speakers**, **Sessions** — each keyed on a
+`Sessionboard ID` primary column. Writes are `PATCH /v0/{baseId}/{table}` with
+`performUpsert.fieldsToMergeOn: ["Sessionboard ID"]`, batched 10 at a time and throttled
+under Airtable's 5 req/s per base. Freshness comes from two paths: a ~5s debounced sync
+scheduled by the submission-creating mutations, and an `airtable-sync` cron every 5
+minutes. Nothing is ever read back from Airtable. Env: `AIRTABLE_DEMO_MODE=1` skips live
+validation and simulates the sync (labelled in the UI) so the flow is demo-able without
+an Airtable account.
 
 ## 6. Public API (bonus)
 

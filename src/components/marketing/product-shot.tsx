@@ -45,7 +45,13 @@ interface ShotMeta {
 const APP = PRODUCT_APP_HOST
 const SITE = PRODUCT_SITE_HOST
 
-/** Source of truth for what each capture shows. Alt text describes the pixels. */
+/**
+ * Source of truth for what each capture shows. Alt text describes the pixels.
+ *
+ * This mirrors everything `scripts/capture-screenshots.mjs` writes, so a
+ * capture is always addressable even when the page isn't currently showing it
+ * (the agenda stills, for instance, sit behind `agenda-flow.gif` today).
+ */
 const SHOTS: Record<ProductShotVariant, ShotMeta> = {
   dashboard: {
     src: "/screenshots/dashboard.png",
