@@ -213,9 +213,11 @@ test.describe("form builder", () => {
         { label: "the builder's edits persisted" },
       )
       const slug = saved.slug
-      // The canonical public address — form slugs are per-event now
-      // (docs/memory/DECISIONS.md, "Public URL scheme is hierarchical").
-      const publicPath = `/submit/${saved.eventSlug}/${slug}`
+      // The canonical public address — fully hierarchical since the URL hard
+      // pass: /submit/:workspaceSlug/:eventSlug/:formSlug (docs/memory/
+      // DECISIONS.md). The 2-segment shape still resolves via 307, but the
+      // copy-link button copies canonical, so assert canonical.
+      const publicPath = `/submit/${saved.workspaceSlug}/${saved.eventSlug}/${slug}`
 
       // ——— The public form is the real proof ————————————————————————————
       const publicPage = await context.newPage()
