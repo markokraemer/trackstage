@@ -20,7 +20,7 @@ export const Route = createFileRoute("/docs_/api")({
   component: ApiReferencePage,
   head: () => ({
     meta: [
-      { title: "API reference · Sessionboard" },
+      { title: "API reference · Trackstage" },
       {
         name: "description",
         content:
@@ -49,7 +49,7 @@ function ApiReferencePage() {
           <Separator orientation="vertical" className="h-5 max-sm:hidden" />
           <Link
             to="/"
-            aria-label="Sessionboard home"
+            aria-label="Trackstage home"
             className="rounded-md outline-none focus-visible:ring-3 focus-visible:ring-ring/50 max-sm:hidden"
           >
             <Logo size="sm" />

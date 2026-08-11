@@ -42,9 +42,12 @@ async function skipUnlessCopilotResponds(page: Page) {
   }
 }
 
-/** The panel's message list, whichever variant is mounted. */
+/**
+ * The copilot panel. Matched by role + a brand-agnostic name so the ongoing
+ * Sessionboard→Trackstage rename can't break the whole spec.
+ */
 function conversation(page: Page) {
-  return page.getByRole("complementary", { name: /sessionboard copilot/i })
+  return page.getByRole("dialog", { name: /copilot/i })
 }
 
 async function ask(page: Page, prompt: string) {

@@ -441,12 +441,12 @@ function DesignSystemPage() {
           <div className="min-w-0 flex-1 space-y-14">
             <div>
               <h1 className="font-heading text-3xl font-semibold tracking-tight">
-                Sessionboard design system
+                Trackstage design system
               </h1>
               <p className="container-reading mt-2 text-sm text-muted-foreground">
                 Every token, primitive, and app pattern in one place. Light mode
                 only. The chrome is neutral — every grey is chroma ≤ 2, so
-                nothing but the data carries colour — and Sessionboard blue{" "}
+                nothing but the data carries colour — and Trackstage blue{" "}
                 <code className="font-mono">#2F5CE0</code> is permitted in
                 exactly five places: primary buttons, links, focus rings, the
                 active nav item, and{" "}
@@ -505,7 +505,7 @@ function DesignSystemPage() {
                                   SURFACES[surface].tone,
                                   variant.svgSize
                                 ),
-                                `sessionboard-${variant.id}-${SURFACES[surface].tone}.svg`
+                                `trackstage-${variant.id}-${SURFACES[surface].tone}.svg`
                               )
                             }
                           >
@@ -522,7 +522,7 @@ function DesignSystemPage() {
                                   variant.id,
                                   SURFACES[surface].tone,
                                   px,
-                                  `sessionboard-${variant.id}-${SURFACES[surface].tone}-${px}.png`
+                                  `trackstage-${variant.id}-${SURFACES[surface].tone}-${px}.png`
                                 )
                               }
                             >
@@ -573,7 +573,7 @@ function DesignSystemPage() {
                       onClick={() =>
                         downloadSvg(
                           socialAvatarSvg(1024),
-                          "sessionboard-social-1024.svg"
+                          "trackstage-social-1024.svg"
                         )
                       }
                     >
@@ -647,7 +647,7 @@ function DesignSystemPage() {
                 <div className="overflow-hidden rounded-lg ring-1 ring-foreground/10">
                   <img
                     src="/og-image.png"
-                    alt="Sessionboard — open-source speaker and program management"
+                    alt="Trackstage — open-source speaker and program management"
                     width={1200}
                     height={630}
                     className="block w-full"
@@ -658,7 +658,7 @@ function DesignSystemPage() {
                     size="xs"
                     variant="outline"
                     onClick={() =>
-                      downloadSvg(ogImageSvg(), "sessionboard-og-1200x630.svg")
+                      downloadSvg(ogImageSvg(), "trackstage-og-1200x630.svg")
                     }
                   >
                     <RiDownloadLine aria-hidden />
@@ -758,7 +758,7 @@ function DesignSystemPage() {
             >
               <Sample label="Specimen">
                 <p className="font-heading text-5xl font-semibold tracking-tight">
-                  Sessionboard
+                  Trackstage
                 </p>
                 <p className="mt-2 text-sm text-muted-foreground">
                   Inter Variable · headings at{" "}
@@ -1620,7 +1620,7 @@ function DesignSystemPage() {
             <Section
               id="explorations"
               title="Explorations — decided"
-              description="Candidate E, “De-blued”, is SHIPPED (Marko, 2026-08-11): neutral chrome everywhere, Sessionboard blue #2F5CE0 kept and confined to primary buttons, links, focus rings, the active nav item and --chart-1. The teal/petrol accent family was reviewed and rejected; type stays on Inter for now. The other candidates and their live panels have been removed — this section is the record of the decision, not a chooser."
+              description="Candidate E, “De-blued”, is SHIPPED (Marko, 2026-08-11): neutral chrome everywhere, Trackstage blue #2F5CE0 kept and confined to primary buttons, links, focus rings, the active nav item and --chart-1. The teal/petrol accent family was reviewed and rejected; type stays on Inter for now. The other candidates and their live panels have been removed — this section is the record of the decision, not a chooser."
             >
               <DesignExplorations />
             </Section>

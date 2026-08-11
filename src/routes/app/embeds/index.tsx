@@ -140,7 +140,7 @@ function EmbedsPage() {
   const relativeUrl = activeSlug
     ? `/e/${activeSlug}${widget.path}${widgetSearchToQuery(search)}`
     : ""
-  const publicUrl = `${origin || "https://your-sessionboard-site.com"}${relativeUrl}`
+  const publicUrl = `${origin || "https://your-trackstage-site.com"}${relativeUrl}`
 
   const iframeSnippet = useMemo(
     () =>
@@ -163,7 +163,7 @@ function EmbedsPage() {
       const rows = speakerData?.speakers ?? []
       if (rows.length === 0) return "<!-- No speakers to export yet -->"
       return [
-        `<ul class="sessionboard-speakers">`,
+        `<ul class="trackstage-speakers">`,
         ...rows.map((speaker) =>
           [
             `  <li>`,
@@ -193,7 +193,7 @@ function EmbedsPage() {
     const withSessions = days.filter((day) => day.sessions.length > 0)
     if (withSessions.length === 0) return "<!-- No scheduled sessions yet -->"
     return [
-      `<div class="sessionboard-agenda">`,
+      `<div class="trackstage-agenda">`,
       ...withSessions.flatMap((day) => [
         `  <h3>${escapeHtml(day.label)}</h3>`,
         `  <ul>`,

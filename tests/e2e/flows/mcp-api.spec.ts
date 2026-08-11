@@ -58,19 +58,30 @@ async function rpc(
   }
 }
 
+/**
+ * Call a tool and normalise the two ways MCP can say no: a tool-level
+ * `isError` result, and a protocol-level JSON-RPC error (which is what a
+ * missing *required* argument produces). A caller asking "was this refused?"
+ * means both.
+ */
 async function callTool(name: string, args: Record<string, unknown>, key: string) {
   const { body } = await rpc("tools/call", { name, arguments: args }, key)
   const result = body?.result as
     | { isError?: boolean; content?: Array<{ text?: string }> }
     | undefined
-  const text = result?.content?.[0]?.text ?? ""
+  const rpcErrorText = body?.error?.message ?? ""
+  const text = result?.content?.[0]?.text ?? rpcErrorText
   let json: unknown = null
   try {
     json = JSON.parse(text)
   } catch {
     json = null
   }
-  return { isError: Boolean(result?.isError), text, json }
+  return {
+    isError: Boolean(result?.isError) || Boolean(body?.error),
+    text,
+    json,
+  }
 }
 
 test.describe("public API", () => {
@@ -188,7 +199,7 @@ test.describe("MCP server", () => {
       {
         protocolVersion: PROTOCOL,
         capabilities: {},
-        clientInfo: { name: "sessionboard-e2e", version: "1" },
+        clientInfo: { name: "trackstage-e2e", version: "1" },
       },
       key,
     )
@@ -196,7 +207,7 @@ test.describe("MCP server", () => {
     expect(init.body?.result?.protocolVersion).toBe(PROTOCOL)
     expect(
       (init.body?.result?.serverInfo as { name?: string } | undefined)?.name,
-    ).toBe("sessionboard")
+    ).toBe("trackstage")
     expect(init.body?.result?.capabilities).toHaveProperty("tools")
 
     // The lifecycle notification a real client sends next.

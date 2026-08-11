@@ -10,7 +10,7 @@ import { usePressDepth } from "@/components/interior/press-depth"
  *
  * interior.dev's press-depth mechanic (a real 3D key travel with a pointer-origin
  * tilt) grafted onto our canonical shadcn `buttonVariants`, so the face is exactly
- * a normal Sessionboard button — same variants, sizes, tokens, focus ring.
+ * a normal Trackstage button — same variants, sizes, tokens, focus ring.
  *
  * This is deliberately NOT the default `Button`: press-depth needs a plinth under
  * the face, so it changes an element's box model. Use it on the one or two hero

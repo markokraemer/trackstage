@@ -68,7 +68,7 @@ export function SubmitShell({
         <p className="mt-5 text-center text-xs text-muted-foreground">
           Powered by{" "}
           <Link to="/" className="font-medium text-primary hover:underline">
-            Sessionboard
+            Trackstage
           </Link>
         </p>
       </div>

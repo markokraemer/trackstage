@@ -150,7 +150,7 @@
         }
       ],
       "headline": "AI Engineer Summit 2026 — 20 submission(s): 9 accepted, 5 pending, 1 declined. 9 session(s) scheduled across 2 form(s).",
-      "linkWarning": "http://localhost:3000 is a loopback address (demo URL — set SITE_URL in production). Links below only work on the machine running Sessionboard — don't send them to a speaker.",
+      "linkWarning": "http://localhost:3000 is a loopback address (demo URL — set SITE_URL in production). Links below only work on the machine running Trackstage — don't send them to a speaker.",
       "needsAttention": [
         "5 submission(s) still pending review",
         "1 staged in the decline queue",
@@ -258,7 +258,7 @@
         }
       ],
       "headline": "AI Engineer Summit 2026 — 20 submission(s): 9 accepted, 5 pending, 1 declined. 9 session(s) scheduled across 2 form(s).",
-      "linkWarning": "http://localhost:3000 is a loopback address (demo URL — set SITE_URL in production). Links below only work on the machine running Sessionboard — don't send them to a speaker.",
+      "linkWarning": "http://localhost:3000 is a loopback address (demo URL — set SITE_URL in production). Links below only work on the machine running Trackstage — don't send them to a speaker.",
       "needsAttention": [
         "5 submission(s) still pending review",
         "1 staged in the decline queue",
@@ -358,7 +358,7 @@
           "submissionCount": 0
         }
       ],
-      "linkWarning": "http://localhost:3000 is a loopback address (demo URL — set SITE_URL in production). Links below only work on the machine running Sessionboard — don't send them to a speaker."
+      "linkWarning": "http://localhost:3000 is a loopback address (demo URL — set SITE_URL in production). Links below only work on the machine running Trackstage — don't send them to a speaker."
     }
   },
   "get_form": {
@@ -371,7 +371,7 @@
       "externalTitle": "Call for Speakers — AI Engineer Summit 2026",
       "formId": "jd73phacyyzmagrpmvddn4mge98c80tq",
       "kind": "abstract",
-      "linkWarning": "http://localhost:3000 is a loopback address (demo URL — set SITE_URL in production). Links below only work on the machine running Sessionboard — don't send them to a speaker.",
+      "linkWarning": "http://localhost:3000 is a loopback address (demo URL — set SITE_URL in production). Links below only work on the machine running Trackstage — don't send them to a speaker.",
       "name": "CFP 2026 — main call",
       "notifyEmails": [
         "organizer@demo.sessionboard.dev"
@@ -577,7 +577,7 @@
       "acceptingSubmissions": true,
       "closeAt": "2026-09-16T06:59:00.000Z",
       "formId": "jd73phacyyzmagrpmvddn4mge98c80tq",
-      "linkWarning": "http://localhost:3000 is a loopback address (demo URL — set SITE_URL in production). Links below only work on the machine running Sessionboard — don't send them to a speaker.",
+      "linkWarning": "http://localhost:3000 is a loopback address (demo URL — set SITE_URL in production). Links below only work on the machine running Trackstage — don't send them to a speaker.",
       "name": "CFP 2026 — main call",
       "note": "Share this link with prospective speakers.",
       "publicUrl": "http://localhost:3000/submit/cfp",
@@ -592,7 +592,7 @@
     "output": {
       "formId": "jd7e3107b4ys2yd78x3z5j2g5x8c8vyn",
       "kind": "abstract",
-      "linkWarning": "http://localhost:3000 is a loopback address (demo URL — set SITE_URL in production). Links below only work on the machine running Sessionboard — don't send them to a speaker.",
+      "linkWarning": "http://localhost:3000 is a loopback address (demo URL — set SITE_URL in production). Links below only work on the machine running Trackstage — don't send them to a speaker.",
       "name": "Copilot Verification CFP",
       "publicUrl": "http://localhost:3000/submit/copilot-verification-cfp",
       "slug": "copilot-verification-cfp",
@@ -1129,7 +1129,7 @@
     },
     "output": {
       "email": "rafael.duarte@example.com",
-      "linkWarning": "http://localhost:3000 is a loopback address (demo URL — set SITE_URL in production). Links below only work on the machine running Sessionboard — don't send them to a speaker.",
+      "linkWarning": "http://localhost:3000 is a loopback address (demo URL — set SITE_URL in production). Links below only work on the machine running Trackstage — don't send them to a speaker.",
       "name": "Rafael Duarte",
       "note": "A private magic link — it signs this speaker straight into their portal. Share it only with them.",
       "personId": "m9702hy57p6pbmhysetqw2c2598c80tn",
@@ -1479,7 +1479,7 @@
     },
     "output": {
       "eventId": "j972c4ems4mk1hjgfv814ewjgn8c9tcm",
-      "linkWarning": "http://localhost:3000 is a loopback address (demo URL — set SITE_URL in production). Links below only work on the machine running Sessionboard — don't send them to a speaker.",
+      "linkWarning": "http://localhost:3000 is a loopback address (demo URL — set SITE_URL in production). Links below only work on the machine running Trackstage — don't send them to a speaker.",
       "name": "Copilot Verification Event",
       "publicSubmitUrlHint": "http://localhost:3000/submit/<form-slug>",
       "slug": "copilot-verification-event-5"
@@ -1569,7 +1569,7 @@
     "output": {
       "closeAt": null,
       "formId": "jd72yjkj9sr84k9pfeq58xgtk98c8jhm",
-      "linkWarning": "http://localhost:3000 is a loopback address (demo URL — set SITE_URL in production). Links below only work on the machine running Sessionboard — don't send them to a speaker.",
+      "linkWarning": "http://localhost:3000 is a loopback address (demo URL — set SITE_URL in production). Links below only work on the machine running Trackstage — don't send them to a speaker.",
       "name": "Copilot Verification CFP",
       "previous": {
         "closeAt": null,

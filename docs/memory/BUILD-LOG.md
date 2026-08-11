@@ -604,3 +604,59 @@ discovery documents advertising `issuer: https://trackstage.app`.
 **One-command domain path for next time:** `scripts/attach-domain.mjs` (attach → wait for
 200 → move `SITE_URL` → move `EMAIL_FROM` once Resend verifies), idempotent, paired with
 the existing `scripts/configure-domain.mjs`. Documented in README → Deploy.
+
+## 2026-08-11 — learn.sessionboard.com fully ingested (rule 29)
+
+Crawled **177 in-scope help-centre pages** (226-URL sitemap, minus `/apps` `/marketing`
+`/sponsors-exhibitors` `/speaker-crm` `/awards`), resolved all **26 Guidde walkthrough videos** to
+direct MP4s via headless-Chromium network capture and ran each through `google/gemini-3.6-flash`
+into `docs/video/learn/` (+ a README index), and did a **frame-by-frame visual pass** (768 frames
+at 1/6 fps, tiled into contact sheets, key screens read with vision). Synthesised into
+**`docs/reference/sessionboard-product-map.md`** — organizer journey end-to-end, participant
+journey, ~94 findings labelled NEW/CONFIRMS, and a severity-ranked DELTA section verified against
+our actual routes/schema. 23 new deltas appended to TODO.md under "Learn-site deltas"; the
+top five are custom session statuses, Portal Username ≠ Email, an audit log (closes sbek CNT-11),
+per-participant `is_public`, and agenda settings (interval + per-format default duration). Three
+videos are YouTube/Loom embeds with no transcript and were covered from prose instead. Also
+recorded five places we are already **ahead** of the real product — live conflict recomputation,
+decisions that actually send their emails, the brief's Track view, one-click auto-place, and an
+embeddable form + public API.
+
+## 2026-08-11 — Landing trim pass: less yap, same page (rule 25 TRIM)
+
+Marko on the Trackstage landing: *"remove all the slop, also from the navigation bar… a lot
+of yap yap yap… should be a little less yappy"* — but also *"it also is pretty good, it
+already looks quite nice, so it's not bad."* So this was a **copy trim, not a rebuild**:
+structure, Attio language, real screenshots and the agenda GIF all stayed exactly where
+they were; only words came out.
+
+**Nav** is now Logo · Docs · GitHub · Log in (ghost) · Get started (primary). The five
+anchor links (Product / Live demo / Developers / Open source / Pricing) are gone — the page
+scrolls, and a nav full of jump links is slop. The mobile sheet mirrors it exactly (Docs,
+Log in, Get started, GitHub); `SECTION_IDS` still exist for the footer's "On this page"
+column and for `scroll-mt` anchoring.
+
+**Per section:** hero lost its three-item proof row (the chip and the pricing band already
+said it) and its sub-line is one shorter sentence · demo cards cut to one clause each,
+the "nothing you can break" line halved, "Curious what attendees see?" → "Attendee view:" ·
+proof strip lost the apologetic no-customer-logos paragraph (one line + the marquee now) ·
+feature rows are one line of body each, showcase pillars ≤8 words · **the platform section
+is one tight row** — the copilot prompt-chip panel and the `Keys, not scraping` cell went,
+MCP became the third cell (`POST /mcp`, tool count, "anything destructive asks first") and
+"Read the docs" now points at our own `/docs` instead of the README · foundations are
+title + ≤6 words · pricing summaries halved and bullets 4 → 3 per card (the $10k joke and
+its footnote stay) · story band down to two sentences · closing CTA lost the redundant
+"Or sign in" line · footer keeps every link, lost its descriptive paragraph and half its
+legal line.
+
+**Whitespace** was rebalanced rather than left as holes: platform endpoints align on
+`mt-auto`, the pricing and stats grids drop to the standard `mt-12`, and the closing band
+went asymmetric (`pt-20 pb-16 sm:pt-24 sm:pb-20`) so the gap above the footer rule reads
+deliberate.
+
+**Measured:** 1447 → 816 words at 1440px (**−44%**), page height 9800 → 8762px. Zero
+console errors and no horizontal overflow at 1440 and 360; all six product shots + the GIF
+load; typecheck and lint clean on the marketing files. Verification ran against a dedicated
+`vite dev --port 3100` — the long-running shared dev server was throwing SSR
+"invalid hook call" errors on untouched routes (LoginPage, OrganizerLayout) from stale
+dep-optimization, and a clean server has none.

@@ -56,7 +56,7 @@ function DocsLayout() {
         <div className="container-page flex h-14 items-center gap-3">
           <Link
             to="/"
-            aria-label="Sessionboard home"
+            aria-label="Trackstage home"
             className="rounded-md outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
           >
             <Logo size="sm" />
@@ -105,7 +105,7 @@ function DocsLayout() {
                   <SheetHeader className="border-b border-border">
                     <SheetTitle>Documentation</SheetTitle>
                     <SheetDescription className="sr-only">
-                      Browse the Sessionboard documentation.
+                      Browse the Trackstage documentation.
                     </SheetDescription>
                   </SheetHeader>
                   <nav className="min-h-0 flex-1 overflow-y-auto p-3">

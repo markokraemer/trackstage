@@ -98,7 +98,6 @@ async function settledSince(
 
 test.describe("emails", () => {
   test.use({ storageState: ORGANIZER_STATE })
-  test.describe.configure({ mode: "serial" })
 
   test("decision commit produces delivered, personalised mail with a working portal link", async ({
     page,
@@ -200,7 +199,7 @@ test.describe("emails", () => {
 
     // Nothing in the whole outbox may be sitting in "Failed".
     await page.getByLabel(/filter by status/i).first().click()
-    await page.getByRole("option", { name: /^failed$/i }).first().click()
+    await page.getByRole("option", { name: /^failed/i }).first().click()
     await expect(
       page.getByText(/no emails match these filters/i).first(),
     ).toBeVisible({ timeout: 20_000 })

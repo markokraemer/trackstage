@@ -851,7 +851,7 @@ async function applySessionWrite(
 
   // Create needs a submitter; the API can name one, otherwise a synthetic
   // "API" person keeps the invariant (every submission has a submitter).
-  const email = (input.submitter_email ?? "api@sessionboard.local").toLowerCase()
+  const email = (input.submitter_email ?? "api@trackstage.local").toLowerCase()
   let submitter = await ctx.db
     .query("people")
     .withIndex("by_eventId_and_email", (q) =>
@@ -1487,7 +1487,7 @@ export const writeMetadata = internalMutation({
 
     if (args.resource === "statuses") {
       throw new Error(
-        "Session statuses are system-defined in Sessionboard OSS (draft → pending → accept_queue/decline_queue → accepted/declined, plus withdrawn) and cannot be created or renamed.",
+        "Session statuses are system-defined in Trackstage (draft → pending → accept_queue/decline_queue → accepted/declined, plus withdrawn) and cannot be created or renamed.",
       )
     }
 

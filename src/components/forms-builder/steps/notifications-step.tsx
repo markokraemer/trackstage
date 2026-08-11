@@ -83,7 +83,7 @@ export function NotificationsStep({
       />
 
       <InfoNote>
-        Every email sent from Sessionboard is recorded in Communications, so you
+        Every email sent from Trackstage is recorded in Communications, so you
         can always check what went out and to whom.
       </InfoNote>
     </div>

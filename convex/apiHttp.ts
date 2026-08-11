@@ -4,6 +4,11 @@ import { internal } from "./_generated/api"
 import { hashApiKey } from "./apiKeys"
 import { signPayload } from "./webhooks"
 import { buildCalendar } from "./lib/apiIcs"
+import {
+  API_ROUTES,
+  METADATA_WRITE_RESOURCES,
+  SETTINGS_READ_RESOURCES,
+} from "./apiRoutes"
 
 // ————————————————————————————————————————————————————————————————————————
 // Public REST API — routing, authentication, rate limiting, serialization.
@@ -405,30 +410,38 @@ function mapThrown(e: unknown): Response {
 
 // ——— Settings resources ——————————————————————————————————————————————————
 
-const SETTINGS_RESOURCES = new Set([
-  "fields",
-  "tags",
-  "tracks",
-  "rooms",
-  "formats",
-  "levels",
-  "languages",
-  "statuses",
-  "session-statuses",
-])
-
-const METADATA_RESOURCES = new Set([
-  "tags",
-  "tracks",
-  "rooms",
-  "formats",
-  "levels",
-  "languages",
-  "statuses",
-])
+// Sourced from the route manifest so the dispatcher, the 404 hint and the
+// generated OpenAPI spec can never disagree about which resources exist.
+const SETTINGS_RESOURCES = new Set<string>(SETTINGS_READ_RESOURCES)
+const METADATA_RESOURCES = new Set<string>(METADATA_WRITE_RESOURCES)
 
 function normalizeResource(resource: string): string {
   return resource === "session-statuses" ? "statuses" : resource
+}
+
+/**
+ * A 404 that actually helps: the closest routes from the manifest, so a
+ * mistyped path answers with the real ones instead of a dead end.
+ */
+function unknownEndpoint(method: string, url: URL): Response {
+  const segments = url.pathname.split("/").filter(Boolean)
+  const score = (path: string) => {
+    const parts = path.split("/").filter(Boolean)
+    let shared = 0
+    for (let i = 0; i < Math.min(parts.length, segments.length); i++) {
+      if (parts[i] === segments[i] || parts[i].startsWith("{")) shared++
+      else break
+    }
+    return shared
+  }
+  const nearest = API_ROUTES.slice()
+    .sort((a, b) => score(b.path) - score(a.path))
+    .slice(0, 6)
+    .map((route) => `${route.method} ${route.path}`)
+  return errorResponse(
+    `Unknown endpoint ${method} ${url.pathname}. Did you mean: ${nearest.join(", ")}? Full reference at /docs/api.`,
+    404,
+  )
 }
 
 // ══════════════════════════════════════════════════════════════════════════
@@ -551,10 +564,7 @@ export const handleApiRequest = httpAction(async (ctx, req) => {
       )
     }
 
-    return errorResponse(
-      `Unknown endpoint ${method} ${url.pathname}. See /docs/api for the full reference.`,
-      404,
-    )
+    return unknownEndpoint(method, url)
   } catch (e) {
     return mapThrown(e)
   }

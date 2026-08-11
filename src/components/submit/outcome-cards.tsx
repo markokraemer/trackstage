@@ -170,7 +170,7 @@ export function ClosedCard({ form }: { form: SubmitForm }) {
         ) : null}
 
         <Link to="/" className={buttonVariants({ variant: "outline" })}>
-          Back to Sessionboard
+          Back to Trackstage
         </Link>
       </div>
     </SubmitShell>
@@ -200,7 +200,7 @@ export function NotFoundCard({ slug }: { slug: string }) {
           </p>
         </div>
         <Link to="/" className={buttonVariants({ variant: "outline" })}>
-          Back to Sessionboard
+          Back to Trackstage
         </Link>
       </div>
     </SubmitShell>

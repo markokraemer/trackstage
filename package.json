@@ -20,7 +20,10 @@
     "test:e2e": "playwright test",
     "test:flows": "playwright test --project=flows",
     "test:all": "pnpm test && pnpm test:backend && pnpm test:e2e",
-    "prompts:regen": "node scripts/extract-prompts.mjs"
+    "prompts:regen": "node scripts/extract-prompts.mjs",
+    "openapi:regen": "node scripts/generate-openapi.mjs",
+    "openapi:check": "node scripts/generate-openapi.mjs --check",
+    "openapi:verify": "node scripts/generate-openapi.mjs --check --live"
   },
   "dependencies": {
     "@ai-sdk/mcp": "^2.0.29",

@@ -67,7 +67,7 @@ const PLACEHOLDER_COPY: Record<
   eventName: { label: "Event name", sample: "Your event" },
   portalLink: {
     label: "Speaker portal link",
-    sample: "https://sessionboard.dev/portal/t/8f3a…",
+    sample: "https://trackstage.app/portal/t/8f3a…",
   },
 }
 

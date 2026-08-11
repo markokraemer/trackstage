@@ -11,7 +11,7 @@ import {
 
 export const Route = createFileRoute("/docs/guide/getting-started")({
   component: Page,
-  head: () => ({ meta: [{ title: "Getting started · Sessionboard docs" }] }),
+  head: () => ({ meta: [{ title: "Getting started · Trackstage docs" }] }),
 })
 
 function Page() {
@@ -24,7 +24,7 @@ function Page() {
         <Step title="Create your account with an email address and a password.">
           <Shot
             src="gs-signup.png"
-            alt="The Sessionboard sign-in card with a Create account tab"
+            alt="The Trackstage sign-in card with a Create account tab"
             caption="No credit card, no trial clock — it is open source."
           />
         </Step>
@@ -48,7 +48,7 @@ function Page() {
         <Step title="The dashboard is now your home: submissions by status, what is unscheduled, and who still owes you something.">
           <Shot
             src="gs-dashboard.png"
-            alt="The Sessionboard organizer dashboard for a seeded event"
+            alt="The Trackstage organizer dashboard for a seeded event"
           />
         </Step>
       </Steps>

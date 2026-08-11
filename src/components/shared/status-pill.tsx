@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge"
  * organizer-side and speaker-side (docs/SPEC.md §2.4, docs/ux/03).
  *
  * Extends the shadcn `Badge` primitive (pill shape, focus ring, icon sizing)
- * with the Sessionboard status tone system.
+ * with the Trackstage status tone system.
  *
  * Color families: green = "will speak" (Accepted + Accept Queue), amber =
  * "undecided" (Pending + Decline Queue), red = final decline, gray = Draft /

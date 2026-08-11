@@ -96,7 +96,7 @@ export function AirtableCard({ eventId }: { eventId: Id<"events"> }) {
         <CardDescription>
           Mirror this event into a base you own. New submissions appear as rows
           — point your Airtable automations at them. Nothing flows back:
-          Sessionboard stays the source of truth.
+          Trackstage stays the source of truth.
         </CardDescription>
         {connection ? (
           <CardAction>
@@ -256,7 +256,7 @@ function ConnectedState({ connection }: { connection: Connection }) {
           : "First sync is running — rows appear in a moment."}{" "}
         We re-sync within seconds of a new submission and sweep every 5 minutes
         for everything else. Rows are matched on the{" "}
-        <code className="font-mono text-xs">Sessionboard ID</code> column, so a
+        <code className="font-mono text-xs">Trackstage ID</code> column, so a
         sync never duplicates anything.
       </p>
     </div>

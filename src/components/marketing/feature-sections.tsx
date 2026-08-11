@@ -79,7 +79,7 @@ const FEATURES: Array<FeatureRow> = [
     eyebrow: "Form builder",
     title: "Build the call for speakers in an afternoon",
     description:
-      "A six-step wizard writes your public form — your questions, your tracks, follow-ups that appear only when they're relevant.",
+      "A six-step wizard writes your public form — your questions, your tracks, conditional follow-ups.",
     icon: RiSurveyLine,
     shot: "form",
     link: { label: "See the live form", href: DEMO_CFP_URL },
@@ -88,7 +88,7 @@ const FEATURES: Array<FeatureRow> = [
     eyebrow: "Agenda",
     title: "Drag a session into a room. That's the whole thing.",
     description:
-      "List, day, rooms and conflicts on one board — double-bookings flag themselves while you're still dragging.",
+      "List, day, rooms and conflicts on one board. Double-bookings flag themselves as you drag.",
     icon: RiCalendarScheduleLine,
     shot: "agendaGif",
     link: { label: "Open the agenda", to: "/login" },
@@ -235,7 +235,7 @@ function FeatureRowBlock({
         {feature.shot === "agendaGif" ? (
           <ProductGif
             src="/screenshots/agenda-flow.gif"
-            url="app.sessionboard.dev/app/agenda"
+            url="trackstage.app/app/agenda"
             alt="A recording of the agenda: a session is picked up from the day grid, dragged down the Main Stage column and dropped into a new time slot."
           />
         ) : (

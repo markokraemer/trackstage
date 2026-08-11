@@ -17,7 +17,9 @@ import { EXTERNAL_LINK_PROPS, GITHUB_URL } from "@/components/marketing/links"
  */
 export function ClosingCta() {
   return (
-    <section className="relative w-full overflow-hidden bg-foreground py-20 sm:py-24">
+    // Asymmetric padding: the band lost a line in the trim pass, so the bottom
+    // is pulled in to keep the gap to the footer rule looking deliberate.
+    <section className="relative w-full overflow-hidden bg-foreground pt-20 pb-16 sm:pt-24 sm:pb-20">
       <div
         aria-hidden
         className="pointer-events-none absolute inset-0 [background-image:linear-gradient(to_right,var(--background)_1px,transparent_1px),linear-gradient(to_bottom,var(--background)_1px,transparent_1px)] [mask-image:radial-gradient(90%_100%_at_50%_0%,black,transparent_75%)] [background-size:72px_72px] opacity-[0.07]"

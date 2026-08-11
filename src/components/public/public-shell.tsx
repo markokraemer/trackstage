@@ -25,7 +25,7 @@ import type { PublicEvent } from "@/components/public/types"
  *   attendee should never feel they are inside someone's admin tool.
  * - **Embed** (`?embed=1`): the header and nav disappear entirely so the page
  *   can be dropped into an `<iframe>` on the event's own website and read as
- *   part of it. A small "Powered by Sessionboard" line stays for attribution.
+ *   part of it. A small "Powered by Trackstage" line stays for attribution.
  */
 
 interface NavItem {

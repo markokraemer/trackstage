@@ -22,7 +22,7 @@ import { MAX_IMAGE_BYTES, formatBytes, uploadToStorage } from "@/lib/files"
 /**
  * Settings → Event details → Branding (docs/ux/01 image25).
  *
- * The logo replaces the Sessionboard mark on the event's public pages and in
+ * The logo replaces the Trackstage mark on the event's public pages and in
  * the speaker portal header; the background image sits behind the public
  * header. Both are optional — everything falls back to the event name, which
  * is why the previews show exactly what an attendee would see.

@@ -2,7 +2,7 @@ import { defineSchema, defineTable } from "convex/server"
 import { v } from "convex/values"
 
 // ————————————————————————————————————————————————————————————————————————
-// Sessionboard OSS domain model. See docs/SPEC.md §5.
+// Trackstage domain model. See docs/SPEC.md §5.
 // Lifecycle: event → CFP form → submission (abstract|session) → evaluation →
 // decision queues → accepted ⇒ schedulable on the agenda → published program.
 // Every table is event-scoped; queries must always filter by eventId

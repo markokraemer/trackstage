@@ -4,7 +4,7 @@ import { requireUser } from "./lib/auth"
 
 // ————————————————————————————————————————————————————————————————————————
 // Personal API keys — the credential for the MCP server (convex/mcp.ts) and
-// for any script that wants to drive Sessionboard as a specific user.
+// for any script that wants to drive Trackstage as a specific user.
 //
 // Shape: sb_live_<32 hex chars>. Only sha-256(key) is persisted, so a leaked
 // database gives an attacker nothing usable; the plaintext is returned by
@@ -50,7 +50,7 @@ const COPILOT_KIND = "copilot"
 const COPILOT_KEY_NAME = "AI copilot (built-in)"
 
 /**
- * The AI copilot (src/routes/api/chat.ts) drives Sessionboard through our own
+ * The AI copilot (src/routes/api/chat.ts) drives Trackstage through our own
  * MCP server rather than through a private back door, so it needs a bearer
  * credential for the signed-in user. This mints exactly one, idempotently.
  *

@@ -10,7 +10,7 @@ import {
 
 export const Route = createFileRoute("/docs/guide/chase-speakers")({
   component: Page,
-  head: () => ({ meta: [{ title: "Chase speakers · Sessionboard docs" }] }),
+  head: () => ({ meta: [{ title: "Chase speakers · Trackstage docs" }] }),
 })
 
 function Page() {
@@ -44,7 +44,7 @@ function Page() {
 
         <Step title="Press “Remind all incomplete” to email everyone with an unfinished task — anyone reminded in the last day is skipped automatically.">
           <p className="doc-prose">
-            Sessionboard also sends a daily nudge for tasks coming due, so most
+            Trackstage also sends a daily nudge for tasks coming due, so most
             of the chasing happens without you.
           </p>
         </Step>

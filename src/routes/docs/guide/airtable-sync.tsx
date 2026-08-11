@@ -10,7 +10,7 @@ import {
 
 export const Route = createFileRoute("/docs/guide/airtable-sync")({
   component: Page,
-  head: () => ({ meta: [{ title: "Airtable sync · Sessionboard docs" }] }),
+  head: () => ({ meta: [{ title: "Airtable sync · Trackstage docs" }] }),
 })
 
 function Page() {
@@ -38,9 +38,9 @@ function Page() {
 
         <Step title="Connecting creates three tables in your base — Submissions, Speakers, Sessions — and fills them.">
           <p className="doc-prose">
-            If those tables already exist, Sessionboard adopts them instead of
+            If those tables already exist, Trackstage adopts them instead of
             making duplicates. Rows are matched on a{" "}
-            <strong>Sessionboard ID</strong> column, so re-syncing never doubles
+            <strong>Trackstage ID</strong> column, so re-syncing never doubles
             anything up.
           </p>
         </Step>
@@ -55,7 +55,7 @@ function Page() {
 
       <div className="mt-10 space-y-3">
         <Callout tone="warning">
-          One way only. Sessionboard writes to Airtable and never reads back —
+          One way only. Trackstage writes to Airtable and never reads back —
           edits made in Airtable will be overwritten.
         </Callout>
         <Callout tone="note">

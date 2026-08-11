@@ -28,7 +28,7 @@ export const Route = createFileRoute("/e/$slug")({
       {
         title: loaderData
           ? `${loaderData.name} — Schedule & Speakers`
-          : "Event — Sessionboard",
+          : "Event — Trackstage",
       },
       {
         name: "description",
@@ -57,7 +57,7 @@ function PublicEventLayout() {
           description={`No public event is published at "${slug}". Check the link with the organizer — it may have changed.`}
           action={
             <Button nativeButton={false} render={<Link to="/" />} variant="outline">
-              Go to Sessionboard
+              Go to Trackstage
             </Button>
           }
           className="max-w-lg"

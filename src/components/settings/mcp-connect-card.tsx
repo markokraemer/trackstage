@@ -4,6 +4,7 @@ import {
   RiPlugLine,
 } from "@remixicon/react"
 
+import { ClientIcon } from "@/components/docs/client-icon"
 import {
   Card,
   CardContent,
@@ -63,10 +64,22 @@ export function McpConnectCard({ apiKey }: { apiKey: string | null }) {
 
         <Tabs defaultValue="claude">
           <TabsList variant="line" className="h-auto flex-wrap">
-            <TabsTrigger value="claude">Claude</TabsTrigger>
-            <TabsTrigger value="chatgpt">ChatGPT</TabsTrigger>
-            <TabsTrigger value="codex">Codex</TabsTrigger>
-            <TabsTrigger value="any">Any client</TabsTrigger>
+            <TabsTrigger value="claude">
+              <ClientIcon client="claude" />
+              Claude
+            </TabsTrigger>
+            <TabsTrigger value="chatgpt">
+              <ClientIcon client="chatgpt" />
+              ChatGPT
+            </TabsTrigger>
+            <TabsTrigger value="codex">
+              <ClientIcon client="codex" />
+              Codex
+            </TabsTrigger>
+            <TabsTrigger value="any">
+              <ClientIcon client="any" />
+              Any client
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="claude" className="flex flex-col gap-6 pt-4">
@@ -81,7 +94,7 @@ export function McpConnectCard({ apiKey }: { apiKey: string | null }) {
                 title="Terminal"
                 copyLabel="Copy command"
                 successMessage="Command copied to your clipboard"
-                value={`claude mcp add sessionboard --transport http ${endpoint} --header "Authorization: Bearer ${key}"`}
+                value={`claude mcp add trackstage --transport http ${endpoint} --header "Authorization: Bearer ${key}"`}
               />
               <KeyNote hasKey={Boolean(apiKey)} />
             </div>
@@ -93,7 +106,7 @@ export function McpConnectCard({ apiKey }: { apiKey: string | null }) {
               <ol className="list-decimal space-y-1 pl-5 text-sm text-muted-foreground">
                 <li>Go to Settings → Connectors → Add custom connector.</li>
                 <li>Paste the endpoint URL below.</li>
-                <li>Sign in with your Sessionboard account when prompted.</li>
+                <li>Sign in with your Trackstage account when prompted.</li>
               </ol>
               <div className="flex flex-wrap items-center gap-2">
                 <Input
@@ -116,7 +129,7 @@ export function McpConnectCard({ apiKey }: { apiKey: string | null }) {
             <ol className="list-decimal space-y-1 pl-5 text-sm text-muted-foreground">
               <li>Go to Settings → Connectors → Create.</li>
               <li>Paste the endpoint URL below.</li>
-              <li>Authenticate with your Sessionboard account.</li>
+              <li>Authenticate with your Trackstage account.</li>
             </ol>
             <div className="flex flex-wrap items-center gap-2">
               <Input
@@ -139,7 +152,7 @@ export function McpConnectCard({ apiKey }: { apiKey: string | null }) {
               copyLabel="Copy config"
               successMessage="Config copied to your clipboard"
               value={[
-                "[mcp_servers.sessionboard]",
+                "[mcp_servers.trackstage]",
                 `url = "${endpoint}"`,
                 `http_headers = { Authorization = "Bearer ${key}" }`,
               ].join("\n")}
@@ -159,7 +172,7 @@ export function McpConnectCard({ apiKey }: { apiKey: string | null }) {
               value={JSON.stringify(
                 {
                   mcpServers: {
-                    sessionboard: {
+                    trackstage: {
                       type: "http",
                       url: endpoint,
                       headers: { Authorization: `Bearer ${key}` },

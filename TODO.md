@@ -229,6 +229,106 @@ repeated here. Effort: XS <30min · S ~1h · M ~half day · L ~a day+.
   evaluators plan-wide, so two evaluators on one plan share an identical queue — sbek ABS-05
   (`scoping`) may read as PARTIAL. Fold into [15] if per-reviewer assignment is built.
 
+## Learn-site deltas
+From `docs/reference/sessionboard-product-map.md` (2026-08-11) — the full ingestion of
+learn.sessionboard.com (177 help-centre pages crawled · 26 walkthrough videos through the Gemini
+pipeline into `docs/video/learn/` · a frame-by-frame visual pass). Only items NOT already tracked
+above are listed. Severity: S1 judge-visible · S2 demoed surface · S3 fidelity · S4 optional.
+Effort: XS <30min · S ~1h · M ~half day · L ~a day+.
+
+- ⏳ **[L1] Custom session statuses** (S1 · M) — `Settings → Statuses` CRUD: Name · **Category**
+  (every status maps to one of the 5 built-in categories and inherits its behaviour) · Color ·
+  Display Order · **Show custom status name** (off ⇒ portal users see the category wording) ·
+  live per-status session count. Built-ins ship as `Created By: System`. Unlocks the agenda's
+  status filter and keeps queue-masking intact. Ours is a fixed string union today.
+- ⏳ **[L2] Portal Username separate from Email** (S1 · S) — their #1 documented support issue:
+  the two fields never auto-sync, so editing a speaker's email must not move their portal login.
+  Add `people.portalUsername` (defaults to email), authenticate on it, expose "Change portal
+  username" on the speaker drawer.
+- ⏳ **[L3] Audit log / change history** (S1 · M) — closes sbek **CNT-11**. Generic
+  `Subject · Type · User · Action · Field · New Value · Occurred At` table surfaced globally
+  (a History page) and inline on each session + speaker. Also the right home for MCP/copilot
+  writes ("every agent action appears in the record's activity feed" is literally their model).
+- ⏳ **[L4] Per-participant public visibility** (S1 · S) — the eye icon on a session participant:
+  `submissionParticipants.isPublic`, filtered out of `publicData` + the REST API (`is_public`),
+  toggled from the submission drawer. Embargoed-keynote case; half of sbek CNT-12 at speaker
+  granularity.
+- ⏳ **[L5] Agenda settings** (S1 · M) — Day Start/End · **Interval** · **Session Format →
+  Default Duration** (dropping a "Lightning Talk" auto-sets 15 min) · which **statuses** appear
+  on the agenda · **Room Visibility** (show all / select individual). Also the config the AI
+  agenda builder reads.
+- ⏳ **[L6] Portal behaviour toggles** (S1 · L full, **S for the valuable subset**) — full portal
+  segmentation is a big lift; ship these three as event settings first: **Always Show Tasks**
+  (off ⇒ tasks only for accepted speakers), **Manage Related Sessions and Participants** (lets a
+  speaker add a co-presenter), **Extend Task Deadlines** + Final Deadline. Defer multi-portal.
+- ⏳ **[L7] Per-recipient email review + delivery status** (S1 · M) — step through each
+  recipient's fully-rendered email before sending (sbek **SPK-14** wants exactly this), and record
+  `Delivered / Opened / Clicked / Bounced / Spam / Dropped` **with a reason** per recipient.
+  Doubly valuable while the Resend account is still in test mode.
+- ⏳ **[L8] File comments + file type + bulk-download wizard** (S2 · M) — closes sbek **CNT-05**
+  (threaded comments per file, author + role + timestamp, cross-role visible) and widens
+  **CNT-14**: File type (Presentation / Poster / Handout), then a 3-step download wizard
+  (pick file types → **group by submitter / field / record** → estimated count & size → zip).
+- ⏳ **[L9] Conditional participant limits + Unique Contact Settings** (S2 · M) — per-role
+  Min/Max plus a **Total across all roles**, rules that override limits by session format
+  (WHEN ALL MATCH → THEN APPLY PER ROLE, first match wins), and the two correctness toggles:
+  *Allow users to submit new information for existing contacts* and *Notify existing contacts
+  that they have been added to a submission*. Today a second submission naming the same
+  co-speaker silently rewrites their profile.
+- ⏳ **[L10] Task personalisation + reusable task library** (S2 · S) — `Use Field` binding on a
+  task's **description** and **link** so each speaker sees their own text/URL, plus an **Alias**
+  to rename an item per portal. Replaces the spreadsheet mail-merge organizers do today.
+- ⏳ **[L11] Program Site** (S2 · M) — one branded URL indexing every open form *and* reviewer
+  access to evaluation plans. We already have `/submit/:slug` and `/review/:token`; this is the
+  index over them and it is how their reviewers get in at all.
+- ⏳ **[L12] Event clone · session duplicate** (S2 · M) — granular copy-options checklist;
+  duplicating a session **resets status to Pending and drops files**; a cloned event's evaluation
+  plans come over **closed**. `forms.duplicate` already exists.
+- ⏳ **[L13] CSV/XLSX import for speakers + sessions** (S2 · M, closes sbek **SPK-03**) — their
+  exact contract: UTF-8, **1,000 rows/file**, `YYYY-MM-DD HH:mm`, pipe-separated multi-selects,
+  an **`Update record if already exists`** column for upserts, **`Ignore this column`** on the
+  mapping screen (an empty column otherwise *blanks* the field), red-cell inline fixing.
+- ⏳ **[L14] "View portal as…"** (S2 · S) — read-only impersonation from the top bar, task
+  completion blocked. Their single best debugging tool and a gift to a browser-agent judge.
+- ⏳ **[L15] Field-level role permissions + filter-scoped roles** (S2 · M) — every field is
+  `View` / **`Lock`** / **`Hide`** per role; Session Manager and Evaluator Session Manager roles
+  carry a **filter** scoping which sessions/speakers they see. Real depth for rule 18d.
+- ⏳ **[L16] Reports module** (S3 · M) — four report types (Session / Contact / Group /
+  Evaluation plan), relationship joins as columns, filters + sorting, run to XLSX or CSV, saved
+  and re-runnable. Ours is per-table CSV only.
+- ⏳ **[L17] Rooms-view zoom + axis flip** (S3 · S); Month view (S4 — we ship Track instead, which
+  is what the brief names).
+- ⏳ **[L18] Additional Contacts** (S3 · M) — an assistant linked to a speaker, CC'd on mail, able
+  to complete tasks inside the speaker's portal, importable 3 at a time.
+- ⏳ **[L19] Merge duplicate contacts** (S3 · M) — ≤3 at a time, 70–80% email/name match detection,
+  side-by-side value picker, irreversible + logged. Their own FAQ admits re-submission creates
+  duplicate speakers; ours will too.
+- ⏳ **[L20] Headshot restrictions + bulk resize/compress** (S3 · S) — event-level type/size/
+  dimension enforcement (blocks non-conforming uploads), bulk resize with a target KB, and a
+  **Large Image** filter to verify. Recommended headshot is **300×300 square**.
+- ⏳ **[L21] Email template Type scoping** (S3 · S) — templates are scoped `Contacts | Sessions |
+  Groups`, and that scope governs which merge tags exist. Prevents the "why is `{{sessionTitle}}`
+  blank?" bug class; also why acceptance emails must be sent from the session context.
+- ⏳ **[L22] Live "N matches" counters + rubric 100% validator** (S4 · S) — green inline banners
+  under every filter builder ("2 sessions and 68 speakers match this filter") and under the rubric
+  sliders ("Looks good! All values added together equal 100%"). Pure legibility, very cheap,
+  exactly what non-technical organizers need.
+- 💤 **[L23] Subsessions** (S2 · L) — parent/child sessions (≤200), child confined to the parent's
+  window, linked speakers, agenda icon + hover summary, dragging the parent carries them. Only
+  worth it if we want workshop-with-breakouts parity.
+- 📌 **Spec now exists for already-tracked items** — the learn site supplies the exact design for
+  [13] portal forms (3-page builder + PDF confirmation email), [15] scorecard depth (rubric
+  sliders, rating-icon set, evaluation limits, workload caps), [16] evaluator ops (abstain with
+  required reason, resend invite, My Evaluations), [18] session fields (Location, CEU Credits,
+  Client Session ID, Starts/Ends At are all *standard* fields), [19] email themes (the
+  `{{{content}}}` contract + 12 theme merge tags), [11] Columns/Saved Views/Import, [14] Files
+  library, [20] portal profile fields. Building them is now mechanical — see the product map.
+- ✅ **Where we are already AHEAD (put this in the README):** conflicts recompute live (theirs only
+  on page refresh, with a "Refreshed <timestamp>" stamp) · committing a decision queue actually
+  sends the emails (their docs warn twice that changing a status emails nobody) · we ship the
+  brief's **Track** view (they ship Month instead) · auto-place is one click · our CFP form is
+  embeddable and our API is public (their form is link-only and applications have no API).
+
 ## Standing process
 - ✅ Git repo = source of truth; commit+push incrementally; no Claude co-author
 - 🔁 Keep RULES/DECISIONS/BUILD-LOG/TODO current every session; heavy subagents + Workflow

@@ -132,10 +132,24 @@ async function safeShot(name, fn) {
   }
 }
 
+/**
+ * Wait for a step to actually arrive before typing into it. The dev server is
+ * shared with other agents' HMR, and the Convex dev deployment can take ten
+ * seconds to answer a cold mutation, so every wizard transition is a wait on
+ * the next heading rather than a fixed sleep.
+ */
+async function waitForHeading(page, pattern, timeout = 60000) {
+  await page
+    .getByRole("heading", { name: pattern })
+    .first()
+    .waitFor({ state: "visible", timeout })
+  await page.waitForTimeout(400)
+}
+
 /** Fill a controlled input, retrying until React actually keeps the value. */
 async function fillSticky(page, selector, value) {
   const field = typeof selector === "string" ? page.locator(selector) : selector
-  await field.first().waitFor({ state: "visible", timeout: 15000 })
+  await field.first().waitFor({ state: "visible", timeout: 45000 })
   for (let attempt = 0; attempt < 5; attempt++) {
     await field.first().fill(value)
     await page.waitForTimeout(150)
@@ -351,20 +365,22 @@ async function buildForm(page, state) {
   await page.waitForURL(/\/app\/forms\/[^/]+$/, { timeout: 15000 })
   await settle(page, 1200)
 
+  // Rail buttons are named "<title> <one-line description>", so anchor at the
+  // start of the accessible name rather than matching it whole.
   const step = (name) => page.getByRole("button", { name }).first()
 
   await safeShot("09-form-questions", async () => {
-    await click(page, step(/submission questions/i), "form step: Submission questions")
+    await click(page, step(/^submission questions/i), "form step: Submission questions")
     await shot(page, "09-form-questions")
   })
 
   await safeShot("10-form-participants", async () => {
-    await click(page, step(/^participants$/i), "form step: Participants")
+    await click(page, step(/^participants/i), "form step: Participants")
     await shot(page, "10-form-participants")
   })
 
   await safeShot("11-form-settings", async () => {
-    await click(page, step(/form settings/i), "form step: Form settings")
+    await click(page, step(/^form settings/i), "form step: Form settings")
     await shot(page, "11-form-settings")
   })
 
@@ -401,16 +417,16 @@ async function submitATalk(context, state) {
     await fillSticky(page, "#submit-email", TALK.email)
     await safeShot("14-submit-account", () => shot(page, "14-submit-account"))
     await click(page, page.getByRole("button", { name: /^continue$/i }), "submit: account → talk")
-    await settle(page, 1200)
+    await waitForHeading(page, /your submission/i)
 
     await fillSticky(page, "#question-title", TALK.title)
     await fillSticky(page, "#question-description", TALK.abstract)
-    await safeShot("pick format", () => pickOption(page, "#question-format", /^talk$/i))
-    await safeShot("pick track", () => pickOption(page, "#question-track", TRACKS[0]))
+    await pickOption(page, "#question-format", /^talk$/i).catch(() => log("skipped: format"))
+    await pickOption(page, "#question-track", TRACKS[0]).catch(() => log("skipped: track"))
     await safeShot("15-submit-talk", () => shot(page, "15-submit-talk"))
 
     await click(page, page.getByRole("button", { name: /^continue$/i }), "submit: talk → participants")
-    await settle(page, 900)
+    await waitForHeading(page, /^participants$/i)
 
     await fillSticky(page, "#participant-0-firstName", TALK.firstName)
     await fillSticky(page, "#participant-0-lastName", TALK.lastName)
@@ -419,7 +435,7 @@ async function submitATalk(context, state) {
     await safeShot("16-submit-speaker", () => shot(page, "16-submit-speaker"))
 
     await click(page, page.getByRole("button", { name: /^continue$/i }), "submit: participants → review")
-    await settle(page, 900)
+    await waitForHeading(page, /review and submit/i)
     await safeShot("17-submit-review", () => shot(page, "17-submit-review"))
 
     await click(page, page.getByRole("button", { name: /^submit$/i }), "submitted the talk")

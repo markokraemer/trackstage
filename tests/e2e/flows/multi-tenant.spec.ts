@@ -36,7 +36,6 @@ import {
 const PASSWORD = "fresh-tenant-pw-1"
 
 test.describe("multi-tenancy", () => {
-  test.describe.configure({ mode: "serial" })
 
   test("fresh user is scoped out, then invited, promoted and removed", async ({
     browser,

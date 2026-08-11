@@ -374,7 +374,7 @@ test.describe("public CFP submission", () => {
       // No submit affordance may survive on a closed form.
       await expect(page.getByRole("button", { name: /^continue$/i })).toHaveCount(0)
       await expect(
-        page.getByRole("link", { name: /back to sessionboard/i }).first(),
+        page.getByRole("link", { name: /back to trackstage/i }).first(),
       ).toBeVisible()
       watcher.assertClean("closed form")
     } finally {

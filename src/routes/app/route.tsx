@@ -150,7 +150,7 @@ function OrganizerLayout() {
       <header className="container-app sticky top-0 z-40 flex h-14 items-center gap-3 border-b border-border bg-card">
         <Link
           to="/app"
-          aria-label="Sessionboard home"
+          aria-label="Trackstage home"
           className="rounded-md outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
         >
           <Logo size="sm" className="max-md:[&>span:last-child]:sr-only" />
@@ -163,7 +163,7 @@ function OrganizerLayout() {
             </InputGroupAddon>
             <InputGroupInput
               type="search"
-              aria-label="Search Sessionboard"
+              aria-label="Search Trackstage"
               placeholder="Find a submission, speaker, or session…"
               className="[&::-webkit-search-cancel-button]:hidden"
             />

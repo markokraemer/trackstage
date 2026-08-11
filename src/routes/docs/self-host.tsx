@@ -8,11 +8,11 @@ export const Route = createFileRoute("/docs/self-host")({
   component: Page,
   head: () => ({
     meta: [
-      { title: "Self-host · Sessionboard docs" },
+      { title: "Self-host · Trackstage docs" },
       {
         name: "description",
         content:
-          "Run your own Sessionboard: clone, install, provision a free Convex backend, and deploy.",
+          "Run your own Trackstage: clone, install, provision a free Convex backend, and deploy.",
       },
     ],
   }),
@@ -53,7 +53,7 @@ function Page() {
   return (
     <DocArticle
       title="Self-host"
-      lead="Sessionboard is MIT-licensed and runs on a free Convex backend — about five minutes from clone to a working app."
+      lead="Trackstage is MIT-licensed and runs on a free Convex backend — about five minutes from clone to a working app."
     >
       <Steps>
         <Step title="Clone it and install.">

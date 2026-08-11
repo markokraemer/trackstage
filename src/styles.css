@@ -4,7 +4,7 @@
 @import "@fontsource-variable/inter";
 
 /*
- * Sessionboard OSS is LIGHT MODE ONLY (docs/memory/RULES.md #3, docs/SPEC.md §2.1).
+ * Trackstage is LIGHT MODE ONLY (docs/memory/RULES.md #3, docs/SPEC.md §2.1).
  * The `dark` variant is deliberately re-mapped to a `.dark` ancestor class that we
  * never render, so any `dark:` utility shipped inside shadcn components is inert
  * instead of firing off the visitor's `prefers-color-scheme`.
@@ -105,7 +105,7 @@
      *      places: primary buttons, links, the active sidebar item, the
      *      selected-row/filter indicator, and `--chart-1`. Status and tag
      *      tokens carry meaning; nothing else is allowed to be coloured.
-     * The accent itself STAYS Sessionboard blue #2F5CE0 — the teal/petrol
+     * The accent itself STAYS Trackstage blue #2F5CE0 — the teal/petrol
      * exploration was reviewed and rejected. The fix was never the hue, it
      * was how much of everything else was wearing it.
      */
@@ -118,7 +118,7 @@
     --popover: #ffffff;
     --popover-foreground: #17171a;
 
-    /* Brand — Sessionboard blue. White text on it measures 5.31:1 (AA). This
+    /* Brand — Trackstage blue. White text on it measures 5.31:1 (AA). This
      * is the ONLY line where the brand hue is decided; `--ring`,
      * `--sidebar-primary` and `--chart-1` follow it. */
     --primary: #2f5ce0;

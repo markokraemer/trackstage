@@ -1,3 +1,4 @@
+import { Link } from "@tanstack/react-router"
 import {
   RiCalendarCheckLine,
   RiCodeSSlashLine,
@@ -10,8 +11,6 @@ import type { RemixiconComponentType } from "@remixicon/react"
 import { Button } from "@/components/ui/button"
 import { MarketingSection, SectionIntro } from "@/components/marketing/section"
 import {
-  EXTERNAL_LINK_PROPS,
-  GITHUB_README_URL,
   MCP_ENDPOINT_PATH,
   MCP_TOOL_COUNT,
   PRODUCT_NAME,
@@ -87,7 +86,9 @@ export function PlatformSection() {
             <p className="text-sm leading-relaxed text-muted-foreground">
               {surface.description}
             </p>
-            <code className="mt-2 block overflow-x-auto rounded-md bg-muted px-2.5 py-1.5 font-mono text-xs whitespace-nowrap text-muted-foreground">
+            {/* `mt-auto`: the endpoints line up across the row even when one
+                description wraps to two lines. */}
+            <code className="mt-auto block overflow-x-auto rounded-md bg-muted px-2.5 py-1.5 pt-1.5 font-mono text-xs whitespace-nowrap text-muted-foreground">
               {surface.meta}
             </code>
           </div>
@@ -98,7 +99,7 @@ export function PlatformSection() {
         <Button
           variant="outline"
           nativeButton={false}
-          render={<a href={GITHUB_README_URL} {...EXTERNAL_LINK_PROPS} />}
+          render={<Link to="/docs" />}
         >
           <RiTerminalBoxLine aria-hidden />
           Read the docs

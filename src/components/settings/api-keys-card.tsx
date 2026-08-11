@@ -109,7 +109,7 @@ export function ApiKeysCard({
             variant="plain"
             icon={RiKey2Line}
             title="No API keys yet"
-            description="Create a personal key to connect Claude, ChatGPT, Codex or any MCP client to Sessionboard — see “Connect from your AI assistant” below."
+            description="Create a personal key to connect Claude, ChatGPT, Codex or any MCP client to Trackstage — see “Connect from your AI assistant” below."
             action={
               <Button type="button" size="sm" onClick={() => setDialogOpen(true)}>
                 <RiAddLine size={15} aria-hidden />

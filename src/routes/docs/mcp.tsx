@@ -6,6 +6,7 @@ import {
   RiLock2Line,
 } from "@remixicon/react"
 
+import { ClientIcon } from "@/components/docs/client-icon"
 import { Callout, DocLink } from "@/components/docs/doc-primitives"
 import { CodeSnippet } from "@/components/settings/code-snippet"
 import { Badge } from "@/components/ui/badge"
@@ -17,11 +18,11 @@ export const Route = createFileRoute("/docs/mcp")({
   component: McpPage,
   head: () => ({
     meta: [
-      { title: "MCP server · Sessionboard docs" },
+      { title: "MCP server · Trackstage docs" },
       {
         name: "description",
         content:
-          "Connect Claude, ChatGPT, Codex or any MCP client to Sessionboard and run your event by chat.",
+          "Connect Claude, ChatGPT, Codex or any MCP client to Trackstage and run your event by chat.",
       },
     ],
   }),
@@ -75,10 +76,22 @@ function McpPage() {
 
       <Tabs defaultValue="claude" className="mt-3">
         <TabsList>
-          <TabsTrigger value="claude">Claude</TabsTrigger>
-          <TabsTrigger value="chatgpt">ChatGPT</TabsTrigger>
-          <TabsTrigger value="codex">Codex</TabsTrigger>
-          <TabsTrigger value="any">Any client</TabsTrigger>
+          <TabsTrigger value="claude">
+            <ClientIcon client="claude" />
+            Claude
+          </TabsTrigger>
+          <TabsTrigger value="chatgpt">
+            <ClientIcon client="chatgpt" />
+            ChatGPT
+          </TabsTrigger>
+          <TabsTrigger value="codex">
+            <ClientIcon client="codex" />
+            Codex
+          </TabsTrigger>
+          <TabsTrigger value="any">
+            <ClientIcon client="any" />
+            Any client
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="claude" className="space-y-5 pt-4">
@@ -89,7 +102,7 @@ function McpPage() {
             <ol className="doc-prose">
               <li>Settings → Connectors → Add custom connector.</li>
               <li>Paste the endpoint URL above.</li>
-              <li>Sign in with your Sessionboard account when prompted.</li>
+              <li>Sign in with your Trackstage account when prompted.</li>
             </ol>
             <OAuthNote />
           </div>
@@ -104,7 +117,7 @@ function McpPage() {
               title="Terminal"
               copyLabel="Copy command"
               successMessage="Command copied to your clipboard"
-              value={`claude mcp add sessionboard --transport http ${endpoint} --header "Authorization: Bearer ${PLACEHOLDER_KEY}"`}
+              value={`claude mcp add trackstage --transport http ${endpoint} --header "Authorization: Bearer ${PLACEHOLDER_KEY}"`}
             />
             <KeyNote />
           </div>
@@ -118,7 +131,7 @@ function McpPage() {
           <ol className="doc-prose">
             <li>Settings → Connectors → Create.</li>
             <li>Paste the endpoint URL above.</li>
-            <li>Authenticate with your Sessionboard account.</li>
+            <li>Authenticate with your Trackstage account.</li>
           </ol>
           <OAuthNote />
         </TabsContent>
@@ -129,7 +142,7 @@ function McpPage() {
             title="~/.codex/config.toml"
             copyLabel="Copy config"
             successMessage="Config copied to your clipboard"
-            value={`[mcp_servers.sessionboard]\nurl = "${endpoint}"\nhttp_headers = { Authorization = "Bearer ${PLACEHOLDER_KEY}" }`}
+            value={`[mcp_servers.trackstage]\nurl = "${endpoint}"\nhttp_headers = { Authorization = "Bearer ${PLACEHOLDER_KEY}" }`}
           />
           <KeyNote />
         </TabsContent>
@@ -146,7 +159,7 @@ function McpPage() {
             value={JSON.stringify(
               {
                 mcpServers: {
-                  sessionboard: {
+                  trackstage: {
                     type: "http",
                     url: endpoint,
                     headers: { Authorization: `Bearer ${PLACEHOLDER_KEY}` },

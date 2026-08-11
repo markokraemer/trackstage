@@ -3,7 +3,7 @@ import { createFileRoute } from "@tanstack/react-router"
 // ————————————————————————————————————————————————————————————————————————
 // OAuth 2.0 Authorization Server Metadata (RFC 8414) for the MCP server.
 //
-// The Sessionboard MCP endpoint lives on the Convex site and advertises THIS
+// The Trackstage MCP endpoint lives on the Convex site and advertises THIS
 // origin as its authorization server (see convex/mcp.ts for why the browser
 // leg has to happen here: the Better Auth session cookie is set on the app
 // origin, because /api/auth/* is proxied from here to Convex).

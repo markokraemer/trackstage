@@ -14,7 +14,7 @@ import {
 } from "@/lib/files"
 
 /**
- * The one way anything in Sessionboard accepts a file.
+ * The one way anything in Trackstage accepts a file.
  *
  * Drag a file onto it, or click to browse. It validates BEFORE the upload
  * starts (an organizer should learn a 40 MB keynote is too big immediately,

@@ -10,7 +10,7 @@ import {
 
 export const Route = createFileRoute("/docs/guide/team-and-workspaces")({
   component: Page,
-  head: () => ({ meta: [{ title: "Team & workspaces · Sessionboard docs" }] }),
+  head: () => ({ meta: [{ title: "Team & workspaces · Trackstage docs" }] }),
 })
 
 function Page() {

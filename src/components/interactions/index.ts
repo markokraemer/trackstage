@@ -1,5 +1,5 @@
 /**
- * Sessionboard interaction layer — the adopted interior.dev catalogue.
+ * Trackstage interaction layer — the adopted interior.dev catalogue.
  *
  * 45 motion primitives copied in from https://www.interior.dev (shadcn registry),
  * then restyled onto our tokens: no raw stone/emerald/red palette, no hardcoded

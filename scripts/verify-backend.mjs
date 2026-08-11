@@ -1116,7 +1116,7 @@ if (SITE_URL) {
 
   const init = await rpc("initialize", { protocolVersion: "2025-06-18", capabilities: {}, clientInfo: { name: "verify", version: "1" } })
   ok("initialize negotiates protocol", init.body?.result?.protocolVersion === "2025-06-18", JSON.stringify(init.body).slice(0, 160))
-  ok("initialize declares serverInfo sessionboard", init.body?.result?.serverInfo?.name === "sessionboard")
+  ok("initialize declares serverInfo trackstage", init.body?.result?.serverInfo?.name === "trackstage")
   ok("initialize declares tools capability", !!init.body?.result?.capabilities?.tools)
 
   const initialized = await fetch(MCP, {

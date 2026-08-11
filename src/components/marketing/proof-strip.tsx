@@ -20,6 +20,8 @@ const EVENT_TYPES: Array<LogoMarqueeItem> = [
   "Academic symposia",
   "Hackathons",
   "User groups",
+  "Workshop series",
+  "Unconferences",
 ].map((label) => ({ id: label, label }))
 
 export function ProofStrip() {

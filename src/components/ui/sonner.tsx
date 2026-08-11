@@ -11,7 +11,7 @@ import {
 /**
  * Toasts.
  *
- * `theme` is pinned to `"light"`, NOT the system theme. Sessionboard is light
+ * `theme` is pinned to `"light"`, NOT the system theme. Trackstage is light
  * mode only (docs/memory/RULES.md #3), and Sonner's dark theme paints the
  * description line `hsl(0 0% 91%)` — near-white on our white popover surface,
  * which is exactly how the "Public link copied" URL went invisible for anyone

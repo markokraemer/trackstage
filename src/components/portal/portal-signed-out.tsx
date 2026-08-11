@@ -83,7 +83,7 @@ export function PortalSignedOut({
                   Your portal link or code
                 </FieldLabel>
                 <FieldDescription>
-                  For example: https://sessionboard.dev/portal/t/your-code
+                  For example: https://trackstage.app/portal/t/your-code
                 </FieldDescription>
                 <Input
                   id="portal-link"

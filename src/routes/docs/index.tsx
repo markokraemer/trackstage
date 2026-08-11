@@ -17,7 +17,7 @@ export const Route = createFileRoute("/docs/")({
   component: DocsIndexPage,
   head: () => ({
     meta: [
-      { title: "Docs · Sessionboard" },
+      { title: "Docs · Trackstage" },
       {
         name: "description",
         content:

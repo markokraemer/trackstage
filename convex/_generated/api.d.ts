@@ -12,6 +12,7 @@ import type * as agenda from "../agenda.js";
 import type * as airtable from "../airtable.js";
 import type * as apiHttp from "../apiHttp.js";
 import type * as apiKeys from "../apiKeys.js";
+import type * as apiRoutes from "../apiRoutes.js";
 import type * as apiV1 from "../apiV1.js";
 import type * as auth from "../auth.js";
 import type * as comms from "../comms.js";
@@ -54,6 +55,7 @@ declare const fullApi: ApiFromModules<{
   airtable: typeof airtable;
   apiHttp: typeof apiHttp;
   apiKeys: typeof apiKeys;
+  apiRoutes: typeof apiRoutes;
   apiV1: typeof apiV1;
   auth: typeof auth;
   comms: typeof comms;

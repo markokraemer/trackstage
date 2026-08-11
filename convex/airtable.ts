@@ -15,7 +15,7 @@
 //   · every 5m  — the `airtable-sync` cron (convex/crons.ts) catches
 //                 everything else (status changes, agenda edits, profiles).
 // Overlap is harmless: every write is a PATCH upsert keyed on our own
-// "Sessionboard ID" column, so the same run twice is the same result.
+// "Trackstage ID" column, so the same run twice is the same result.
 //
 // DEMO MODE: with AIRTABLE_DEMO_MODE=1 on the deployment, `connect` skips
 // live validation and `syncEvent` counts rows without talking to Airtable.
@@ -482,7 +482,7 @@ export const syncPayload = internalQuery({
 
 /**
  * The sync itself. Idempotent by construction (PATCH upsert on
- * "Sessionboard ID"), so it is safe to run concurrently with itself — which
+ * "Trackstage ID"), so it is safe to run concurrently with itself — which
  * it will be, because the cron and the on-write hook are independent.
  *
  * A failure is recorded on the connection rather than thrown away: the

@@ -31,7 +31,7 @@ export const MCP_TOOL_GROUPS: Array<McpToolGroup> = [
       {
         name: "list_workspaces",
         title: "List workspaces",
-        description: "Lists every Sessionboard workspace (organization) you belong to, your role in each (owner/admin/member), and how many events each one holds. Start here when you don't yet know which workspace or event to operate on.",
+        description: "Lists every Trackstage workspace (organization) you belong to, your role in each (owner/admin/member), and how many events each one holds. Start here when you don't yet know which workspace or event to operate on.",
         readOnly: true,
         requiresConfirm: false,
         args: [],
@@ -322,7 +322,7 @@ export const MCP_TOOL_GROUPS: Array<McpToolGroup> = [
       {
         name: "list_outbox",
         title: "List the email outbox",
-        description: "Shows what Sessionboard has emailed (or is about to email) for this event: recipient, subject, template, delivery status and any error. Status \"preview\" means the message was rendered but deliberately not delivered (demo @example.com recipients, or no RESEND_API_KEY configured).",
+        description: "Shows what Trackstage has emailed (or is about to email) for this event: recipient, subject, template, delivery status and any error. Status \"preview\" means the message was rendered but deliberately not delivered (demo @example.com recipients, or no RESEND_API_KEY configured).",
         readOnly: true,
         requiresConfirm: false,
         args: ["event","status","limit"],

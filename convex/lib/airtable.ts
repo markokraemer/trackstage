@@ -15,9 +15,9 @@
 //   · AirtableClient   — throttled fetch (5 req/s per base), 429 backoff,
 //                        PATCH upsert keyed on our own external-id column
 //
-// Idempotency: every table carries a "Sessionboard ID" text column holding
+// Idempotency: every table carries a "Trackstage ID" text column holding
 // the Convex document id, and we PATCH with
-// `performUpsert.fieldsToMergeOn: ["Sessionboard ID"]`. Re-running a full
+// `performUpsert.fieldsToMergeOn: ["Trackstage ID"]`. Re-running a full
 // sync therefore updates in place and never duplicates a row — which is what
 // lets the cron and the on-write hook overlap harmlessly.
 // ————————————————————————————————————————————————————————————————————————
@@ -34,7 +34,7 @@ const MIN_REQUEST_INTERVAL_MS = 220
 const RETRY_DELAYS_MS = [1_000, 5_000, 30_000]
 
 /** The column every table is keyed on. Also the primary field. */
-export const EXTERNAL_ID_FIELD = "Sessionboard ID"
+export const EXTERNAL_ID_FIELD = "Trackstage ID"
 
 export type TableKey = "submissions" | "speakers" | "sessions"
 
@@ -78,7 +78,7 @@ export const TABLE_SPECS: Record<
   submissions: {
     name: TABLE_NAMES.submissions,
     description:
-      "Mirrored from Sessionboard. One row per submission (abstract or session). Read-only — edits here are overwritten on the next sync.",
+      "Mirrored from Trackstage. One row per submission (abstract or session). Read-only — edits here are overwritten on the next sync.",
     fields: [
       { name: EXTERNAL_ID_FIELD, type: "singleLineText" },
       { name: "Title", type: "singleLineText" },
@@ -112,13 +112,13 @@ export const TABLE_SPECS: Record<
       { name: "Form", type: "singleLineText" },
       { name: "Submitted At", type: "dateTime", options: dateTimeOptions },
       { name: "Decided At", type: "dateTime", options: dateTimeOptions },
-      { name: "Sessionboard Link", type: "url" },
+      { name: "Trackstage Link", type: "url" },
     ],
   },
   speakers: {
     name: TABLE_NAMES.speakers,
     description:
-      "Mirrored from Sessionboard. One row per person (speakers, co-speakers and submitters). Read-only — edits here are overwritten on the next sync.",
+      "Mirrored from Trackstage. One row per person (speakers, co-speakers and submitters). Read-only — edits here are overwritten on the next sync.",
     fields: [
       { name: EXTERNAL_ID_FIELD, type: "singleLineText" },
       { name: "Name", type: "singleLineText" },
@@ -141,7 +141,7 @@ export const TABLE_SPECS: Record<
   sessions: {
     name: TABLE_NAMES.sessions,
     description:
-      "Mirrored from Sessionboard. One row per SCHEDULED session (it has a time on the agenda). Read-only — edits here are overwritten on the next sync.",
+      "Mirrored from Trackstage. One row per SCHEDULED session (it has a time on the agenda). Read-only — edits here are overwritten on the next sync.",
     fields: [
       { name: EXTERNAL_ID_FIELD, type: "singleLineText" },
       { name: "Title", type: "singleLineText" },
@@ -152,7 +152,7 @@ export const TABLE_SPECS: Record<
       { name: "Duration (min)", type: "number", options: wholeNumberOptions },
       { name: "Speakers", type: "singleLineText" },
       { name: "Status", type: "singleLineText" },
-      { name: "Sessionboard Link", type: "url" },
+      { name: "Trackstage Link", type: "url" },
     ],
   },
 }
@@ -162,7 +162,7 @@ export const TABLE_KEYS: TableKey[] = ["submissions", "speakers", "sessions"]
 // ——— Record mappers ————————————————————————————————————————————————————
 // Cell values are `string | number | null`. We deliberately send `null` for
 // anything empty rather than omitting the key: the mirror should CLEAR a cell
-// when the organizer clears the value in Sessionboard, not leave a stale one.
+// when the organizer clears the value in Trackstage, not leave a stale one.
 
 export type AirtableCell = string | number | null
 export type AirtableFields = Record<string, AirtableCell>
@@ -226,7 +226,7 @@ export function submissionFields(row: SubmissionRow): AirtableFields {
     Form: text(row.formName),
     "Submitted At": iso(row.submittedAt),
     "Decided At": iso(row.decidedAt),
-    "Sessionboard Link": text(row.link),
+    "Trackstage Link": text(row.link),
   }
 }
 
@@ -295,7 +295,7 @@ export function sessionFields(row: SessionRow): AirtableFields {
     "Duration (min)": duration,
     Speakers: list(row.speakers),
     Status: statusLabel(row.status),
-    "Sessionboard Link": text(row.link),
+    "Trackstage Link": text(row.link),
   }
 }
 

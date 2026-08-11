@@ -88,7 +88,7 @@ function ApiKeysCard() {
         </CardTitle>
         <CardDescription>
           Keys are personal to you and act with your access. Use them to connect
-          Claude, ChatGPT or Codex to Sessionboard, or to call the REST API.
+          Claude, ChatGPT or Codex to Trackstage, or to call the REST API.
         </CardDescription>
       </CardHeader>
       <CardContent className="pt-2">

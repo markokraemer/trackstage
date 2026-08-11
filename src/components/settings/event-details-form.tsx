@@ -299,7 +299,7 @@ export function EventDetailsForm({ event }: { event: EventSummary }) {
                 htmlFor="event-timezone"
                 required
                 error={errors.timezone}
-                hint="Every date and time in Sessionboard — deadlines, agenda slots, calendar invites — is shown in this timezone."
+                hint="Every date and time in Trackstage — deadlines, agenda slots, calendar invites — is shown in this timezone."
               >
                 <TimezoneSelect
                   id="event-timezone"

@@ -54,7 +54,7 @@ export const DOCS_NAV: Array<DocsNavGroup> = [
       {
         to: "/docs",
         title: "Overview",
-        summary: "What Sessionboard does, in one screen.",
+        summary: "What Trackstage does, in one screen.",
         icon: RiBookOpenLine,
       },
     ],
