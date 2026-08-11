@@ -163,14 +163,13 @@ export function NewEventDialog({
               htmlFor="new-event-slug"
               required
               error={errors.slug}
-              description={
+              description="We fill this in from the name — change it if you like."
+              footer={
                 slug ? (
                   <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-[11px] text-foreground">
                     {publicEventUrl(slug)}
                   </code>
-                ) : (
-                  "We fill this in from the name — change it if you like."
-                )
+                ) : null
               }
             >
               <Input

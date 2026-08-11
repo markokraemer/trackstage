@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import { createFileRoute } from "@tanstack/react-router"
 import { useQuery, useSuspenseQuery } from "@tanstack/react-query"
 import { convexQuery, useConvexMutation } from "@convex-dev/react-query"
@@ -30,7 +30,7 @@ import {
   answersForSubmit,
   isValidEmail,
   missingQuestionIds,
-  titleFromAnswers,
+  resolveTitle,
   validateParticipants,
 } from "@/components/submit/form-logic"
 import { emptyParticipant } from "@/components/submit/types"
@@ -218,8 +218,8 @@ function SubmitFlow({ slug, form }: { slug: string; form: SubmitForm }) {
     [],
   )
 
-  const addParticipant = useCallback(() => {
-    setParticipants((current) => [...current, emptyParticipant("speaker")])
+  const addParticipant = useCallback((role: string) => {
+    setParticipants((current) => [...current, emptyParticipant(role)])
   }, [])
 
   const removeParticipant = useCallback((index: number) => {
@@ -402,7 +402,7 @@ function SubmitFlow({ slug, form }: { slug: string; form: SubmitForm }) {
         slug,
         portalToken,
         draftId: draftId as Id<"submissions"> | undefined,
-        title: titleFromAnswers(answers),
+        title: resolveTitle(form.questions, answers),
         answers: answersForSubmit(form.questions, answers),
         participants: participantPayload(false),
       })
@@ -447,7 +447,7 @@ function SubmitFlow({ slug, form }: { slug: string; form: SubmitForm }) {
         slug,
         portalToken,
         draftId: draftId as Id<"submissions"> | undefined,
-        title: titleFromAnswers(answers),
+        title: resolveTitle(form.questions, answers),
         answers: answersForSubmit(form.questions, answers),
         participants: participantPayload(true),
       })
@@ -513,7 +513,9 @@ function SubmitFlow({ slug, form }: { slug: string; form: SubmitForm }) {
     </Button>
   )
 
-  const footer = useMemo(() => {
+  // Plain function, not memoised: it closes over handlers that change with
+  // every keystroke, and a stale footer would submit stale values.
+  const renderFooter = () => {
     switch (stepIndex) {
       case STEP_INDEX.welcome:
         return (
@@ -582,17 +584,7 @@ function SubmitFlow({ slug, form }: { slug: string; form: SubmitForm }) {
           </SubmitFooterActions>
         )
     }
-  }, [
-    backButton,
-    goTo,
-    handleSubmit,
-    identifying,
-    saveDraftButton,
-    stepIndex,
-    submitting,
-    validateParticipantsStep,
-    validateSubmissionStep,
-  ])
+  }
 
   if (submitted) {
     return (
@@ -620,7 +612,7 @@ function SubmitFlow({ slug, form }: { slug: string; form: SubmitForm }) {
           onSelect={goTo}
         />
       }
-      footer={footer}
+      footer={renderFooter()}
     >
       {stepIndex === STEP_INDEX.welcome ? <WelcomeStep form={form} /> : null}
 

@@ -20,7 +20,7 @@ export interface ParticipantsStepProps {
   config: ParticipantConfig
   participants: Array<ParticipantDraft>
   onChange: (index: number, patch: Partial<ParticipantDraft>) => void
-  onAdd: () => void
+  onAdd: (role: string) => void
   onRemove: (index: number) => void
   invalidKeys: Array<string>
   issues: Array<string>
@@ -36,7 +36,14 @@ export function ParticipantsStep({
   issues,
 }: ParticipantsStepProps) {
   const speakerCount = participants.filter((p) => p.role === "speaker").length
-  const atMax = participants.length >= config.speakerMax
+  const otherRoles = [
+    ...(config.chairpersonEnabled ? ["chairperson"] : []),
+    ...(config.moderatorEnabled ? ["moderator"] : []),
+  ]
+  const canAddSpeaker = speakerCount < config.speakerMax
+  // Only the speaker count is capped; chairs and moderators are extra.
+  const atMax = !canAddSpeaker && otherRoles.length === 0
+  const addRole = canAddSpeaker ? "speaker" : (otherRoles[0] ?? "speaker")
   const rolesLabel =
     config.chairpersonEnabled || config.moderatorEnabled
       ? "Everyone taking part in this session — speakers, and any chairperson or moderator."
@@ -94,13 +101,18 @@ export function ParticipantsStep({
       </div>
 
       <div className="space-y-2">
-        <Button type="button" variant="outline" onClick={onAdd} disabled={atMax}>
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() => onAdd(addRole)}
+          disabled={atMax}
+        >
           <RiAddLine aria-hidden />
-          Add speaker
+          {otherRoles.length > 0 ? "Add participant" : "Add speaker"}
         </Button>
         {atMax ? (
           <p className="text-sm text-muted-foreground">
-            You&rsquo;ve reached the maximum of {config.speakerMax} participant
+            You&rsquo;ve reached the maximum of {config.speakerMax} speaker
             {config.speakerMax === 1 ? "" : "s"} for this form.
           </p>
         ) : null}

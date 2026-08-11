@@ -37,6 +37,7 @@ import { PageHeader } from "@/components/shared/page-header"
 import { EmptyState } from "@/components/shared/empty-state"
 import { DataToolbar } from "@/components/shared/data-toolbar"
 import type { SubmissionStatus } from "@/components/shared/status-pill"
+import { TrackValue } from "@/components/submissions/field-bits"
 import { StatusTabs } from "@/components/submissions/status-tabs"
 import { QueueBanner } from "@/components/submissions/queue-banner"
 import { BulkBar } from "@/components/submissions/bulk-bar"
@@ -397,7 +398,15 @@ function SubmissionsPage() {
             }
           >
             <SelectTrigger aria-label="Filter by track" className="min-w-40">
-              <SelectValue placeholder="All tracks" />
+              <SelectValue>
+                {(value) => (
+                  <TrackValue
+                    tracks={tracks}
+                    value={value}
+                    empty="All tracks"
+                  />
+                )}
+              </SelectValue>
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All tracks</SelectItem>

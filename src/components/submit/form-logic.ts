@@ -101,6 +101,25 @@ export function titleFromAnswers(answers: Answers): string {
   return typeof value === "string" ? value.trim() : ""
 }
 
+/**
+ * The submission title. Normally the locked `title` question, but a form built
+ * from scratch might not have one — fall back to the first short answer so a
+ * submission is never rejected for a field the speaker was never shown.
+ */
+export function resolveTitle(
+  questions: Array<SubmitQuestion>,
+  answers: Answers,
+): string {
+  const direct = titleFromAnswers(answers)
+  if (direct) return direct
+  for (const question of visibleQuestions(questions, answers)) {
+    if (question.type !== "short_text") continue
+    const value = answers[question.id]
+    if (typeof value === "string" && value.trim() !== "") return value.trim()
+  }
+  return ""
+}
+
 export const EMAIL_PATTERN = /^[^@\s]+@[^@\s]+\.[^@\s]+$/
 
 export function isValidEmail(email: string): boolean {

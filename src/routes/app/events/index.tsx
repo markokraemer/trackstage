@@ -180,7 +180,6 @@ function EventCard({
           url={publicEventUrl(event.slug)}
           label="Copy link"
           size="sm"
-          className="ml-auto"
         />
       </CardFooter>
     </Card>

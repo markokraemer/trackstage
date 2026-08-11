@@ -126,7 +126,7 @@ export function RoomsGrid({
       )}
       {...props}
     >
-      <div className="min-w-max">
+      <div className="w-full min-w-max">
         <div className="flex border-b border-border bg-muted/50">
           <div
             className="shrink-0"
@@ -136,8 +136,8 @@ export function RoomsGrid({
           {columns.map(([key, column]) => (
             <div
               key={key}
-              className="shrink-0 border-l border-border px-3 py-2.5 text-sm font-semibold text-foreground"
-              style={{ width: COLUMN_WIDTH }}
+              className="border-l border-border px-3 py-2.5 text-sm font-semibold text-foreground"
+              style={{ flex: `1 0 ${COLUMN_WIDTH}px` }}
             >
               {column.name}
             </div>
@@ -163,8 +163,8 @@ export function RoomsGrid({
           {columns.map(([key, column]) => (
             <div
               key={key}
-              className="relative shrink-0 border-l border-border"
-              style={{ width: COLUMN_WIDTH, height }}
+              className="relative border-l border-border"
+              style={{ flex: `1 0 ${COLUMN_WIDTH}px`, height }}
             >
               {hours.map((minute) => (
                 <div

@@ -224,7 +224,7 @@ export function EventDetailsForm({ event }: { event: EventSummary }) {
                 required
                 error={errors.slug}
                 hint="The short, lowercase name used in your public web address. Changing it changes the link you've shared."
-                description={
+                footer={
                   <span className="flex flex-wrap items-center gap-1">
                     <span>Public page:</span>
                     <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-[11px] text-foreground">

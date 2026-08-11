@@ -221,6 +221,7 @@ export function formatZonedDateRange(
   const start = utcMsToZoned(timezone, startsAt)
   const end = utcMsToZoned(timezone, endsAt)
   if (start.year === end.year && start.month === end.month) {
+    if (start.day === end.day) return short(startsAt, true)
     return `${short(startsAt, false)} – ${end.day}, ${end.year}`
   }
   if (start.year === end.year) {

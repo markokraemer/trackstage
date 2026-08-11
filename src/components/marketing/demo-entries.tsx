@@ -1,66 +1,88 @@
 import { Link } from "@tanstack/react-router"
 import {
   RiArrowRightLine,
+  RiExternalLinkLine,
   RiMicLine,
   RiSendPlaneLine,
   RiUserSettingsLine,
 } from "@remixicon/react"
 import type { RemixiconComponentType } from "@remixicon/react"
 
+import { cn } from "@/lib/utils"
 import { Card } from "@/components/ui/card"
-import { MarketingSection, SectionIntro } from "@/components/marketing/section"
+import { MarketingSection } from "@/components/marketing/section"
+import {
+  DEMO_CFP_URL,
+  DEMO_PORTAL_URL,
+  DEMO_PROGRAM_URL,
+  SECTION_IDS,
+} from "@/components/marketing/links"
 
 interface DemoEntry {
   title: string
   description: string
-  href: string
   cta: string
   icon: RemixiconComponentType
-  /** Typed router route — external/dynamic public routes use a plain anchor. */
-  routed?: boolean
+  /** Typed router link (organizer demo) vs. plain anchor (public surfaces). */
+  to?: "/login"
+  href?: string
 }
 
 const DEMO_ENTRIES: Array<DemoEntry> = [
   {
     title: "Organizer demo",
     description:
-      "Run the event: review submissions, build the agenda, chase outstanding speaker tasks.",
-    href: "/login",
+      "The full event: submissions, review queues, the agenda and everything your speakers still owe you.",
     cta: "Open the organizer app",
     icon: RiUserSettingsLine,
-    routed: true,
+    to: "/login",
   },
   {
     title: "Speaker portal demo",
     description:
-      "What a speaker sees: their submissions, profile, headshot and outstanding tasks.",
-    href: "/portal",
+      "What a speaker sees after they're accepted — their talks, their profile, their to-do list.",
     cta: "Open the speaker portal",
     icon: RiMicLine,
+    href: DEMO_PORTAL_URL,
   },
   {
     title: "Submit a talk",
     description:
       "The public call-for-speakers form, exactly as a speaker fills it in. No account needed.",
-    href: "/submit/cfp",
     cta: "Open the CFP form",
     icon: RiSendPlaneLine,
+    href: DEMO_CFP_URL,
   },
 ]
 
 const CARD_CLASS =
-  "h-full gap-3 px-5 py-5 text-left transition-colors group-hover:bg-accent/40 group-hover:ring-primary/30"
+  "h-full gap-2.5 px-5 py-5 text-left transition-all duration-150 group-hover:-translate-y-0.5 group-hover:ring-primary/40 group-hover:shadow-md"
 const LINK_CLASS =
   "group block rounded-xl outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
 
+/**
+ * The live-demo entry points. These sit directly under the hero on purpose
+ * (docs/memory/RULES.md 18f): anyone landing here — judge, organizer, curious
+ * dev — is one click from a working product, no signup in the way.
+ */
 export function DemoEntries() {
   return (
-    <MarketingSection id="try-it-now" tone="muted">
-      <SectionIntro
-        eyebrow="Try it now"
-        title="Three ways in — pick a seat"
-        description="Everything below runs against a pre-loaded demo event. Nothing to install, nothing to configure."
-      />
+    <MarketingSection id={SECTION_IDS.demos} tone="muted">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+        <div className="max-w-2xl">
+          <p className="text-xs font-semibold tracking-[0.12em] text-primary uppercase">
+            Try it right now
+          </p>
+          <h2 className="font-heading mt-2.5 text-2xl font-semibold tracking-tight text-balance text-foreground sm:text-3xl">
+            Three ways in. Pick a seat.
+          </h2>
+        </div>
+        <p className="text-sm text-muted-foreground sm:text-right">
+          Everything runs on a pre-loaded demo event.
+          <br className="hidden sm:block" /> Nothing to install, nothing to
+          configure.
+        </p>
+      </div>
 
       <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {DEMO_ENTRIES.map((entry) => {
@@ -75,7 +97,7 @@ export function DemoEntries() {
               <span className="block text-sm leading-relaxed text-muted-foreground">
                 {entry.description}
               </span>
-              <span className="mt-auto flex items-center gap-1.5 pt-2 text-sm font-medium text-primary">
+              <span className="mt-auto flex items-center gap-1.5 pt-3 text-sm font-medium text-primary">
                 {entry.cta}
                 <RiArrowRightLine
                   size={15}
@@ -86,17 +108,31 @@ export function DemoEntries() {
             </Card>
           )
 
-          return entry.routed ? (
-            <Link key={entry.href} to="/login" className={LINK_CLASS}>
+          return entry.to ? (
+            <Link key={entry.title} to={entry.to} className={LINK_CLASS}>
               {content}
             </Link>
           ) : (
-            <a key={entry.href} href={entry.href} className={LINK_CLASS}>
+            <a key={entry.title} href={entry.href} className={LINK_CLASS}>
               {content}
             </a>
           )
         })}
       </div>
+
+      <p className="mt-6 text-sm text-muted-foreground">
+        Curious what attendees see?{" "}
+        <a
+          href={DEMO_PROGRAM_URL}
+          className={cn(
+            "inline-flex items-center gap-1 font-medium text-foreground underline underline-offset-4",
+            "rounded-sm outline-none hover:text-primary focus-visible:ring-3 focus-visible:ring-ring/50",
+          )}
+        >
+          Browse the published program
+          <RiExternalLinkLine size={13} aria-hidden />
+        </a>
+      </p>
     </MarketingSection>
   )
 }

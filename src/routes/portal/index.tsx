@@ -259,6 +259,7 @@ function PortalHomePage() {
           <Button
             size="sm"
             className="w-fit"
+            nativeButton={false}
             render={<Link to="/portal/tasks" />}
           >
             Go to my tasks

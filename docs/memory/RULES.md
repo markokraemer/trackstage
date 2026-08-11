@@ -91,10 +91,19 @@ Agents: read this before working; add new directives the moment Marko states the
     real recipients get real Resend emails; seeded @example.com demo recipients render
     as outbox previews (Resend would bounce them and pollute the demo). This is part of
     the spec — do not forget any email surface.
-18f. **Landing page, enterprise grade**: rip sessionboard.com's landing structure and
-    cover the same aspects at the utmost quality — custom graphics, platform screenshots
-    (placeholders until real ones exist), clearly open source, Log in CTA, and "Buy now"
-    as a $10k ONE-TIME fee — a joke/voluntary thing, copy should wink at it.
+18f. **Landing page, high quality but NOT too "enterprise-y"**: rip sessionboard.com's
+    landing structure and cover the same aspects at the utmost quality — custom
+    graphics, platform screenshots (placeholders until real ones exist), clearly open
+    source, Log in CTA, and "Buy now" as a $10k ONE-TIME fee — a joke/voluntary thing,
+    copy should wink at it. Keep the tone human and simple, not corporate; the LIVE
+    DEMO entry points must stay prominent (organizer demo, speaker portal, submit a
+    talk).
+18g. **Full multi-tenant management UI — everything**: complete account settings,
+    organization settings, user management, member management. Easy switching between
+    organizations you belong to (workspace switcher in the shell, Better Auth session
+    stays), manage everything for the active organization: rename it, invite/remove
+    members, change roles, personal profile (name/password) via Better Auth. The whole
+    spiel — nothing missing.
 19. **Mandatory final reconciliation pass**: slice-per-agent parallelism will drift —
     different layouts, spacing, and interaction patterns per slice. Before ship, ONE
     agent reads and reworks the whole app end to end for coherent, standardized,

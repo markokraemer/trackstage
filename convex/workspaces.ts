@@ -158,3 +158,62 @@ export const updateMemberRole = mutation({
     return null
   },
 })
+
+export const get = query({
+  args: { organizationId: v.id("organizations") },
+  handler: async (ctx, args) => {
+    const { member } = await requireMembership(ctx, args.organizationId)
+    const org = await ctx.db.get(args.organizationId)
+    if (!org) throw new Error("Workspace not found.")
+    return { id: org._id, name: org.name, slug: org.slug, myRole: member.role }
+  },
+})
+
+export const update = mutation({
+  args: {
+    organizationId: v.id("organizations"),
+    patch: v.object({ name: v.optional(v.string()) }),
+  },
+  handler: async (ctx, args) => {
+    await requireMembership(ctx, args.organizationId, "admin")
+    if (args.patch.name !== undefined && !args.patch.name.trim()) {
+      throw new Error("Workspace name can't be empty.")
+    }
+    await ctx.db.patch(args.organizationId, {
+      ...(args.patch.name !== undefined ? { name: args.patch.name.trim() } : {}),
+    })
+    return null
+  },
+})
+
+// A user may create additional workspaces (beyond the auto-created first one).
+export const create = mutation({
+  args: { name: v.string() },
+  handler: async (ctx, args) => {
+    const user = await requireUser(ctx)
+    if (!args.name.trim()) throw new Error("Workspace name is required.")
+    const base =
+      args.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 40) ||
+      "workspace"
+    let slug = base
+    for (let i = 2; ; i++) {
+      const clash = await ctx.db
+        .query("organizations")
+        .withIndex("by_slug", (q) => q.eq("slug", slug))
+        .unique()
+      if (!clash) break
+      slug = `${base}-${i}`
+    }
+    const organizationId = await ctx.db.insert("organizations", {
+      name: args.name.trim(),
+      slug,
+    })
+    await ctx.db.insert("members", {
+      organizationId,
+      userId: user.userId,
+      email: user.email,
+      role: "owner",
+    })
+    return { organizationId, slug }
+  },
+})

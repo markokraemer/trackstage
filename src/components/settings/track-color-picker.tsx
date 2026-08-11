@@ -28,7 +28,7 @@ export function trackColorName(value: string): string {
   return (
     TRACK_COLORS.find(
       (color) => color.value.toLowerCase() === value.toLowerCase(),
-    )?.name ?? "Custom"
+    )?.name ?? value.toUpperCase()
   )
 }
 

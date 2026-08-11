@@ -61,12 +61,17 @@ export function validateWidgetSearch(
   }
 }
 
-/** Drop empty values so generated embed URLs stay short and readable. */
+/**
+ * Drop empty values so generated embed URLs stay short and readable.
+ * Flags serialise as `true` — the router's own canonical form — so an embed
+ * never pays for a normalising redirect on first paint. (`?embed=1` still
+ * works for hand-written URLs; it just redirects once.)
+ */
 export function widgetSearchToQuery(search: WidgetSearch): string {
   const params = new URLSearchParams()
   for (const [key, value] of Object.entries(search)) {
     if (value === undefined || value === false) continue
-    params.set(key, value === true ? "1" : String(value))
+    params.set(key, value === true ? "true" : String(value))
   }
   const query = params.toString()
   return query ? `?${query}` : ""

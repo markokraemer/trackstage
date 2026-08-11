@@ -33,6 +33,8 @@ export interface LabeledFieldProps
   hint?: React.ReactNode
   /** Validation message. Renders red and marks the field invalid. */
   error?: string
+  /** Rendered under the control — e.g. a live URL preview. */
+  footer?: React.ReactNode
   children: React.ReactNode
 }
 
@@ -43,6 +45,7 @@ export function LabeledField({
   description,
   hint,
   error,
+  footer,
   children,
   className,
   ...props
@@ -71,6 +74,9 @@ export function LabeledField({
         </FieldDescription>
       ) : null}
       {children}
+      {footer ? (
+        <FieldDescription className="text-xs">{footer}</FieldDescription>
+      ) : null}
       {error ? <FieldError className="text-xs">{error}</FieldError> : null}
     </Field>
   )

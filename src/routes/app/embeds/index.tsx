@@ -508,7 +508,7 @@ function EmbedsPage() {
                 <CopyButton
                   value={snippet}
                   label="Copy embed code"
-                  className="w-fit"
+                  className="w-fit self-start"
                 />
               </Field>
 

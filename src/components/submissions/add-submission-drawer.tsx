@@ -31,6 +31,7 @@ import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 import { DrawerShell } from "@/components/shared/drawer-shell"
 import { StatusPill } from "@/components/shared/status-pill"
 import { TagInput } from "@/components/submissions/tag-input"
+import { ChoiceValue, TrackValue } from "@/components/submissions/field-bits"
 import {
   FORMAT_OPTIONS,
   LANGUAGE_OPTIONS,
@@ -248,7 +249,9 @@ export function AddSubmissionDrawer({
                 onValueChange={(value) => setStatus(value as string)}
               >
                 <SelectTrigger id="add-status" className="w-full">
-                  <SelectValue />
+                  <SelectValue>
+                    {(value) => <StatusPill status={String(value)} size="sm" />}
+                  </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   {[
@@ -289,7 +292,15 @@ export function AddSubmissionDrawer({
                 onValueChange={(value) => setTrackId(value as string)}
               >
                 <SelectTrigger id="add-track" className="w-full">
-                  <SelectValue placeholder="Select a track…" />
+                  <SelectValue>
+                    {(value) => (
+                      <TrackValue
+                        tracks={tracks}
+                        value={value}
+                        empty="No track"
+                      />
+                    )}
+                  </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value={NONE}>No track</SelectItem>
@@ -316,7 +327,9 @@ export function AddSubmissionDrawer({
                 onValueChange={(value) => setFormat(value as string)}
               >
                 <SelectTrigger id="add-format" className="w-full">
-                  <SelectValue placeholder="Select a format…" />
+                  <SelectValue>
+                    {(value) => <ChoiceValue value={value} empty="No format" />}
+                  </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value={NONE}>No format</SelectItem>
@@ -336,7 +349,9 @@ export function AddSubmissionDrawer({
                 onValueChange={(value) => setLevel(value as string)}
               >
                 <SelectTrigger id="add-level" className="w-full">
-                  <SelectValue placeholder="Select a level…" />
+                  <SelectValue>
+                    {(value) => <ChoiceValue value={value} empty="No level" />}
+                  </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value={NONE}>No level</SelectItem>
@@ -356,7 +371,11 @@ export function AddSubmissionDrawer({
                 onValueChange={(value) => setLanguage(value as string)}
               >
                 <SelectTrigger id="add-language" className="w-full">
-                  <SelectValue placeholder="Select a language…" />
+                  <SelectValue>
+                    {(value) => (
+                      <ChoiceValue value={value} empty="No language" />
+                    )}
+                  </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value={NONE}>No language</SelectItem>

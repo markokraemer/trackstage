@@ -48,37 +48,3 @@ export function PanelCard({
     </Card>
   )
 }
-
-/**
- * The flat gray band Sessionboard uses to group rows inside a panel
- * ("Submission Tasks", "My Tasks").
- */
-export function PanelSectionHeader({
-  title,
-  hint,
-  action,
-  className,
-  ...props
-}: Omit<React.ComponentProps<"div">, "title"> & {
-  title: React.ReactNode
-  hint?: React.ReactNode
-  action?: React.ReactNode
-}) {
-  return (
-    <div
-      className={cn(
-        "-mx-4 flex items-center gap-2 border-y border-border bg-muted px-4 py-2 first:mt-0",
-        className,
-      )}
-      {...props}
-    >
-      <p className="text-xs font-semibold tracking-wide text-foreground uppercase">
-        {title}
-      </p>
-      {hint ? (
-        <p className="truncate text-xs text-muted-foreground">{hint}</p>
-      ) : null}
-      {action ? <div className="ml-auto shrink-0">{action}</div> : null}
-    </div>
-  )
-}

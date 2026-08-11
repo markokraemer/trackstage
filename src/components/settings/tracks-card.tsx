@@ -27,6 +27,7 @@ import { Badge } from "@/components/ui/badge"
 import { EmptyState } from "@/components/shared/empty-state"
 import { ConfirmDeleteButton } from "@/components/settings/confirm-delete-button"
 import {
+  TRACK_COLORS,
   TrackColorPicker,
   nextTrackColor,
   trackColorName,
@@ -288,7 +289,11 @@ function TrackRow({
       />
 
       <span className="hidden shrink-0 text-xs text-muted-foreground sm:inline">
-        {trackColorName(track.color)}
+        {TRACK_COLORS.some(
+          (color) => color.value.toLowerCase() === track.color.toLowerCase(),
+        )
+          ? trackColorName(track.color)
+          : null}
       </span>
 
       <ConfirmDeleteButton

@@ -35,6 +35,7 @@ import { StatusPill } from "@/components/shared/status-pill"
 import type { SubmissionStatus } from "@/components/shared/status-pill"
 import { StatusPicker } from "@/components/submissions/status-picker"
 import { TagInput } from "@/components/submissions/tag-input"
+import { ChoiceValue, TrackValue } from "@/components/submissions/field-bits"
 import {
   EMPTY_CELL,
   FORMAT_OPTIONS,
@@ -88,7 +89,7 @@ export function SubmissionDetailDrawer({
   const [draft, setDraft] = useState<Draft | null>(null)
   const [saving, setSaving] = useState(false)
 
-  const { data: submission } = useQuery(
+  const { data: submission, error: loadError } = useQuery(
     convexQuery(api.submissions.get, submissionId ? { submissionId } : "skip")
   )
   const { data: evaluations } = useQuery(
@@ -256,7 +257,19 @@ export function SubmissionDetailDrawer({
           </>
         }
       >
-        {!submission || !draft ? (
+        {loadError ? (
+          <EmptyState
+            variant="plain"
+            icon={RiFileTextLine}
+            title="We couldn't open that submission"
+            description="It may have been deleted, or it belongs to a different event. Close this panel and pick another submission from the table."
+            action={
+              <Button variant="outline" onClick={() => onOpenChange(false)}>
+                Close
+              </Button>
+            }
+          />
+        ) : !submission || !draft ? (
           <div className="flex flex-col gap-4">
             <Skeleton className="h-9 w-full" />
             <Skeleton className="h-24 w-full" />
@@ -321,7 +334,15 @@ export function SubmissionDetailDrawer({
                     }
                   >
                     <SelectTrigger id="detail-track" className="w-full">
-                      <SelectValue placeholder="Select a track…" />
+                      <SelectValue>
+                        {(value) => (
+                          <TrackValue
+                            tracks={tracks}
+                            value={value}
+                            empty="No track"
+                          />
+                        )}
+                      </SelectValue>
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value={NONE}>No track</SelectItem>
@@ -351,7 +372,11 @@ export function SubmissionDetailDrawer({
                       }
                     >
                       <SelectTrigger id="detail-format" className="w-full">
-                        <SelectValue placeholder="Select…" />
+                        <SelectValue>
+                          {(value) => (
+                            <ChoiceValue value={value} empty="No format" />
+                          )}
+                        </SelectValue>
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value={NONE}>No format</SelectItem>
@@ -374,7 +399,11 @@ export function SubmissionDetailDrawer({
                       }
                     >
                       <SelectTrigger id="detail-level" className="w-full">
-                        <SelectValue placeholder="Select…" />
+                        <SelectValue>
+                          {(value) => (
+                            <ChoiceValue value={value} empty="No level" />
+                          )}
+                        </SelectValue>
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value={NONE}>No level</SelectItem>
@@ -399,7 +428,11 @@ export function SubmissionDetailDrawer({
                     }
                   >
                     <SelectTrigger id="detail-language" className="w-full">
-                      <SelectValue placeholder="Select…" />
+                      <SelectValue>
+                        {(value) => (
+                          <ChoiceValue value={value} empty="No language" />
+                        )}
+                      </SelectValue>
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value={NONE}>No language</SelectItem>

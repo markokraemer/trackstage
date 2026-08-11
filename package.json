@@ -15,7 +15,7 @@
     "dev:convex": "convex dev",
     "deploy": "convex deploy && wrangler deploy",
     "cf-typegen": "wrangler types --include-runtime=false",
-    "test:backend": "node scripts/verify-backend.mjs",
+    "test:backend": "convex run seed:setup && node scripts/verify-backend.mjs",
     "test:e2e": "playwright test",
     "test:all": "pnpm test && pnpm test:backend && pnpm test:e2e"
   },

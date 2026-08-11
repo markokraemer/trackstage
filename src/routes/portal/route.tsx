@@ -177,7 +177,10 @@ function PortalLayout() {
                     </span>
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem render={<Link to="/portal/profile" />}>
+                  <DropdownMenuItem
+                    nativeButton={false}
+                    render={<Link to="/portal/profile" />}
+                  >
                     <RiUser3Line aria-hidden />
                     My profile
                   </DropdownMenuItem>

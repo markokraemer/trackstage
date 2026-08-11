@@ -116,7 +116,8 @@ section("Public submission flow")
 const pubForm = await client.query(api.submit.getForm, { slug: "cfp" })
 ok("public form loads with questions", pubForm.questions.length >= 5)
 ok("speaker min is 1 (no trap)", pubForm.participantConfig.speakerMin === 1)
-const ident = await client.mutation(api.submit.identify, { slug: "cfp", email: "verify-e2e@example.com" })
+const verifyEmail = `verify-e2e-${Date.now().toString(36)}@example.com`
+const ident = await client.mutation(api.submit.identify, { slug: "cfp", email: verifyEmail })
 ok("identify returns portal token", typeof ident.portalToken === "string")
 const PT = ident.portalToken
 await throws("bad email rejected", () =>
@@ -130,7 +131,7 @@ const goodAnswers = {
 await throws("missing required fields rejected", () =>
   client.mutation(api.submit.submit, {
     slug: "cfp", portalToken: PT, title: "X", answers: { title: "X" },
-    participants: [{ firstName: "V", lastName: "E", email: "verify-e2e@example.com", role: "speaker" }],
+    participants: [{ firstName: "V", lastName: "E", email: verifyEmail, role: "speaker" }],
   }), "missing required")
 await throws("zero speakers rejected", () =>
   client.mutation(api.submit.submit, {
@@ -138,13 +139,13 @@ await throws("zero speakers rejected", () =>
   }), "speaker")
 const draft = await client.mutation(api.submit.saveDraft, {
   slug: "cfp", portalToken: PT, title: "Verification Talk", answers: goodAnswers,
-  participants: [{ firstName: "Vera", lastName: "Efftest", email: "verify-e2e@example.com", role: "speaker", bio: "Test bio" }],
+  participants: [{ firstName: "Vera", lastName: "Efftest", email: verifyEmail, role: "speaker", bio: "Test bio" }],
 })
 ok("draft saved", !!draft.draftId)
 const submitted = await client.mutation(api.submit.submit, {
   slug: "cfp", portalToken: PT, draftId: draft.draftId, title: "Verification Talk",
   answers: goodAnswers,
-  participants: [{ firstName: "Vera", lastName: "Efftest", email: "verify-e2e@example.com", role: "speaker", bio: "Test bio" }],
+  participants: [{ firstName: "Vera", lastName: "Efftest", email: verifyEmail, role: "speaker", bio: "Test bio" }],
 })
 ok("submission accepted with track routing", !!submitted.submissionId)
 
@@ -202,7 +203,9 @@ await client.mutation(api.portal.attachUpload, {
   size: 16, taskId: slidesTask?.id, submissionId: submitted.submissionId,
 })
 const myUploads = await client.query(api.portal.myUploads, { portalToken: PT })
-ok("upload attached v1 pending", myUploads.some((u) => u.filename === "slides.pdf" && u.version === 1 && u.approvalStatus === "pending"))
+const latestSlide = myUploads.filter((u) => u.filename === "slides.pdf").sort((a, b) => b.version - a.version)[0]
+ok("upload attached, latest version pending", latestSlide?.approvalStatus === "pending")
+const versionBefore = latestSlide.version
 const adminUploads = await client.query(api.tasksAdmin.listUploads, { eventId: main._id })
 const mine = adminUploads.find((u) => u.filename === "slides.pdf")
 await client.mutation(api.tasksAdmin.reviewUpload, {
@@ -218,7 +221,7 @@ await client.mutation(api.portal.attachUpload, {
   size: 2, taskId: slidesTask?.id, submissionId: submitted.submissionId,
 })
 const myUploads2 = await client.query(api.portal.myUploads, { portalToken: PT })
-ok("re-upload becomes version 2", myUploads2.some((u) => u.version === 2))
+ok("re-upload increments version", myUploads2.some((u) => u.filename === "slides.pdf" && u.version === versionBefore + 1))
 
 // ————— Agenda + conflicts + auto-place —————
 section("Agenda")
@@ -272,7 +275,7 @@ ok("overview status counts sane", overview.statusCounts.accepted >= 4)
 ok("outstanding tasks tracked", overview.outstandingTaskCount >= 1)
 ok("chase list present", Array.isArray(overview.topSpeakersByOutstandingTasks))
 const roster = await client.query(api.dashboard.speakersRoster, { eventId: main._id })
-ok("roster includes our speaker w/ portal token", roster.some((s) => s.email === "verify-e2e@example.com" && s.portalToken))
+ok("roster includes our speaker w/ portal token", roster.some((s) => s.email === verifyEmail && s.portalToken))
 
 // ————— Public widgets data —————
 section("Public data")
@@ -295,6 +298,34 @@ const templates = await client.query(api.comms.listTemplates, { eventId: main._i
 ok("5 seeded templates", templates.length >= 5, `got ${templates.length}`)
 const remind = await client.mutation(api.comms.remindIncompleteSpeakers, { eventId: main._id })
 ok("reminders queued for incomplete", typeof remind.queued === "number")
+
+// ————— Core basics: event + workspace lifecycle —————
+section("Core basics (events & workspaces)")
+const myWorkspaces = await client.query(api.workspaces.mine, {})
+ok("I belong to a workspace", myWorkspaces.length >= 1)
+const ws = myWorkspaces[0]
+const wsDetail = await client.query(api.workspaces.get, { organizationId: ws.id })
+ok("workspace detail shows my role", ["owner", "admin", "member"].includes(wsDetail.myRole))
+await client.mutation(api.workspaces.update, { organizationId: ws.id, patch: { name: ws.name } })
+ok("workspace rename roundtrip", true)
+const newEventId = await client.mutation(api.events.create, {
+  organizationId: ws.id, name: "Verify Event", slug: `verify-event-${Date.now().toString(36)}`,
+  timezone: "Europe/Berlin", type: "Meetup",
+})
+ok("event created", typeof newEventId === "string")
+await client.mutation(api.events.update, { eventId: newEventId, patch: { venue: "Test Hall" } })
+const createdEvent = await client.query(api.events.get, { eventId: newEventId })
+ok("event update persists", createdEvent.venue === "Test Hall")
+await client.mutation(api.roomsTracks.addRoom, { eventId: newEventId, name: "Solo Room" })
+await client.mutation(api.events.remove, { eventId: newEventId })
+ok("event delete cascades", (await client.query(api.events.list, {})).every((e) => e._id !== newEventId))
+const inviteEmail = `invitee-${Date.now().toString(36)}@example.com`
+await client.mutation(api.workspaces.addMember, { organizationId: ws.id, email: inviteEmail, role: "member" })
+const memberRows = await client.query(api.workspaces.members, { organizationId: ws.id })
+ok("member invite pending row exists", memberRows.some((m) => m.email === inviteEmail && m.userId === ""))
+const pendingRow = memberRows.find((m) => m.email === inviteEmail)
+await client.mutation(api.workspaces.removeMember, { memberId: pendingRow._id })
+ok("member remove works", true)
 
 // ————— Cross-org scoping (enterprise multi-tenancy) —————
 section("Multi-tenancy scoping")

@@ -187,6 +187,7 @@ export function TaskItem({ task, uploads }: TaskItemProps) {
                       variant="ghost"
                       size="icon-sm"
                       aria-label={`Download ${file.filename}`}
+                      nativeButton={false}
                       render={
                         <a href={file.url} target="_blank" rel="noreferrer" />
                       }

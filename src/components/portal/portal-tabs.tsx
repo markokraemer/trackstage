@@ -60,6 +60,7 @@ export function PortalTabs({
             key={tab.value}
             value={tab.value}
             className="gap-1.5 px-3 py-1.5"
+            nativeButton={false}
             render={<Link to={tab.to} preload="intent" />}
           >
             <tab.icon size={16} aria-hidden />

@@ -4,53 +4,61 @@ import { RiTrophyLine } from "@remixicon/react"
 import { Button } from "@/components/ui/button"
 import { EXTERNAL_LINK_PROPS } from "@/components/marketing/links"
 
-export interface DeclareWinnerButtonProps {
+export interface DeclareWinnerButtonProps
+  extends Pick<React.ComponentProps<typeof Button>, "variant" | "size"> {
   /** Stripe Checkout link. Empty string = not configured yet. */
   checkoutUrl: string
+  label?: string
   className?: string
 }
 
 /**
- * The joke CTA. Once Marko pastes a Stripe Checkout link it becomes a real
- * outbound link; until then it stays clickable and explains itself instead of
+ * The joke CTA — the Kill My SaaS prize rendered as a Buy Now button.
+ *
+ * Once Marko pastes a Stripe Checkout link it becomes a real outbound link;
+ * until then it stays clickable and explains itself with a toast instead of
  * silently doing nothing (a dead button would read as a bug to the judges).
  */
 export function DeclareWinnerButton({
   checkoutUrl,
+  label = "Declare the winner",
+  variant = "default",
+  size = "lg",
   className,
 }: DeclareWinnerButtonProps) {
-  const label = (
+  const content = (
     <>
       <RiTrophyLine aria-hidden />
-      Declare the winner ($10,000)
+      {label}
     </>
   )
 
   if (checkoutUrl) {
     return (
       <Button
-        variant="ghost"
-        size="lg"
+        variant={variant}
+        size={size}
         className={className}
         render={<a href={checkoutUrl} {...EXTERNAL_LINK_PROPS} />}
       >
-        {label}
+        {content}
       </Button>
     )
   }
 
   return (
     <Button
-      variant="ghost"
-      size="lg"
+      variant={variant}
+      size={size}
       className={className}
       onClick={() =>
-        toast("Marko hasn't pasted his Stripe link yet", {
-          description: "Check back after the judging call.",
+        toast("The checkout link isn't live yet", {
+          description:
+            "Marko hasn't pasted the Stripe link. Try again after the judging call — the offer stands.",
         })
       }
     >
-      {label}
+      {content}
     </Button>
   )
 }
