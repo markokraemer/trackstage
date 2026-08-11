@@ -319,7 +319,7 @@ function OrganizerLayout() {
                     href={eventPath(event.organizationSlug, event.slug)}
                     target="_blank"
                     rel="noreferrer"
-                    aria-label="View public page"
+                    aria-label="Open public event page"
                     className={buttonVariants({
                       variant: "ghost",
                       size: "icon-sm",
@@ -331,7 +331,9 @@ function OrganizerLayout() {
               >
                 <RiExternalLinkLine aria-hidden />
               </TooltipTrigger>
-              <TooltipContent side="bottom">View public page</TooltipContent>
+              <TooltipContent side="bottom">
+                Open public event page
+              </TooltipContent>
             </Tooltip>
           ) : null}
 
