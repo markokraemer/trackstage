@@ -744,13 +744,23 @@ Scripts: `pnpm openapi:regen`, `pnpm openapi:check`, `pnpm openapi:verify`.
 
 ### Verification
 
-`scripts/verify-backend.mjs` gained an **API parity** section: ~70 live assertions —
+`scripts/verify-backend.mjs` gained an **API parity** section: **83 live assertions, 83
+passing** —
 both auth headers, demo-token read-only, scoped-key narrowing, error envelope, pagination
 in both spellings, filters/sort, create → read → update → 409 → soft-delete → 404 →
 restore, custom-field definitions + values + lossless `value_raw`, metadata and value-list
 writes, speakers, both file-upload paths, bulk with mixed success/failure, agenda, and a
 real signed webhook delivery verified end to end (the echo sink answers 200 only when the
 HMAC verifies; a forged signature is rejected).
+
+One operational note for whoever runs the suite next: the full run kept being truncated
+mid-flight by *other agents reseeding the shared dev deployment* — `seed:setup` purges and
+rebuilds the demo events, so any section that captured ids at startup then throws
+"Event not found". It landed on a different section each time (evaluation, dashboard) and
+never on a `✗`. The parity section is immune by construction because it addresses
+everything by slug, and it was verified standalone at 83/83 by slicing the section out of
+the suite and running it against the live deployment. If the full suite needs to be green
+in one pass, run it when no other agent is reseeding.
 
 ### Feature census → UI work order
 

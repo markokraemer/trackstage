@@ -122,12 +122,16 @@ export function DropGhost({
       </div>
 
       {keyboard ? (
-        // Near the top of the grid there is no room above the ghost — the chip
-        // would sit on the sticky column headers, so it flips underneath.
+        // Vertical grids: near the top there is no room above the ghost — the
+        // chip would sit on the sticky column headers, so it flips underneath.
+        // Horizontal lanes: always underneath, so the chip never covers the
+        // lane the session came from.
         <div
           className={cn(
             "absolute left-0 z-50",
-            offset < 72 ? "-bottom-1 translate-y-full" : "-top-1 -translate-y-full"
+            orientation === "horizontal" || offset < 72
+              ? "-bottom-1 translate-y-full"
+              : "-top-1 -translate-y-full"
           )}
         >
           <DragChipBody placement={placement} keyboard />

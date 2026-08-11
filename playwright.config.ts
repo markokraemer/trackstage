@@ -43,6 +43,11 @@ export default defineConfig({
       retries: 1,
       use: {
         ...devices["Desktop Chrome"],
+        // Without this, an action on an element that never becomes actionable
+        // blocks until the *test* timeout and reports a bare "timeout exceeded"
+        // with no locator — the least debuggable failure there is. Bounding it
+        // turns the same bug into "waiting for getByRole(…)".
+        actionTimeout: 20_000,
       },
       dependencies: ["setup"],
     },

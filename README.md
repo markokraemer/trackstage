@@ -121,7 +121,7 @@ curl -H "Authorization: Bearer demo-api-token" \
 ## Self-host
 
 ```sh
-git clone https://github.com/markokraemer/sessionboard && cd sessionboard
+git clone https://github.com/markokraemer/trackstage && cd sessionboard
 pnpm install
 pnpm dev:setup                    # provisions a free Convex backend (interactive login)
 pnpm dev                          # http://localhost:3000

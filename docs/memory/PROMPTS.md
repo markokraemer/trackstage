@@ -473,7 +473,7 @@ regardless the full video walkthroughs for the ux/ui of the api reference, you c
 
 ### 49 <sub>2026-08-11T02:51:48.473Z</sub>
 
-https://github.com/markokraemer/sessionboard/ domain -- https://trackstage.app/ you please also configure full ci/cd on the actual thing so that we deploy. also i don't know if you bought the domain. if you bought it, make sure that we deploy everything on cloudflare, that everything is nicely implemented and covered, deployed on trackstage.app, and that it's put in the description of the project etc. like everything
+https://github.com/markokraemer/trackstage/ domain -- https://trackstage.app/ you please also configure full ci/cd on the actual thing so that we deploy. also i don't know if you bought the domain. if you bought it, make sure that we deploy everything on cloudflare, that everything is nicely implemented and covered, deployed on trackstage.app, and that it's put in the description of the project etc. like everything
 
 ---
 

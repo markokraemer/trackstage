@@ -14,7 +14,7 @@ export const PRODUCT_NAME = "Trackstage"
 export const PRODUCT_APP_HOST = "trackstage.app"
 export const PRODUCT_SITE_HOST = "trackstage.app"
 
-export const GITHUB_URL = "https://github.com/markokraemer/sessionboard"
+export const GITHUB_URL = "https://github.com/markokraemer/trackstage"
 export const GITHUB_LICENSE_URL = `${GITHUB_URL}/blob/main/LICENSE`
 export const GITHUB_README_URL = `${GITHUB_URL}#readme`
 export const GITHUB_ISSUES_URL = `${GITHUB_URL}/issues`

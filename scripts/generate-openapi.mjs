@@ -1494,7 +1494,7 @@ function buildSpec(routes, examples, siteUrl) {
       license: { name: "MIT", identifier: "MIT" },
       contact: {
         name: "Trackstage",
-        url: "https://github.com/markokraemer/sessionboard",
+        url: "https://github.com/markokraemer/trackstage",
       },
     },
     servers: [

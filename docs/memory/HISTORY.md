@@ -201,3 +201,5 @@ the narrative memory; RULES.md is the things circled as important along the way.
     dedupe; central nav bar "horrendous" — refactor; View public page + Copilot
     buttons need to look way better. Also visible: a test event ("Copilot
     Verification") polluting the switcher — demo-data hygiene.
+64. **Repo renamed**: github.com/markokraemer/sessionboard → github.com/markokraemer/trackstage
+    (GitHub redirects the old URL); all in-repo references + package name updated.

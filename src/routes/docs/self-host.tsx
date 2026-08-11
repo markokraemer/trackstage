@@ -18,7 +18,7 @@ export const Route = createFileRoute("/docs/self-host")({
   }),
 })
 
-const RUN_LOCALLY = `git clone https://github.com/markokraemer/sessionboard
+const RUN_LOCALLY = `git clone https://github.com/markokraemer/trackstage
 cd sessionboard
 pnpm install`
 

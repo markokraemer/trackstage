@@ -220,7 +220,7 @@ will notice. `S2` = a surface swyx demoed on screen; an evaluator hunting for it
 | 172 | Org-level cross-event speaker/contact directory (optional CRM bonus). | SBEK CRM-01..12 | **MISSING** | searched `src/` and `convex/` | Cross-event CRM contact directory not implemented |
 | 173 | Airtable persistence/sync (bonus). | BRIEF bonus, RULES 15 | **COVERED** | `convex/airtable.ts:1-580` | One-way Airtable sync for Submissions, Speakers, and Sessions |
 | 174 | Cloudflare deploy (bonus). | BRIEF bonus | **COVERED** | `wrangler.jsonc:1-10` | Cloudflare Worker setup via `wrangler.jsonc` and `wrangler deploy` script |
-| 175 | Open-source repo + deployed site reachable. | BRIEF submission rules | **COVERED** | `git remote -v` | Git repo at `https://github.com/markokraemer/sessionboard.git` and app running at `http://localhost:3000/` |
+| 175 | Open-source repo + deployed site reachable. | BRIEF submission rules | **COVERED** | `git remote -v` | Git repo at `https://github.com/markokraemer/trackstage.git` and app running at `http://localhost:3000/` |
 ---
 
 ## Auditor's own spot-checks (Claude, independent of Gemini)

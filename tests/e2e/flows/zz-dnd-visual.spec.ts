@@ -152,3 +152,49 @@ test("pointer drag: ghost, chip, conflict, off-grid, settle", async ({ page }) =
   await page.mouse.up()
   await page.waitForTimeout(700)
 })
+
+test("edge auto-scroll: dragging to the bottom edge scrolls the grid", async ({ page }) => {
+  test.setTimeout(180_000)
+  await gotoApp(page, "/app/agenda?view=day")
+  await expect(page.locator("[data-room]").first()).toBeVisible({ timeout: 30_000 })
+  await page.waitForTimeout(1500)
+
+  const scroller = page.locator('[data-room]').first().evaluateHandle
+  const before = await page.evaluate(() => {
+    const col = document.querySelector("[data-room]")
+    let el: HTMLElement | null = col as HTMLElement
+    while (el && el.scrollHeight <= el.clientHeight) el = el.parentElement
+    return el ? { top: el.scrollTop, max: el.scrollHeight - el.clientHeight } : null
+  })
+  console.log("scroller before:", JSON.stringify(before))
+
+  const block = page.locator('[data-slot="agenda-grid-block"]').first()
+  await block.scrollIntoViewIfNeeded()
+  await page.waitForTimeout(400)
+  const box = (await block.boundingBox())!
+  const col = (await page.locator("[data-room]").first().boundingBox())!
+
+  await page.mouse.move(box.x + box.width / 2, box.y + 14)
+  await page.mouse.down()
+  await page.mouse.move(box.x + box.width / 2 + 10, box.y + 30, { steps: 4 })
+  // Park near the bottom edge of the scroll port and let auto-scroll run.
+  const bottomEdge = Math.min(col.y + col.height, page.viewportSize()!.height) - 30
+  await page.mouse.move(box.x + box.width / 2, bottomEdge, { steps: 10 })
+  for (let i = 0; i < 12; i++) {
+    await page.mouse.move(box.x + box.width / 2, bottomEdge + (i % 2), { steps: 1 })
+    await page.waitForTimeout(90)
+  }
+  const after = await page.evaluate(() => {
+    const c = document.querySelector("[data-room]")
+    let el: HTMLElement | null = c as HTMLElement
+    while (el && el.scrollHeight <= el.clientHeight) el = el.parentElement
+    return el ? el.scrollTop : null
+  })
+  console.log("scroller after:", after)
+  await page.screenshot({ path: `${OUT}/a1-autoscroll.png` })
+  await page.mouse.up()
+  await page.waitForTimeout(500)
+  expect(after!, "auto-scroll must move the grid at the bottom edge").toBeGreaterThan(
+    (before?.top ?? 0),
+  )
+})

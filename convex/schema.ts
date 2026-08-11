@@ -421,7 +421,81 @@ export default defineSchema({
     // Debounce latch for the on-write hook (scheduleAirtableSync): one
     // pending sync at a time, cleared when that sync starts.
     syncScheduled: v.optional(v.boolean()),
+    // EXPERIMENTAL inbound sync (HISTORY.md 61). Off unless the organizer
+    // opts in. When on, the sync run also PULLS the Status column back —
+    // scoped to that one field, guarded against echoes, and our DB always
+    // wins a genuine conflict. See convex/lib/airtableInbound.ts.
+    twoWaySync: v.optional(v.boolean()),
+    // Outcome of the last pull, so the Integrations card can be honest about
+    // what came back rather than silently swallowing skips.
+    inbound: v.optional(
+      v.object({
+        at: v.number(),
+        applied: v.number(),
+        skipped: v.number(),
+        conflicts: v.number(),
+      }),
+    ),
   }).index("by_eventId", ["eventId"]),
+
+  // Per-submission mirror state for the two-way sync. Separate from
+  // `submissions` on purpose: it is high-churn integration bookkeeping that
+  // must never contend with the product row, and it disappears cleanly when
+  // the integration does.
+  //
+  // `lastPushedStatus` is the whole loop guard. It records the value WE last
+  // wrote into Airtable, which lets one comparison answer both questions the
+  // inbound path has to get right: "is this Airtable value just our own echo
+  // coming back?" (airtable === lastPushed) and "did our side change since
+  // the mirror was written?" (current !== lastPushed ⇒ conflict, we win).
+  airtableRecordSync: defineTable({
+    eventId: v.id("events"),
+    submissionId: v.id("submissions"),
+    lastPushedStatus: v.optional(v.string()),
+    lastPushedAt: v.optional(v.number()),
+    lastPulledStatus: v.optional(v.string()),
+    lastPulledAt: v.optional(v.number()),
+    /** Airtable's own LAST_MODIFIED_TIME for the record, as an ISO string. */
+    lastPulledModifiedTime: v.optional(v.string()),
+  })
+    .index("by_submissionId", ["submissionId"])
+    .index("by_eventId", ["eventId"]),
+
+  // ——— Audit log (sbek CNT-11) ———————————————————————————————————————————
+  // One append-only row per meaningful change, with attribution. Deliberately
+  // NOT a versioning system: swyx's instinct was that full restore is overkill
+  // for v1, so this answers "who changed what, when" and nothing more.
+  //
+  // `eventId` is absent for workspace-level rows (API-key lifecycle), which is
+  // why `organizationId` — always known — is the one required scope. Both the
+  // event feed and the workspace feed read from their own index.
+  auditLog: defineTable({
+    organizationId: v.id("organizations"),
+    eventId: v.optional(v.id("events")),
+    // organizer | speaker | mcp | api | system
+    actorType: v.string(),
+    // Human attribution: a name, an email, "MCP · set_submission_status ·
+    // sb_live_1a2b3c4d", "Airtable sync". Never a raw id.
+    actorLabel: v.string(),
+    // submission | form | session | speaker | agenda | settings | api-key
+    entity: v.string(),
+    /** Stringified doc id (or a stable key like the event id for settings). */
+    entityId: v.string(),
+    // status_changed | created | updated | deleted | scheduled | published |
+    // decision_committed | sync_conflict | …
+    action: v.string(),
+    /** One human sentence: "Status changed Pending → Accepted". */
+    summary: v.string(),
+    /** Small structured payload (previous/next values, receipts). */
+    meta: v.optional(v.record(v.string(), v.any())),
+  })
+    .index("by_organizationId", ["organizationId"])
+    .index("by_eventId", ["eventId"])
+    .index("by_eventId_and_entity_and_entityId", [
+      "eventId",
+      "entity",
+      "entityId",
+    ]),
 
   // ——— Public REST API (convex/apiV1.ts + convex/webhooks.ts) ——————————————
 

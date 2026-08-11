@@ -77,10 +77,11 @@ async function scheduleViaPopover(
   title: string,
   { startIndex = 0, roomIndex = 0 }: { startIndex?: number; roomIndex?: number } = {},
 ) {
-  await page
-    .getByRole("button", { name: new RegExp(`${escape(title)}`, "i") })
+  const trigger = page
+    .getByRole("button", { name: new RegExp(escape(title), "i") })
     .first()
-    .click()
+  await expect(trigger).toBeVisible({ timeout: 30_000 })
+  await trigger.click()
   const room = page.getByLabel("Room", { exact: true }).first()
   await expect(room).toBeVisible({ timeout: 20_000 })
   await room.click()
