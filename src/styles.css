@@ -358,12 +358,68 @@
 .copilot-prose [data-streamdown="inline-code"] {
     @apply rounded-[0.25rem] bg-muted/60 px-1 py-0 font-mono text-[0.875em] text-foreground;
 }
+/*
+ * LISTS OWN THEIR GEOMETRY HERE — do not delegate it to Streamdown (Marko,
+ * 2026-08-12: "pressed against the panel border… weird double enumerating").
+ *
+ * Streamdown ships `<ol class="list-inside list-decimal … [li_&]:pl-6">`, but
+ * those are TAILWIND SOURCE CLASSES INSIDE node_modules, and Tailwind v4's
+ * automatic source detection skips node_modules — so `list-inside` and
+ * `[li_&]:pl-6` were never compiled into our bundle at all. (`list-disc` /
+ * `list-decimal` only survived by luck: our own src/ uses them elsewhere.)
+ * What actually rendered was preflight's `padding: 0` plus the UA default
+ * `list-style-position: outside`, which paints the marker in a ZERO-WIDTH
+ * margin — i.e. the "1." and the bullets hung to the LEFT of the transcript's
+ * own padding, flush against (and partly under) the side panel's border, with
+ * wrapped lines starting under the marker instead of under the text. That
+ * hanging stub beside a bolded lead-in is the "double enumeration" — there is
+ * only ever one marker in the DOM, it was just drawn outside the column.
+ *
+ * So: state the geometry explicitly, in the one place the chat's typography
+ * lives, and it holds whether or not Streamdown's own classes ever compile.
+ * `outside` (not `inside`) is the deliberate choice — a wrapped line must
+ * indent under the TEXT, not under the number — paid for with real
+ * padding-inline-start so the marker sits INSIDE the message column.
+ */
 .copilot-prose [data-streamdown="unordered-list"],
 .copilot-prose [data-streamdown="ordered-list"] {
-    @apply my-0.5;
+    @apply my-1.5 ps-5;
+    list-style-position: outside;
+}
+.copilot-prose [data-streamdown="unordered-list"] {
+    list-style-type: disc;
+}
+/* Wider gutter: two-digit markers ("10.") are right-aligned to the text edge
+   and would otherwise reach back past the padding. */
+.copilot-prose [data-streamdown="ordered-list"] {
+    @apply ps-6;
+    list-style-type: decimal;
 }
 .copilot-prose [data-streamdown="list-item"] {
-    @apply py-0.5;
+    @apply py-0;
+}
+.copilot-prose
+    [data-streamdown="list-item"]
+    + [data-streamdown="list-item"] {
+    @apply mt-1.5;
+}
+.copilot-prose [data-streamdown="list-item"]::marker {
+    @apply text-muted-foreground;
+}
+/*
+ * Streamdown forces `li > p` inline so an `inside` marker keeps its item on
+ * one line. With the marker `outside` that hack only glues sibling paragraphs
+ * of a loose list together; blocks are blocks again.
+ */
+.copilot-prose [data-streamdown="list-item"] > p {
+    display: block;
+}
+.copilot-prose [data-streamdown="list-item"] > p + p,
+.copilot-prose [data-streamdown="list-item"] > [data-streamdown="ordered-list"],
+.copilot-prose
+    [data-streamdown="list-item"]
+    > [data-streamdown="unordered-list"] {
+    @apply mt-1.5 mb-0;
 }
 .copilot-prose [data-streamdown="table-cell"],
 .copilot-prose [data-streamdown="table-header-cell"] {

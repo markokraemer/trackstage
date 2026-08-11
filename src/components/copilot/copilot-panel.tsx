@@ -140,11 +140,17 @@ export function CopilotPanel() {
             (2026-08-11). An inline style beats both, whatever the class order.
           */
           style={{ width: `min(100vw, ${width}px)`, maxWidth: "100vw" }}
-          className="flex w-full flex-col gap-0 p-0 sm:max-w-none"
+          /*
+            `[&>[data-slot=sheet-close]]:right-5` pulls SheetContent's own
+            close button onto the panel's 20px gutter — header, transcript and
+            composer all start and end on the same line, which is the whole
+            point of a single gutter (Marko, 2026-08-12).
+          */
+          className="flex w-full flex-col gap-0 p-0 sm:max-w-none [&>[data-slot=sheet-close]]:right-5"
         >
           <ResizeHandle width={width} />
 
-          <header className="flex shrink-0 items-center gap-2 border-b border-border px-4 py-3">
+          <header className="flex shrink-0 items-center gap-2 border-b border-border px-5 py-3">
             <span
               aria-hidden
               className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary"

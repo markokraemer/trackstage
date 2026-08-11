@@ -2819,3 +2819,36 @@ Verified in-browser: land → widget visible immediately, toggle → iframe URL
 gains `hideSearch=true` live, Code → snippet + copy receipt, saved row → whole
 config restored, 390px stacks with no horizontal scroll. crawl (both embeds
 routes) and the `?embed=1` public-page spec green.
+
+## 2026-08-12 — Copilot lists were rendering outside their own column
+
+Marko, on two side-panel screenshots: numbered and bulleted lists "pressed
+against" the panel border with no spacing, and the numbered list reading as
+"weird double enumerating". Root cause was not double markers — the DOM has
+exactly one `<li>` per item and no `::before` counters anywhere (verified with
+`getComputedStyle(li, "::before")` on every item, all `none`). It was that
+**Streamdown's list classes never compiled**: it ships
+`<ol class="list-inside list-decimal … [li_&]:pl-6">`, but those are Tailwind
+source classes living in `node_modules`, which Tailwind v4's automatic source
+detection skips. `list-disc`/`list-decimal` survived only because our own `src/`
+happens to use them; `list-inside` and `[li_&]:pl-6` were simply absent. What
+shipped was preflight's `padding: 0` plus the UA default `list-style-position:
+outside` — the marker painted into a ZERO-WIDTH margin, i.e. to the left of the
+transcript's own 16px padding, flush against the panel border, with wrapped
+lines starting under the marker instead of under the text. A number hanging in
+the gutter beside a bolded lead-in is what read as a second enumeration.
+
+Fix: `.copilot-prose` now states the list geometry itself (styles.css) instead
+of delegating it — `outside` markers paid for with real `padding-inline-start`
+(24px ol / 20px ul), muted marker colour, 6px between items, `li > p` a block
+again (Streamdown forces it inline only to keep an `inside` marker on one
+line), and explicit nested-list spacing. It holds whether or not Streamdown's
+own classes ever compile. Second: ONE gutter across both surfaces — the panel
+was 16px transcript / 12px composer / 16px header, the page 24px; everything is
+20px now, including SheetContent's close button, so prose, list markers, tool
+cards and the composer all start on the same line. Verified at 380px, 648px
+and full page with an identical reply (before/after by re-injecting the old
+geometry over the same message). 299/299 renderer tests green. Known follow-up:
+other Streamdown utilities (code blocks, `not-prose`, some washes) are still a
+lottery for the same node_modules reason — `@source "…/streamdown/dist"` would
+settle it wholesale.

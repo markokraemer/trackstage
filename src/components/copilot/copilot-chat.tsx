@@ -209,9 +209,15 @@ export function CopilotChat({
             // then truncates" defect from Marko's screenshots. A transcript
             // row must never pay for its neighbours' height.
             "flex min-h-full flex-col gap-5 *:shrink-0",
+            // ONE GUTTER, BOTH SURFACES: 20px of inner padding either side,
+            // matching the composer below and (in the panel) the header above,
+            // so prose, list markers and tool cards all start on the same
+            // line and nothing ever touches the panel border (Marko,
+            // 2026-08-12 — the panel used 16px here and 12px on the composer).
             // Extra tail room so a finished reply sits comfortably clear
             // of the composer instead of kissing the fade.
-            isPage ? "p-6 pb-10" : "p-4 pb-8",
+            "px-5",
+            isPage ? "pt-6 pb-10" : "pt-4 pb-8",
             columnClass
           )}
         >
@@ -318,7 +324,8 @@ export function CopilotChat({
           // Page: the composer floats in the SAME centered column as the
           // conversation — no full-width tinted bar disconnecting the two
           // (Marko, 2026-08-11). Panel keeps its compact docked strip.
-          isPage ? "px-6 pt-2 pb-5" : "border-t border-border bg-card p-3"
+          "px-5",
+          isPage ? "pt-2 pb-5" : "border-t border-border bg-card py-3"
         )}
       >
         <div className={cn("space-y-2", columnClass)}>
