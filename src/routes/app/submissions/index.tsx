@@ -49,6 +49,7 @@ import type {
 } from "@/components/submissions/submissions-table"
 import { AddSubmissionDrawer } from "@/components/submissions/add-submission-drawer"
 import { SubmissionDetailDrawer } from "@/components/submissions/submission-detail-drawer"
+import { useCurrentEvent } from "@/lib/current-event"
 import {
   STATUS_TABS,
   TAB_EMPTY_COPY,
@@ -116,8 +117,7 @@ function SubmissionsPage() {
   const [busy, setBusy] = useState(false)
 
   // ——— Data ————————————————————————————————————————————————————————————
-  const { data: events } = useQuery(convexQuery(api.events.list, {}))
-  const event = events?.[0]
+  const { event, isEmpty: hasNoEvent } = useCurrentEvent()
   const eventId = event?._id
   const eventArgs = eventId ? { eventId } : "skip"
 
@@ -293,7 +293,7 @@ function SubmissionsPage() {
   }
 
   // ——— No event yet ————————————————————————————————————————————————————
-  if (events && !event) {
+  if (hasNoEvent) {
     return (
       <div className="flex flex-col gap-6">
         <PageHeader

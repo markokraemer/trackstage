@@ -1073,13 +1073,273 @@ toolbars, 2–4px radii, jQuery architecture. Nor `Playfair Display`. Nor the fo
 
 ## 9. Juicebox — secondary feel/brand candidate
 
-<!-- JUICEBOX -->
+AI people-search / recruiting (juicebox.ai). Marko: *"rip the entire feel and brand in the deepest
+form."* Mobbin 403'd, but something better was available: the **logged-in app's CSS bundles at
+`app.juicebox.ai/_next/static/chunks/*.css` are served unauthenticated** — a complete shadcn/Tailwind
+v4 token set from a product that solved the exact problem we have. Marketing values come from the
+Framer HTML's inline CSS.
+
+### (a) The feel, in one paragraph
+
+Juicebox reads as **"Swiss-neutral publication that happens to be software."** The entire marketing
+surface is built out of a **purple-tinted gray** — never a true gray, never a blue-gray — set in
+**Neue Haas Grotesk** (real Helvetica, not Inter) at −0.02em tracking, punctuated by **DM Mono** for
+numbered section labels (`[01] DISCOVERY`, `[02] CORE FEATURES`). The brand purple exists and it is
+*loud* when it appears — but it appears about four times per page. Counting hexes on the homepage:
+the mauve neutral ramp occurs **~110 times**; the brand purple `#6A2F8D` occurs **4 times**. On the
+pricing page it's 15 mauve vs 2 purple. **That ratio is the brand.** The colour doesn't come from
+chrome — chrome is monochrome — it comes from *content*: an avatar, a highlighted matched phrase, a
+categorical tag. Corporate discipline, zero corporate boredom, because the "gray" is secretly a
+colour.
+
+### (b) Concrete stealable patterns
+
+**The marketing neutral ramp.** Every "gray" satisfies R = B > G — a desaturated mauve, at CIELAB
+chroma ~1.9:
+
+| Hex | Role |
+| --- | --- |
+| `#0D080D` | deepest ink |
+| `#1D161D` | primary text |
+| `#574E57` | secondary text |
+| `#786C78` | **the most-used colour on the entire site** — muted text |
+| `#A89EA8` | tertiary / placeholder |
+| `#D6D1D6` / `#E7E4E7` | border / divider |
+| `#F8F6F8` | surface |
+| `#FAF9FA` | page background |
+
+**The app abandons the mauve entirely and goes fully achromatic** — this divergence is deliberate and
+is itself the lesson. Fonts switch to Geist/Geist Mono; neutrals become Tailwind `neutral-*` at
+**chroma exactly 0.0**; `--radius: 0.625rem`. The shipped light-mode tokens, verbatim:
+
+```
+--background:#fff   --card:#fff   --popover:#fff   --foreground:#0a0a0a
+--muted:#f5f5f5     --muted-foreground:#737373
+--border:#e5e5e5    --input:#e5e5e5    --ring:#737373        ← NEUTRAL FOCUS RING
+--accent:#f5f5f5    --accent-foreground:#171717              ← NEUTRAL HOVER TOKEN
+--primary:#750bcc   --primary-foreground:#faf7fe
+--primary-surface:#f7f3ff  --primary-surface-hover:#ece3fc  --primary-border:#d8c8f3
+--sidebar:#fafafa   --sidebar-border:#e5e5e5   --sidebar-accent:#f5f5f5
+--sidebar-primary:#9336ea  --sidebar-ring:#737373
+--success:#319751   --success-surface:#e8fbeb   --success-border:#b2e7bc
+--warning:#c48300   --warning-surface:#fff7e2   --warning-border:#f9daa1
+--destructive:#df2225  --destructive-surface:#fff1f1  --destructive-border:#ffbdba
+--chart-1..5: #d9b5ff → #c182fc → #a957f7 → #9336ea → #8022d1
+```
+
+**The two decisive lines are `--ring:#737373` and `--accent:#f5f5f5`.** In stock shadcn both are
+brand-tinted — and `--accent` is the token behind every dropdown-item hover, table-row hover, and
+sidebar selection. Juicebox neutralized both. Brand purple survives only in `--primary`,
+`--sidebar-primary`, links, and the `primary-surface / -hover / -border` trio.
+
+Ranked transferable moves:
+
+1. **Neutralize `--ring` and `--accent`.** Single highest-leverage change; it's the same conclusion
+   Cal.com reached independently (`--ring: neutral-400`).
+2. **Adopt the five-part semantic token shape**: `{name}` / `{name}-foreground` / `{name}-surface` /
+   `{name}-surface-hover` / `{name}-border`, applied identically to primary/success/warning/destructive.
+   This is exactly the structure our `StatusPill` system wants, and it generalizes for free.
+3. **Pick a tint direction and commit, but keep chroma ≤ 2.** Juicebox's mauve is chroma ~1.9 —
+   enough to feel authored, not enough to read as coloured. (Reference: `neutral-200` = 0.0,
+   `stone-200` = 0.9, `zinc-200` = 1.6, **`slate-200` = 4.6 — over the line**.)
+4. **Let marketing and app diverge deliberately.** Tinted neutrals + a display grotesk on the landing;
+   achromatic + a workhorse sans in the app. Data-dense surfaces get zero hue.
+5. **Accent budget ~3% of coloured pixels.** Enforce it literally by counting.
+6. **Mono for structure, not just code** — `[01] DISCOVERY` eyebrows, table metadata, IDs, timestamps.
+   Cheap, and instantly "corporate but not boring".
+7. **Small radii + one near-invisible shadow.** Marketing radii are 3/4/5/6px; the app is 10px. There
+   is exactly **one** shadow on the whole marketing site, used 22 times:
+   `0px 4px 4px 0px rgba(0,0,0,0.05)`. Hairline borders do the separating, not elevation.
+8. **Single-hue chart ramp** (`#d9b5ff → #8022d1`) instead of a rainbow — our `--chart-1..5` is
+   currently two blues plus green/amber/gray.
+9. **Categorical tags generated from one recipe rotated around the hue wheel** — note the identical
+   structure of `#2F8D6E` / `#2F878D` / `#6A2F8D`: same lightness and chroma, hue stepped. Guarantees
+   track colours never fight each other. → directly applicable to `track-color-picker.tsx`.
+10. **Product screenshots: real UI, cropped, slightly tilted, soft shadow. No fake browser chrome.**
+    → our `product-shot.tsx`.
+
+Page structure, for the landing: hero (*"Win the talent war."*) → live candidate carousel →
+mono-numbered sections `[01]…[04]` → tilted screenshots → 41-logo integration wall → customer stories
+→ FAQ. Typography: weights 400/500 do ~85% of the work; `-0.02em` default tracking, `+0.02em` on
+mono/eyebrow labels. Motion is nearly absent — one `transition: color .15s`, no scroll-jacking.
+
+### (c) What NOT to take
+
+- **`#0099FF` is a red herring.** It appears 257 times in their source, but every instance is
+  `--framer-link-text-color: rgb(0,153,255)` — Framer's stock default. Not a brand colour. (Same class
+  of mistake as Sessionize inheriting Inspinia's teal.)
+- **The novelty faces** — `Patrick Hand`, `Neucha`, `Fragment Mono` each appear once for texture.
+  Charming on a recruiting site, wrong for us.
+- **Purple itself.** The *discipline* transfers; the hue doesn't — see §10.
+- **The 3–6px marketing radii inside the app.** Their own app uses 10px, and so should ours; our
+  `--radius: 0.5rem` is already right.
+- **Marketing-grade tinted neutrals in the app.** Juicebox explicitly doesn't do this. Our organizer
+  app goes achromatic; the landing may carry the tint.
 
 ---
 
 ## 10. Accent colour direction
 
-<!-- ACCENT -->
+Marko wants a distinctive non-blue accent: *"turquoise maybe, not turquoise, something like that."*
+All contrast figures below are **computed**, not estimated — WCAG 2.x relative luminance
+(`0.2126R + 0.7152G + 0.0722B` on linearized sRGB), ratio `(L₁+0.05)/(L₂+0.05)` — and separation is
+measured as **CIELAB hue angle + ΔE76**, because HSL hue distance is actively misleading in the
+teal/green region.
+
+### (a) Quantifying the actual problem
+
+The blue is not only in `--primary`. Measuring our current `src/styles.css` tokens as CIELAB chroma
+(0 = truly achromatic; >3 reads visibly tinted on a light surface):
+
+| Token | Hex | Chroma | |
+| --- | --- | --- | --- |
+| `--ring` | `#2f5ce0` | **78.3** | brand blue on every focus ring |
+| `--accent-foreground` | `#1e3fa8` | **66.0** | |
+| `--muted-foreground` | `#64748b` | **14.5** | slate-500 — *all* secondary text |
+| `--status-gray-fg` | `#475569` | **13.3** | |
+| `--status-gray-dot` | `#94a3b8` | **12.6** | |
+| `--sidebar-accent` | `#e4ebfc` | **9.1** | |
+| `--foreground` | `#1b1e27` | **6.7** | **even the black is blue** |
+| `--accent` | `#eef1fc` | **5.7** | fires on every row/menu hover |
+| `--sidebar-border` | `#e2e8f0` | **4.6** | |
+| `--input` | `#dfe3ea` | **3.9** | |
+
+**Swapping `--primary` alone will not fix this.** Ten tokens carry the blue independently, and the
+`--accent` / `--sidebar-accent` pair is the worst offender because it fires on every hover in a dense
+table. This is exactly Linear's documented diagnosis — the accent hue leaking into the derived
+neutrals — and Juicebox's exactly-two-line fix.
+
+### (b) Where the field actually puts its accent
+
+| Product | Accent | Neutral base | Where accent is permitted |
+| --- | --- | --- | --- |
+| **Attio** | `#266df0`, hover `#215bc4` | cool slate (`#6f7988`, `#8f99a8`, whites `#e4e7ec`) | **The broadest in the set** — verified in `app.attio.com/web-assets/main.bundle.*.css`: `--internal-color-focus-ring:#266df04d`, link foreground, accent stroke, plus **alpha washes `#266df01a` / `#266df00d`** on row hover and selection. It earns the breadth by using *alpha washes*, never solid brand fills. Separate categorical tag palette (`#00b5e6`, `#0fc27b`, `#ff5b59`, `#ab92f1`) for record fields. |
+| **Stripe** | Blurple `#635BFF` | near-black/gray | On marketing, almost entirely inside **gradients**, not flat fills. In-dashboard: primary button, active nav, links, focus ring. |
+| **Vercel** | `#0070f3` | **pure achromatic** (`#f2f2f2 … #1a1a1a`, R=G=B) | Links, primary buttons, focus rings, active states. Explicitly nothing else. |
+| **Linear** | `#5E6AD2` / `#7170FF` | cool near-mono (`#232326`, `#F4F5F8`) | CTAs and active/selected only. |
+| **Cal.com** | **black is the accent** (`#141414`) | true grayscale by policy | Chromatic colour essentially absent. |
+| **Clay** | primary action **black**; `#0382f7` demoted to *secondary* accent | **warm "oat"** `#fffcfa → #f9f8f6` | Buttons black; fruit-named categorical palette for tags only. |
+| **Ramp** | chartreuse `#E4F222` | warm off-white | "Only where money moves" — CTAs, live counters, active states. |
+| **Arc** | `#3139FB` | **cream `#FFFCEA`** — "paper rather than screen" | User-customizable; blue is just the default. |
+| **Retool** | `#003DA5` | warm `#E9EAE7` | Primary actions and links. |
+| **Notion** | none fixed | pure black/white/`#787774` | Colour is user-generated only; chrome stays achromatic. |
+| **Juicebox** | `#750bcc` app / `#6A2F8D` marketing | achromatic app / mauve marketing | `--primary`, `--sidebar-primary`, links, `primary-surface` trio. ~3% of pixels. |
+| **Raycast** | `#FF6363` | adapts to macOS chrome | Brand mark; UI neutral-first. |
+
+Three conclusions:
+
+1. **Nearly every one of these is blue or indigo** — `#266df0`, `#635BFF`, `#0070f3`, `#5E6AD2`,
+   `#0382f7`, `#003DA5`, `#3139FB`. A non-blue accent is **genuinely differentiating** in this
+   category, not just a personal preference.
+2. The consensus rule is **accent confined to primary buttons + links + focus ring + active nav**;
+   structural chrome stays neutral. Attio is the deliberate exception and it earns it with alpha
+   washes.
+3. **Neutral hue is the real personality lever**, not the accent — Attio/Vercel/Linear cool-or-
+   achromatic; Arc/Clay/Retool/Ramp warm. Nobody in this set gets their character from the accent.
+
+### (c) Candidates — computed, not guessed
+
+| # | Name | Hex | Button fill, white text (≥4.5) | Link on `#FCFCFC` (≥4.5) | LAB hue | Chroma |
+| --- | --- | --- | --- | --- | --- | --- |
+| 1 | **Petrol** | `#0F6E70` | **6.03** ✅ | **5.87** ✅ | 199 | 26 |
+| 2 | **Verdigris** | `#127C74` | **5.05** ✅ | **4.92** ✅ | 187 | 30 |
+| 3 | **Peacock** | `#0E7490` | **5.36** ✅ | **5.22** ✅ | 234 | 28 |
+| 4 | **Jade** | `#0D7A5F` | **5.29** ✅ | **5.16** ✅ | 169 | 36 |
+| 5 | **Petrol-slate** | `#2A6F7A` | **5.75** ✅ | **5.60** ✅ | 215 | 22 |
+| 6 | **Ink-teal** | `#0B5C63` | **7.71** ✅ | **7.51** ✅ | 208 | 22 |
+| 7 | **Terracotta** *(wildcard)* | `#B4522F` | **5.01** ✅ | **4.89** ✅ | 46 | 54 |
+
+All seven pass AA on both tests. For contrast, the obvious pick `teal-600 #0D9488` scores only
+**3.74** and **fails outright as a button fill** — rule it out.
+
+### (d) The status-collision test — the constraint that decides it
+
+An events tool has a green "Accepted", an amber "Pending", and a red "Declined". An accent that reads
+as a status is disqualifying. Threshold: <25° = high risk, 25–45° = related-but-readable, >45° =
+clearly a different family.
+
+| Candidate | vs green `#15803D` | vs amber `#B54708` | vs red `#B42318` | Verdict |
+| --- | --- | --- | --- | --- |
+| Petrol `#0F6E70` | **52°** / ΔE 42 | 148° | 161° | ✅ safe |
+| Verdigris `#127C74` | **40°** / ΔE 35 | 136° | 149° | ⚠️ borderline |
+| Peacock `#0E7490` | 87° | 177° | 163° | ✅ safe — but see below |
+| Jade `#0D7A5F` | **21°** / ΔE 23 | 117° | 131° | ❌ **FAILS** |
+| Petrol-slate `#2A6F7A` | 68° | 164° | 177° | ✅ safe |
+| Ink-teal `#0B5C63` | 61° | 157° | 170° | ✅ safe |
+| Terracotta `#B4522F` | 101° | **6°** / ΔE 15 | **8°** / ΔE 20 | ❌❌ **FAILS HARD** |
+
+- **Jade fails** — 21° from "accepted" green. A jade primary button next to green accepted pills reads
+  as one family.
+- **Terracotta fails catastrophically** — 6° from amber *and* 8° from red. It collides with two
+  statuses at once. The wildcard is dead; the maths killed it.
+- **Peacock passes the status test but fails the brief** — at LAB hue 234 it's cyan-blue and moves
+  only **60°** from `#2F5CE0`, the least escape of any candidate. It risks re-reading as "blue",
+  which is the entire problem being solved.
+
+Distance from the blue we're escaping (`#2F5CE0`, LAB hue 294): Verdigris 107°, Petrol 95°, Ink-teal
+86°, Petrol-slate 79°, Peacock 60°.
+
+### (e) ⚠️ Blocking finding: our "green" is emerald, and it will collide
+
+**`--status-green-*` is not green — it's emerald**, which is teal-leaning and fights *any* teal accent:
+
+| Current token | Hex | LAB hue | Sep. vs Petrol | vs Verdigris |
+| --- | --- | --- | --- | --- |
+| `--status-green-fg` | `#065f46` | 166 | **33°** ⚠️ | **21°** ❌ |
+| `--status-green-dot` | `#059669` | 162 | **37°** ⚠️ | **25°** ❌ |
+| `--status-green-bg` | `#d1fae5` | 162 | 38° ⚠️ | 25° ❌ |
+
+**Fix, non-optional if we go teal:** move the status green from emerald to **true green** —
+`fg #166534`, `dot #16A34A`, `bg #DCFCE7`. That lifts separation from 33° to **50°** against Petrol.
+Without it, even the winning accent is compromised.
+
+### (f) Ramp survivability
+
+Hover ×0.86, active ×0.74; surfaces at 7% / 13% / 30% mixes with white.
+
+**Petrol is the standout** — every step stays AA-compliant and the tints stay clean:
+
+```
+--primary                #0F6E70   (white text 6.03)
+--primary-hover          #0D5F60   (white text 7.44)
+--primary-active         #0B5153   (white text 9.07)
+--primary-surface        #EEF5F5
+--primary-surface-hover  #E0ECEC
+--primary-border         #B7D4D4
+   accent text on its own surface: 5.46 ✅
+```
+
+Verdigris's equivalent accent-on-surface only reaches **4.60** — passing, but with no margin. Ink-teal
+is the most robust (6.93) but at L 22% / chroma 22 it's dark and quiet, closer to "very dark neutral"
+than a brand.
+
+### (g) Recommendation
+
+**Primary: Petrol `#0F6E70`.** It wins on every measured axis. Best contrast headroom of the safe
+candidates (6.03 button / 5.87 link, comfortably clear of 4.5). 52° from green — real separation,
+extended past 50° once the emerald status green is corrected. Moves 95° from the old blue, so it will
+never be mistaken for the thing it replaced, while sitting far enough from cyan-blue (LAB hue 199 vs
+Peacock's 234) not to re-import the problem. At chroma 26 it's saturated enough to be a brand and
+restrained enough to survive at a 7% tint. And it's exactly the brief — *"turquoise maybe, not
+turquoise"*: a deep, slightly-grayed petrol that reads considered rather than tropical. Against a
+field where Attio, Stripe, Vercel, Linear, Clay, Retool and Arc are **all** blue or indigo, it's
+genuinely distinctive.
+
+**Runner-up: Verdigris `#127C74`.** Warmer, greener, more memorable as a mark, and the furthest of all
+from the old blue (107°). But it's the weaker engineering choice: 40° from status green (borderline),
+4.60 accent-on-surface (no margin), 5.05 button contrast (thinnest of the safe set). Viable only if
+the status green moves all the way to an olive-forest (`#4D7C0F`, 63° separation) — a bigger change
+than it's worth.
+
+**Drop entirely:** Jade (collides with Accepted), Terracotta (collides with Pending *and* Declined),
+Peacock (still reads blue), `teal-600 #0D9488` (fails AA as a button fill).
+
+**Whatever hue is chosen**, the structural fix comes first or the accent swap won't land: `--ring` to
+a neutral gray, `--accent` / `--sidebar-accent` to achromatic `#F5F5F5` / `#F4F4F5`,
+`--muted-foreground` off slate-500 (chroma 14.5) to `#737373` (chroma 0), and de-blue `--foreground`,
+`--input`, `--sidebar-border`, and the three `--status-gray-*` tokens. The accent is then permitted in
+exactly five places: **primary buttons, links, active sidebar item, selected-row indicator, and
+`--chart-1`.**
 
 ---
 
@@ -1099,36 +1359,39 @@ personality.
 ## 12. Synthesis — "the Sessionboard OSS look"
 
 **One paragraph.** Sessionboard OSS looks like a piece of quiet, fast, grown-up software that happens
-to be about events: an **Attio-grade neutral system** — a true/warm gray ramp with the accent hue kept
-entirely out of the derived neutrals, alpha hairlines at ~8% of the foreground instead of solid gray
-rules, elevation expressed as a lighter surface plus a 1px border rather than a shadow, and exactly
-two page backgrounds — carrying **Stripe's written colour policy** that colour is a semantic channel
-and never a decorative one, so the only saturated pixels on any screen are a status pill, a track
-chip, an agenda block's accent bar, or the single primary button in the top-right of the page header.
-Onto that we keep **Luma's public-surface proportions and plain-spoken register** (an ~820px submit
-page with a 330px meta rail, 16px inputs, name-and-email-only entry, status-sentence empty states) and
-**Notion Calendar's agenda grammar** (pale-tint block + 4px saturated left bar + saturated title text,
-hour-only gridlines, a dark now-line, red reserved for one meaning), while **Linear supplies the
-speed** — optimistic local state, skeletons shaped like their content, a 100/250/350ms motion budget,
-`transform`/`opacity` only, and nothing animated on a keypress. Our existing tokens survive almost
-intact: `--radius: 0.5rem` is already in the right register, the status ramps are already
-soft-tinted and semantic, and the shell structure from the 42 screenshots stays exactly as it is. What
-changes is the *distribution* of colour — the slate ramp becomes neutral, `--ring` stops being brand
-blue, the lavender page-header banner and the accent-tinted empty-state tiles go quiet, and one
-distinctive non-blue accent earns the few places it's allowed. And critically, **we take Attio's
-system but explicitly reject Attio's density**: 36px+ controls, comfortable table rows, 14–16px body,
-borders one contrast step darker than Vercel's aesthetic minimum — because our user is a program chair
-on a mid-range laptop in a bright hotel ballroom, not an operator living in the tool eight hours a day.
+to be about events: **Attio's system, at our density.** That means an achromatic (or barely-tinted,
+chroma ≤ 2) neutral ramp with the accent hue kept entirely out of the derived neutrals — Juicebox's
+two decisive lines, `--ring` neutral and `--accent` achromatic — alpha hairlines at ~8% of the
+foreground instead of solid gray rules, elevation as a lighter surface plus a 1px border rather than a
+shadow, and exactly two page backgrounds; all of it governed by **Stripe's written colour policy**
+that colour is a semantic channel and never a decorative one, at roughly **Juicebox's 3% accent
+budget**, so the only saturated pixels on any screen are a status pill, a track chip, an agenda
+block's accent bar, or the single primary button in the top-right of the page header. The accent
+itself is **Petrol `#0F6E70`** — a deep, slightly-grayed teal that is 95° from the blue we're
+escaping and 52° from our "Accepted" green, chosen because in a field where Attio, Stripe, Vercel,
+Linear, Clay, Retool and Arc are *all* blue or indigo, not being blue is the differentiator. Onto that
+we keep **Luma's public-surface proportions and plain-spoken register** (an ~820px submit page with a
+330px meta rail, 16px inputs, name-and-email-only entry, status-sentence empty states), **Notion
+Calendar's agenda grammar** (pale-tint block + 4px saturated left bar + saturated title text,
+hour-only gridlines, a dark now-line, red reserved for one meaning), **Stripe's settings IA and
+saved-views-as-tabs**, and **Linear's speed** — optimistic local state, skeletons shaped like their
+content, a 100/250/350ms motion budget, `transform`/`opacity` only, nothing animated on a keypress.
+Our existing tokens survive almost intact: `--radius: 0.5rem` is already right, the status ramps are
+already soft-tinted and semantic, and the shell structure from the 42 screenshots stays exactly as it
+is — what changes is the *distribution* of colour. And critically, **we take Attio's system but
+explicitly reject Attio's density**: 36px+ controls, comfortable table rows, 14–16px body, and borders
+one contrast step darker than Vercel's aesthetic minimum — because our user is a program chair on a
+mid-range laptop in a bright hotel ballroom, not an operator living in the tool eight hours a day.
 
 ### The 10 changes, ranked by impact — the rule-19 reconciliation brief
 
 | # | Change | Why it's ranked here | Touches |
 | --- | --- | --- | --- |
-| 1 | **De-blue the neutrals: retire the slate ramp.** `--background #f8fafc`, `--secondary`/`--muted` `#f1f5f9`, `--muted-foreground #64748b`, `--sidebar #f1f5f9`, `--border #e5e7eb`, `--input #dfe3ea` are all blue-tinted Tailwind *slate*, compounding a saturated `#2f5ce0` primary. Rebind every one to a true/warm neutral (zinc/stone register). This is Linear's documented fix — *"limiting how much chrome (blue in our case) was used in the calculations"* — and it alone resolves most of "too blue". | The complaint is about the **neutrals**, not the primary. Six surface tokens plus two chart tokens currently pull the same direction. Highest impact per line changed. | `src/styles.css`, then everything |
-| 2 | **Unbind `--ring`, `--chart-1/2`, `--sidebar-primary`, `--sidebar-accent` from the brand hue.** Focus ring → neutral (Cal.com ships `--ring: neutral-400`); charts → a neutral-led sequence; sidebar active state → a neutral tint with a weight/contrast change, not a blue wash. Adopt Geist's rule structurally: **every shadcn var binds to a gray step by default; colour is opt-in per component.** | Blue is currently reachable by accident on every focus, hover, selection and chart. Making neutral the *default binding* means we can't regress. | `src/styles.css`, sidebar nav, charts |
+| 1 | **De-blue the neutrals: retire the slate ramp.** `--background #f8fafc`, `--secondary`/`--muted` `#f1f5f9`, `--muted-foreground #64748b` (chroma **14.5**), `--foreground #1b1e27` (6.7 — even the black is blue), `--sidebar #f1f5f9`, `--border`, `--input`, and the three `--status-gray-*` are all blue-tinted Tailwind *slate*. Rebind every one to **chroma ≤ 2** (`neutral`/`zinc` register; Juicebox's app ships chroma exactly 0). This is Linear's documented fix — *"limiting how much chrome (blue in our case) was used in the calculations"* — and it alone resolves most of "too blue". | The complaint is about the **neutrals**, not the primary. Ten tokens carry the blue independently; `slate-200` measures chroma 4.6 against `zinc` 1.6 and Juicebox's authored mauve 1.9. Highest impact per line changed. | `src/styles.css`, then everything |
+| 2 | **Neutralize `--ring` and `--accent` — the two decisive lines.** `--ring #2f5ce0` (chroma **78**) fires on every focus; `--accent #eef1fc` / `--sidebar-accent #e4ebfc` fire on every dropdown-item hover, table-row hover and sidebar selection. Set ring → neutral gray, accent → achromatic `#F5F5F5`. Also unbind `--chart-1/2` (currently two blues) → a single-hue accent ramp, and `--sidebar-primary`. Then adopt Geist's rule structurally: **every shadcn var binds to a gray step by default; colour is opt-in per component.** | Juicebox and Cal.com independently shipped exactly this (`--ring:#737373`, `--ring: neutral-400`). Blue is currently reachable *by accident* on every focus, hover and selection — making neutral the default binding means we can't regress. | `src/styles.css`, sidebar nav, charts |
 | 3 | **Quiet the tinted chrome: `PageHeader` banner + `EmptyState` icon tile.** `PageHeader variant="banner"` is `bg-accent` + `border-primary/10` on every organizer page; `EmptyState` puts `bg-accent text-accent-foreground` behind every icon. Move both to neutral surfaces (Vercel: **two page backgrounds, total**; "Background 2 sparingly"). Keep the banner *structure* from the screenshots — just drain the lavender. | These two primitives repeat on literally every page, so they set the app's colour temperature single-handedly. Cheapest possible high-visibility win. | `src/components/shared/page-header.tsx`, `empty-state.tsx` |
-| 4 | **Pick and enforce the distinctive non-blue accent, with a written colour policy.** One accent (see §10), permitted in exactly five places: primary button, active nav item, link text, focus ring accent, and the landing hero. Write Stripe's rule into `/design-system` verbatim — *"colour is reserved for status signals"* — and audit the 183 current `bg-primary`/`text-primary`/`bg-accent`/`sidebar-accent` usages against it. | Delivers the "distinctive, not vibe-coded" half of rule 20 while the restraint policy prevents the new hue from becoming the new problem. Must land *after* #1–#3 so the accent is judged against neutral chrome. | `src/styles.css`, `design-system.tsx`, app-wide audit |
-| 5 | **Rebuild the agenda block on the Notion Calendar recipe.** Pale track-tint surface + 4px saturated left bar + **saturated title text**; solid saturated fill only while dragging/selected; one-line collapse with inline muted time below a height threshold; **hour-only gridlines** (drop the half-slot lines, and recolour the `rgba(15,23,42,…)` gradients off slate); dark now-line with red reserved for conflicts only; shingled overlap cascade so a double-booking reads as an anomaly. | The agenda is our clearest differentiator — Sessionize's grid is a CSS-override embed widget — and it's currently the densest concentration of colour in the app. | `src/components/agenda/*` |
+| 4 | **Adopt Petrol `#0F6E70` as the accent, fix the emerald status green, and write the colour policy down.** Full ramp in §10(f): `--primary #0F6E70` / hover `#0D5F60` / active `#0B5153` / surface `#EEF5F5` / surface-hover `#E0ECEC` / border `#B7D4D4`. **Blocking prerequisite:** `--status-green-*` is currently *emerald* (`#065f46` / `#059669` / `#d1fae5`), only 33° from Petrol — move it to true green (`#166534` / `#16A34A` / `#DCFCE7`) to reach 50° separation. Restructure every semantic colour on Juicebox's five-part shape (`{name}` / `-foreground` / `-surface` / `-surface-hover` / `-border`). Then permit the accent in exactly five places — primary button, link text, active sidebar item, selected-row indicator, `--chart-1` — write Stripe's rule into `/design-system` verbatim (*"colour is reserved for status signals"*), and audit the **183** current `bg-primary` / `text-primary` / `bg-accent` / `sidebar-accent` usages against it. | Delivers the "distinctive, not vibe-coded" half of rule 20 with the maths done: 6.03:1 as a button fill, 95° from the old blue, 52° from Accepted green, and distinctive in a field where Attio/Stripe/Vercel/Linear/Clay/Retool/Arc are all blue. The restraint policy is what stops the new hue becoming the new problem. Must land *after* #1–#3 so the accent is judged against neutral chrome. | `src/styles.css`, `status-pill.tsx`, `design-system.tsx`, app-wide audit |
+| 5 | **Rebuild the agenda block on the Notion Calendar recipe.** Pale track-tint surface + 4px saturated left bar + **saturated title text**; solid saturated fill only while dragging/selected; one-line collapse with inline muted time below a height threshold; **hour-only gridlines** (drop the half-slot lines, and recolour the `rgba(15,23,42,…)` gradients off slate); dark now-line with red reserved for conflicts only; shingled overlap cascade so a double-booking reads as an anomaly. Regenerate the 8-swatch track palette in `track-color-picker.tsx` from **one recipe rotated around the hue wheel** (Juicebox: same L and C, hue stepped) so track colours never fight each other — and drop `#2F5CE0` from it, since it's the old brand blue. | The agenda is our clearest differentiator — Sessionize's grid is a CSS-override embed widget — and it's currently the densest concentration of colour in the app. | `src/components/agenda/*` |
 | 6 | **One container-width system.** Rule 20(e), and it's real: `max-w-5xl`(9), `max-w-2xl`(8), `max-w-6xl`(4), `max-w-7xl`(2), plus one-offs. Adopt three named widths — **app 1200px / wide 1400px / public 820px** (Vercel + Luma) — as tokens or a `<PageContainer>` wrapper, with a 64px header and 24px gutters. Public surfaces get 820px with Luma's 330px meta rail. | Inconsistent widths are the loudest "assembled by different agents" tell, and this is exactly what rule 19 exists to fix. Mechanical, verifiable, no judgement calls. | every route |
 | 7 | **Upgrade the submissions table to the Stripe list pattern.** Status tabs **with counts** as the primary filter (All / Pending / Accept Queue / Decline Queue / Accepted / Declined / Withdrawn) → **saved views join that same tab row**, drag-orderable, `⋯` on hover → Attio's three-way save (**Save for everyone / Save as new view / Discard changes**) → default filter chips below, "More filters" grouped → Edit columns → Export honouring the current filter → **filter state in the URL**. Filter grammar stays plain English (*is / is not / includes any / before / after*); boolean nesting hides behind "Convert to advanced condition". | The chair's real workflow is three saved tabs ("my review queue", "needs a second reviewer", "accepted, awaiting confirmation"). URL-shareable filters matter more to organizers than to Stripe's users — they live in Slack and email. | `src/components/submissions/*`, `data-toolbar.tsx` |
 | 8 | **Standardize the feedback + empty-state vocabulary.** Four components, delineated: **Note** (inline, 1–2-word Title Case label, one active-voice sentence), **Banner** (page-level, CTA required), **Toast** (`{Noun} {past-participle}`, sentence case, no period, **never "successfully"**, ≤30 chars), **Modal** (destructive confirmation only). Empty states get the Stripe formula — title ends with a period, description <14 words explaining *when* data appears, action in call-and-response with the title, **never "Get started"** — plus the mandatory **two variants** (never-had-data vs filtered-to-zero, the latter quoting the query and offering Clear filters). Render order: **loading → error → empty → content**. | Copy and feedback drift is the second-loudest per-agent tell after layout drift, and it's what makes software feel unserious to a non-technical buyer. Also directly improves the sbek browser-agent's ability to navigate. | `empty-state.tsx`, all toasts/alerts, all list routes |

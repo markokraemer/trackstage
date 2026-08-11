@@ -70,6 +70,15 @@ export default defineSchema({
     prefix: v.string(), // e.g. "sb_live_1a2b3c4d" — safe to display
     createdAt: v.number(),
     lastUsedAt: v.optional(v.number()),
+    // "copilot" marks the ONE server-managed loopback key the in-app AI
+    // copilot uses to talk to our own MCP endpoint on the user's behalf
+    // (src/routes/api/chat.ts). Absent/undefined = an ordinary personal key.
+    kind: v.optional(v.string()),
+    // Only ever set for kind === "copilot": the server has to be able to
+    // present the key again on every chat turn, so it cannot be write-only
+    // like a personal key. Never returned by `list`, never shown in the UI,
+    // and its blast radius equals the signed-in session that minted it.
+    secret: v.optional(v.string()),
   })
     .index("by_keyHash", ["keyHash"])
     .index("by_userId", ["userId"]),

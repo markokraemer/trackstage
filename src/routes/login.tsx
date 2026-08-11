@@ -26,12 +26,29 @@ export interface LoginSearch {
   redirect?: string
 }
 
+/**
+ * The MCP OAuth flow (Claude / ChatGPT "add connector by URL") sends people
+ * here when they hit /api/auth/mcp/authorize without a session, passing the
+ * OAuth request along as query params. Signing in IS the consent step, so
+ * once they're in we hand them straight back to the authorize endpoint with
+ * the original request intact and the flow continues to the redirect_uri.
+ */
+function oauthReturnTo(search: Record<string, unknown>): string | undefined {
+  if (typeof search.client_id !== "string" || !search.client_id) return undefined
+  if (search.response_type !== "code") return undefined
+  const params = new URLSearchParams()
+  for (const [key, value] of Object.entries(search)) {
+    if (typeof value === "string") params.set(key, value)
+  }
+  return `/api/auth/mcp/authorize?${params.toString()}`
+}
+
 export const Route = createFileRoute("/login")({
   validateSearch: (search: Record<string, unknown>): LoginSearch => ({
     redirect:
       typeof search.redirect === "string" && search.redirect.startsWith("/")
         ? search.redirect
-        : undefined,
+        : oauthReturnTo(search),
   }),
   component: LoginPage,
 })
@@ -49,15 +66,25 @@ function LoginPage() {
   const [pending, setPending] = useState(false)
 
   const goToApp = () => {
-    if (redirectTo) navigate({ href: redirectTo })
-    else navigate({ to: "/app" })
+    if (!redirectTo) {
+      navigate({ to: "/app" })
+      return
+    }
+    // /api/* targets (the MCP OAuth authorize endpoint) are server routes —
+    // they need a real navigation, not a client-side route transition.
+    if (redirectTo.startsWith("/api/")) window.location.href = redirectTo
+    else navigate({ href: redirectTo })
   }
 
   // Already signed in? Don't make them do it twice.
   useEffect(() => {
     if (!isAuthenticated) return
-    if (redirectTo) navigate({ href: redirectTo })
-    else navigate({ to: "/app" })
+    if (!redirectTo) {
+      navigate({ to: "/app" })
+      return
+    }
+    if (redirectTo.startsWith("/api/")) window.location.href = redirectTo
+    else navigate({ href: redirectTo })
   }, [isAuthenticated, redirectTo, navigate])
 
   const onSubmit = async (event: React.FormEvent<HTMLFormElement>) => {

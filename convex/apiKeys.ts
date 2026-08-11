@@ -45,6 +45,51 @@ export function keyPrefix(key: string): string {
   return key.slice(0, KEY_PREFIX.length + DISPLAY_CHARS)
 }
 
+/** Marks the single server-managed key the AI copilot authenticates with. */
+const COPILOT_KIND = "copilot"
+const COPILOT_KEY_NAME = "AI copilot (built-in)"
+
+/**
+ * The AI copilot (src/routes/api/chat.ts) drives Sessionboard through our own
+ * MCP server rather than through a private back door, so it needs a bearer
+ * credential for the signed-in user. This mints exactly one, idempotently.
+ *
+ * Why the plaintext is stored for this one key kind: the server must re-present
+ * it on every chat turn, so a write-only hash is not an option. The trade is
+ * deliberate and bounded — the row is only reachable by the user it belongs to,
+ * it is hidden from `list`, and it grants precisely what the caller's own
+ * session already grants (the MCP server re-runs membershipFor on every tool
+ * call). Delete the row and the next chat turn mints a fresh key.
+ */
+export const ensureCopilotKey = mutation({
+  args: {},
+  returns: v.object({ key: v.string() }),
+  handler: async (ctx) => {
+    const user = await requireUser(ctx)
+    const rows = await ctx.db
+      .query("apiKeys")
+      .withIndex("by_userId", (q) => q.eq("userId", user.userId))
+      .collect()
+
+    const existing = rows.find((row) => row.kind === COPILOT_KIND)
+    if (existing?.secret) return { key: existing.secret }
+    // A copilot row without a secret can't be re-presented — replace it.
+    if (existing) await ctx.db.delete(existing._id)
+
+    const key = generateApiKey()
+    await ctx.db.insert("apiKeys", {
+      userId: user.userId,
+      name: COPILOT_KEY_NAME,
+      keyHash: await hashApiKey(key),
+      prefix: keyPrefix(key),
+      createdAt: Date.now(),
+      kind: COPILOT_KIND,
+      secret: key,
+    })
+    return { key }
+  },
+})
+
 export const create = mutation({
   args: { name: v.optional(v.string()) },
   returns: v.object({
@@ -97,6 +142,9 @@ export const list = query({
       .withIndex("by_userId", (q) => q.eq("userId", user.userId))
       .collect()
     return rows
+      // The copilot's loopback key is infrastructure, not something the user
+      // created — it would only be confusing (and revocable by accident) here.
+      .filter((row) => row.kind !== COPILOT_KIND)
       .sort((a, b) => b.createdAt - a.createdAt)
       .map((row) => ({
         keyId: row._id,

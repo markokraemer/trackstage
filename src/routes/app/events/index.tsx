@@ -1,3 +1,4 @@
+import { useState } from "react"
 import { Link, createFileRoute, useNavigate } from "@tanstack/react-router"
 import { useQuery } from "@tanstack/react-query"
 import { convexQuery } from "@convex-dev/react-query"
@@ -7,6 +8,7 @@ import {
   RiArrowRightLine,
   RiBuilding2Line,
   RiCalendarEventLine,
+  RiDeleteBinLine,
   RiGlobalLine,
   RiMapPin2Line,
   RiSettings3Line,
@@ -27,6 +29,7 @@ import { PageHeader } from "@/components/shared/page-header"
 import { EmptyState } from "@/components/shared/empty-state"
 import { NewEventDialog } from "@/components/settings/new-event-dialog"
 import { CopyLinkButton } from "@/components/settings/copy-link-button"
+import { DeleteEventDialog } from "@/components/settings/delete-event-dialog"
 import { publicEventUrl } from "@/components/settings/slug"
 import { useCurrentEvent } from "@/lib/current-event"
 import type { EventSummary } from "@/lib/current-event"
@@ -51,7 +54,7 @@ function EventsPage() {
     <div className="flex flex-col gap-6">
       <PageHeader
         title="Events"
-        description="Every conference, summit and meetup you run. Each one keeps its own submissions, speakers and agenda — nothing is shared between them."
+        description="Every conference, summit and meetup your workspaces run. Each event keeps its own submissions, speakers and agenda — nothing is shared between them. Open one to point the whole app at it."
         actions={<NewEventDialog />}
       />
 
@@ -100,6 +103,7 @@ function EventCard({
   onOpen: (eventId: string) => void
 }) {
   const navigate = useNavigate()
+  const [deleting, setDeleting] = useState(false)
   const dates = formatZonedDateRange(
     event.startsAt,
     event.endsAt,
@@ -181,7 +185,22 @@ function EventCard({
           label="Copy link"
           size="sm"
         />
+        <Button
+          size="icon-sm"
+          variant="ghost"
+          aria-label={`Delete ${event.name}`}
+          className="ml-auto text-muted-foreground hover:text-destructive"
+          onClick={() => setDeleting(true)}
+        >
+          <RiDeleteBinLine size={15} aria-hidden />
+        </Button>
       </CardFooter>
+
+      <DeleteEventDialog
+        event={event}
+        open={deleting}
+        onOpenChange={setDeleting}
+      />
     </Card>
   )
 }

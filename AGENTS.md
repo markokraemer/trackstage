@@ -40,6 +40,7 @@ engineering and UX/UI practices.
 | --- | --- |
 | `docs/SPEC.md` | **The build spec** — IA, screens, acceptance criteria, data model |
 | `docs/reference/sbek-rubric.md` | Digest of the official eval rubric (hill-climb target) |
+| `docs/reference/design-references.md` | **Design evidence base for the rule-19 reconciliation pass** — Attio/Stripe/Luma/Notion Calendar/Cal.com/Linear/Vercel/Sessionize/Juicebox teardowns, the accent-colour analysis (Petrol `#0F6E70`), and the ranked 10-change shortlist |
 | `docs/video/transcript.md` | Full timestamped transcript of swyx's walkthrough video |
 | `docs/video/actions.md` | Chronological screen/action/requirement analysis of the video |
 | `docs/video/ui_fidelity.md` | Extra pass: layout geometry, micro-style, usability cues |

@@ -366,6 +366,133 @@ if (SITE_URL) {
   ok("SITE_URL missing — skipped HTTP API checks", false, "add VITE_CONVEX_SITE_URL to .env.local")
 }
 
+// ————— MCP server —————
+section("MCP server")
+if (SITE_URL) {
+  const MCP = `${SITE_URL}/mcp`
+  const created = await client.mutation(api.apiKeys.create, { name: "verify-suite" })
+  ok("API key created with sb_live_ prefix", /^sb_live_[0-9a-f]{32}$/.test(created.key), created.prefix)
+  const keyList = await client.query(api.apiKeys.list, {})
+  ok("key listed with display prefix only", keyList.some((k) => k.keyId === created.keyId && k.prefix === created.prefix))
+  ok("plaintext key never returned by list", !JSON.stringify(keyList).includes(created.key))
+
+  const rpc = async (method, params, key = created.key, id = 1) => {
+    const res = await fetch(MCP, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json, text/event-stream",
+        "MCP-Protocol-Version": "2025-06-18",
+        ...(key ? { Authorization: `Bearer ${key}` } : {}),
+      },
+      body: JSON.stringify({ jsonrpc: "2.0", id, method, params }),
+    })
+    return { status: res.status, headers: res.headers, body: res.status === 202 ? null : await res.json() }
+  }
+  const toolCall = async (name, args, key = created.key) => {
+    const { body } = await rpc("tools/call", { name, arguments: args }, key)
+    const text = body?.result?.content?.[0]?.text
+    return { isError: Boolean(body?.result?.isError), text, json: (() => { try { return JSON.parse(text) } catch { return null } })() }
+  }
+
+  const init = await rpc("initialize", { protocolVersion: "2025-06-18", capabilities: {}, clientInfo: { name: "verify", version: "1" } })
+  ok("initialize negotiates protocol", init.body?.result?.protocolVersion === "2025-06-18", JSON.stringify(init.body).slice(0, 160))
+  ok("initialize declares serverInfo sessionboard", init.body?.result?.serverInfo?.name === "sessionboard")
+  ok("initialize declares tools capability", !!init.body?.result?.capabilities?.tools)
+
+  const initialized = await fetch(MCP, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${created.key}` },
+    body: JSON.stringify({ jsonrpc: "2.0", method: "notifications/initialized" }),
+  })
+  ok("notifications/initialized → 202", initialized.status === 202, `status ${initialized.status}`)
+
+  const tools = await rpc("tools/list", {})
+  const toolNames = (tools.body?.result?.tools ?? []).map((t) => t.name)
+  ok("tools/list returns ≥20 tools", toolNames.length >= 20, `got ${toolNames.length}`)
+  ok("every tool has a description + inputSchema", (tools.body?.result?.tools ?? []).every((t) => t.description?.length > 20 && t.inputSchema?.type === "object"))
+  ok("core tools present", ["list_events", "get_event_summary", "commit_decision_queue", "get_agenda", "list_speakers"].every((n) => toolNames.includes(n)))
+
+  const listEvents = await toolCall("list_events", {})
+  ok("tools/call list_events returns my events", !listEvents.isError && listEvents.json?.events?.some((e) => e.slug === "ai-summit-2026"), listEvents.text?.slice(0, 120))
+
+  const summary = await toolCall("get_event_summary", { event: "ai-summit-2026" })
+  ok("get_event_summary works by slug", !summary.isError && typeof summary.json?.headline === "string")
+  ok("summary carries needsAttention + deadlines", Array.isArray(summary.json?.needsAttention) && Array.isArray(summary.json?.upcomingDeadlines))
+  const summaryById = await toolCall("get_event_summary", { event: main._id })
+  ok("event arg accepts an id too", !summaryById.isError && summaryById.json?.event?.slug === "ai-summit-2026")
+
+  const agenda = await toolCall("get_agenda", { event: "ai-summit-2026" })
+  ok("get_agenda returns scheduled + conflicts", !agenda.isError && Array.isArray(agenda.json?.scheduled) && Array.isArray(agenda.json?.conflicts))
+
+  const speakers = await toolCall("list_speakers", { event: "ai-summit-2026" })
+  ok("list_speakers returns the roster", !speakers.isError && speakers.json?.speakerCount >= 1)
+
+  const guard = await toolCall("commit_decision_queue", { event: "ai-summit-2026", queue: "accept_queue" })
+  ok("commit_decision_queue refuses without confirm:true", guard.isError && /confirm/i.test(guard.text))
+
+  const badTool = await rpc("tools/call", { name: "no_such_tool", arguments: {} })
+  ok("unknown tool → JSON-RPC error", badTool.body?.error?.code === -32602, JSON.stringify(badTool.body).slice(0, 120))
+  const badEvent = await toolCall("get_event_summary", { event: "does-not-exist" })
+  ok("unknown event → friendly tool error", badEvent.isError && /list_events/.test(badEvent.text))
+
+  const noAuth = await fetch(MCP, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "tools/list" }) })
+  ok("missing bearer → 401", noAuth.status === 401, `status ${noAuth.status}`)
+  ok("401 advertises OAuth resource metadata", (noAuth.headers.get("www-authenticate") ?? "").includes("resource_metadata"))
+  const badKey = await fetch(MCP, { method: "POST", headers: { "Content-Type": "application/json", Authorization: "Bearer sb_live_deadbeefdeadbeefdeadbeefdeadbeef" }, body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "tools/list" }) })
+  ok("invalid API key → 401", badKey.status === 401, `status ${badKey.status}`)
+
+  const badVersion = await fetch(MCP, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${created.key}`, "MCP-Protocol-Version": "1999-01-01" },
+    body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "tools/list" }),
+  })
+  ok("unsupported protocol version → 400", badVersion.status === 400, `status ${badVersion.status}`)
+  const getMcp = await fetch(MCP)
+  ok("GET /mcp → 405 with connect instructions", getMcp.status === 405 && (await getMcp.json()).connect?.endpoint === MCP)
+
+  // Scoping: a brand-new user's key must see nothing of ours.
+  const mcpStranger = `mcp-stranger-${Date.now().toString(36)}@example.com`
+  await fetch(`${SITE_URL}/api/auth/sign-up/email`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Origin: "http://localhost:3000" },
+    body: JSON.stringify({ name: "Mcp Stranger", email: mcpStranger, password: "stranger-pass-1" }),
+  })
+  const strangerMcpClient = new ConvexHttpClient(CONVEX_URL)
+  strangerMcpClient.setAuth(await signIn(mcpStranger, "stranger-pass-1"))
+  const strangerKey = await strangerMcpClient.mutation(api.apiKeys.create, { name: "stranger" })
+  const strangerEvents = await toolCall("list_events", {}, strangerKey.key)
+  ok("stranger's key sees zero events", !strangerEvents.isError && strangerEvents.json?.events?.length === 0)
+  const strangerPeek = await toolCall("get_event_summary", { event: "ai-summit-2026" }, strangerKey.key)
+  ok("stranger's key cannot read our event", strangerPeek.isError && /access|not found|no event/i.test(strangerPeek.text))
+  const strangerAgenda = await toolCall("get_agenda", { event: main._id }, strangerKey.key)
+  ok("stranger's key cannot read our agenda", strangerAgenda.isError)
+  ok("stranger cannot see our API keys", (await strangerMcpClient.query(api.apiKeys.list, {})).every((k) => k.keyId !== created.keyId))
+
+  // Revocation is immediate.
+  await client.mutation(api.apiKeys.revoke, { keyId: created.keyId })
+  const afterRevoke = await fetch(MCP, { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${created.key}` }, body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "tools/list" }) })
+  ok("revoked key stops working immediately", afterRevoke.status === 401, `status ${afterRevoke.status}`)
+  await throws("cannot revoke someone else's key", () =>
+    strangerMcpClient.mutation(api.apiKeys.revoke, { keyId: strangerKey.keyId === created.keyId ? created.keyId : created.keyId }), "not found")
+  await strangerMcpClient.mutation(api.apiKeys.revoke, { keyId: strangerKey.keyId })
+
+  // OAuth discovery — what makes "add connector by URL" work in Claude/ChatGPT.
+  const prm = await fetch(`${SITE_URL}/.well-known/oauth-protected-resource`)
+  const prmBody = await prm.json()
+  ok("protected-resource metadata served", prm.status === 200 && prmBody.resource === MCP, JSON.stringify(prmBody).slice(0, 160))
+  ok("metadata names an authorization server", Array.isArray(prmBody.authorization_servers) && prmBody.authorization_servers.length === 1)
+  const prmSuffixed = await fetch(`${SITE_URL}/.well-known/oauth-protected-resource/mcp`)
+  ok("RFC 9728 path-suffixed metadata served", prmSuffixed.status === 200)
+  const asMeta = await fetch(`${SITE_URL}/api/auth/.well-known/oauth-authorization-server`)
+  const asBody = await asMeta.json()
+  ok("authorization-server metadata served", asMeta.status === 200 && typeof asBody.authorization_endpoint === "string")
+  ok("dynamic client registration advertised", typeof asBody.registration_endpoint === "string")
+  ok("PKCE S256 supported", (asBody.code_challenge_methods_supported ?? []).includes("S256"))
+} else {
+  ok("SITE_URL missing — skipped MCP checks", false, "add VITE_CONVEX_SITE_URL to .env.local")
+}
+
 // ————— Summary —————
 console.log(`\n━━━ ${passed} passed, ${failed} failed ━━━`)
 if (failures.length) {

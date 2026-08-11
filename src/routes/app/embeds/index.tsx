@@ -44,6 +44,7 @@ import { EmptyState } from "@/components/shared/empty-state"
 import { StatusPill } from "@/components/shared/status-pill"
 import { widgetSearchToQuery } from "@/components/public/widget-search"
 import type { WidgetSearch } from "@/components/public/widget-search"
+import { useCurrentEvent } from "@/lib/current-event"
 
 /**
  * Embeds — the "Get Code" surface (sbek EMB-15, docs/ux/05 image39 + image12).
@@ -128,10 +129,10 @@ const WIDGET_TYPES: Array<WidgetType> = [
 const ALL_TRACKS = "All tracks"
 
 function EmbedsPage() {
-  const { data: events } = useQuery(convexQuery(api.events.list, {}))
+  const { events, event: currentEvent, isEmpty: hasNoEvent } = useCurrentEvent()
   const [slug, setSlug] = useState<string | null>(null)
-  const activeSlug = slug ?? events?.[0]?.slug ?? null
-  const activeEvent = events?.find((event) => event.slug === activeSlug)
+  const activeSlug = slug ?? currentEvent?.slug ?? null
+  const activeEvent = events.find((event) => event.slug === activeSlug)
 
   const [widgetId, setWidgetId] = useState(WIDGET_TYPES[0].id)
   const widget =
@@ -198,7 +199,7 @@ function EmbedsPage() {
     return `${convexUrl.replace(".convex.cloud", ".convex.site")}/v1/event/${activeSlug}/schedule.ics`
   }, [activeSlug])
 
-  if (events && events.length === 0) {
+  if (hasNoEvent) {
     return (
       <div className="flex flex-col gap-6">
         <PageHeader
@@ -238,7 +239,7 @@ function EmbedsPage() {
         }
       />
 
-      {events && events.length > 1 ? (
+      {events.length > 1 ? (
         <Field className="max-w-sm">
           <FieldLabel htmlFor="embed-event">Event</FieldLabel>
           <Select

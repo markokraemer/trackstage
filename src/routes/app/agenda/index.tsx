@@ -36,13 +36,13 @@ import {
 import { PageHeader } from "@/components/shared/page-header"
 import { EmptyState } from "@/components/shared/empty-state"
 import { DataToolbar } from "@/components/shared/data-toolbar"
-import { useSession } from "@/lib/session"
 import { AutoPlaceDialog } from "@/components/agenda/auto-place-dialog"
 import { ConflictsView } from "@/components/agenda/conflicts-view"
 import { DayView } from "@/components/agenda/day-view"
 import { ListView } from "@/components/agenda/list-view"
 import { RoomsView } from "@/components/agenda/rooms-view"
 import type { ScheduledSession } from "@/components/agenda/agenda-model"
+import { useCurrentEvent } from "@/lib/current-event"
 import {
   conflictedSessionIds,
   isScheduled,
@@ -96,13 +96,9 @@ export const Route = createFileRoute("/app/agenda/")({
 function AgendaPage() {
   const { view, day, focus } = Route.useSearch()
   const navigate = Route.useNavigate()
-  const { status } = useSession()
   const [search, setSearch] = React.useState("")
 
-  const { data: events, isPending: eventsPending } = useQuery(
-    convexQuery(api.events.list, status === "authenticated" ? {} : "skip")
-  )
-  const event = events?.[0]
+  const { event, isLoading: eventsPending } = useCurrentEvent()
 
   const { data: board, isPending: boardPending } = useQuery(
     convexQuery(api.agenda.board, event ? { eventId: event._id } : "skip")

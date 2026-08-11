@@ -104,3 +104,9 @@ the narrative memory; RULES.md is the things circled as important along the way.
     Engineer Summit, then another, manage/switch all); account settings live where
     sign-out is; differentiate User vs Organization vs Event settings levels with
     top-notch UX each; correct organizational structure throughout.
+38. **Adversarial coverage audit**: keep rewatching the video + initial spec; take the
+    stored full transcript and go through EVERYTHING adversarially — every single thing
+    mentioned in the video, spec documents, and all public material must be covered
+    flawlessly. Use Gemini 3.6 Flash as the evaluator — specifically via an opencode
+    CLI agent configured with OpenRouter — comparing the video/spec against the actual
+    live platform. Base requirements met perfectly.

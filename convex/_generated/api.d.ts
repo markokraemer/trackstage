@@ -21,6 +21,7 @@ import type * as http from "../http.js";
 import type * as lib_auth from "../lib/auth.js";
 import type * as lib_email from "../lib/email.js";
 import type * as lib_ics from "../lib/ics.js";
+import type * as mcp from "../mcp.js";
 import type * as platformEmails from "../platformEmails.js";
 import type * as portal from "../portal.js";
 import type * as publicData from "../publicData.js";
@@ -52,6 +53,7 @@ declare const fullApi: ApiFromModules<{
   "lib/auth": typeof lib_auth;
   "lib/email": typeof lib_email;
   "lib/ics": typeof lib_ics;
+  mcp: typeof mcp;
   platformEmails: typeof platformEmails;
   portal: typeof portal;
   publicData: typeof publicData;

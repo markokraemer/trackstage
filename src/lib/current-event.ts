@@ -133,7 +133,7 @@ export function useCurrentEvent(): CurrentEventResult {
   const { data: eventData, isPending: eventsPending } = useQuery(
     convexQuery(api.events.list, authedArgs),
   )
-  const { data: workspaceData } = useQuery(
+  const { data: workspaceData, isPending: workspacesPending } = useQuery(
     convexQuery(api.workspaces.mine, authedArgs),
   )
 
@@ -142,8 +142,10 @@ export function useCurrentEvent(): CurrentEventResult {
   const workspaces = workspaceData ?? []
 
   const stored = events.find((row) => row._id === storedId)
-  const event = stored ?? events[0]
-  const workspace = workspaces.find((row) => row.id === event?.organizationId)
+  const event = stored ?? events.at(0)
+  const workspace = event
+    ? workspaces.find((row) => row.id === event.organizationId)
+    : undefined
 
   // Stale pointer: the id survived but the event didn't. Drop it so the
   // fallback becomes the real, persisted choice on the next switch.
@@ -173,7 +175,7 @@ export function useCurrentEvent(): CurrentEventResult {
     event,
     workspaces,
     workspace,
-    isLoading: status === "loading" || eventsPending,
+    isLoading: status === "loading" || eventsPending || workspacesPending,
     isEmpty: eventData !== undefined && events.length === 0,
     setCurrentEventId: select,
     selectEvent: select,

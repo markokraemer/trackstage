@@ -1,7 +1,14 @@
 import { httpRouter } from "convex/server"
 import { httpAction } from "./_generated/server"
 import { internal } from "./_generated/api"
+import { oAuthProtectedResourceMetadata } from "better-auth/plugins"
 import { authComponent, createAuth } from "./auth"
+import {
+  handleMcpDelete,
+  handleMcpGet,
+  handleMcpOptions,
+  handleMcpPost,
+} from "./mcp"
 
 // ————————————————————————————————————————————————————————————————————————
 // Public HTTP API (SPEC §6) — mirrors Sessionboard's shape.
@@ -277,6 +284,47 @@ http.route({
   pathPrefix: "/v1/event/",
   method: "OPTIONS",
   handler: handleOptions,
+})
+
+// ——— MCP server (convex/mcp.ts) ——————————————————————————————————————————
+// One endpoint, MCP Streamable HTTP: POST carries JSON-RPC, GET would be the
+// server-initiated SSE stream we deliberately don't offer (405 with a helpful
+// body), OPTIONS is the CORS preflight browser-based clients send.
+http.route({ path: "/mcp", method: "POST", handler: handleMcpPost })
+http.route({ path: "/mcp", method: "GET", handler: handleMcpGet })
+http.route({ path: "/mcp", method: "DELETE", handler: handleMcpDelete })
+http.route({ path: "/mcp", method: "OPTIONS", handler: handleMcpOptions })
+
+// ——— OAuth discovery (RFC 9728) ——————————————————————————————————————————
+// This deployment is the protected RESOURCE; the authorization server is the
+// app origin (see convex/auth.ts for why). Clients find that out here, either
+// at the bare well-known path or at the path-suffixed form RFC 9728 defines
+// for a resource that lives at /mcp. Claude and ChatGPT both probe these
+// after a 401, which is what turns "add connector by URL" into a real login.
+const protectedResourceMetadata = httpAction(async (ctx, request) => {
+  const auth = createAuth(ctx)
+  return await oAuthProtectedResourceMetadata(auth)(request)
+})
+
+http.route({
+  path: "/.well-known/oauth-protected-resource",
+  method: "GET",
+  handler: protectedResourceMetadata,
+})
+http.route({
+  path: "/.well-known/oauth-protected-resource/mcp",
+  method: "GET",
+  handler: protectedResourceMetadata,
+})
+http.route({
+  path: "/.well-known/oauth-protected-resource",
+  method: "OPTIONS",
+  handler: handleMcpOptions,
+})
+http.route({
+  path: "/.well-known/oauth-protected-resource/mcp",
+  method: "OPTIONS",
+  handler: handleMcpOptions,
 })
 
 export default http

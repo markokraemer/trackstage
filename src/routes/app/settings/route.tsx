@@ -1,5 +1,10 @@
-import { Link, Outlet, createFileRoute, useRouterState } from "@tanstack/react-router"
-import { RiCalendarEventLine } from "@remixicon/react"
+import {
+  Link,
+  Outlet,
+  createFileRoute,
+  useRouterState,
+} from "@tanstack/react-router"
+import { RiBuilding2Line, RiCalendarEventLine } from "@remixicon/react"
 
 import { PageHeader } from "@/components/shared/page-header"
 import { EmptyState } from "@/components/shared/empty-state"
@@ -7,10 +12,10 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { Card, CardContent } from "@/components/ui/card"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { TooltipProvider } from "@/components/ui/tooltip"
-import { EventSwitcher } from "@/components/settings/event-switcher"
+import { SettingsLevelNav } from "@/components/shell/settings-level-nav"
 import { NewEventDialog } from "@/components/settings/new-event-dialog"
-import { useCurrentEvent } from "@/lib/current-event"
 import { formatZonedDateRange } from "@/components/settings/timezone"
+import { useCurrentEvent } from "@/lib/current-event"
 
 export const Route = createFileRoute("/app/settings")({
   component: SettingsLayout,
@@ -23,16 +28,18 @@ const TABS = [
     label: "Rooms & tracks",
     to: "/app/settings/rooms-and-tracks",
   },
-  { value: "team", label: "Team", to: "/app/settings/team" },
+  { value: "api-mcp", label: "API & MCP", to: "/app/settings/api-mcp" },
 ] as const
 
 /**
- * Settings shell — SPEC §4.1. A tinted page banner (docs/ux/01 image29) with
- * the event switcher on the right, then the sub-tabs. Each tab is a real link
- * with its own URL, so a browser agent can reach any of them directly.
+ * Event settings — the deepest level of the hierarchy
+ * (docs/memory/RULES.md 23d). Everything here belongs to ONE event; the team
+ * that can reach it lives one level up in Workspace settings. The banner names
+ * the event so the scope is never ambiguous, and the event switcher in the
+ * sidebar changes which event these tabs are editing.
  */
 function SettingsLayout() {
-  const { events, event, isLoading, selectEvent } = useCurrentEvent()
+  const { event, isLoading } = useCurrentEvent()
   const pathname = useRouterState({ select: (state) => state.location.pathname })
 
   const active =
@@ -46,21 +53,14 @@ function SettingsLayout() {
   return (
     <TooltipProvider>
       <div className="flex flex-col gap-6">
+        <SettingsLevelNav level="event" />
+
         <PageHeader
-          title="Event settings"
+          title={event ? `Event settings — ${event.name}` : "Event settings"}
           description={
             event
-              ? `${event.name}${dates ? ` · ${dates}` : ""}${
-                  event.organizationName ? ` · ${event.organizationName}` : ""
-                }`
-              : "Set up your event, the rooms and tracks it uses, and who on your team can help."
-          }
-          actions={
-            <EventSwitcher
-              events={events}
-              current={event}
-              onSelect={selectEvent}
-            />
+              ? `${dates ?? "Dates not set"} · Applies to this event only — switch events in the sidebar.`
+              : "Set up your event: its dates, its public web address, and the rooms and tracks it uses."
           }
         >
           <Tabs value={active}>
@@ -82,6 +82,19 @@ function SettingsLayout() {
               ))}
             </TabsList>
           </Tabs>
+
+          <p className="flex flex-wrap items-center gap-1.5 text-xs text-foreground/70">
+            <RiBuilding2Line size={14} aria-hidden />
+            Teammates, roles and invites moved to
+            <Link
+              to="/app/workspace"
+              className="font-medium text-primary underline-offset-4 hover:underline"
+            >
+              Workspace settings
+            </Link>
+            — they apply to every event
+            {event?.organizationName ? ` in ${event.organizationName}` : ""}.
+          </p>
         </PageHeader>
 
         {isLoading ? (
