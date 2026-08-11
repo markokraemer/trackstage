@@ -99,7 +99,16 @@ export const createAuth = (ctx: GenericCtx<DataModel>) => {
      * address in platformEmails, portal links ≤3/h in submit.ts).
      */
     rateLimit: {
-      enabled: true,
+      // Kill-switch for hermetic test runs ONLY: the whole CI flows suite
+      // signs in from one runner IP against the local backend, and the
+      // window semantics (count resets only after 60s with no attempts)
+      // stack retries into 429s there. `convex env set
+      // AUTH_RATE_LIMIT_DISABLED true` on the CI backend turns limiting off;
+      // dev and prod deployments leave it unset, so limits stay ON
+      // everywhere real.
+      enabled: !/^(1|true|yes|on)$/i.test(
+        process.env.AUTH_RATE_LIMIT_DISABLED ?? ""
+      ),
       storage: "database",
       customRules: {
         "/sign-in/email": { window: 60, max: 20 },

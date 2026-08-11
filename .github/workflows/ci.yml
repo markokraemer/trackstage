@@ -126,6 +126,10 @@ jobs:
           pnpm exec convex env set BETTER_AUTH_SECRET "$(openssl rand -base64 32)"
           pnpm exec convex env set SITE_URL http://localhost:3000
           pnpm exec convex env set AIRTABLE_DEMO_MODE 1
+          # The whole flows suite signs in from this one runner IP; the auth
+          # rate limiter (convex/auth.ts) would stack retries into 429s.
+          # Hermetic backend only — dev/prod keep limits on.
+          pnpm exec convex env set AUTH_RATE_LIMIT_DISABLED true
 
       # The first function push happens asynchronously inside `convex dev`;
       # seeding succeeds only once it has landed, so this doubles as the
