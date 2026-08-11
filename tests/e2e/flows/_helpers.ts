@@ -256,10 +256,22 @@ export async function waitForShell(page: Page) {
 export async function selectEvent(page: Page, name = MAIN_EVENT_NAME) {
   const switcher = page.getByRole("button", { name: /switch event/i }).first()
   await expect(switcher).toBeVisible({ timeout: 30_000 })
+  // The switcher hydrates asynchronously (skeleton first). Reading it too
+  // early sees no event name, so we'd open the menu — and the data-arrival
+  // re-render then closes it under our click. Wait for real text first.
+  await expect(switcher).toContainText(/[A-Za-z]/, { timeout: 30_000 })
   if ((await switcher.textContent())?.includes(name)) return
   const before = page.url()
-  await switcher.click()
-  await page.getByRole("menuitem", { name: new RegExp(name, "i") }).first().click()
+  // Open + pick as one retried unit: if a reactive re-render closes the
+  // popover between the two steps, try the whole gesture again.
+  await expect(async () => {
+    if ((await switcher.textContent())?.includes(name)) return
+    await switcher.click()
+    await page
+      .getByRole("menuitem", { name: new RegExp(name, "i") })
+      .first()
+      .click({ timeout: 5_000 })
+  }).toPass({ timeout: 40_000 })
   await expect(switcher).toContainText(new RegExp(name, "i"), { timeout: 15_000 })
   if (page.url() !== before) {
     await page.waitForLoadState("networkidle").catch(() => {})
