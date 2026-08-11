@@ -5,7 +5,7 @@ These are the raw inputs that produced this repo — replayable against any othe
 agent session for adversarial comparison.
 
 ## claude-code session `118b76be-7bc9-4385-b170-00baeb55f0ff` — the founding session (2026-08-11, scaffold → full build)
-52 prompts.
+57 prompts.
 
 ---
 
@@ -473,7 +473,7 @@ regardless the full video walkthroughs for the ux/ui of the api reference, you c
 
 ### 49 <sub>2026-08-11T02:51:48.473Z</sub>
 
-https://github.com/markokraemer/trackstage/ domain -- https://trackstage.app/ you please also configure full ci/cd on the actual thing so that we deploy. also i don't know if you bought the domain. if you bought it, make sure that we deploy everything on cloudflare, that everything is nicely implemented and covered, deployed on trackstage.app, and that it's put in the description of the project etc. like everything
+https://github.com/markokraemer/sessionboard/ domain -- https://trackstage.app/ you please also configure full ci/cd on the actual thing so that we deploy. also i don't know if you bought the domain. if you bought it, make sure that we deploy everything on cloudflare, that everything is nicely implemented and covered, deployed on trackstage.app, and that it's put in the description of the project etc. like everything
 
 ---
 
@@ -500,3 +500,33 @@ just test everything in a proper way, the full platform, everything, so that eve
 keep running in a loop where you check against the videos, against the api reference, against all public-facing information and docs that we have about the product like the videos and the api reference. they should be sufficient so we can have full parity in every aspect. of course we have better ux/ui here etc. non-technical organizer-friendly ux/ui, the way we've been pursuing it, improved that even more.
 
 make sure everything is understandable. the flow is understandable and it's intuitive to understand. let's keep pushing on all the things i also already said in all previous messages. set yourself to go and set yourself to loop and don't stop until all of this is 100% done
+
+---
+
+### 53 <sub>2026-08-11T03:06:22.522Z</sub>
+
+the api reference is fucking retarded. there is no way that's the full openapi.json. make sure we get a complete entire 100% correct openapi.json with the complete api reference 100% accurate to the actual server, to the actual thing, to the actual api that we have. what the fuck is this? we're missing everything
+
+---
+
+### 54 <sub>2026-08-11T03:29:29.105Z</sub>
+
+is the air table thing a one-sided trigger or a two-sided trigger like this? it also supports that every time you update something in the air table, it's also going to update the db? just asking if something like that is possible so we have full two-way sync / could be an overall experimental feature but like a two-way sync so you can update anything in the db in the air table and it syncs over to the and vice versa  / i think as long as we maintain data structure and data integrity like the same structure et cetera, the sync back and forth works well. the only thing might be race conditions et cetera  / also i've been thinking whether we should have a full version history type thing so you can version a lot of the things or a lot of these things just have proper logs that will mark every complete audit. i think we can. i mean it's not just about the audit. it's truly about the versioning as well to some extent but maybe this is just overkill for this version
+
+---
+
+### 55 <sub>2026-08-11T03:31:37.167Z</sub>
+
+audit log is also important for any agent-related changes like the mcp api etc. keys
+
+---
+
+### 56 <sub>2026-08-11T03:33:25.104Z</sub>
+
+[Image #33] [Image #34] make sure the search is working or just plain remove it. also improve the ux/ui overall of this top nav bar especially also with the event selector and the top logo. we repeat the symbol twice like off the track stage. you can perhaps remove it in the event thing or also refactor the central nav bar within the app. it's horrendous. also if the view public page and co-pilot thing etc. could all look way better
+
+---
+
+### 57 <sub>2026-08-11T03:34:32.254Z</sub>
+
+rename the entire repo etc. also to trackstage.app etc.
