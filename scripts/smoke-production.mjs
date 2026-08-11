@@ -142,6 +142,57 @@ for (const [label, url] of [
   }
 }
 
+// ——— Demo sign-in — the exact credentials the login page advertises ————————
+// A deploy that flips auth-gate behavior while prod's DB still carries a
+// stale demo user (emailVerified=false) strands the judge on a confirm-email
+// screen with no inbox behind it. This proves the advertised account signs in
+// AND comes back verified — no gate, no banner — through the same app-origin
+// proxy a browser uses. Near-miss 2026-08-12; the fix is always a prod reseed.
+const DEMO_EMAIL = process.env.DEMO_EMAIL ?? "organizer@demo.sessionboard.dev"
+const DEMO_PASSWORD = process.env.DEMO_PASSWORD ?? "demo2026"
+const GATED_FIX =
+  "demo organizer is gated — run `pnpm exec convex run seed:setup --prod`"
+
+console.log(`\n■ Demo organizer sign-in — ${DEMO_EMAIL}`)
+try {
+  const res = await get(`${APP_URL}/api/auth/sign-in/email`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Origin: APP_URL },
+    body: JSON.stringify({ email: DEMO_EMAIL, password: DEMO_PASSWORD }),
+  })
+  const body = await res.text()
+  if (res.status === 403 || /not verified/i.test(body)) {
+    // Better Auth's requireEmailVerification refusal — the trap itself.
+    record("demo sign-in", false, GATED_FIX)
+  } else if (res.status !== 200) {
+    record("demo sign-in", false, `status ${res.status} — ${body.slice(0, 120)}`)
+  } else {
+    record("demo sign-in", true, "session cookie issued")
+    // Replay the session cookies: the account must read back as VERIFIED, or
+    // the shell nags (soft mode) — and a later hard-mode flip locks it out.
+    const cookies = res.headers
+      .getSetCookie()
+      .map((c) => c.split(";")[0])
+      .join("; ")
+    const sess = await get(`${APP_URL}/api/auth/get-session`, {
+      headers: { Cookie: cookies },
+    })
+    const session = sess.ok ? await sess.json() : null
+    const verified = session?.user?.emailVerified === true
+    record(
+      "demo session authenticated + emailVerified",
+      verified,
+      verified
+        ? ""
+        : session?.user
+          ? GATED_FIX
+          : `get-session status ${sess.status}`,
+    )
+  }
+} catch (e) {
+  record("demo sign-in", false, String(e.message ?? e))
+}
+
 console.log(
   `\n${failed === 0 ? "✔" : "✖"} ${results.length - failed}/${results.length} checks passed`,
 )
