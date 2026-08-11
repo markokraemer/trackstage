@@ -1,4 +1,5 @@
 import { Link } from "@tanstack/react-router"
+import { RiExternalLinkLine } from "@remixicon/react"
 import type { RemixiconComponentType } from "@remixicon/react"
 
 import { cn } from "@/lib/utils"
@@ -11,6 +12,11 @@ export interface NavItem {
   exact?: boolean
   /** Anchor id for the first-run guided tour (`data-tour` attribute). */
   tour?: string
+  /**
+   * A destination OUTSIDE the app (the public event page): rendered as a
+   * plain new-tab anchor with an external-link glyph, never a router Link.
+   */
+  external?: boolean
 }
 
 export interface NavGroup {
@@ -34,6 +40,13 @@ export function SidebarNav({
   onNavigate?: () => void
   itemClassName?: string
 }) {
+  const itemClasses = cn(
+    buttonVariants({ variant: "ghost" }),
+    "w-full justify-start gap-2.5 px-2.5 font-medium text-foreground/80",
+    "hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+    itemClassName,
+  )
+
   return (
     <nav aria-label="Main" className="px-3 pt-2 pb-6">
       {groups.map((group, index) => (
@@ -46,27 +59,41 @@ export function SidebarNav({
           <ul className="flex flex-col gap-0.5">
             {group.items.map((item) => (
               <li key={item.to}>
-                <Link
-                  to={item.to}
-                  title={item.label}
-                  data-tour={item.tour}
-                  activeOptions={{ exact: item.exact ?? false }}
-                  onClick={onNavigate}
-                  className={cn(
-                    buttonVariants({ variant: "ghost" }),
-                    "w-full justify-start gap-2.5 px-2.5 font-medium text-foreground/80",
-                    "hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
-                    itemClassName,
-                  )}
-                  activeProps={{
-                    className:
-                      "bg-sidebar-accent text-sidebar-accent-foreground font-semibold",
-                    "aria-current": "page",
-                  }}
-                >
-                  <item.icon size={17} aria-hidden className="shrink-0" />
-                  {item.label}
-                </Link>
+                {item.external ? (
+                  <a
+                    href={item.to}
+                    target="_blank"
+                    rel="noreferrer"
+                    title={item.label}
+                    onClick={onNavigate}
+                    className={itemClasses}
+                  >
+                    <item.icon size={17} aria-hidden className="shrink-0" />
+                    {item.label}
+                    <RiExternalLinkLine
+                      size={13}
+                      aria-hidden
+                      className="ml-auto shrink-0 text-muted-foreground"
+                    />
+                  </a>
+                ) : (
+                  <Link
+                    to={item.to}
+                    title={item.label}
+                    data-tour={item.tour}
+                    activeOptions={{ exact: item.exact ?? false }}
+                    onClick={onNavigate}
+                    className={itemClasses}
+                    activeProps={{
+                      className:
+                        "bg-sidebar-accent text-sidebar-accent-foreground font-semibold",
+                      "aria-current": "page",
+                    }}
+                  >
+                    <item.icon size={17} aria-hidden className="shrink-0" />
+                    {item.label}
+                  </Link>
+                )}
               </li>
             ))}
           </ul>

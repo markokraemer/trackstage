@@ -14,6 +14,7 @@ import {
   RiExternalLinkLine,
   RiFileList3Line,
   RiFolder3Line,
+  RiGlobalLine,
   RiLogoutBoxRLine,
   RiMailSendLine,
   RiSettings3Line,
@@ -119,19 +120,22 @@ function navGroupsFor(ref: EventRef | undefined): Array<NavGroup> {
       ],
     },
     {
+      // The pipeline in LIFECYCLE order — build the CFP, collect, review,
+      // schedule. Reads top-to-bottom as the work actually happens (Marko,
+      // 2026-08-12: sidebar structure re-derived from first principles; every
+      // group is labelled now — one labelled group among unlabelled ones made
+      // the others read as orphans).
       label: "Program",
       items: [
-        { label: "Submissions", to: to("submissions"), icon: RiFileList3Line },
         { label: "Forms", to: to("forms"), icon: RiSurveyLine, tour: "nav-forms" },
+        { label: "Submissions", to: to("submissions"), icon: RiFileList3Line },
         { label: "Evaluation", to: to("evaluation"), icon: RiStarLine, tour: "nav-evaluation" },
         { label: "Agenda", to: to("agenda"), icon: RiCalendarScheduleLine, tour: "nav-agenda" },
-        // Embeds is the last step of the programme's life — the agenda, once
-        // published, goes onto the organizer's own website. It sits under
-        // Program so "build it, then publish it" reads top to bottom.
-        { label: "Embeds", to: to("embeds"), icon: RiCodeSSlashLine },
       ],
     },
     {
+      // The people on the program and everything about them.
+      label: "Speakers",
       items: [
         { label: "Speakers", to: to("speakers"), icon: RiUserVoiceLine },
         // Everything speakers send in — slides, headshots, signed forms — with
@@ -143,6 +147,25 @@ function navGroupsFor(ref: EventRef | undefined): Array<NavGroup> {
           to: to("communications"),
           icon: RiMailSendLine,
         },
+      ],
+    },
+    {
+      // Out to the world: the hosted public page, and the same content
+      // embedded on the organizer's own site. Closely linked, deliberately
+      // separate destinations (Marko, 2026-08-12).
+      label: "Share",
+      items: [
+        ...(ref
+          ? [
+              {
+                label: "Public page",
+                to: eventPath(ref.workspaceSlug, ref.eventSlug),
+                icon: RiGlobalLine,
+                external: true,
+              },
+            ]
+          : []),
+        { label: "Embeds", to: to("embeds"), icon: RiCodeSSlashLine },
       ],
     },
     {

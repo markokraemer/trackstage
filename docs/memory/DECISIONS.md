@@ -305,3 +305,19 @@ arrow), so nothing ever stacks — rule recorded in DESIGN-REVAMP.md. Legacy
 `?settings=…` URLs from the modal window rewrite to the pages via the shell
 host (`settings-dialogs.tsx`, now just an interpreter). Also: Branding lifted
 beside Event details (identity block above the fold) on event settings.
+
+## Sidebar IA re-derived from first principles (2026-08-12)
+Marko: "evaluate from first principles the structure of the left sidebar
+including this program's topic header." Problems with the old shape: only ONE
+group was labelled (PROGRAM), so Speakers/Files/Communications read as
+orphans; PROGRAM mixed four jobs (collect, review, schedule, publish);
+Submissions sat above Forms, inverting the lifecycle; and the public page —
+the single most important external artifact — hid behind a small top-bar
+icon. New shape, every group labelled: PROGRAM = Forms → Submissions →
+Evaluation → Agenda (the pipeline in the order the work happens) · SPEAKERS =
+Speakers, Files, Communications (the people and everything about them) ·
+SHARE = Public page (external, new tab, ↗ glyph) + Embeds ("closely linked
+but separate" — Marko) · Settings terminal, Dashboard/Copilot label-less on
+top. Top-bar public-page icon stays (quick affordance; hover copy now "Open
+public event page"). Implemented in navGroupsFor (src/routes/app/route.tsx) +
+src/components/shell/sidebar-nav.tsx (external-item support).
