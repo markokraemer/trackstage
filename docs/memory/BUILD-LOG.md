@@ -89,3 +89,16 @@ Newest entries at the bottom. Every work session appends what actually happened.
   content outlet), `app/index.tsx` placeholder dashboard, a minimal temporary landing,
   and `design-system.tsx` — the living design system (brand, palette, type scale, every
   shadcn + shared component with all variants/states, sticky section nav).
+
+## 2026-08-11 ~02:20–02:45 — Better Auth + multi-tenancy + full backend verified
+- Swapped custom token auth → Better Auth (@convex-dev/better-auth component):
+  config/auth.ts/http routes/client/router/root wiring; login page w/ sign-up tab.
+- Multi-tenancy: organizations+members(roles) tables, requireEventAccess everywhere
+  (agent refactor, tsc clean), workspaces module, events.organizationId (legacy purge).
+- Seed creates the demo user via Better Auth signUpEmail → org → both events.
+- scripts/verify-backend.mjs rewired for Better Auth (JWT via convex_jwt cookie,
+  Origin header required) + cross-org stranger probes. **78/78 checks green** across
+  auth, scoping, CFP rules, queues+comms, files+approval, agenda+conflicts+autoplace,
+  evaluation, dashboard, public data, HTTP API/.ics.
+- Foundation UI complete incl. /design-system + logo; brand asset kit expansion running.
+- Launching 11-slice UI workflow (Opus agents, ambient-auth briefs).

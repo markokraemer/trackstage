@@ -1,15 +1,18 @@
 import { cn } from "@/lib/utils"
+import { MARK_RECTS, MARK_VIEWBOX, WORDMARK } from "@/components/brand/assets"
 
 /**
  * Sessionboard brand mark.
  *
  * The logomark is an abstract agenda: a solid time rail on the left with three
  * session blocks of varying length beside it. It is built from four rounded
- * rectangles only, so it stays legible down to 16px, and it paints in
- * `currentColor` so it inherits the surface it sits on.
+ * rectangles only (geometry lives in `assets.ts` so the React component and the
+ * downloadable SVG/PNG assets never drift), so it stays legible down to 16px,
+ * and it paints in `currentColor` so it inherits the surface it sits on.
  *
  * - `LogoMark` — the mark alone (`plain` or `boxed`).
- * - `Logo` — the full lockup (mark + "Sessionboard" wordmark).
+ * - `Wordmark` — the "Sessionboard" wordmark alone.
+ * - `Logo` — the full lockup (mark + wordmark).
  */
 
 export interface LogoMarkProps extends React.ComponentProps<"span"> {
@@ -27,45 +30,6 @@ export function LogoMark({
 }: LogoMarkProps) {
   const glyph = Math.round(size * (variant === "boxed" ? 0.62 : 1))
 
-  const svg = (
-    <svg
-      viewBox="0 0 24 24"
-      width={glyph}
-      height={glyph}
-      fill="none"
-      aria-hidden
-      focusable="false"
-    >
-      <rect x="2" y="3" width="3.2" height="18" rx="1.6" fill="currentColor" />
-      <rect
-        x="7.8"
-        y="3"
-        width="14.2"
-        height="4.6"
-        rx="2"
-        fill="currentColor"
-        opacity="0.4"
-      />
-      <rect
-        x="7.8"
-        y="9.7"
-        width="9.6"
-        height="4.6"
-        rx="2"
-        fill="currentColor"
-      />
-      <rect
-        x="7.8"
-        y="16.4"
-        width="12.4"
-        height="4.6"
-        rx="2"
-        fill="currentColor"
-        opacity="0.65"
-      />
-    </svg>
-  )
-
   return (
     <span
       data-slot="logo-mark"
@@ -81,24 +45,67 @@ export function LogoMark({
       )}
       {...props}
     >
-      {svg}
+      <svg
+        viewBox={`0 0 ${MARK_VIEWBOX} ${MARK_VIEWBOX}`}
+        width={glyph}
+        height={glyph}
+        fill="none"
+        aria-hidden
+        focusable="false"
+      >
+        {MARK_RECTS.map((rect, index) => (
+          <rect
+            key={index}
+            x={rect.x}
+            y={rect.y}
+            width={rect.width}
+            height={rect.height}
+            rx={rect.rx}
+            fill="currentColor"
+            opacity={rect.opacity}
+          />
+        ))}
+      </svg>
+    </span>
+  )
+}
+
+const WORD_SIZE = {
+  sm: "text-sm",
+  md: "text-base",
+  lg: "text-2xl",
+  xl: "text-4xl",
+} as const
+
+export interface WordmarkProps extends React.ComponentProps<"span"> {
+  size?: keyof typeof WORD_SIZE
+}
+
+/** The wordmark on its own — tight tracking is part of the mark. */
+export function Wordmark({ size = "md", className, ...props }: WordmarkProps) {
+  return (
+    <span
+      data-slot="wordmark"
+      className={cn(
+        "font-heading font-semibold tracking-tight text-foreground",
+        WORD_SIZE[size],
+        className,
+      )}
+      {...props}
+    >
+      {WORDMARK}
     </span>
   )
 }
 
 export interface LogoProps extends React.ComponentProps<"span"> {
-  size?: "sm" | "md" | "lg"
+  size?: keyof typeof WORD_SIZE
   variant?: "plain" | "boxed"
   /** Hide the wordmark (still announced to screen readers). */
   markOnly?: boolean
 }
 
-const MARK_SIZE = { sm: 22, md: 28, lg: 40 } as const
-const WORD_SIZE = {
-  sm: "text-sm",
-  md: "text-base",
-  lg: "text-2xl",
-} as const
+const MARK_SIZE = { sm: 22, md: 28, lg: 40, xl: 56 } as const
 
 export function Logo({
   size = "md",
@@ -114,15 +121,7 @@ export function Logo({
       {...props}
     >
       <LogoMark size={MARK_SIZE[size]} variant={variant} />
-      <span
-        className={cn(
-          "font-heading font-semibold tracking-tight text-foreground",
-          WORD_SIZE[size],
-          markOnly && "sr-only",
-        )}
-      >
-        Sessionboard
-      </span>
+      <Wordmark size={size} className={cn(markOnly && "sr-only")} />
     </span>
   )
 }

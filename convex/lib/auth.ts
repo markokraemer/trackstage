@@ -55,6 +55,10 @@ export async function requireEventAccess(
 ): Promise<{ user: AuthedUser; member: Doc<"members">; event: Doc<"events"> }> {
   const event = await ctx.db.get(eventId)
   if (!event) throw new Error("Event not found.")
+  if (!event.organizationId) {
+    // Legacy pre-multi-tenancy row awaiting purge (see seed.run).
+    throw new Error("Event not found.")
+  }
   const { user, member } = await requireMembership(
     ctx,
     event.organizationId,

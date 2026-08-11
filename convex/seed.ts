@@ -774,6 +774,14 @@ export const run = internalMutation({
     await purgeBySlug(ctx, DEMO_EVENT_SLUG)
     await purgeBySlug(ctx, DEMO_SECOND_EVENT_SLUG)
 
+    // — Legacy purge: pre-multi-tenancy rows have no organizationId ————————
+    const allEvents = await ctx.db.query("events").collect()
+    for (const legacy of allEvents) {
+      if (legacy.organizationId === undefined) {
+        await purgeBySlug(ctx, legacy.slug)
+      }
+    }
+
     // — Demo workspace + owner membership (Better Auth user id) ——————————
     let organizationId: Id<"organizations">
     const existingOrg = await ctx.db

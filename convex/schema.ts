@@ -60,7 +60,9 @@ export default defineSchema({
 
   // ——— Core setup ———————————————————————————————————————————————————————
   events: defineTable({
-    organizationId: v.id("organizations"),
+    // TEMP-OPTIONAL during legacy purge — tightened right back (see seed.run
+    // purgeLegacy); required for all new rows.
+    organizationId: v.optional(v.id("organizations")),
     name: v.string(),
     slug: v.string(),
     type: v.optional(v.string()), // Conference | Summit | Meetup | …
