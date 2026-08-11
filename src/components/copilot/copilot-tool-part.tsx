@@ -82,15 +82,18 @@ export function CopilotToolPart({
     }
     const args = summarizeToolArgs(part.input)
     return (
+      // Neutral card, amber accents: "needs your decision" is a warning-class
+      // moment, and the old full primary-blue wash was the loudest surface in
+      // the transcript (De-blued rule: chrome is neutral, colour carries data).
       <Confirmation
         approval={part.approval}
         state={part.state}
-        className="border-primary/20 bg-primary/10"
+        className="border-status-amber-dot/50 bg-card"
       >
         <div className="flex items-start gap-2.5">
           <span
             aria-hidden
-            className="mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary"
+            className="mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-md bg-status-amber-bg/60 text-status-amber-fg"
           >
             {emails ? (
               <RiMailSendLine size={16} />

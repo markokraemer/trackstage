@@ -5,13 +5,14 @@ import {
   RiCheckLine,
   RiErrorWarningLine,
   RiExternalLinkLine,
+  RiFileCopyLine,
 } from "@remixicon/react"
 
 import { cn } from "@/lib/utils"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
 import { CodeBlock } from "@/components/ai-elements/code-block"
-import { CopyButton } from "@/components/interactions"
+import { useCopyToClipboard } from "@/components/interior/copy-button"
 import { appLink, legacyAppLink, eventRefFromPathname } from "@/lib/app-links"
 import type { EventRef, EventSection } from "@/lib/app-links"
 
@@ -262,7 +263,14 @@ export function Row({
   )
 }
 
-/** A single bordered block — one form, one session, one task. */
+/**
+ * A single bordered block — one form, one session, one task.
+ *
+ * Tone is a BORDER accent only. Full-tint washes made every second card in a
+ * transcript shout (Marko, 2026-08-11: "the colors … look disgusting"); the
+ * surface stays neutral and only warnings keep a faint amber fill, because a
+ * warning is the one case where the surface itself is the message.
+ */
 export function Tile({
   children,
   className,
@@ -277,9 +285,9 @@ export function Tile({
       data-slot="tool-tile"
       className={cn(
         "rounded-lg border border-border bg-card p-3",
-        tone === "good" && "border-status-green-dot/40 bg-status-green-bg/30",
-        tone === "warn" && "border-status-amber-dot/40 bg-status-amber-bg/40",
-        tone === "bad" && "border-status-red-dot/40 bg-status-red-bg/40",
+        tone === "good" && "border-status-green-dot/40",
+        tone === "warn" && "border-status-amber-dot/50 bg-status-amber-bg/25",
+        tone === "bad" && "border-status-red-dot/40",
         className
       )}
     >
@@ -319,7 +327,21 @@ export function ToolAlert({
   )
 }
 
-/** A receipt for something that happened: "12 committed", "form deleted". */
+/**
+ * A receipt for something that happened: "12 committed", "form deleted".
+ *
+ * Neutral surface, always — the full-tint green/red panels were the loudest
+ * thing in Marko's 2026-08-11 screenshots. Outcome is a small status dot next
+ * to the title plus a quiet icon; only a genuine warning keeps a faint amber
+ * fill, because there the surface itself is the message.
+ */
+const BANNER_DOT: Record<"good" | "warn" | "neutral" | "bad", string | null> = {
+  good: "bg-status-green-dot",
+  warn: "bg-status-amber-dot",
+  neutral: null,
+  bad: "bg-status-red-dot",
+}
+
 export function Banner({
   icon,
   title,
@@ -331,30 +353,27 @@ export function Banner({
   children?: ReactNode
   tone?: "good" | "warn" | "neutral" | "bad"
 }) {
+  const dot = BANNER_DOT[tone]
   return (
     <div
       className={cn(
-        "flex items-start gap-2.5 rounded-lg border p-3",
-        tone === "good" && "border-status-green-dot/40 bg-status-green-bg/40",
-        tone === "warn" && "border-status-amber-dot/40 bg-status-amber-bg/50",
-        tone === "neutral" && "border-border bg-muted/40",
-        tone === "bad" && "border-status-red-dot/40 bg-status-red-bg/40"
+        "flex items-start gap-2.5 rounded-lg border border-border bg-card p-3",
+        tone === "warn" && "border-status-amber-dot/50 bg-status-amber-bg/25"
       )}
     >
-      <span
-        aria-hidden
-        className={cn(
-          "mt-0.5 shrink-0",
-          tone === "good" && "text-status-green-fg",
-          tone === "warn" && "text-status-amber-fg",
-          tone === "neutral" && "text-muted-foreground",
-          tone === "bad" && "text-status-red-fg"
-        )}
-      >
+      <span aria-hidden className="mt-0.5 shrink-0 text-muted-foreground">
         {icon ?? <RiCheckLine size={16} />}
       </span>
       <div className="min-w-0 flex-1 space-y-1">
-        <p className="text-sm font-medium text-foreground">{title}</p>
+        <p className="flex items-center gap-1.5 text-sm font-medium text-foreground">
+          {dot ? (
+            <span
+              aria-hidden
+              className={cn("size-1.5 shrink-0 rounded-full", dot)}
+            />
+          ) : null}
+          <span className="min-w-0">{title}</span>
+        </p>
         {children}
       </div>
     </div>
@@ -365,6 +384,13 @@ export function Banner({
 
 export type StatTone = "default" | "good" | "warn" | "bad"
 
+const STAT_DOT: Record<StatTone, string | null> = {
+  default: null,
+  good: "bg-status-green-dot",
+  warn: "bg-status-amber-dot",
+  bad: "bg-status-red-dot",
+}
+
 export function StatCard({
   label,
   value,
@@ -374,22 +400,27 @@ export function StatCard({
   value: ReactNode
   tone?: StatTone
 }) {
+  const dot = STAT_DOT[tone]
   return (
     <div
       data-slot="stat-card"
-      className={cn(
-        "min-w-[5.5rem] flex-1 rounded-lg border border-border bg-card px-3 py-2",
-        tone === "good" && "border-status-green-dot/40 bg-status-green-bg/30",
-        tone === "warn" && "border-status-amber-dot/40 bg-status-amber-bg/40",
-        tone === "bad" && "border-status-red-dot/40 bg-status-red-bg/40"
-      )}
+      // Neutral surface whatever the tone — a row of six stat cards painted
+      // green/amber/red read as traffic lights, not numbers. The dot in the
+      // label carries the tone.
+      className="min-w-[5.5rem] flex-1 rounded-lg border border-border bg-card px-3 py-2"
     >
       {/*
         Wraps rather than truncates: six cards in a 460px panel clipped
         "Awaiting slot" to "AWAITING SL…", which is worse than two short lines.
       */}
-      <div className="text-[11px] leading-tight font-medium tracking-wide text-muted-foreground uppercase">
-        {label}
+      <div className="flex items-center gap-1.5 text-[11px] leading-tight font-medium tracking-wide text-muted-foreground uppercase">
+        {dot ? (
+          <span
+            aria-hidden
+            className={cn("size-1.5 shrink-0 rounded-full", dot)}
+          />
+        ) : null}
+        <span className="min-w-0">{label}</span>
       </div>
       <div className="mt-0.5 text-lg leading-none font-semibold text-foreground tabular-nums">
         {value}
@@ -548,8 +579,11 @@ export function Chip({
  *
  * Whenever a tool's whole point is "here is a link" — the public CFP URL, a
  * speaker's magic link — the organizer's next move is to paste it somewhere.
- * So the URL is selectable monospace, Copy is one press, and Open is a real
- * anchor to a new tab. Never a bare string in prose.
+ * One compact row: the URL in truncated monospace (selectable, and `title`
+ * carries the full string), with quiet icon buttons for copy and open. The
+ * previous two-line layout with full-size Copy/View buttons was the single
+ * biggest control in the transcript, for its least interesting content
+ * (Marko, 2026-08-11: "the copy action — how big it is").
  */
 export function LinkRow({
   url,
@@ -563,36 +597,64 @@ export function LinkRow({
   className?: string
 }) {
   return (
-    <div className={cn("space-y-1.5", className)}>
+    <div className={cn("space-y-1", className)}>
       {label ? (
         <div className="text-[11px] font-medium tracking-wide text-muted-foreground uppercase">
           {label}
         </div>
       ) : null}
-      {/*
-        The URL gets its own line and WRAPS rather than truncating. In a 360px
-        panel a one-line layout clips it to "http://local…", which is useless
-        for the one thing this component exists to do: let the organizer read
-        the link before they paste it somewhere public.
-      */}
-      <div className="space-y-2 rounded-lg border border-border bg-muted/40 p-2">
-        <code className="block w-full font-mono text-xs leading-relaxed break-all text-foreground select-all">
+      <div
+        data-slot="link-row"
+        className="flex h-9 items-center gap-1 rounded-lg border border-border bg-muted/40 pr-1 pl-2.5"
+      >
+        <code
+          title={url}
+          className="min-w-0 flex-1 truncate font-mono text-xs text-foreground select-all"
+        >
           {url}
         </code>
-        <div className="flex items-center justify-end gap-2">
-          <CopyButton value={url} className="h-8 shrink-0 px-2.5 text-xs" />
-          <a
-            href={url}
-            target="_blank"
-            rel="noreferrer"
-            className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-md border border-border bg-card px-2.5 text-xs font-medium text-foreground transition-colors hover:bg-secondary focus-visible:border-ring focus-visible:outline-none"
-          >
-            {openLabel}
-            <RiExternalLinkLine size={13} aria-hidden />
-          </a>
-        </div>
+        <CopyIconButton value={url} />
+        <a
+          href={url}
+          target="_blank"
+          rel="noreferrer"
+          aria-label={openLabel}
+          title={openLabel}
+          className="inline-flex size-7 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:outline-none"
+        >
+          <RiExternalLinkLine size={14} aria-hidden />
+        </a>
       </div>
     </div>
+  )
+}
+
+/** Icon-size copy control for LinkRow — flips to a green check when it lands. */
+function CopyIconButton({
+  value,
+  label = "Copy link",
+}: {
+  value: string
+  label?: string
+}) {
+  const { copy, copied } = useCopyToClipboard()
+  return (
+    <button
+      type="button"
+      aria-label={label}
+      title={label}
+      onClick={() => void copy(value)}
+      className="inline-flex size-7 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:outline-none"
+    >
+      {copied ? (
+        <RiCheckLine size={14} aria-hidden className="text-status-green-fg" />
+      ) : (
+        <RiFileCopyLine size={14} aria-hidden />
+      )}
+      <span role="status" aria-live="polite" className="sr-only">
+        {copied ? "Copied" : ""}
+      </span>
+    </button>
   )
 }
 
