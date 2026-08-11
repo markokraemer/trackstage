@@ -943,12 +943,30 @@ or the agenda. 26 new assertions in `scripts/verify-backend.mjs` (verified 27/27
 slice; the full suite kept being torn down mid-run by concurrent `seed:setup` calls from other
 agents — the known collision, not a regression).
 
-**Statuses: `Added by` / `Added at` columns — 2026-08-11.** Closed the last column-level gap
-against the product map's `Name · Category · Color · Order · Sessions · Created By · Created At`
-table: a denormalised `sessionStatuses.createdBy` (audit label, so it survives the member
-leaving) plus `_creationTime` for the date, both `null` on the built-ins so they read `System`
-exactly as theirs do. +3 assertions. Still deferred: **Show custom status name**, which is only
-meaningful once the speaker portal consumes the catalogue.
+**Statuses: `Added by` / `Added at`, stale labels, and two UI bugs — 2026-08-11.** Closed the
+last column-level gap against the product map's `Name · Category · Color · Order · Sessions ·
+Created By · Created At` table: a denormalised `sessionStatuses.createdBy` (audit label, so it
+survives the member leaving) plus `_creationTime` for the date, both `null` on the built-ins so
+they read `System` exactly as theirs do.
+
+Three fixes found by actually driving the screen rather than trusting the diff:
+- **Stale labels could rewrite a pipeline status.** Re-categorising a custom status moves its
+  `pipelineStatus` out from under submissions already wearing it. `remove` treated those as
+  "in use" and reassigned them, silently changing a submission's stage. It now counts only
+  labels that still agree with the submission's status (matching what the screen counts) and
+  merely clears the dangling ones. +5 assertions.
+- **Both `Select`s rendered raw values** — the category read `pending`, and the delete dialog's
+  "Move them to" would have shown a raw Convex id. Base UI hands the trigger the value, so the
+  label has to be spelled out via `SelectValue`'s render prop.
+- **The `Blue` swatch was a lie.** The revamp deliberately neutralised the blue status token so
+  Active/Scheduled wouldn't read as links, leaving it pixel-identical to grey. Dropped it from
+  the organizer's colour menu (leaving Green/Amber/Red/Grey — exactly Sessionboard's own
+  built-in palette); the tone stays in the validator for rows that already carry it.
+
+Also de-flaked the two count-balance assertions: they compared a list against a total read in a
+separate query, so any submission created in between (constant, with several agents on one
+deployment) read as a phantom failure. They now retry before failing. Still deferred: **Show
+custom status name**, which is only meaningful once the speaker portal consumes the catalogue.
 
 ## 2026-08-11 — Top bar overhaul: real ⌘K global search, one logo, calm right cluster
 
