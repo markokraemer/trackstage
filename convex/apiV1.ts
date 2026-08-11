@@ -5,6 +5,7 @@ import type { MutationCtx, QueryCtx } from "./_generated/server"
 import type { Doc, Id } from "./_generated/dataModel"
 import { emitWebhook, generateWebhookSecret, maskSecret } from "./webhooks"
 import { membershipFor } from "./lib/auth"
+import { recordWorkspace } from "./lib/audit"
 import { computeConflicts } from "./agenda"
 
 // ————————————————————————————————————————————————————————————————————————
@@ -2239,6 +2240,14 @@ export const writeWebhook = internalMutation({
         createdAt: Date.now(),
       })
       const hook = await ctx.db.get(id)
+      await recordWorkspace(ctx, {
+        organizationId,
+        entity: "settings",
+        entityId: String(id),
+        action: "webhook_created",
+        summary: `Webhook endpoint created via the API · ${url}`,
+        actor: { type: "api", label: "API · POST /webhooks" },
+      })
       // The plaintext secret is returned exactly once, like an API key.
       return { data: webhookShape(hook as Doc<"webhooks">, true) }
     }
@@ -2255,6 +2264,14 @@ export const writeWebhook = internalMutation({
         .take(500)
       for (const delivery of deliveries) await ctx.db.delete(delivery._id)
       await ctx.db.delete(hook._id)
+      await recordWorkspace(ctx, {
+        organizationId: hook.organizationId,
+        entity: "settings",
+        entityId: String(hook._id),
+        action: "webhook_deleted",
+        summary: `Webhook endpoint deleted via the API · ${hook.url}`,
+        actor: { type: "api", label: "API · DELETE /webhooks/{id}" },
+      })
       return { deleted: true }
     }
 
@@ -2262,6 +2279,14 @@ export const writeWebhook = internalMutation({
       const secret = generateWebhookSecret()
       await ctx.db.patch(hook._id, { secret })
       const fresh = await ctx.db.get(hook._id)
+      await recordWorkspace(ctx, {
+        organizationId: hook.organizationId,
+        entity: "settings",
+        entityId: String(hook._id),
+        action: "webhook_secret_rotated",
+        summary: `Webhook signing secret rotated via the API · ${hook.url}`,
+        actor: { type: "api", label: "API · POST /webhooks/{id}/rotate" },
+      })
       return { data: webhookShape(fresh as Doc<"webhooks">, true) }
     }
 
@@ -2302,6 +2327,14 @@ export const writeWebhook = internalMutation({
       enabled: args.enabled ?? hook.enabled,
     })
     const fresh = await ctx.db.get(hook._id)
+    await recordWorkspace(ctx, {
+      organizationId: hook.organizationId,
+      entity: "settings",
+      entityId: String(hook._id),
+      action: "webhook_updated",
+      summary: `Webhook endpoint updated via the API · ${args.url ?? hook.url}`,
+      actor: { type: "api", label: "API · PUT /webhooks/{id}" },
+    })
     return { data: webhookShape(fresh as Doc<"webhooks">) }
   },
 })

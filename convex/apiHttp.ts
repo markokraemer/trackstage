@@ -890,6 +890,14 @@ async function handleEventScoped(
       })
       if (result === null)
         return errorResponse(`No event with slug "${eventRef}".`, 404)
+      await auditApiWrite(ctx, credential, {
+        eventRef,
+        method: "POST /sessions/bulk",
+        entity: "session",
+        action: "bulk_write",
+        summary: `Bulk session write via the API · ${operations.length} operation${operations.length === 1 ? "" : "s"}`,
+        meta: { operations: operations.map((op) => op.action) },
+      })
       return jsonResponse(result, 200, gate.headers)
     }
 
@@ -1251,6 +1259,13 @@ async function handleEventScoped(
         })
         if (result === null)
           return errorResponse(`No event with slug "${eventRef}".`, 404)
+        await auditApiWrite(ctx, credential, {
+          eventRef,
+          method: "POST /fields/create",
+          entity: "form",
+          action: "field_created",
+          summary: `Custom field created via the API · ${str(body.label) ?? str(body.name) ?? "untitled"}`,
+        })
         return jsonResponse(result, 201, gate.headers)
       }
       if (tail.length === 1 && (method === "PUT" || method === "DELETE")) {
@@ -1271,6 +1286,14 @@ async function handleEventScoped(
         if (result === null)
           return errorResponse(`No event with slug "${eventRef}".`, 404)
         if (result.notFound) return errorResponse("Field not found.", 404)
+        await auditApiWrite(ctx, credential, {
+          eventRef,
+          method: `${method} /fields/{id}`,
+          entity: "form",
+          entityId: tail[0],
+          action: method === "DELETE" ? "field_deleted" : "field_updated",
+          summary: `Custom field ${method === "DELETE" ? "deleted" : "updated"} via the API`,
+        })
         if (method === "DELETE")
           return new Response(null, {
             status: 204,
@@ -1311,6 +1334,14 @@ async function handleEventScoped(
           return errorResponse(`Unknown resource "${resource}".`, 404)
         if (result.notFound)
           return errorResponse(`No ${normalized.replace(/s$/, "")} with that id.`, 404)
+        await auditApiWrite(ctx, credential, {
+          eventRef,
+          method: `${isCreate ? "POST" : method} /${normalized}`,
+          entity: "settings",
+          entityId: isCreate ? undefined : tail[0],
+          action: isCreate ? "created" : method === "DELETE" ? "deleted" : "updated",
+          summary: `${normalized.replace(/s$/, "")} ${isCreate ? "created" : method === "DELETE" ? "deleted" : "updated"} via the API${str(body.name) ? ` · ${str(body.name)}` : ""}`,
+        })
         if (method === "DELETE")
           return new Response(null, {
             status: 204,
@@ -1457,6 +1488,14 @@ async function handleSessionFiles(
         404,
       )
     }
+    await auditApiWrite(ctx, credential, {
+      eventRef,
+      method: "POST /sessions/{id}/files/upload",
+      entity: "session",
+      entityId: sessionId,
+      action: "file_uploaded",
+      summary: `File uploaded via the API · ${filename}`,
+    })
     return jsonResponse(result, 201, gate.headers)
   }
 
@@ -1519,6 +1558,14 @@ async function handleSessionFiles(
     if (result === null)
       return errorResponse(`No event with slug "${eventRef}".`, 404)
     if (result.notFound) return errorResponse("Upload not found.", 404)
+    await auditApiWrite(ctx, credential, {
+      eventRef,
+      method: "POST /sessions/{id}/files/{id}/complete",
+      entity: "session",
+      entityId: sessionId,
+      action: "file_uploaded",
+      summary: "File upload completed via the API",
+    })
     return jsonResponse(result, 201, gate.headers)
   }
 
@@ -1575,6 +1622,14 @@ async function handleSessionFiles(
     if (result === null)
       return errorResponse(`No event with slug "${eventRef}".`, 404)
     if (result.notFound) return errorResponse("File not found.", 404)
+    await auditApiWrite(ctx, credential, {
+      eventRef,
+      method: `${method} /sessions/{id}/files/{id}`,
+      entity: "session",
+      entityId: sessionId,
+      action: method === "DELETE" ? "file_deleted" : "file_updated",
+      summary: `Session file ${method === "DELETE" ? "deleted" : "updated"} via the API`,
+    })
     if (method === "DELETE")
       return new Response(null, {
         status: 204,
