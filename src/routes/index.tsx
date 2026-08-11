@@ -13,12 +13,8 @@ import { ClosingCta } from "@/components/marketing/closing-cta"
 import { MarketingFooter } from "@/components/marketing/marketing-footer"
 import { PRODUCT_NAME } from "@/components/marketing/links"
 
-/**
- * TODO(Marko): paste the $10,000 Stripe Checkout link here.
- * While it is an empty string the "Declare the winner" button stays clickable
- * and explains itself with a toast instead of dead-linking.
- */
-const STRIPE_CHECKOUT_URL = ""
+/** The $10,000 Stripe Checkout link (provided by Marko, 2026-08-11). */
+const STRIPE_CHECKOUT_URL = "https://pay.kortix.com/b/9B6cN597kaK38NH76nbo400"
 
 export const Route = createFileRoute("/")({
   head: () => ({
