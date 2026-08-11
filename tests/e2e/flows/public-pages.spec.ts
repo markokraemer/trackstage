@@ -228,7 +228,10 @@ test.describe("public event pages", () => {
     await expect(tile).toContainText(/session/)
     await tile.click()
     await expect(page).toHaveURL(/\/itinerary\//)
-    await expect(page.getByRole("heading", { level: 2 })).toBeVisible()
+    // `.first()` matters: a speaker whose session is already scheduled renders
+    // BOTH their name and a "Their session" h2 — strict mode would refuse the
+    // bare locator (seen in CI, where the agenda spec runs before this one).
+    await expect(page.getByRole("heading", { level: 2 }).first()).toBeVisible()
 
     // And back to the schedule via the nav.
     await page
