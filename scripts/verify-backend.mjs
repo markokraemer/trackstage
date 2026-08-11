@@ -461,6 +461,42 @@ const scores = await client.query(api.evaluationsAdmin.scoresBySubmission, { eve
 ok("avg score visible to organizer", scores[submitted.submissionId]?.avg === 4)
 await throws("bad evaluator token rejected", () => client.query(api.review.queue, { token: "bogus" }))
 
+// ————— Blind review (sbek ABS-07) —————
+// The flag existed in the schema and was enforced nowhere; identities must be
+// stripped SERVER-side, so the assertions read the raw payload, not the UI.
+ok("an ordinary plan is not anonymized", queue.anonymized === false)
+ok("an ordinary plan shows speaker names", queue.submissions[0].speakers.length >= 1,
+  JSON.stringify(queue.submissions[0].speakers))
+const blindPlan = await client.mutation(api.evaluationsAdmin.createPlan, {
+  eventId: main._id, name: "Verify Blind Plan", round: 4,
+  criteria: [{ id: "overall", label: "Overall" }],
+  submissionIds: [submitted.submissionId], evaluatorEmails: ["blind-verifier@example.com"],
+  blind: true,
+})
+const blindDetail = await client.query(api.evaluationsAdmin.planDetail, { planId: blindPlan })
+ok("blind flag persisted through createPlan", blindDetail.plan.blind === true)
+ok("blind flag surfaces on the plans list",
+  (await client.query(api.evaluationsAdmin.listPlans, { eventId: main._id }))
+    .find((p) => p._id === blindPlan)?.blind === true)
+const blindToken = blindDetail.evaluators[0].token
+const blindQueue = await client.query(api.review.queue, { token: blindToken })
+ok("blind queue reports itself anonymized", blindQueue.anonymized === true)
+ok("blind queue strips every speaker",
+  blindQueue.submissions.length === 1 && blindQueue.submissions.every((s) => s.speakers.length === 0))
+ok("blind payload leaks no speaker identity anywhere",
+  !JSON.stringify(blindQueue).includes("Efftest") && !JSON.stringify(blindQueue).includes("QA Engineer"))
+ok("blind queue still carries the abstract to score",
+  blindQueue.submissions[0].title.length > 0 && blindQueue.submissions[0].track !== null)
+await client.mutation(api.review.submitScores, {
+  token: blindToken, submissionId: submitted.submissionId, scores: { overall: 5 }, comment: "Scored blind.",
+})
+ok("blind evaluator can still score", (await client.query(api.review.progress, { token: blindToken })).done === 1)
+await client.mutation(api.evaluationsAdmin.updatePlan, { planId: blindPlan, blind: false })
+const unblinded = await client.query(api.review.queue, { token: blindToken })
+ok("un-blinding a plan restores speaker names",
+  unblinded.anonymized === false && unblinded.submissions[0].speakers.length >= 1)
+await client.mutation(api.evaluationsAdmin.deletePlan, { planId: blindPlan })
+
 // ————— Dashboard —————
 section("Dashboard")
 const overview = await client.query(api.dashboard.overview, { eventId: main._id, now: Date.now() })
@@ -802,9 +838,15 @@ if (SITE_URL) {
 
   const tools = await rpc("tools/list", {})
   const toolNames = (tools.body?.result?.tools ?? []).map((t) => t.name)
-  ok("tools/list returns ≥20 tools", toolNames.length >= 20, `got ${toolNames.length}`)
+  ok("tools/list returns the full 31-tool surface", toolNames.length === 31, `got ${toolNames.length}: ${toolNames.join(", ")}`)
   ok("every tool has a description + inputSchema", (tools.body?.result?.tools ?? []).every((t) => t.description?.length > 20 && t.inputSchema?.type === "object"))
   ok("core tools present", ["list_events", "get_event_summary", "commit_decision_queue", "get_agenda", "list_speakers"].every((n) => toolNames.includes(n)))
+  // The destructive half of the CRUD surface — the one gap the live-fire test
+  // found in "do everything via MCP" — plus get_template, the full-body escape
+  // hatch that lets list_templates ship previews.
+  ok("deletion tools present", ["delete_event", "delete_form", "remove_task"].every((n) => toolNames.includes(n)), toolNames.filter((n) => /delete|remove/.test(n)).join(", "))
+  ok("get_template present", toolNames.includes("get_template"))
+  ok("get_event_overview kept as a deprecated alias", toolNames.includes("get_event_overview"))
 
   const listEvents = await toolCall("list_events", {})
   ok("tools/call list_events returns my events", !listEvents.isError && listEvents.json?.events?.some((e) => e.slug === "ai-summit-2026"), listEvents.text?.slice(0, 120))
@@ -820,6 +862,138 @@ if (SITE_URL) {
 
   const speakers = await toolCall("list_speakers", { event: "ai-summit-2026" })
   ok("list_speakers returns the roster", !speakers.isError && speakers.json?.speakerCount >= 1)
+
+  // ——— list_speakers semantics (live-fire fumble #3: 11 rows, "8" reported) ———
+  // The response has to state its own arithmetic, and the flags have to mean
+  // exactly one thing each.
+  const roster = speakers.json
+  ok("list_speakers counts are self-consistent",
+    roster.returned === roster.speakers.length &&
+    roster.totalSpeakers === roster.speakers.length &&
+    roster.withOpenTasks === roster.speakers.filter((s) => s.outstandingTasks.length > 0).length &&
+    roster.withProfileGaps === roster.speakers.filter((s) => s.missingProfileItems.length > 0).length &&
+    roster.withOpenTasksOrProfileGaps === roster.speakers.filter((s) => s.outstandingReason.length > 0).length,
+    JSON.stringify({ returned: roster.returned, total: roster.totalSpeakers, openTasks: roster.withOpenTasks, gaps: roster.withProfileGaps }))
+  ok("list_speakers states its own counts in prose",
+    typeof roster.summary === "string" && roster.summary.includes(`${roster.returned} of ${roster.totalSpeakers}`), roster.summary)
+  const openWork = await toolCall("list_speakers", { event: "ai-summit-2026", onlyWithOutstandingWork: true })
+  ok("onlyWithOutstandingWork means EXACTLY ≥1 incomplete task",
+    openWork.json.speakers.every((s) => s.outstandingTasks.length > 0) &&
+    openWork.json.returned === roster.withOpenTasks,
+    `returned ${openWork.json.returned}, expected ${roster.withOpenTasks}`)
+  const withGaps = await toolCall("list_speakers", { event: "ai-summit-2026", onlyWithOutstandingWork: true, includeProfileGaps: true })
+  ok("includeProfileGaps widens it to open-tasks-OR-profile-gaps",
+    withGaps.json.returned === roster.withOpenTasksOrProfileGaps && withGaps.json.returned >= openWork.json.returned,
+    `${openWork.json.returned} → ${withGaps.json.returned} of ${roster.totalSpeakers}`)
+  ok("every returned row carries its outstandingReason",
+    withGaps.json.speakers.every((s) => s.outstandingReason.length > 0))
+  const gapsOnly = await toolCall("list_speakers", { event: "ai-summit-2026", includeProfileGaps: true })
+  ok("includeProfileGaps alone returns exactly the incomplete profiles",
+    gapsOnly.json.returned === roster.withProfileGaps && gapsOnly.json.speakers.every((s) => s.missingProfileItems.length > 0))
+
+  // ——— get_event_summary absorbed get_event_overview ———
+  ok("summary carries the merged dashboard numbers",
+    typeof summary.json.totalSubmissions === "number" &&
+    typeof summary.json.outbox === "object" &&
+    typeof summary.json.agenda?.conflictCount === "number" &&
+    summary.json.forms.every((f) => typeof f.formId === "string" && typeof f.publicUrl === "string"))
+  ok("field names normalised: closeAt everywhere, acceptedNotScheduled",
+    summary.json.forms.every((f) => "closeAt" in f && !("closesAt" in f)) &&
+    "acceptedNotScheduled" in summary.json.agenda && !("acceptedNotYetScheduled" in summary.json.agenda))
+  const overviewAlias = await toolCall("get_event_overview", { event: "ai-summit-2026" })
+  ok("get_event_overview is a deprecated alias returning the same payload",
+    !overviewAlias.isError &&
+    typeof overviewAlias.json.deprecated === "string" &&
+    overviewAlias.json.headline === summary.json.headline &&
+    JSON.stringify(overviewAlias.json.submissions) === JSON.stringify(summary.json.submissions),
+    overviewAlias.json?.deprecated)
+
+  // ——— Payload caps ———
+  const cfpForm = await toolCall("get_form", { form: "cfp" })
+  ok("get_form caps long option lists", !cfpForm.isError && cfpForm.json.questions.every((q) => !q.options || q.options.length <= 10))
+  ok("a truncated option list says how many it held back",
+    cfpForm.json.questions.every((q) => q.optionsTruncated === undefined || /^…\d+ more$/.test(q.optionsTruncated)))
+  ok("get_agenda summarises per room and caps its rows",
+    Array.isArray(agenda.json.byRoom) &&
+    typeof agenda.json.scheduledCount === "number" &&
+    agenda.json.scheduled.length <= 40 &&
+    agenda.json.byRoom.reduce((n, r) => n + r.sessionCount, 0) <= agenda.json.scheduledCount)
+  const templates = await toolCall("list_templates", { event: "ai-summit-2026" })
+  ok("list_templates previews bodies instead of dumping them",
+    templates.json.templates.every((t) => t.body === undefined && typeof t.bodyPreview === "string" && t.bodyPreview.length <= 201))
+  const fullTemplate = await toolCall("get_template", { event: "ai-summit-2026", key: "accepted" })
+  ok("get_template returns the full body",
+    !fullTemplate.isError && typeof fullTemplate.json.body === "string" &&
+    fullTemplate.json.body.length >= templates.json.templates.find((t) => t.key === "accepted").bodyPreview.length)
+
+  // ——— Loopback link warning ———
+  const formLink = await toolCall("get_public_form_link", { form: "cfp" })
+  const loopback = /^https?:\/\/(localhost|127\.0\.0\.1)/.test(formLink.json.publicUrl ?? "")
+  ok("loopback links come with a demo-URL warning",
+    !loopback || /demo URL/.test(formLink.json.linkWarning ?? ""),
+    formLink.json.linkWarning ?? formLink.json.publicUrl)
+  ok("the URL itself stays machine-clean", /^https?:\/\/\S+$/.test(formLink.json.publicUrl ?? ""), formLink.json.publicUrl)
+
+  // ——— Deletion tools ———
+  // delete_form keeps forms.remove's rule: a form that collected anything is
+  // history, and the refusal has to name the alternative.
+  const deleteSeeded = await toolCall("delete_form", { form: "cfp", confirm: true })
+  ok("delete_form refuses a form that has submissions",
+    deleteSeeded.isError && /submission/i.test(deleteSeeded.text) && /clos/i.test(deleteSeeded.text),
+    deleteSeeded.text?.slice(0, 160))
+  ok("the refused delete left the form alone", !(await toolCall("get_form", { form: "cfp" })).isError)
+
+  const throwawayName = `MCP Verify Form ${Date.now().toString(36)}`
+  const throwaway = await toolCall("create_form", { event: "ai-summit-2026", name: throwawayName })
+  ok("create_form echoes the created form's name back", throwaway.json?.name === throwawayName, throwaway.text?.slice(0, 120))
+  const formNoConfirm = await rpc("tools/call", { name: "delete_form", arguments: { form: throwaway.json.slug } })
+  const formNoConfirmMsg = formNoConfirm.body?.error?.message ?? formNoConfirm.body?.result?.content?.[0]?.text ?? ""
+  ok("delete_form refuses without confirm:true",
+    (formNoConfirm.body?.error?.code === -32602 || formNoConfirm.body?.result?.isError === true) && /confirm/i.test(formNoConfirmMsg),
+    formNoConfirmMsg.slice(0, 140))
+  const formDeleted = await toolCall("delete_form", { form: throwaway.json.slug, confirm: true })
+  ok("delete_form deletes an empty form", !formDeleted.isError && formDeleted.json?.deleted === true, formDeleted.text?.slice(0, 140))
+  const formGone = await toolCall("get_form", { form: throwaway.json.slug })
+  ok("the deleted form is really gone", formGone.isError && /no form matches/i.test(formGone.text))
+
+  // remove_task is the inverse of assign_task — assign one, retract it.
+  const chaseEmail = roster.speakers[0].email
+  const taskTitle = `Verify throwaway task ${Date.now().toString(36)}`
+  const assigned = await toolCall("assign_task", { event: "ai-summit-2026", speakers: [chaseEmail], title: taskTitle })
+  ok("assign_task created the throwaway task", !assigned.isError && assigned.json?.created === 1)
+  const afterAssign = await toolCall("list_speakers", { event: "ai-summit-2026" })
+  const throwawayTask = afterAssign.json.speakers
+    .find((s) => s.email === chaseEmail)?.outstandingTasks.find((t) => t.title === taskTitle)
+  ok("the new task shows on the roster", Boolean(throwawayTask))
+  const taskRemoved = await toolCall("remove_task", { taskId: throwawayTask.taskId })
+  ok("remove_task retracts it", !taskRemoved.isError && taskRemoved.json?.removed === true, taskRemoved.text?.slice(0, 140))
+  const afterRemove = await toolCall("list_speakers", { event: "ai-summit-2026" })
+  ok("the retracted task is gone from the roster",
+    !afterRemove.json.speakers.some((s) => s.outstandingTasks.some((t) => t.title === taskTitle)))
+  ok("removing it again fails cleanly", (await toolCall("remove_task", { taskId: throwawayTask.taskId })).isError)
+
+  // delete_event: double-confirmed, and neither half alone is enough.
+  const eventNoName = await rpc("tools/call", { name: "delete_event", arguments: { event: "ai-summit-2026", confirm: true } })
+  ok("delete_event refuses without confirmName",
+    eventNoName.body?.error?.code === -32602 && /confirmName/.test(eventNoName.body?.error?.message ?? ""),
+    (eventNoName.body?.error?.message ?? "").slice(0, 140))
+  const eventNoConfirm = await rpc("tools/call", { name: "delete_event", arguments: { event: "ai-summit-2026", confirmName: main.name } })
+  ok("delete_event refuses without confirm:true",
+    eventNoConfirm.body?.error?.code === -32602 || eventNoConfirm.body?.result?.isError === true)
+  const wrongName = await toolCall("delete_event", { event: "ai-summit-2026", confirmName: "Definitely Not This Event", confirm: true })
+  ok("delete_event refuses a mismatched confirmName", wrongName.isError && /does not match/i.test(wrongName.text), wrongName.text?.slice(0, 140))
+  ok("nothing was destroyed by the refused deletes", !(await toolCall("get_event_summary", { event: "ai-summit-2026" })).isError)
+
+  const doomedName = `MCP Verify Event ${Date.now().toString(36)}`
+  const doomed = await toolCall("create_event", { name: doomedName, organizationId: main.organizationId, timezone: "Europe/Berlin" })
+  ok("create_event made the throwaway event", !doomed.isError && typeof doomed.json?.slug === "string", doomed.text?.slice(0, 140))
+  const doomedKilled = await toolCall("delete_event", { event: doomed.json.slug, confirmName: doomedName, confirm: true })
+  ok("delete_event deletes with both confirmations",
+    !doomedKilled.isError && doomedKilled.json?.deleted === true && typeof doomedKilled.json?.removed?.submissions === "number",
+    doomedKilled.text?.slice(0, 160))
+  ok("the deleted event is really gone",
+    (await toolCall("get_event_summary", { event: doomed.json.slug })).isError &&
+    !(await toolCall("list_events", {})).json.events.some((e) => e.slug === doomed.json.slug))
 
   // Either refusal is correct: the schema-level required-argument check
   // (JSON-RPC -32602) or the handler's own confirm gate (a tool error).

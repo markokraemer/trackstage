@@ -18,7 +18,8 @@
     "test:backend": "convex run seed:setup && node scripts/verify-backend.mjs",
     "test:e2e": "playwright test",
     "test:flows": "playwright test --project=flows",
-    "test:all": "pnpm test && pnpm test:backend && pnpm test:e2e"
+    "test:all": "pnpm test && pnpm test:backend && pnpm test:e2e",
+    "prompts:regen": "node scripts/extract-prompts.mjs"
   },
   "dependencies": {
     "@ai-sdk/mcp": "^2.0.29",

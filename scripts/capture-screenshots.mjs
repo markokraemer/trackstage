@@ -137,6 +137,30 @@ async function gotoSafe(page, url, opts = { waitUntil: "networkidle" }) {
   }
 }
 
+/**
+ * Navigate to an `/app/*` organizer route, self-healing the event context
+ * first. This is a shared dev database — another agent's seed re-run or
+ * verification pass can drop/replace events mid-capture, which clears the
+ * stored `sb.currentEventId` and silently falls the app back to whatever
+ * event loaded first (docs/lib/current-event.ts). Checking the sidebar after
+ * every navigation and re-selecting when it drifts keeps every organizer shot
+ * pointed at the real demo event instead of an empty leftover one.
+ */
+async function gotoOrganizer(page, path) {
+  await gotoSafe(page, `${BASE}${path}`)
+  await settle(page, 500)
+  const onDemoEvent = await page
+    .locator("aside")
+    .getByText(EVENT_NAME)
+    .count()
+    .catch(() => 0)
+  if (onDemoEvent === 0) {
+    await selectDemoEvent(page)
+    await gotoSafe(page, `${BASE}${path}`)
+    await settle(page, 500)
+  }
+}
+
 /** Best-effort click — a missing control must not abort the whole run. */
 async function tryClick(page, locator, label) {
   try {
@@ -297,24 +321,24 @@ async function captureDocsShots(page) {
 
   // gs-dashboard: the organizer dashboard.
   await safeShot("gs-dashboard", async () => {
-    await page.goto(`${BASE}/app`, { waitUntil: "networkidle" })
+    await gotoOrganizer(page, "/app")
     await shot(page, "gs-dashboard", DOCS_OUT)
   })
 
   // ——— Create your CFP form —————————————————————————————————————————————
 
   await safeShot("form-list", async () => {
-    await page.goto(`${BASE}/app/forms`, { waitUntil: "networkidle" })
+    await gotoOrganizer(page, "/app/forms")
     await shot(page, "form-list", DOCS_OUT)
   })
 
   await safeShot("form-new", async () => {
-    await page.goto(`${BASE}/app/forms/new`, { waitUntil: "networkidle" })
+    await gotoOrganizer(page, "/app/forms/new")
     await shot(page, "form-new", DOCS_OUT)
   })
 
   await safeShot("form-questions", async () => {
-    await page.goto(`${BASE}/app/forms`, { waitUntil: "networkidle" })
+    await gotoOrganizer(page, "/app/forms")
     const opened = await tryClick(
       page,
       page.getByRole("link", { name: /^edit$/i }),
@@ -327,7 +351,7 @@ async function captureDocsShots(page) {
   })
 
   await safeShot("form-settings", async () => {
-    await page.goto(`${BASE}/app/forms`, { waitUntil: "networkidle" })
+    await gotoOrganizer(page, "/app/forms")
     const opened = await tryClick(
       page,
       page.getByRole("link", { name: /^edit$/i }),
@@ -342,7 +366,7 @@ async function captureDocsShots(page) {
   // ——— Share & collect ————————————————————————————————————————————————
 
   await safeShot("share-link", async () => {
-    await page.goto(`${BASE}/app/forms`, { waitUntil: "networkidle" })
+    await gotoOrganizer(page, "/app/forms")
     await settle(page)
     const copyButton = page.getByRole("button", { name: /copy public link/i }).first()
     await copyButton.waitFor({ timeout: 5000 })
@@ -366,14 +390,14 @@ async function captureDocsShots(page) {
   })
 
   await safeShot("submissions-inbox", async () => {
-    await gotoSafe(page, `${BASE}/app/submissions`)
+    await gotoOrganizer(page, "/app/submissions")
     await shot(page, "submissions-inbox", DOCS_OUT)
   })
 
   // ——— Review & decide ————————————————————————————————————————————————
 
   await safeShot("review-detail", async () => {
-    await gotoSafe(page, `${BASE}/app/submissions`)
+    await gotoOrganizer(page, "/app/submissions")
     await settle(page)
     const titleLink = page.locator('table a[href*="/app/submissions"]').first()
     await tryClick(page, titleLink, "open submission detail drawer")
@@ -382,23 +406,30 @@ async function captureDocsShots(page) {
   })
 
   await safeShot("review-queue", async () => {
-    await page.goto(`${BASE}/app/submissions?status=accept_queue`, {
-      waitUntil: "networkidle",
-    })
+    await gotoOrganizer(page, "/app/submissions?status=accept_queue")
     await shot(page, "review-queue", DOCS_OUT)
   })
 
   await safeShot("review-commit", async () => {
-    await page.goto(`${BASE}/app/submissions?status=accept_queue`, {
-      waitUntil: "networkidle",
-    })
-    await settle(page)
-    const sendButton = page.getByRole("button", { name: /^send acceptances$/i }).first()
-    const opened = await tryClick(page, sendButton, "open commit-queue confirmation")
-    if (!opened) throw new Error("accept queue is empty — nothing to commit")
-    await elementShot(page, page.locator('[data-slot="alert-dialog-content"]'), "review-commit")
-    // Never confirm — cancel the destructive action.
-    await dismiss(page)
+    // Whichever decision queue is staged right now — a shared dev database
+    // means another agent may have already committed the accept queue.
+    const queues = [
+      { status: "accept_queue", label: /^send acceptances$/i },
+      { status: "decline_queue", label: /^send declines$/i },
+    ]
+    for (const queue of queues) {
+      await gotoOrganizer(page, `/app/submissions?status=${queue.status}`)
+      await settle(page)
+      const sendButton = page.getByRole("button", { name: queue.label }).first()
+      const opened = await tryClick(page, sendButton, `open commit-queue confirmation (${queue.status})`)
+      if (opened) {
+        await elementShot(page, page.locator('[data-slot="alert-dialog-content"]'), "review-commit")
+        // Never confirm — cancel the destructive action.
+        await dismiss(page)
+        return
+      }
+    }
+    throw new Error("both decision queues are empty — nothing to commit")
   })
 
   // ——— Speaker portal —————————————————————————————————————————————————

@@ -98,6 +98,10 @@ Source of truth for everything Marko asked + build status. Update continuously.
 - ⏳ Deploy: convex deploy + wrangler deploy (workers.dev), custom domain optional
 - ⏳ Landing page: really good + simple; CTAs = open source (GitHub), try demo/sign up,
   "Declare the winner" → $10k Stripe checkout link (constant in code; Marko supplies link)
+- ✅ **Documentation (RULES.md 27)** — DONE 2026-08-11: `/docs` with 11 screenshot-led user-guide
+  pages, a Scalar-rendered API reference over a hand-verified `openapi.json`, and an MCP page
+  whose 27-tool table is generated from `convex/mcp.ts`. Fumadocs deferred (needs deps — see
+  BUILD-LOG NEEDS-DEPS); native shell built on our tokens meanwhile.
 - ⏳ README: product tour, self-host, API docs, screenshots
 - ⏳ Submission: fill swyx's form, flip repo public, submissionNotes for sbek config
 - ⏳ Manual verification prep: .ics imports (Google/Apple/Outlook), email previews

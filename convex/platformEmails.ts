@@ -26,13 +26,20 @@ async function sendTransactionalEmail(args: {
   html: string
   /** Short name for log lines, e.g. "password-reset". */
   kind: string
+  /**
+   * Appended to the PREVIEW log line only — the branch where no mail leaves
+   * the deployment. Lets a demo/test account still follow a one-time link that
+   * was never delivered anywhere. Never logged on a real send.
+   */
+  previewNote?: string
 }): Promise<{ sent: boolean }> {
   const apiKey = process.env.RESEND_API_KEY
   const isDemoRecipient = /@example\.(com|org|net)$/i.test(args.to)
   if (!apiKey || isDemoRecipient) {
     console.log(
       `[email:preview] ${args.kind} → ${args.to} — "${args.subject}" ` +
-        `(${!apiKey ? "no RESEND_API_KEY" : "demo recipient"})`
+        `(${!apiKey ? "no RESEND_API_KEY" : "demo recipient"})` +
+        (args.previewNote ? ` ${args.previewNote}` : "")
     )
     return { sent: false }
   }
@@ -117,6 +124,7 @@ export const sendPasswordReset = internalAction({
     return await sendTransactionalEmail({
       to: args.toEmail,
       kind: "password-reset",
+      previewNote: `link=${args.url}`,
       subject: "Reset your Sessionboard password",
       html: [
         `<p>${firstName ? `Hi ${firstName},` : "Hi,"}</p>`,
@@ -268,7 +276,10 @@ export const recentSubmissionNotifications = internalQuery({
     ),
   }),
   handler: async (ctx, args) => {
-    const limit = Math.min(Math.max(args.limit ?? 100, 1), 500)
+    // Scans recent scheduler history — a busy deployment schedules a
+    // `deliverPending` per queued email, so the window has to be generous or a
+    // notification from ten operations ago falls off the end.
+    const limit = Math.min(Math.max(args.limit ?? 2000, 1), 4000)
     const rows = await ctx.db.system
       .query("_scheduled_functions")
       .order("desc")

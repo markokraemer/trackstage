@@ -1,17 +1,13 @@
 import * as React from "react"
 import { Link } from "@tanstack/react-router"
 import {
-  RiArrowRightSLine,
+  RiAlertLine,
+  RiCheckboxCircleLine,
   RiImageLine,
   RiInformationLine,
-  RiAlertLine,
-  RiCheckboxCircleLine
-  
 } from "@remixicon/react"
-import type {RemixiconComponentType} from "@remixicon/react";
 
 import { cn } from "@/lib/utils"
-import { EXTERNAL_LINK_PROPS } from "@/components/marketing/links"
 
 /**
  * The building blocks every /docs page is made of.
@@ -196,89 +192,5 @@ export function Callout({
         {children}
       </div>
     </div>
-  )
-}
-
-// ——— Cards ————————————————————————————————————————————————————————————————
-
-export function DocCardGrid({
-  columns = 2,
-  children,
-}: {
-  columns?: 2 | 3
-  children: React.ReactNode
-}) {
-  return (
-    <div
-      className={cn(
-        "grid gap-3 sm:grid-cols-2",
-        columns === 3 && "lg:grid-cols-3"
-      )}
-    >
-      {children}
-    </div>
-  )
-}
-
-const CARD_CLASS =
-  "group flex h-full flex-col gap-1.5 rounded-xl border border-border bg-card p-4 transition-colors hover:border-primary-border hover:bg-primary-surface/40 focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/40"
-
-function CardBody({
-  icon: Icon,
-  title,
-  description,
-}: {
-  icon?: RemixiconComponentType
-  title: string
-  description: string
-}) {
-  return (
-    <>
-      <div className="flex items-center gap-2">
-        {Icon ? (
-          <Icon size={16} aria-hidden className="shrink-0 text-primary" />
-        ) : null}
-        <span className="font-heading text-[0.9375rem] font-medium tracking-[-0.01em] text-foreground">
-          {title}
-        </span>
-        <RiArrowRightSLine
-          size={16}
-          aria-hidden
-          className="ml-auto shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5"
-        />
-      </div>
-      <span className="text-[0.8125rem] leading-6 text-pretty text-muted-foreground">
-        {description}
-      </span>
-    </>
-  )
-}
-
-export function DocCard({
-  to,
-  href,
-  icon,
-  title,
-  description,
-}: {
-  /** Internal route. Mutually exclusive with `href`. */
-  to?: React.ComponentProps<typeof Link>["to"]
-  /** External URL. */
-  href?: string
-  icon?: RemixiconComponentType
-  title: string
-  description: string
-}) {
-  if (href) {
-    return (
-      <a href={href} {...EXTERNAL_LINK_PROPS} className={CARD_CLASS}>
-        <CardBody icon={icon} title={title} description={description} />
-      </a>
-    )
-  }
-  return (
-    <Link to={to} className={CARD_CLASS}>
-      <CardBody icon={icon} title={title} description={description} />
-    </Link>
   )
 }

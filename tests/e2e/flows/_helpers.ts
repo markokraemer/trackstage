@@ -201,9 +201,16 @@ export async function gotoStable(
   waitUntil: "domcontentloaded" | "networkidle" = "domcontentloaded",
 ) {
   let lastError: unknown
-  for (let attempt = 0; attempt < 4; attempt++) {
+  for (let attempt = 0; attempt < 5; attempt++) {
     try {
-      return await page.goto(path, { waitUntil })
+      const response = await page.goto(path, { waitUntil })
+      // A dev server mid-rebuild answers 500 for a second or two. Product
+      // failures (4xx, or a rendered error boundary) are returned as-is.
+      if ((response?.status() ?? 0) >= 500 && attempt < 4) {
+        await page.waitForTimeout(1_500)
+        continue
+      }
+      return response
     } catch (error) {
       lastError = error
       if (!/ERR_ABORTED|ERR_CONNECTION|frame was detached/i.test(String(error))) {
@@ -212,7 +219,8 @@ export async function gotoStable(
       await page.waitForTimeout(1_000)
     }
   }
-  throw lastError
+  if (lastError) throw lastError
+  return await page.goto(path, { waitUntil })
 }
 
 /** Open an organizer route with the demo event selected. */

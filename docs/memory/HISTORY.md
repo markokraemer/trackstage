@@ -158,3 +158,6 @@ the narrative memory; RULES.md is the things circled as important along the way.
     client-side errors, add lint/strict enforcement to catch the whole class.
     (Shipped: DropdownMenuLabel hardened to plain div — crash class eliminated;
     nativeButton lint guard added + 37 violations fixed across 20 files.)
+54. **API parity mandate**: dedicated agent to map Sessionboard's full API reference
+    in depth and reach 100% parity on the program-side core (incl. custom fields,
+    scopes); never degraded, improve where possible; feed structure into Fumadocs.
