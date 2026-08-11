@@ -4,7 +4,7 @@ import { RiArrowRightLine, RiGithubFill } from "@remixicon/react"
 import { cn } from "@/lib/utils"
 import { buttonVariants } from "@/components/ui/button"
 import { TextReveal } from "@/components/interactions"
-import { ProductShot } from "@/components/marketing/product-shot"
+import { HeroVideoShot } from "@/components/marketing/hero-video"
 import { DISPLAY_HEADING, GridBackdrop } from "@/components/marketing/section"
 import { EXTERNAL_LINK_PROPS, GITHUB_URL } from "@/components/marketing/links"
 
@@ -78,13 +78,7 @@ export function Hero() {
          * a real product and scroll to see the rest. Attio's exact move.
          */}
         <div className="mt-14 sm:mt-20">
-          <ProductShot
-            variant="dashboard"
-            crop="top"
-            elevation="lg"
-            priority
-            className="rounded-b-none"
-          />
+          <HeroVideoShot />
         </div>
       </div>
     </section>
