@@ -2447,3 +2447,73 @@ client) in the Calendar sample — untouched by this work. New assertions live i
 `scripts/verify-backend.mjs` ("Collect an answer tasks", "Form deletion & the trash", and
 the tool count 31 → 34). `pnpm typecheck` + `pnpm lint` clean (6 pre-existing `no-shadow`
 warnings in `ui/calendar.tsx`).
+
+## 2026-08-11 · Docs redone on the post-URL-architecture UI (43 shots, 2 real bugs)
+
+Marko: *"docs walkthroughs & tutorials must be redone on the latest, newest UX/UI"* —
+every screenshot in `/docs` predated the hierarchical-URL commit (and most predated the
+mega-wave before it), so the guides were narrating a product that no longer existed.
+
+**`scripts/capture-walkthrough.mjs` — audited, then re-pointed at the canonical scheme.**
+The script drove the app through bare legacy paths (`/app/agenda`, `/e/:slug`). Those
+still resolve, but only through the stored event pointer — and `/e/:slug` resolves
+*oldest-claimant-first*, which on the shared dev database is a previous run's event, not
+this one's. It now reads `{workspaceSlug, eventSlug}` off the URL the create-event dialog
+lands on and addresses everything canonically from there (`appUrl()` / `refFromUrl()`).
+Three consequences: the `waitForURL` patterns for the settings and form-builder landings
+were wrong and are fixed; `freeEventSlug()` and its `pnpm exec convex run` shell-out are
+**deleted** (event slugs are unique per workspace now, and every run mints a fresh
+workspace, so `devcon-berlin-2026` is always free); `--resume` takes the workspace slug
+too. Row links are matched on `/submissions` rather than `/app/submissions`.
+
+**The assign-task step had been silently failing since the roster gained a person
+picker.** "Assign to" is required, the script never ticked anybody, the mutation refused
+with a toast, and shot 26 quietly showed only the three onboarding tasks acceptance
+creates — under a caption claiming the assigned task was "already waiting here". It now
+fills `#task-title`, picks a due date from the real calendar, ticks the speaker, and
+**waits for the dialog to close** so a refusal can never pass as success again. The shot
+is taken before the tick (each focus scrolls the dialog's inner body, which is what had
+pushed the title field out of the crop) and the due date makes the task sort to the top of
+the speaker's list — `convex/portal.ts` orders by `dueAt` — so shot 26 finally shows it.
+
+**Product bug found by shot 28 — the schedule popover printed raw values.** Room read
+`js73w24jtswpdk8yt0qgbvm6rn8c9bb`, Day `2026-10-13`, Start `540`, Length `45`. Base UI
+renders `Select.Value` from the Root's `items` map and falls back to the raw value when
+there is none; `agenda/schedule-fields.tsx` passed no `items`. All four pickers have one
+now, so a closed picker says "Aula / Tue, Oct 13 / 9:00 AM / 45 min" — the same words as
+the open one. This is the click-to-schedule path the browser agent uses, and the bug was
+shipped in the committed docs image, so it had been wrong on screen since the pickers
+landed.
+
+**`scripts/capture-screenshots.mjs --docs` — two fixes of its own.** (a) The portal shots
+never signed the speaker in: `--docs` skips the marketing pass that used to open
+`/portal/t/<token>`, so `portal-submissions.png` and `portal-profile.png` were both the
+signed-out "Check your email for your portal link" card. (b) `submissions-inbox` is
+ordered newest-first, and the newest rows on the shared deployment are whatever fixtures
+the concurrent flows gate just wrote ("Auto B au-msox3gng", "E2E Proposal t-…") — it is
+now scoped to Accepted + one track, which no fixture satisfies. Organizer navigation is
+canonical here too, via a `demoRef` learned from the URL plus a `canonical()` rewrite.
+
+**43 images re-shot and eyeballed one by one** — 31 walkthrough (fresh account
+`nora.feldmann.msowv9t1`, workspace `nora-feldmann-s-workspace-m551`, one story end to
+end, 0 skipped, no console errors) and 12 seeded at-scale shots. Nothing half-loaded,
+nothing stale.
+
+**Nine guide pages rewritten against the new shots**, keeping the "super simple" voice:
+the submissions inbox now has **two** tab rows (kind above status) and Review & decide
+explains both and how they compose; the submission drawer's five tabs are named; Team &
+workspaces gained the Account · Workspace · Event level row, the canonical URL shapes, the
+"Your workspaces" switcher card and — new since the last pass — **per-member event
+access** ("an event a member wasn't given is invisible… the same 'Event not found' a
+stranger gets"); Getting started stops telling people to set a timezone they already set
+in the create dialog; Chase speakers documents five task kinds (not four) and says where
+"Assign to" actually is; Build the agenda's Conflicts shot is now the *clean* state and
+reads as such, plus Auto-place; Share & collect prints the canonical form link shape.
+**API keys are no longer "Settings → API & MCP"** — they are personal, so Publish your
+program and `/docs/mcp` (twice) now say **Account settings → API & MCP**.
+
+**Verified:** every `/docs` route crawled at 1440px and 390px — 15 routes × 2 viewports,
+**0 broken images, 0px horizontal overflow, 0 console errors** on all 30. Referenced
+images and files on disk are a perfect 1:1 (43 = 43, no orphans, nothing missing).
+`pnpm typecheck` + `pnpm lint` clean (the 6 pre-existing `no-shadow` warnings in
+`ui/calendar.tsx`).
