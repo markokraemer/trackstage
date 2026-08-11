@@ -20,9 +20,9 @@ export const TASK_KINDS = ["profile", "headshot", "upload", "answer", "confirm"]
 
 function assertKind(kind: string) {
   if (!TASK_KINDS.includes(kind)) {
-    throw new ConvexError({
-      message: `"${kind}" isn't a task type. Pick one of: ${TASK_KINDS.join(", ")}.`,
-    })
+    throw new ConvexError(
+      `"${kind}" isn't a task type. Pick one of: ${TASK_KINDS.join(", ")}.`,
+    )
   }
 }
 

@@ -336,7 +336,15 @@ function ScheduledRow({
             className="w-full"
             aria-label={`Room for ${session.title}`}
           >
-            <SelectValue placeholder="Pick a room…" />
+            {/* Base UI's SelectValue prints the raw value (a Convex id) when
+                the popup's item list hasn't rendered — resolve the label
+                ourselves so a room id can never appear on screen. */}
+            <SelectValue placeholder="Pick a room…">
+              {() =>
+                rooms.find((room) => room._id === session.roomId)?.name ??
+                "Pick a room…"
+              }
+            </SelectValue>
           </SelectTrigger>
           <SelectContent>
             {rooms.map((room) => (

@@ -747,7 +747,7 @@ await throws("a library task needs at least one speaker", () =>
 await throws("a library task refuses an unknown kind", () =>
   client.mutation(api.tasksAdmin.createTemplate, {
     eventId: main._id, title: "Nonsense", kind: "teleport",
-  }), "invalid task kind")
+  }), "isn't a task type")
 await throws("anonymous cannot read the task library", () =>
   anonClient.query(api.tasksAdmin.listTemplates, { eventId: main._id }))
 await throws("anonymous cannot write to the task library", () =>
