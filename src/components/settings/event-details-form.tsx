@@ -181,7 +181,7 @@ export function EventDetailsForm({ event }: { event: EventSummary }) {
       setDraft(saved)
       if (result.slugAdjusted) {
         toast.success("Event settings saved", {
-          description: `That web address was taken — yours is ${publicEventUrl(result.slug)}`,
+          description: `That web address was taken — yours is ${publicEventUrl(event.organizationSlug, result.slug)}`,
           duration: 10_000,
         })
       } else {
@@ -202,7 +202,7 @@ export function EventDetailsForm({ event }: { event: EventSummary }) {
     setSubmitted(false)
   }
 
-  const publicUrl = publicEventUrl(draft.slug || event.slug)
+  const publicUrl = publicEventUrl(event.organizationSlug, draft.slug || event.slug)
 
   return (
     <>

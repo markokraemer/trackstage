@@ -24,6 +24,8 @@ import {
   useStatusCatalog,
 } from "@/lib/status-catalog"
 import type { StatusOption } from "@/lib/status-catalog"
+import { appLink, legacyAppLink } from "@/lib/app-links"
+import { useCurrentEvent } from "@/lib/current-event"
 
 /**
  * Inline status editor for the submissions table (docs/ux/03 image13): click the
@@ -70,6 +72,10 @@ export function StatusPicker({
   className,
 }: StatusPickerProps) {
   const { statuses } = useStatusCatalog()
+  const { eventRef } = useCurrentEvent()
+  const statusesSettingsLink = eventRef
+    ? appLink.settingsSection(eventRef, "statuses")
+    : legacyAppLink.settings
   const [open, setOpen] = useState(false)
   const [staged, setStaged] = useState<StatusOption | null>(null)
   const [saving, setSaving] = useState(false)
@@ -199,7 +205,7 @@ export function StatusPicker({
 
         <div className="mt-3 flex items-center justify-between gap-2">
           <Link
-            to="/app/settings/statuses"
+            to={statusesSettingsLink as never}
             className={buttonVariants({ variant: "ghost", size: "sm" })}
           >
             <RiSettings3Line aria-hidden />

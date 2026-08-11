@@ -14,10 +14,10 @@ import { statusLabel } from "@/components/shared/status-pill"
  *  - the EVENT in the switcher — name, slug and dates, so the model can pass
  *    the right `event` argument and reason about "next week";
  *  - the SCREEN — which page, and the filters/selection that page keeps in the
- *    URL. Trackstage deliberately puts every filter in the query string
- *    (see /app/submissions, /app/agenda, /app/communications), which means the
- *    copilot can read the organizer's current view without any screen having
- *    to report it.
+ *    URL. Trackstage deliberately puts every filter in the query string (see
+ *    the Submissions, Agenda and Communications screens, each event-scoped at
+ *    `/app/:workspaceSlug/:eventSlug/…`), which means the copilot can read
+ *    the organizer's current view without any screen having to report it.
  *
  * The result is that "decline this one", "who's speaking here?" and "remind
  * these people" resolve against the screen instead of bouncing back a "which
@@ -46,9 +46,55 @@ const PAGE_NAMES: Array<[RegExp, string]> = [
   [/^\/app\/copilot/, "the copilot's own full-page chat"],
 ]
 
+/**
+ * The static children of `/app` (docs/memory/DECISIONS.md, "URL architecture
+ * is fully hierarchical") — everything else under `/app/:first/:second/…` is
+ * an event-scoped screen, with `:first` a workspace slug and `:second` an
+ * event slug (or, on the workspace hub, the literal `workspace`).
+ */
+const STATIC_TOP_SEGMENTS = new Set([
+  "account",
+  "agenda",
+  "communications",
+  "copilot",
+  "embeds",
+  "evaluation",
+  "events",
+  "files",
+  "forms",
+  "settings",
+  "speakers",
+  "submissions",
+  "workspace",
+])
+
+/**
+ * Strips a canonical `/app/:workspaceSlug/:eventSlug/…` (or
+ * `/app/:workspaceSlug/workspace`) prefix down to the bare legacy shape the
+ * `PAGE_NAMES`/`describeView` patterns below are written against, so page
+ * naming keeps working whichever URL shape the organizer is actually on.
+ */
+function normalizeAppPath(pathname: string): string {
+  const match = pathname.match(/^\/app\/([^/]+)(?:\/([^/]+))?(\/.*)?$/)
+  if (!match) return pathname
+  // Optional groups really are `string | undefined` at runtime, whatever
+  // RegExpMatchArray's index signature claims.
+  const groups: Array<string | undefined> = match
+  const first = groups[1] ?? ""
+  const second = groups[2]
+  const rest = groups[3]
+  // Already a static/global path (`/app/account`, a bare legacy section, a
+  // still-mid-redirect path) — nothing to strip.
+  if (STATIC_TOP_SEGMENTS.has(first)) return pathname
+  if (second === undefined) return "/app"
+  if (second === "workspace") return `/app/workspace${rest ?? ""}`
+  return rest && rest.length > 0 ? `/app${rest}` : "/app"
+}
+
 function pageName(pathname: string): string {
+  const normalized = normalizeAppPath(pathname)
   for (const [pattern, name] of PAGE_NAMES) {
-    if (pattern.test(pathname)) return name
+    if (pattern.test(normalized)) return name
   }
   return pathname
 }
@@ -58,23 +104,24 @@ function describeView(
   pathname: string,
   search: Record<string, unknown>
 ): string | null {
+  const normalized = normalizeAppPath(pathname)
   const parts: Array<string> = []
   const value = (key: string): string | null => {
     const raw = search[key]
     return typeof raw === "string" && raw ? raw : null
   }
 
-  if (pathname.startsWith("/app/submissions")) {
+  if (normalized.startsWith("/app/submissions")) {
     const status = value("status")
     if (status) parts.push(`status filter "${statusLabel(status)}"`)
     if (value("track")) parts.push(`track "${value("track")}"`)
     if (value("q")) parts.push(`search "${value("q")}"`)
     if (value("id")) parts.push(`submission ${value("id")} open in the drawer`)
-  } else if (pathname.startsWith("/app/agenda")) {
+  } else if (normalized.startsWith("/app/agenda")) {
     if (value("view")) parts.push(`${value("view")} view`)
     if (value("day")) parts.push(`day ${value("day")}`)
     if (value("focus")) parts.push(`session ${value("focus")} highlighted`)
-  } else if (pathname.startsWith("/app/communications")) {
+  } else if (normalized.startsWith("/app/communications")) {
     if (value("tab")) parts.push(`${value("tab")} tab`)
     const status = value("status")
     if (status && status !== "all") parts.push(`status "${status}"`)

@@ -12,6 +12,8 @@ export { DEMO_ORGANIZER, ORGANIZER_STATE, organizerConvexClient } from "../utils
 export const MAIN_EVENT_SLUG = "ai-summit-2026"
 export const MAIN_EVENT_NAME = "AI Engineer Summit 2026"
 export const DEMO_WORKSPACE_NAME = "AI Engineer"
+/** The demo workspace's URL slug — the first segment of every canonical address. */
+export const DEMO_WORKSPACE_SLUG = "ai-engineer"
 
 /**
  * A collision-proof identity for a spec run.
@@ -245,14 +247,23 @@ export async function waitForShell(page: Page) {
  * Pin the shell to a named event. Other agents reseed mid-run and a fresh
  * browser lands on whichever event comes back first, so every organizer spec
  * calls this before asserting anything event-scoped.
+ *
+ * Switching events now NAVIGATES — it moves the address bar to the same
+ * section under the chosen event's canonical `/app/:workspaceSlug/:eventSlug/…`
+ * URL, not just a client-state flip — so this waits for that navigation to
+ * settle rather than assuming the URL never moved.
  */
 export async function selectEvent(page: Page, name = MAIN_EVENT_NAME) {
   const switcher = page.getByRole("button", { name: /switch event/i }).first()
   await expect(switcher).toBeVisible({ timeout: 30_000 })
   if ((await switcher.textContent())?.includes(name)) return
+  const before = page.url()
   await switcher.click()
   await page.getByRole("menuitem", { name: new RegExp(name, "i") }).first().click()
   await expect(switcher).toContainText(new RegExp(name, "i"), { timeout: 15_000 })
+  if (page.url() !== before) {
+    await page.waitForLoadState("networkidle").catch(() => {})
+  }
 }
 
 /**
@@ -288,10 +299,32 @@ export async function gotoStable(
   return await page.goto(path, { waitUntil })
 }
 
-/** Open an organizer route with the demo event selected. */
+/**
+ * Open an organizer route with the demo event selected.
+ *
+ * `path` may be a bare legacy section (`/app/agenda`) or an already-canonical
+ * one (`/app/ai-engineer/ai-summit-2026/agenda`). A bare section 307-redirects
+ * client-side to its canonical `/app/:workspaceSlug/:eventSlug/…` address the
+ * moment the stored event pointer resolves
+ * (src/components/shell/legacy-redirect.tsx) — a few pages (`/app/copilot`,
+ * `/app/account`) are global and never move. `waitForShell` already blocks
+ * until the redirect lands (the switcher only renders on the real
+ * destination), but this also waits for the URL itself to settle into
+ * whichever shape — bare or canonical — matches the section that was asked
+ * for, so a slow redirect can't race whatever the caller does next.
+ */
 export async function gotoApp(page: Page, path: string) {
   await gotoStable(page, path)
   await waitForShell(page)
+
+  const pathname = path.split(/[?#]/)[0]
+  const rest = pathname.replace(/^\/app\/?/, "")
+  const escaped = rest.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+  const pattern = rest
+    ? new RegExp(`\\/app\\/(?:[^/]+\\/[^/]+\\/)?${escaped}`)
+    : new RegExp(`\\/app(?:\\/[^/]+\\/[^/]+)?(?:[/?#]|$)`)
+  await page.waitForURL(pattern, { timeout: 15_000 }).catch(() => {})
+
   await selectEvent(page)
 }
 

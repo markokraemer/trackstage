@@ -75,12 +75,15 @@ function layoutColumn(sessions: Array<PublicSession>, timeZone: string) {
 
 export interface RoomsGridProps extends React.ComponentProps<"div"> {
   event: Pick<PublicEvent, "slug" | "timezone">
+  /** The event's workspace — `/e/:workspaceSlug/:eventSlug` needs both segments. */
+  workspaceSlug: string
   sessions: Array<PublicSession>
   rooms: Array<PublicRoom>
 }
 
 export function RoomsGrid({
   event,
+  workspaceSlug,
   sessions,
   rooms,
   className,
@@ -182,8 +185,8 @@ export function RoomsGrid({
                 ({ session, start, end, lane, lanes }) => (
                   <Link
                     key={session._id}
-                    to="/e/$slug/sessions/$sessionId"
-                    params={{ slug: event.slug, sessionId: session._id }}
+                    to="/e/$workspaceSlug/$eventSlug/sessions/$sessionId"
+                    params={{ workspaceSlug, eventSlug: event.slug, sessionId: session._id }}
                     search={(prev) => prev}
                     className="absolute overflow-hidden rounded-lg border border-border bg-card p-2 shadow-xs outline-none transition-colors hover:border-primary/40 hover:bg-accent/60 focus-visible:ring-3 focus-visible:ring-ring/50"
                     style={{

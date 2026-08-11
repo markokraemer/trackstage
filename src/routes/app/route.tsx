@@ -1,4 +1,4 @@
-import { useEffect } from "react"
+import { useEffect, useMemo } from "react"
 import { Link, Outlet, createFileRoute } from "@tanstack/react-router"
 import { useConvexMutation } from "@convex-dev/react-query"
 import { api } from "@convex/_generated/api"
@@ -55,7 +55,10 @@ import {
 import { NewWorkspaceDialog } from "@/components/workspace/new-workspace-dialog"
 import { GlobalSearch } from "@/components/shell/global-search"
 import { requireAuthed, useSession } from "@/lib/session"
-import { useCurrentEvent } from "@/lib/current-event"
+import { eventRefOf, useCurrentEvent } from "@/lib/current-event"
+import { appLink, legacyAppLink } from "@/lib/app-links"
+import type { EventRef, EventSection } from "@/lib/app-links"
+import { eventPath } from "@/lib/public-links"
 
 export const Route = createFileRoute("/app")({
   beforeLoad: ({ context, location }) => {
@@ -80,52 +83,63 @@ interface NavGroup {
  * Organizer navigation — docs/SPEC.md §3: Sessionboard's three-level nesting
  * flattened to 7 destinations, with the small-caps group labels that give it
  * the same structure (docs/ux/01 synthesis).
+ *
+ * Every destination is EVENT-SCOPED, so the hrefs are built from the event in
+ * context (`/app/:ws/:event/…` — docs/memory/DECISIONS.md, "URL architecture
+ * is fully hierarchical"). Before an event resolves, the bare legacy paths
+ * stand in: they redirect to the canonical address the moment one exists.
  */
-const NAV_GROUPS: Array<NavGroup> = [
-  {
-    items: [
-      { label: "Dashboard", to: "/app", icon: RiDashboardLine, exact: true },
-    ],
-  },
-  {
-    label: "Program",
-    items: [
-      { label: "Submissions", to: "/app/submissions", icon: RiFileList3Line },
-      { label: "Forms", to: "/app/forms", icon: RiSurveyLine },
-      { label: "Evaluation", to: "/app/evaluation", icon: RiStarLine },
-      { label: "Agenda", to: "/app/agenda", icon: RiCalendarScheduleLine },
-      // Embeds is the last step of the programme's life — the agenda, once
-      // published, goes onto the organizer's own website. It sits under
-      // Program so "build it, then publish it" reads top to bottom.
-      { label: "Embeds", to: "/app/embeds", icon: RiCodeSSlashLine },
-    ],
-  },
-  {
-    items: [
-      { label: "Speakers", to: "/app/speakers", icon: RiUserVoiceLine },
-      // Everything speakers send in — slides, headshots, signed forms — with
-      // the session and the approval state (sbek CNT-04/05/13). It sits right
-      // after Speakers because that is whose work it is.
-      { label: "Files", to: "/app/files", icon: RiFolder3Line },
-      {
-        label: "Communications",
-        to: "/app/communications",
-        icon: RiMailSendLine,
-      },
-    ],
-  },
-  {
-    // Event switching, "All events" and "New event" all live in the sidebar's
-    // event switcher; account + workspace settings live in the avatar menu.
-    // The sidebar itself stays a flat list of places inside the current event.
-    items: [{ label: "Settings", to: "/app/settings", icon: RiSettings3Line }],
-  },
-]
-
-/** Every sidebar destination, warmed at idle (route-prewarm.tsx). */
-const PREWARM_ROUTES: ReadonlyArray<string> = NAV_GROUPS.flatMap((group) =>
-  group.items.map((item) => item.to),
-)
+function navGroupsFor(ref: EventRef | undefined): Array<NavGroup> {
+  const to = (section: EventSection): string =>
+    ref ? appLink.section(ref, section) : legacyAppLink[section]
+  return [
+    {
+      items: [
+        {
+          label: "Dashboard",
+          to: ref ? appLink.dashboard(ref) : legacyAppLink.dashboard,
+          icon: RiDashboardLine,
+          exact: true,
+        },
+      ],
+    },
+    {
+      label: "Program",
+      items: [
+        { label: "Submissions", to: to("submissions"), icon: RiFileList3Line },
+        { label: "Forms", to: to("forms"), icon: RiSurveyLine },
+        { label: "Evaluation", to: to("evaluation"), icon: RiStarLine },
+        { label: "Agenda", to: to("agenda"), icon: RiCalendarScheduleLine },
+        // Embeds is the last step of the programme's life — the agenda, once
+        // published, goes onto the organizer's own website. It sits under
+        // Program so "build it, then publish it" reads top to bottom.
+        { label: "Embeds", to: to("embeds"), icon: RiCodeSSlashLine },
+      ],
+    },
+    {
+      items: [
+        { label: "Speakers", to: to("speakers"), icon: RiUserVoiceLine },
+        // Everything speakers send in — slides, headshots, signed forms — with
+        // the session and the approval state (sbek CNT-04/05/13). It sits right
+        // after Speakers because that is whose work it is.
+        { label: "Files", to: to("files"), icon: RiFolder3Line },
+        {
+          label: "Communications",
+          to: to("communications"),
+          icon: RiMailSendLine,
+        },
+      ],
+    },
+    {
+      // Event switching, "All events" and "New event" all live in the sidebar's
+      // event switcher; account + workspace settings live in the avatar menu.
+      // The sidebar itself stays a flat list of places inside the current event.
+      items: [
+        { label: "Settings", to: to("settings"), icon: RiSettings3Line },
+      ],
+    },
+  ]
+}
 
 function OrganizerLayout() {
   const navigate = Route.useNavigate()
@@ -155,11 +169,24 @@ function OrganizerLayout() {
     }
   }, [status, ensureWorkspace])
 
-  // "Which event am I looking at?" is app-wide state (src/lib/current-event).
+  // "Which event am I looking at?" — the URL first, then the stored pointer
+  // (src/lib/current-event.ts).
   const { event, workspace } = useCurrentEvent()
+  const eventRef = event ? eventRefOf(event) : undefined
+  // Memoized so RoutePrewarm's effect doesn't re-fire on every render — the
+  // hrefs only change when the event in context does.
+  const navGroups = useMemo(
+    () => navGroupsFor(eventRef),
+    // Slugs, not the ref object — refs compare by value.
+    [eventRef?.workspaceSlug, eventRef?.eventSlug],
+  )
+  const prewarmRoutes = useMemo(
+    () => navGroups.flatMap((group) => group.items.map((item) => item.to)),
+    [navGroups],
+  )
   // …and "which workspace?" switches from two places (sidebar picker + this
   // avatar menu) through one hook, so both stay in step.
-  const { workspaceOptions, switchTo, creating, setCreating } =
+  const { workspaceOptions, switchTo, switchToCreated, creating, setCreating } =
     useWorkspaceSwitcher()
 
   if (!authedOnServer && status !== "authenticated") {
@@ -243,7 +270,7 @@ function OrganizerLayout() {
               <TooltipTrigger
                 render={
                   <a
-                    href={`/e/${event.slug}`}
+                    href={eventPath(event.organizationSlug, event.slug)}
                     target="_blank"
                     rel="noreferrer"
                     aria-label="View public page"
@@ -326,7 +353,15 @@ function OrganizerLayout() {
                 </DropdownMenuLabel>
                 <DropdownMenuItem
                   nativeButton={false}
-                  render={<Link to="/app/workspace" />}
+                  render={
+                    <Link
+                      to={
+                        workspace
+                          ? appLink.workspaceHub(workspace.slug)
+                          : appLink.workspaceHubFallback
+                      }
+                    />
+                  }
                 >
                   <RiBuilding2Line aria-hidden />
                   Workspace settings
@@ -375,7 +410,7 @@ function OrganizerLayout() {
           </div>
 
           <nav aria-label="Main" className="px-3 pt-2 pb-6 max-md:px-2">
-            {NAV_GROUPS.map((group, index) => (
+            {navGroups.map((group, index) => (
               <div key={group.label ?? index} className="mb-1">
                 {group.label ? (
                   <p className="mt-4 mb-1 px-2 text-[11px] font-semibold tracking-wider text-muted-foreground uppercase max-md:sr-only">
@@ -422,7 +457,7 @@ function OrganizerLayout() {
       <CopilotPanel />
 
       {/* Every sidebar destination in memory before it is clicked. */}
-      <RoutePrewarm to={PREWARM_ROUTES} />
+      <RoutePrewarm to={prewarmRoutes} />
 
       {/* Driven by the avatar menu's "Create workspace" — a dialog inside the
           menu would unmount the moment the menu closes. */}
@@ -430,7 +465,7 @@ function OrganizerLayout() {
         hideTrigger
         open={creating}
         onOpenChange={setCreating}
-        onCreated={switchTo}
+        onCreated={switchToCreated}
       />
     </div>
   )

@@ -28,6 +28,7 @@ import {
   num,
   str,
   strList,
+  useSectionLink,
 } from "@/components/copilot/tool-views/shared"
 import type { ToolOutputProps } from "@/components/copilot/tool-views/registry"
 
@@ -56,13 +57,14 @@ function readiness(missing: number, openTasks: number) {
 // ——— list_speakers ———————————————————————————————————————————————————————
 
 export function SpeakersView({ output }: ToolOutputProps) {
+  const speakersLink = useSectionLink("speakers")
   const rows = asArray(output.speakers) ?? []
 
   if (rows.length === 0) {
     return (
       <EmptyRow>
         Nobody matches — every confirmed speaker is done.{" "}
-        <GoLink to="/app/speakers">Open Speakers</GoLink>
+        <GoLink to={speakersLink}>Open Speakers</GoLink>
       </EmptyRow>
     )
   }
@@ -150,7 +152,7 @@ export function SpeakersView({ output }: ToolOutputProps) {
           )
         })}
       </Rows>
-      <MoreLink target={{ to: "/app/speakers" }}>Open Speakers</MoreLink>
+      <MoreLink target={{ to: speakersLink }}>Open Speakers</MoreLink>
     </Panel>
   )
 }
@@ -196,6 +198,7 @@ export function SpeakerPortalLinkView({ output }: ToolOutputProps) {
 // ——— assign_task —————————————————————————————————————————————————————————
 
 export function TaskAssignedView({ output }: ToolOutputProps) {
+  const speakersLink = useSectionLink("speakers")
   const assigned = strList(output.assignedTo)
   const created = num(output.created) ?? assigned.length
 
@@ -227,7 +230,7 @@ export function TaskAssignedView({ output }: ToolOutputProps) {
         </div>
       ) : null}
       {str(output.note) ? <Note>{str(output.note)}</Note> : null}
-      <GoLink to="/app/speakers">Open Speakers</GoLink>
+      <GoLink to={speakersLink}>Open Speakers</GoLink>
     </Banner>
   )
 }
@@ -235,6 +238,7 @@ export function TaskAssignedView({ output }: ToolOutputProps) {
 // ——— send_reminders ——————————————————————————————————————————————————————
 
 export function RemindersSentView({ output }: ToolOutputProps) {
+  const communicationsLink = useSectionLink("communications")
   const queued = num(output.queued) ?? 0
   const skipped = num(output.skipped) ?? 0
 
@@ -259,7 +263,7 @@ export function RemindersSentView({ output }: ToolOutputProps) {
         ]}
       />
       {str(output.note) ? <Note>{str(output.note)}</Note> : null}
-      <GoLink to="/app/communications" search={{ tab: "outbox" }}>
+      <GoLink to={communicationsLink} search={{ tab: "outbox" }}>
         Check the outbox
       </GoLink>
     </Banner>
@@ -274,6 +278,7 @@ export function RemindersSentView({ output }: ToolOutputProps) {
  * if it turns out to have been the wrong call.
  */
 export function TaskRemovedView({ output }: ToolOutputProps) {
+  const speakersLink = useSectionLink("speakers")
   return (
     <Banner
       tone="bad"
@@ -290,7 +295,7 @@ export function TaskRemovedView({ output }: ToolOutputProps) {
         ]}
       />
       {str(output.note) ? <Note>{str(output.note)}</Note> : null}
-      <GoLink to="/app/speakers">Open Speakers</GoLink>
+      <GoLink to={speakersLink}>Open Speakers</GoLink>
     </Banner>
   )
 }

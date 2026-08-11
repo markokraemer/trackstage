@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test"
 import type { Page } from "@playwright/test"
 import {
+  DEMO_WORKSPACE_SLUG,
   MAIN_EVENT_NAME,
   MAIN_EVENT_SLUG,
   armed,
@@ -234,7 +235,12 @@ test.describe("public event pages", () => {
       .locator(NAV)
       .getByRole("link", { name: "Schedule", exact: true })
       .click()
-    await expect(page).toHaveURL(new RegExp(`/e/${MAIN_EVENT_SLUG}`))
+    // The nav link is built from the event in context, so it lands on the
+    // canonical `/e/:workspaceSlug/:eventSlug` address, not the bare legacy
+    // one this file's `gotoStable` calls above started from.
+    await expect(page).toHaveURL(
+      new RegExp(`/e/(?:${DEMO_WORKSPACE_SLUG}/)?${MAIN_EVENT_SLUG}`),
+    )
 
     watcher.assertClean("navigation walk")
   })

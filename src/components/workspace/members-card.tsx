@@ -92,8 +92,9 @@ export function MembersCard({
   events: Array<AccessEvent>
   /**
    * Drives the invite dialog from outside — the Event settings Team card
-   * deep-links here (`/app/workspace?invite=1&event=…`) so "give this person
-   * access to just this event" is two clicks from the event they're on.
+   * deep-links here (`/app/:workspaceSlug/workspace?invite=1&event=…`) so
+   * "give this person access to just this event" is two clicks from the
+   * event they're on.
    */
   inviteOpen?: boolean
   onInviteClosed?: () => void

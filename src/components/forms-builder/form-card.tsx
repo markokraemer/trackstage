@@ -34,6 +34,7 @@ import {
 import { StatusPill } from "@/components/shared/status-pill"
 import { CopyLinkButton } from "./copy-link-button"
 import { formKindMeta, publicFormPath } from "./model"
+import { appLink } from "@/lib/app-links"
 
 /**
  * One form in the list (docs/ux/02 image15): submission count, name, type and
@@ -48,6 +49,8 @@ export interface FormListRow {
   slug: string
   /** The form's event — the first segment of its canonical public link. */
   eventSlug: string
+  /** The event's workspace — the other segment of its canonical public link. */
+  workspaceSlug: string
   kind: string
   status: string
   closeAt?: number
@@ -71,6 +74,10 @@ export function FormCard({
   const [confirmOpen, setConfirmOpen] = useState(false)
   const kind = formKindMeta(form.kind)
   const closed = form.status === "closed"
+  const editLink = appLink.form(
+    { workspaceSlug: form.workspaceSlug, eventSlug: form.eventSlug },
+    form._id,
+  )
 
   const meta = [
     `${form.submissionCount} submission${form.submissionCount === 1 ? "" : "s"}`,
@@ -93,8 +100,7 @@ export function FormCard({
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
             <Link
-              to="/app/forms/$formId"
-              params={{ formId: form._id }}
+              to={editLink as never}
               className="font-heading truncate text-base font-semibold text-foreground hover:text-primary hover:underline"
             >
               {form.internalName}
@@ -107,18 +113,19 @@ export function FormCard({
           </div>
           <p className="mt-1 text-sm text-muted-foreground">{meta}</p>
           <p className="mt-0.5 font-mono text-xs text-muted-foreground">
-            {publicFormPath(form.eventSlug, form.slug)}
+            {publicFormPath(form.workspaceSlug, form.eventSlug, form.slug)}
           </p>
         </div>
 
         <div className="flex shrink-0 flex-wrap items-center gap-2">
           <CopyLinkButton
+            workspaceSlug={form.workspaceSlug}
             eventSlug={form.eventSlug}
             slug={form.slug}
             size="sm"
           />
           <a
-            href={publicFormPath(form.eventSlug, form.slug)}
+            href={publicFormPath(form.workspaceSlug, form.eventSlug, form.slug)}
             target="_blank"
             rel="noreferrer"
             className={buttonVariants({ variant: "outline", size: "sm" })}
@@ -127,8 +134,7 @@ export function FormCard({
             View
           </a>
           <Link
-            to="/app/forms/$formId"
-            params={{ formId: form._id }}
+            to={editLink as never}
             className={buttonVariants({ variant: "outline", size: "sm" })}
           >
             <RiPencilLine aria-hidden />

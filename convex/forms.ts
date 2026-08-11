@@ -8,6 +8,7 @@ import {
   slugify,
   suggestFormSlug,
   uniqueFormSlug,
+  workspaceSlugForEvent,
 } from "./lib/publicLinks"
 
 // Reusable validators mirroring the schema shapes (kept in sync manually —
@@ -90,6 +91,7 @@ export const list = query({
   args: { eventId: v.id("events") },
   handler: async (ctx, args) => {
     const { event } = await requireEventAccess(ctx, args.eventId)
+    const workspaceSlug = await workspaceSlugForEvent(ctx, event)
     const forms = await ctx.db
       .query("forms")
       .withIndex("by_eventId", (q) => q.eq("eventId", args.eventId))
@@ -107,10 +109,11 @@ export const list = query({
           internalName: form.internalName,
           externalTitle: form.externalTitle,
           slug: form.slug,
-          // The canonical public link is `/submit/:eventSlug/:formSlug`, so
-          // every list row carries its event's slug and no caller ever has to
-          // stitch one together from a second query.
+          // The canonical public link is `/submit/:ws/:event/:form`, so
+          // every list row carries both parent segments and no caller ever
+          // has to stitch one together from a second query.
           eventSlug: event.slug,
+          workspaceSlug,
           kind: form.kind,
           status: form.status,
           closeAt: form.closeAt,
@@ -128,9 +131,13 @@ export const get = query({
     const form = await ctx.db.get(args.formId)
     if (!form) throw new Error("Form not found")
     const { event } = await requireEventAccess(ctx, form.eventId)
-    // `eventSlug` rides along so the builder can render the canonical public
-    // URL without a second round trip (docs/memory/DECISIONS.md, URL scheme).
-    return { ...form, eventSlug: event.slug }
+    // Both parent slugs ride along so the builder can render the canonical
+    // public URL without a second round trip (docs/memory/DECISIONS.md).
+    return {
+      ...form,
+      eventSlug: event.slug,
+      workspaceSlug: await workspaceSlugForEvent(ctx, event),
+    }
   },
 })
 

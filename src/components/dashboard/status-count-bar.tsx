@@ -7,7 +7,8 @@ import {
   StatusPill,
   SUBMISSION_STATUSES,
 } from "@/components/shared/status-pill"
-import { APP_ROUTES, linkSearch } from "@/components/dashboard/app-routes"
+import { appLink, legacyAppLink } from "@/lib/app-links"
+import { useCurrentEvent } from "@/lib/current-event"
 
 /**
  * The status pill bar (docs/SPEC.md §4.8): one tile per pipeline status, each
@@ -20,6 +21,10 @@ export interface StatusCountBarProps {
 }
 
 export function StatusCountBar({ counts, className }: StatusCountBarProps) {
+  const { eventRef } = useCurrentEvent()
+  const submissionsLink = eventRef
+    ? appLink.submissions(eventRef)
+    : legacyAppLink.submissions
   return (
     <Card size="sm" className={cn("gap-3", className)}>
       <div className="px-4">
@@ -31,8 +36,8 @@ export function StatusCountBar({ counts, className }: StatusCountBarProps) {
         {SUBMISSION_STATUSES.map((status) => (
           <Link
             key={status}
-            to={APP_ROUTES.submissions}
-            search={linkSearch({ status })}
+            to={submissionsLink as never}
+            search={{ status } as never}
             className={cn(
               "flex flex-col items-start gap-2 rounded-lg border border-border bg-card px-3 py-2.5",
               "transition-colors outline-none hover:bg-accent/50 focus-visible:ring-3 focus-visible:ring-ring/50",

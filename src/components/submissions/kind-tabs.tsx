@@ -3,6 +3,8 @@ import { Link } from "@tanstack/react-router"
 import { Tabs, TabsCount, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Skeleton } from "@/components/ui/skeleton"
 import type { StatusTabValue } from "@/components/submissions/constants"
+import { appLink, legacyAppLink } from "@/lib/app-links"
+import { useCurrentEvent } from "@/lib/current-event"
 
 /**
  * The Abstracts / Sessions distinction (AGENTS.md "Canonical domain language",
@@ -64,6 +66,10 @@ export interface KindTabsProps {
 }
 
 export function KindTabs({ value, counts, search }: KindTabsProps) {
+  const { eventRef } = useCurrentEvent()
+  const submissionsLink = eventRef
+    ? appLink.submissions(eventRef)
+    : legacyAppLink.submissions
   return (
     <Tabs value={value}>
       <TabsList aria-label="Filter by abstracts or sessions">
@@ -78,13 +84,15 @@ export function KindTabs({ value, counts, search }: KindTabsProps) {
               className="px-3"
               render={
                 <Link
-                  to="/app/submissions"
-                  search={{
-                    kind: kind.value === "all" ? undefined : kind.value,
-                    status: search.status,
-                    q: search.q,
-                    track: search.track,
-                  }}
+                  to={submissionsLink as never}
+                  search={
+                    {
+                      kind: kind.value === "all" ? undefined : kind.value,
+                      status: search.status,
+                      q: search.q,
+                      track: search.track,
+                    } as never
+                  }
                 />
               }
             >

@@ -11,6 +11,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { TooltipProvider } from "@/components/ui/tooltip"
 import { PageHeader } from "@/components/shared/page-header"
 import { SettingsLevelNav } from "@/components/shell/settings-level-nav"
+import { appLink } from "@/lib/app-links"
 import { ProfileCard } from "@/components/account/profile-card"
 import { PasswordCard } from "@/components/account/password-card"
 import type { CreatedApiKey } from "@/components/settings/api-keys-card"
@@ -159,7 +160,7 @@ function ApiMcpPanel() {
 function LevelsCard() {
   return (
     <Link
-      to="/app/workspace"
+      to={appLink.workspaceHubFallback}
       className="flex items-start gap-3 rounded-xl border border-border bg-card p-4 text-sm transition-colors hover:bg-muted/60"
     >
       <RiUserSettingsLine

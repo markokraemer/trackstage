@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useMemo, useSyncExternalStore } from "react"
 import { useQuery } from "@tanstack/react-query"
+import { useParams } from "@tanstack/react-router"
 import { convexQuery } from "@convex-dev/react-query"
 import { api } from "@convex/_generated/api"
 import type { FunctionReturnType } from "convex/server"
 
+import type { EventRef } from "@/lib/app-links"
 import { useSession } from "@/lib/session"
 
 /**
@@ -27,6 +29,14 @@ import { useSession } from "@/lib/session"
  *
  * This module is the single source of truth for event + workspace context.
  * Nothing in the app may reach for `api.events.list[0]` directly.
+ *
+ * SINCE THE URL BECAME HIERARCHICAL (docs/memory/DECISIONS.md, "URL
+ * architecture is fully hierarchical"), the URL outranks both pointers: on
+ * `/app/:workspaceSlug/:eventSlug/…` the event named in the address IS the
+ * context, per tab, with no cross-tab bleed — two tabs on two events stay on
+ * two events. The localStorage pointers remain as (a) the fallback that
+ * resolves bare legacy paths (`/app/submissions`) to "the event you last
+ * touched", and (b) the context for global pages (`/app/account`).
  */
 
 export type EventSummary = FunctionReturnType<typeof api.events.list>[number]
@@ -146,13 +156,27 @@ export interface WorkspaceOption extends WorkspaceSummary {
   isCurrent: boolean
 }
 
+/** The two URL segments that name an event, for every link builder. */
+export function eventRefOf(event: EventSummary): EventRef {
+  return { workspaceSlug: event.organizationSlug, eventSlug: event.slug }
+}
+
 export interface CurrentEventResult {
   /** Every event across every workspace the organizer belongs to. */
   events: Array<EventSummary>
   /** Events owned by the workspace in context — the switcher's second level. */
   workspaceEvents: Array<EventSummary>
-  /** The event in context — the stored one, else the workspace's first. */
+  /** The event in context — URL first, else stored, else workspace's first. */
   event: EventSummary | undefined
+  /** `{workspaceSlug, eventSlug}` of the event in context, for link builders. */
+  eventRef: EventRef | undefined
+  /**
+   * True when the URL names an event (`/app/:ws/:event/…`) that the loaded
+   * lists cannot resolve — an event that doesn't exist, or one this member is
+   * scoped out of. The two are deliberately indistinguishable: the layout
+   * renders "Event not found." for both (docs/memory/RULES.md 23).
+   */
+  urlEventMissing: boolean
   /** Every workspace the organizer belongs to (for the workspace switcher). */
   workspaces: Array<WorkspaceSummary>
   /** The same list, enriched with per-workspace events + current flag. */
@@ -200,10 +224,33 @@ export function useCurrentEvent(): CurrentEventResult {
   const events = useMemo(() => eventData ?? [], [eventData])
   const workspaces = useMemo(() => workspaceData ?? [], [workspaceData])
 
-  // Resolution order — the event pointer wins, the workspace pointer covers
-  // the one case it can't express (a workspace with no events).
+  // The URL outranks everything. Inside the organizer tree the address names
+  // the workspace and (usually) the event — `useParams` is empty on global
+  // pages, and the static /app children can never be workspace slugs
+  // (reserved server-side), so a present param is unambiguous.
+  const params: { workspaceSlug?: string; eventSlug?: string } = useParams({
+    strict: false,
+  })
+  const urlNamesEvent = Boolean(params.workspaceSlug && params.eventSlug)
+  const urlEvent = urlNamesEvent
+    ? events.find(
+        (row) =>
+          row.organizationSlug === params.workspaceSlug &&
+          row.slug === params.eventSlug,
+      )
+    : undefined
+  const urlWorkspace = params.workspaceSlug
+    ? workspaces.find((row) => row.slug === params.workspaceSlug)
+    : undefined
+
+  // Resolution order below the URL — the event pointer wins, the workspace
+  // pointer covers the one case it can't express (a workspace with no events).
   const storedEvent = events.find((row) => row._id === storedId)
   const workspace =
+    (urlEvent
+      ? workspaces.find((row) => row.id === urlEvent.organizationId)
+      : undefined) ??
+    urlWorkspace ??
     (storedEvent
       ? workspaces.find((row) => row.id === storedEvent.organizationId)
       : undefined) ??
@@ -218,7 +265,16 @@ export function useCurrentEvent(): CurrentEventResult {
         : events,
     [events, workspace],
   )
-  const event = storedEvent ?? workspaceEvents.at(0)
+  // When the URL names an event there is NO fallback: an unresolvable address
+  // must become "Event not found.", never silently some other event. A bare
+  // workspace URL (the hub) falls back within that workspace only.
+  const event = urlNamesEvent
+    ? urlEvent
+    : urlWorkspace
+      ? storedEvent && storedEvent.organizationId === urlWorkspace.id
+        ? storedEvent
+        : workspaceEvents.at(0)
+      : (storedEvent ?? workspaceEvents.at(0))
 
   const workspaceOptions = useMemo<Array<WorkspaceOption>>(
     () =>
@@ -266,6 +322,8 @@ export function useCurrentEvent(): CurrentEventResult {
     events,
     workspaceEvents,
     event,
+    eventRef: event ? eventRefOf(event) : undefined,
+    urlEventMissing: urlNamesEvent && resolved && urlEvent === undefined,
     workspaces,
     workspaceOptions,
     workspace,

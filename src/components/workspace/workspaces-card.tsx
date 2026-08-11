@@ -34,7 +34,7 @@ export function WorkspacesCard({
 }: {
   workspaces: Array<WorkspaceOption>
   onSwitch: (workspaceId: string) => void
-  onCreated?: (workspaceId: string) => void
+  onCreated?: (created: { organizationId: string; slug: string }) => void
 }) {
   return (
     <Card>

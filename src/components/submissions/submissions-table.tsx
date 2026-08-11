@@ -1,4 +1,4 @@
-import { Link } from "@tanstack/react-router"
+import { Link, useSearch } from "@tanstack/react-router"
 import type { FunctionReturnType } from "convex/server"
 import type { api } from "@convex/_generated/api"
 import {
@@ -45,6 +45,8 @@ import {
   formatScore,
   relativeDate,
 } from "@/components/submissions/constants"
+import { appLink, legacyAppLink } from "@/lib/app-links"
+import { useCurrentEvent } from "@/lib/current-event"
 
 /**
  * The organizer's triage table (docs/ux/03 image5/image10): checkbox column,
@@ -108,6 +110,13 @@ export function SubmissionsTable({
   // Status wording follows Settings → Statuses, so a renamed built-in reads
   // the same in the row menu as it does in the pill.
   const { statuses } = useStatusCatalog()
+  const { eventRef } = useCurrentEvent()
+  const submissionsLink = eventRef
+    ? appLink.submissions(eventRef)
+    : legacyAppLink.submissions
+  // Current filters (status/kind/track/q/…) — preserved when a row's link
+  // opens the detail drawer, same as the old `from`/`to` relative search did.
+  const currentSearch: Record<string, unknown> = useSearch({ strict: false })
   const selected = new Set(selectedIds)
   const allSelected =
     rows.length > 0 && rows.every((row) => selected.has(row._id))
@@ -223,9 +232,8 @@ export function SubmissionsTable({
 
                 <TableCell className="max-w-[380px]">
                   <Link
-                    from="/app/submissions/"
-                    to="/app/submissions"
-                    search={(prev) => ({ ...prev, id: row._id })}
+                    to={submissionsLink as never}
+                    search={{ ...currentSearch, id: row._id } as never}
                     className="block truncate font-medium text-foreground underline-offset-4 outline-none hover:text-primary hover:underline focus-visible:text-primary focus-visible:underline"
                     title={row.title}
                   >
@@ -361,9 +369,8 @@ export function SubmissionsTable({
                         <DropdownMenuItem
                           render={
                             <Link
-                              from="/app/submissions/"
-                              to="/app/submissions"
-                              search={(prev) => ({ ...prev, id: row._id })}
+                              to={submissionsLink as never}
+                              search={{ ...currentSearch, id: row._id } as never}
                             />
                           }
                         >

@@ -9,7 +9,14 @@ import { recordWorkspace } from "./lib/audit"
 import { computeConflicts } from "./agenda"
 import { deleteEventCascade } from "./events"
 import { deleteUploadRow } from "./lib/files"
-import { uniqueEventSlug, uniqueFormSlug } from "./lib/publicLinks"
+import {
+  eventPath,
+  formPath,
+  oldestEventBySlug,
+  uniqueEventSlug,
+  uniqueFormSlug,
+  workspaceSlugForEvent,
+} from "./lib/publicLinks"
 import {
   DEFAULT_SESSION_STATUSES,
   STATUS_CATEGORIES,
@@ -51,10 +58,10 @@ export async function resolveEvent(
   if (!trimmed) return null
   const asId = ctx.db.normalizeId("events", trimmed)
   if (asId) return await ctx.db.get(asId)
-  return await ctx.db
-    .query("events")
-    .withIndex("by_slug", (q) => q.eq("slug", trimmed))
-    .unique()
+  // Event slugs are unique per workspace, so a bare slug ref can match more
+  // than one event; the oldest claimant wins (the event that held the address
+  // when the integration was written keeps it). Ids are always unambiguous.
+  return await oldestEventBySlug(ctx, trimmed)
 }
 
 /**
@@ -470,7 +477,7 @@ async function eventShape(
     // The workspace the event belongs to — what `POST /v1/events` takes as
     // `organization_id`, so a client can round-trip create-from-read.
     organization_id: event.organizationId ?? null,
-    public_url: `/e/${event.slug}`,
+    public_url: eventPath(await workspaceSlugForEvent(ctx, event), event.slug),
     portal_settings: {
       always_show_tasks: event.portalSettings?.alwaysShowTasks ?? false,
       allow_submission_edits: event.portalSettings?.allowSubmissionEdits ?? true,
@@ -2561,7 +2568,7 @@ export const writeEvent = internalMutation({
           `You belong to more than one workspace — pass \`organization_id\`: ${names.join(", ")}.`,
         )
       }
-      const slug = await uniqueEventSlug(ctx, input.slug ?? name)
+      const slug = await uniqueEventSlug(ctx, organizationId, input.slug ?? name)
       const eventId = await ctx.db.insert("events", {
         organizationId,
         name,
@@ -2619,9 +2626,9 @@ export const writeEvent = internalMutation({
     if (input.slug !== undefined) {
       const desired = input.slug.trim().toLowerCase()
       const slug =
-        desired === event.slug
+        desired === event.slug || !event.organizationId
           ? event.slug
-          : await uniqueEventSlug(ctx, desired, event._id)
+          : await uniqueEventSlug(ctx, event.organizationId, desired, event._id)
       slugAdjusted = slug !== desired
       patch.slug = slug
     }
@@ -2909,7 +2916,7 @@ export const deleteSpeaker = internalMutation({
 async function formShape(
   ctx: QueryCtx,
   form: Doc<"forms">,
-  eventSlug: string,
+  event: Doc<"events">,
 ): Promise<Record<string, unknown>> {
   const submissions = await ctx.db
     .query("submissions")
@@ -2930,7 +2937,7 @@ async function formShape(
     show_welcome_message: form.showWelcomeMessage,
     notify_emails: form.notifyEmails,
     // The canonical public address — the link an organizer actually shares.
-    public_url: `/submit/${eventSlug}/${form.slug}`,
+    public_url: formPath(await workspaceSlugForEvent(ctx, event), event.slug, form.slug),
     questions: form.questions.map((question, index) => ({
       id: question.id,
       // Same vocabulary as GET /fields, so one object has one name here.
@@ -2999,7 +3006,7 @@ export const listForms = internalQuery({
       .take(MAX_ROWS)
     let shaped = []
     for (const form of forms.sort((a, b) => a._creationTime - b._creationTime))
-      shaped.push(await formShape(ctx, form, event.slug))
+      shaped.push(await formShape(ctx, form, event))
     if (args.status)
       shaped = shaped.filter((form) => form.status === args.status)
     if (args.search) {
@@ -3027,7 +3034,7 @@ export const getForm = internalQuery({
     await authorizeEvent(ctx, event, args.userId)
     const form = await findForm(ctx, event._id, args.formRef)
     if (!form) return { notFound: true }
-    return { data: await formShape(ctx, form, event.slug) }
+    return { data: await formShape(ctx, form, event) }
   },
 })
 
@@ -3170,7 +3177,7 @@ export const writeForm = internalMutation({
         notifyEmails: input.notify_emails ?? [],
       })
       const form = await ctx.db.get(formId)
-      return { data: await formShape(ctx, form as Doc<"forms">, event.slug) }
+      return { data: await formShape(ctx, form as Doc<"forms">, event) }
     }
 
     const form = await findForm(ctx, event._id, args.formRef ?? "")
@@ -3249,7 +3256,7 @@ export const writeForm = internalMutation({
       patch.settings = mergeFormSettings(form.settings, input.settings)
     await ctx.db.patch(form._id, patch)
     const fresh = await ctx.db.get(form._id)
-    return { data: await formShape(ctx, fresh as Doc<"forms">, event.slug) }
+    return { data: await formShape(ctx, fresh as Doc<"forms">, event) }
   },
 })
 

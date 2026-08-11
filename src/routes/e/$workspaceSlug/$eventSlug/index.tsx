@@ -37,19 +37,19 @@ import type { PublicDay, PublicSession } from "@/components/public/types"
  * Day, view mode and track filter all live in the URL, so any of them is
  * linkable and an embed can be pinned to one day, one view or one track.
  */
-export const Route = createFileRoute("/e/$slug/")({
+export const Route = createFileRoute("/e/$workspaceSlug/$eventSlug/")({
   loader: async ({ context, params }) =>
     await context.queryClient.ensureQueryData(
-      convexQuery(api.publicData.schedule, { slug: params.slug }),
+      convexQuery(api.publicData.schedule, { slug: params.eventSlug, workspaceSlug: params.workspaceSlug }),
     ),
   component: SchedulePage,
 })
 
 function SchedulePage() {
-  const { slug } = Route.useParams()
+  const { workspaceSlug, eventSlug: slug } = Route.useParams()
   const search = Route.useSearch()
   const { data } = useSuspenseQuery(
-    convexQuery(api.publicData.schedule, { slug }),
+    convexQuery(api.publicData.schedule, { slug, workspaceSlug }),
   )
 
   if (!data) return null
@@ -117,8 +117,8 @@ function SchedulePage() {
           className="flex flex-wrap items-center gap-1.5"
         >
           <Link
-            to="/e/$slug"
-            params={{ slug }}
+            to="/e/$workspaceSlug/$eventSlug"
+            params={{ workspaceSlug, eventSlug: slug }}
             search={(prev) => ({ ...prev, track: undefined })}
             data-active={!search.track ? "true" : undefined}
             className={cn(
@@ -136,8 +136,8 @@ function SchedulePage() {
             return (
               <Link
                 key={track._id}
-                to="/e/$slug"
-                params={{ slug }}
+                to="/e/$workspaceSlug/$eventSlug"
+                params={{ workspaceSlug, eventSlug: slug }}
                 search={(prev) => ({ ...prev, track: track.name })}
                 data-active={active ? "true" : undefined}
                 className={cn(
@@ -173,8 +173,8 @@ function SchedulePage() {
           action={
             search.track ? (
               <Link
-                to="/e/$slug"
-                params={{ slug }}
+                to="/e/$workspaceSlug/$eventSlug"
+                params={{ workspaceSlug, eventSlug: slug }}
                 search={(prev) => ({ ...prev, track: undefined })}
                 className={buttonVariants({ variant: "outline" })}
               >
@@ -182,8 +182,8 @@ function SchedulePage() {
               </Link>
             ) : (
               <Link
-                to="/e/$slug/speakers"
-                params={{ slug }}
+                to="/e/$workspaceSlug/$eventSlug/speakers"
+                params={{ workspaceSlug, eventSlug: slug }}
                 search={(prev) => prev}
                 className={buttonVariants({ variant: "outline" })}
               >
@@ -208,8 +208,8 @@ function SchedulePage() {
                 </Button>
               ) : (
                 <Link
-                  to="/e/$slug"
-                  params={{ slug }}
+                  to="/e/$workspaceSlug/$eventSlug"
+                  params={{ workspaceSlug, eventSlug: slug }}
                   search={(prev) => ({
                     ...prev,
                     day: days[activeIndex - 1].date,
@@ -237,8 +237,8 @@ function SchedulePage() {
                   return (
                     <Link
                       key={day.date}
-                      to="/e/$slug"
-                      params={{ slug }}
+                      to="/e/$workspaceSlug/$eventSlug"
+                      params={{ workspaceSlug, eventSlug: slug }}
                       search={(prev) => ({ ...prev, day: day.date })}
                       data-active={active ? "true" : undefined}
                       className={cn(
@@ -271,8 +271,8 @@ function SchedulePage() {
                 </Button>
               ) : (
                 <Link
-                  to="/e/$slug"
-                  params={{ slug }}
+                  to="/e/$workspaceSlug/$eventSlug"
+                  params={{ workspaceSlug, eventSlug: slug }}
                   search={(prev) => ({
                     ...prev,
                     day: days[activeIndex + 1].date,
@@ -312,12 +312,14 @@ function SchedulePage() {
                 />
                 <div className={segmentedGroup}>
                   <ViewPill
+                    workspaceSlug={workspaceSlug}
                     slug={slug}
                     view="time"
                     active={view === "time"}
                     label="By time"
                   />
                   <ViewPill
+                    workspaceSlug={workspaceSlug}
                     slug={slug}
                     view="rooms"
                     active={view === "rooms"}
@@ -330,6 +332,7 @@ function SchedulePage() {
 
           {activeDay && view === "rooms" ? (
             <RoomsGrid
+              workspaceSlug={workspaceSlug}
               event={event}
               sessions={activeDay.sessions}
               rooms={rooms}
@@ -353,6 +356,7 @@ function SchedulePage() {
                     <div className="flex flex-col gap-3">
                       {group.sessions.map((session) => (
                         <SessionCard
+                          workspaceSlug={workspaceSlug}
                           key={session._id}
                           event={event}
                           session={session}
@@ -376,6 +380,7 @@ function SchedulePage() {
           </h4>
           {unscheduled.map((session) => (
             <SessionCard
+              workspaceSlug={workspaceSlug}
               key={session._id}
               event={event}
               session={session}
@@ -389,11 +394,13 @@ function SchedulePage() {
 }
 
 function ViewPill({
+  workspaceSlug,
   slug,
   view,
   active,
   label,
 }: {
+  workspaceSlug: string
   slug: string
   view: "time" | "rooms"
   active: boolean
@@ -402,8 +409,8 @@ function ViewPill({
   const Icon = view === "time" ? RiListCheck2 : RiLayoutGridLine
   return (
     <Link
-      to="/e/$slug"
-      params={{ slug }}
+      to="/e/$workspaceSlug/$eventSlug"
+      params={{ workspaceSlug, eventSlug: slug }}
       search={(prev) => ({ ...prev, view })}
       data-active={active ? "true" : undefined}
       className={segmentedItem(active)}

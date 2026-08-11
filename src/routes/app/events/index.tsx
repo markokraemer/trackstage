@@ -31,7 +31,8 @@ import { NewEventDialog } from "@/components/settings/new-event-dialog"
 import { CopyLinkButton } from "@/components/settings/copy-link-button"
 import { DeleteEventDialog } from "@/components/settings/delete-event-dialog"
 import { publicEventUrl } from "@/components/settings/slug"
-import { useCurrentEvent } from "@/lib/current-event"
+import { appLink } from "@/lib/app-links"
+import { useCurrentEvent, eventRefOf } from "@/lib/current-event"
 import type { EventSummary } from "@/lib/current-event"
 import {
   formatZonedDateRange,
@@ -154,7 +155,7 @@ function EventCard({
             <span className="truncate">{event.organizationName}</span>
           </p>
         ) : null}
-        <SubmissionCount eventId={event._id} />
+        <SubmissionCount eventId={event._id} eventRef={eventRefOf(event)} />
       </CardContent>
 
       <CardFooter className="mt-auto flex-wrap gap-2 border-t">
@@ -163,7 +164,7 @@ function EventCard({
           variant={isCurrent ? "outline" : "default"}
           onClick={() => {
             onOpen(event._id)
-            void navigate({ to: "/app" })
+            void navigate({ to: appLink.dashboard(eventRefOf(event)) })
           }}
         >
           {isCurrent ? "Go to dashboard" : "Open event"}
@@ -174,14 +175,14 @@ function EventCard({
           variant="outline"
           onClick={() => {
             onOpen(event._id)
-            void navigate({ to: "/app/settings" })
+            void navigate({ to: appLink.settings(eventRefOf(event)) })
           }}
         >
           <RiSettings3Line size={15} aria-hidden />
           Settings
         </Button>
         <CopyLinkButton
-          url={publicEventUrl(event.slug)}
+          url={publicEventUrl(event.organizationSlug, event.slug)}
           label="Copy link"
           size="sm"
         />
@@ -206,7 +207,13 @@ function EventCard({
 }
 
 /** Cheap per-event volume signal — one indexed read per card. */
-function SubmissionCount({ eventId }: { eventId: string }) {
+function SubmissionCount({
+  eventId,
+  eventRef,
+}: {
+  eventId: string
+  eventRef: { workspaceSlug: string; eventSlug: string }
+}) {
   const { data } = useQuery(
     convexQuery(api.submissions.counts, {
       eventId: eventId as Id<"events">,
@@ -216,7 +223,7 @@ function SubmissionCount({ eventId }: { eventId: string }) {
   return (
     <p className="flex items-center gap-2">
       <Link
-        to="/app/submissions"
+        to={appLink.submissions(eventRef)}
         className="font-medium text-primary underline-offset-4 hover:underline"
       >
         {data.all} {data.all === 1 ? "submission" : "submissions"}

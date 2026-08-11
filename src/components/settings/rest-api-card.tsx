@@ -7,6 +7,8 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
+import { appLink, legacyAppLink } from "@/lib/app-links"
+import { useCurrentEvent } from "@/lib/current-event"
 
 /**
  * Low-prominence mention of the plain REST API (`convex/http.ts`) — most
@@ -15,6 +17,8 @@ import {
  * which is already documented there.
  */
 export function RestApiCard() {
+  const { eventRef } = useCurrentEvent()
+  const embedsLink = eventRef ? appLink.embeds(eventRef) : legacyAppLink.embeds
   return (
     <Card size="sm">
       <CardHeader>
@@ -30,7 +34,7 @@ export function RestApiCard() {
           calendar feed at{" "}
           <code className="font-mono text-xs">/schedule.ics</code> needs no
           auth at all — grab it from{" "}
-          <Link to="/app/embeds" className="text-primary underline underline-offset-3">
+          <Link to={embedsLink as never} className="text-primary underline underline-offset-3">
             Embeds
           </Link>
           .

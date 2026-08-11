@@ -60,8 +60,15 @@ test.describe("multi-tenancy", () => {
       await expect(
         fresh.getByRole("button", { name: /switch event/i }).first(),
       ).toContainText(/no event yet/i, { timeout: 20_000 })
+      // An eventless user has no event-scoped dashboard, so `/app` lands them
+      // on the workspace hub — where creating the first event is the obvious
+      // next step (docs/memory/DECISIONS.md, "URL architecture is fully
+      // hierarchical").
+      await expect(fresh).toHaveURL(/\/app\/(?:[^/]+\/)?workspace/, {
+        timeout: 20_000,
+      })
       await expect(
-        fresh.getByText(/create your event to get started/i).first(),
+        fresh.getByText(/no events in this workspace yet/i).first(),
       ).toBeVisible({ timeout: 20_000 })
       freshWatcher.assertClean("fresh user /app")
     })
@@ -165,21 +172,23 @@ test.describe("multi-tenancy", () => {
       await waitForShell(claim)
 
       // `workspaces.ensure` claims the pending row on the next authenticated
-      // load; the switcher then groups the demo workspace's events under it.
+      // load. The invitee lands in their OWN (empty) workspace — the URL pins
+      // context there now — so the demo workspace shows up at the picker's
+      // WORKSPACE level once claimed; switching navigates to its first
+      // event's canonical dashboard.
       const switcher = claim.getByRole("button", { name: /switch event/i }).first()
+      const demoWorkspaceRow = claim
+        .getByRole("menuitem", { name: `Switch to ${DEMO_WORKSPACE_NAME}` })
+        .first()
       await expect(async () => {
         await switcher.click()
-        await expect(
-          claim.getByRole("menuitem", {
-            name: new RegExp(MAIN_EVENT_NAME, "i"),
-          }).first(),
-        ).toBeVisible({ timeout: 3_000 })
+        await expect(demoWorkspaceRow).toBeVisible({ timeout: 3_000 })
       }).toPass({ timeout: 45_000 })
 
-      await claim
-        .getByRole("menuitem", { name: new RegExp(MAIN_EVENT_NAME, "i") })
-        .first()
-        .click()
+      await demoWorkspaceRow.click()
+      await expect(claim).toHaveURL(/\/app\/[^/]+\/[^/]+/, {
+        timeout: 20_000,
+      })
       await expect(switcher).toContainText(new RegExp(MAIN_EVENT_NAME, "i"), {
         timeout: 20_000,
       })
@@ -427,7 +436,11 @@ test.describe("multi-tenancy", () => {
         await openPicker()
         await menuItem(`Switch to ${emptyName}`).click()
 
-        await expect(page).toHaveURL(/\/app\/workspace/, { timeout: 20_000 })
+        // The workspace hub lives at `/app/:workspaceSlug/workspace`, not the
+        // bare legacy `/app/workspace` shape.
+        await expect(page).toHaveURL(/\/app\/(?:[^/]+\/)?workspace/, {
+          timeout: 20_000,
+        })
         await expect(
           page.getByRole("heading", {
             name: new RegExp(`workspace settings — ${emptyName}`, "i"),
@@ -476,7 +489,11 @@ test.describe("multi-tenancy", () => {
           .click()
 
         // Brand new and empty — context moves there and lands on its hub.
-        await expect(page).toHaveURL(/\/app\/workspace/, { timeout: 20_000 })
+        // The workspace hub lives at `/app/:workspaceSlug/workspace`, not the
+        // bare legacy `/app/workspace` shape.
+        await expect(page).toHaveURL(/\/app\/(?:[^/]+\/)?workspace/, {
+          timeout: 20_000,
+        })
         await expect(
           page.getByRole("heading", {
             name: new RegExp(`workspace settings — ${createdName}`, "i"),

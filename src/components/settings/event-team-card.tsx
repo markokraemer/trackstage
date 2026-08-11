@@ -18,8 +18,9 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { buttonVariants } from "@/components/ui/button"
 import { StatusPill } from "@/components/shared/status-pill"
 import { canManageTeam, roleLabel } from "@/components/workspace/roles"
-import { useCurrentEvent } from "@/lib/current-event"
+import { eventRefOf, useCurrentEvent } from "@/lib/current-event"
 import type { EventSummary } from "@/lib/current-event"
+import { appLink } from "@/lib/app-links"
 
 /**
  * Team — at the EVENT level (docs/memory/RULES.md 23, refinement 3).
@@ -44,6 +45,7 @@ export function EventTeamCard({ event }: { event: EventSummary }) {
     ),
   )
 
+  const workspaceHubLink = appLink.workspaceHub(eventRefOf(event).workspaceSlug)
   const canInvite = canManageTeam(workspace?.role ?? "member")
   const rows = (members ?? [])
     .filter((member) => {
@@ -69,7 +71,7 @@ export function EventTeamCard({ event }: { event: EventSummary }) {
           Who can open <strong className="font-medium">{event.name}</strong>.
           Owners and admins of {workspace?.name ?? "this workspace"} reach every
           event; members appear here only when their access includes this one.{" "}
-          <Link to="/app/workspace" className="text-primary hover:underline">
+          <Link to={workspaceHubLink as never} className="text-primary hover:underline">
             Manage the whole team
           </Link>
           .
@@ -77,8 +79,8 @@ export function EventTeamCard({ event }: { event: EventSummary }) {
         {canInvite ? (
           <CardAction>
             <Link
-              to="/app/workspace"
-              search={{ invite: true, event: event._id }}
+              to={workspaceHubLink as never}
+              search={{ invite: true, event: event._id } as never}
               className={buttonVariants({ size: "sm" })}
             >
               <RiUserAddLine size={15} aria-hidden />

@@ -1514,6 +1514,7 @@ section("API parity")
 if (SITE_URL) {
   const API = `${SITE_URL}/v1`
   const EV = "ai-summit-2026"
+  const WS = "ai-engineer"
   // API keys are workspace-scoped and outlive reseeds, so leftovers from prior
   // verify runs accumulate toward the 20-key cap. Sweep ours before creating.
   for (const row of await client.query(api.apiKeys.list, {})) {
@@ -1814,7 +1815,7 @@ if (SITE_URL) {
     eventDetail.status === 200 && eventDetail.json.data.slug === EV &&
     typeof eventDetail.json.data.totals.sessions === "number", JSON.stringify(eventDetail.json).slice(0, 160))
   ok("event carries organization_id + portal_settings + public_url",
-    eventDetail.json.data.organization_id && eventDetail.json.data.public_url === `/e/${EV}` &&
+    eventDetail.json.data.organization_id && eventDetail.json.data.public_url === `/e/${WS}/${EV}` &&
     typeof eventDetail.json.data.portal_settings.allow_submission_edits === "boolean")
   ok("GET /v1/events/{ref} refuses the demo token on a private event…",
     [200, 403, 404].includes((await call("GET", `/events/${EV}`, { key: "demo-api-token" })).status))
@@ -1861,7 +1862,7 @@ if (SITE_URL) {
   // ——— Forms, on the throwaway event so nothing real is touched ———
   const formsPage = await call("GET", `/event/${EV}/forms`)
   ok("GET /forms lists the event's CFP forms with public URLs",
-    formsPage.status === 200 && formsPage.json.results.some((f) => f.slug === "cfp" && f.public_url === `/submit/${EV}/cfp`),
+    formsPage.status === 200 && formsPage.json.results.some((f) => f.slug === "cfp" && f.public_url === `/submit/${WS}/${EV}/cfp`),
     JSON.stringify(formsPage.json).slice(0, 200))
   const formBySlug = await call("GET", `/event/${EV}/forms/cfp`)
   ok("GET /forms/{slug} reads a form by its public slug, with questions",

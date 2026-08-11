@@ -37,6 +37,7 @@ import {
   speakerName,
   str,
   strList,
+  useSectionLink,
 } from "@/components/copilot/tool-views/shared"
 import type { AppLinkTarget } from "@/components/copilot/tool-views/shared"
 import type { ToolOutputProps } from "@/components/copilot/tool-views/registry"
@@ -54,10 +55,10 @@ import type { ToolOutputProps } from "@/components/copilot/tool-views/registry"
 const MAX_ROWS = 8
 
 /** The tool's filter arguments, re-encoded as the Submissions screen's URL. */
-function submissionsTarget(input: unknown): AppLinkTarget {
+function submissionsTarget(base: string, input: unknown): AppLinkTarget {
   const args = isRecord(input) ? input : {}
   return {
-    to: "/app/submissions",
+    to: base,
     search: {
       status: str(args.status) ?? undefined,
       q: str(args.search) ?? undefined,
@@ -66,9 +67,12 @@ function submissionsTarget(input: unknown): AppLinkTarget {
   }
 }
 
-function submissionTarget(submissionId: string | null): AppLinkTarget {
+function submissionTarget(
+  base: string,
+  submissionId: string | null,
+): AppLinkTarget {
   return {
-    to: "/app/submissions",
+    to: base,
     search: submissionId ? { id: submissionId } : undefined,
   }
 }
@@ -98,6 +102,7 @@ function Speakers({ value }: { value: unknown }) {
 // ——— list_submissions ————————————————————————————————————————————————————
 
 export function SubmissionsListView({ input, output }: ToolOutputProps) {
+  const submissionsLink = useSectionLink("submissions")
   const rows = asArray(output.submissions) ?? []
   const total = num(output.total) ?? rows.length
   const args = isRecord(input) ? input : {}
@@ -113,7 +118,9 @@ export function SubmissionsListView({ input, output }: ToolOutputProps) {
     return (
       <EmptyRow>
         No submissions match{filterLabel ? ` ${filterLabel}` : " that"}.{" "}
-        <GoLink {...submissionsTarget(input)}>Open Submissions</GoLink>
+        <GoLink {...submissionsTarget(submissionsLink, input)}>
+          Open Submissions
+        </GoLink>
       </EmptyRow>
     )
   }
@@ -178,7 +185,7 @@ export function SubmissionsListView({ input, output }: ToolOutputProps) {
         </Table>
       </div>
 
-      <MoreLink target={submissionsTarget(input)}>
+      <MoreLink target={submissionsTarget(submissionsLink, input)}>
         {shown.length < total
           ? `View all ${total} in Submissions`
           : "Open in Submissions"}
@@ -190,6 +197,7 @@ export function SubmissionsListView({ input, output }: ToolOutputProps) {
 // ——— get_submission ——————————————————————————————————————————————————————
 
 export function SubmissionDetailView({ output }: ToolOutputProps) {
+  const submissionsLink = useSectionLink("submissions")
   const submissionId = str(output.submissionId)
   const track = str(output.track)
   const scheduled = isRecord(output.scheduled) ? output.scheduled : null
@@ -329,7 +337,9 @@ export function SubmissionDetailView({ output }: ToolOutputProps) {
           </Rows>
         ) : null}
 
-        <GoLink {...submissionTarget(submissionId)}>Open in Submissions</GoLink>
+        <GoLink {...submissionTarget(submissionsLink, submissionId)}>
+          Open in Submissions
+        </GoLink>
       </Tile>
     </Panel>
   )
@@ -338,6 +348,7 @@ export function SubmissionDetailView({ output }: ToolOutputProps) {
 // ——— set_submission_status ———————————————————————————————————————————————
 
 export function StatusChangedView({ output }: ToolOutputProps) {
+  const submissionsLink = useSectionLink("submissions")
   const previous = str(output.previousStatus)
   const next = str(output.status) ?? "pending"
   const staged = next === "accept_queue" || next === "decline_queue"
@@ -360,7 +371,7 @@ export function StatusChangedView({ output }: ToolOutputProps) {
           <StatusPill status={next} size="sm" />
         </div>
         {str(output.note) ? <Note>{str(output.note)}</Note> : null}
-        <GoLink {...submissionTarget(str(output.submissionId))}>
+        <GoLink {...submissionTarget(submissionsLink, str(output.submissionId))}>
           Open in Submissions
         </GoLink>
       </Tile>
@@ -371,6 +382,8 @@ export function StatusChangedView({ output }: ToolOutputProps) {
 // ——— commit_decision_queue ———————————————————————————————————————————————
 
 export function DecisionQueueCommittedView({ output }: ToolOutputProps) {
+  const submissionsLink = useSectionLink("submissions")
+  const communicationsLink = useSectionLink("communications")
   const committed = num(output.committed) ?? 0
   const emails = num(output.emailsQueued) ?? 0
   const titles = strList(output.titles)
@@ -388,7 +401,7 @@ export function DecisionQueueCommittedView({ output }: ToolOutputProps) {
           decline queue.
         </Note>
         <GoLink
-          to="/app/submissions"
+          to={submissionsLink}
           search={{ status: accepting ? "accept_queue" : "decline_queue" }}
         >
           Open the queue
@@ -418,11 +431,11 @@ export function DecisionQueueCommittedView({ output }: ToolOutputProps) {
       ) : null}
       {str(output.note) ? <Note>{str(output.note)}</Note> : null}
       <div className="flex flex-wrap items-center gap-3 pt-0.5">
-        <GoLink to="/app/communications" search={{ tab: "outbox" }}>
+        <GoLink to={communicationsLink} search={{ tab: "outbox" }}>
           Check the outbox
         </GoLink>
         <GoLink
-          to="/app/submissions"
+          to={submissionsLink}
           search={{ status: accepting ? "accepted" : "declined" }}
         >
           {accepting ? "Accepted" : "Declined"} submissions
@@ -435,6 +448,8 @@ export function DecisionQueueCommittedView({ output }: ToolOutputProps) {
 // ——— add_manual_session ——————————————————————————————————————————————————
 
 export function ManualSessionView({ input, output }: ToolOutputProps) {
+  const submissionsLink = useSectionLink("submissions")
+  const agendaLink = useSectionLink("agenda")
   const args = isRecord(input) ? input : {}
   const speakers = strList(output.speakers)
   const track = str(args.track)
@@ -460,10 +475,10 @@ export function ManualSessionView({ input, output }: ToolOutputProps) {
         <Note>No speakers attached yet.</Note>
       )}
       <div className="flex flex-wrap items-center gap-3 pt-0.5">
-        <GoLink {...submissionTarget(str(output.submissionId))}>
+        <GoLink {...submissionTarget(submissionsLink, str(output.submissionId))}>
           Open in Submissions
         </GoLink>
-        <GoLink to="/app/agenda" search={{ view: "day" }}>
+        <GoLink to={agendaLink} search={{ view: "day" }}>
           Place it on the agenda
         </GoLink>
       </div>

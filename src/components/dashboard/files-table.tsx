@@ -19,7 +19,8 @@ import {
 } from "@/components/ui/table"
 import { StatusPill } from "@/components/shared/status-pill"
 import { approvalMeta } from "@/components/shared/file-row"
-import { APP_ROUTES, linkSearch } from "@/components/dashboard/app-routes"
+import { appLink, legacyAppLink } from "@/lib/app-links"
+import { useCurrentEvent } from "@/lib/current-event"
 import { relativeTime } from "@/components/dashboard/format"
 import {
   downloadFile,
@@ -85,6 +86,13 @@ function FileTableRow({
   onApprove?: (row: FileLibraryRow) => void
 }) {
   const [downloading, setDownloading] = useState(false)
+  const { eventRef } = useCurrentEvent()
+  const speakersLink = eventRef
+    ? appLink.speakers(eventRef)
+    : legacyAppLink.speakers
+  const submissionsLink = eventRef
+    ? appLink.submissions(eventRef)
+    : legacyAppLink.submissions
   const Icon = fileIcon(row.contentType, row.filename)
   const approval = approvalMeta(row.approvalStatus)
   const size = formatBytes(row.size)
@@ -149,8 +157,8 @@ function FileTableRow({
       <TableCell>
         {row.person ? (
           <Link
-            to={APP_ROUTES.speakers}
-            search={linkSearch({ person: String(row.person.id) })}
+            to={speakersLink as never}
+            search={{ person: String(row.person.id) } as never}
             className="block max-w-[180px] truncate font-medium text-foreground hover:underline"
           >
             {row.person.name}
@@ -163,8 +171,8 @@ function FileTableRow({
       <TableCell>
         {row.submissionId && row.submissionTitle ? (
           <Link
-            to={APP_ROUTES.submissions}
-            search={linkSearch({ id: String(row.submissionId) })}
+            to={submissionsLink as never}
+            search={{ id: String(row.submissionId) } as never}
             className="block max-w-[220px] truncate text-foreground hover:underline"
           >
             {row.submissionTitle}

@@ -31,7 +31,7 @@ export function NewWorkspaceDialog({
   open: controlledOpen,
   onOpenChange,
 }: {
-  onCreated?: (organizationId: string) => void
+  onCreated?: (created: { organizationId: string; slug: string }) => void
   size?: React.ComponentProps<typeof Button>["size"]
   variant?: React.ComponentProps<typeof Button>["variant"]
   /** Render the dialog only — drive it from a menu item, like the switcher. */
@@ -61,7 +61,7 @@ export function NewWorkspaceDialog({
       toast.success(`“${name.trim()}” created`, {
         description: "Create an event in it to start working.",
       })
-      onCreated?.(created.organizationId)
+      onCreated?.({ organizationId: created.organizationId, slug: created.slug })
       setName("")
       setOpen(false)
     } catch (caught) {

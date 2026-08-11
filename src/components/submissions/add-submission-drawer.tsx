@@ -30,6 +30,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 import { DrawerShell } from "@/components/shared/drawer-shell"
 import { StatusPill } from "@/components/shared/status-pill"
+import { PersonPicker } from "@/components/dashboard/person-picker"
 import { TagInput } from "@/components/submissions/tag-input"
 import { ChoiceValue, TrackValue } from "@/components/submissions/field-bits"
 import {
@@ -44,6 +45,13 @@ import {
  * Pending, and the primary button disabled until the form is valid.
  *
  * Built on the shared `DrawerShell` + shadcn `Tabs`/`Select`/`Field` primitives.
+ *
+ * Each speaker slot leads with a `PersonPicker`: an event has one person per
+ * email, so booking a second talk for someone already on the programme must
+ * attach THAT person (portal, tasks, profile intact) rather than mint a twin.
+ * `submissions.addManual` has always done that on the server — the picker is
+ * how the organizer can see it. The email field underneath stays a plain
+ * input, so typing an address straight in works exactly as it always did.
  */
 
 const NONE = "none"
@@ -402,7 +410,8 @@ export function AddSubmissionDrawer({
         <TabsContent value="participants">
           <FieldGroup>
             <p className="text-sm text-muted-foreground">
-              Add the people presenting this session. They get a speaker portal
+              Add the people presenting this session — pick someone already on
+              this event, or enter a new email. They get a speaker portal
               account automatically, and you can add more later.
             </p>
 
@@ -432,6 +441,31 @@ export function AddSubmissionDrawer({
                   ) : null}
                 </div>
                 <FieldGroup className="gap-4">
+                  <Field>
+                    <FieldLabel htmlFor={`speaker-${index}-person`}>
+                      Person
+                    </FieldLabel>
+                    <PersonPicker
+                      id={`speaker-${index}-person`}
+                      eventId={eventId}
+                      email={speaker.email}
+                      excludeEmails={speakers
+                        .filter((_, i) => i !== index)
+                        .map((row) => row.email)}
+                      onPick={(person) =>
+                        updateSpeaker(index, {
+                          email: person.email,
+                          firstName: person.firstName,
+                          lastName: person.lastName,
+                        })
+                      }
+                      onNewEmail={(value) =>
+                        updateSpeaker(index, { email: value })
+                      }
+                      hint="Search the people already on this event, or add a brand new email."
+                    />
+                  </Field>
+
                   <div className="grid grid-cols-2 gap-3">
                     <Field>
                       <FieldLabel htmlFor={`speaker-${index}-first`}>

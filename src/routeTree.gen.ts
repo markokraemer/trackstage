@@ -21,19 +21,20 @@ import { Route as ApiChatRouteImport } from './routes/api/chat'
 import { Route as AppIndexRouteImport } from './routes/app/index'
 import { Route as AppAccountRouteImport } from './routes/app/account'
 import { Route as AppCopilotRouteImport } from './routes/app/copilot'
-import { Route as AppSettingsRouteRouteImport } from './routes/app/settings/route'
 import { Route as AppWorkspaceRouteImport } from './routes/app/workspace'
 import { Route as DocsIndexRouteImport } from './routes/docs/index'
 import { Route as DocsMcpRouteImport } from './routes/docs/mcp'
 import { Route as DocsSelfHostRouteImport } from './routes/docs/self-host'
 import { Route as DocsApiRouteImport } from './routes/docs_.api'
-import { Route as ESlugRouteRouteImport } from './routes/e/$slug/route'
 import { Route as PortalIndexRouteImport } from './routes/portal/index'
 import { Route as PortalProfileRouteImport } from './routes/portal/profile'
 import { Route as PortalSubmissionsRouteImport } from './routes/portal/submissions'
 import { Route as PortalTasksRouteImport } from './routes/portal/tasks'
 import { Route as ReviewTokenRouteImport } from './routes/review/$token'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
+import { Route as AppWorkspaceSlugIndexRouteImport } from './routes/app/$workspaceSlug/index'
+import { Route as AppWorkspaceSlugEventSlugRouteRouteImport } from './routes/app/$workspaceSlug/$eventSlug/route'
+import { Route as AppWorkspaceSlugWorkspaceRouteImport } from './routes/app/$workspaceSlug/workspace'
 import { Route as AppAgendaIndexRouteImport } from './routes/app/agenda/index'
 import { Route as AppCommunicationsIndexRouteImport } from './routes/app/communications/index'
 import { Route as AppEmbedsIndexRouteImport } from './routes/app/embeds/index'
@@ -64,15 +65,39 @@ import { Route as DocsGuideReviewAndDecideRouteImport } from './routes/docs/guid
 import { Route as DocsGuideShareAndCollectRouteImport } from './routes/docs/guide/share-and-collect'
 import { Route as DocsGuideSpeakerPortalRouteImport } from './routes/docs/guide/speaker-portal'
 import { Route as DocsGuideTeamAndWorkspacesRouteImport } from './routes/docs/guide/team-and-workspaces'
-import { Route as ESlugIndexRouteImport } from './routes/e/$slug/index'
-import { Route as ESlugMyScheduleRouteImport } from './routes/e/$slug/my-schedule'
-import { Route as ESlugSpeakersRouteImport } from './routes/e/$slug/speakers'
+import { Route as EWorkspaceSlugIndexRouteImport } from './routes/e/$workspaceSlug/index'
+import { Route as EWorkspaceSlugEventSlugRouteRouteImport } from './routes/e/$workspaceSlug/$eventSlug/route'
 import { Route as PortalTTokenRouteImport } from './routes/portal/t.$token'
-import { Route as SubmitEventSlugIndexRouteImport } from './routes/submit/$eventSlug/index'
-import { Route as SubmitEventSlugFormSlugRouteImport } from './routes/submit/$eventSlug/$formSlug'
-import { Route as ESlugItineraryPersonIdRouteImport } from './routes/e/$slug/itinerary/$personId'
-import { Route as ESlugSessionsIndexRouteImport } from './routes/e/$slug/sessions/index'
-import { Route as ESlugSessionsSessionIdRouteImport } from './routes/e/$slug/sessions/$sessionId'
+import { Route as SubmitWorkspaceSlugIndexRouteImport } from './routes/submit/$workspaceSlug/index'
+import { Route as AppWorkspaceSlugEventSlugIndexRouteImport } from './routes/app/$workspaceSlug/$eventSlug/index'
+import { Route as AppWorkspaceSlugEventSlugSettingsRouteRouteImport } from './routes/app/$workspaceSlug/$eventSlug/settings/route'
+import { Route as EWorkspaceSlugEventSlugIndexRouteImport } from './routes/e/$workspaceSlug/$eventSlug/index'
+import { Route as EWorkspaceSlugEventSlugSplatRouteImport } from './routes/e/$workspaceSlug/$eventSlug/$'
+import { Route as EWorkspaceSlugEventSlugMyScheduleRouteImport } from './routes/e/$workspaceSlug/$eventSlug/my-schedule'
+import { Route as EWorkspaceSlugEventSlugSpeakersRouteImport } from './routes/e/$workspaceSlug/$eventSlug/speakers'
+import { Route as SubmitWorkspaceSlugEventSlugIndexRouteImport } from './routes/submit/$workspaceSlug/$eventSlug/index'
+import { Route as SubmitWorkspaceSlugEventSlugFormSlugRouteImport } from './routes/submit/$workspaceSlug/$eventSlug/$formSlug'
+import { Route as AppWorkspaceSlugEventSlugAgendaIndexRouteImport } from './routes/app/$workspaceSlug/$eventSlug/agenda/index'
+import { Route as AppWorkspaceSlugEventSlugCommunicationsIndexRouteImport } from './routes/app/$workspaceSlug/$eventSlug/communications/index'
+import { Route as AppWorkspaceSlugEventSlugEmbedsIndexRouteImport } from './routes/app/$workspaceSlug/$eventSlug/embeds/index'
+import { Route as AppWorkspaceSlugEventSlugEvaluationIndexRouteImport } from './routes/app/$workspaceSlug/$eventSlug/evaluation/index'
+import { Route as AppWorkspaceSlugEventSlugEvaluationPlanIdRouteImport } from './routes/app/$workspaceSlug/$eventSlug/evaluation/$planId'
+import { Route as AppWorkspaceSlugEventSlugFilesIndexRouteImport } from './routes/app/$workspaceSlug/$eventSlug/files/index'
+import { Route as AppWorkspaceSlugEventSlugFormsIndexRouteImport } from './routes/app/$workspaceSlug/$eventSlug/forms/index'
+import { Route as AppWorkspaceSlugEventSlugFormsFormIdRouteImport } from './routes/app/$workspaceSlug/$eventSlug/forms/$formId'
+import { Route as AppWorkspaceSlugEventSlugFormsNewRouteImport } from './routes/app/$workspaceSlug/$eventSlug/forms/new'
+import { Route as AppWorkspaceSlugEventSlugSettingsIndexRouteImport } from './routes/app/$workspaceSlug/$eventSlug/settings/index'
+import { Route as AppWorkspaceSlugEventSlugSettingsActivityRouteImport } from './routes/app/$workspaceSlug/$eventSlug/settings/activity'
+import { Route as AppWorkspaceSlugEventSlugSettingsApiMcpRouteImport } from './routes/app/$workspaceSlug/$eventSlug/settings/api-mcp'
+import { Route as AppWorkspaceSlugEventSlugSettingsFieldsAndOptionsRouteImport } from './routes/app/$workspaceSlug/$eventSlug/settings/fields-and-options'
+import { Route as AppWorkspaceSlugEventSlugSettingsIntegrationsRouteImport } from './routes/app/$workspaceSlug/$eventSlug/settings/integrations'
+import { Route as AppWorkspaceSlugEventSlugSettingsRoomsAndTracksRouteImport } from './routes/app/$workspaceSlug/$eventSlug/settings/rooms-and-tracks'
+import { Route as AppWorkspaceSlugEventSlugSettingsStatusesRouteImport } from './routes/app/$workspaceSlug/$eventSlug/settings/statuses'
+import { Route as AppWorkspaceSlugEventSlugSpeakersIndexRouteImport } from './routes/app/$workspaceSlug/$eventSlug/speakers/index'
+import { Route as AppWorkspaceSlugEventSlugSubmissionsIndexRouteImport } from './routes/app/$workspaceSlug/$eventSlug/submissions/index'
+import { Route as EWorkspaceSlugEventSlugItineraryPersonIdRouteImport } from './routes/e/$workspaceSlug/$eventSlug/itinerary/$personId'
+import { Route as EWorkspaceSlugEventSlugSessionsIndexRouteImport } from './routes/e/$workspaceSlug/$eventSlug/sessions/index'
+import { Route as EWorkspaceSlugEventSlugSessionsSessionIdRouteImport } from './routes/e/$workspaceSlug/$eventSlug/sessions/$sessionId'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -135,11 +160,6 @@ const AppCopilotRoute = AppCopilotRouteImport.update({
   path: '/copilot',
   getParentRoute: () => AppRouteRoute,
 } as any)
-const AppSettingsRouteRoute = AppSettingsRouteRouteImport.update({
-  id: '/settings',
-  path: '/settings',
-  getParentRoute: () => AppRouteRoute,
-} as any)
 const AppWorkspaceRoute = AppWorkspaceRouteImport.update({
   id: '/workspace',
   path: '/workspace',
@@ -163,11 +183,6 @@ const DocsSelfHostRoute = DocsSelfHostRouteImport.update({
 const DocsApiRoute = DocsApiRouteImport.update({
   id: '/docs_/api',
   path: '/docs/api',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ESlugRouteRoute = ESlugRouteRouteImport.update({
-  id: '/e/$slug',
-  path: '/e/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PortalIndexRoute = PortalIndexRouteImport.update({
@@ -200,6 +215,23 @@ const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   path: '/api/auth/$',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AppWorkspaceSlugIndexRoute = AppWorkspaceSlugIndexRouteImport.update({
+  id: '/$workspaceSlug/',
+  path: '/$workspaceSlug/',
+  getParentRoute: () => AppRouteRoute,
+} as any)
+const AppWorkspaceSlugEventSlugRouteRoute =
+  AppWorkspaceSlugEventSlugRouteRouteImport.update({
+    id: '/$workspaceSlug/$eventSlug',
+    path: '/$workspaceSlug/$eventSlug',
+    getParentRoute: () => AppRouteRoute,
+  } as any)
+const AppWorkspaceSlugWorkspaceRoute =
+  AppWorkspaceSlugWorkspaceRouteImport.update({
+    id: '/$workspaceSlug/workspace',
+    path: '/$workspaceSlug/workspace',
+    getParentRoute: () => AppRouteRoute,
+  } as any)
 const AppAgendaIndexRoute = AppAgendaIndexRouteImport.update({
   id: '/agenda/',
   path: '/agenda/',
@@ -251,41 +283,41 @@ const AppFormsNewRoute = AppFormsNewRouteImport.update({
   getParentRoute: () => AppRouteRoute,
 } as any)
 const AppSettingsIndexRoute = AppSettingsIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => AppSettingsRouteRoute,
+  id: '/settings/',
+  path: '/settings/',
+  getParentRoute: () => AppRouteRoute,
 } as any)
 const AppSettingsActivityRoute = AppSettingsActivityRouteImport.update({
-  id: '/activity',
-  path: '/activity',
-  getParentRoute: () => AppSettingsRouteRoute,
+  id: '/settings/activity',
+  path: '/settings/activity',
+  getParentRoute: () => AppRouteRoute,
 } as any)
 const AppSettingsApiMcpRoute = AppSettingsApiMcpRouteImport.update({
-  id: '/api-mcp',
-  path: '/api-mcp',
-  getParentRoute: () => AppSettingsRouteRoute,
+  id: '/settings/api-mcp',
+  path: '/settings/api-mcp',
+  getParentRoute: () => AppRouteRoute,
 } as any)
 const AppSettingsFieldsAndOptionsRoute =
   AppSettingsFieldsAndOptionsRouteImport.update({
-    id: '/fields-and-options',
-    path: '/fields-and-options',
-    getParentRoute: () => AppSettingsRouteRoute,
+    id: '/settings/fields-and-options',
+    path: '/settings/fields-and-options',
+    getParentRoute: () => AppRouteRoute,
   } as any)
 const AppSettingsIntegrationsRoute = AppSettingsIntegrationsRouteImport.update({
-  id: '/integrations',
-  path: '/integrations',
-  getParentRoute: () => AppSettingsRouteRoute,
+  id: '/settings/integrations',
+  path: '/settings/integrations',
+  getParentRoute: () => AppRouteRoute,
 } as any)
 const AppSettingsRoomsAndTracksRoute =
   AppSettingsRoomsAndTracksRouteImport.update({
-    id: '/rooms-and-tracks',
-    path: '/rooms-and-tracks',
-    getParentRoute: () => AppSettingsRouteRoute,
+    id: '/settings/rooms-and-tracks',
+    path: '/settings/rooms-and-tracks',
+    getParentRoute: () => AppRouteRoute,
   } as any)
 const AppSettingsStatusesRoute = AppSettingsStatusesRouteImport.update({
-  id: '/statuses',
-  path: '/statuses',
-  getParentRoute: () => AppSettingsRouteRoute,
+  id: '/settings/statuses',
+  path: '/settings/statuses',
+  getParentRoute: () => AppRouteRoute,
 } as any)
 const AppSpeakersIndexRoute = AppSpeakersIndexRouteImport.update({
   id: '/speakers/',
@@ -356,51 +388,202 @@ const DocsGuideTeamAndWorkspacesRoute =
     path: '/guide/team-and-workspaces',
     getParentRoute: () => DocsRouteRoute,
   } as any)
-const ESlugIndexRoute = ESlugIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => ESlugRouteRoute,
+const EWorkspaceSlugIndexRoute = EWorkspaceSlugIndexRouteImport.update({
+  id: '/e/$workspaceSlug/',
+  path: '/e/$workspaceSlug/',
+  getParentRoute: () => rootRouteImport,
 } as any)
-const ESlugMyScheduleRoute = ESlugMyScheduleRouteImport.update({
-  id: '/my-schedule',
-  path: '/my-schedule',
-  getParentRoute: () => ESlugRouteRoute,
-} as any)
-const ESlugSpeakersRoute = ESlugSpeakersRouteImport.update({
-  id: '/speakers',
-  path: '/speakers',
-  getParentRoute: () => ESlugRouteRoute,
-} as any)
+const EWorkspaceSlugEventSlugRouteRoute =
+  EWorkspaceSlugEventSlugRouteRouteImport.update({
+    id: '/e/$workspaceSlug/$eventSlug',
+    path: '/e/$workspaceSlug/$eventSlug',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const PortalTTokenRoute = PortalTTokenRouteImport.update({
   id: '/t/$token',
   path: '/t/$token',
   getParentRoute: () => PortalRouteRoute,
 } as any)
-const SubmitEventSlugIndexRoute = SubmitEventSlugIndexRouteImport.update({
-  id: '/submit/$eventSlug/',
-  path: '/submit/$eventSlug/',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const SubmitEventSlugFormSlugRoute = SubmitEventSlugFormSlugRouteImport.update({
-  id: '/submit/$eventSlug/$formSlug',
-  path: '/submit/$eventSlug/$formSlug',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ESlugItineraryPersonIdRoute = ESlugItineraryPersonIdRouteImport.update({
-  id: '/itinerary/$personId',
-  path: '/itinerary/$personId',
-  getParentRoute: () => ESlugRouteRoute,
-} as any)
-const ESlugSessionsIndexRoute = ESlugSessionsIndexRouteImport.update({
-  id: '/sessions/',
-  path: '/sessions/',
-  getParentRoute: () => ESlugRouteRoute,
-} as any)
-const ESlugSessionsSessionIdRoute = ESlugSessionsSessionIdRouteImport.update({
-  id: '/sessions/$sessionId',
-  path: '/sessions/$sessionId',
-  getParentRoute: () => ESlugRouteRoute,
-} as any)
+const SubmitWorkspaceSlugIndexRoute =
+  SubmitWorkspaceSlugIndexRouteImport.update({
+    id: '/submit/$workspaceSlug/',
+    path: '/submit/$workspaceSlug/',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const AppWorkspaceSlugEventSlugIndexRoute =
+  AppWorkspaceSlugEventSlugIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => AppWorkspaceSlugEventSlugRouteRoute,
+  } as any)
+const AppWorkspaceSlugEventSlugSettingsRouteRoute =
+  AppWorkspaceSlugEventSlugSettingsRouteRouteImport.update({
+    id: '/settings',
+    path: '/settings',
+    getParentRoute: () => AppWorkspaceSlugEventSlugRouteRoute,
+  } as any)
+const EWorkspaceSlugEventSlugIndexRoute =
+  EWorkspaceSlugEventSlugIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => EWorkspaceSlugEventSlugRouteRoute,
+  } as any)
+const EWorkspaceSlugEventSlugSplatRoute =
+  EWorkspaceSlugEventSlugSplatRouteImport.update({
+    id: '/$',
+    path: '/$',
+    getParentRoute: () => EWorkspaceSlugEventSlugRouteRoute,
+  } as any)
+const EWorkspaceSlugEventSlugMyScheduleRoute =
+  EWorkspaceSlugEventSlugMyScheduleRouteImport.update({
+    id: '/my-schedule',
+    path: '/my-schedule',
+    getParentRoute: () => EWorkspaceSlugEventSlugRouteRoute,
+  } as any)
+const EWorkspaceSlugEventSlugSpeakersRoute =
+  EWorkspaceSlugEventSlugSpeakersRouteImport.update({
+    id: '/speakers',
+    path: '/speakers',
+    getParentRoute: () => EWorkspaceSlugEventSlugRouteRoute,
+  } as any)
+const SubmitWorkspaceSlugEventSlugIndexRoute =
+  SubmitWorkspaceSlugEventSlugIndexRouteImport.update({
+    id: '/submit/$workspaceSlug/$eventSlug/',
+    path: '/submit/$workspaceSlug/$eventSlug/',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const SubmitWorkspaceSlugEventSlugFormSlugRoute =
+  SubmitWorkspaceSlugEventSlugFormSlugRouteImport.update({
+    id: '/submit/$workspaceSlug/$eventSlug/$formSlug',
+    path: '/submit/$workspaceSlug/$eventSlug/$formSlug',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const AppWorkspaceSlugEventSlugAgendaIndexRoute =
+  AppWorkspaceSlugEventSlugAgendaIndexRouteImport.update({
+    id: '/agenda/',
+    path: '/agenda/',
+    getParentRoute: () => AppWorkspaceSlugEventSlugRouteRoute,
+  } as any)
+const AppWorkspaceSlugEventSlugCommunicationsIndexRoute =
+  AppWorkspaceSlugEventSlugCommunicationsIndexRouteImport.update({
+    id: '/communications/',
+    path: '/communications/',
+    getParentRoute: () => AppWorkspaceSlugEventSlugRouteRoute,
+  } as any)
+const AppWorkspaceSlugEventSlugEmbedsIndexRoute =
+  AppWorkspaceSlugEventSlugEmbedsIndexRouteImport.update({
+    id: '/embeds/',
+    path: '/embeds/',
+    getParentRoute: () => AppWorkspaceSlugEventSlugRouteRoute,
+  } as any)
+const AppWorkspaceSlugEventSlugEvaluationIndexRoute =
+  AppWorkspaceSlugEventSlugEvaluationIndexRouteImport.update({
+    id: '/evaluation/',
+    path: '/evaluation/',
+    getParentRoute: () => AppWorkspaceSlugEventSlugRouteRoute,
+  } as any)
+const AppWorkspaceSlugEventSlugEvaluationPlanIdRoute =
+  AppWorkspaceSlugEventSlugEvaluationPlanIdRouteImport.update({
+    id: '/evaluation/$planId',
+    path: '/evaluation/$planId',
+    getParentRoute: () => AppWorkspaceSlugEventSlugRouteRoute,
+  } as any)
+const AppWorkspaceSlugEventSlugFilesIndexRoute =
+  AppWorkspaceSlugEventSlugFilesIndexRouteImport.update({
+    id: '/files/',
+    path: '/files/',
+    getParentRoute: () => AppWorkspaceSlugEventSlugRouteRoute,
+  } as any)
+const AppWorkspaceSlugEventSlugFormsIndexRoute =
+  AppWorkspaceSlugEventSlugFormsIndexRouteImport.update({
+    id: '/forms/',
+    path: '/forms/',
+    getParentRoute: () => AppWorkspaceSlugEventSlugRouteRoute,
+  } as any)
+const AppWorkspaceSlugEventSlugFormsFormIdRoute =
+  AppWorkspaceSlugEventSlugFormsFormIdRouteImport.update({
+    id: '/forms/$formId',
+    path: '/forms/$formId',
+    getParentRoute: () => AppWorkspaceSlugEventSlugRouteRoute,
+  } as any)
+const AppWorkspaceSlugEventSlugFormsNewRoute =
+  AppWorkspaceSlugEventSlugFormsNewRouteImport.update({
+    id: '/forms/new',
+    path: '/forms/new',
+    getParentRoute: () => AppWorkspaceSlugEventSlugRouteRoute,
+  } as any)
+const AppWorkspaceSlugEventSlugSettingsIndexRoute =
+  AppWorkspaceSlugEventSlugSettingsIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => AppWorkspaceSlugEventSlugSettingsRouteRoute,
+  } as any)
+const AppWorkspaceSlugEventSlugSettingsActivityRoute =
+  AppWorkspaceSlugEventSlugSettingsActivityRouteImport.update({
+    id: '/activity',
+    path: '/activity',
+    getParentRoute: () => AppWorkspaceSlugEventSlugSettingsRouteRoute,
+  } as any)
+const AppWorkspaceSlugEventSlugSettingsApiMcpRoute =
+  AppWorkspaceSlugEventSlugSettingsApiMcpRouteImport.update({
+    id: '/api-mcp',
+    path: '/api-mcp',
+    getParentRoute: () => AppWorkspaceSlugEventSlugSettingsRouteRoute,
+  } as any)
+const AppWorkspaceSlugEventSlugSettingsFieldsAndOptionsRoute =
+  AppWorkspaceSlugEventSlugSettingsFieldsAndOptionsRouteImport.update({
+    id: '/fields-and-options',
+    path: '/fields-and-options',
+    getParentRoute: () => AppWorkspaceSlugEventSlugSettingsRouteRoute,
+  } as any)
+const AppWorkspaceSlugEventSlugSettingsIntegrationsRoute =
+  AppWorkspaceSlugEventSlugSettingsIntegrationsRouteImport.update({
+    id: '/integrations',
+    path: '/integrations',
+    getParentRoute: () => AppWorkspaceSlugEventSlugSettingsRouteRoute,
+  } as any)
+const AppWorkspaceSlugEventSlugSettingsRoomsAndTracksRoute =
+  AppWorkspaceSlugEventSlugSettingsRoomsAndTracksRouteImport.update({
+    id: '/rooms-and-tracks',
+    path: '/rooms-and-tracks',
+    getParentRoute: () => AppWorkspaceSlugEventSlugSettingsRouteRoute,
+  } as any)
+const AppWorkspaceSlugEventSlugSettingsStatusesRoute =
+  AppWorkspaceSlugEventSlugSettingsStatusesRouteImport.update({
+    id: '/statuses',
+    path: '/statuses',
+    getParentRoute: () => AppWorkspaceSlugEventSlugSettingsRouteRoute,
+  } as any)
+const AppWorkspaceSlugEventSlugSpeakersIndexRoute =
+  AppWorkspaceSlugEventSlugSpeakersIndexRouteImport.update({
+    id: '/speakers/',
+    path: '/speakers/',
+    getParentRoute: () => AppWorkspaceSlugEventSlugRouteRoute,
+  } as any)
+const AppWorkspaceSlugEventSlugSubmissionsIndexRoute =
+  AppWorkspaceSlugEventSlugSubmissionsIndexRouteImport.update({
+    id: '/submissions/',
+    path: '/submissions/',
+    getParentRoute: () => AppWorkspaceSlugEventSlugRouteRoute,
+  } as any)
+const EWorkspaceSlugEventSlugItineraryPersonIdRoute =
+  EWorkspaceSlugEventSlugItineraryPersonIdRouteImport.update({
+    id: '/itinerary/$personId',
+    path: '/itinerary/$personId',
+    getParentRoute: () => EWorkspaceSlugEventSlugRouteRoute,
+  } as any)
+const EWorkspaceSlugEventSlugSessionsIndexRoute =
+  EWorkspaceSlugEventSlugSessionsIndexRouteImport.update({
+    id: '/sessions/',
+    path: '/sessions/',
+    getParentRoute: () => EWorkspaceSlugEventSlugRouteRoute,
+  } as any)
+const EWorkspaceSlugEventSlugSessionsSessionIdRoute =
+  EWorkspaceSlugEventSlugSessionsSessionIdRouteImport.update({
+    id: '/sessions/$sessionId',
+    path: '/sessions/$sessionId',
+    getParentRoute: () => EWorkspaceSlugEventSlugRouteRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -410,8 +593,6 @@ export interface FileRoutesByFullPath {
   '/design-system': typeof DesignSystemRoute
   '/login': typeof LoginRoute
   '/reset-password': typeof ResetPasswordRoute
-  '/app/settings': typeof AppSettingsRouteRouteWithChildren
-  '/e/$slug': typeof ESlugRouteRouteWithChildren
   '/.well-known/oauth-authorization-server': typeof DotwellKnownOauthAuthorizationServerRoute
   '/api/chat': typeof ApiChatRoute
   '/app/account': typeof AppAccountRoute
@@ -427,7 +608,10 @@ export interface FileRoutesByFullPath {
   '/app/': typeof AppIndexRoute
   '/docs/': typeof DocsIndexRoute
   '/portal/': typeof PortalIndexRoute
+  '/app/$workspaceSlug/$eventSlug': typeof AppWorkspaceSlugEventSlugRouteRouteWithChildren
+  '/e/$workspaceSlug/$eventSlug': typeof EWorkspaceSlugEventSlugRouteRouteWithChildren
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/app/$workspaceSlug/workspace': typeof AppWorkspaceSlugWorkspaceRoute
   '/app/evaluation/$planId': typeof AppEvaluationPlanIdRoute
   '/app/forms/$formId': typeof AppFormsFormIdRoute
   '/app/forms/new': typeof AppFormsNewRoute
@@ -448,10 +632,8 @@ export interface FileRoutesByFullPath {
   '/docs/guide/share-and-collect': typeof DocsGuideShareAndCollectRoute
   '/docs/guide/speaker-portal': typeof DocsGuideSpeakerPortalRoute
   '/docs/guide/team-and-workspaces': typeof DocsGuideTeamAndWorkspacesRoute
-  '/e/$slug/my-schedule': typeof ESlugMyScheduleRoute
-  '/e/$slug/speakers': typeof ESlugSpeakersRoute
   '/portal/t/$token': typeof PortalTTokenRoute
-  '/submit/$eventSlug/$formSlug': typeof SubmitEventSlugFormSlugRoute
+  '/app/$workspaceSlug/': typeof AppWorkspaceSlugIndexRoute
   '/app/agenda/': typeof AppAgendaIndexRoute
   '/app/communications/': typeof AppCommunicationsIndexRoute
   '/app/embeds/': typeof AppEmbedsIndexRoute
@@ -462,11 +644,37 @@ export interface FileRoutesByFullPath {
   '/app/settings/': typeof AppSettingsIndexRoute
   '/app/speakers/': typeof AppSpeakersIndexRoute
   '/app/submissions/': typeof AppSubmissionsIndexRoute
-  '/e/$slug/': typeof ESlugIndexRoute
-  '/submit/$eventSlug/': typeof SubmitEventSlugIndexRoute
-  '/e/$slug/itinerary/$personId': typeof ESlugItineraryPersonIdRoute
-  '/e/$slug/sessions/$sessionId': typeof ESlugSessionsSessionIdRoute
-  '/e/$slug/sessions/': typeof ESlugSessionsIndexRoute
+  '/e/$workspaceSlug/': typeof EWorkspaceSlugIndexRoute
+  '/submit/$workspaceSlug/': typeof SubmitWorkspaceSlugIndexRoute
+  '/app/$workspaceSlug/$eventSlug/settings': typeof AppWorkspaceSlugEventSlugSettingsRouteRouteWithChildren
+  '/e/$workspaceSlug/$eventSlug/$': typeof EWorkspaceSlugEventSlugSplatRoute
+  '/e/$workspaceSlug/$eventSlug/my-schedule': typeof EWorkspaceSlugEventSlugMyScheduleRoute
+  '/e/$workspaceSlug/$eventSlug/speakers': typeof EWorkspaceSlugEventSlugSpeakersRoute
+  '/submit/$workspaceSlug/$eventSlug/$formSlug': typeof SubmitWorkspaceSlugEventSlugFormSlugRoute
+  '/app/$workspaceSlug/$eventSlug/': typeof AppWorkspaceSlugEventSlugIndexRoute
+  '/e/$workspaceSlug/$eventSlug/': typeof EWorkspaceSlugEventSlugIndexRoute
+  '/submit/$workspaceSlug/$eventSlug/': typeof SubmitWorkspaceSlugEventSlugIndexRoute
+  '/app/$workspaceSlug/$eventSlug/evaluation/$planId': typeof AppWorkspaceSlugEventSlugEvaluationPlanIdRoute
+  '/app/$workspaceSlug/$eventSlug/forms/$formId': typeof AppWorkspaceSlugEventSlugFormsFormIdRoute
+  '/app/$workspaceSlug/$eventSlug/forms/new': typeof AppWorkspaceSlugEventSlugFormsNewRoute
+  '/app/$workspaceSlug/$eventSlug/settings/activity': typeof AppWorkspaceSlugEventSlugSettingsActivityRoute
+  '/app/$workspaceSlug/$eventSlug/settings/api-mcp': typeof AppWorkspaceSlugEventSlugSettingsApiMcpRoute
+  '/app/$workspaceSlug/$eventSlug/settings/fields-and-options': typeof AppWorkspaceSlugEventSlugSettingsFieldsAndOptionsRoute
+  '/app/$workspaceSlug/$eventSlug/settings/integrations': typeof AppWorkspaceSlugEventSlugSettingsIntegrationsRoute
+  '/app/$workspaceSlug/$eventSlug/settings/rooms-and-tracks': typeof AppWorkspaceSlugEventSlugSettingsRoomsAndTracksRoute
+  '/app/$workspaceSlug/$eventSlug/settings/statuses': typeof AppWorkspaceSlugEventSlugSettingsStatusesRoute
+  '/e/$workspaceSlug/$eventSlug/itinerary/$personId': typeof EWorkspaceSlugEventSlugItineraryPersonIdRoute
+  '/e/$workspaceSlug/$eventSlug/sessions/$sessionId': typeof EWorkspaceSlugEventSlugSessionsSessionIdRoute
+  '/app/$workspaceSlug/$eventSlug/agenda/': typeof AppWorkspaceSlugEventSlugAgendaIndexRoute
+  '/app/$workspaceSlug/$eventSlug/communications/': typeof AppWorkspaceSlugEventSlugCommunicationsIndexRoute
+  '/app/$workspaceSlug/$eventSlug/embeds/': typeof AppWorkspaceSlugEventSlugEmbedsIndexRoute
+  '/app/$workspaceSlug/$eventSlug/evaluation/': typeof AppWorkspaceSlugEventSlugEvaluationIndexRoute
+  '/app/$workspaceSlug/$eventSlug/files/': typeof AppWorkspaceSlugEventSlugFilesIndexRoute
+  '/app/$workspaceSlug/$eventSlug/forms/': typeof AppWorkspaceSlugEventSlugFormsIndexRoute
+  '/app/$workspaceSlug/$eventSlug/settings/': typeof AppWorkspaceSlugEventSlugSettingsIndexRoute
+  '/app/$workspaceSlug/$eventSlug/speakers/': typeof AppWorkspaceSlugEventSlugSpeakersIndexRoute
+  '/app/$workspaceSlug/$eventSlug/submissions/': typeof AppWorkspaceSlugEventSlugSubmissionsIndexRoute
+  '/e/$workspaceSlug/$eventSlug/sessions/': typeof EWorkspaceSlugEventSlugSessionsIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -489,6 +697,7 @@ export interface FileRoutesByTo {
   '/docs': typeof DocsIndexRoute
   '/portal': typeof PortalIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/app/$workspaceSlug/workspace': typeof AppWorkspaceSlugWorkspaceRoute
   '/app/evaluation/$planId': typeof AppEvaluationPlanIdRoute
   '/app/forms/$formId': typeof AppFormsFormIdRoute
   '/app/forms/new': typeof AppFormsNewRoute
@@ -509,10 +718,8 @@ export interface FileRoutesByTo {
   '/docs/guide/share-and-collect': typeof DocsGuideShareAndCollectRoute
   '/docs/guide/speaker-portal': typeof DocsGuideSpeakerPortalRoute
   '/docs/guide/team-and-workspaces': typeof DocsGuideTeamAndWorkspacesRoute
-  '/e/$slug/my-schedule': typeof ESlugMyScheduleRoute
-  '/e/$slug/speakers': typeof ESlugSpeakersRoute
   '/portal/t/$token': typeof PortalTTokenRoute
-  '/submit/$eventSlug/$formSlug': typeof SubmitEventSlugFormSlugRoute
+  '/app/$workspaceSlug': typeof AppWorkspaceSlugIndexRoute
   '/app/agenda': typeof AppAgendaIndexRoute
   '/app/communications': typeof AppCommunicationsIndexRoute
   '/app/embeds': typeof AppEmbedsIndexRoute
@@ -523,11 +730,36 @@ export interface FileRoutesByTo {
   '/app/settings': typeof AppSettingsIndexRoute
   '/app/speakers': typeof AppSpeakersIndexRoute
   '/app/submissions': typeof AppSubmissionsIndexRoute
-  '/e/$slug': typeof ESlugIndexRoute
-  '/submit/$eventSlug': typeof SubmitEventSlugIndexRoute
-  '/e/$slug/itinerary/$personId': typeof ESlugItineraryPersonIdRoute
-  '/e/$slug/sessions/$sessionId': typeof ESlugSessionsSessionIdRoute
-  '/e/$slug/sessions': typeof ESlugSessionsIndexRoute
+  '/e/$workspaceSlug': typeof EWorkspaceSlugIndexRoute
+  '/submit/$workspaceSlug': typeof SubmitWorkspaceSlugIndexRoute
+  '/e/$workspaceSlug/$eventSlug/$': typeof EWorkspaceSlugEventSlugSplatRoute
+  '/e/$workspaceSlug/$eventSlug/my-schedule': typeof EWorkspaceSlugEventSlugMyScheduleRoute
+  '/e/$workspaceSlug/$eventSlug/speakers': typeof EWorkspaceSlugEventSlugSpeakersRoute
+  '/submit/$workspaceSlug/$eventSlug/$formSlug': typeof SubmitWorkspaceSlugEventSlugFormSlugRoute
+  '/app/$workspaceSlug/$eventSlug': typeof AppWorkspaceSlugEventSlugIndexRoute
+  '/e/$workspaceSlug/$eventSlug': typeof EWorkspaceSlugEventSlugIndexRoute
+  '/submit/$workspaceSlug/$eventSlug': typeof SubmitWorkspaceSlugEventSlugIndexRoute
+  '/app/$workspaceSlug/$eventSlug/evaluation/$planId': typeof AppWorkspaceSlugEventSlugEvaluationPlanIdRoute
+  '/app/$workspaceSlug/$eventSlug/forms/$formId': typeof AppWorkspaceSlugEventSlugFormsFormIdRoute
+  '/app/$workspaceSlug/$eventSlug/forms/new': typeof AppWorkspaceSlugEventSlugFormsNewRoute
+  '/app/$workspaceSlug/$eventSlug/settings/activity': typeof AppWorkspaceSlugEventSlugSettingsActivityRoute
+  '/app/$workspaceSlug/$eventSlug/settings/api-mcp': typeof AppWorkspaceSlugEventSlugSettingsApiMcpRoute
+  '/app/$workspaceSlug/$eventSlug/settings/fields-and-options': typeof AppWorkspaceSlugEventSlugSettingsFieldsAndOptionsRoute
+  '/app/$workspaceSlug/$eventSlug/settings/integrations': typeof AppWorkspaceSlugEventSlugSettingsIntegrationsRoute
+  '/app/$workspaceSlug/$eventSlug/settings/rooms-and-tracks': typeof AppWorkspaceSlugEventSlugSettingsRoomsAndTracksRoute
+  '/app/$workspaceSlug/$eventSlug/settings/statuses': typeof AppWorkspaceSlugEventSlugSettingsStatusesRoute
+  '/e/$workspaceSlug/$eventSlug/itinerary/$personId': typeof EWorkspaceSlugEventSlugItineraryPersonIdRoute
+  '/e/$workspaceSlug/$eventSlug/sessions/$sessionId': typeof EWorkspaceSlugEventSlugSessionsSessionIdRoute
+  '/app/$workspaceSlug/$eventSlug/agenda': typeof AppWorkspaceSlugEventSlugAgendaIndexRoute
+  '/app/$workspaceSlug/$eventSlug/communications': typeof AppWorkspaceSlugEventSlugCommunicationsIndexRoute
+  '/app/$workspaceSlug/$eventSlug/embeds': typeof AppWorkspaceSlugEventSlugEmbedsIndexRoute
+  '/app/$workspaceSlug/$eventSlug/evaluation': typeof AppWorkspaceSlugEventSlugEvaluationIndexRoute
+  '/app/$workspaceSlug/$eventSlug/files': typeof AppWorkspaceSlugEventSlugFilesIndexRoute
+  '/app/$workspaceSlug/$eventSlug/forms': typeof AppWorkspaceSlugEventSlugFormsIndexRoute
+  '/app/$workspaceSlug/$eventSlug/settings': typeof AppWorkspaceSlugEventSlugSettingsIndexRoute
+  '/app/$workspaceSlug/$eventSlug/speakers': typeof AppWorkspaceSlugEventSlugSpeakersIndexRoute
+  '/app/$workspaceSlug/$eventSlug/submissions': typeof AppWorkspaceSlugEventSlugSubmissionsIndexRoute
+  '/e/$workspaceSlug/$eventSlug/sessions': typeof EWorkspaceSlugEventSlugSessionsIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -538,8 +770,6 @@ export interface FileRoutesById {
   '/design-system': typeof DesignSystemRoute
   '/login': typeof LoginRoute
   '/reset-password': typeof ResetPasswordRoute
-  '/app/settings': typeof AppSettingsRouteRouteWithChildren
-  '/e/$slug': typeof ESlugRouteRouteWithChildren
   '/.well-known/oauth-authorization-server': typeof DotwellKnownOauthAuthorizationServerRoute
   '/api/chat': typeof ApiChatRoute
   '/app/account': typeof AppAccountRoute
@@ -555,7 +785,10 @@ export interface FileRoutesById {
   '/app/': typeof AppIndexRoute
   '/docs/': typeof DocsIndexRoute
   '/portal/': typeof PortalIndexRoute
+  '/app/$workspaceSlug/$eventSlug': typeof AppWorkspaceSlugEventSlugRouteRouteWithChildren
+  '/e/$workspaceSlug/$eventSlug': typeof EWorkspaceSlugEventSlugRouteRouteWithChildren
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/app/$workspaceSlug/workspace': typeof AppWorkspaceSlugWorkspaceRoute
   '/app/evaluation/$planId': typeof AppEvaluationPlanIdRoute
   '/app/forms/$formId': typeof AppFormsFormIdRoute
   '/app/forms/new': typeof AppFormsNewRoute
@@ -576,10 +809,8 @@ export interface FileRoutesById {
   '/docs/guide/share-and-collect': typeof DocsGuideShareAndCollectRoute
   '/docs/guide/speaker-portal': typeof DocsGuideSpeakerPortalRoute
   '/docs/guide/team-and-workspaces': typeof DocsGuideTeamAndWorkspacesRoute
-  '/e/$slug/my-schedule': typeof ESlugMyScheduleRoute
-  '/e/$slug/speakers': typeof ESlugSpeakersRoute
   '/portal/t/$token': typeof PortalTTokenRoute
-  '/submit/$eventSlug/$formSlug': typeof SubmitEventSlugFormSlugRoute
+  '/app/$workspaceSlug/': typeof AppWorkspaceSlugIndexRoute
   '/app/agenda/': typeof AppAgendaIndexRoute
   '/app/communications/': typeof AppCommunicationsIndexRoute
   '/app/embeds/': typeof AppEmbedsIndexRoute
@@ -590,11 +821,37 @@ export interface FileRoutesById {
   '/app/settings/': typeof AppSettingsIndexRoute
   '/app/speakers/': typeof AppSpeakersIndexRoute
   '/app/submissions/': typeof AppSubmissionsIndexRoute
-  '/e/$slug/': typeof ESlugIndexRoute
-  '/submit/$eventSlug/': typeof SubmitEventSlugIndexRoute
-  '/e/$slug/itinerary/$personId': typeof ESlugItineraryPersonIdRoute
-  '/e/$slug/sessions/$sessionId': typeof ESlugSessionsSessionIdRoute
-  '/e/$slug/sessions/': typeof ESlugSessionsIndexRoute
+  '/e/$workspaceSlug/': typeof EWorkspaceSlugIndexRoute
+  '/submit/$workspaceSlug/': typeof SubmitWorkspaceSlugIndexRoute
+  '/app/$workspaceSlug/$eventSlug/settings': typeof AppWorkspaceSlugEventSlugSettingsRouteRouteWithChildren
+  '/e/$workspaceSlug/$eventSlug/$': typeof EWorkspaceSlugEventSlugSplatRoute
+  '/e/$workspaceSlug/$eventSlug/my-schedule': typeof EWorkspaceSlugEventSlugMyScheduleRoute
+  '/e/$workspaceSlug/$eventSlug/speakers': typeof EWorkspaceSlugEventSlugSpeakersRoute
+  '/submit/$workspaceSlug/$eventSlug/$formSlug': typeof SubmitWorkspaceSlugEventSlugFormSlugRoute
+  '/app/$workspaceSlug/$eventSlug/': typeof AppWorkspaceSlugEventSlugIndexRoute
+  '/e/$workspaceSlug/$eventSlug/': typeof EWorkspaceSlugEventSlugIndexRoute
+  '/submit/$workspaceSlug/$eventSlug/': typeof SubmitWorkspaceSlugEventSlugIndexRoute
+  '/app/$workspaceSlug/$eventSlug/evaluation/$planId': typeof AppWorkspaceSlugEventSlugEvaluationPlanIdRoute
+  '/app/$workspaceSlug/$eventSlug/forms/$formId': typeof AppWorkspaceSlugEventSlugFormsFormIdRoute
+  '/app/$workspaceSlug/$eventSlug/forms/new': typeof AppWorkspaceSlugEventSlugFormsNewRoute
+  '/app/$workspaceSlug/$eventSlug/settings/activity': typeof AppWorkspaceSlugEventSlugSettingsActivityRoute
+  '/app/$workspaceSlug/$eventSlug/settings/api-mcp': typeof AppWorkspaceSlugEventSlugSettingsApiMcpRoute
+  '/app/$workspaceSlug/$eventSlug/settings/fields-and-options': typeof AppWorkspaceSlugEventSlugSettingsFieldsAndOptionsRoute
+  '/app/$workspaceSlug/$eventSlug/settings/integrations': typeof AppWorkspaceSlugEventSlugSettingsIntegrationsRoute
+  '/app/$workspaceSlug/$eventSlug/settings/rooms-and-tracks': typeof AppWorkspaceSlugEventSlugSettingsRoomsAndTracksRoute
+  '/app/$workspaceSlug/$eventSlug/settings/statuses': typeof AppWorkspaceSlugEventSlugSettingsStatusesRoute
+  '/e/$workspaceSlug/$eventSlug/itinerary/$personId': typeof EWorkspaceSlugEventSlugItineraryPersonIdRoute
+  '/e/$workspaceSlug/$eventSlug/sessions/$sessionId': typeof EWorkspaceSlugEventSlugSessionsSessionIdRoute
+  '/app/$workspaceSlug/$eventSlug/agenda/': typeof AppWorkspaceSlugEventSlugAgendaIndexRoute
+  '/app/$workspaceSlug/$eventSlug/communications/': typeof AppWorkspaceSlugEventSlugCommunicationsIndexRoute
+  '/app/$workspaceSlug/$eventSlug/embeds/': typeof AppWorkspaceSlugEventSlugEmbedsIndexRoute
+  '/app/$workspaceSlug/$eventSlug/evaluation/': typeof AppWorkspaceSlugEventSlugEvaluationIndexRoute
+  '/app/$workspaceSlug/$eventSlug/files/': typeof AppWorkspaceSlugEventSlugFilesIndexRoute
+  '/app/$workspaceSlug/$eventSlug/forms/': typeof AppWorkspaceSlugEventSlugFormsIndexRoute
+  '/app/$workspaceSlug/$eventSlug/settings/': typeof AppWorkspaceSlugEventSlugSettingsIndexRoute
+  '/app/$workspaceSlug/$eventSlug/speakers/': typeof AppWorkspaceSlugEventSlugSpeakersIndexRoute
+  '/app/$workspaceSlug/$eventSlug/submissions/': typeof AppWorkspaceSlugEventSlugSubmissionsIndexRoute
+  '/e/$workspaceSlug/$eventSlug/sessions/': typeof EWorkspaceSlugEventSlugSessionsIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -606,8 +863,6 @@ export interface FileRouteTypes {
     | '/design-system'
     | '/login'
     | '/reset-password'
-    | '/app/settings'
-    | '/e/$slug'
     | '/.well-known/oauth-authorization-server'
     | '/api/chat'
     | '/app/account'
@@ -623,7 +878,10 @@ export interface FileRouteTypes {
     | '/app/'
     | '/docs/'
     | '/portal/'
+    | '/app/$workspaceSlug/$eventSlug'
+    | '/e/$workspaceSlug/$eventSlug'
     | '/api/auth/$'
+    | '/app/$workspaceSlug/workspace'
     | '/app/evaluation/$planId'
     | '/app/forms/$formId'
     | '/app/forms/new'
@@ -644,10 +902,8 @@ export interface FileRouteTypes {
     | '/docs/guide/share-and-collect'
     | '/docs/guide/speaker-portal'
     | '/docs/guide/team-and-workspaces'
-    | '/e/$slug/my-schedule'
-    | '/e/$slug/speakers'
     | '/portal/t/$token'
-    | '/submit/$eventSlug/$formSlug'
+    | '/app/$workspaceSlug/'
     | '/app/agenda/'
     | '/app/communications/'
     | '/app/embeds/'
@@ -658,11 +914,37 @@ export interface FileRouteTypes {
     | '/app/settings/'
     | '/app/speakers/'
     | '/app/submissions/'
-    | '/e/$slug/'
-    | '/submit/$eventSlug/'
-    | '/e/$slug/itinerary/$personId'
-    | '/e/$slug/sessions/$sessionId'
-    | '/e/$slug/sessions/'
+    | '/e/$workspaceSlug/'
+    | '/submit/$workspaceSlug/'
+    | '/app/$workspaceSlug/$eventSlug/settings'
+    | '/e/$workspaceSlug/$eventSlug/$'
+    | '/e/$workspaceSlug/$eventSlug/my-schedule'
+    | '/e/$workspaceSlug/$eventSlug/speakers'
+    | '/submit/$workspaceSlug/$eventSlug/$formSlug'
+    | '/app/$workspaceSlug/$eventSlug/'
+    | '/e/$workspaceSlug/$eventSlug/'
+    | '/submit/$workspaceSlug/$eventSlug/'
+    | '/app/$workspaceSlug/$eventSlug/evaluation/$planId'
+    | '/app/$workspaceSlug/$eventSlug/forms/$formId'
+    | '/app/$workspaceSlug/$eventSlug/forms/new'
+    | '/app/$workspaceSlug/$eventSlug/settings/activity'
+    | '/app/$workspaceSlug/$eventSlug/settings/api-mcp'
+    | '/app/$workspaceSlug/$eventSlug/settings/fields-and-options'
+    | '/app/$workspaceSlug/$eventSlug/settings/integrations'
+    | '/app/$workspaceSlug/$eventSlug/settings/rooms-and-tracks'
+    | '/app/$workspaceSlug/$eventSlug/settings/statuses'
+    | '/e/$workspaceSlug/$eventSlug/itinerary/$personId'
+    | '/e/$workspaceSlug/$eventSlug/sessions/$sessionId'
+    | '/app/$workspaceSlug/$eventSlug/agenda/'
+    | '/app/$workspaceSlug/$eventSlug/communications/'
+    | '/app/$workspaceSlug/$eventSlug/embeds/'
+    | '/app/$workspaceSlug/$eventSlug/evaluation/'
+    | '/app/$workspaceSlug/$eventSlug/files/'
+    | '/app/$workspaceSlug/$eventSlug/forms/'
+    | '/app/$workspaceSlug/$eventSlug/settings/'
+    | '/app/$workspaceSlug/$eventSlug/speakers/'
+    | '/app/$workspaceSlug/$eventSlug/submissions/'
+    | '/e/$workspaceSlug/$eventSlug/sessions/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -685,6 +967,7 @@ export interface FileRouteTypes {
     | '/docs'
     | '/portal'
     | '/api/auth/$'
+    | '/app/$workspaceSlug/workspace'
     | '/app/evaluation/$planId'
     | '/app/forms/$formId'
     | '/app/forms/new'
@@ -705,10 +988,8 @@ export interface FileRouteTypes {
     | '/docs/guide/share-and-collect'
     | '/docs/guide/speaker-portal'
     | '/docs/guide/team-and-workspaces'
-    | '/e/$slug/my-schedule'
-    | '/e/$slug/speakers'
     | '/portal/t/$token'
-    | '/submit/$eventSlug/$formSlug'
+    | '/app/$workspaceSlug'
     | '/app/agenda'
     | '/app/communications'
     | '/app/embeds'
@@ -719,11 +1000,36 @@ export interface FileRouteTypes {
     | '/app/settings'
     | '/app/speakers'
     | '/app/submissions'
-    | '/e/$slug'
-    | '/submit/$eventSlug'
-    | '/e/$slug/itinerary/$personId'
-    | '/e/$slug/sessions/$sessionId'
-    | '/e/$slug/sessions'
+    | '/e/$workspaceSlug'
+    | '/submit/$workspaceSlug'
+    | '/e/$workspaceSlug/$eventSlug/$'
+    | '/e/$workspaceSlug/$eventSlug/my-schedule'
+    | '/e/$workspaceSlug/$eventSlug/speakers'
+    | '/submit/$workspaceSlug/$eventSlug/$formSlug'
+    | '/app/$workspaceSlug/$eventSlug'
+    | '/e/$workspaceSlug/$eventSlug'
+    | '/submit/$workspaceSlug/$eventSlug'
+    | '/app/$workspaceSlug/$eventSlug/evaluation/$planId'
+    | '/app/$workspaceSlug/$eventSlug/forms/$formId'
+    | '/app/$workspaceSlug/$eventSlug/forms/new'
+    | '/app/$workspaceSlug/$eventSlug/settings/activity'
+    | '/app/$workspaceSlug/$eventSlug/settings/api-mcp'
+    | '/app/$workspaceSlug/$eventSlug/settings/fields-and-options'
+    | '/app/$workspaceSlug/$eventSlug/settings/integrations'
+    | '/app/$workspaceSlug/$eventSlug/settings/rooms-and-tracks'
+    | '/app/$workspaceSlug/$eventSlug/settings/statuses'
+    | '/e/$workspaceSlug/$eventSlug/itinerary/$personId'
+    | '/e/$workspaceSlug/$eventSlug/sessions/$sessionId'
+    | '/app/$workspaceSlug/$eventSlug/agenda'
+    | '/app/$workspaceSlug/$eventSlug/communications'
+    | '/app/$workspaceSlug/$eventSlug/embeds'
+    | '/app/$workspaceSlug/$eventSlug/evaluation'
+    | '/app/$workspaceSlug/$eventSlug/files'
+    | '/app/$workspaceSlug/$eventSlug/forms'
+    | '/app/$workspaceSlug/$eventSlug/settings'
+    | '/app/$workspaceSlug/$eventSlug/speakers'
+    | '/app/$workspaceSlug/$eventSlug/submissions'
+    | '/e/$workspaceSlug/$eventSlug/sessions'
   id:
     | '__root__'
     | '/'
@@ -733,8 +1039,6 @@ export interface FileRouteTypes {
     | '/design-system'
     | '/login'
     | '/reset-password'
-    | '/app/settings'
-    | '/e/$slug'
     | '/.well-known/oauth-authorization-server'
     | '/api/chat'
     | '/app/account'
@@ -750,7 +1054,10 @@ export interface FileRouteTypes {
     | '/app/'
     | '/docs/'
     | '/portal/'
+    | '/app/$workspaceSlug/$eventSlug'
+    | '/e/$workspaceSlug/$eventSlug'
     | '/api/auth/$'
+    | '/app/$workspaceSlug/workspace'
     | '/app/evaluation/$planId'
     | '/app/forms/$formId'
     | '/app/forms/new'
@@ -771,10 +1078,8 @@ export interface FileRouteTypes {
     | '/docs/guide/share-and-collect'
     | '/docs/guide/speaker-portal'
     | '/docs/guide/team-and-workspaces'
-    | '/e/$slug/my-schedule'
-    | '/e/$slug/speakers'
     | '/portal/t/$token'
-    | '/submit/$eventSlug/$formSlug'
+    | '/app/$workspaceSlug/'
     | '/app/agenda/'
     | '/app/communications/'
     | '/app/embeds/'
@@ -785,11 +1090,37 @@ export interface FileRouteTypes {
     | '/app/settings/'
     | '/app/speakers/'
     | '/app/submissions/'
-    | '/e/$slug/'
-    | '/submit/$eventSlug/'
-    | '/e/$slug/itinerary/$personId'
-    | '/e/$slug/sessions/$sessionId'
-    | '/e/$slug/sessions/'
+    | '/e/$workspaceSlug/'
+    | '/submit/$workspaceSlug/'
+    | '/app/$workspaceSlug/$eventSlug/settings'
+    | '/e/$workspaceSlug/$eventSlug/$'
+    | '/e/$workspaceSlug/$eventSlug/my-schedule'
+    | '/e/$workspaceSlug/$eventSlug/speakers'
+    | '/submit/$workspaceSlug/$eventSlug/$formSlug'
+    | '/app/$workspaceSlug/$eventSlug/'
+    | '/e/$workspaceSlug/$eventSlug/'
+    | '/submit/$workspaceSlug/$eventSlug/'
+    | '/app/$workspaceSlug/$eventSlug/evaluation/$planId'
+    | '/app/$workspaceSlug/$eventSlug/forms/$formId'
+    | '/app/$workspaceSlug/$eventSlug/forms/new'
+    | '/app/$workspaceSlug/$eventSlug/settings/activity'
+    | '/app/$workspaceSlug/$eventSlug/settings/api-mcp'
+    | '/app/$workspaceSlug/$eventSlug/settings/fields-and-options'
+    | '/app/$workspaceSlug/$eventSlug/settings/integrations'
+    | '/app/$workspaceSlug/$eventSlug/settings/rooms-and-tracks'
+    | '/app/$workspaceSlug/$eventSlug/settings/statuses'
+    | '/e/$workspaceSlug/$eventSlug/itinerary/$personId'
+    | '/e/$workspaceSlug/$eventSlug/sessions/$sessionId'
+    | '/app/$workspaceSlug/$eventSlug/agenda/'
+    | '/app/$workspaceSlug/$eventSlug/communications/'
+    | '/app/$workspaceSlug/$eventSlug/embeds/'
+    | '/app/$workspaceSlug/$eventSlug/evaluation/'
+    | '/app/$workspaceSlug/$eventSlug/files/'
+    | '/app/$workspaceSlug/$eventSlug/forms/'
+    | '/app/$workspaceSlug/$eventSlug/settings/'
+    | '/app/$workspaceSlug/$eventSlug/speakers/'
+    | '/app/$workspaceSlug/$eventSlug/submissions/'
+    | '/e/$workspaceSlug/$eventSlug/sessions/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -800,14 +1131,16 @@ export interface RootRouteChildren {
   DesignSystemRoute: typeof DesignSystemRoute
   LoginRoute: typeof LoginRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
-  ESlugRouteRoute: typeof ESlugRouteRouteWithChildren
   DotwellKnownOauthAuthorizationServerRoute: typeof DotwellKnownOauthAuthorizationServerRoute
   ApiChatRoute: typeof ApiChatRoute
   DocsApiRoute: typeof DocsApiRoute
   ReviewTokenRoute: typeof ReviewTokenRoute
+  EWorkspaceSlugEventSlugRouteRoute: typeof EWorkspaceSlugEventSlugRouteRouteWithChildren
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
-  SubmitEventSlugFormSlugRoute: typeof SubmitEventSlugFormSlugRoute
-  SubmitEventSlugIndexRoute: typeof SubmitEventSlugIndexRoute
+  EWorkspaceSlugIndexRoute: typeof EWorkspaceSlugIndexRoute
+  SubmitWorkspaceSlugIndexRoute: typeof SubmitWorkspaceSlugIndexRoute
+  SubmitWorkspaceSlugEventSlugFormSlugRoute: typeof SubmitWorkspaceSlugEventSlugFormSlugRoute
+  SubmitWorkspaceSlugEventSlugIndexRoute: typeof SubmitWorkspaceSlugEventSlugIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -896,13 +1229,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppCopilotRouteImport
       parentRoute: typeof AppRouteRoute
     }
-    '/app/settings': {
-      id: '/app/settings'
-      path: '/settings'
-      fullPath: '/app/settings'
-      preLoaderRoute: typeof AppSettingsRouteRouteImport
-      parentRoute: typeof AppRouteRoute
-    }
     '/app/workspace': {
       id: '/app/workspace'
       path: '/workspace'
@@ -936,13 +1262,6 @@ declare module '@tanstack/react-router' {
       path: '/docs/api'
       fullPath: '/docs/api'
       preLoaderRoute: typeof DocsApiRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/e/$slug': {
-      id: '/e/$slug'
-      path: '/e/$slug'
-      fullPath: '/e/$slug'
-      preLoaderRoute: typeof ESlugRouteRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/portal/': {
@@ -986,6 +1305,27 @@ declare module '@tanstack/react-router' {
       fullPath: '/api/auth/$'
       preLoaderRoute: typeof ApiAuthSplatRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/app/$workspaceSlug/': {
+      id: '/app/$workspaceSlug/'
+      path: '/$workspaceSlug'
+      fullPath: '/app/$workspaceSlug/'
+      preLoaderRoute: typeof AppWorkspaceSlugIndexRouteImport
+      parentRoute: typeof AppRouteRoute
+    }
+    '/app/$workspaceSlug/$eventSlug': {
+      id: '/app/$workspaceSlug/$eventSlug'
+      path: '/$workspaceSlug/$eventSlug'
+      fullPath: '/app/$workspaceSlug/$eventSlug'
+      preLoaderRoute: typeof AppWorkspaceSlugEventSlugRouteRouteImport
+      parentRoute: typeof AppRouteRoute
+    }
+    '/app/$workspaceSlug/workspace': {
+      id: '/app/$workspaceSlug/workspace'
+      path: '/$workspaceSlug/workspace'
+      fullPath: '/app/$workspaceSlug/workspace'
+      preLoaderRoute: typeof AppWorkspaceSlugWorkspaceRouteImport
+      parentRoute: typeof AppRouteRoute
     }
     '/app/agenda/': {
       id: '/app/agenda/'
@@ -1059,52 +1399,52 @@ declare module '@tanstack/react-router' {
     }
     '/app/settings/': {
       id: '/app/settings/'
-      path: '/'
+      path: '/settings'
       fullPath: '/app/settings/'
       preLoaderRoute: typeof AppSettingsIndexRouteImport
-      parentRoute: typeof AppSettingsRouteRoute
+      parentRoute: typeof AppRouteRoute
     }
     '/app/settings/activity': {
       id: '/app/settings/activity'
-      path: '/activity'
+      path: '/settings/activity'
       fullPath: '/app/settings/activity'
       preLoaderRoute: typeof AppSettingsActivityRouteImport
-      parentRoute: typeof AppSettingsRouteRoute
+      parentRoute: typeof AppRouteRoute
     }
     '/app/settings/api-mcp': {
       id: '/app/settings/api-mcp'
-      path: '/api-mcp'
+      path: '/settings/api-mcp'
       fullPath: '/app/settings/api-mcp'
       preLoaderRoute: typeof AppSettingsApiMcpRouteImport
-      parentRoute: typeof AppSettingsRouteRoute
+      parentRoute: typeof AppRouteRoute
     }
     '/app/settings/fields-and-options': {
       id: '/app/settings/fields-and-options'
-      path: '/fields-and-options'
+      path: '/settings/fields-and-options'
       fullPath: '/app/settings/fields-and-options'
       preLoaderRoute: typeof AppSettingsFieldsAndOptionsRouteImport
-      parentRoute: typeof AppSettingsRouteRoute
+      parentRoute: typeof AppRouteRoute
     }
     '/app/settings/integrations': {
       id: '/app/settings/integrations'
-      path: '/integrations'
+      path: '/settings/integrations'
       fullPath: '/app/settings/integrations'
       preLoaderRoute: typeof AppSettingsIntegrationsRouteImport
-      parentRoute: typeof AppSettingsRouteRoute
+      parentRoute: typeof AppRouteRoute
     }
     '/app/settings/rooms-and-tracks': {
       id: '/app/settings/rooms-and-tracks'
-      path: '/rooms-and-tracks'
+      path: '/settings/rooms-and-tracks'
       fullPath: '/app/settings/rooms-and-tracks'
       preLoaderRoute: typeof AppSettingsRoomsAndTracksRouteImport
-      parentRoute: typeof AppSettingsRouteRoute
+      parentRoute: typeof AppRouteRoute
     }
     '/app/settings/statuses': {
       id: '/app/settings/statuses'
-      path: '/statuses'
+      path: '/settings/statuses'
       fullPath: '/app/settings/statuses'
       preLoaderRoute: typeof AppSettingsStatusesRouteImport
-      parentRoute: typeof AppSettingsRouteRoute
+      parentRoute: typeof AppRouteRoute
     }
     '/app/speakers/': {
       id: '/app/speakers/'
@@ -1197,26 +1537,19 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DocsGuideTeamAndWorkspacesRouteImport
       parentRoute: typeof DocsRouteRoute
     }
-    '/e/$slug/': {
-      id: '/e/$slug/'
-      path: '/'
-      fullPath: '/e/$slug/'
-      preLoaderRoute: typeof ESlugIndexRouteImport
-      parentRoute: typeof ESlugRouteRoute
+    '/e/$workspaceSlug/': {
+      id: '/e/$workspaceSlug/'
+      path: '/e/$workspaceSlug'
+      fullPath: '/e/$workspaceSlug/'
+      preLoaderRoute: typeof EWorkspaceSlugIndexRouteImport
+      parentRoute: typeof rootRouteImport
     }
-    '/e/$slug/my-schedule': {
-      id: '/e/$slug/my-schedule'
-      path: '/my-schedule'
-      fullPath: '/e/$slug/my-schedule'
-      preLoaderRoute: typeof ESlugMyScheduleRouteImport
-      parentRoute: typeof ESlugRouteRoute
-    }
-    '/e/$slug/speakers': {
-      id: '/e/$slug/speakers'
-      path: '/speakers'
-      fullPath: '/e/$slug/speakers'
-      preLoaderRoute: typeof ESlugSpeakersRouteImport
-      parentRoute: typeof ESlugRouteRoute
+    '/e/$workspaceSlug/$eventSlug': {
+      id: '/e/$workspaceSlug/$eventSlug'
+      path: '/e/$workspaceSlug/$eventSlug'
+      fullPath: '/e/$workspaceSlug/$eventSlug'
+      preLoaderRoute: typeof EWorkspaceSlugEventSlugRouteRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/portal/t/$token': {
       id: '/portal/t/$token'
@@ -1225,76 +1558,319 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PortalTTokenRouteImport
       parentRoute: typeof PortalRouteRoute
     }
-    '/submit/$eventSlug/': {
-      id: '/submit/$eventSlug/'
-      path: '/submit/$eventSlug'
-      fullPath: '/submit/$eventSlug/'
-      preLoaderRoute: typeof SubmitEventSlugIndexRouteImport
+    '/submit/$workspaceSlug/': {
+      id: '/submit/$workspaceSlug/'
+      path: '/submit/$workspaceSlug'
+      fullPath: '/submit/$workspaceSlug/'
+      preLoaderRoute: typeof SubmitWorkspaceSlugIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/submit/$eventSlug/$formSlug': {
-      id: '/submit/$eventSlug/$formSlug'
-      path: '/submit/$eventSlug/$formSlug'
-      fullPath: '/submit/$eventSlug/$formSlug'
-      preLoaderRoute: typeof SubmitEventSlugFormSlugRouteImport
+    '/app/$workspaceSlug/$eventSlug/': {
+      id: '/app/$workspaceSlug/$eventSlug/'
+      path: '/'
+      fullPath: '/app/$workspaceSlug/$eventSlug/'
+      preLoaderRoute: typeof AppWorkspaceSlugEventSlugIndexRouteImport
+      parentRoute: typeof AppWorkspaceSlugEventSlugRouteRoute
+    }
+    '/app/$workspaceSlug/$eventSlug/settings': {
+      id: '/app/$workspaceSlug/$eventSlug/settings'
+      path: '/settings'
+      fullPath: '/app/$workspaceSlug/$eventSlug/settings'
+      preLoaderRoute: typeof AppWorkspaceSlugEventSlugSettingsRouteRouteImport
+      parentRoute: typeof AppWorkspaceSlugEventSlugRouteRoute
+    }
+    '/e/$workspaceSlug/$eventSlug/': {
+      id: '/e/$workspaceSlug/$eventSlug/'
+      path: '/'
+      fullPath: '/e/$workspaceSlug/$eventSlug/'
+      preLoaderRoute: typeof EWorkspaceSlugEventSlugIndexRouteImport
+      parentRoute: typeof EWorkspaceSlugEventSlugRouteRoute
+    }
+    '/e/$workspaceSlug/$eventSlug/$': {
+      id: '/e/$workspaceSlug/$eventSlug/$'
+      path: '/$'
+      fullPath: '/e/$workspaceSlug/$eventSlug/$'
+      preLoaderRoute: typeof EWorkspaceSlugEventSlugSplatRouteImport
+      parentRoute: typeof EWorkspaceSlugEventSlugRouteRoute
+    }
+    '/e/$workspaceSlug/$eventSlug/my-schedule': {
+      id: '/e/$workspaceSlug/$eventSlug/my-schedule'
+      path: '/my-schedule'
+      fullPath: '/e/$workspaceSlug/$eventSlug/my-schedule'
+      preLoaderRoute: typeof EWorkspaceSlugEventSlugMyScheduleRouteImport
+      parentRoute: typeof EWorkspaceSlugEventSlugRouteRoute
+    }
+    '/e/$workspaceSlug/$eventSlug/speakers': {
+      id: '/e/$workspaceSlug/$eventSlug/speakers'
+      path: '/speakers'
+      fullPath: '/e/$workspaceSlug/$eventSlug/speakers'
+      preLoaderRoute: typeof EWorkspaceSlugEventSlugSpeakersRouteImport
+      parentRoute: typeof EWorkspaceSlugEventSlugRouteRoute
+    }
+    '/submit/$workspaceSlug/$eventSlug/': {
+      id: '/submit/$workspaceSlug/$eventSlug/'
+      path: '/submit/$workspaceSlug/$eventSlug'
+      fullPath: '/submit/$workspaceSlug/$eventSlug/'
+      preLoaderRoute: typeof SubmitWorkspaceSlugEventSlugIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/e/$slug/itinerary/$personId': {
-      id: '/e/$slug/itinerary/$personId'
+    '/submit/$workspaceSlug/$eventSlug/$formSlug': {
+      id: '/submit/$workspaceSlug/$eventSlug/$formSlug'
+      path: '/submit/$workspaceSlug/$eventSlug/$formSlug'
+      fullPath: '/submit/$workspaceSlug/$eventSlug/$formSlug'
+      preLoaderRoute: typeof SubmitWorkspaceSlugEventSlugFormSlugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/app/$workspaceSlug/$eventSlug/agenda/': {
+      id: '/app/$workspaceSlug/$eventSlug/agenda/'
+      path: '/agenda'
+      fullPath: '/app/$workspaceSlug/$eventSlug/agenda/'
+      preLoaderRoute: typeof AppWorkspaceSlugEventSlugAgendaIndexRouteImport
+      parentRoute: typeof AppWorkspaceSlugEventSlugRouteRoute
+    }
+    '/app/$workspaceSlug/$eventSlug/communications/': {
+      id: '/app/$workspaceSlug/$eventSlug/communications/'
+      path: '/communications'
+      fullPath: '/app/$workspaceSlug/$eventSlug/communications/'
+      preLoaderRoute: typeof AppWorkspaceSlugEventSlugCommunicationsIndexRouteImport
+      parentRoute: typeof AppWorkspaceSlugEventSlugRouteRoute
+    }
+    '/app/$workspaceSlug/$eventSlug/embeds/': {
+      id: '/app/$workspaceSlug/$eventSlug/embeds/'
+      path: '/embeds'
+      fullPath: '/app/$workspaceSlug/$eventSlug/embeds/'
+      preLoaderRoute: typeof AppWorkspaceSlugEventSlugEmbedsIndexRouteImport
+      parentRoute: typeof AppWorkspaceSlugEventSlugRouteRoute
+    }
+    '/app/$workspaceSlug/$eventSlug/evaluation/': {
+      id: '/app/$workspaceSlug/$eventSlug/evaluation/'
+      path: '/evaluation'
+      fullPath: '/app/$workspaceSlug/$eventSlug/evaluation/'
+      preLoaderRoute: typeof AppWorkspaceSlugEventSlugEvaluationIndexRouteImport
+      parentRoute: typeof AppWorkspaceSlugEventSlugRouteRoute
+    }
+    '/app/$workspaceSlug/$eventSlug/evaluation/$planId': {
+      id: '/app/$workspaceSlug/$eventSlug/evaluation/$planId'
+      path: '/evaluation/$planId'
+      fullPath: '/app/$workspaceSlug/$eventSlug/evaluation/$planId'
+      preLoaderRoute: typeof AppWorkspaceSlugEventSlugEvaluationPlanIdRouteImport
+      parentRoute: typeof AppWorkspaceSlugEventSlugRouteRoute
+    }
+    '/app/$workspaceSlug/$eventSlug/files/': {
+      id: '/app/$workspaceSlug/$eventSlug/files/'
+      path: '/files'
+      fullPath: '/app/$workspaceSlug/$eventSlug/files/'
+      preLoaderRoute: typeof AppWorkspaceSlugEventSlugFilesIndexRouteImport
+      parentRoute: typeof AppWorkspaceSlugEventSlugRouteRoute
+    }
+    '/app/$workspaceSlug/$eventSlug/forms/': {
+      id: '/app/$workspaceSlug/$eventSlug/forms/'
+      path: '/forms'
+      fullPath: '/app/$workspaceSlug/$eventSlug/forms/'
+      preLoaderRoute: typeof AppWorkspaceSlugEventSlugFormsIndexRouteImport
+      parentRoute: typeof AppWorkspaceSlugEventSlugRouteRoute
+    }
+    '/app/$workspaceSlug/$eventSlug/forms/$formId': {
+      id: '/app/$workspaceSlug/$eventSlug/forms/$formId'
+      path: '/forms/$formId'
+      fullPath: '/app/$workspaceSlug/$eventSlug/forms/$formId'
+      preLoaderRoute: typeof AppWorkspaceSlugEventSlugFormsFormIdRouteImport
+      parentRoute: typeof AppWorkspaceSlugEventSlugRouteRoute
+    }
+    '/app/$workspaceSlug/$eventSlug/forms/new': {
+      id: '/app/$workspaceSlug/$eventSlug/forms/new'
+      path: '/forms/new'
+      fullPath: '/app/$workspaceSlug/$eventSlug/forms/new'
+      preLoaderRoute: typeof AppWorkspaceSlugEventSlugFormsNewRouteImport
+      parentRoute: typeof AppWorkspaceSlugEventSlugRouteRoute
+    }
+    '/app/$workspaceSlug/$eventSlug/settings/': {
+      id: '/app/$workspaceSlug/$eventSlug/settings/'
+      path: '/'
+      fullPath: '/app/$workspaceSlug/$eventSlug/settings/'
+      preLoaderRoute: typeof AppWorkspaceSlugEventSlugSettingsIndexRouteImport
+      parentRoute: typeof AppWorkspaceSlugEventSlugSettingsRouteRoute
+    }
+    '/app/$workspaceSlug/$eventSlug/settings/activity': {
+      id: '/app/$workspaceSlug/$eventSlug/settings/activity'
+      path: '/activity'
+      fullPath: '/app/$workspaceSlug/$eventSlug/settings/activity'
+      preLoaderRoute: typeof AppWorkspaceSlugEventSlugSettingsActivityRouteImport
+      parentRoute: typeof AppWorkspaceSlugEventSlugSettingsRouteRoute
+    }
+    '/app/$workspaceSlug/$eventSlug/settings/api-mcp': {
+      id: '/app/$workspaceSlug/$eventSlug/settings/api-mcp'
+      path: '/api-mcp'
+      fullPath: '/app/$workspaceSlug/$eventSlug/settings/api-mcp'
+      preLoaderRoute: typeof AppWorkspaceSlugEventSlugSettingsApiMcpRouteImport
+      parentRoute: typeof AppWorkspaceSlugEventSlugSettingsRouteRoute
+    }
+    '/app/$workspaceSlug/$eventSlug/settings/fields-and-options': {
+      id: '/app/$workspaceSlug/$eventSlug/settings/fields-and-options'
+      path: '/fields-and-options'
+      fullPath: '/app/$workspaceSlug/$eventSlug/settings/fields-and-options'
+      preLoaderRoute: typeof AppWorkspaceSlugEventSlugSettingsFieldsAndOptionsRouteImport
+      parentRoute: typeof AppWorkspaceSlugEventSlugSettingsRouteRoute
+    }
+    '/app/$workspaceSlug/$eventSlug/settings/integrations': {
+      id: '/app/$workspaceSlug/$eventSlug/settings/integrations'
+      path: '/integrations'
+      fullPath: '/app/$workspaceSlug/$eventSlug/settings/integrations'
+      preLoaderRoute: typeof AppWorkspaceSlugEventSlugSettingsIntegrationsRouteImport
+      parentRoute: typeof AppWorkspaceSlugEventSlugSettingsRouteRoute
+    }
+    '/app/$workspaceSlug/$eventSlug/settings/rooms-and-tracks': {
+      id: '/app/$workspaceSlug/$eventSlug/settings/rooms-and-tracks'
+      path: '/rooms-and-tracks'
+      fullPath: '/app/$workspaceSlug/$eventSlug/settings/rooms-and-tracks'
+      preLoaderRoute: typeof AppWorkspaceSlugEventSlugSettingsRoomsAndTracksRouteImport
+      parentRoute: typeof AppWorkspaceSlugEventSlugSettingsRouteRoute
+    }
+    '/app/$workspaceSlug/$eventSlug/settings/statuses': {
+      id: '/app/$workspaceSlug/$eventSlug/settings/statuses'
+      path: '/statuses'
+      fullPath: '/app/$workspaceSlug/$eventSlug/settings/statuses'
+      preLoaderRoute: typeof AppWorkspaceSlugEventSlugSettingsStatusesRouteImport
+      parentRoute: typeof AppWorkspaceSlugEventSlugSettingsRouteRoute
+    }
+    '/app/$workspaceSlug/$eventSlug/speakers/': {
+      id: '/app/$workspaceSlug/$eventSlug/speakers/'
+      path: '/speakers'
+      fullPath: '/app/$workspaceSlug/$eventSlug/speakers/'
+      preLoaderRoute: typeof AppWorkspaceSlugEventSlugSpeakersIndexRouteImport
+      parentRoute: typeof AppWorkspaceSlugEventSlugRouteRoute
+    }
+    '/app/$workspaceSlug/$eventSlug/submissions/': {
+      id: '/app/$workspaceSlug/$eventSlug/submissions/'
+      path: '/submissions'
+      fullPath: '/app/$workspaceSlug/$eventSlug/submissions/'
+      preLoaderRoute: typeof AppWorkspaceSlugEventSlugSubmissionsIndexRouteImport
+      parentRoute: typeof AppWorkspaceSlugEventSlugRouteRoute
+    }
+    '/e/$workspaceSlug/$eventSlug/itinerary/$personId': {
+      id: '/e/$workspaceSlug/$eventSlug/itinerary/$personId'
       path: '/itinerary/$personId'
-      fullPath: '/e/$slug/itinerary/$personId'
-      preLoaderRoute: typeof ESlugItineraryPersonIdRouteImport
-      parentRoute: typeof ESlugRouteRoute
+      fullPath: '/e/$workspaceSlug/$eventSlug/itinerary/$personId'
+      preLoaderRoute: typeof EWorkspaceSlugEventSlugItineraryPersonIdRouteImport
+      parentRoute: typeof EWorkspaceSlugEventSlugRouteRoute
     }
-    '/e/$slug/sessions/': {
-      id: '/e/$slug/sessions/'
+    '/e/$workspaceSlug/$eventSlug/sessions/': {
+      id: '/e/$workspaceSlug/$eventSlug/sessions/'
       path: '/sessions'
-      fullPath: '/e/$slug/sessions/'
-      preLoaderRoute: typeof ESlugSessionsIndexRouteImport
-      parentRoute: typeof ESlugRouteRoute
+      fullPath: '/e/$workspaceSlug/$eventSlug/sessions/'
+      preLoaderRoute: typeof EWorkspaceSlugEventSlugSessionsIndexRouteImport
+      parentRoute: typeof EWorkspaceSlugEventSlugRouteRoute
     }
-    '/e/$slug/sessions/$sessionId': {
-      id: '/e/$slug/sessions/$sessionId'
+    '/e/$workspaceSlug/$eventSlug/sessions/$sessionId': {
+      id: '/e/$workspaceSlug/$eventSlug/sessions/$sessionId'
       path: '/sessions/$sessionId'
-      fullPath: '/e/$slug/sessions/$sessionId'
-      preLoaderRoute: typeof ESlugSessionsSessionIdRouteImport
-      parentRoute: typeof ESlugRouteRoute
+      fullPath: '/e/$workspaceSlug/$eventSlug/sessions/$sessionId'
+      preLoaderRoute: typeof EWorkspaceSlugEventSlugSessionsSessionIdRouteImport
+      parentRoute: typeof EWorkspaceSlugEventSlugRouteRoute
     }
   }
 }
 
-interface AppSettingsRouteRouteChildren {
+interface AppWorkspaceSlugEventSlugSettingsRouteRouteChildren {
+  AppWorkspaceSlugEventSlugSettingsActivityRoute: typeof AppWorkspaceSlugEventSlugSettingsActivityRoute
+  AppWorkspaceSlugEventSlugSettingsApiMcpRoute: typeof AppWorkspaceSlugEventSlugSettingsApiMcpRoute
+  AppWorkspaceSlugEventSlugSettingsFieldsAndOptionsRoute: typeof AppWorkspaceSlugEventSlugSettingsFieldsAndOptionsRoute
+  AppWorkspaceSlugEventSlugSettingsIntegrationsRoute: typeof AppWorkspaceSlugEventSlugSettingsIntegrationsRoute
+  AppWorkspaceSlugEventSlugSettingsRoomsAndTracksRoute: typeof AppWorkspaceSlugEventSlugSettingsRoomsAndTracksRoute
+  AppWorkspaceSlugEventSlugSettingsStatusesRoute: typeof AppWorkspaceSlugEventSlugSettingsStatusesRoute
+  AppWorkspaceSlugEventSlugSettingsIndexRoute: typeof AppWorkspaceSlugEventSlugSettingsIndexRoute
+}
+
+const AppWorkspaceSlugEventSlugSettingsRouteRouteChildren: AppWorkspaceSlugEventSlugSettingsRouteRouteChildren =
+  {
+    AppWorkspaceSlugEventSlugSettingsActivityRoute:
+      AppWorkspaceSlugEventSlugSettingsActivityRoute,
+    AppWorkspaceSlugEventSlugSettingsApiMcpRoute:
+      AppWorkspaceSlugEventSlugSettingsApiMcpRoute,
+    AppWorkspaceSlugEventSlugSettingsFieldsAndOptionsRoute:
+      AppWorkspaceSlugEventSlugSettingsFieldsAndOptionsRoute,
+    AppWorkspaceSlugEventSlugSettingsIntegrationsRoute:
+      AppWorkspaceSlugEventSlugSettingsIntegrationsRoute,
+    AppWorkspaceSlugEventSlugSettingsRoomsAndTracksRoute:
+      AppWorkspaceSlugEventSlugSettingsRoomsAndTracksRoute,
+    AppWorkspaceSlugEventSlugSettingsStatusesRoute:
+      AppWorkspaceSlugEventSlugSettingsStatusesRoute,
+    AppWorkspaceSlugEventSlugSettingsIndexRoute:
+      AppWorkspaceSlugEventSlugSettingsIndexRoute,
+  }
+
+const AppWorkspaceSlugEventSlugSettingsRouteRouteWithChildren =
+  AppWorkspaceSlugEventSlugSettingsRouteRoute._addFileChildren(
+    AppWorkspaceSlugEventSlugSettingsRouteRouteChildren,
+  )
+
+interface AppWorkspaceSlugEventSlugRouteRouteChildren {
+  AppWorkspaceSlugEventSlugSettingsRouteRoute: typeof AppWorkspaceSlugEventSlugSettingsRouteRouteWithChildren
+  AppWorkspaceSlugEventSlugIndexRoute: typeof AppWorkspaceSlugEventSlugIndexRoute
+  AppWorkspaceSlugEventSlugEvaluationPlanIdRoute: typeof AppWorkspaceSlugEventSlugEvaluationPlanIdRoute
+  AppWorkspaceSlugEventSlugFormsFormIdRoute: typeof AppWorkspaceSlugEventSlugFormsFormIdRoute
+  AppWorkspaceSlugEventSlugFormsNewRoute: typeof AppWorkspaceSlugEventSlugFormsNewRoute
+  AppWorkspaceSlugEventSlugAgendaIndexRoute: typeof AppWorkspaceSlugEventSlugAgendaIndexRoute
+  AppWorkspaceSlugEventSlugCommunicationsIndexRoute: typeof AppWorkspaceSlugEventSlugCommunicationsIndexRoute
+  AppWorkspaceSlugEventSlugEmbedsIndexRoute: typeof AppWorkspaceSlugEventSlugEmbedsIndexRoute
+  AppWorkspaceSlugEventSlugEvaluationIndexRoute: typeof AppWorkspaceSlugEventSlugEvaluationIndexRoute
+  AppWorkspaceSlugEventSlugFilesIndexRoute: typeof AppWorkspaceSlugEventSlugFilesIndexRoute
+  AppWorkspaceSlugEventSlugFormsIndexRoute: typeof AppWorkspaceSlugEventSlugFormsIndexRoute
+  AppWorkspaceSlugEventSlugSpeakersIndexRoute: typeof AppWorkspaceSlugEventSlugSpeakersIndexRoute
+  AppWorkspaceSlugEventSlugSubmissionsIndexRoute: typeof AppWorkspaceSlugEventSlugSubmissionsIndexRoute
+}
+
+const AppWorkspaceSlugEventSlugRouteRouteChildren: AppWorkspaceSlugEventSlugRouteRouteChildren =
+  {
+    AppWorkspaceSlugEventSlugSettingsRouteRoute:
+      AppWorkspaceSlugEventSlugSettingsRouteRouteWithChildren,
+    AppWorkspaceSlugEventSlugIndexRoute: AppWorkspaceSlugEventSlugIndexRoute,
+    AppWorkspaceSlugEventSlugEvaluationPlanIdRoute:
+      AppWorkspaceSlugEventSlugEvaluationPlanIdRoute,
+    AppWorkspaceSlugEventSlugFormsFormIdRoute:
+      AppWorkspaceSlugEventSlugFormsFormIdRoute,
+    AppWorkspaceSlugEventSlugFormsNewRoute:
+      AppWorkspaceSlugEventSlugFormsNewRoute,
+    AppWorkspaceSlugEventSlugAgendaIndexRoute:
+      AppWorkspaceSlugEventSlugAgendaIndexRoute,
+    AppWorkspaceSlugEventSlugCommunicationsIndexRoute:
+      AppWorkspaceSlugEventSlugCommunicationsIndexRoute,
+    AppWorkspaceSlugEventSlugEmbedsIndexRoute:
+      AppWorkspaceSlugEventSlugEmbedsIndexRoute,
+    AppWorkspaceSlugEventSlugEvaluationIndexRoute:
+      AppWorkspaceSlugEventSlugEvaluationIndexRoute,
+    AppWorkspaceSlugEventSlugFilesIndexRoute:
+      AppWorkspaceSlugEventSlugFilesIndexRoute,
+    AppWorkspaceSlugEventSlugFormsIndexRoute:
+      AppWorkspaceSlugEventSlugFormsIndexRoute,
+    AppWorkspaceSlugEventSlugSpeakersIndexRoute:
+      AppWorkspaceSlugEventSlugSpeakersIndexRoute,
+    AppWorkspaceSlugEventSlugSubmissionsIndexRoute:
+      AppWorkspaceSlugEventSlugSubmissionsIndexRoute,
+  }
+
+const AppWorkspaceSlugEventSlugRouteRouteWithChildren =
+  AppWorkspaceSlugEventSlugRouteRoute._addFileChildren(
+    AppWorkspaceSlugEventSlugRouteRouteChildren,
+  )
+
+interface AppRouteRouteChildren {
+  AppAccountRoute: typeof AppAccountRoute
+  AppCopilotRoute: typeof AppCopilotRoute
+  AppWorkspaceRoute: typeof AppWorkspaceRoute
+  AppIndexRoute: typeof AppIndexRoute
+  AppWorkspaceSlugEventSlugRouteRoute: typeof AppWorkspaceSlugEventSlugRouteRouteWithChildren
+  AppWorkspaceSlugWorkspaceRoute: typeof AppWorkspaceSlugWorkspaceRoute
+  AppEvaluationPlanIdRoute: typeof AppEvaluationPlanIdRoute
+  AppFormsFormIdRoute: typeof AppFormsFormIdRoute
+  AppFormsNewRoute: typeof AppFormsNewRoute
   AppSettingsActivityRoute: typeof AppSettingsActivityRoute
   AppSettingsApiMcpRoute: typeof AppSettingsApiMcpRoute
   AppSettingsFieldsAndOptionsRoute: typeof AppSettingsFieldsAndOptionsRoute
   AppSettingsIntegrationsRoute: typeof AppSettingsIntegrationsRoute
   AppSettingsRoomsAndTracksRoute: typeof AppSettingsRoomsAndTracksRoute
   AppSettingsStatusesRoute: typeof AppSettingsStatusesRoute
-  AppSettingsIndexRoute: typeof AppSettingsIndexRoute
-}
-
-const AppSettingsRouteRouteChildren: AppSettingsRouteRouteChildren = {
-  AppSettingsActivityRoute: AppSettingsActivityRoute,
-  AppSettingsApiMcpRoute: AppSettingsApiMcpRoute,
-  AppSettingsFieldsAndOptionsRoute: AppSettingsFieldsAndOptionsRoute,
-  AppSettingsIntegrationsRoute: AppSettingsIntegrationsRoute,
-  AppSettingsRoomsAndTracksRoute: AppSettingsRoomsAndTracksRoute,
-  AppSettingsStatusesRoute: AppSettingsStatusesRoute,
-  AppSettingsIndexRoute: AppSettingsIndexRoute,
-}
-
-const AppSettingsRouteRouteWithChildren =
-  AppSettingsRouteRoute._addFileChildren(AppSettingsRouteRouteChildren)
-
-interface AppRouteRouteChildren {
-  AppSettingsRouteRoute: typeof AppSettingsRouteRouteWithChildren
-  AppAccountRoute: typeof AppAccountRoute
-  AppCopilotRoute: typeof AppCopilotRoute
-  AppWorkspaceRoute: typeof AppWorkspaceRoute
-  AppIndexRoute: typeof AppIndexRoute
-  AppEvaluationPlanIdRoute: typeof AppEvaluationPlanIdRoute
-  AppFormsFormIdRoute: typeof AppFormsFormIdRoute
-  AppFormsNewRoute: typeof AppFormsNewRoute
+  AppWorkspaceSlugIndexRoute: typeof AppWorkspaceSlugIndexRoute
   AppAgendaIndexRoute: typeof AppAgendaIndexRoute
   AppCommunicationsIndexRoute: typeof AppCommunicationsIndexRoute
   AppEmbedsIndexRoute: typeof AppEmbedsIndexRoute
@@ -1302,19 +1878,29 @@ interface AppRouteRouteChildren {
   AppEventsIndexRoute: typeof AppEventsIndexRoute
   AppFilesIndexRoute: typeof AppFilesIndexRoute
   AppFormsIndexRoute: typeof AppFormsIndexRoute
+  AppSettingsIndexRoute: typeof AppSettingsIndexRoute
   AppSpeakersIndexRoute: typeof AppSpeakersIndexRoute
   AppSubmissionsIndexRoute: typeof AppSubmissionsIndexRoute
 }
 
 const AppRouteRouteChildren: AppRouteRouteChildren = {
-  AppSettingsRouteRoute: AppSettingsRouteRouteWithChildren,
   AppAccountRoute: AppAccountRoute,
   AppCopilotRoute: AppCopilotRoute,
   AppWorkspaceRoute: AppWorkspaceRoute,
   AppIndexRoute: AppIndexRoute,
+  AppWorkspaceSlugEventSlugRouteRoute:
+    AppWorkspaceSlugEventSlugRouteRouteWithChildren,
+  AppWorkspaceSlugWorkspaceRoute: AppWorkspaceSlugWorkspaceRoute,
   AppEvaluationPlanIdRoute: AppEvaluationPlanIdRoute,
   AppFormsFormIdRoute: AppFormsFormIdRoute,
   AppFormsNewRoute: AppFormsNewRoute,
+  AppSettingsActivityRoute: AppSettingsActivityRoute,
+  AppSettingsApiMcpRoute: AppSettingsApiMcpRoute,
+  AppSettingsFieldsAndOptionsRoute: AppSettingsFieldsAndOptionsRoute,
+  AppSettingsIntegrationsRoute: AppSettingsIntegrationsRoute,
+  AppSettingsRoomsAndTracksRoute: AppSettingsRoomsAndTracksRoute,
+  AppSettingsStatusesRoute: AppSettingsStatusesRoute,
+  AppWorkspaceSlugIndexRoute: AppWorkspaceSlugIndexRoute,
   AppAgendaIndexRoute: AppAgendaIndexRoute,
   AppCommunicationsIndexRoute: AppCommunicationsIndexRoute,
   AppEmbedsIndexRoute: AppEmbedsIndexRoute,
@@ -1322,6 +1908,7 @@ const AppRouteRouteChildren: AppRouteRouteChildren = {
   AppEventsIndexRoute: AppEventsIndexRoute,
   AppFilesIndexRoute: AppFilesIndexRoute,
   AppFormsIndexRoute: AppFormsIndexRoute,
+  AppSettingsIndexRoute: AppSettingsIndexRoute,
   AppSpeakersIndexRoute: AppSpeakersIndexRoute,
   AppSubmissionsIndexRoute: AppSubmissionsIndexRoute,
 }
@@ -1388,27 +1975,35 @@ const PortalRouteRouteWithChildren = PortalRouteRoute._addFileChildren(
   PortalRouteRouteChildren,
 )
 
-interface ESlugRouteRouteChildren {
-  ESlugMyScheduleRoute: typeof ESlugMyScheduleRoute
-  ESlugSpeakersRoute: typeof ESlugSpeakersRoute
-  ESlugIndexRoute: typeof ESlugIndexRoute
-  ESlugItineraryPersonIdRoute: typeof ESlugItineraryPersonIdRoute
-  ESlugSessionsSessionIdRoute: typeof ESlugSessionsSessionIdRoute
-  ESlugSessionsIndexRoute: typeof ESlugSessionsIndexRoute
+interface EWorkspaceSlugEventSlugRouteRouteChildren {
+  EWorkspaceSlugEventSlugSplatRoute: typeof EWorkspaceSlugEventSlugSplatRoute
+  EWorkspaceSlugEventSlugMyScheduleRoute: typeof EWorkspaceSlugEventSlugMyScheduleRoute
+  EWorkspaceSlugEventSlugSpeakersRoute: typeof EWorkspaceSlugEventSlugSpeakersRoute
+  EWorkspaceSlugEventSlugIndexRoute: typeof EWorkspaceSlugEventSlugIndexRoute
+  EWorkspaceSlugEventSlugItineraryPersonIdRoute: typeof EWorkspaceSlugEventSlugItineraryPersonIdRoute
+  EWorkspaceSlugEventSlugSessionsSessionIdRoute: typeof EWorkspaceSlugEventSlugSessionsSessionIdRoute
+  EWorkspaceSlugEventSlugSessionsIndexRoute: typeof EWorkspaceSlugEventSlugSessionsIndexRoute
 }
 
-const ESlugRouteRouteChildren: ESlugRouteRouteChildren = {
-  ESlugMyScheduleRoute: ESlugMyScheduleRoute,
-  ESlugSpeakersRoute: ESlugSpeakersRoute,
-  ESlugIndexRoute: ESlugIndexRoute,
-  ESlugItineraryPersonIdRoute: ESlugItineraryPersonIdRoute,
-  ESlugSessionsSessionIdRoute: ESlugSessionsSessionIdRoute,
-  ESlugSessionsIndexRoute: ESlugSessionsIndexRoute,
-}
+const EWorkspaceSlugEventSlugRouteRouteChildren: EWorkspaceSlugEventSlugRouteRouteChildren =
+  {
+    EWorkspaceSlugEventSlugSplatRoute: EWorkspaceSlugEventSlugSplatRoute,
+    EWorkspaceSlugEventSlugMyScheduleRoute:
+      EWorkspaceSlugEventSlugMyScheduleRoute,
+    EWorkspaceSlugEventSlugSpeakersRoute: EWorkspaceSlugEventSlugSpeakersRoute,
+    EWorkspaceSlugEventSlugIndexRoute: EWorkspaceSlugEventSlugIndexRoute,
+    EWorkspaceSlugEventSlugItineraryPersonIdRoute:
+      EWorkspaceSlugEventSlugItineraryPersonIdRoute,
+    EWorkspaceSlugEventSlugSessionsSessionIdRoute:
+      EWorkspaceSlugEventSlugSessionsSessionIdRoute,
+    EWorkspaceSlugEventSlugSessionsIndexRoute:
+      EWorkspaceSlugEventSlugSessionsIndexRoute,
+  }
 
-const ESlugRouteRouteWithChildren = ESlugRouteRoute._addFileChildren(
-  ESlugRouteRouteChildren,
-)
+const EWorkspaceSlugEventSlugRouteRouteWithChildren =
+  EWorkspaceSlugEventSlugRouteRoute._addFileChildren(
+    EWorkspaceSlugEventSlugRouteRouteChildren,
+  )
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
@@ -1418,15 +2013,20 @@ const rootRouteChildren: RootRouteChildren = {
   DesignSystemRoute: DesignSystemRoute,
   LoginRoute: LoginRoute,
   ResetPasswordRoute: ResetPasswordRoute,
-  ESlugRouteRoute: ESlugRouteRouteWithChildren,
   DotwellKnownOauthAuthorizationServerRoute:
     DotwellKnownOauthAuthorizationServerRoute,
   ApiChatRoute: ApiChatRoute,
   DocsApiRoute: DocsApiRoute,
   ReviewTokenRoute: ReviewTokenRoute,
+  EWorkspaceSlugEventSlugRouteRoute:
+    EWorkspaceSlugEventSlugRouteRouteWithChildren,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
-  SubmitEventSlugFormSlugRoute: SubmitEventSlugFormSlugRoute,
-  SubmitEventSlugIndexRoute: SubmitEventSlugIndexRoute,
+  EWorkspaceSlugIndexRoute: EWorkspaceSlugIndexRoute,
+  SubmitWorkspaceSlugIndexRoute: SubmitWorkspaceSlugIndexRoute,
+  SubmitWorkspaceSlugEventSlugFormSlugRoute:
+    SubmitWorkspaceSlugEventSlugFormSlugRoute,
+  SubmitWorkspaceSlugEventSlugIndexRoute:
+    SubmitWorkspaceSlugEventSlugIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

@@ -2,6 +2,7 @@
  * Destinations used across the marketing homepage.
  * Kept in one place so a URL never drifts between the nav, hero, pricing and footer.
  */
+import { eventPath, formPath } from "@/lib/public-links"
 
 /**
  * The product name and the domains shown in mock browser chrome, in ONE place.
@@ -28,16 +29,21 @@ export const LATENT_SPACE_URL = "https://www.latent.space"
  * seeded routes (`convex/seed.ts`) — the landing page never links to a stub.
  */
 export const DEMO_PORTAL_URL = "/portal"
+export const DEMO_WORKSPACE_SLUG = "ai-engineer"
 export const DEMO_EVENT_SLUG = "ai-summit-2026"
-export const DEMO_PROGRAM_URL = `/e/${DEMO_EVENT_SLUG}`
+export const DEMO_PROGRAM_URL = eventPath(DEMO_WORKSPACE_SLUG, DEMO_EVENT_SLUG)
 /**
- * The canonical public CFP address is `/submit/:eventSlug/:formSlug` — form
- * slugs live in a per-event namespace (docs/memory/DECISIONS.md). The legacy
- * one-segment `/submit/cfp` still redirects here, but nothing we publish
- * should point at it.
+ * The canonical public CFP address is `/submit/:ws/:event/:form` — workspace,
+ * event and form slugs nest (docs/memory/DECISIONS.md, "URL architecture is
+ * fully hierarchical"). The legacy shorter shapes still redirect here, but
+ * nothing we publish should point at them.
  */
 export const DEMO_CFP_SLUG = "cfp"
-export const DEMO_CFP_URL = `/submit/${DEMO_EVENT_SLUG}/${DEMO_CFP_SLUG}`
+export const DEMO_CFP_URL = formPath(
+  DEMO_WORKSPACE_SLUG,
+  DEMO_EVENT_SLUG,
+  DEMO_CFP_SLUG,
+)
 /**
  * The public REST surface, served by the Convex HTTP router (`convex/http.ts`)
  * on the deployment's `.convex.site` domain. Sessions/speakers/submissions take

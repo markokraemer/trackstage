@@ -5,7 +5,6 @@ import type { RemixiconComponentType } from "@remixicon/react"
 import { cn } from "@/lib/utils"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { buttonVariants } from "@/components/ui/button"
-import { linkSearch } from "@/components/dashboard/app-routes"
 
 export interface InsightBannerProps {
   /** One plain-English sentence stating the gap. */
@@ -55,8 +54,8 @@ export function InsightBanner({
         </div>
       </div>
       <Link
-        to={to}
-        search={search ? linkSearch(search) : undefined}
+        to={to as never}
+        search={search as never}
         className={cn(
           buttonVariants({ variant: "outline", size: "sm" }),
           "mt-3 shrink-0 sm:mt-0",

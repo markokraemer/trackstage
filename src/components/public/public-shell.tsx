@@ -17,6 +17,7 @@ import { CopyLinkButton } from "@/components/public/copy-link-button"
 import { SubscribeMenu } from "@/components/public/subscribe-menu"
 import { formatEventDates } from "@/components/public/format"
 import { useMySchedule } from "@/components/public/use-my-schedule"
+import { eventPath } from "@/lib/public-links"
 import type { PublicEvent } from "@/components/public/types"
 
 /**
@@ -48,13 +49,26 @@ interface NavItem {
 }
 
 const NAV: Array<NavItem> = [
-  { label: "Schedule", to: "/e/$slug", icon: RiCalendarEventLine, exact: true },
-  { label: "Speakers", to: "/e/$slug/speakers", icon: RiUserVoiceLine },
-  { label: "Sessions", to: "/e/$slug/sessions", icon: RiFileList3Line },
+  {
+    label: "Schedule",
+    to: "/e/$workspaceSlug/$eventSlug",
+    icon: RiCalendarEventLine,
+    exact: true,
+  },
+  {
+    label: "Speakers",
+    to: "/e/$workspaceSlug/$eventSlug/speakers",
+    icon: RiUserVoiceLine,
+  },
+  {
+    label: "Sessions",
+    to: "/e/$workspaceSlug/$eventSlug/sessions",
+    icon: RiFileList3Line,
+  },
   {
     label: "My schedule",
     shortLabel: "Saved",
-    to: "/e/$slug/my-schedule",
+    to: "/e/$workspaceSlug/$eventSlug/my-schedule",
     icon: RiBookmarkLine,
   },
 ]
@@ -70,6 +84,9 @@ type ShellEvent = Pick<
   PublicEvent,
   "name" | "slug" | "venue" | "timezone" | "startsAt" | "endsAt"
 > & {
+  /** The event's workspace — `api.events.getBySlug` includes it; every `/e/…`
+   * link built here needs both segments. */
+  workspaceSlug: string
   description?: string | null
   logoUrl?: string | null
   backgroundUrl?: string | null
@@ -198,7 +215,7 @@ export function PublicShell({ event, embed, children }: PublicShellProps) {
               <CopyLinkButton
                 what="Event link"
                 size="sm"
-                url={`/e/${event.slug}`}
+                url={eventPath(event.workspaceSlug, event.slug)}
               />
             </div>
           </div>
@@ -226,9 +243,14 @@ export function PublicShell({ event, embed, children }: PublicShellProps) {
             {NAV.map((item) => (
               <Link
                 key={item.to}
-                to={item.to}
-                params={{ slug: event.slug }}
-                search={(prev) => prev}
+                to={item.to as never}
+                params={
+                  {
+                    workspaceSlug: event.workspaceSlug,
+                    eventSlug: event.slug,
+                  } as never
+                }
+                search={((prev: object) => prev) as never}
                 activeOptions={{ exact: item.exact ?? false }}
                 className={cn(
                   buttonVariants({ variant: "ghost", size: "sm" }),
@@ -307,9 +329,14 @@ export function PublicShell({ event, embed, children }: PublicShellProps) {
             {NAV.map((item) => (
               <Link
                 key={item.to}
-                to={item.to}
-                params={{ slug: event.slug }}
-                search={(prev) => prev}
+                to={item.to as never}
+                params={
+                  {
+                    workspaceSlug: event.workspaceSlug,
+                    eventSlug: event.slug,
+                  } as never
+                }
+                search={((prev: object) => prev) as never}
                 activeOptions={{ exact: item.exact ?? false }}
                 className="rounded-sm text-muted-foreground underline-offset-4 outline-none hover:text-foreground hover:underline focus-visible:ring-3 focus-visible:ring-ring/50"
               >

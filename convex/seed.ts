@@ -31,6 +31,7 @@ import { ensureDefaultStatuses } from "./sessionStatuses"
 
 // ——— Demo constants ———————————————————————————————————————————————————————
 
+export const DEMO_WORKSPACE_SLUG = "ai-engineer"
 export const DEMO_EVENT_SLUG = "ai-summit-2026"
 export const DEMO_SECOND_EVENT_SLUG = "design-systems-day"
 export const DEMO_ORGANIZER_EMAIL = "organizer@demo.sessionboard.dev"
@@ -248,11 +249,13 @@ async function purgeEvent(ctx: MutationCtx, eventId: Id<"events">) {
 }
 
 async function purgeBySlug(ctx: MutationCtx, slug: string) {
+  // Event slugs are unique per workspace now, so a demo slug could in theory
+  // exist several times — purge every claimant (they are all demo rows).
   const existing = await ctx.db
     .query("events")
     .withIndex("by_slug", (q) => q.eq("slug", slug))
-    .unique()
-  if (existing) await purgeEvent(ctx, existing._id)
+    .collect()
+  for (const event of existing) await purgeEvent(ctx, event._id)
 }
 
 // ——— e2e fixture purge —————————————————————————————————————————————————————
@@ -1083,10 +1086,13 @@ const seedSummaryValidator = v.object({
   eventSlug: v.string(),
   secondEventId: v.id("events"),
   secondEventSlug: v.string(),
+  /** The workspace URL segment every canonical demo address starts with. */
+  workspaceSlug: v.string(),
   /**
-   * The canonical public CFP addresses, printed so whoever ran the seed can
-   * paste them straight into a browser. Form slugs are per-event, which is why
-   * both events can (and do) keep a short, human slug of their own.
+   * The canonical public CFP addresses (`/submit/:ws/:event/:form`), printed
+   * so whoever ran the seed can paste them straight into a browser. Form
+   * slugs are per-event, which is why both events can (and do) keep a short,
+   * human slug of their own.
    */
   cfpPath: v.string(),
   secondCfpPath: v.string(),
@@ -1147,14 +1153,14 @@ export const run = internalMutation({
     let organizationId: Id<"organizations">
     const existingOrg = await ctx.db
       .query("organizations")
-      .withIndex("by_slug", (q) => q.eq("slug", "ai-engineer"))
+      .withIndex("by_slug", (q) => q.eq("slug", DEMO_WORKSPACE_SLUG))
       .unique()
     if (existingOrg) {
       organizationId = existingOrg._id
     } else {
       organizationId = await ctx.db.insert("organizations", {
         name: "AI Engineer",
-        slug: "ai-engineer",
+        slug: DEMO_WORKSPACE_SLUG,
       })
     }
     const existingMember = await ctx.db
@@ -1625,8 +1631,9 @@ export const run = internalMutation({
       eventSlug: DEMO_EVENT_SLUG,
       secondEventId,
       secondEventSlug: DEMO_SECOND_EVENT_SLUG,
-      cfpPath: formPath(DEMO_EVENT_SLUG, "cfp"),
-      secondCfpPath: formPath(DEMO_SECOND_EVENT_SLUG, "ds-cfp"),
+      workspaceSlug: DEMO_WORKSPACE_SLUG,
+      cfpPath: formPath(DEMO_WORKSPACE_SLUG, DEMO_EVENT_SLUG, "cfp"),
+      secondCfpPath: formPath(DEMO_WORKSPACE_SLUG, DEMO_SECOND_EVENT_SLUG, "ds-cfp"),
       organizerEmail: DEMO_ORGANIZER_EMAIL,
       organizerPassword: DEMO_ORGANIZER_PASSWORD,
       counts: {

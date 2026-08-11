@@ -19,6 +19,7 @@ const CONVEX_SITE_URL = (
   process.env.CONVEX_SITE_URL ?? "https://keen-eagle-41.convex.site"
 ).replace(/\/+$/, "")
 /** Seeded demo event (convex/seed.ts) — the public CFP form lives at its slug. */
+const WORKSPACE_SLUG = process.env.WORKSPACE_SLUG ?? "ai-engineer"
 const EVENT_SLUG = process.env.EVENT_SLUG ?? "ai-summit-2026"
 /** Form slugs are unique per EVENT, so the public CFP takes both segments. */
 const FORM_SLUG = process.env.FORM_SLUG ?? "cfp"
@@ -75,9 +76,12 @@ await route("/", ["<title>", "trackstage"])
 await route("/login", ["<title>", "password"])
 await route("/docs", ["<title>"])
 await route("/design-system", ["<title>"])
+await route(`/submit/${WORKSPACE_SLUG}/${EVENT_SLUG}/${FORM_SLUG}`, ["<title>"])
+await route(`/e/${WORKSPACE_SLUG}/${EVENT_SLUG}`, ["<title>"])
+// The legacy shapes must still resolve (each 307s to the canonical above).
 await route(`/submit/${EVENT_SLUG}/${FORM_SLUG}`, ["<title>"])
-// The legacy one-segment address must still resolve (it 307s to the above).
 await route(`/submit/${FORM_SLUG}`, ["<title>"])
+await route(`/e/${EVENT_SLUG}`, ["<title>"])
 
 console.log(`\n■ Public REST API — ${CONVEX_SITE_URL}`)
 try {

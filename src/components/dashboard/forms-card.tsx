@@ -15,8 +15,9 @@ import { buttonVariants } from "@/components/ui/button"
 import { StatusPill } from "@/components/shared/status-pill"
 import { EmptyState } from "@/components/shared/empty-state"
 import { CopyLinkButton } from "@/components/dashboard/copy-link-button"
-import { APP_ROUTES, formLinkFor } from "@/components/dashboard/app-routes"
-import { formPath } from "@/lib/public-links"
+import { formPath, formUrl } from "@/lib/public-links"
+import { appLink, legacyAppLink } from "@/lib/app-links"
+import { useCurrentEvent } from "@/lib/current-event"
 import { closesLabel } from "@/components/dashboard/format"
 
 export interface DashboardFormRow {
@@ -32,8 +33,6 @@ export interface DashboardFormRow {
 
 export interface FormsCardProps {
   forms: Array<DashboardFormRow>
-  /** The event in context — the first segment of every public form link. */
-  eventSlug: string
   className?: string
 }
 
@@ -41,8 +40,14 @@ export interface FormsCardProps {
  * "Your forms" (docs/ux/05 image19): every call-for-papers form with its
  * status, how many submissions it has pulled in, and — front and centre — the
  * public link, ready to copy.
+ *
+ * Every form here belongs to the SAME event as the dashboard it's rendered
+ * on, so the event in context (`useCurrentEvent`) supplies both segments of
+ * the public link — no per-row workspace/event slug needed.
  */
-export function FormsCard({ forms, eventSlug, className }: FormsCardProps) {
+export function FormsCard({ forms, className }: FormsCardProps) {
+  const { eventRef } = useCurrentEvent()
+  const formsLink = eventRef ? appLink.forms(eventRef) : legacyAppLink.forms
   return (
     <Card className={cn("gap-4", className)}>
       <CardHeader>
@@ -52,7 +57,7 @@ export function FormsCard({ forms, eventSlug, className }: FormsCardProps) {
         </CardDescription>
         <CardAction>
           <Link
-            to={APP_ROUTES.forms}
+            to={formsLink as never}
             className={buttonVariants({ variant: "outline", size: "sm" })}
           >
             Manage forms
@@ -69,7 +74,7 @@ export function FormsCard({ forms, eventSlug, className }: FormsCardProps) {
             description="A form is the page speakers fill in to propose a talk. Build one and share its public link to start collecting submissions."
             className="py-10"
             action={
-              <Link to={APP_ROUTES.forms} className={buttonVariants()}>
+              <Link to={formsLink as never} className={buttonVariants()}>
                 Create a form
               </Link>
             }
@@ -95,22 +100,24 @@ export function FormsCard({ forms, eventSlug, className }: FormsCardProps) {
                     ? ` · ${closesLabel(form.closeAt)}`
                     : ""}
                 </p>
-                <div className="mt-auto flex flex-wrap items-center gap-2">
-                  <CopyLinkButton
-                    url={formLinkFor(eventSlug, form.slug)}
-                    label="Copy link"
-                    toastMessage={`Public link for "${form.name}" copied`}
-                  />
-                  <a
-                    href={formPath(eventSlug, form.slug)}
-                    target="_blank"
-                    rel="noreferrer"
-                    className={buttonVariants({ variant: "ghost", size: "sm" })}
-                  >
-                    <RiExternalLinkLine aria-hidden />
-                    View
-                  </a>
-                </div>
+                {eventRef ? (
+                  <div className="mt-auto flex flex-wrap items-center gap-2">
+                    <CopyLinkButton
+                      url={formUrl(eventRef.workspaceSlug, eventRef.eventSlug, form.slug)}
+                      label="Copy link"
+                      toastMessage={`Public link for "${form.name}" copied`}
+                    />
+                    <a
+                      href={formPath(eventRef.workspaceSlug, eventRef.eventSlug, form.slug)}
+                      target="_blank"
+                      rel="noreferrer"
+                      className={buttonVariants({ variant: "ghost", size: "sm" })}
+                    >
+                      <RiExternalLinkLine aria-hidden />
+                      View
+                    </a>
+                  </div>
+                ) : null}
               </div>
             ))}
           </div>

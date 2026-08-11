@@ -25,6 +25,7 @@ import {
   formatWhen,
   str,
   strList,
+  useSectionLink,
 } from "@/components/copilot/tool-views/shared"
 import type { ToolOutputProps } from "@/components/copilot/tool-views/registry"
 
@@ -101,6 +102,7 @@ function TemplateCard({
 // ——— list_templates ——————————————————————————————————————————————————————
 
 export function TemplatesView({ output }: ToolOutputProps) {
+  const communicationsLink = useSectionLink("communications")
   const rows = asArray(output.templates) ?? []
   const variables = strList(output.variables)
 
@@ -136,7 +138,7 @@ export function TemplatesView({ output }: ToolOutputProps) {
         </div>
       ) : null}
       <MoreLink
-        target={{ to: "/app/communications", search: { tab: "templates" } }}
+        target={{ to: communicationsLink, search: { tab: "templates" } }}
       >
         Open Communications
       </MoreLink>
@@ -147,6 +149,7 @@ export function TemplatesView({ output }: ToolOutputProps) {
 // ——— update_template —————————————————————————————————————————————————————
 
 export function TemplateUpdatedView({ output }: ToolOutputProps) {
+  const communicationsLink = useSectionLink("communications")
   return (
     <Panel>
       <Banner
@@ -161,7 +164,7 @@ export function TemplateUpdatedView({ output }: ToolOutputProps) {
           customized
         />
         {str(output.note) ? <Note>{str(output.note)}</Note> : null}
-        <GoLink to="/app/communications" search={{ tab: "templates" }}>
+        <GoLink to={communicationsLink} search={{ tab: "templates" }}>
           Open Communications
         </GoLink>
       </Banner>
@@ -172,6 +175,7 @@ export function TemplateUpdatedView({ output }: ToolOutputProps) {
 // ——— list_outbox —————————————————————————————————————————————————————————
 
 export function OutboxView({ input, output }: ToolOutputProps) {
+  const communicationsLink = useSectionLink("communications")
   const rows = asArray(output.messages) ?? []
   const counts = (output.counts ?? null) as Record<string, unknown> | null
   const requestedStatus =
@@ -184,7 +188,7 @@ export function OutboxView({ input, output }: ToolOutputProps) {
       <EmptyRow>
         Nothing in the outbox
         {requestedStatus ? ` with status “${requestedStatus}”` : ""}.{" "}
-        <GoLink to="/app/communications" search={{ tab: "outbox" }}>
+        <GoLink to={communicationsLink} search={{ tab: "outbox" }}>
           Open the outbox
         </GoLink>
       </EmptyRow>
@@ -252,7 +256,7 @@ export function OutboxView({ input, output }: ToolOutputProps) {
 
       <MoreLink
         target={{
-          to: "/app/communications",
+          to: communicationsLink,
           search: { tab: "outbox", status: requestedStatus ?? undefined },
         }}
       >
@@ -265,6 +269,7 @@ export function OutboxView({ input, output }: ToolOutputProps) {
 // ——— send_test_email —————————————————————————————————————————————————————
 
 export function TestEmailView({ output }: ToolOutputProps) {
+  const communicationsLink = useSectionLink("communications")
   const to = str(output.to)
   if (!to) {
     return <ToolAlert title="The test email had no recipient." />
@@ -286,7 +291,7 @@ export function TestEmailView({ output }: ToolOutputProps) {
         </p>
       ) : null}
       {str(output.note) ? <Note>{str(output.note)}</Note> : null}
-      <GoLink to="/app/communications" search={{ tab: "outbox" }}>
+      <GoLink to={communicationsLink} search={{ tab: "outbox" }}>
         Check delivery in the outbox
       </GoLink>
     </Banner>
@@ -302,6 +307,7 @@ export function TestEmailView({ output }: ToolOutputProps) {
  * read from.
  */
 export function TemplateDetailView({ output }: ToolOutputProps) {
+  const communicationsLink = useSectionLink("communications")
   const customized = bool(output.customized) === true
   return (
     <Panel>
@@ -313,7 +319,7 @@ export function TemplateDetailView({ output }: ToolOutputProps) {
         customized={customized}
       />
       {str(output.note) ? <Note>{str(output.note)}</Note> : null}
-      <GoLink to="/app/communications" search={{ tab: "templates" }}>
+      <GoLink to={communicationsLink} search={{ tab: "templates" }}>
         Open Communications
       </GoLink>
     </Panel>

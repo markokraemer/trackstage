@@ -20,6 +20,7 @@ import type { FormDraft } from "../use-form-draft"
 export function SetupStep({
   draft,
   formId,
+  workspaceSlug,
   eventSlug,
   slug,
   patch,
@@ -27,6 +28,7 @@ export function SetupStep({
   draft: FormDraft
   formId: string
   /** Form slugs are unique per event, so the link needs both segments. */
+  workspaceSlug: string
   eventSlug: string
   slug: string
   patch: (values: Partial<FormDraft>) => void
@@ -75,7 +77,12 @@ export function SetupStep({
         start submitting.
       </InfoNote>
 
-      <PublicLinkCard formId={formId} eventSlug={eventSlug} slug={slug} />
+      <PublicLinkCard
+        formId={formId}
+        workspaceSlug={workspaceSlug}
+        eventSlug={eventSlug}
+        slug={slug}
+      />
     </div>
   )
 }

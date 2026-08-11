@@ -1,5 +1,5 @@
 import { useState } from "react"
-import { Link } from "@tanstack/react-router"
+import { Link, useNavigate, useRouterState } from "@tanstack/react-router"
 import {
   RiAddLine,
   RiCalendarEventLine,
@@ -25,7 +25,8 @@ import {
   WorkspaceMenuSection,
   useWorkspaceSwitcher,
 } from "@/components/shell/workspace-switcher"
-import { useCurrentEvent } from "@/lib/current-event"
+import { eventRefOf, useCurrentEvent } from "@/lib/current-event"
+import { eventScopedPath } from "@/lib/app-links"
 
 /**
  * The sidebar context picker — the event-context block IS the control
@@ -44,9 +45,11 @@ import { useCurrentEvent } from "@/lib/current-event"
  */
 export function ShellEventSwitcher() {
   const { workspaceEvents, event, selectEvent, isLoading } = useCurrentEvent()
-  const { workspaceOptions, workspace, switchTo, creating, setCreating } =
+  const { workspaceOptions, workspace, switchTo, switchToCreated, creating, setCreating } =
     useWorkspaceSwitcher()
   const [creatingEvent, setCreatingEvent] = useState(false)
+  const navigate = useNavigate()
+  const pathname = useRouterState({ select: (s) => s.location.pathname })
 
   const currentOption = workspaceOptions.find((row) => row.isCurrent)
 
@@ -133,7 +136,15 @@ export function ShellEventSwitcher() {
               workspaceEvents.map((row) => (
                 <DropdownMenuItem
                   key={row._id}
-                  onClick={() => selectEvent(row._id)}
+                  onClick={() => {
+                    // The URL is the source of truth for event context
+                    // (docs/memory/DECISIONS.md): switching NAVIGATES to the
+                    // same section under the chosen event. The store write
+                    // keeps bare legacy paths and global pages in step.
+                    selectEvent(row._id)
+                    const target = eventScopedPath(pathname, eventRefOf(row))
+                    if (target) void navigate({ href: target })
+                  }}
                 >
                   <EventTile
                     name={row.name}
@@ -192,7 +203,7 @@ export function ShellEventSwitcher() {
         hideTrigger
         open={creating}
         onOpenChange={setCreating}
-        onCreated={switchTo}
+        onCreated={switchToCreated}
       />
     </>
   )

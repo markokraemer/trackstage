@@ -15,7 +15,8 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { buttonVariants } from "@/components/ui/button"
 import { EmptyState } from "@/components/shared/empty-state"
 import { MissingPills } from "@/components/dashboard/missing-pills"
-import { APP_ROUTES } from "@/components/dashboard/app-routes"
+import { appLink, legacyAppLink } from "@/lib/app-links"
+import { useCurrentEvent } from "@/lib/current-event"
 import { initialsOf } from "@/components/dashboard/format"
 
 export interface TopSpeakerRow {
@@ -39,6 +40,8 @@ export interface TopSpeakersCardProps {
  * act.
  */
 export function TopSpeakersCard({ rows, className }: TopSpeakersCardProps) {
+  const { eventRef } = useCurrentEvent()
+  const speakersLink = eventRef ? appLink.speakers(eventRef) : legacyAppLink.speakers
   const max = rows.reduce((acc, row) => Math.max(acc, row.openTaskCount), 0)
 
   return (
@@ -50,7 +53,7 @@ export function TopSpeakersCard({ rows, className }: TopSpeakersCardProps) {
         </CardDescription>
         <CardAction>
           <Link
-            to={APP_ROUTES.speakers}
+            to={speakersLink as never}
             className={buttonVariants({ variant: "outline", size: "sm" })}
           >
             View speakers
@@ -72,7 +75,7 @@ export function TopSpeakersCard({ rows, className }: TopSpeakersCardProps) {
             {rows.map((row, index) => (
               <li key={row.personId}>
                 <Link
-                  to={APP_ROUTES.speakers}
+                  to={speakersLink as never}
                   className="flex items-center gap-3 rounded-lg px-2 py-2.5 transition-colors outline-none hover:bg-accent/50 focus-visible:ring-3 focus-visible:ring-ring/50"
                 >
                   <span className="w-4 shrink-0 text-xs font-medium tabular-nums text-muted-foreground">

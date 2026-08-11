@@ -9,6 +9,7 @@ import {
   requireMembership,
   requireUser,
 } from "./lib/auth"
+import { uniqueWorkspaceSlug } from "./lib/publicLinks"
 
 // Organizations ("workspaces") — the multi-tenancy root. Every event belongs
 // to exactly one organization; users see only their organizations' data.
@@ -50,18 +51,10 @@ export const ensure = mutation({
     }
     const name =
       args.name ?? `${user.name ?? user.email.split("@")[0]}'s workspace`
-    const base =
-      name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 40) ||
-      "workspace"
-    let slug = base
-    for (let i = 2; ; i++) {
-      const clash = await ctx.db
-        .query("organizations")
-        .withIndex("by_slug", (q) => q.eq("slug", slug))
-        .unique()
-      if (!clash) break
-      slug = `${base}-${i}`
-    }
+    // Workspace slugs are the FIRST segment of every canonical URL
+    // (convex/lib/publicLinks.ts) — globally unique, reserved words excluded,
+    // auto-suffixed on clash so onboarding can never stall on a name.
+    const slug = await uniqueWorkspaceSlug(ctx, name)
     const organizationId = await ctx.db.insert("organizations", { name, slug })
     await ctx.db.insert("members", {
       organizationId,
@@ -268,17 +261,42 @@ export const get = query({
 export const update = mutation({
   args: {
     organizationId: v.id("organizations"),
-    patch: v.object({ name: v.optional(v.string()) }),
+    patch: v.object({
+      name: v.optional(v.string()),
+      /**
+       * The workspace's URL segment — the first segment of every canonical
+       * app and public address. Same collision UX as event slugs
+       * (docs/memory/DECISIONS.md): a taken or reserved address is
+       * auto-suffixed, never refused, and the caller is told what it became.
+       */
+      slug: v.optional(v.string()),
+    }),
   },
   handler: async (ctx, args) => {
     await requireMembership(ctx, args.organizationId, "admin")
+    const org = await ctx.db.get(args.organizationId)
+    if (!org) throw new Error("Workspace not found.")
     if (args.patch.name !== undefined && !args.patch.name.trim()) {
       throw new Error("Workspace name can't be empty.")
     }
+
+    let slug: string | undefined
+    if (args.patch.slug !== undefined) {
+      const desired = args.patch.slug.trim().toLowerCase()
+      slug =
+        desired === org.slug
+          ? org.slug
+          : await uniqueWorkspaceSlug(ctx, desired, args.organizationId)
+    }
+    const slugAdjusted =
+      slug !== undefined && slug !== args.patch.slug!.trim().toLowerCase()
+
     await ctx.db.patch(args.organizationId, {
       ...(args.patch.name !== undefined ? { name: args.patch.name.trim() } : {}),
+      ...(slug !== undefined ? { slug } : {}),
     })
-    return null
+    // The address that is actually live now, so the UI never guesses.
+    return { slug: slug ?? org.slug, slugAdjusted }
   },
 })
 
@@ -288,18 +306,7 @@ export const create = mutation({
   handler: async (ctx, args) => {
     const user = await requireUser(ctx)
     if (!args.name.trim()) throw new Error("Workspace name is required.")
-    const base =
-      args.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 40) ||
-      "workspace"
-    let slug = base
-    for (let i = 2; ; i++) {
-      const clash = await ctx.db
-        .query("organizations")
-        .withIndex("by_slug", (q) => q.eq("slug", slug))
-        .unique()
-      if (!clash) break
-      slug = `${base}-${i}`
-    }
+    const slug = await uniqueWorkspaceSlug(ctx, args.name)
     const organizationId = await ctx.db.insert("organizations", {
       name: args.name.trim(),
       slug,

@@ -142,8 +142,15 @@ export default defineSchema({
       }),
     ),
   })
+    // EVENT slugs are unique PER WORKSPACE (docs/memory/DECISIONS.md, "URL
+    // architecture is fully hierarchical"): `by_organizationId_slug` is the
+    // uniqueness index and the canonical `/e/:ws/:event` lookup. `by_slug`
+    // survives to resolve legacy one-segment links, where several workspaces
+    // may now legitimately answer to the same slug — so every read through it
+    // must tolerate multiple rows (oldest claimant wins, never `.unique()`).
     .index("by_slug", ["slug"])
-    .index("by_organizationId", ["organizationId"]),
+    .index("by_organizationId", ["organizationId"])
+    .index("by_organizationId_slug", ["organizationId", "slug"]),
 
   rooms: defineTable({
     eventId: v.id("events"),

@@ -5,6 +5,8 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { STATUS_TABS } from "@/components/submissions/constants"
 import type { StatusTabValue } from "@/components/submissions/constants"
 import { systemStatusOption, useStatusCatalog } from "@/lib/status-catalog"
+import { appLink, legacyAppLink } from "@/lib/app-links"
+import { useCurrentEvent } from "@/lib/current-event"
 
 /**
  * Status tab strip with live counts (docs/ux/03 image5). Each tab is a real
@@ -29,6 +31,10 @@ export interface StatusTabsProps {
 
 export function StatusTabs({ value, counts, search }: StatusTabsProps) {
   const { statuses } = useStatusCatalog()
+  const { eventRef } = useCurrentEvent()
+  const submissionsLink = eventRef
+    ? appLink.submissions(eventRef)
+    : legacyAppLink.submissions
 
   function tabLabel(tab: (typeof STATUS_TABS)[number]): string {
     if (tab.value === "all") return tab.label
@@ -59,13 +65,15 @@ export function StatusTabs({ value, counts, search }: StatusTabsProps) {
               className="h-9 flex-none rounded-none px-3 data-active:font-semibold data-active:text-primary group-data-[variant=line]/tabs-list:data-active:after:bg-primary"
               render={
                 <Link
-                  to="/app/submissions"
-                  search={{
-                    status: tab.value === "all" ? undefined : tab.value,
-                    kind: search.kind,
-                    q: search.q,
-                    track: search.track,
-                  }}
+                  to={submissionsLink as never}
+                  search={
+                    {
+                      status: tab.value === "all" ? undefined : tab.value,
+                      kind: search.kind,
+                      q: search.q,
+                      track: search.track,
+                    } as never
+                  }
                 />
               }
             >

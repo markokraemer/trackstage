@@ -36,6 +36,9 @@ import { InputGroupAddon } from "@/components/ui/input-group"
 import { StatusPill } from "@/components/shared/status-pill"
 import { useCopilotPanel } from "@/lib/copilot-store"
 import { useCurrentEvent } from "@/lib/current-event"
+import { appLink, legacyAppLink } from "@/lib/app-links"
+import type { EventRef } from "@/lib/app-links"
+import { eventPath } from "@/lib/public-links"
 import { dayKeyOf, safeTimeZone } from "@/components/agenda/agenda-time"
 
 /**
@@ -77,7 +80,8 @@ interface QuickActionHelpers {
   go: (to: string, search?: Record<string, string>) => void
   openExternal: (href: string) => void
   openCopilot: () => void
-  eventSlug: string | undefined
+  /** The event in context, for building event-scoped destinations. */
+  eventRef: EventRef | undefined
 }
 
 const QUICK_ACTIONS: Array<QuickAction> = [
@@ -86,35 +90,42 @@ const QUICK_ACTIONS: Array<QuickAction> = [
     label: "Create a form",
     keywords: "new cfp call for papers builder add",
     icon: RiSurveyLine,
-    run: ({ go }) => go("/app/forms/new"),
+    run: ({ go, eventRef }) =>
+      go(eventRef ? appLink.formNew(eventRef) : legacyAppLink.forms),
   },
   {
     id: "add-speaker",
     label: "Add a speaker",
     keywords: "new person invite participant",
     icon: RiUserAddLine,
-    run: ({ go }) => go("/app/speakers", { add: "1" }),
+    run: ({ go, eventRef }) =>
+      go(eventRef ? appLink.speakers(eventRef) : legacyAppLink.speakers, {
+        add: "1",
+      }),
   },
   {
     id: "agenda",
     label: "Open the agenda",
     keywords: "schedule programme program rooms conflicts calendar",
     icon: RiCalendarScheduleLine,
-    run: ({ go }) => go("/app/agenda"),
+    run: ({ go, eventRef }) =>
+      go(eventRef ? appLink.agenda(eventRef) : legacyAppLink.agenda),
   },
   {
     id: "review",
     label: "Review submissions",
     keywords: "abstracts triage pending queue accept decline",
     icon: RiFileList3Line,
-    run: ({ go }) => go("/app/submissions"),
+    run: ({ go, eventRef }) =>
+      go(eventRef ? appLink.submissions(eventRef) : legacyAppLink.submissions),
   },
   {
     id: "evaluation",
     label: "Open evaluation",
     keywords: "score reviewers plans rounds judges",
     icon: RiStarLine,
-    run: ({ go }) => go("/app/evaluation"),
+    run: ({ go, eventRef }) =>
+      go(eventRef ? appLink.evaluation(eventRef) : legacyAppLink.evaluation),
   },
   {
     id: "embeds",
@@ -122,14 +133,18 @@ const QUICK_ACTIONS: Array<QuickAction> = [
     keywords:
       "embed embeds widget iframe html snippet website wordpress webflow squarespace wix api json ics feed publish agenda to my site",
     icon: RiCodeSSlashLine,
-    run: ({ go }) => go("/app/embeds"),
+    run: ({ go, eventRef }) =>
+      go(eventRef ? appLink.embeds(eventRef) : legacyAppLink.embeds),
   },
   {
     id: "communications",
     label: "Send an email",
     keywords: "communications templates reminder invite ics",
     icon: RiMailSendLine,
-    run: ({ go }) => go("/app/communications"),
+    run: ({ go, eventRef }) =>
+      go(
+        eventRef ? appLink.communications(eventRef) : legacyAppLink.communications,
+      ),
   },
   {
     id: "copilot",
@@ -143,8 +158,8 @@ const QUICK_ACTIONS: Array<QuickAction> = [
     label: "View the public event page",
     keywords: "website preview live attendees",
     icon: RiArrowRightUpLine,
-    run: ({ openExternal, eventSlug }) => {
-      if (eventSlug) openExternal(`/e/${eventSlug}`)
+    run: ({ openExternal, eventRef }) => {
+      if (eventRef) openExternal(eventPath(eventRef.workspaceSlug, eventRef.eventSlug))
     },
   },
   {
@@ -152,7 +167,8 @@ const QUICK_ACTIONS: Array<QuickAction> = [
     label: "Event settings",
     keywords: "rooms tracks timezone dates branding",
     icon: RiSettings3Line,
-    run: ({ go }) => go("/app/settings"),
+    run: ({ go, eventRef }) =>
+      go(eventRef ? appLink.settings(eventRef) : legacyAppLink.settings),
   },
 ]
 
@@ -256,7 +272,7 @@ export function GlobalSearch({ className }: { className?: string }) {
   const [recents, setRecents] = useState<Array<string>>([])
 
   const navigate = useNavigate()
-  const { event } = useCurrentEvent()
+  const { event, eventRef } = useCurrentEvent()
   const { setOpen: setCopilotOpen } = useCopilotPanel()
 
   // ⌘K / Ctrl+K from anywhere in the organizer app.
@@ -308,9 +324,9 @@ export function GlobalSearch({ className }: { className?: string }) {
       },
       openExternal: (href) => window.open(href, "_blank", "noreferrer"),
       openCopilot: () => setCopilotOpen(true),
-      eventSlug: event?.slug,
+      eventRef,
     }),
-    [navigate, setCopilotOpen, event?.slug]
+    [navigate, setCopilotOpen, eventRef]
   )
 
   const commit = useCallback(
@@ -326,14 +342,14 @@ export function GlobalSearch({ className }: { className?: string }) {
     const q = input.trim().toLowerCase()
     const terms = q.split(/\s+/).filter(Boolean)
     const visible = QUICK_ACTIONS.filter((action) => {
-      if (action.id === "public" && !event?.slug) return false
+      if (action.id === "public" && !eventRef) return false
       if (terms.length === 0) return true
       const haystack = `${action.label} ${action.keywords}`.toLowerCase()
       return terms.every((part) => haystack.includes(part))
     })
     // With a query on screen the actions are a footnote, not the headline.
     return terms.length === 0 ? visible : visible.slice(0, 3)
-  }, [input, event?.slug])
+  }, [input, eventRef])
 
   const hasResults =
     (results?.submissions.length ?? 0) +
@@ -422,7 +438,12 @@ export function GlobalSearch({ className }: { className?: string }) {
                       value={`submission-${row.id}`}
                       onSelect={() =>
                         commit(() =>
-                          helpers.go("/app/submissions", { id: row.id })
+                          helpers.go(
+                            eventRef
+                              ? appLink.submissions(eventRef)
+                              : legacyAppLink.submissions,
+                            { id: row.id },
+                          )
                         )
                       }
                     >
@@ -453,11 +474,14 @@ export function GlobalSearch({ className }: { className?: string }) {
                       value={`session-${row.id}`}
                       onSelect={() =>
                         commit(() =>
-                          helpers.go("/app/agenda", {
-                            view: "day",
-                            day: dayKeyOf(row.startsAt, timeZone),
-                            focus: row.id,
-                          })
+                          helpers.go(
+                            eventRef ? appLink.agenda(eventRef) : legacyAppLink.agenda,
+                            {
+                              view: "day",
+                              day: dayKeyOf(row.startsAt, timeZone),
+                              focus: row.id,
+                            },
+                          )
                         )
                       }
                     >
@@ -487,7 +511,10 @@ export function GlobalSearch({ className }: { className?: string }) {
                       value={`speaker-${row.personId}`}
                       onSelect={() =>
                         commit(() =>
-                          helpers.go("/app/speakers", { person: row.personId })
+                          helpers.go(
+                            eventRef ? appLink.speakers(eventRef) : legacyAppLink.speakers,
+                            { person: row.personId },
+                          )
                         )
                       }
                     >
@@ -530,8 +557,9 @@ export function GlobalSearch({ className }: { className?: string }) {
                       onSelect={() =>
                         commit(() =>
                           void navigate({
-                            to: "/app/forms/$formId",
-                            params: { formId: row.formId },
+                            to: (eventRef
+                              ? appLink.form(eventRef, row.formId)
+                              : legacyAppLink.forms) as never,
                           })
                         )
                       }

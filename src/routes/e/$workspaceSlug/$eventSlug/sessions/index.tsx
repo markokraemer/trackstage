@@ -35,10 +35,10 @@ import type { PublicSession } from "@/components/public/types"
  * is a link you can send someone, the back button undoes one filter at a time,
  * and the organizer's embed builder can pre-seed any of them.
  */
-export const Route = createFileRoute("/e/$slug/sessions/")({
+export const Route = createFileRoute("/e/$workspaceSlug/$eventSlug/sessions/")({
   loader: async ({ context, params }) =>
     await context.queryClient.ensureQueryData(
-      convexQuery(api.publicData.sessionsList, { slug: params.slug }),
+      convexQuery(api.publicData.sessionsList, { slug: params.eventSlug, workspaceSlug: params.workspaceSlug }),
     ),
   component: SessionsPage,
 })
@@ -48,10 +48,10 @@ const ALL_FORMATS = "All formats"
 const ALL_ROOMS = "All rooms"
 
 function SessionsPage() {
-  const { slug } = Route.useParams()
+  const { workspaceSlug, eventSlug: slug } = Route.useParams()
   const search = Route.useSearch()
   const { data } = useSuspenseQuery(
-    convexQuery(api.publicData.sessionsList, { slug }),
+    convexQuery(api.publicData.sessionsList, { slug, workspaceSlug }),
   )
   const setParams = useSearchParamWriter()
   const [query, setQuery] = useUrlText(search.q, (value) =>
@@ -177,8 +177,8 @@ function SessionsPage() {
           }
           action={
             <Link
-              to="/e/$slug"
-              params={{ slug }}
+              to="/e/$workspaceSlug/$eventSlug"
+              params={{ workspaceSlug, eventSlug: slug }}
               search={(prev) => prev}
               className={buttonVariants({ variant: "outline" })}
             >
@@ -201,7 +201,12 @@ function SessionsPage() {
         <ul className="flex flex-col gap-3">
           {sessions.map((session) => (
             <li key={session._id}>
-              <SessionCard event={event} session={session} options={search} />
+              <SessionCard
+                workspaceSlug={workspaceSlug}
+                event={event}
+                session={session}
+                options={search}
+              />
             </li>
           ))}
         </ul>

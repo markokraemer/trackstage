@@ -30,7 +30,12 @@ import {
   portalLinkFor,
   siteUrl,
 } from "./lib/email"
-import { formPath, uniqueEventSlug, uniqueFormSlug } from "./lib/publicLinks"
+import {
+  formPath,
+  uniqueEventSlug,
+  uniqueFormSlug,
+  workspaceSlugForEvent,
+} from "./lib/publicLinks"
 
 // ══════════════════════════════════════════════════════════════════════════
 // Trackstage MCP server — Model Context Protocol over Streamable HTTP.
@@ -116,20 +121,38 @@ async function resolveEvent(
 ): Promise<Doc<"events">> {
   const trimmed = ref.trim()
   const asId = ctx.db.normalizeId("events", trimmed)
-  let event = asId ? await ctx.db.get(asId) : null
-  if (!event) {
-    event = await ctx.db
-      .query("events")
-      .withIndex("by_slug", (q) => q.eq("slug", trimmed))
-      .unique()
+  if (asId) {
+    const event = await ctx.db.get(asId)
+    if (event) {
+      const access = await eventAccessFor(ctx, userId, event._id, minRole)
+      return access.event
+    }
   }
-  if (!event) {
+  // Event slugs are only unique per workspace now, so a slug ref can match
+  // several events. The caller's own access narrows it: the oldest event this
+  // user can act on wins (mirrors the public oldest-claimant rule), and
+  // anything they can't reach is indistinguishable from "does not exist".
+  const candidates = await ctx.db
+    .query("events")
+    .withIndex("by_slug", (q) => q.eq("slug", trimmed.toLowerCase()))
+    .take(20)
+  const visible: Array<Doc<"events">> = []
+  for (const candidate of candidates) {
+    try {
+      const access = await eventAccessFor(ctx, userId, candidate._id, minRole)
+      visible.push(access.event)
+    } catch {
+      // Not this caller's event.
+    }
+  }
+  if (visible.length === 0) {
     throw new Error(
       `No event matches "${ref}". Call list_events to see the available event ids and slugs.`,
     )
   }
-  const access = await eventAccessFor(ctx, userId, event._id, minRole)
-  return access.event
+  return visible.reduce((oldest, candidate) =>
+    candidate._creationTime < oldest._creationTime ? candidate : oldest,
+  )
 }
 
 /** Narrows a caller-supplied string to a real id, with a readable failure. */
@@ -171,12 +194,18 @@ function iso(ms: number | undefined | null): string | null {
 }
 
 /**
- * The canonical public CFP link, `/submit/:eventSlug/:formSlug` — form slugs
- * are unique per event, so the event segment is not optional
- * (docs/memory/DECISIONS.md, "Public URL scheme is hierarchical").
+ * The canonical public CFP link, `/submit/:ws/:event/:form` — form slugs are
+ * unique per event and event slugs per workspace, so both parent segments are
+ * required (docs/memory/DECISIONS.md, "URL architecture is fully
+ * hierarchical").
  */
-function publicFormUrl(eventSlug: string, formSlug: string): string {
-  return `${siteUrl()}${formPath(eventSlug, formSlug)}`
+async function eventFormUrl(
+  ctx: QueryCtx | MutationCtx,
+  event: Doc<"events">,
+  formSlug: string,
+): Promise<string> {
+  const workspaceSlug = await workspaceSlugForEvent(ctx, event)
+  return `${siteUrl()}${formPath(workspaceSlug, event.slug, formSlug)}`
 }
 
 /** Same link, when the caller holds the form but not its event. */
@@ -185,7 +214,8 @@ async function formPublicUrl(
   form: Doc<"forms">,
 ): Promise<string> {
   const event = await ctx.db.get(form.eventId)
-  return publicFormUrl(event?.slug ?? "", form.slug)
+  if (!event) return siteUrl()
+  return await eventFormUrl(ctx, event, form.slug)
 }
 
 /**
@@ -354,7 +384,7 @@ export const createEvent = internalMutation({
     }
     await membershipFor(ctx, args.userId, organizationId, "admin")
 
-    const slug = await uniqueEventSlug(ctx, args.slug ?? name)
+    const slug = await uniqueEventSlug(ctx, organizationId, args.slug ?? name)
 
     const eventId = await ctx.db.insert("events", {
       organizationId,
@@ -368,11 +398,12 @@ export const createEvent = internalMutation({
       startsAt: args.startsAt,
       endsAt: args.endsAt,
     })
+    const organization = await ctx.db.get(organizationId)
     return withLinkWarning({
       eventId,
       slug,
       name,
-      publicSubmitUrlHint: `${siteUrl()}${formPath(slug, "<form-slug>")}`,
+      publicSubmitUrlHint: `${siteUrl()}${formPath(organization?.slug ?? "workspace", slug, "<form-slug>")}`,
     })
   },
 })
@@ -470,7 +501,7 @@ export const listForms = internalQuery({
         kind: form.kind,
         status: form.status,
         closeAt: iso(form.closeAt),
-        publicUrl: publicFormUrl(event.slug, form.slug),
+        publicUrl: await eventFormUrl(ctx, event, form.slug),
         submissionCount: submissions.filter((s) => s.status !== "draft").length,
         draftCount: submissions.filter((s) => s.status === "draft").length,
       })
@@ -657,7 +688,7 @@ export const createForm = internalMutation({
       name,
       kind,
       slug,
-      publicUrl: publicFormUrl(event.slug, slug),
+      publicUrl: await eventFormUrl(ctx, event, slug),
       status: "open",
     })
   },
@@ -1981,6 +2012,8 @@ async function eventSummaryPayload(ctx: QueryCtx, event: Doc<"events">) {
   }
   deadlines.sort((a, b) => a.daysAway - b.daysAway)
 
+  const workspaceSlug = await workspaceSlugForEvent(ctx, event)
+
   const headline =
     `${event.name} — ${stats.submissions.length} submission(s): ` +
     `${stats.statusCounts.accepted} accepted, ${pending} pending, ` +
@@ -2017,7 +2050,7 @@ async function eventSummaryPayload(ctx: QueryCtx, event: Doc<"events">) {
       slug: form.slug,
       status: form.status,
       closeAt: iso(form.closeAt),
-      publicUrl: publicFormUrl(event.slug, form.slug),
+      publicUrl: `${siteUrl()}${formPath(workspaceSlug, event.slug, form.slug)}`,
     })),
     needsAttention:
       needsAttention.length > 0

@@ -21,24 +21,42 @@ const PUBLIC_LIVE = [
   "/",
   "/login",
   "/design-system",
-  // Canonical public CFP address, plus the legacy one-segment link it
-  // redirects from (docs/memory/DECISIONS.md, "Public URL scheme").
+  // Canonical hierarchical addresses (docs/memory/DECISIONS.md, "URL
+  // architecture is fully hierarchical") …
+  "/submit/ai-engineer/ai-summit-2026/cfp",
+  "/e/ai-engineer/ai-summit-2026",
+  "/e/ai-engineer/ai-summit-2026/speakers",
+  "/e/ai-engineer/ai-summit-2026/speakers?view=list",
+  "/e/ai-engineer/ai-summit-2026/sessions",
+  "/e/ai-engineer/ai-summit-2026/my-schedule",
+  "/e/ai-engineer/ai-summit-2026?view=rooms",
+  // … every LEGACY shape ever printed (each 307s to canonical) …
   "/submit/ai-summit-2026/cfp",
   "/submit/cfp",
   "/e/ai-summit-2026",
   "/e/ai-summit-2026/speakers",
-  "/e/ai-summit-2026/speakers?view=list",
-  "/e/ai-summit-2026/sessions",
-  "/e/ai-summit-2026/my-schedule",
-  "/e/ai-summit-2026?view=rooms",
   // The same pages as embeddable widgets, and an event whose programme is
   // still a draft (must read "Schedule coming soon", not crash).
-  "/e/ai-summit-2026/sessions?embed=true",
+  "/e/ai-engineer/ai-summit-2026/sessions?embed=true",
+  "/e/ai-engineer/design-systems-day",
   "/e/design-systems-day",
   "/portal",
 ]
 const PUBLIC_PENDING: string[] = []
 const APP_LIVE = [
+  // Canonical event-scoped organizer addresses …
+  "/app/ai-engineer/ai-summit-2026",
+  "/app/ai-engineer/ai-summit-2026/submissions",
+  "/app/ai-engineer/ai-summit-2026/forms",
+  "/app/ai-engineer/ai-summit-2026/evaluation",
+  "/app/ai-engineer/ai-summit-2026/agenda",
+  "/app/ai-engineer/ai-summit-2026/speakers",
+  "/app/ai-engineer/ai-summit-2026/files",
+  "/app/ai-engineer/ai-summit-2026/communications",
+  "/app/ai-engineer/ai-summit-2026/embeds",
+  "/app/ai-engineer/ai-summit-2026/settings",
+  "/app/ai-engineer/workspace",
+  // … the bare LEGACY paths (each redirects via the stored pointer) …
   "/app",
   "/app/submissions",
   "/app/forms",
@@ -47,10 +65,11 @@ const APP_LIVE = [
   "/app/speakers",
   "/app/communications",
   "/app/settings",
-  "/app/events",
-  "/app/account",
   "/app/workspace",
   "/app/embeds",
+  // … and the global pages.
+  "/app/events",
+  "/app/account",
 ]
 const APP_PENDING: string[] = []
 

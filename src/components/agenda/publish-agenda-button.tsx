@@ -27,9 +27,13 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { StatusPill } from "@/components/shared/status-pill"
+import { appLink } from "@/lib/app-links"
+import { eventPath } from "@/lib/public-links"
 
 export interface PublishAgendaButtonProps {
   eventId: Id<"events">
+  /** The event's workspace — the public page is `/e/:workspaceSlug/:eventSlug`. */
+  workspaceSlug: string
   eventSlug: string
   /** `events.agendaPublishedAt`, or null while the programme is a draft. */
   agendaPublishedAt: number | null
@@ -47,6 +51,7 @@ function formatPublishedDate(ts: number): string {
 
 export function PublishAgendaButton({
   eventId,
+  workspaceSlug,
   eventSlug,
   agendaPublishedAt,
   scheduledCount,
@@ -57,6 +62,8 @@ export function PublishAgendaButton({
   const publish = useConvexMutation(api.agenda.publishAgenda)
   const unpublish = useConvexMutation(api.agenda.unpublishAgenda)
   const published = agendaPublishedAt !== null
+  const publicEventPath = eventPath(workspaceSlug, eventSlug)
+  const embedsLink = appLink.embeds({ workspaceSlug, eventSlug })
 
   async function run() {
     setPending(true)
@@ -72,11 +79,11 @@ export function PublishAgendaButton({
         // Publishing is only half the job — the next thing an organizer wants
         // is this agenda on their own website. Say so, and hand them the door.
         toast.success("Schedule published", {
-          description: `${result.sessionCount} session${result.sessionCount === 1 ? " is" : "s are"} now live at /e/${eventSlug}. Put it on your own site from Embeds.`,
+          description: `${result.sessionCount} session${result.sessionCount === 1 ? " is" : "s are"} now live at ${publicEventPath}. Put it on your own site from Embeds.`,
           action: {
             label: "Get embed code",
             onClick: () => {
-              void navigate({ to: "/app/embeds" })
+              void navigate({ to: embedsLink as never })
             },
           },
         })
@@ -144,7 +151,7 @@ export function PublishAgendaButton({
                   </span>{" "}
                   appear on{" "}
                   <code className="rounded bg-card px-1 py-0.5 text-xs">
-                    /e/{eventSlug}
+                    {publicEventPath}
                   </code>
                   , in your embeds, and in the calendar feed.
                 </span>

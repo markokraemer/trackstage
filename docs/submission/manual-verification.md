@@ -8,13 +8,13 @@ the evidence (screenshots / forwarded emails) for the judges' manual-checklist p
 - [ ] `pnpm exec convex run seed:setup --prod` — purges any agent/e2e residue and
       rebuilds the demo. Let nothing touch the deployment afterwards.
 - [ ] `node scripts/smoke-production.mjs` — 9/9.
-- [ ] Open https://trackstage.app/e/ai-summit-2026 — first session card is
+- [ ] Open https://trackstage.app/e/ai-engineer/ai-summit-2026 — first session card is
       "Opening keynote: the year AI engineering grew up", speakers list has no
       duplicate/nameless tiles.
 
 ## Email egress (real inbox required)
 
-- [ ] Submit a talk at https://trackstage.app/submit/ai-summit-2026/cfp with a real email you
+- [ ] Submit a talk at https://trackstage.app/submit/ai-engineer/ai-summit-2026/cfp with a real email you
       control → submission confirmation arrives from hello@trackstage.app.
 - [ ] Organizer → stage that submission to Accept Queue → commit the queue →
       acceptance email arrives, contains the portal link, portal link works.
@@ -27,7 +27,7 @@ the evidence (screenshots / forwarded emails) for the judges' manual-checklist p
 - [ ] Schedule the accepted talk (room + time) → speaker email with .ics attached →
       open the .ics in Apple Calendar or Google Calendar: correct title, time,
       timezone, room in location.
-- [ ] Subscribe to https://trackstage.app/e/ai-summit-2026/schedule.ics (or the
+- [ ] Subscribe to https://trackstage.app/e/ai-engineer/ai-summit-2026/schedule.ics (or the
       /v1 feed) in a calendar app: all published sessions appear.
 
 ## Multi-account effects

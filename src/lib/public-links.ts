@@ -1,15 +1,21 @@
 /**
  * The public URL scheme — one place, client side.
  *
- *     /e/:eventSlug                  the public event program (globally unique)
- *     /submit/:eventSlug/:formSlug   the canonical call-for-speakers link
- *     /submit/:formSlug              LEGACY, redirects to the canonical link
- *     /portal/t/:token               already globally unique by construction
+ *     /e/:workspaceSlug/:eventSlug                 public event program (CANONICAL)
+ *     /submit/:workspaceSlug/:eventSlug/:formSlug  public CFP link (CANONICAL)
+ *     /portal/t/:token                             globally unique by construction
+ *     /review/:token                               globally unique by construction
  *
- * Form slugs live in a PER-EVENT namespace, so "cfp" belongs to whoever wants
- * it, in every event, forever. Nothing in the app may build a `/submit/…`
- * string by hand — every link producer goes through here so the scheme can
- * only ever change in one place. Mirrors `convex/lib/publicLinks.ts`.
+ * Workspace slugs are globally unique, event slugs are unique per workspace,
+ * form slugs are unique per event — so the obvious names ("summit", "cfp")
+ * belong to everyone at once. Legacy shapes (`/e/:eventSlug`,
+ * `/submit/:eventSlug/:formSlug`, `/submit/:formSlug`) keep resolving and 307
+ * to canonical, oldest claimant first.
+ *
+ * Nothing in the app may build a `/e/…` or `/submit/…` string by hand — every
+ * link producer goes through here so the scheme can only ever change in one
+ * place. Mirrors `convex/lib/publicLinks.ts`; organizer-app URLs live in
+ * `src/lib/app-links.ts`.
  */
 
 /** Lowercase, dash-separated, URL-safe. */
@@ -54,24 +60,32 @@ function origin(): string {
   return typeof window === "undefined" ? "" : window.location.origin
 }
 
-/** Canonical public path for a CFP form, e.g. `/submit/ai-summit-2026/cfp`. */
-export function formPath(eventSlug: string, formSlug: string): string {
-  return `/submit/${eventSlug}/${formSlug}`
+/** Canonical public CFP path, e.g. `/submit/ai-engineer/ai-summit-2026/cfp`. */
+export function formPath(
+  workspaceSlug: string,
+  eventSlug: string,
+  formSlug: string,
+): string {
+  return `/submit/${workspaceSlug}/${eventSlug}/${formSlug}`
 }
 
 /** The same link, absolute — what a copy button puts on the clipboard. */
-export function formUrl(eventSlug: string, formSlug: string): string {
-  return `${origin()}${formPath(eventSlug, formSlug)}`
+export function formUrl(
+  workspaceSlug: string,
+  eventSlug: string,
+  formSlug: string,
+): string {
+  return `${origin()}${formPath(workspaceSlug, eventSlug, formSlug)}`
 }
 
-/** Canonical public path for an event's program, e.g. `/e/ai-summit-2026`. */
-export function eventPath(eventSlug: string): string {
-  return `/e/${eventSlug}`
+/** Canonical public event path, e.g. `/e/ai-engineer/ai-summit-2026`. */
+export function eventPath(workspaceSlug: string, eventSlug: string): string {
+  return `/e/${workspaceSlug}/${eventSlug}`
 }
 
 /** Absolute public event URL. */
-export function eventUrl(eventSlug: string): string {
-  return `${origin()}${eventPath(eventSlug)}`
+export function eventUrl(workspaceSlug: string, eventSlug: string): string {
+  return `${origin()}${eventPath(workspaceSlug, eventSlug)}`
 }
 
 /** Speaker-portal magic link for a person's `portalToken` (already unique). */

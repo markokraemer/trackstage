@@ -36,6 +36,7 @@ import {
 } from "@/components/settings/slug"
 import { setCurrentEventId, useCurrentEvent } from "@/lib/current-event"
 import { errorMessage } from "@/components/settings/errors"
+import { appLink, legacyAppLink } from "@/lib/app-links"
 
 /**
  * "New event" — the multi-event entry point (sbek CFP-17). Three fields only:
@@ -78,6 +79,12 @@ export function NewEventDialog({
 
   const workspaceId =
     organizationId ?? currentWorkspace?.id ?? workspaces?.[0]?.id
+  // The public-URL preview and the post-create redirect both need the
+  // WORKSPACE's slug, not its id — look it up alongside it.
+  const workspaceSlug =
+    workspaces?.find((workspace) => workspace.id === workspaceId)?.slug ??
+    currentWorkspace?.slug ??
+    ""
 
   function handleName(value: string) {
     setName(value)
@@ -116,7 +123,7 @@ export function NewEventDialog({
       // link (docs/memory/DECISIONS.md, "Public URL scheme is hierarchical").
       if (created.slugAdjusted) {
         toast.success(`“${name.trim()}” created`, {
-          description: `That web address was taken — yours is ${publicEventUrl(created.slug)}`,
+          description: `That web address was taken — yours is ${publicEventUrl(workspaceSlug, created.slug)}`,
           duration: 10_000,
         })
       } else {
@@ -127,7 +134,11 @@ export function NewEventDialog({
       setSlug("")
       setSlugTouched(false)
       setErrors({})
-      await navigate({ to: "/app/settings" })
+      await navigate({
+        to: (workspaceSlug
+          ? appLink.settings({ workspaceSlug, eventSlug: created.slug })
+          : legacyAppLink.settings) as never,
+      })
     } catch (caught) {
       const message = errorMessage(caught, "Couldn't create that event.")
       if (message.toLowerCase().includes("slug")) {
@@ -188,7 +199,7 @@ export function NewEventDialog({
               footer={
                 slug ? (
                   <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-[11px] text-foreground">
-                    {publicEventUrl(slug)}
+                    {publicEventUrl(workspaceSlug, slug)}
                   </code>
                 ) : null
               }

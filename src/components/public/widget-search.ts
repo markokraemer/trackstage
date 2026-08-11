@@ -1,7 +1,8 @@
 /**
  * URL contract for the public widgets.
  *
- * Every public page under `/e/$slug` is also an embeddable widget: the same
+ * Every public page under `/e/$workspaceSlug/$eventSlug` is also an
+ * embeddable widget: the same
  * route renders bare (no site header, no nav) when `?embed=1`, and the display
  * options an organizer picks in `/app/embeds` are plain query params. Keeping
  * the config in the URL means an embed is a link — nothing to publish, nothing
@@ -47,7 +48,7 @@ function text(value: unknown): string | undefined {
   return trimmed === "" ? undefined : trimmed
 }
 
-/** `validateSearch` for the `/e/$slug` layout — children inherit these. */
+/** `validateSearch` for the `/e/$workspaceSlug/$eventSlug` layout — children inherit these. */
 export function validateWidgetSearch(
   search: Record<string, unknown>,
 ): WidgetSearch {

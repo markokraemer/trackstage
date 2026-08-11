@@ -571,7 +571,7 @@ const SCHEMAS = {
         nullable: true,
         description: "The workspace this event belongs to.",
       },
-      public_url: { type: "string", examples: ["/e/ai-summit-2026"] },
+      public_url: { type: "string", examples: ["/e/ai-engineer/ai-summit-2026"] },
       portal_settings: {
         type: "object",
         description: "How the speaker portal behaves for this event.",
@@ -1066,7 +1066,7 @@ const SCHEMAS = {
       notify_emails: { type: "array", items: { type: "string" } },
       public_url: {
         type: "string",
-        examples: ["/submit/ai-summit-2026/cfp"],
+        examples: ["/submit/ai-engineer/ai-summit-2026/cfp"],
         description: "The canonical link an organizer shares.",
       },
       questions: { type: "array", items: { $ref: "#/components/schemas/FormQuestion" } },

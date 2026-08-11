@@ -960,3 +960,129 @@ export const removePerson = mutation({
     return null
   },
 })
+
+// ——— The person graph, made visible (rule 26 / "is this system synced?") ———
+//
+// One event has ONE person per email: `submissions.addManual` and
+// `addSubmissionParticipant` above both look the email up before inserting, so
+// typing an address that already exists attaches THAT person — same portal,
+// same tasks, same profile — instead of making a twin. True since day one, and
+// completely invisible in the UI, which only ever offered blank name/email
+// boxes.
+//
+// This query is what the organizer-side person picker
+// (src/components/dashboard/person-picker.tsx) reads: search everyone already
+// on the event by name, email or company, with enough context per row —
+// photo, company, how many sessions they're on — to recognise the right
+// Sarah. Deliberately tiny (8 rows by default): it is a recogniser, not a
+// directory. The Speakers table is the directory.
+
+/** Rows one search returns. A picker list, not a report. */
+const SEARCH_LIMIT = 8
+/** Hard ceiling a caller may ask for. */
+const SEARCH_LIMIT_MAX = 25
+/** Participation rows read per result row when counting their sessions. */
+const SEARCH_SESSION_SCAN = 30
+
+export const searchPeople = query({
+  args: {
+    eventId: v.id("events"),
+    /** Free text: part of a name, an email, or a company. Empty ⇒ first N. */
+    q: v.string(),
+    limit: v.optional(v.number()),
+  },
+  returns: v.array(
+    v.object({
+      personId: v.id("people"),
+      firstName: v.string(),
+      lastName: v.string(),
+      /** Display name, falling back to the email when they have no name yet. */
+      name: v.string(),
+      email: v.string(),
+      company: v.union(v.string(), v.null()),
+      jobTitle: v.union(v.string(), v.null()),
+      headshotUrl: v.union(v.string(), v.null()),
+      /** Non-draft submissions they are a participant on, in this event. */
+      sessionCount: v.number(),
+      /** Added by an organizer (or CSV) rather than through a form. */
+      manuallyAdded: v.boolean(),
+    }),
+  ),
+  handler: async (ctx, args) => {
+    await requireEventAccess(ctx, args.eventId)
+
+    const needle = args.q.trim().toLowerCase()
+    const limit = Math.min(
+      Math.max(Math.floor(args.limit ?? SEARCH_LIMIT), 1),
+      SEARCH_LIMIT_MAX,
+    )
+
+    const people = await ctx.db
+      .query("people")
+      .withIndex("by_eventId", (q) => q.eq("eventId", args.eventId))
+      .take(MAX_PEOPLE)
+
+    // Rank rather than filter-and-hope: an organizer typing "sar" wants Sarah
+    // before "cesar@…", and typing a full address wants that exact person on
+    // top so Enter is always the right key.
+    const ranked: Array<{ person: Doc<"people">; rank: number; label: string }> =
+      []
+    for (const person of people) {
+      const name = `${person.firstName} ${person.lastName}`.trim()
+      const label = name || person.email
+      if (!needle) {
+        ranked.push({ person, rank: 3, label })
+        continue
+      }
+      const email = person.email.toLowerCase()
+      const company = (person.company ?? "").toLowerCase()
+      const lowerName = name.toLowerCase()
+      let rank: number | null = null
+      if (email === needle) rank = 0
+      else if (lowerName.startsWith(needle) || email.startsWith(needle)) rank = 1
+      else if (
+        lowerName.includes(needle) ||
+        email.includes(needle) ||
+        company.includes(needle)
+      ) {
+        rank = 2
+      }
+      if (rank !== null) ranked.push({ person, rank, label })
+    }
+    ranked.sort((a, b) => a.rank - b.rank || a.label.localeCompare(b.label))
+
+    const results = []
+    for (const { person, label } of ranked.slice(0, limit)) {
+      // Counted per result row (≤ `limit` indexed reads) rather than by
+      // scanning the whole event's participation table on every keystroke.
+      const rows = await ctx.db
+        .query("submissionParticipants")
+        .withIndex("by_personId", (q) => q.eq("personId", person._id))
+        .take(SEARCH_SESSION_SCAN)
+      let sessionCount = 0
+      for (const row of rows) {
+        if (row.eventId !== args.eventId) continue
+        const submission = await ctx.db.get("submissions", row.submissionId)
+        if (!submission) continue
+        if (submission.deletedAt !== undefined) continue
+        if (submission.status === "draft") continue
+        sessionCount += 1
+      }
+      results.push({
+        personId: person._id,
+        firstName: person.firstName,
+        lastName: person.lastName,
+        name: label,
+        email: person.email,
+        company: person.company ?? null,
+        jobTitle: person.jobTitle ?? null,
+        headshotUrl: person.headshotId
+          ? await ctx.storage.getUrl(person.headshotId)
+          : null,
+        sessionCount,
+        manuallyAdded: person.workflowStatus !== undefined,
+      })
+    }
+    return results
+  },
+})

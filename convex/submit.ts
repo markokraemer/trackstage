@@ -9,7 +9,11 @@ import { queueMessage } from "./comms"
 import { randomToken } from "./lib/auth"
 import { siteUrl } from "./lib/email"
 import { isFormOpen } from "./lib/formWindow"
-import { formPath, resolvePublicForm } from "./lib/publicLinks"
+import {
+  formPath,
+  resolvePublicForm,
+  workspaceSlugForEvent,
+} from "./lib/publicLinks"
 import { notifySubmissionAdmins } from "./platformEmails"
 
 // ————————————————————————————————————————————————————————————————————————
@@ -57,19 +61,20 @@ function visibleQuestions(
 }
 
 /**
- * The one public form lookup used by every mutation below. `eventSlug` is the
- * canonical address (`/submit/:eventSlug/:formSlug`); omitting it takes the
- * legacy single-segment path, which still resolves (oldest claimant wins — see
- * `resolvePublicForm`).
+ * The one public form lookup used by every mutation below. The canonical
+ * address is `/submit/:workspaceSlug/:eventSlug/:formSlug`; omitting either
+ * parent segment takes a legacy path, which still resolves (oldest claimant
+ * wins — see `resolvePublicForm`).
  */
 const publicFormArgs = {
   slug: v.string(),
   eventSlug: v.optional(v.string()),
+  workspaceSlug: v.optional(v.string()),
 }
 
 async function requirePublicForm(
   ctx: MutationCtx,
-  args: { slug: string; eventSlug?: string },
+  args: { slug: string; eventSlug?: string; workspaceSlug?: string },
 ): Promise<Doc<"forms">> {
   const resolved = await resolvePublicForm(ctx, args)
   if (resolved.status === "ok") return resolved.form
@@ -77,20 +82,24 @@ async function requirePublicForm(
 }
 
 /**
- * Resolve a legacy single-segment `/submit/:slug` link to its canonical
- * two-segment address, for a redirect.
+ * Resolve a legacy `/submit/:slug` or `/submit/:eventSlug/:formSlug` link to
+ * its canonical three-segment address, for a 307.
  *
  * Every link ever printed has to keep working (docs/memory/DECISIONS.md), and
  * several events may now share a slug, so the oldest claimant wins — see
  * `resolvePublicForm` for why that beats an "ambiguous link" page.
  */
 export const resolveLegacyLink = query({
-  args: { slug: v.string() },
+  args: { slug: v.string(), eventSlug: v.optional(v.string()) },
   handler: async (ctx, args) => {
-    const resolved = await resolvePublicForm(ctx, { slug: args.slug })
+    const resolved = await resolvePublicForm(ctx, {
+      slug: args.slug,
+      ...(args.eventSlug ? { eventSlug: args.eventSlug } : {}),
+    })
     if (resolved.status === "ok") {
       return {
         status: "found" as const,
+        workspaceSlug: resolved.workspaceSlug,
         eventSlug: resolved.event.slug,
         formSlug: resolved.form.slug,
       }
@@ -109,8 +118,13 @@ export const getForm = query({
     return {
       formId: form._id,
       // The canonical address of this exact form, so any page that resolved it
-      // the legacy way can link onward without rebuilding the URL itself.
-      canonical: { eventSlug: event.slug, formSlug: form.slug },
+      // a legacy way can 307 and link onward without rebuilding the URL.
+      canonical: {
+        workspaceSlug: resolved.workspaceSlug,
+        eventSlug: event.slug,
+        formSlug: form.slug,
+      },
+      legacy: resolved.legacy,
       event: {
         name: event.name,
         slug: event.slug,
@@ -338,7 +352,7 @@ async function sendPortalLink(
 
   const event = await ctx.db.get(form.eventId)
   if (!event) return { sent: false }
-  const continueLink = `${siteUrl()}${formPath(event.slug, form.slug)}?t=${person.portalToken}`
+  const continueLink = `${siteUrl()}${formPath(await workspaceSlugForEvent(ctx, event), event.slug, form.slug)}?t=${person.portalToken}`
 
   await queueMessage(ctx, {
     eventId: form.eventId,

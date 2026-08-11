@@ -10,7 +10,11 @@ import {
 } from "./lib/auth"
 import { record as recordAudit } from "./lib/audit"
 import { deleteEventBlobs } from "./lib/files"
-import { uniqueEventSlug } from "./lib/publicLinks"
+import {
+  eventPath,
+  resolvePublicEvent,
+  uniqueEventSlug,
+} from "./lib/publicLinks"
 
 export const list = query({
   args: {},
@@ -34,6 +38,10 @@ export const list = query({
         rows.push({
           ...event,
           organizationName: organization?.name ?? "",
+          // The workspace URL segment — every canonical app/public link is
+          // `/…/:workspaceSlug/:eventSlug/…`, and this query is where the
+          // shell, switchers and link builders resolve both halves at once.
+          organizationSlug: organization?.slug ?? "workspace",
           // The shell's event switcher shows the event's own logo on its tile
           // when branding is set (convex/files.setEventBranding), so the
           // Trackstage logomark is never repeated inside the app chrome.
@@ -45,15 +53,21 @@ export const list = query({
   },
 })
 
+/**
+ * Public event lookup for `/e/…` — canonical (`workspaceSlug` + `slug`) or
+ * legacy (`slug` only, oldest claimant). The response carries the canonical
+ * address so a legacy hit can 307 without a second round trip.
+ */
 export const getBySlug = query({
-  args: { slug: v.string() },
+  args: { slug: v.string(), workspaceSlug: v.optional(v.string()) },
   handler: async (ctx, args) => {
+    const resolved = await resolvePublicEvent(ctx, {
+      eventSlug: args.slug,
+      ...(args.workspaceSlug ? { workspaceSlug: args.workspaceSlug } : {}),
+    })
+    if (resolved.status !== "ok") return null
+    const event = resolved.event
     // Public: only safe display fields.
-    const event = await ctx.db
-      .query("events")
-      .withIndex("by_slug", (q) => q.eq("slug", args.slug))
-      .unique()
-    if (!event) return null
     const { name, slug, description, venue, timezone, startsAt, endsAt, type } =
       event
     return {
@@ -66,6 +80,11 @@ export const getBySlug = query({
       startsAt,
       endsAt,
       type,
+      // The canonical public address of this event, for legacy 307s and every
+      // onward link the public shell renders.
+      workspaceSlug: resolved.workspaceSlug,
+      canonicalPath: eventPath(resolved.workspaceSlug, slug),
+      legacy: resolved.legacy,
       // Event branding for the public header (convex/files.setEventBranding).
       logoUrl: event.logoId ? await ctx.storage.getUrl(event.logoId) : null,
       backgroundUrl: event.backgroundId
@@ -98,12 +117,12 @@ export const create = mutation({
   },
   handler: async (ctx, args) => {
     await requireMembership(ctx, args.organizationId, "admin")
-    // `/e/:eventSlug` is one segment, so event slugs stay globally unique —
-    // but a taken address must NEVER block someone from creating their event.
-    // We suffix with a short readable id and hand the real slug back so the UI
-    // can say "that address was taken — yours is …"
-    // (docs/memory/DECISIONS.md, "Public URL scheme is hierarchical").
-    const slug = await uniqueEventSlug(ctx, args.slug)
+    // Event slugs are unique PER WORKSPACE (the canonical address is
+    // `/e/:ws/:event`), and a taken address must NEVER block someone from
+    // creating their event: we suffix with a short readable id and hand the
+    // real slug back so the UI can say "that address was taken — yours is …"
+    // (docs/memory/DECISIONS.md, "URL architecture is fully hierarchical").
+    const slug = await uniqueEventSlug(ctx, args.organizationId, args.slug)
     const eventId = await ctx.db.insert("events", { ...args, slug })
     return { eventId, slug, slugAdjusted: slug !== args.slug.trim().toLowerCase() }
   },
@@ -140,12 +159,17 @@ export const update = mutation({
     // Renaming the public address must never fail on a collision either — the
     // organizer gets the nearest free address and is told what it became.
     let slug: string | undefined
-    if (args.patch.slug !== undefined) {
+    if (args.patch.slug !== undefined && event.organizationId) {
       const desired = args.patch.slug.trim().toLowerCase()
       slug =
         desired === event.slug
           ? event.slug
-          : await uniqueEventSlug(ctx, desired, args.eventId)
+          : await uniqueEventSlug(
+              ctx,
+              event.organizationId,
+              desired,
+              args.eventId,
+            )
     }
     const slugAdjusted =
       slug !== undefined && slug !== args.patch.slug!.trim().toLowerCase()

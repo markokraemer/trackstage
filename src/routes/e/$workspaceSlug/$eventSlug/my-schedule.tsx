@@ -18,19 +18,19 @@ import { useMySchedule } from "@/components/public/use-my-schedule"
  * account required: the picks live in this browser and survive reloads, and
  * the whole personal agenda exports as one `.ics`.
  */
-export const Route = createFileRoute("/e/$slug/my-schedule")({
+export const Route = createFileRoute("/e/$workspaceSlug/$eventSlug/my-schedule")({
   loader: async ({ context, params }) =>
     await context.queryClient.ensureQueryData(
-      convexQuery(api.publicData.schedule, { slug: params.slug }),
+      convexQuery(api.publicData.schedule, { slug: params.eventSlug, workspaceSlug: params.workspaceSlug }),
     ),
   component: MySchedulePage,
 })
 
 function MySchedulePage() {
-  const { slug } = Route.useParams()
+  const { workspaceSlug, eventSlug: slug } = Route.useParams()
   const search = Route.useSearch()
   const { data } = useSuspenseQuery(
-    convexQuery(api.publicData.schedule, { slug }),
+    convexQuery(api.publicData.schedule, { slug, workspaceSlug }),
   )
   const { ids, count, clear } = useMySchedule(slug)
 
@@ -88,8 +88,8 @@ function MySchedulePage() {
           description="Tap the bookmark on any session to build your own agenda. It stays in this browser — no account needed — and you can export it all to your calendar."
           action={
             <Link
-              to="/e/$slug"
-              params={{ slug }}
+              to="/e/$workspaceSlug/$eventSlug"
+              params={{ workspaceSlug, eventSlug: slug }}
               search={(prev) => prev}
               className={buttonVariants({})}
             >
@@ -98,8 +98,8 @@ function MySchedulePage() {
           }
           secondaryAction={
             <Link
-              to="/e/$slug/sessions"
-              params={{ slug }}
+              to="/e/$workspaceSlug/$eventSlug/sessions"
+              params={{ workspaceSlug, eventSlug: slug }}
               search={(prev) => prev}
               className={buttonVariants({ variant: "outline" })}
             >
@@ -119,6 +119,7 @@ function MySchedulePage() {
               </h3>
               {day.sessions.map((session) => (
                 <SessionCard
+                  workspaceSlug={workspaceSlug}
                   key={session._id}
                   event={event}
                   session={session}
@@ -136,6 +137,7 @@ function MySchedulePage() {
               </h3>
               {unscheduled.map((session) => (
                 <SessionCard
+                  workspaceSlug={workspaceSlug}
                   key={session._id}
                   event={event}
                   session={session}

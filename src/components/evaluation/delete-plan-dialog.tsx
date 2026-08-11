@@ -18,6 +18,8 @@ import {
   AlertDialogMedia,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
+import { appLink, legacyAppLink } from "@/lib/app-links"
+import { useCurrentEvent } from "@/lib/current-event"
 
 /**
  * Deleting an evaluation plan (convex/evaluationsAdmin.ts `deletePlan`). Unlike
@@ -100,6 +102,10 @@ export function DeletePlanButton({
 }) {
   const [open, setOpen] = useState(false)
   const navigate = useNavigate()
+  const { eventRef } = useCurrentEvent()
+  const evaluationLink = eventRef
+    ? appLink.evaluation(eventRef)
+    : legacyAppLink.evaluation
   return (
     <>
       <Button
@@ -117,7 +123,10 @@ export function DeletePlanButton({
         planId={planId}
         name={name}
         onDeleted={() =>
-          void navigate({ to: "/app/evaluation", search: { tab: "plans" } })
+          void navigate({
+            to: evaluationLink as never,
+            search: { tab: "plans" } as never,
+          })
         }
       />
     </>

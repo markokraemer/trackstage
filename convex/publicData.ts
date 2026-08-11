@@ -2,6 +2,7 @@ import { v } from "convex/values"
 import { internalQuery, query } from "./_generated/server"
 import type { QueryCtx } from "./_generated/server"
 import type { Doc, Id } from "./_generated/dataModel"
+import { resolvePublicEvent } from "./lib/publicLinks"
 
 // ————————————————————————————————————————————————————————————————————————
 // Public event surfaces (SPEC §4.6/§7, sbek "Public & Embeddable Widgets").
@@ -115,13 +116,20 @@ function apiEventShape(event: Doc<"events">) {
   }
 }
 
-async function eventBySlug(ctx: QueryCtx, slug: string) {
-  const trimmed = slug.trim()
-  if (!trimmed) return null
-  return await ctx.db
-    .query("events")
-    .withIndex("by_slug", (q) => q.eq("slug", trimmed))
-    .unique()
+/**
+ * Public event lookup — canonical (`workspaceSlug` given) or legacy (bare
+ * slug, oldest claimant). See convex/lib/publicLinks.ts for the scheme.
+ */
+async function eventBySlug(
+  ctx: QueryCtx,
+  slug: string,
+  workspaceSlug?: string,
+) {
+  const resolved = await resolvePublicEvent(ctx, {
+    eventSlug: slug,
+    ...(workspaceSlug ? { workspaceSlug } : {}),
+  })
+  return resolved.status === "ok" ? resolved.event : null
 }
 
 /**
@@ -135,8 +143,8 @@ async function eventBySlug(ctx: QueryCtx, slug: string) {
  */
 export const UNPUBLISHED_MESSAGE = "Schedule coming soon"
 
-async function loadProgram(ctx: QueryCtx, slug: string) {
-  const event = await eventBySlug(ctx, slug)
+async function loadProgram(ctx: QueryCtx, slug: string, workspaceSlug?: string) {
+  const event = await eventBySlug(ctx, slug, workspaceSlug)
   if (!event) return null
   // Not published yet ⇒ the event exists publicly, its program does not.
   const published = event.agendaPublishedAt !== undefined
@@ -342,9 +350,9 @@ function uniqueSorted(values: Array<string | undefined>): Array<string> {
  * sessions land in an "Unscheduled" bucket, present only when non-empty.
  */
 export const schedule = query({
-  args: { slug: v.string() },
+  args: { slug: v.string(), workspaceSlug: v.optional(v.string()) },
   handler: async (ctx, args) => {
-    const program = await loadProgram(ctx, args.slug)
+    const program = await loadProgram(ctx, args.slug, args.workspaceSlug)
     if (!program) return null
     const { event, rooms, tracks } = program
     // Draft program: the event page still renders (name, dates, venue), the
@@ -378,9 +386,9 @@ export const schedule = query({
  * SessionBoard's gallery/list widgets use), each with their session list.
  */
 export const speakers = query({
-  args: { slug: v.string() },
+  args: { slug: v.string(), workspaceSlug: v.optional(v.string()) },
   handler: async (ctx, args) => {
-    const program = await loadProgram(ctx, args.slug)
+    const program = await loadProgram(ctx, args.slug, args.workspaceSlug)
     if (!program) return null
     const { event, sessions, sessionsByPerson } = program
     const byId = new Map(sessions.map((s) => [s._id, s]))
@@ -443,9 +451,9 @@ export const speakers = query({
  * (search matches session titles AND speaker names client-side).
  */
 export const sessionsList = query({
-  args: { slug: v.string() },
+  args: { slug: v.string(), workspaceSlug: v.optional(v.string()) },
   handler: async (ctx, args) => {
-    const program = await loadProgram(ctx, args.slug)
+    const program = await loadProgram(ctx, args.slug, args.workspaceSlug)
     if (!program) return null
     const { event, tracks } = program
     const sessions = program.published ? program.sessions : []
@@ -469,9 +477,13 @@ export const sessionsList = query({
 
 /** Full public detail for one session, including speaker bios. */
 export const sessionDetail = query({
-  args: { slug: v.string(), submissionId: v.string() },
+  args: {
+    slug: v.string(),
+    workspaceSlug: v.optional(v.string()),
+    submissionId: v.string(),
+  },
   handler: async (ctx, args) => {
-    const program = await loadProgram(ctx, args.slug)
+    const program = await loadProgram(ctx, args.slug, args.workspaceSlug)
     if (!program) return null
     const blank = {
       event: program.event,
@@ -520,9 +532,13 @@ export const sessionDetail = query({
 
 /** One speaker's public itinerary: their sessions, grouped by day. */
 export const speakerItinerary = query({
-  args: { slug: v.string(), personId: v.string() },
+  args: {
+    slug: v.string(),
+    workspaceSlug: v.optional(v.string()),
+    personId: v.string(),
+  },
   handler: async (ctx, args) => {
-    const program = await loadProgram(ctx, args.slug)
+    const program = await loadProgram(ctx, args.slug, args.workspaceSlug)
     if (!program) return null
     const id = ctx.db.normalizeId("people", args.personId)
     const speaker = id
@@ -573,9 +589,14 @@ function paginate<T>(items: Array<T>, page: number, pageSize: number) {
 
 /** All submissions, paginated — GET /v1/event/{slug}/submissions (auth'd). */
 export const apiSubmissionsPage = internalQuery({
-  args: { slug: v.string(), page: v.number(), pageSize: v.number() },
+  args: {
+    slug: v.string(),
+    workspaceSlug: v.optional(v.string()),
+    page: v.number(),
+    pageSize: v.number(),
+  },
   handler: async (ctx, args) => {
-    const event = await eventBySlug(ctx, args.slug)
+    const event = await eventBySlug(ctx, args.slug, args.workspaceSlug)
     if (!event) return null
     const submissions = (
       await ctx.db
@@ -635,9 +656,9 @@ export const apiSubmissionsPage = internalQuery({
 
 /** Everything the .ics feed needs — GET /v1/event/{slug}/schedule.ics. */
 export const icsFeed = internalQuery({
-  args: { slug: v.string() },
+  args: { slug: v.string(), workspaceSlug: v.optional(v.string()) },
   handler: async (ctx, args) => {
-    const program = await loadProgram(ctx, args.slug)
+    const program = await loadProgram(ctx, args.slug, args.workspaceSlug)
     if (!program) return null
     const events = program.sessions
       .filter((s) => s.startsAt !== undefined && s.endsAt !== undefined)

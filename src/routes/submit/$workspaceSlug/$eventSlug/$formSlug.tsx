@@ -64,7 +64,7 @@ import type {
  * screenshot, or in a shared link.
  */
 
-export const Route = createFileRoute("/submit/$eventSlug/$formSlug")({
+export const Route = createFileRoute("/submit/$workspaceSlug/$eventSlug/$formSlug")({
   /** `?t=<portalToken>` — the sign-in link we emailed a returning speaker. */
   validateSearch: (search: Record<string, unknown>): { t?: string } => {
     const token = typeof search.t === "string" ? search.t.trim() : ""
@@ -75,6 +75,7 @@ export const Route = createFileRoute("/submit/$eventSlug/$formSlug")({
       convexQuery(api.submit.getForm, {
         slug: params.formSlug,
         eventSlug: params.eventSlug,
+        workspaceSlug: params.workspaceSlug,
       }),
     )
   },
@@ -98,9 +99,9 @@ interface StoredProgress {
 }
 
 function PublicSubmitPage() {
-  const { eventSlug, formSlug } = Route.useParams()
+  const { workspaceSlug, eventSlug, formSlug } = Route.useParams()
   const { data: form } = useSuspenseQuery(
-    convexQuery(api.submit.getForm, { slug: formSlug, eventSlug }),
+    convexQuery(api.submit.getForm, { slug: formSlug, eventSlug, workspaceSlug }),
   )
 
   if (!form) return <NotFoundCard slug={`${eventSlug}/${formSlug}`} />
@@ -108,6 +109,7 @@ function PublicSubmitPage() {
   return (
     <SubmitFlow
       key={`${eventSlug}/${formSlug}`}
+      workspaceSlug={workspaceSlug}
       eventSlug={eventSlug}
       slug={formSlug}
       form={form}
@@ -116,10 +118,12 @@ function PublicSubmitPage() {
 }
 
 function SubmitFlow({
+  workspaceSlug,
   eventSlug,
   slug,
   form,
 }: {
+  workspaceSlug: string
   eventSlug: string
   slug: string
   form: SubmitForm
@@ -261,8 +265,8 @@ function SubmitFlow({
     setPortalToken(search.t)
     setLinkToken(search.t)
     void navigate({
-      to: "/submit/$eventSlug/$formSlug",
-      params: { eventSlug, formSlug: slug },
+      to: "/submit/$workspaceSlug/$eventSlug/$formSlug",
+      params: { workspaceSlug, eventSlug, formSlug: slug },
       search: {},
       replace: true,
     })
@@ -271,7 +275,7 @@ function SubmitFlow({
   const linkResume = useQuery({
     ...convexQuery(
       api.submit.resume,
-      linkToken ? { slug, eventSlug, portalToken: linkToken } : "skip",
+      linkToken ? { slug, eventSlug, workspaceSlug, portalToken: linkToken } : "skip",
     ),
     retry: false,
   })
@@ -362,6 +366,7 @@ function SubmitFlow({
       const result = await identify({
         slug,
         eventSlug,
+        workspaceSlug,
         email: trimmed,
         portalToken: portalToken || undefined,
       })
@@ -428,7 +433,7 @@ function SubmitFlow({
     if (!linkSent) return
     setIdentifying(true)
     try {
-      const result = await identify({ slug, eventSlug, email: linkSent.email })
+      const result = await identify({ slug, eventSlug, workspaceSlug, email: linkSent.email })
       if (result.status === "link_sent") {
         setLinkSent({ email: result.email, sent: result.sent })
         toast[result.sent ? "success" : "message"](
@@ -573,6 +578,7 @@ function SubmitFlow({
       const result = await saveDraft({
         slug,
         eventSlug,
+        workspaceSlug,
         portalToken,
         draftId: draftId as Id<"submissions"> | undefined,
         title: resolveTitle(form.questions, answers),
@@ -620,6 +626,7 @@ function SubmitFlow({
       await submit({
         slug,
         eventSlug,
+        workspaceSlug,
         portalToken,
         draftId: draftId as Id<"submissions"> | undefined,
         title: resolveTitle(form.questions, answers),

@@ -16,30 +16,23 @@ import { SettingsLevelNav } from "@/components/shell/settings-level-nav"
 import { NewEventDialog } from "@/components/settings/new-event-dialog"
 import { formatZonedDateRange } from "@/components/settings/timezone"
 import { useCurrentEvent } from "@/lib/current-event"
+import { appLink, legacyAppLink } from "@/lib/app-links"
 
-export const Route = createFileRoute("/app/settings")({
+export const Route = createFileRoute("/app/$workspaceSlug/$eventSlug/settings")({
   component: SettingsLayout,
 })
 
 const TABS = [
-  { value: "details", label: "Event details", to: "/app/settings" },
-  {
-    value: "rooms",
-    label: "Rooms & tracks",
-    to: "/app/settings/rooms-and-tracks",
-  },
+  { value: "details", label: "Event details", section: undefined },
+  { value: "rooms", label: "Rooms & tracks", section: "rooms-and-tracks" },
   {
     value: "fields",
     label: "Fields & options",
-    to: "/app/settings/fields-and-options",
+    section: "fields-and-options",
   },
-  { value: "statuses", label: "Statuses", to: "/app/settings/statuses" },
-  {
-    value: "integrations",
-    label: "Integrations",
-    to: "/app/settings/integrations",
-  },
-  { value: "activity", label: "Activity", to: "/app/settings/activity" },
+  { value: "statuses", label: "Statuses", section: "statuses" },
+  { value: "integrations", label: "Integrations", section: "integrations" },
+  { value: "activity", label: "Activity", section: "activity" },
 ] as const
 
 /**
@@ -50,12 +43,20 @@ const TABS = [
  * sidebar changes which event these tabs are editing.
  */
 function SettingsLayout() {
-  const { event, isLoading } = useCurrentEvent()
+  const { event, eventRef, isLoading } = useCurrentEvent()
   const pathname = useRouterState({ select: (state) => state.location.pathname })
 
+  const tabHref = (section: (typeof TABS)[number]["section"]) =>
+    eventRef
+      ? section
+        ? appLink.settingsSection(eventRef, section)
+        : appLink.settings(eventRef)
+      : legacyAppLink.settings
+
   const active =
-    TABS.find((tab) => tab.to !== "/app/settings" && pathname.startsWith(tab.to))
-      ?.value ?? "details"
+    TABS.find(
+      (tab) => tab.section !== undefined && pathname.startsWith(tabHref(tab.section)),
+    )?.value ?? "details"
 
   const dates = event
     ? formatZonedDateRange(event.startsAt, event.endsAt, event.timezone)
@@ -83,8 +84,8 @@ function SettingsLayout() {
                   nativeButton={false}
                   render={
                     <Link
-                      to={tab.to}
-                      activeOptions={{ exact: tab.to === "/app/settings" }}
+                      to={tabHref(tab.section)}
+                      activeOptions={{ exact: tab.section === undefined }}
                     />
                   }
                 >
@@ -110,7 +111,11 @@ function SettingsLayout() {
             />
             These tabs change this event only. Teammates and roles live in{" "}
             <Link
-              to="/app/workspace"
+              to={
+                eventRef
+                  ? appLink.workspaceHub(eventRef.workspaceSlug)
+                  : appLink.workspaceHubFallback
+              }
               className="font-medium text-primary underline-offset-4 hover:underline"
             >
               Workspace settings
@@ -118,7 +123,7 @@ function SettingsLayout() {
             {event?.organizationName ? ` (${event.organizationName})` : ""}; your
             API keys and MCP connection live in{" "}
             <Link
-              to="/app/account"
+              to={appLink.account}
               search={{ tab: "api-mcp" }}
               className="font-medium text-primary underline-offset-4 hover:underline"
             >

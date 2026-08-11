@@ -2214,3 +2214,65 @@ Verdict analysis: no hard fails — gaps are turn-limit cannot_judge (several te
 already-built features; baseline ran against pre-mega-wave prod for early areas)
 + unobservable halves (email egress) that manual finalize recovers. Hill-climb:
 rerun weak areas at 150 turns vs new prod after release-gate reseed.
+
+## Picking an EXISTING person, not just typing a new one (2026-08-11, ~16:50)
+
+**Marko:** *"Should you not also be able to select EXISTING speakers, not only add new? I
+still don't feel like the system is fully synced."*
+
+**The system was already synced — the UI just never said so.** An event has one person per
+email: `submissions.addManual` and `speakersAdmin.addSubmissionParticipant` both look the
+address up on `by_eventId_and_email` before inserting, so typing an email that already
+exists attaches THAT person (portal token, tasks, uploads, other sessions) and only fills
+in blanks. Correct since the roster refactor above — and completely invisible, because
+every "add a speaker" surface was three empty boxes. An organizer had no way to know
+whether they were reusing Tom Beaumont or minting a second one, so it *felt* unsynced.
+
+**What landed.**
+- `convex/speakersAdmin.ts` → **`searchPeople({eventId, q, limit})`** (additive query,
+  organizer-authorized). Indexed `by_eventId` scan, matched on name/email/company and
+  RANKED — exact email, then prefix, then contains — capped at 8 by default (25 hard max).
+  Each row carries what tells two same-named people apart: photo, company, job title, and
+  a facet counting the non-draft submissions they're on (per-row `by_personId` lookup, not
+  a full participation scan per keystroke).
+- `src/components/dashboard/person-picker.tsx` → **`PersonPicker`**, shared. shadcn
+  `Popover` + `Command` (rule 17), same pattern as `TimezoneSelect`. Rows show avatar,
+  name, email · company and the facet ("2 sessions" / "Added manually"); an address nobody
+  matches gets an explicit *"…add as a new person — they get a speaker portal
+  automatically"* row.
+- **It mirrors the email, it does not own it.** The picker derives its state from the
+  parent's email value rather than from having been clicked, so pasting an address straight
+  into the plain email input — the escape hatch, untouched — makes the trigger become
+  *"Tom Beaumont · 3 sessions"* and shows *"Existing speaker — their portal and profile
+  carry over."* Both paths tell the same story, which is the whole point of the ask.
+  One helper line, swapped: the hint while nobody matches, the confirmation once someone
+  does.
+- Wired into both surfaces: every Speaker slot of the **Add-submission drawer**
+  (`#speaker-N-person`, other slots' emails excluded from the list) and the **People tab's
+  add-a-person form** (`#participant-person`, existing participants excluded). Roles,
+  required-email validation and every existing input id are unchanged.
+
+**Verified in the browser** (organizer, seeded event, screenshots in the session
+scratchpad): picking Tom Beaumont filled first/last/email and showed the confirmation;
+saving attached him to the new submission's People tab; the roster still lists exactly ONE
+Tom Beaumont, whose facet went 1 → 2 → 3 sessions across runs — the proof the picker
+attaches rather than duplicates. New-email path unchanged (typed straight in, never
+touching the picker, still attaches); co-author added through the picker in the People tab
+("They were already on this event — same person, same portal"). Zero console errors on
+every run. Test rows created during verification were removed afterwards.
+
+## 2026-08-11 · The definitive URL pass (workspace → event → … everywhere)
+Marko's second insistence ("URLs not unique enough — ONE HARD PASS") landed as the final
+hierarchical scheme: `/e/:ws/:event`, `/submit/:ws/:event/:form`, and the organizer app
+restructured to `/app/:ws/:event/{section}` with `/app/:ws/workspace` as the hub. Event
+slugs became per-workspace (new `events.by_organizationId_slug` index; global `by_slug`
+kept for legacy resolution, oldest claimant wins). Workspace slugs already existed
+(globally unique, no backfill) and gained settings-page editing with the event-slug
+collision UX + reserved-word lists. URL now outranks the localStorage pointer
+(`useCurrentEvent` reads `$workspaceSlug/$eventSlug`), switchers navigate, bare legacy
+`/app/*` paths redirect through the stored pointer (`LegacyAppRedirect`), and every
+legacy public shape 307s to canonical. All links flow through
+`convex/lib/publicLinks.ts` + `src/lib/public-links.ts` + `src/lib/app-links.ts`.
+Route files moved with git mv; sweeps over components/pages/e2e ran as three Sonnet
+subagents; verification: typecheck+lint+build, crawl + multi-tenant specs, two-tab
+browser check.

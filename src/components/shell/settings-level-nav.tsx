@@ -8,6 +8,7 @@ import {
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useSession } from "@/lib/session"
 import { useCurrentEvent } from "@/lib/current-event"
+import { appLink, legacyAppLink } from "@/lib/app-links"
 
 export type SettingsLevel = "account" | "workspace" | "event"
 
@@ -26,7 +27,7 @@ export type SettingsLevel = "account" | "workspace" | "event"
  */
 export function SettingsLevelNav({ level }: { level: SettingsLevel }) {
   const { session } = useSession()
-  const { event, workspace } = useCurrentEvent()
+  const { event, eventRef, workspace } = useCurrentEvent()
 
   const items = [
     {
@@ -34,21 +35,23 @@ export function SettingsLevelNav({ level }: { level: SettingsLevel }) {
       label: "Account",
       detail: session?.email ?? "You",
       icon: RiUserSettingsLine,
-      to: "/app/account",
+      to: appLink.account,
     },
     {
       value: "workspace" as const,
       label: "Workspace",
       detail: workspace?.name ?? "Your team",
       icon: RiBuilding2Line,
-      to: "/app/workspace",
+      to: workspace?.slug
+        ? appLink.workspaceHub(workspace.slug)
+        : appLink.workspaceHubFallback,
     },
     {
       value: "event" as const,
       label: "Event",
       detail: event?.name ?? "No event yet",
       icon: RiCalendarEventLine,
-      to: "/app/settings",
+      to: eventRef ? appLink.settings(eventRef) : legacyAppLink.settings,
     },
   ]
 
@@ -61,7 +64,7 @@ export function SettingsLevelNav({ level }: { level: SettingsLevel }) {
             value={item.value}
             nativeButton={false}
             className="gap-2"
-            render={<Link to={item.to} />}
+            render={<Link to={item.to as never} />}
           >
             <item.icon size={15} aria-hidden />
             <span className="font-medium">{item.label}</span>

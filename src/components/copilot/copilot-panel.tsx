@@ -27,6 +27,7 @@ import {
   useCopilotPanelWidth,
 } from "@/lib/copilot-store"
 import { useCurrentEvent } from "@/lib/current-event"
+import { appLink } from "@/lib/app-links"
 
 /**
  * The copilot side panel — the copilot "next to any screen" half of
@@ -141,7 +142,7 @@ export function CopilotPanel() {
               <RiAddLine size={16} aria-hidden />
             </Button>
             <Link
-              to="/app/copilot"
+              to={appLink.copilot}
               onClick={() => setOpen(false)}
               aria-label="Open full page"
               title="Open full page"

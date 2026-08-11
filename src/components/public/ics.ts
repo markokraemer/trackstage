@@ -89,8 +89,9 @@ export function buildIcs(calendarName: string, events: Array<IcsEvent>): string 
 }
 
 /**
- * The event's live calendar feed — the same public endpoint `/app/embeds`
- * hands organizers (`convex/apiHttp.ts`, `/v1/event/{slug}/schedule.ics`).
+ * The event's live calendar feed — the same public endpoint the Embeds
+ * settings screen hands organizers (`convex/apiHttp.ts`,
+ * `/v1/event/{slug}/schedule.ics`).
  * Unlike the browser-built file above this one keeps updating: a visitor who
  * subscribes sees room and time changes without doing anything.
  */

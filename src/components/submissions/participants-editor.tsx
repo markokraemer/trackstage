@@ -11,6 +11,12 @@
  * event everywhere else in the product, so adding someone who already exists
  * attaches THEM (portal, tasks, files intact) rather than making a twin. Their
  * own words are never overwritten — a name typed here only fills a blank.
+ *
+ * That rule used to be invisible — the form was three blank boxes and you had
+ * to know the address by heart. The `PersonPicker` on top of the same form is
+ * the visible half: search the people already on this event, pick one, and the
+ * email + name fill themselves. The email input stays exactly as it was, so
+ * pasting an address you already know still works with nothing else touched.
  */
 
 import * as React from "react"
@@ -33,6 +39,8 @@ import {
 } from "@/components/ui/select"
 import { EmptyState } from "@/components/shared/empty-state"
 import { initialsOf } from "@/components/dashboard/format"
+import { PersonPicker } from "@/components/dashboard/person-picker"
+import { useCurrentEvent } from "@/lib/current-event"
 
 /** The three roles a person can hold on a session (docs/SPEC.md §2.3). */
 export const PARTICIPANT_ROLE_VALUES = [
@@ -82,6 +90,10 @@ export function ParticipantsEditor({
   const removeParticipant = useConvexMutation(
     api.speakersAdmin.removeSubmissionParticipant,
   )
+
+  // The picker searches the event in context — the same event this drawer's
+  // submission belongs to, since the organizer app is single-event scoped.
+  const { event } = useCurrentEvent()
 
   const [adding, setAdding] = React.useState(false)
   const [firstName, setFirstName] = React.useState("")
@@ -240,6 +252,22 @@ export function ParticipantsEditor({
           <p className="text-sm font-medium text-foreground">
             Add someone to this submission
           </p>
+          <Field>
+            <FieldLabel htmlFor="participant-person">Person</FieldLabel>
+            <PersonPicker
+              id="participant-person"
+              eventId={event?._id}
+              email={email}
+              excludeEmails={participants.map((person) => person.email)}
+              onPick={(person) => {
+                setEmail(person.email)
+                setFirstName(person.firstName)
+                setLastName(person.lastName)
+              }}
+              onNewEmail={(value) => setEmail(value)}
+              hint="Search the people already on this event, or add a brand new email."
+            />
+          </Field>
           <div className="grid gap-3 sm:grid-cols-2">
             <Field>
               <FieldLabel htmlFor="participant-first">First name</FieldLabel>

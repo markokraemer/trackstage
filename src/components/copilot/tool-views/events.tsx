@@ -7,6 +7,7 @@ import {
 
 import { StatusPill, statusLabel } from "@/components/shared/status-pill"
 import { useCurrentEventId } from "@/lib/current-event"
+import { appLink, legacyAppLink, workspaceSlugFromPathname } from "@/lib/app-links"
 import {
   Banner,
   Chip,
@@ -27,6 +28,8 @@ import {
   num,
   str,
   strList,
+  useCopilotEventRef,
+  useSectionLink,
 } from "@/components/copilot/tool-views/shared"
 import type { ToolOutputProps } from "@/components/copilot/tool-views/registry"
 
@@ -42,6 +45,15 @@ import type { ToolOutputProps } from "@/components/copilot/tool-views/registry"
 // ——— list_workspaces —————————————————————————————————————————————————————
 
 export function WorkspacesView({ output }: ToolOutputProps) {
+  // Provider-free (see useCopilotEventRef): the canonical URL carries the
+  // workspace segment; anywhere else the bare hub path redirects.
+  const workspaceSlug =
+    typeof window === "undefined"
+      ? undefined
+      : workspaceSlugFromPathname(window.location.pathname)
+  const workspaceLink = workspaceSlug
+    ? appLink.workspaceHub(workspaceSlug)
+    : appLink.workspaceHubFallback
   const rows = asArray(output.workspaces) ?? []
   if (rows.length === 0) {
     return <EmptyRow>You don&apos;t belong to a workspace yet.</EmptyRow>
@@ -67,7 +79,7 @@ export function WorkspacesView({ output }: ToolOutputProps) {
           </Row>
         ))}
       </Rows>
-      <MoreLink target={{ to: "/app/workspace" }}>Workspace settings</MoreLink>
+      <MoreLink target={{ to: workspaceLink }}>Workspace settings</MoreLink>
     </Panel>
   )
 }
@@ -81,7 +93,7 @@ export function EventsView({ output }: ToolOutputProps) {
     return (
       <EmptyRow>
         No events yet — ask me to create one, or{" "}
-        <GoLink to="/app/events">open Events</GoLink>.
+        <GoLink to={appLink.events}>open Events</GoLink>.
       </EmptyRow>
     )
   }
@@ -133,7 +145,7 @@ export function EventsView({ output }: ToolOutputProps) {
           )
         })}
       </Rows>
-      <MoreLink target={{ to: "/app/events" }}>Manage events</MoreLink>
+      <MoreLink target={{ to: appLink.events }}>Manage events</MoreLink>
     </Panel>
   )
 }
@@ -153,8 +165,11 @@ export function EventCreatedView({ output }: ToolOutputProps) {
         ]}
       />
       <div className="flex flex-wrap items-center gap-3 pt-1">
-        <GoLink to="/app/events">Open Events</GoLink>
-        <GoLink to="/app/settings">Event settings</GoLink>
+        <GoLink to={appLink.events}>Open Events</GoLink>
+        {/* create_event doesn't hand back the workspace's slug, so the new
+            event's own settings page can't be built here — the bare legacy
+            path redirects through whichever event is in context. */}
+        <GoLink to={legacyAppLink.settings}>Event settings</GoLink>
       </div>
       <Note>
         Switch to it in the sidebar event switcher to point the rest of the app
@@ -170,6 +185,11 @@ export function EventCreatedView({ output }: ToolOutputProps) {
 const ALWAYS_SHOWN = new Set(["pending", "accepted"])
 
 export function EventStatsView({ output }: ToolOutputProps) {
+  const eventRef = useCopilotEventRef()
+  const dashboardLink = eventRef ? appLink.dashboard(eventRef) : legacyAppLink.dashboard
+  const agendaLink = useSectionLink("agenda")
+  const submissionsLink = useSectionLink("submissions")
+  const speakersLink = useSectionLink("speakers")
   const event = (output.event ?? null) as Record<string, unknown> | null
   const counts =
     (output.submissions as Record<string, unknown> | undefined) ??
@@ -295,7 +315,7 @@ export function EventStatsView({ output }: ToolOutputProps) {
               <li key={label}>{label}</li>
             ))}
           </ul>
-          <GoLink to="/app/agenda" search={{ view: "conflicts" }}>
+          <GoLink to={agendaLink} search={{ view: "conflicts" }}>
             Resolve in Agenda
           </GoLink>
         </Tile>
@@ -372,12 +392,12 @@ export function EventStatsView({ output }: ToolOutputProps) {
       ) : null}
 
       <div className="flex flex-wrap items-center gap-3 pt-0.5">
-        <GoLink to="/app">Dashboard</GoLink>
-        <GoLink to="/app/submissions">Submissions</GoLink>
-        <GoLink to="/app/agenda" search={{ view: "day" }}>
+        <GoLink to={dashboardLink}>Dashboard</GoLink>
+        <GoLink to={submissionsLink}>Submissions</GoLink>
+        <GoLink to={agendaLink} search={{ view: "day" }}>
           Agenda
         </GoLink>
-        <GoLink to="/app/speakers">Speakers</GoLink>
+        <GoLink to={speakersLink}>Speakers</GoLink>
       </div>
     </Panel>
   )
@@ -409,7 +429,10 @@ export function EventDeletedView({ output }: ToolOutputProps) {
     >
       <FieldGrid entries={entries} />
       {str(output.note) ? <Note>{str(output.note)}</Note> : null}
-      <GoLink to="/app">Dashboard</GoLink>
+      {/* The event just deleted may still be "in context" for a moment —
+          the bare legacy dashboard path re-resolves against whatever event
+          is left, never the one that's gone. */}
+      <GoLink to={legacyAppLink.dashboard}>Dashboard</GoLink>
     </Banner>
   )
 }

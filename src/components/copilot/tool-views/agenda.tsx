@@ -25,6 +25,7 @@ import {
   num,
   str,
   strList,
+  useSectionLink,
 } from "@/components/copilot/tool-views/shared"
 import type { ToolOutputProps } from "@/components/copilot/tool-views/registry"
 
@@ -42,6 +43,7 @@ function ConflictList({
 }: {
   conflicts: Array<Record<string, unknown>>
 }) {
+  const agendaLink = useSectionLink("agenda")
   if (conflicts.length === 0) return null
   return (
     <Tile tone="bad" className="space-y-2">
@@ -74,7 +76,7 @@ function ConflictList({
           )
         })}
       </ul>
-      <GoLink to="/app/agenda" search={{ view: "conflicts" }}>
+      <GoLink to={agendaLink} search={{ view: "conflicts" }}>
         Resolve in Agenda
       </GoLink>
     </Tile>
@@ -84,6 +86,7 @@ function ConflictList({
 // ——— get_agenda ——————————————————————————————————————————————————————————
 
 export function AgendaView({ output }: ToolOutputProps) {
+  const agendaLink = useSectionLink("agenda")
   const event = isRecord(output.event) ? output.event : null
   const rooms = asArray(output.rooms) ?? []
   const scheduled = asArray(output.scheduled) ?? []
@@ -211,10 +214,10 @@ export function AgendaView({ output }: ToolOutputProps) {
       ) : null}
 
       <div className="flex flex-wrap items-center gap-3">
-        <GoLink to="/app/agenda" search={{ view: "day" }}>
+        <GoLink to={agendaLink} search={{ view: "day" }}>
           Open Agenda
         </GoLink>
-        <GoLink to="/app/agenda" search={{ view: "rooms" }}>
+        <GoLink to={agendaLink} search={{ view: "rooms" }}>
           Rooms view
         </GoLink>
       </div>
@@ -225,6 +228,7 @@ export function AgendaView({ output }: ToolOutputProps) {
 // ——— schedule_session ————————————————————————————————————————————————————
 
 export function SessionScheduledView({ output }: ToolOutputProps) {
+  const agendaLink = useSectionLink("agenda")
   const conflicts = strList(output.conflicts)
   const submissionId = str(output.submissionId)
 
@@ -258,7 +262,7 @@ export function SessionScheduledView({ output }: ToolOutputProps) {
       )}
       <div className="flex flex-wrap items-center gap-3 pt-0.5">
         <GoLink
-          to="/app/agenda"
+          to={agendaLink}
           search={{ view: "day", focus: submissionId ?? undefined }}
         >
           See it on the agenda
@@ -271,6 +275,7 @@ export function SessionScheduledView({ output }: ToolOutputProps) {
 // ——— unschedule_session ——————————————————————————————————————————————————
 
 export function SessionUnscheduledView({ output }: ToolOutputProps) {
+  const agendaLink = useSectionLink("agenda")
   return (
     <Banner
       tone="neutral"
@@ -281,7 +286,7 @@ export function SessionUnscheduledView({ output }: ToolOutputProps) {
         {str(output.note) ??
           "It stays accepted — it just has no room or time any more."}
       </Note>
-      <GoLink to="/app/agenda" search={{ view: "day" }}>
+      <GoLink to={agendaLink} search={{ view: "day" }}>
         Open Agenda
       </GoLink>
     </Banner>
@@ -291,6 +296,7 @@ export function SessionUnscheduledView({ output }: ToolOutputProps) {
 // ——— auto_place_sessions —————————————————————————————————————————————————
 
 export function AutoPlaceView({ output }: ToolOutputProps) {
+  const agendaLink = useSectionLink("agenda")
   const placed = num(output.placed) ?? 0
   const remaining = num(output.couldNotFit) ?? 0
   const conflicts = num(output.conflictsAfterwards) ?? 0
@@ -326,11 +332,11 @@ export function AutoPlaceView({ output }: ToolOutputProps) {
       />
       {str(output.note) ? <Note>{str(output.note)}</Note> : null}
       <div className="flex flex-wrap items-center gap-3 pt-0.5">
-        <GoLink to="/app/agenda" search={{ view: "day" }}>
+        <GoLink to={agendaLink} search={{ view: "day" }}>
           Open Agenda
         </GoLink>
         {conflicts > 0 ? (
-          <GoLink to="/app/agenda" search={{ view: "conflicts" }}>
+          <GoLink to={agendaLink} search={{ view: "conflicts" }}>
             Review conflicts
           </GoLink>
         ) : null}

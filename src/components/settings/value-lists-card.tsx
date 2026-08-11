@@ -38,6 +38,8 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import { errorMessage } from "@/components/settings/errors"
+import { appLink, legacyAppLink } from "@/lib/app-links"
+import { useCurrentEvent } from "@/lib/current-event"
 
 export type ValueList = FunctionReturnType<typeof api.valueLists.list>[number]
 export type ValueListOption = ValueList["options"][number]
@@ -65,6 +67,8 @@ export function ValueListCard({
   list: ValueList
 }) {
   const Icon = LIST_ICONS[list.key]
+  const { eventRef } = useCurrentEvent()
+  const formsLink = eventRef ? appLink.forms(eventRef) : legacyAppLink.forms
 
   const addOption = useMutation({
     mutationFn: useConvexMutation(api.valueLists.add),
@@ -168,7 +172,7 @@ export function ValueListCard({
             No form on this event asks for a {list.singular}. Add that question
             in the{" "}
             <Link
-              to="/app/forms"
+              to={formsLink as never}
               className="font-medium text-primary underline-offset-4 hover:underline"
             >
               form builder

@@ -27,6 +27,8 @@ const MAX_SPEAKERS = 8
  */
 export interface SessionCardProps extends React.ComponentProps<typeof Card> {
   event: Pick<PublicEvent, "slug" | "timezone">
+  /** The event's workspace — `/e/:workspaceSlug/:eventSlug` needs both segments. */
+  workspaceSlug: string
   session: PublicSession
   /** Display options coming from the embed URL (`?hideDescriptions=1`…). */
   options?: WidgetSearch
@@ -36,6 +38,7 @@ export interface SessionCardProps extends React.ComponentProps<typeof Card> {
 
 export function SessionCard({
   event,
+  workspaceSlug,
   session,
   options,
   showDate = true,
@@ -80,7 +83,7 @@ export function SessionCard({
             variant="ghost"
             what="Link to this session"
             label="Copy link to this session"
-            url={`/e/${event.slug}/sessions/${session._id}`}
+            url={`/e/${workspaceSlug}/${event.slug}/sessions/${session._id}`}
           />
           <SaveSessionButton eventSlug={event.slug} sessionId={session._id} />
         </div>
@@ -88,8 +91,8 @@ export function SessionCard({
 
       <h3 className="font-heading text-base leading-snug font-semibold text-balance text-foreground sm:text-lg">
         <Link
-          to="/e/$slug/sessions/$sessionId"
-          params={{ slug: event.slug, sessionId: session._id }}
+          to="/e/$workspaceSlug/$eventSlug/sessions/$sessionId"
+          params={{ workspaceSlug, eventSlug: event.slug, sessionId: session._id }}
           search={(prev) => prev}
           className="rounded-sm outline-none hover:text-primary hover:underline focus-visible:ring-3 focus-visible:ring-ring/50"
         >
@@ -134,8 +137,8 @@ export function SessionCard({
                 />
                 <div className="min-w-0 text-sm leading-tight">
                   <Link
-                    to="/e/$slug/itinerary/$personId"
-                    params={{ slug: event.slug, personId: speaker._id }}
+                    to="/e/$workspaceSlug/$eventSlug/itinerary/$personId"
+                    params={{ workspaceSlug, eventSlug: event.slug, personId: speaker._id }}
                     search={(prev) => prev}
                     className="rounded-sm font-medium text-foreground outline-none hover:text-primary hover:underline focus-visible:ring-3 focus-visible:ring-ring/50"
                   >

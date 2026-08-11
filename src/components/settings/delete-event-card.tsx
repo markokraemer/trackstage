@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/card"
 import { DeleteEventDialog } from "@/components/settings/delete-event-dialog"
 import type { EventSummary } from "@/lib/current-event"
+import { appLink } from "@/lib/app-links"
 
 /**
  * Danger zone for the event in context. The confirmation (type the event
@@ -49,7 +50,7 @@ export function DeleteEventCard({ event }: { event: EventSummary }) {
         open={open}
         onOpenChange={setOpen}
         onDeleted={() => {
-          void navigate({ to: "/app/events" })
+          void navigate({ to: appLink.events })
         }}
       />
     </Card>

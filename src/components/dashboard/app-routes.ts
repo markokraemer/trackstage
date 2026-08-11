@@ -1,40 +1,18 @@
 /**
- * Organizer destinations linked to from the dashboard and the speakers roster.
+ * DEPRECATED indirection. Organizer destinations now live in
+ * `src/lib/app-links.ts` (`appLink.*` / `legacyAppLink.*`) — every event-scoped
+ * screen needs an `EventRef` (`{workspaceSlug, eventSlug}`), which this module
+ * has no way to carry as a static string map, so `APP_ROUTES` and its
+ * `linkSearch` cast are gone. Callers that used to import `APP_ROUTES` now
+ * import `appLink`/`legacyAppLink` directly and resolve the event in context
+ * with `useCurrentEvent().eventRef` (docs/memory/DECISIONS.md, "URL
+ * architecture is fully hierarchical").
  *
- * They are declared as plain strings on purpose: the router's generated path
- * union only contains routes that exist on disk, and these screens are built
- * in sibling slices. Widening to `string` keeps the dashboard compiling
- * independently while the links stay ordinary `<Link>`s (docs/SPEC.md §1 —
- * every flow must work through real links for the browser-agent judge).
+ * The two re-exports below still earn their keep: neither link needs an
+ * `EventRef` (a portal token and a form's own `workspaceSlug`/`eventSlug` are
+ * already globally unambiguous), so the dashboard keeps reaching for them
+ * here instead of importing `src/lib/public-links.ts` directly.
  */
-export const APP_ROUTES: Record<
-  | "dashboard"
-  | "submissions"
-  | "forms"
-  | "agenda"
-  | "speakers"
-  | "communications"
-  | "settings",
-  string
-> = {
-  dashboard: "/app",
-  submissions: "/app/submissions",
-  forms: "/app/forms",
-  agenda: "/app/agenda",
-  speakers: "/app/speakers",
-  communications: "/app/communications",
-  settings: "/app/settings",
-}
-
-/**
- * Search params for one of the destinations above. The router types the
- * `search` prop against the routes that exist on disk, so params for a sibling
- * slice's route are passed through this helper; the router still builds a real
- * `?key=value` href at runtime.
- */
-export function linkSearch(search: Record<string, string>) {
-  return search as never
-}
 
 /**
  * Public links. Both are re-exports of `src/lib/public-links.ts`, which owns
@@ -42,6 +20,7 @@ export function linkSearch(search: Record<string, string>) {
  *
  * Portal tokens are already globally unique by construction, so `/portal/t/…`
  * needs no hierarchy. Form links do: a form slug is only unique inside its
- * event (docs/memory/DECISIONS.md, "Public URL scheme is hierarchical").
+ * event, so `formLinkFor` takes the workspace slug too
+ * (docs/memory/DECISIONS.md, "Public URL scheme is hierarchical").
  */
 export { portalUrl as portalLinkFor, formUrl as formLinkFor } from "@/lib/public-links"

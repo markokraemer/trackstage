@@ -22,11 +22,12 @@ import { CopyLinkButton } from "@/components/public/copy-link-button"
  * This is the drill-down target from the gallery, the directory, every session
  * card and every session detail page, which is why it is a real URL.
  */
-export const Route = createFileRoute("/e/$slug/itinerary/$personId")({
+export const Route = createFileRoute("/e/$workspaceSlug/$eventSlug/itinerary/$personId")({
   loader: async ({ context, params }) =>
     await context.queryClient.ensureQueryData(
       convexQuery(api.publicData.speakerItinerary, {
-        slug: params.slug,
+        slug: params.eventSlug,
+        workspaceSlug: params.workspaceSlug,
         personId: params.personId,
       }),
     ),
@@ -51,10 +52,10 @@ export const Route = createFileRoute("/e/$slug/itinerary/$personId")({
 })
 
 function ItineraryPage() {
-  const { slug, personId } = Route.useParams()
+  const { workspaceSlug, eventSlug: slug, personId } = Route.useParams()
   const search = Route.useSearch()
   const { data } = useSuspenseQuery(
-    convexQuery(api.publicData.speakerItinerary, { slug, personId }),
+    convexQuery(api.publicData.speakerItinerary, { slug, workspaceSlug, personId }),
   )
 
   if (!data) return null
@@ -62,8 +63,8 @@ function ItineraryPage() {
 
   const backLink = (
     <Link
-      to="/e/$slug/speakers"
-      params={{ slug }}
+      to="/e/$workspaceSlug/$eventSlug/speakers"
+      params={{ workspaceSlug, eventSlug: slug }}
       search={(prev) => prev}
       className={buttonVariants({
         variant: "ghost",
@@ -86,8 +87,8 @@ function ItineraryPage() {
           description="They may not be part of the published program. Browse everyone who is speaking instead."
           action={
             <Link
-              to="/e/$slug/speakers"
-              params={{ slug }}
+              to="/e/$workspaceSlug/$eventSlug/speakers"
+              params={{ workspaceSlug, eventSlug: slug }}
               search={(prev) => prev}
               className={buttonVariants({ variant: "outline" })}
             >
@@ -170,8 +171,8 @@ function ItineraryPage() {
           }
           action={
             <Link
-              to="/e/$slug"
-              params={{ slug }}
+              to="/e/$workspaceSlug/$eventSlug"
+              params={{ workspaceSlug, eventSlug: slug }}
               search={(prev) => prev}
               className={buttonVariants({ variant: "outline" })}
             >
@@ -191,6 +192,7 @@ function ItineraryPage() {
               </h3>
               {day.sessions.map((session) => (
                 <SessionCard
+                  workspaceSlug={workspaceSlug}
                   key={session._id}
                   event={event}
                   session={session}
@@ -208,6 +210,7 @@ function ItineraryPage() {
               </h3>
               {unscheduled.map((session) => (
                 <SessionCard
+                  workspaceSlug={workspaceSlug}
                   key={session._id}
                   event={event}
                   session={session}

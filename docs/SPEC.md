@@ -49,9 +49,9 @@ Header: event name + dates · "View public page" outline button · avatar menu.
 `Collect & Review` nesting into the 7 items above — this is the master.md guidance.)
 
 ### Public (de-chromed, centered card on `#F8FAFC`)
-- `/submit/:eventSlug/:formSlug` — 5-step tracker: Welcome → Account → Submission →
+- `/submit/:workspaceSlug/:eventSlug/:formSlug` — 5-step tracker: Welcome → Account → Submission →
   Participants → Review. Form slugs are unique **per event**, so `cfp` is available to
-  every organizer. The legacy one-segment `/submit/:formSlug` still resolves and redirects
+  every organizer. The legacy `/submit/:eventSlug/:formSlug` and one-segment `/submit/:formSlug` shapes still resolve and redirect
   here (docs/memory/DECISIONS.md, "Public URL scheme is hierarchical").
 - `/e/:eventSlug` — public schedule + speaker gallery (also serves as "embed" surface; struck
   as a requirement, keep minimal).

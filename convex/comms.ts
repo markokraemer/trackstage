@@ -40,7 +40,7 @@ import {
 } from "./lib/email"
 import type {TemplateDefinition} from "./lib/email";
 import { buildIcs } from "./lib/ics"
-import { formPath } from "./lib/publicLinks"
+import { formPath, workspaceSlugForEvent } from "./lib/publicLinks"
 
 // ——— Constants ————————————————————————————————————————————————————————————
 
@@ -323,7 +323,7 @@ export async function queueDeadlineReminders(
   let skipped = 0
   for (const form of due) {
     const closeDate = formatCloseDate(form.closeAt as number, event.timezone)
-    const formLink = `${siteUrl()}${formPath(event.slug, form.slug)}`
+    const formLink = `${siteUrl()}${formPath(await workspaceSlugForEvent(ctx, event), event.slug, form.slug)}`
     // A person with two drafts on the same form is still one human.
     const seen = new Set<Id<"people">>()
     for (const draft of drafts) {

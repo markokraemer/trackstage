@@ -24,6 +24,8 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { StatusPill } from "@/components/shared/status-pill"
 import { ProgressMeter } from "@/components/evaluation/progress-meter"
+import { appLink, legacyAppLink } from "@/lib/app-links"
+import { useCurrentEvent } from "@/lib/current-event"
 
 /** Row shape returned by `api.evaluationsAdmin.listPlans`. */
 export interface PlanCardData {
@@ -55,6 +57,10 @@ export function PlanCard({
   /** Opens the delete-plan confirmation for this plan. */
   onDelete?: (plan: PlanCardData) => void
 }) {
+  const { eventRef } = useCurrentEvent()
+  const planLink = eventRef
+    ? appLink.evaluationPlan(eventRef, plan._id)
+    : legacyAppLink.evaluation
   const due = plan.dueAt === undefined ? undefined : new Date(plan.dueAt)
   const overdue =
     due !== undefined && plan.status === "open" && isBefore(due, new Date())
@@ -65,8 +71,7 @@ export function PlanCard({
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
             <Link
-              to="/app/evaluation/$planId"
-              params={{ planId: plan._id }}
+              to={planLink as never}
               className="font-heading truncate text-base font-semibold text-foreground outline-none hover:text-primary focus-visible:ring-3 focus-visible:ring-ring/50"
             >
               {plan.name}
@@ -152,8 +157,7 @@ export function PlanCard({
             : "No due date"}
         </p>
         <Link
-          to="/app/evaluation/$planId"
-          params={{ planId: plan._id }}
+          to={planLink as never}
           className={buttonVariants({ variant: "ghost", size: "sm" })}
         >
           Open plan

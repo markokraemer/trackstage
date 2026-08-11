@@ -244,7 +244,8 @@ async function resolveSubject(
         : await ctx.db
             .query("forms")
             .withIndex("by_slug", (q) => q.eq("slug", ref))
-            .unique()
+            // Slugs are namespaced now — oldest claimant wins a bare ref.
+            .first()
       return form ? { id: form._id, eventId: form.eventId } : null
     }
     if (table === "submissions" || table === "people" || table === "tasks") {
@@ -309,7 +310,8 @@ async function lookupEvent(
     const bySlug = await ctx.db
       .query("events")
       .withIndex("by_slug", (q) => q.eq("slug", ref))
-      .unique()
+      // Slugs are namespaced now — oldest claimant wins a bare ref.
+      .first()
     return bySlug?._id ?? null
   } catch {
     return null
@@ -357,7 +359,8 @@ async function resolveEventRef(
     const bySlug = await ctx.db
       .query("events")
       .withIndex("by_slug", (q) => q.eq("slug", ref))
-      .unique()
+      // Slugs are namespaced now — oldest claimant wins a bare ref.
+      .first()
     if (!bySlug) return null
     await eventAccessFor(ctx, userId, bySlug._id)
     return bySlug._id

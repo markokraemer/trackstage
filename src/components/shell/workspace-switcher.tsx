@@ -9,8 +9,9 @@ import {
   DropdownMenuLabel,
 } from "@/components/ui/dropdown-menu"
 import { roleLabel } from "@/components/workspace/roles"
-import { useCurrentEvent } from "@/lib/current-event"
+import { eventRefOf, useCurrentEvent } from "@/lib/current-event"
 import type { WorkspaceOption } from "@/lib/current-event"
+import { appLink } from "@/lib/app-links"
 
 /**
  * Workspace switching — level ONE of the shell's two-level picker
@@ -30,11 +31,12 @@ export function workspaceMetaLabel(role: string, eventCount: number): string {
 }
 
 /**
- * Switching workspace is instant: the context store moves both pointers in a
- * single write, so the sidebar, the nav and every event-scoped query re-render
- * on the same tick with no intermediate state. The only navigation is the
- * honest one — a workspace with no events has nothing to show, so it lands on
- * its hub, where "create an event" is the obvious next step.
+ * Switching workspace NAVIGATES: the URL carries the working context
+ * (docs/memory/DECISIONS.md, "URL architecture is fully hierarchical"), so
+ * the target workspace's first reachable event lands at its canonical
+ * dashboard, and an empty workspace lands on its hub — where "create an
+ * event" is the obvious next step. The store write travels along so global
+ * pages and bare legacy paths agree on the context.
  */
 export function useWorkspaceSwitcher() {
   const { workspaceOptions, workspace, selectWorkspace } = useCurrentEvent()
@@ -43,13 +45,43 @@ export function useWorkspaceSwitcher() {
 
   const switchTo = useCallback(
     (workspaceId: string) => {
+      const option = workspaceOptions.find((row) => row.id === workspaceId)
       const hasEvents = selectWorkspace(workspaceId)
-      if (!hasEvents) void navigate({ to: "/app/workspace" })
+      if (!option) return
+      const first = option.events.at(0)
+      void navigate({
+        href:
+          hasEvents && first
+            ? appLink.dashboard(eventRefOf(first))
+            : appLink.workspaceHub(option.slug),
+      })
+    },
+    [workspaceOptions, selectWorkspace, navigate],
+  )
+
+  /**
+   * Land on a JUST-created workspace's hub. It is always empty and, crucially,
+   * not yet in `workspaceOptions` (the `workspaces.mine` query hasn't refetched
+   * when the create mutation resolves) — so `switchTo` above would find no
+   * option and bail. The create result carries the slug, which is all the hub
+   * link needs; the context write still moves the pointer.
+   */
+  const switchToCreated = useCallback(
+    (created: { organizationId: string; slug: string }) => {
+      selectWorkspace(created.organizationId)
+      void navigate({ href: appLink.workspaceHub(created.slug) })
     },
     [selectWorkspace, navigate],
   )
 
-  return { workspaceOptions, workspace, switchTo, creating, setCreating }
+  return {
+    workspaceOptions,
+    workspace,
+    switchTo,
+    switchToCreated,
+    creating,
+    setCreating,
+  }
 }
 
 /**

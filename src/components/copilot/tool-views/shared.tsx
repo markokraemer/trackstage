@@ -12,6 +12,8 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
 import { CodeBlock } from "@/components/ai-elements/code-block"
 import { CopyButton } from "@/components/interactions"
+import { appLink, legacyAppLink, eventRefFromPathname } from "@/lib/app-links"
+import type { EventRef, EventSection } from "@/lib/app-links"
 
 /**
  * The vocabulary every copilot tool view is built from.
@@ -624,6 +626,33 @@ export type AppLinkTarget = {
   to: string
   search?: Record<string, string | undefined>
   params?: Record<string, string>
+}
+
+/**
+ * The event the copilot is scoped to (`copilot-app-context.tsx` feeds it the
+ * same one), for every tool view that needs to build an organizer-app link.
+ * `undefined` only while the app is still resolving — callers fall back to
+ * `legacyAppLink.*`, the bare path that redirects through the stored event
+ * pointer (`src/lib/current-event.ts`).
+ */
+export function useCopilotEventRef(): EventRef | undefined {
+  // Deliberately provider-free: tool views render inside the copilot panel
+  // and in unit tests, neither of which guarantees a QueryClient. On a
+  // canonical `/app/:ws/:event/…` address the URL itself names the event; on
+  // a legacy or global page this returns undefined and the links fall back to
+  // the bare legacy paths, which redirect through the stored pointer.
+  if (typeof window === "undefined") return undefined
+  return eventRefFromPathname(window.location.pathname)
+}
+
+/**
+ * Resolve one event-scoped destination against the event in context —
+ * `appLink.section(ref, "agenda")` when resolvable, else the legacy bare path
+ * for that same section.
+ */
+export function useSectionLink(section: EventSection): string {
+  const eventRef = useCopilotEventRef()
+  return eventRef ? appLink.section(eventRef, section) : legacyAppLink[section]
 }
 
 /**

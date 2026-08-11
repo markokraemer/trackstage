@@ -38,11 +38,12 @@ import {
  * abstract scrolls. On a phone the panel simply comes first, because "when and
  * where" is the question a visitor standing in a corridor is asking.
  */
-export const Route = createFileRoute("/e/$slug/sessions/$sessionId")({
+export const Route = createFileRoute("/e/$workspaceSlug/$eventSlug/sessions/$sessionId")({
   loader: async ({ context, params }) =>
     await context.queryClient.ensureQueryData(
       convexQuery(api.publicData.sessionDetail, {
-        slug: params.slug,
+        slug: params.eventSlug,
+        workspaceSlug: params.workspaceSlug,
         submissionId: params.sessionId,
       }),
     ),
@@ -66,10 +67,11 @@ export const Route = createFileRoute("/e/$slug/sessions/$sessionId")({
 })
 
 function SessionDetailPage() {
-  const { slug, sessionId } = Route.useParams()
+  const { workspaceSlug, eventSlug: slug, sessionId } = Route.useParams()
   const { data } = useSuspenseQuery(
     convexQuery(api.publicData.sessionDetail, {
       slug,
+      workspaceSlug,
       submissionId: sessionId,
     }),
   )
@@ -79,8 +81,8 @@ function SessionDetailPage() {
 
   const backLink = (
     <Link
-      to="/e/$slug/sessions"
-      params={{ slug }}
+      to="/e/$workspaceSlug/$eventSlug/sessions"
+      params={{ workspaceSlug, eventSlug: slug }}
       search={(prev) => prev}
       className={buttonVariants({
         variant: "ghost",
@@ -103,8 +105,8 @@ function SessionDetailPage() {
           description="It may have been withdrawn or isn't part of the published program. Browse the full schedule to find what you're looking for."
           action={
             <Link
-              to="/e/$slug"
-              params={{ slug }}
+              to="/e/$workspaceSlug/$eventSlug"
+              params={{ workspaceSlug, eventSlug: slug }}
               search={(prev) => prev}
               className={buttonVariants({ variant: "outline" })}
             >
@@ -285,8 +287,8 @@ function SessionDetailPage() {
                     <div className="min-w-0 flex-1">
                       <p className="font-heading text-base font-semibold text-foreground">
                         <Link
-                          to="/e/$slug/itinerary/$personId"
-                          params={{ slug, personId: speaker._id }}
+                          to="/e/$workspaceSlug/$eventSlug/itinerary/$personId"
+                          params={{ workspaceSlug, eventSlug: slug, personId: speaker._id }}
                           search={(prev) => prev}
                           className="rounded-sm outline-none hover:text-primary hover:underline focus-visible:ring-3 focus-visible:ring-ring/50"
                         >
@@ -314,8 +316,8 @@ function SessionDetailPage() {
 
                   <div className="flex flex-wrap items-center gap-2">
                     <Link
-                      to="/e/$slug/itinerary/$personId"
-                      params={{ slug, personId: speaker._id }}
+                      to="/e/$workspaceSlug/$eventSlug/itinerary/$personId"
+                      params={{ workspaceSlug, eventSlug: slug, personId: speaker._id }}
                       search={(prev) => prev}
                       className={buttonVariants({
                         variant: "outline",
@@ -352,8 +354,8 @@ function SessionDetailPage() {
             >
               {data.prev ? (
                 <Link
-                  to="/e/$slug/sessions/$sessionId"
-                  params={{ slug, sessionId: data.prev._id }}
+                  to="/e/$workspaceSlug/$eventSlug/sessions/$sessionId"
+                  params={{ workspaceSlug, eventSlug: slug, sessionId: data.prev._id }}
                   search={(prev) => prev}
                   className={buttonVariants({
                     variant: "ghost",
@@ -369,8 +371,8 @@ function SessionDetailPage() {
               )}
               {data.next ? (
                 <Link
-                  to="/e/$slug/sessions/$sessionId"
-                  params={{ slug, sessionId: data.next._id }}
+                  to="/e/$workspaceSlug/$eventSlug/sessions/$sessionId"
+                  params={{ workspaceSlug, eventSlug: slug, sessionId: data.next._id }}
                   search={(prev) => prev}
                   className={buttonVariants({
                     variant: "ghost",

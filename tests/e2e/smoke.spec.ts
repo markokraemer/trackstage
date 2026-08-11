@@ -116,9 +116,13 @@ test.describe("organizer shell", () => {
     await expect(result).toBeVisible({ timeout: 10_000 })
     await expect(page.locator("[cmdk-group-heading]").first()).toBeVisible()
 
-    // Enter navigates to the session on the agenda.
+    // Enter navigates to the session on the agenda. The agenda link is built
+    // from the event in context, so it lands on the canonical
+    // `/app/:workspaceSlug/:eventSlug/agenda` address, not the bare legacy one.
     await page.keyboard.press("Enter")
-    await expect(page).toHaveURL(/\/app\/agenda\?.*focus=/, { timeout: 10_000 })
+    await expect(page).toHaveURL(/\/app\/(?:[^/]+\/[^/]+\/)?agenda\?.*focus=/, {
+      timeout: 10_000,
+    })
 
     watcher.assertClean("global search")
   })
@@ -139,7 +143,9 @@ test.describe("organizer shell", () => {
     await expect(speaker).toBeVisible({ timeout: 10_000 })
     await speaker.click()
 
-    await expect(page).toHaveURL(/\/app\/speakers/, { timeout: 10_000 })
+    await expect(page).toHaveURL(/\/app\/(?:[^/]+\/[^/]+\/)?speakers/, {
+      timeout: 10_000,
+    })
     await expect(
       page.getByRole("dialog").filter({ hasText: /Ava Nakamura/i }).first(),
     ).toBeVisible({ timeout: 10_000 })

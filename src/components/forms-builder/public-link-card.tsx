@@ -23,10 +23,13 @@ import { friendlyError, publicFormPath, publicFormUrl } from "./model"
  */
 export function PublicLinkCard({
   formId,
+  workspaceSlug,
   eventSlug,
   slug,
 }: {
   formId: string
+  /** The event's workspace — a form's public link is `/submit/:ws/:event/:form`. */
+  workspaceSlug: string
   eventSlug: string
   slug: string
 }) {
@@ -63,7 +66,7 @@ export function PublicLinkCard({
       setEditing(false)
       setError(null)
       toast.success("Public link updated", {
-        description: publicFormUrl(eventSlug, result.slug),
+        description: publicFormUrl(workspaceSlug, eventSlug, result.slug),
       })
     } catch (caught) {
       setError(friendlyError(caught, "We couldn't change that address."))
@@ -94,7 +97,7 @@ export function PublicLinkCard({
           >
             <div className="flex flex-wrap items-center gap-2">
               <span className="font-mono text-sm text-muted-foreground">
-                /submit/{eventSlug}/
+                /submit/{workspaceSlug}/{eventSlug}/
               </span>
               <Input
                 id={`${id}-slug`}
@@ -145,12 +148,16 @@ export function PublicLinkCard({
       ) : (
         <>
           <p className="mt-3 rounded-lg border border-dashed border-border bg-muted/50 px-3 py-2 font-mono text-sm break-all text-foreground">
-            {publicFormPath(eventSlug, slug)}
+            {publicFormPath(workspaceSlug, eventSlug, slug)}
           </p>
           <div className="mt-3 flex flex-wrap gap-2">
-            <CopyLinkButton eventSlug={eventSlug} slug={slug} />
+            <CopyLinkButton
+              workspaceSlug={workspaceSlug}
+              eventSlug={eventSlug}
+              slug={slug}
+            />
             <a
-              href={publicFormPath(eventSlug, slug)}
+              href={publicFormPath(workspaceSlug, eventSlug, slug)}
               target="_blank"
               rel="noreferrer"
               className={buttonVariants({ variant: "outline" })}

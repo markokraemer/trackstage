@@ -113,7 +113,12 @@ test.describe("form builder", () => {
       ).toBeVisible({ timeout: 30_000 })
       await fillStable(page.getByLabel(/form name/i).first(), originalName)
       await page.getByRole("button", { name: /^create form$/i }).first().click()
-      await expect(page).toHaveURL(/\/app\/forms\/[a-z0-9]+/i, { timeout: 45_000 })
+      // Lands on the canonical `/app/:workspaceSlug/:eventSlug/forms/:id`
+      // editor address, not the bare legacy `/app/forms/:id` shape.
+      await expect(page).toHaveURL(
+        /\/app\/(?:[^/]+\/[^/]+\/)?forms\/[a-z0-9]+/i,
+        { timeout: 45_000 },
+      )
       // Resolve the id from the backend rather than by slicing the URL: the
       // editor adds query state (`?step=…`) and can gain trailing segments, and
       // a mis-sliced id fails later as an opaque ArgumentValidationError.

@@ -26,6 +26,8 @@ import type { WidgetSearch } from "@/components/public/widget-search"
 
 interface SharedProps {
   event: Pick<PublicEvent, "slug" | "timezone">
+  /** The event's workspace — `/e/:workspaceSlug/:eventSlug` needs both segments. */
+  workspaceSlug: string
   speakers: Array<PublicSpeakerRow>
   options?: WidgetSearch
 }
@@ -48,7 +50,12 @@ function RoleLine({ roleLabels }: { roleLabels: Array<string> }) {
   )
 }
 
-export function SpeakerGallery({ event, speakers, options }: SharedProps) {
+export function SpeakerGallery({
+  event,
+  workspaceSlug,
+  speakers,
+  options,
+}: SharedProps) {
   return (
     <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
       {speakers.map((speaker) => (
@@ -58,8 +65,8 @@ export function SpeakerGallery({ event, speakers, options }: SharedProps) {
             className="h-full gap-0 p-0 transition-shadow hover:ring-[color-mix(in_oklch,var(--primary)_28%,var(--border))]"
           >
             <Link
-              to="/e/$slug/itinerary/$personId"
-              params={{ slug: event.slug, personId: speaker._id }}
+              to="/e/$workspaceSlug/$eventSlug/itinerary/$personId"
+              params={{ workspaceSlug, eventSlug: event.slug, personId: speaker._id }}
               search={(prev) => prev}
               className="flex h-full w-full flex-col items-center gap-1 rounded-xl p-4 text-center outline-none transition-colors hover:bg-accent/40 focus-visible:ring-3 focus-visible:ring-ring/50"
             >
@@ -95,7 +102,12 @@ export function SpeakerGallery({ event, speakers, options }: SharedProps) {
   )
 }
 
-export function SpeakerDirectory({ event, speakers, options }: SharedProps) {
+export function SpeakerDirectory({
+  event,
+  workspaceSlug,
+  speakers,
+  options,
+}: SharedProps) {
   return (
     <ul className="flex flex-col gap-3">
       {speakers.map((speaker) => (
@@ -111,8 +123,8 @@ export function SpeakerDirectory({ event, speakers, options }: SharedProps) {
               <div className="min-w-0 flex-1">
                 <h3 className="font-heading text-base font-semibold text-foreground">
                   <Link
-                    to="/e/$slug/itinerary/$personId"
-                    params={{ slug: event.slug, personId: speaker._id }}
+                    to="/e/$workspaceSlug/$eventSlug/itinerary/$personId"
+                    params={{ workspaceSlug, eventSlug: event.slug, personId: speaker._id }}
                     search={(prev) => prev}
                     className="rounded-sm outline-none hover:text-primary hover:underline focus-visible:ring-3 focus-visible:ring-ring/50"
                   >
@@ -132,8 +144,8 @@ export function SpeakerDirectory({ event, speakers, options }: SharedProps) {
                 <RoleLine roleLabels={speaker.roleLabels} />
               </div>
               <Link
-                to="/e/$slug/itinerary/$personId"
-                params={{ slug: event.slug, personId: speaker._id }}
+                to="/e/$workspaceSlug/$eventSlug/itinerary/$personId"
+                params={{ workspaceSlug, eventSlug: event.slug, personId: speaker._id }}
                 search={(prev) => prev}
                 aria-label={`${speaker.name}'s schedule`}
                 className="hidden shrink-0 items-center gap-0.5 rounded-md text-sm text-muted-foreground outline-none hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50 sm:inline-flex"
@@ -156,9 +168,10 @@ export function SpeakerDirectory({ event, speakers, options }: SharedProps) {
                   {speaker.sessions.map((session) => (
                     <li key={session._id} className="text-sm">
                       <Link
-                        to="/e/$slug/sessions/$sessionId"
+                        to="/e/$workspaceSlug/$eventSlug/sessions/$sessionId"
                         params={{
-                          slug: event.slug,
+                          workspaceSlug,
+                          eventSlug: event.slug,
                           sessionId: session._id,
                         }}
                         search={(prev) => prev}

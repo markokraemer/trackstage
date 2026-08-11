@@ -10,12 +10,15 @@ import { publicFormUrl } from "./model"
  * the editor header (docs/SPEC.md §2.8 — never hide this behind a menu).
  */
 export function CopyLinkButton({
+  workspaceSlug,
   eventSlug,
   slug,
   variant = "outline",
   size = "default",
   label = "Copy public link",
 }: {
+  /** The event's workspace — form slugs are only unique inside one event. */
+  workspaceSlug: string
   /** The event the form belongs to — form slugs are only unique inside one. */
   eventSlug: string
   slug: string
@@ -26,7 +29,7 @@ export function CopyLinkButton({
   const [copied, setCopied] = useState(false)
 
   async function copy() {
-    const url = publicFormUrl(eventSlug, slug)
+    const url = publicFormUrl(workspaceSlug, eventSlug, slug)
     try {
       await navigator.clipboard.writeText(url)
       setCopied(true)

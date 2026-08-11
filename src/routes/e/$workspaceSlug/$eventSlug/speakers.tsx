@@ -27,19 +27,19 @@ import type { PublicSpeakerRow } from "@/components/public/types"
  * by name, with two presentations chosen by `?view=`: a photo grid (default)
  * or a directory that lists each speaker's sessions inline.
  */
-export const Route = createFileRoute("/e/$slug/speakers")({
+export const Route = createFileRoute("/e/$workspaceSlug/$eventSlug/speakers")({
   loader: async ({ context, params }) =>
     await context.queryClient.ensureQueryData(
-      convexQuery(api.publicData.speakers, { slug: params.slug }),
+      convexQuery(api.publicData.speakers, { slug: params.eventSlug, workspaceSlug: params.workspaceSlug }),
     ),
   component: SpeakersPage,
 })
 
 function SpeakersPage() {
-  const { slug } = Route.useParams()
+  const { workspaceSlug, eventSlug: slug } = Route.useParams()
   const search = Route.useSearch()
   const { data } = useSuspenseQuery(
-    convexQuery(api.publicData.speakers, { slug }),
+    convexQuery(api.publicData.speakers, { slug, workspaceSlug }),
   )
   const setParams = useSearchParamWriter()
   const [query, setQuery] = useUrlText(search.q, (value) =>
@@ -84,12 +84,14 @@ function SpeakersPage() {
         actions={
           <div className={segmentedGroup}>
             <ViewPill
+              workspaceSlug={workspaceSlug}
               slug={slug}
               view="gallery"
               active={view === "gallery"}
               label="Gallery"
             />
             <ViewPill
+              workspaceSlug={workspaceSlug}
               slug={slug}
               view="list"
               active={view === "list"}
@@ -115,8 +117,8 @@ function SpeakersPage() {
           description="Speakers appear here once the organizer accepts their session. Check back soon — or browse the schedule in the meantime."
           action={
             <Link
-              to="/e/$slug"
-              params={{ slug }}
+              to="/e/$workspaceSlug/$eventSlug"
+              params={{ workspaceSlug, eventSlug: slug }}
               search={(prev) => prev}
               className={buttonVariants({ variant: "outline" })}
             >
@@ -146,20 +148,32 @@ function SpeakersPage() {
           }
         />
       ) : view === "gallery" ? (
-        <SpeakerGallery event={event} speakers={speakers} options={search} />
+        <SpeakerGallery
+          workspaceSlug={workspaceSlug}
+          event={event}
+          speakers={speakers}
+          options={search}
+        />
       ) : (
-        <SpeakerDirectory event={event} speakers={speakers} options={search} />
+        <SpeakerDirectory
+          workspaceSlug={workspaceSlug}
+          event={event}
+          speakers={speakers}
+          options={search}
+        />
       )}
     </div>
   )
 }
 
 function ViewPill({
+  workspaceSlug,
   slug,
   view,
   active,
   label,
 }: {
+  workspaceSlug: string
   slug: string
   view: "gallery" | "list"
   active: boolean
@@ -168,8 +182,8 @@ function ViewPill({
   const Icon = view === "gallery" ? RiGalleryLine : RiListUnordered
   return (
     <Link
-      to="/e/$slug/speakers"
-      params={{ slug }}
+      to="/e/$workspaceSlug/$eventSlug/speakers"
+      params={{ workspaceSlug, eventSlug: slug }}
       search={(prev) => ({ ...prev, view })}
       data-active={active ? "true" : undefined}
       className={segmentedItem(active)}

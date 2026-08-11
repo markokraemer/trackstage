@@ -2,6 +2,7 @@ import { expect, test } from "@playwright/test"
 import type { Page } from "@playwright/test"
 import { api } from "../../../convex/_generated/api.js"
 import {
+  DEMO_WORKSPACE_SLUG,
   MAIN_EVENT_SLUG,
   advance,
   anonConvexClient,
@@ -616,18 +617,21 @@ test.describe("public CFP submission", () => {
   })
 
   /**
-   * The old one-segment address. Slugs became per-event
-   * (docs/memory/DECISIONS.md, "Public URL scheme is hierarchical"), and every
-   * link an organizer ever printed still has to land on the same form.
+   * The old one-segment address. Slugs became per-event, then per-workspace
+   * (docs/memory/DECISIONS.md, "URL architecture is fully hierarchical"), and
+   * every link an organizer ever printed still has to land on the same form —
+   * now at its fully-canonical `/submit/:workspaceSlug/:eventSlug/:formSlug`
+   * address, which is what the address bar shows once the 307 lands.
    */
   test("the legacy /submit/:slug link still reaches the same form", async ({
     page,
   }) => {
     const watcher = armed(page)
     await gotoStable(page, "/submit/cfp", "networkidle")
-    await expect(page).toHaveURL(new RegExp(`${submitPath("cfp")}$`), {
-      timeout: 30_000,
-    })
+    await expect(page).toHaveURL(
+      new RegExp(`/submit/${DEMO_WORKSPACE_SLUG}/${submitPath("cfp").replace(/^\/submit\//, "")}$`),
+      { timeout: 30_000 },
+    )
     await expect(
       page.getByText(/submissions will be accepted until/i).first(),
     ).toBeVisible({ timeout: 30_000 })

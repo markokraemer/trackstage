@@ -182,3 +182,60 @@ Format: date · decision · why · status.
   URL immediately, so the credential never lives in an address bar. Rejected: hashing
   emails, silent "we found nothing" responses (they leak by timing and break resume),
   and a password wall (the one thing swyx's video was angriest about). ✅
+- **2026-08-11 · URL architecture is fully hierarchical: workspace → event → form —
+  everywhere, including the organizer app** (Marko, second insistence: "all the
+  URLs/links are not unique enough — ONE HARD PASS"). SUPERSEDES today's "Public URL
+  scheme is hierarchical" pass, which only namespaced form slugs under events and left
+  event slugs global and the organizer app context-implicit. The final scheme:
+  `/e/:workspaceSlug/:eventSlug` (public program) ·
+  `/submit/:workspaceSlug/:eventSlug/:formSlug` (CFP) ·
+  `/app/:workspaceSlug/:eventSlug/{dashboard|submissions|forms|evaluation|agenda|
+  speakers|files|communications|embeds|settings/*}` (organizer app) ·
+  `/app/:workspaceSlug/workspace` (workspace hub) · `/app/account`, `/app/copilot`,
+  `/app/events` (personal/global) · `/portal/t/:token`, `/review/:token` (unchanged —
+  already globally unique by construction). Slug namespaces nest the same way:
+  WORKSPACE slugs are globally unique (they were already on `organizations`, so no
+  backfill was needed — every row has one); EVENT slugs became unique PER WORKSPACE
+  (`events.by_organizationId_slug` is the new uniqueness index; `by_slug` survives for
+  legacy resolution and may never be read with `.unique()` again); FORM slugs stay
+  unique per event. Reserved-word lists keep a workspace from slugging itself
+  "submissions" (which the static legacy route would shadow) and an event from
+  slugging itself "workspace" (the hub's static segment) —
+  `RESERVED_WORKSPACE_SLUGS` / `RESERVED_EVENT_SLUGS` in `convex/lib/publicLinks.ts`.
+  Workspace slugs get the exact collision UX event slugs got: auto-suffix
+  (`kortix-con-x3f2` style), never refuse, report what was claimed; editable in
+  Workspace settings with `slugifyInput` while typing. ✅
+- **2026-08-11 · The URL is the source of truth for organizer context; localStorage is
+  only the legacy-path fallback** — the old model kept "which event am I on?" in a
+  shared localStorage pointer, so two tabs on two events silently fought over one
+  pointer (the exact conflict Marko wanted dead). Now `useCurrentEvent` resolves the
+  `$workspaceSlug/$eventSlug` params against the access-filtered `events.list` and the
+  URL OUTRANKS both stored pointers; when the URL names an event that doesn't resolve
+  there is NO fallback — the layout renders "Event not found.", which by construction
+  is identical for a nonexistent event and one the member is scoped out of (rule 23).
+  The event switcher and workspace switcher now NAVIGATE (same section under the new
+  event via `eventScopedPath`; detail pages fall back to their section index because a
+  formId belongs to the event it was opened on; switching from a global page like
+  /app/account only moves the pointer). The stored pointer survives for exactly two
+  jobs: resolving BARE legacy paths (`/app/submissions` → the event you last touched,
+  via `LegacyAppRedirect`) and giving global pages a context. Visiting a canonical
+  address is what now writes the pointer (the event layout syncs it). ✅
+- **2026-08-11 · Legacy compatibility is sacred: every previously-valid shape resolves
+  and 307s to canonical, oldest claimant first** — `/e/:eventSlug` (+ any subpage
+  depth, via a splat under the canonical tree), `/submit/:eventSlug/:formSlug`,
+  `/submit/:formSlug`, and every bare `/app/*` path all keep working: seeded demo
+  printouts, sbek's stored notes, every email ever sent, every bookmark. Resolution is
+  canonical-first (workspace lookup wins), then the first segment is re-read as a
+  legacy event slug; ambiguity is settled creation-ordered (the row that held the
+  address when the link was printed keeps it forever — same reasoning as the form-slug
+  pass: an "ambiguous link" page would let a newcomer kill someone else's printed
+  link). Same rule serves API/MCP refs by bare slug (`oldestEventBySlug`); ids remain
+  the unambiguous handle. One accepted trade-off: renaming a workspace slug moves that
+  workspace's canonical URLs with no redirect from the old workspace slug (only
+  event/form-level legacy shapes are guaranteed) — the settings card says so before
+  you do it. Every link producer flows through the extended single modules:
+  `convex/lib/publicLinks.ts` (server: emails' {{formLink}}, MCP publicUrl, REST
+  public_url, seed output) and `src/lib/public-links.ts` + `src/lib/app-links.ts`
+  (client: nav, switchers, drawers, copy buttons). Nothing may hand-build `/app/`,
+  `/e/` or `/submit/` strings. Prod rollout: `convex deploy` adds the index; no data
+  backfill exists because organization slugs already existed on every row. ✅

@@ -30,7 +30,10 @@ import {
   num,
   str,
   strList,
+  useCopilotEventRef,
+  useSectionLink,
 } from "@/components/copilot/tool-views/shared"
+import { appLink, legacyAppLink } from "@/lib/app-links"
 import type { ToolOutputProps } from "@/components/copilot/tool-views/registry"
 
 /**
@@ -70,6 +73,14 @@ function FormCard({
   draftCount?: number | null
   children?: ReactNode
 }) {
+  const eventRef = useCopilotEventRef()
+  const formsLink = useSectionLink("forms")
+  const editLink = formId
+    ? eventRef
+      ? appLink.form(eventRef, formId)
+      : // The legacy deep path is a real route that redirects with the id kept.
+        `${legacyAppLink.forms}/${formId}`
+    : formsLink
   return (
     <Tile className="space-y-2.5">
       <div className="flex min-w-0 items-start gap-2">
@@ -104,11 +115,9 @@ function FormCard({
 
       <div className="flex flex-wrap items-center gap-3">
         {formId ? (
-          <GoLink to="/app/forms/$formId" params={{ formId }}>
-            Edit in form builder
-          </GoLink>
+          <GoLink to={editLink}>Edit in form builder</GoLink>
         ) : (
-          <GoLink to="/app/forms">Open Forms</GoLink>
+          <GoLink to={formsLink}>Open Forms</GoLink>
         )}
         {publicUrl ? (
           <OpenLink href={publicUrl}>View public form</OpenLink>
@@ -123,6 +132,7 @@ function FormCard({
 // ——— list_forms ——————————————————————————————————————————————————————————
 
 export function FormsListView({ output }: ToolOutputProps) {
+  const formsLink = useSectionLink("forms")
   const rows = asArray(output.forms) ?? []
   if (rows.length === 0) {
     return (
@@ -149,7 +159,7 @@ export function FormsListView({ output }: ToolOutputProps) {
           />
         ))}
       </div>
-      <MoreLink target={{ to: "/app/forms" }}>All forms</MoreLink>
+      <MoreLink target={{ to: formsLink }}>All forms</MoreLink>
     </Panel>
   )
 }
@@ -273,10 +283,17 @@ export function FormDetailView({ output }: ToolOutputProps) {
 // ——— create_form —————————————————————————————————————————————————————————
 
 export function FormCreatedView({ input, output }: ToolOutputProps) {
+  const eventRef = useCopilotEventRef()
+  const formsLink = useSectionLink("forms")
   const requested = isRecord(input) ? input : {}
   const name = str(output.name) ?? str(requested.name) ?? "New CFP form"
   const url = str(output.publicUrl)
   const formId = str(output.formId)
+  const editLink = formId
+    ? eventRef
+      ? appLink.form(eventRef, formId)
+      : `${legacyAppLink.forms}/${formId}`
+    : null
 
   return (
     <Banner icon={<RiFileList3Line size={16} />} title={`${name} is live`}>
@@ -285,13 +302,9 @@ export function FormCreatedView({ input, output }: ToolOutputProps) {
       </p>
       {url ? <LinkRow url={url} openLabel="Open" /> : null}
       <div className="flex flex-wrap items-center gap-3 pt-0.5">
-        {formId ? (
-          <GoLink to="/app/forms/$formId" params={{ formId }}>
-            Edit in form builder
-          </GoLink>
-        ) : null}
+        {editLink ? <GoLink to={editLink}>Edit in form builder</GoLink> : null}
         {url ? <OpenLink href={url}>View public form</OpenLink> : null}
-        <GoLink to="/app/forms">All forms</GoLink>
+        <GoLink to={formsLink}>All forms</GoLink>
       </div>
       <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
         <StatusPill status={str(output.status) ?? "open"} size="sm" />
@@ -430,6 +443,7 @@ export function PublicFormLinkView({ output }: ToolOutputProps) {
  * organizer cares about — the public URL is now dead.
  */
 export function FormDeletedView({ output }: ToolOutputProps) {
+  const formsLink = useSectionLink("forms")
   return (
     <Banner
       tone="bad"
@@ -440,7 +454,7 @@ export function FormDeletedView({ output }: ToolOutputProps) {
         entries={[{ label: "Slug", value: str(output.slug) ?? "—" }]}
       />
       {str(output.note) ? <Note>{str(output.note)}</Note> : null}
-      <GoLink to="/app/forms">Open Forms</GoLink>
+      <GoLink to={formsLink}>Open Forms</GoLink>
     </Banner>
   )
 }
