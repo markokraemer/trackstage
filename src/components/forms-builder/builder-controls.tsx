@@ -158,7 +158,7 @@ export function InfoNote({
   return (
     <div
       className={cn(
-        "flex items-start gap-2.5 rounded-lg border border-primary/15 bg-accent px-3.5 py-3 text-sm text-foreground/80",
+        "flex items-start gap-2.5 rounded-lg border border-border bg-accent px-3.5 py-3 text-sm text-foreground/80",
         className,
       )}
     >

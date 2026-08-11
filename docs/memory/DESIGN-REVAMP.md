@@ -1,12 +1,20 @@
 # Attio revamp — the mechanical change list
 
-Status: **specified, not executed.** This file is the executable spec for the
-design revamp that RULES.md #22 approved. Nothing in it has been applied to the
-app; the current design language is still shipping untouched. The live preview
-of the target is `/design-system` → Explorations → **F · Attio** — its palette
-object (`src/components/brand/explorations.tsx`, `ATTIO_PALETTE`) carries the
-exact same hexes as the tables below, so the preview and the rollout cannot
-drift.
+Status: **EXECUTED, 2026-08-11**, with one amendment from Marko at rollout time:
+
+> **The accent stays Sessionboard blue `#2F5CE0`.** Every neutral in the tables
+> below shipped exactly as written — that is the part that fixes "too blue" —
+> but the teal/petrol accent was reviewed and rejected: *"i don't like the teal
+> color or the turquoise… i even preferred the blue that we had before."* So
+> `--primary` is unchanged, and `--ring` / `--sidebar-primary` / `--chart-1`
+> now reference it rather than repeating it. The status-green nudge to true
+> green in §1 was a prerequisite for a teal accent only, and is **not** applied;
+> green stays emerald.
+
+Shipped as candidate **E — "De-blued"**: this file's neutral system with the
+original accent. `/design-system` → Explorations is now the record of that
+decision rather than a chooser; the candidate palettes and the four type
+pairings (and their six webfonts) were removed from the page.
 
 Source of truth for the target: the real Attio screens pulled via the Mobbin
 MCP, plus Marko's caveat — **take Attio's system, not Attio's density.**
@@ -65,7 +73,7 @@ it did not miss one.
 | --------------------- | --------- | ---------------------- | ------------------------------------------- |
 | `--border`            | `#E5E7EB` | `#EAEAEC`              | The hairline.                               |
 | `--input`             | `#DFE3EA` | `#E1E1E4`              |                                             |
-| `--primary`           | `#2F5CE0` | `#2F5CE0` or `#0F766E` | **The accent decision. One line.**          |
+| `--primary`           | `#2F5CE0` | `#2F5CE0` **(kept)**   | Decided: the blue stays. Teal/petrol rejected. |
 | `--primary-foreground`| `#FFFFFF` | `#FFFFFF`              | keep — both candidates pass on white text.  |
 | `--ring`              | `#2F5CE0` | = `--primary`          | Must follow the accent, not be re-typed.    |
 | `--sidebar-primary`   | `#2F5CE0` | = `--primary`          | Same.                                       |
@@ -80,7 +88,7 @@ neutral so blue can mean "clickable".
 
 | Token                | Now       | After     | Note                                    |
 | -------------------- | --------- | --------- | --------------------------------------- |
-| `--status-green-dot` | `#059669` | `#16A34A` | Slightly brighter — it is now 8px alone. |
+| `--status-green-dot` | `#059669` | `#059669` | **Not applied** — the nudge existed only to clear a teal accent. |
 | `--status-amber-dot` | `#D97706` | `#D97706` | keep                                     |
 | `--status-red-dot`   | `#DC2626` | `#DC2626` | keep                                     |
 | `--status-gray-bg`   | `#F1F5F9` | `#F4F4F5` |                                          |

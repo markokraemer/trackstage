@@ -1,17 +1,25 @@
-import { useRef } from "react"
+import { useRef, useState } from "react"
 import { toast } from "sonner"
 import { RiImageAddLine, RiUpload2Line } from "@remixicon/react"
 
+import { cn } from "@/lib/utils"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
+import { Progress } from "@/components/ui/progress"
+import { IMAGE_ACCEPT, formatBytes, validateFile } from "@/lib/files"
 import { usePortalUpload } from "./use-portal-upload"
 
 const MAX_BYTES = 5 * 1024 * 1024
 
 /**
- * Headshot upload (docs/SPEC.md §4.7). One click, a live preview, and the
- * guidelines stated in plain English — organizers chase missing headshots more
- * than anything else, so this has to be the easiest thing on the page.
+ * Headshot upload (docs/SPEC.md §4.7). One click — or one drag onto the photo
+ * itself — a live preview, real upload progress, and the guidelines stated in
+ * plain English. Organizers chase missing headshots more than anything else,
+ * so this has to be the easiest thing on the page.
+ *
+ * Replacing the photo deletes the file it replaces (convex/lib/files.ts →
+ * `replaceHeadshot`): a profile picture is a current value, not a version
+ * history, and five rejected selfies should not live in storage forever.
  */
 export function HeadshotUploader({
   headshotUrl,
@@ -21,44 +29,76 @@ export function HeadshotUploader({
   initials: string
 }) {
   const inputRef = useRef<HTMLInputElement>(null)
-  const { upload, isUploading } = usePortalUpload()
+  const { upload } = usePortalUpload()
+  const [percent, setPercent] = useState<number | null>(null)
+  const [isOver, setIsOver] = useState(false)
+  const isUploading = percent !== null
 
-  async function handleFile(event: React.ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0]
-    event.target.value = ""
-    if (!file) return
-    if (!file.type.startsWith("image/")) {
-      toast.error("Please choose an image file (JPG or PNG).")
+  async function handleFile(file: File | undefined) {
+    if (!file || isUploading) return
+    const problem = validateFile(file, { maxBytes: MAX_BYTES, imagesOnly: true })
+    if (problem) {
+      toast.error(problem)
       return
     }
-    if (file.size > MAX_BYTES) {
-      toast.error("That image is larger than 5 MB. Please choose a smaller one.")
-      return
-    }
+    setPercent(0)
     try {
-      await upload(file, { isHeadshot: true })
+      await upload(file, { isHeadshot: true }, setPercent)
       toast.success("Your headshot was updated.")
     } catch (error) {
       toast.error(
         error instanceof Error ? error.message : "We couldn't upload that photo.",
       )
+    } finally {
+      setPercent(null)
     }
   }
 
   return (
     <div className="flex flex-col items-center gap-3 text-center">
-      <Avatar className="size-24 ring-1 ring-border">
-        {headshotUrl ? <AvatarImage src={headshotUrl} alt="Your headshot" /> : null}
-        <AvatarFallback className="text-xl">{initials}</AvatarFallback>
-      </Avatar>
+      <div
+        onDragOver={(event) => {
+          event.preventDefault()
+          setIsOver(true)
+        }}
+        onDragLeave={() => setIsOver(false)}
+        onDrop={(event) => {
+          event.preventDefault()
+          setIsOver(false)
+          void handleFile(event.dataTransfer.files?.[0])
+        }}
+        className={cn(
+          "rounded-full p-1 transition-colors",
+          isOver && "bg-primary/10 ring-2 ring-primary",
+        )}
+      >
+        <Avatar className="size-24 ring-1 ring-border">
+          {headshotUrl ? (
+            <AvatarImage src={headshotUrl} alt="Your headshot" />
+          ) : null}
+          <AvatarFallback className="text-xl">{initials}</AvatarFallback>
+        </Avatar>
+      </div>
+
+      {isUploading ? (
+        <Progress
+          value={percent}
+          aria-label="Uploading your headshot"
+          className="w-40 gap-1"
+        />
+      ) : null}
 
       <input
         ref={inputRef}
         type="file"
-        accept="image/png,image/jpeg,image/webp"
+        accept={IMAGE_ACCEPT}
         className="sr-only"
         aria-label="Choose a headshot image"
-        onChange={handleFile}
+        onChange={(event) => {
+          const file = event.target.files?.[0]
+          event.target.value = ""
+          void handleFile(file)
+        }}
       />
       <Button
         variant="outline"
@@ -72,14 +112,15 @@ export function HeadshotUploader({
           <RiImageAddLine aria-hidden />
         )}
         {isUploading
-          ? "Uploading…"
+          ? `Uploading… ${percent}%`
           : headshotUrl
             ? "Replace photo"
             : "Upload a photo"}
       </Button>
       <p className="text-xs leading-relaxed text-muted-foreground">
-        A square photo, at least 800 × 800 pixels. JPG or PNG, up to 5 MB. It
-        appears on the public programme next to your talk.
+        A square photo, at least 800 × 800 pixels. JPG or PNG, up to{" "}
+        {formatBytes(MAX_BYTES)}. Drag one straight onto the circle if you like.
+        It appears on the public programme next to your talk.
       </p>
     </div>
   )

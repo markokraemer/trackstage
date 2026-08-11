@@ -24,43 +24,39 @@ import {
   FieldGroup,
   FieldLabel,
 } from "@/components/ui/field"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { DatePicker } from "@/components/dashboard/date-picker"
 import { initialsOf } from "@/components/dashboard/format"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 
-/** Task kinds accepted by `convex/tasksAdmin.ts`, in organizer language. */
+/**
+ * What the speaker is being asked to do. The choice is not decoration — it
+ * decides how the task can be completed, so each option says so out loud
+ * rather than making an organizer guess what "kind" means.
+ *
+ * `form` used to be offered here and is deliberately gone: nothing in the
+ * product ever read it, so it was a promise the portal couldn't keep.
+ */
 export const TASK_KINDS = [
   {
     value: "upload",
     label: "Upload a file",
-    help: "Slides, a headshot file, a signed form — anything you need back.",
+    help: "They attach a file in their portal and you review it — slides, a signed form, a rider.",
   },
   {
     value: "profile",
-    label: "Complete their profile",
-    help: "Bio, job title, company and links on their speaker profile.",
+    label: "Update their profile",
+    help: "Ticks itself off as soon as their bio is filled in.",
   },
   {
     value: "headshot",
     label: "Upload a headshot",
-    help: "A photo for the public agenda and speaker gallery.",
-  },
-  {
-    value: "form",
-    label: "Fill out a form",
-    help: "Point them at a form to complete in their portal.",
+    help: "Ticks itself off the moment they upload a photo.",
   },
   {
     value: "confirm",
     label: "Confirm something",
-    help: "A simple yes — attendance, travel, an agreement.",
+    help: "One click to acknowledge — travel, AV needs, an agreement.",
   },
 ] as const
 
@@ -130,7 +126,6 @@ export function AssignTaskDialog({
 
   const titleMissing = title.trim().length === 0
   const noSpeakers = selected.length === 0
-  const kindHelp = TASK_KINDS.find((option) => option.value === kind)?.help
 
   function toggle(personId: string, checked: boolean) {
     setSelected((current) =>
@@ -176,7 +171,9 @@ export function AssignTaskDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg">
+      {/* Bounded height with the fields scrolling inside: the header and the
+          Assign button stay put however many speakers the event has. */}
+      <DialogContent className="max-h-[85svh] grid-rows-[auto_minmax(0,1fr)] gap-4 sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>Assign a task</DialogTitle>
           <DialogDescription>
@@ -185,8 +182,11 @@ export function AssignTaskDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={(event) => void submit(event)}>
-          <FieldGroup className="gap-5">
+        <form
+          onSubmit={(event) => void submit(event)}
+          className="flex min-h-0 flex-col gap-4"
+        >
+          <FieldGroup className="-mr-2 min-h-0 flex-1 gap-5 overflow-y-auto pr-2">
             <Field>
               <FieldLabel htmlFor="task-title">
                 Task title<span className="required-asterisk">*</span>
@@ -206,25 +206,45 @@ export function AssignTaskDialog({
             </Field>
 
             <Field>
-              <FieldLabel htmlFor="task-kind">Task type</FieldLabel>
-              <Select
+              <FieldLabel>What should the speaker do?</FieldLabel>
+              <FieldDescription>
+                This decides how the task gets ticked off.
+              </FieldDescription>
+              <RadioGroup
                 value={kind}
                 onValueChange={(value) => setKind(String(value))}
+                aria-label="What should the speaker do?"
+                className="gap-2"
               >
-                <SelectTrigger id="task-kind" className="w-full">
-                  <SelectValue placeholder="Choose a task type" />
-                </SelectTrigger>
-                <SelectContent>
-                  {TASK_KINDS.map((option) => (
-                    <SelectItem key={option.value} value={option.value}>
-                      {option.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {kindHelp ? (
-                <FieldDescription>{kindHelp}</FieldDescription>
-              ) : null}
+                {TASK_KINDS.map((option) => {
+                  const checked = kind === option.value
+                  return (
+                    <label
+                      key={option.value}
+                      className={cn(
+                        "flex cursor-pointer items-start gap-3 rounded-lg border px-3 py-2.5 transition-colors",
+                        checked
+                          ? "border-primary bg-accent/60 ring-1 ring-primary"
+                          : "border-border hover:bg-accent/40",
+                      )}
+                    >
+                      <RadioGroupItem
+                        value={option.value}
+                        className="mt-0.5"
+                        aria-label={option.label}
+                      />
+                      <span className="min-w-0">
+                        <span className="block text-sm font-medium text-foreground">
+                          {option.label}
+                        </span>
+                        <span className="block text-xs leading-relaxed text-muted-foreground">
+                          {option.help}
+                        </span>
+                      </span>
+                    </label>
+                  )
+                })}
+              </RadioGroup>
             </Field>
 
             <Field>
@@ -349,7 +369,7 @@ export function AssignTaskDialog({
             </Field>
           </FieldGroup>
 
-          <DialogFooter className="mt-6">
+          <DialogFooter className="shrink-0">
             <Button
               type="button"
               variant="outline"

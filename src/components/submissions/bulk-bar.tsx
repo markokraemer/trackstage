@@ -36,7 +36,7 @@ export function BulkBar({
       role="region"
       aria-label="Bulk actions"
       className={cn(
-        "flex flex-wrap items-center gap-2 rounded-lg border border-primary/20 bg-accent px-3 py-2",
+        "flex flex-wrap items-center gap-2 rounded-lg border border-border bg-accent px-3 py-2",
         className
       )}
     >

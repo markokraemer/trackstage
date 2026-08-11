@@ -55,7 +55,7 @@ function SessionDetailPage() {
   const { event, session } = data
 
   const backLink = (
-    <Button
+    <Button nativeButton={false}
       variant="ghost"
       size="sm"
       className="-ml-2 w-fit text-muted-foreground"
@@ -81,7 +81,7 @@ function SessionDetailPage() {
           title="This session isn't available"
           description="It may have been withdrawn or isn't part of the published program. Browse the full schedule to find what you're looking for."
           action={
-            <Button
+            <Button nativeButton={false}
               variant="outline"
               render={
                 <Link to="/e/$slug" params={{ slug }} search={(prev) => prev} />
@@ -198,7 +198,7 @@ function SessionDetailPage() {
               ) : null}
 
               <div className="flex flex-wrap items-center gap-2">
-                <Button
+                <Button nativeButton={false}
                   variant="outline"
                   size="sm"
                   render={
@@ -252,7 +252,7 @@ function SessionDetailPage() {
             className="flex flex-wrap items-center justify-between gap-2"
           >
             {data.prev ? (
-              <Button
+              <Button nativeButton={false}
                 variant="ghost"
                 size="sm"
                 className="max-w-[45%] text-muted-foreground"
@@ -271,7 +271,7 @@ function SessionDetailPage() {
               <span />
             )}
             {data.next ? (
-              <Button
+              <Button nativeButton={false}
                 variant="ghost"
                 size="sm"
                 className="ml-auto max-w-[45%] text-muted-foreground"
@@ -296,7 +296,7 @@ function SessionDetailPage() {
 
 function SpeakerLink({ href, label }: { href: string; label: string }) {
   return (
-    <Button
+    <Button nativeButton={false}
       variant="ghost"
       size="sm"
       className="text-muted-foreground"

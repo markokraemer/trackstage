@@ -27,3 +27,23 @@ Format: date · decision · why · status.
   cover the job-to-be-done; conflicts get a dedicated view. ✅
 - **2026-08-11 · Email via Resend if key present, else preview-in-outbox** — demo-safe,
   judges can verify content without delivery; .ics always downloadable. ✅
+- **2026-08-11 · Design language E "De-blued" SHIPPED; Petrol/teal accent REJECTED** —
+  the revamp landed the Attio-derived NEUTRAL system (chrome chroma ≤ 2, near-white
+  #FAFAFA sidebar, hairline borders, no tinted banners, status as dot + label, 40px
+  controls / 44px rows) but kept `--primary: #2F5CE0`. Marko reviewed Petrol `#0F6E70`
+  — which won every measured axis in design-references.md §10 — and preferred the
+  original blue: "i don't like the teal color or the turquoise… i even preferred the
+  blue that we had before." The complaint was never the hue, it was how much chrome
+  was wearing it. Colour policy (Stripe's, verbatim in /design-system): the accent is
+  permitted in FIVE places — primary button, links, focus ring, active nav item,
+  `--chart-1`. Consequences: the emerald→true-green status nudge is NOT needed (it was
+  a petrol-adjacency fix) and is reverted; brand assets stay blue. ✅
+- **2026-08-11 · /design-system Explorations is a record, not a chooser** — the six
+  candidate palettes, four type pairings and their six variable webfonts were deleted
+  from the page. Six fonts loading behind the app's longest page, plus ~45 self-driving
+  interaction demos running `setInterval`/rAF forever off-screen, is what Marko saw as
+  "flickering". Demos now mount only within 600px of the viewport. ✅
+- **2026-08-11 · Toasts are pinned to `theme="light"`** — Sonner was following the OS
+  theme on a light-mode-only app, so its dark rule painted the description line
+  `hsl(0 0% 91%)` — near-white on white. Every toast colour now comes from a token. ✅
+

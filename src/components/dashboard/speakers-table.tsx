@@ -1,5 +1,6 @@
 import { useState } from "react"
 import {
+  RiEdit2Line,
   RiExternalLinkLine,
   RiListCheck3,
   RiLinkM,
@@ -32,6 +33,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { MissingPills } from "@/components/dashboard/missing-pills"
+import { SpeakerWorkflowSelect } from "@/components/dashboard/speaker-workflow-select"
 import { dueLabel, initialsOf } from "@/components/dashboard/format"
 import { portalLinkFor } from "@/components/dashboard/app-routes"
 
@@ -45,9 +47,16 @@ export interface SpeakerRosterSession {
 export interface SpeakerRosterRow {
   personId: Id<"people">
   name: string
+  firstName?: string
+  lastName?: string
   email: string
   company?: string
   jobTitle?: string
+  bio?: string
+  /** invited | confirmed | dropped (sbek SPK-04). */
+  workflowStatus: string
+  /** Internal note about their photo — organizer-only. */
+  headshotNote?: string
   hasBio: boolean
   hasHeadshot: boolean
   headshotUrl: string | null
@@ -65,6 +74,8 @@ export interface SpeakersTableProps {
   onSelectedChange: (selected: Array<string>) => void
   /** Opens the assign-task dialog for one speaker. */
   onAssignTask: (personId: Id<"people">) => void
+  /** Opens the organizer-side profile drawer (bio, title, headshot note). */
+  onEditProfile?: (row: SpeakerRosterRow) => void
   className?: string
 }
 
@@ -80,6 +91,7 @@ export function SpeakersTable({
   selected,
   onSelectedChange,
   onAssignTask,
+  onEditProfile,
   className,
 }: SpeakersTableProps) {
   const [now] = useState(() => Date.now())
@@ -123,6 +135,7 @@ export function SpeakersTable({
               />
             </TableHead>
             <TableHead>Speaker</TableHead>
+            <TableHead>Status</TableHead>
             <TableHead>Company</TableHead>
             <TableHead>Sessions</TableHead>
             <TableHead>Tasks</TableHead>
@@ -171,6 +184,14 @@ export function SpeakersTable({
                       </a>
                     </div>
                   </div>
+                </TableCell>
+
+                <TableCell>
+                  <SpeakerWorkflowSelect
+                    personId={row.personId}
+                    value={row.workflowStatus}
+                    name={row.name}
+                  />
                 </TableCell>
 
                 <TableCell className="text-muted-foreground">
@@ -257,6 +278,12 @@ export function SpeakersTable({
                         {row.name}
                       </DropdownMenuLabel>
                       <DropdownMenuSeparator />
+                      {onEditProfile ? (
+                        <DropdownMenuItem onClick={() => onEditProfile(row)}>
+                          <RiEdit2Line aria-hidden />
+                          Edit profile & bio
+                        </DropdownMenuItem>
+                      ) : null}
                       <DropdownMenuItem onClick={() => void copyPortalLink(row)}>
                         <RiLinkM aria-hidden />
                         Copy portal link

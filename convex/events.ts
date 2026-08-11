@@ -1,6 +1,7 @@
 import { v } from "convex/values"
 import { mutation, query } from "./_generated/server"
 import { myMemberships, requireEventAccess, requireMembership } from "./lib/auth"
+import { deleteEventBlobs } from "./lib/files"
 
 export const list = query({
   args: {},
@@ -35,7 +36,22 @@ export const getBySlug = query({
     if (!event) return null
     const { name, slug, description, venue, timezone, startsAt, endsAt, type } =
       event
-    return { _id: event._id, name, slug, description, venue, timezone, startsAt, endsAt, type }
+    return {
+      _id: event._id,
+      name,
+      slug,
+      description,
+      venue,
+      timezone,
+      startsAt,
+      endsAt,
+      type,
+      // Event branding for the public header (convex/files.setEventBranding).
+      logoUrl: event.logoId ? await ctx.storage.getUrl(event.logoId) : null,
+      backgroundUrl: event.backgroundId
+        ? await ctx.storage.getUrl(event.backgroundId)
+        : null,
+    }
   },
 })
 
@@ -101,6 +117,10 @@ export const remove = mutation({
   args: { eventId: v.id("events") },
   handler: async (ctx, args) => {
     await requireEventAccess(ctx, args.eventId, "admin")
+    // Storage first — it reads the rows that are about to be deleted. Without
+    // this, every uploaded deck, headshot and logo would outlive its event as
+    // an unreachable blob nobody can ever find again.
+    await deleteEventBlobs(ctx, args.eventId)
     const byEventId = [
       "rooms",
       "tracks",

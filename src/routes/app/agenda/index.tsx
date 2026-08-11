@@ -1,10 +1,15 @@
 /**
  * Agenda builder — `/app/agenda` (docs/SPEC.md §4.6).
  *
- * Four views over one reactive `api.agenda.board` query: List, Day (the
- * drag-and-drop grid), Rooms (swimlanes), and Conflicts. Because every view
- * reads the same live query, placing a session in one of them repaints the
- * conflict badge, the tray, and the other three views at once.
+ * Six views over one reactive `api.agenda.board` query — the five the brief
+ * enumerates ("viewable by list, day, week, track, or room") plus Conflicts:
+ * List, Day (the drag-and-drop grid), Week (seven day columns), Track (the day
+ * grid with tracks as columns), Rooms (swimlanes), and Conflicts. Because every
+ * view reads the same live query, placing a session in one of them repaints the
+ * conflict badge, the tray, and every other view at once.
+ *
+ * The toolbar also carries Publish (sbek AIA-07): the programme is a private
+ * draft until an organizer explicitly takes it live.
  */
 
 import * as React from "react"
@@ -17,8 +22,10 @@ import {
   RiDoorOpenLine,
   RiErrorWarningLine,
   RiExternalLinkLine,
+  RiCalendarLine,
   RiLayoutGridLine,
   RiListCheck2,
+  RiPriceTag3Line,
   RiTimeLine,
 } from "@remixicon/react"
 
@@ -40,7 +47,10 @@ import { AutoPlaceDialog } from "@/components/agenda/auto-place-dialog"
 import { ConflictsView } from "@/components/agenda/conflicts-view"
 import { DayView } from "@/components/agenda/day-view"
 import { ListView } from "@/components/agenda/list-view"
+import { PublishAgendaButton } from "@/components/agenda/publish-agenda-button"
 import { RoomsView } from "@/components/agenda/rooms-view"
+import { TrackView } from "@/components/agenda/track-view"
+import { WeekView } from "@/components/agenda/week-view"
 import type { ScheduledSession } from "@/components/agenda/agenda-model"
 import { useCurrentEvent } from "@/lib/current-event"
 import {
@@ -66,7 +76,7 @@ import {
 const SUBMISSIONS_PATH = "/app/submissions" as string
 const SETTINGS_PATH = "/app/settings" as string
 
-const VIEWS = ["list", "day", "rooms", "conflicts"] as const
+const VIEWS = ["list", "day", "week", "track", "rooms", "conflicts"] as const
 type AgendaView = (typeof VIEWS)[number]
 
 interface AgendaSearch {
@@ -201,7 +211,7 @@ function AgendaPage() {
       actions={
         <>
           {event ? (
-            <Button
+            <Button nativeButton={false}
               variant="outline"
               render={
                 <a href={`/e/${event.slug}`} target="_blank" rel="noreferrer" />
@@ -210,6 +220,14 @@ function AgendaPage() {
               <RiExternalLinkLine aria-hidden />
               View public agenda
             </Button>
+          ) : null}
+          {event && board ? (
+            <PublishAgendaButton
+              eventId={event._id}
+              eventSlug={board.event.slug}
+              agendaPublishedAt={board.event.agendaPublishedAt}
+              scheduledCount={scheduledAll.length}
+            />
           ) : null}
           {event && board ? (
             <AutoPlaceDialog
@@ -222,7 +240,7 @@ function AgendaPage() {
           ) : null}
           <Tooltip>
             <TooltipTrigger
-              render={<Button render={<Link to={SUBMISSIONS_PATH} />} />}
+              render={<Button nativeButton={false} render={<Link to={SUBMISSIONS_PATH} />} />}
             >
               <RiAddLine aria-hidden />
               Add session
@@ -260,7 +278,7 @@ function AgendaPage() {
           title="Create your event first"
           description="The agenda is built from your event's days, rooms, and accepted sessions. Set up the event — name, dates, rooms and tracks — and this page fills itself in."
           action={
-            <Button render={<Link to={SETTINGS_PATH} />}>
+            <Button nativeButton={false} render={<Link to={SETTINGS_PATH} />}>
               Go to event settings
             </Button>
           }
@@ -286,6 +304,8 @@ function AgendaPage() {
   }> = [
     { value: "list", label: "List", icon: RiListCheck2 },
     { value: "day", label: "Day", icon: RiTimeLine },
+    { value: "week", label: "Week", icon: RiCalendarLine },
+    { value: "track", label: "Track", icon: RiPriceTag3Line },
     { value: "rooms", label: "Rooms", icon: RiDoorOpenLine },
     {
       value: "conflicts",
@@ -295,8 +315,11 @@ function AgendaPage() {
     },
   ]
 
+  // Week picks its own seven columns from the selected day, so it wants the
+  // switcher too — every view except List and Conflicts is day-scoped.
   const showDaySwitcher =
-    dayKeys.length > 1 && (view === "day" || view === "rooms")
+    dayKeys.length > 1 &&
+    (view === "day" || view === "rooms" || view === "track" || view === "week")
 
   return (
     <TooltipProvider>
@@ -385,6 +408,41 @@ function AgendaPage() {
               conflicts={conflicts}
               conflictIds={conflictIds}
               dayKey={selectedDay}
+              dayKeys={dayKeys}
+              timeZone={timeZone}
+              windowStartMinutes={startMinutes}
+              windowEndMinutes={endMinutes}
+              focusId={focus}
+            />
+          ) : null}
+
+          {view === "week" ? (
+            <WeekView
+              sessions={filteredScheduled}
+              rooms={board.rooms}
+              conflicts={conflicts}
+              conflictIds={conflictIds}
+              dayKey={selectedDay}
+              dayKeys={dayKeys}
+              timeZone={timeZone}
+              windowStartMinutes={startMinutes}
+              windowEndMinutes={endMinutes}
+              focusId={focus}
+              onOpenDay={(next) => {
+                void navigate({
+                  search: () => ({ view: "day" as const, day: next }),
+                })
+              }}
+            />
+          ) : null}
+
+          {view === "track" ? (
+            <TrackView
+              tracks={board.tracks}
+              rooms={board.rooms}
+              sessions={daySessions}
+              conflicts={conflicts}
+              conflictIds={conflictIds}
               dayKeys={dayKeys}
               timeZone={timeZone}
               windowStartMinutes={startMinutes}

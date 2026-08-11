@@ -128,13 +128,22 @@ function clip(value: string, max = 140): string {
 
 // ——— Prompt starters ————————————————————————————————————————————————————
 
-/** Shown on the empty state, in the panel and on the full-page chat. */
+/**
+ * Shown on the empty state, in the panel and on the full-page chat.
+ *
+ * Chosen to SHOW THE GENERATIVE UI, not just to be answerable: each one lands
+ * on a different rendered result — the stat row and "needs attention" list,
+ * the agenda day summary, the speaker roster with its readiness bars, and the
+ * end-to-end form card with a copyable public link. The first three are
+ * read-only, which is why they are the ones the compact footer row offers as
+ * one-tap chips.
+ */
 export const COPILOT_SUGGESTIONS = [
   "What needs my attention?",
-  "Summarize my submissions",
-  "Who hasn't finished onboarding?",
-  "Schedule the unscheduled talks",
-  "Which sessions clash?",
+  "Show today's agenda",
+  "Who's behind on tasks?",
+  "Create an example form",
+  "Show my submissions",
 ] as const
 
 // ——— System prompt ——————————————————————————————————————————————————————

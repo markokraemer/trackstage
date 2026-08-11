@@ -1,4 +1,4 @@
-import { useEffect } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import { Link } from "@tanstack/react-router"
 import {
   RiAddLine,
@@ -6,6 +6,7 @@ import {
   RiSparkling2Line,
 } from "@remixicon/react"
 
+import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import {
   Sheet,
@@ -14,7 +15,16 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet"
 import { CopilotChat } from "@/components/copilot/copilot-chat"
-import { useCopilotChat, useCopilotPanel } from "@/lib/copilot-store"
+import {
+  COPILOT_PANEL_MIN_WIDTH,
+  clampCopilotPanelWidth,
+  copilotPanelMaxWidth,
+  resetCopilotPanelWidth,
+  setCopilotPanelWidth,
+  useCopilotChat,
+  useCopilotPanel,
+  useCopilotPanelWidth,
+} from "@/lib/copilot-store"
 import { useCurrentEvent } from "@/lib/current-event"
 
 /**
@@ -26,6 +36,12 @@ import { useCurrentEvent } from "@/lib/current-event"
  * still a Sheet (rule #17 — shadcn primitives, extended rather than
  * hand-rolled), just one that has been told not to dim the page.
  *
+ * RESIZABLE, because the panel is a workspace: a submissions table rendered
+ * by a tool needs room, and how much room to give it is the organizer's call,
+ * not ours. The width persists (src/lib/copilot-store.ts) and the handle is a
+ * real `separator` widget — pointer drag, arrow keys, Home/End, and
+ * double-click to reset — so it is usable without a mouse.
+ *
  * Conversation state lives in src/lib/copilot-store.ts, above the router, so
  * opening the panel on Submissions and then walking to Agenda keeps the
  * thread — and the full-page chat picks up exactly where the panel left off.
@@ -34,10 +50,14 @@ import { useCurrentEvent } from "@/lib/current-event"
 /** Cmd/Ctrl+I. Cmd+K is reserved for a command palette. */
 const SHORTCUT_KEY = "i"
 
+/** One arrow press. Shift multiplies it (see the handler). */
+const KEYBOARD_STEP = 24
+
 export function CopilotPanel() {
   const { open, setOpen } = useCopilotPanel()
   const { event } = useCurrentEvent()
   const { newChat } = useCopilotChat(event?._id)
+  const width = useCopilotPanelWidth()
 
   useEffect(() => {
     const onKeyDown = (keyEvent: KeyboardEvent) => {
@@ -50,6 +70,14 @@ export function CopilotPanel() {
     return () => window.removeEventListener("keydown", onKeyDown)
   }, [open, setOpen])
 
+  // A viewport that shrinks below the current width would leave the panel
+  // covering the app; re-clamp instead.
+  useEffect(() => {
+    const onResize = () => setCopilotPanelWidth(width)
+    window.addEventListener("resize", onResize)
+    return () => window.removeEventListener("resize", onResize)
+  }, [width])
+
   return (
     <Sheet open={open} onOpenChange={setOpen} modal={false}>
       <SheetContent
@@ -57,8 +85,11 @@ export function CopilotPanel() {
         showOverlay={false}
         showCloseButton
         aria-label="Sessionboard copilot"
-        className="flex w-full flex-col gap-0 p-0 sm:max-w-[420px]"
+        style={{ width: `min(100vw, ${width}px)` }}
+        className="flex w-full flex-col gap-0 p-0 sm:max-w-none"
       >
+        <ResizeHandle width={width} />
+
         <header className="flex shrink-0 items-center gap-2 border-b border-border px-4 py-3">
           <span
             aria-hidden
@@ -98,6 +129,123 @@ export function CopilotPanel() {
         <CopilotChat variant="panel" className="min-h-0 flex-1" />
       </SheetContent>
     </Sheet>
+  )
+}
+
+/**
+ * The left edge, as a drag target.
+ *
+ * Pointer events (not mouse events) so a trackpad, a pen and a touch drag all
+ * behave; `setPointerCapture` keeps the drag alive when the cursor outruns the
+ * 8px hit area, which is the difference between "resizable" and "resizable if
+ * you move slowly".
+ */
+function ResizeHandle({ width }: { width: number }) {
+  const [dragging, setDragging] = useState(false)
+  const frame = useRef<number | null>(null)
+
+  useEffect(
+    () => () => {
+      if (frame.current !== null) cancelAnimationFrame(frame.current)
+    },
+    [],
+  )
+
+  const applyWidth = useCallback((next: number) => {
+    if (frame.current !== null) cancelAnimationFrame(frame.current)
+    frame.current = requestAnimationFrame(() => {
+      frame.current = null
+      setCopilotPanelWidth(next)
+    })
+  }, [])
+
+  const onPointerDown = useCallback((pointerEvent: React.PointerEvent) => {
+    if (pointerEvent.button !== 0) return
+    pointerEvent.preventDefault()
+    pointerEvent.currentTarget.setPointerCapture(pointerEvent.pointerId)
+    setDragging(true)
+  }, [])
+
+  const onPointerMove = useCallback(
+    (pointerEvent: React.PointerEvent) => {
+      if (!dragging) return
+      // The panel is anchored right, so its width is whatever is left of the
+      // viewport edge.
+      applyWidth(window.innerWidth - pointerEvent.clientX)
+    },
+    [applyWidth, dragging],
+  )
+
+  const endDrag = useCallback((pointerEvent: React.PointerEvent) => {
+    if (pointerEvent.currentTarget.hasPointerCapture(pointerEvent.pointerId)) {
+      pointerEvent.currentTarget.releasePointerCapture(pointerEvent.pointerId)
+    }
+    setDragging(false)
+  }, [])
+
+  const onKeyDown = useCallback(
+    (keyEvent: React.KeyboardEvent) => {
+      const step = keyEvent.shiftKey ? KEYBOARD_STEP * 4 : KEYBOARD_STEP
+      // Left widens: the panel grows leftwards from the right edge.
+      if (keyEvent.key === "ArrowLeft") {
+        keyEvent.preventDefault()
+        setCopilotPanelWidth(width + step)
+      } else if (keyEvent.key === "ArrowRight") {
+        keyEvent.preventDefault()
+        setCopilotPanelWidth(width - step)
+      } else if (keyEvent.key === "Home") {
+        keyEvent.preventDefault()
+        setCopilotPanelWidth(copilotPanelMaxWidth())
+      } else if (keyEvent.key === "End") {
+        keyEvent.preventDefault()
+        setCopilotPanelWidth(COPILOT_PANEL_MIN_WIDTH)
+      } else if (keyEvent.key === "Enter" || keyEvent.key === " ") {
+        keyEvent.preventDefault()
+        resetCopilotPanelWidth()
+      }
+    },
+    [width],
+  )
+
+  return (
+    <div
+      role="separator"
+      aria-orientation="vertical"
+      aria-label="Resize the copilot panel"
+      aria-valuenow={clampCopilotPanelWidth(width)}
+      aria-valuemin={COPILOT_PANEL_MIN_WIDTH}
+      aria-valuemax={copilotPanelMaxWidth()}
+      tabIndex={0}
+      data-slot="copilot-resize-handle"
+      data-dragging={dragging || undefined}
+      title="Drag to resize · double-click to reset"
+      onPointerDown={onPointerDown}
+      onPointerMove={onPointerMove}
+      onPointerUp={endDrag}
+      onPointerCancel={endDrag}
+      onDoubleClick={resetCopilotPanelWidth}
+      onKeyDown={onKeyDown}
+      className={cn(
+        "group absolute inset-y-0 left-0 z-20 flex w-2 cursor-col-resize touch-none items-center justify-center",
+        "focus-visible:outline-none",
+      )}
+    >
+      {/* The visible affordance: a hairline that thickens on hover/drag. */}
+      <span
+        aria-hidden
+        className={cn(
+          "h-full w-px bg-transparent transition-colors",
+          "group-hover:bg-primary/40 group-focus-visible:bg-primary group-data-[dragging]:bg-primary",
+        )}
+      />
+      <span
+        aria-hidden
+        className={cn(
+          "absolute h-8 w-1 rounded-full bg-border opacity-0 transition-opacity",
+          "group-hover:opacity-100 group-focus-visible:opacity-100 group-data-[dragging]:opacity-100",
+        )}
+      />
+    </div>
   )
 }
 

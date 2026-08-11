@@ -108,7 +108,7 @@ function SpeakersPage() {
           title="No speakers announced yet"
           description="Speakers appear here once the organizer accepts their session. Check back soon — or browse the schedule in the meantime."
           action={
-            <Button
+            <Button nativeButton={false}
               variant="outline"
               render={
                 <Link to="/e/$slug" params={{ slug }} search={(prev) => prev} />

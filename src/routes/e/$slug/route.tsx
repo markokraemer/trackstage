@@ -56,7 +56,7 @@ function PublicEventLayout() {
           title="We couldn't find that event"
           description={`No public event is published at "${slug}". Check the link with the organizer — it may have changed.`}
           action={
-            <Button render={<Link to="/" />} variant="outline">
+            <Button nativeButton={false} render={<Link to="/" />} variant="outline">
               Go to Sessionboard
             </Button>
           }

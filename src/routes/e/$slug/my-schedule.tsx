@@ -88,7 +88,7 @@ function MySchedulePage() {
           }
           description="Tap the bookmark on any session to build your own agenda. It stays in this browser — no account needed — and you can export it all to your calendar."
           action={
-            <Button
+            <Button nativeButton={false}
               render={
                 <Link to="/e/$slug" params={{ slug }} search={(prev) => prev} />
               }
@@ -97,7 +97,7 @@ function MySchedulePage() {
             </Button>
           }
           secondaryAction={
-            <Button
+            <Button nativeButton={false}
               variant="outline"
               render={
                 <Link

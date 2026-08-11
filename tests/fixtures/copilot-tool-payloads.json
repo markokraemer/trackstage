@@ -1,0 +1,1344 @@
+{
+  "list_events": {
+    "input": {},
+    "output": {
+      "events": [
+        {
+          "endsAt": "2026-10-14T01:00:00.000Z",
+          "eventId": "j976ztxa95ktnx3twqdpqdgb818c9v51",
+          "name": "AI Engineer Summit 2026",
+          "organizationId": "mn7fs8btg5szyhbkqdfhtd4xmn8c8xhg",
+          "organizationName": "AI Engineer",
+          "slug": "ai-summit-2026",
+          "startsAt": "2026-10-12T16:00:00.000Z",
+          "timezone": "America/Los_Angeles",
+          "type": "Conference",
+          "venue": "Moscone West, San Francisco",
+          "yourRole": "owner"
+        },
+        {
+          "endsAt": "2026-11-05T23:00:00.000Z",
+          "eventId": "j9765jm4sr6fbbp2xr0he58x518c8gw5",
+          "name": "Design Systems Day",
+          "organizationId": "mn7fs8btg5szyhbkqdfhtd4xmn8c8xhg",
+          "organizationName": "AI Engineer",
+          "slug": "design-systems-day",
+          "startsAt": "2026-11-05T14:00:00.000Z",
+          "timezone": "America/New_York",
+          "type": "Meetup",
+          "venue": "Brooklyn Expo Center, New York",
+          "yourRole": "owner"
+        }
+      ]
+    }
+  },
+  "list_workspaces": {
+    "input": {},
+    "output": {
+      "workspaces": [
+        {
+          "eventCount": 2,
+          "name": "AI Engineer",
+          "organizationId": "mn7fs8btg5szyhbkqdfhtd4xmn8c8xhg",
+          "slug": "ai-engineer",
+          "yourRole": "owner"
+        }
+      ]
+    }
+  },
+  "get_event_summary": {
+    "input": {
+      "event": "ai-summit-2026"
+    },
+    "output": {
+      "agenda": {
+        "acceptedNotScheduled": 0,
+        "conflicts": [],
+        "scheduled": 9
+      },
+      "event": {
+        "endsAt": "2026-10-14T01:00:00.000Z",
+        "eventId": "j976ztxa95ktnx3twqdpqdgb818c9v51",
+        "name": "AI Engineer Summit 2026",
+        "slug": "ai-summit-2026",
+        "startsAt": "2026-10-12T16:00:00.000Z",
+        "timezone": "America/Los_Angeles",
+        "venue": "Moscone West, San Francisco"
+      },
+      "forms": [
+        {
+          "closesAt": "2026-09-16T06:59:00.000Z",
+          "name": "CFP 2026 — main call",
+          "publicUrl": "http://localhost:3000/submit/cfp",
+          "status": "open"
+        }
+      ],
+      "headline": "AI Engineer Summit 2026 — 19 submission(s): 9 accepted, 4 pending, 1 declined. 9 session(s) scheduled across 1 form(s).",
+      "needsAttention": [
+        "4 submission(s) still pending review",
+        "1 staged in the decline queue",
+        "12 outstanding speaker task(s) — send_reminders will nudge them"
+      ],
+      "speakerTasks": {
+        "completed": 15,
+        "open": 12
+      },
+      "submissions": {
+        "accept_queue": 0,
+        "accepted": 9,
+        "decline_queue": 1,
+        "declined": 1,
+        "draft": 3,
+        "pending": 4,
+        "withdrawn": 1
+      },
+      "upcomingDeadlines": [
+        {
+          "daysAway": -2,
+          "what": "Speaker task \"Upload your headshot\" due",
+          "when": "2026-08-09T02:11:47.683Z"
+        },
+        {
+          "daysAway": 1,
+          "what": "Speaker task \"Confirm your biography\" due",
+          "when": "2026-08-12T02:11:47.683Z"
+        },
+        {
+          "daysAway": 2,
+          "what": "Speaker task \"Upload your slides\" due",
+          "when": "2026-08-13T02:11:47.683Z"
+        },
+        {
+          "daysAway": 2,
+          "what": "Speaker task \"Upload your headshot\" due",
+          "when": "2026-08-13T02:11:47.683Z"
+        },
+        {
+          "daysAway": 3,
+          "what": "Speaker task \"Confirm your biography\" due",
+          "when": "2026-08-14T02:11:47.683Z"
+        },
+        {
+          "daysAway": 20,
+          "what": "Speaker task \"Upload your slides\" due",
+          "when": "2026-08-31T02:11:47.683Z"
+        },
+        {
+          "daysAway": 20,
+          "what": "Speaker task \"Upload your slides\" due",
+          "when": "2026-08-31T02:11:47.683Z"
+        },
+        {
+          "daysAway": 20,
+          "what": "Speaker task \"Upload your slides\" due",
+          "when": "2026-08-31T02:11:47.683Z"
+        }
+      ]
+    }
+  },
+  "get_event_overview": {
+    "input": {
+      "event": "ai-summit-2026"
+    },
+    "output": {
+      "acceptedNotYetScheduled": 0,
+      "agendaConflicts": 0,
+      "event": {
+        "endsAt": "2026-10-14T01:00:00.000Z",
+        "eventId": "j976ztxa95ktnx3twqdpqdgb818c9v51",
+        "name": "AI Engineer Summit 2026",
+        "slug": "ai-summit-2026",
+        "startsAt": "2026-10-12T16:00:00.000Z",
+        "timezone": "America/Los_Angeles",
+        "venue": "Moscone West, San Francisco"
+      },
+      "forms": [
+        {
+          "closeAt": "2026-09-16T06:59:00.000Z",
+          "formId": "jd7bpwen1xbgwx4k3chmgy2fx58c99yd",
+          "name": "CFP 2026 — main call",
+          "publicUrl": "http://localhost:3000/submit/cfp",
+          "slug": "cfp",
+          "status": "open"
+        }
+      ],
+      "openTaskCount": 12,
+      "outbox": {
+        "preview": 24,
+        "sent": 2
+      },
+      "scheduledSessions": 9,
+      "statusCounts": {
+        "accept_queue": 0,
+        "accepted": 9,
+        "decline_queue": 1,
+        "declined": 1,
+        "draft": 3,
+        "pending": 4,
+        "withdrawn": 1
+      },
+      "totalSubmissions": 19
+    }
+  },
+  "list_forms": {
+    "input": {
+      "event": "ai-summit-2026"
+    },
+    "output": {
+      "forms": [
+        {
+          "closeAt": "2026-09-16T06:59:00.000Z",
+          "draftCount": 3,
+          "externalTitle": "Call for Speakers — AI Engineer Summit 2026",
+          "formId": "jd7bpwen1xbgwx4k3chmgy2fx58c99yd",
+          "kind": "abstract",
+          "name": "CFP 2026 — main call",
+          "publicUrl": "http://localhost:3000/submit/cfp",
+          "slug": "cfp",
+          "status": "open",
+          "submissionCount": 14
+        }
+      ]
+    }
+  },
+  "get_form": {
+    "input": {
+      "form": "jd7bpwen1xbgwx4k3chmgy2fx58c99yd"
+    },
+    "output": {
+      "closeAt": "2026-09-16T06:59:00.000Z",
+      "eventId": "j976ztxa95ktnx3twqdpqdgb818c9v51",
+      "externalTitle": "Call for Speakers — AI Engineer Summit 2026",
+      "formId": "jd7bpwen1xbgwx4k3chmgy2fx58c99yd",
+      "kind": "abstract",
+      "name": "CFP 2026 — main call",
+      "notifyEmails": [
+        "organizer@demo.sessionboard.dev"
+      ],
+      "pageHeading": "Submit a talk",
+      "participantConfig": {
+        "chairpersonEnabled": false,
+        "fields": [
+          {
+            "enabled": true,
+            "id": "firstName",
+            "label": "First name",
+            "locked": true,
+            "required": true
+          },
+          {
+            "enabled": true,
+            "id": "lastName",
+            "label": "Last name",
+            "locked": true,
+            "required": true
+          },
+          {
+            "enabled": true,
+            "id": "email",
+            "label": "Email address",
+            "locked": true,
+            "required": true
+          },
+          {
+            "enabled": true,
+            "id": "jobTitle",
+            "label": "Job title",
+            "locked": false,
+            "required": false
+          },
+          {
+            "enabled": true,
+            "id": "company",
+            "label": "Company",
+            "locked": false,
+            "required": false
+          },
+          {
+            "enabled": true,
+            "help": "60–100 words. Used in the programme if your talk is accepted.",
+            "id": "bio",
+            "label": "Biography",
+            "locked": false,
+            "required": false
+          },
+          {
+            "enabled": true,
+            "id": "headshot",
+            "label": "Headshot",
+            "locked": false,
+            "required": false
+          },
+          {
+            "enabled": false,
+            "id": "phone",
+            "label": "Phone number",
+            "locked": false,
+            "required": false
+          }
+        ],
+        "moderatorEnabled": false,
+        "sendConfirmationEmail": true,
+        "speakerMax": 3,
+        "speakerMin": 1
+      },
+      "publicUrl": "http://localhost:3000/submit/cfp",
+      "questions": [
+        {
+          "enabled": true,
+          "id": "title",
+          "isTrackQuestion": false,
+          "label": "Session title",
+          "locked": true,
+          "options": null,
+          "required": true,
+          "showIf": null,
+          "type": "short_text"
+        },
+        {
+          "enabled": true,
+          "id": "description",
+          "isTrackQuestion": false,
+          "label": "Session description",
+          "locked": true,
+          "options": null,
+          "required": true,
+          "showIf": null,
+          "type": "long_text"
+        },
+        {
+          "enabled": true,
+          "id": "format",
+          "isTrackQuestion": false,
+          "label": "Format",
+          "locked": false,
+          "options": [
+            "Talk",
+            "Workshop",
+            "Lightning talk"
+          ],
+          "required": true,
+          "showIf": null,
+          "type": "dropdown"
+        },
+        {
+          "enabled": true,
+          "id": "track",
+          "isTrackQuestion": true,
+          "label": "Track",
+          "locked": false,
+          "options": [
+            "AI Engineering",
+            "Product",
+            "Infrastructure"
+          ],
+          "required": true,
+          "showIf": null,
+          "type": "dropdown"
+        },
+        {
+          "enabled": true,
+          "id": "level",
+          "isTrackQuestion": false,
+          "label": "Audience level",
+          "locked": false,
+          "options": [
+            "Beginner",
+            "Intermediate",
+            "Advanced"
+          ],
+          "required": true,
+          "showIf": null,
+          "type": "dropdown"
+        },
+        {
+          "enabled": true,
+          "id": "language",
+          "isTrackQuestion": false,
+          "label": "Language",
+          "locked": false,
+          "options": [
+            "English",
+            "German",
+            "Spanish"
+          ],
+          "required": false,
+          "showIf": null,
+          "type": "dropdown"
+        },
+        {
+          "enabled": true,
+          "id": "workshopDuration",
+          "isTrackQuestion": false,
+          "label": "Workshop duration",
+          "locked": false,
+          "options": [
+            "90 minutes",
+            "Half day",
+            "Full day"
+          ],
+          "required": false,
+          "showIf": {
+            "equals": "Workshop",
+            "questionId": "format"
+          },
+          "type": "dropdown"
+        },
+        {
+          "enabled": true,
+          "id": "takeaways",
+          "isTrackQuestion": false,
+          "label": "Key takeaways",
+          "locked": false,
+          "options": null,
+          "required": false,
+          "showIf": null,
+          "type": "long_text"
+        }
+      ],
+      "settings": {
+        "allowDrafts": true,
+        "autoRedirectToPortal": true,
+        "limitPerUser": 3,
+        "sendReminderEmail": true,
+        "successMessage": "Thanks — your proposal is in. We'll email you when the programme committee has reviewed it."
+      },
+      "slug": "cfp",
+      "status": "open",
+      "welcomeMessage": "We're looking for practitioner talks: things you built, things that broke, and what you learned. You don't need to be a famous speaker — you need a real story and something the audience can use.\n\nThe call closes on 15 September 2026. You may submit up to three proposals, and you can save a draft and come back to it at any time."
+    }
+  },
+  "get_public_form_link": {
+    "input": {
+      "form": "cfp"
+    },
+    "output": {
+      "acceptingSubmissions": true,
+      "closeAt": "2026-09-16T06:59:00.000Z",
+      "formId": "jd7bpwen1xbgwx4k3chmgy2fx58c99yd",
+      "name": "CFP 2026 — main call",
+      "note": "Share this link with prospective speakers.",
+      "publicUrl": "http://localhost:3000/submit/cfp",
+      "status": "open"
+    }
+  },
+  "create_form": {
+    "input": {
+      "event": "ai-summit-2026",
+      "name": "Copilot Verification CFP"
+    },
+    "output": {
+      "formId": "jd78jzgfnw2rvvzczj7v10vcg98c9msa",
+      "publicUrl": "http://localhost:3000/submit/copilot-verification-cfp",
+      "slug": "copilot-verification-cfp",
+      "status": "open"
+    }
+  },
+  "list_submissions": {
+    "input": {
+      "status": "pending",
+      "event": "ai-summit-2026"
+    },
+    "output": {
+      "returned": 4,
+      "submissions": [
+        {
+          "format": "Talk",
+          "kind": "abstract",
+          "level": "Advanced",
+          "scheduled": null,
+          "speakers": [
+            "Hana Kobayashi <hana.kobayashi@example.com>"
+          ],
+          "status": "pending",
+          "submissionId": "k571a1ak92jm720bdcayt04d318c8fb6",
+          "tags": [
+            "calibration",
+            "safety"
+          ],
+          "title": "Teaching your model to say “I don't know”",
+          "track": "AI Engineering"
+        },
+        {
+          "format": "Workshop",
+          "kind": "abstract",
+          "level": "Intermediate",
+          "scheduled": null,
+          "speakers": [
+            "Daniel Okonkwo <daniel.okonkwo@example.com>"
+          ],
+          "status": "pending",
+          "submissionId": "k570nb6jhaxf6hphxxy5he5jqd8c9ea1",
+          "tags": [
+            "mlops",
+            "compliance"
+          ],
+          "title": "From notebook to nine-nines: productionising ML in regulated healthcare",
+          "track": "Infrastructure"
+        },
+        {
+          "format": "Talk",
+          "kind": "abstract",
+          "level": "Advanced",
+          "scheduled": null,
+          "speakers": [
+            "Jonas Weber <jonas.weber@example.com>"
+          ],
+          "status": "pending",
+          "submissionId": "k57fh397s2brswjm6gjcmy7rah8c9fkd",
+          "tags": [
+            "retrieval",
+            "scale"
+          ],
+          "title": "Vector databases at ten billion embeddings",
+          "track": "Infrastructure"
+        },
+        {
+          "format": "Talk",
+          "kind": "abstract",
+          "level": "Intermediate",
+          "scheduled": null,
+          "speakers": [
+            "Elena Petrova <elena.petrova@example.com>"
+          ],
+          "status": "pending",
+          "submissionId": "k578g8whvn8a33b07rzw4btwf98c8dmk",
+          "tags": [
+            "latency",
+            "product"
+          ],
+          "title": "Shipping LLM features when latency is the product",
+          "track": "Product"
+        }
+      ],
+      "total": 4
+    }
+  },
+  "get_submission": {
+    "input": {
+      "submissionId": "k571a1ak92jm720bdcayt04d318c8fb6"
+    },
+    "output": {
+      "answers": {
+        "description": "Abstention is a feature. We walk through calibration techniques, uncertainty signals that survive contact with production, and the interface patterns that let a model decline gracefully instead of confidently inventing an answer.",
+        "format": "Talk",
+        "language": "English",
+        "level": "Advanced",
+        "takeaways": "Practical uncertainty signals and how to surface them in a UI.",
+        "title": "Teaching your model to say “I don't know”",
+        "track": "AI Engineering"
+      },
+      "decidedAt": null,
+      "description": "Abstention is a feature. We walk through calibration techniques, uncertainty signals that survive contact with production, and the interface patterns that let a model decline gracefully instead of confidently inventing an answer.",
+      "evaluation": {
+        "averageScore": 5,
+        "comments": [
+          "The best abstract in my batch. Abstention is under-discussed and this proposal treats it as an engineering problem rather than a research curiosity."
+        ],
+        "completedReviews": 1
+      },
+      "formName": "CFP 2026 — main call",
+      "format": "Talk",
+      "kind": "abstract",
+      "level": "Advanced",
+      "notifiedAt": null,
+      "participants": [
+        {
+          "company": "Institute for Applied ML",
+          "email": "hana.kobayashi@example.com",
+          "name": "Hana Kobayashi",
+          "personId": "m972p9h1pj3yvybmtj2ehwj5498c9903",
+          "role": "speaker"
+        }
+      ],
+      "scheduled": null,
+      "speakers": [
+        "Hana Kobayashi <hana.kobayashi@example.com>"
+      ],
+      "status": "pending",
+      "submissionId": "k571a1ak92jm720bdcayt04d318c8fb6",
+      "tags": [
+        "calibration",
+        "safety"
+      ],
+      "title": "Teaching your model to say “I don't know”",
+      "track": "AI Engineering",
+      "uploads": []
+    }
+  },
+  "get_agenda": {
+    "input": {
+      "event": "ai-summit-2026"
+    },
+    "output": {
+      "conflicts": [],
+      "event": {
+        "endsAt": "2026-10-14T01:00:00.000Z",
+        "name": "AI Engineer Summit 2026",
+        "startsAt": "2026-10-12T16:00:00.000Z",
+        "timezone": "America/Los_Angeles"
+      },
+      "rooms": [
+        {
+          "capacity": 300,
+          "name": "Main Stage",
+          "roomId": "js745hdnwkj3r08kq2ses0rwwd8c990a"
+        },
+        {
+          "capacity": 80,
+          "name": "Workshop Room",
+          "roomId": "js7fzhyd8w2aky0c4f0m2cgqdd8c8q4k"
+        }
+      ],
+      "scheduled": [
+        {
+          "durationMinutes": 45,
+          "room": "Main Stage",
+          "roomId": "js745hdnwkj3r08kq2ses0rwwd8c990a",
+          "speakers": [
+            "Yara Haddad"
+          ],
+          "startsAt": "2026-10-12T09:00:00.000Z",
+          "submissionId": "k57c1fhmw8w5end5q314nk49sh8c9zcj",
+          "title": "Structured output without the sadness",
+          "track": "AI Engineering"
+        },
+        {
+          "durationMinutes": 45,
+          "room": "Workshop Room",
+          "roomId": "js7fzhyd8w2aky0c4f0m2cgqdd8c8q4k",
+          "speakers": [
+            "Noah Blackwood"
+          ],
+          "startsAt": "2026-10-12T09:00:00.000Z",
+          "submissionId": "k573veyrkd8ba7tyvtb6ft3ebs8c8xx1",
+          "title": "Cost modelling for inference-heavy products",
+          "track": "Product"
+        },
+        {
+          "durationMinutes": 45,
+          "room": "Main Stage",
+          "roomId": "js745hdnwkj3r08kq2ses0rwwd8c990a",
+          "speakers": [
+            "Vera Efftest"
+          ],
+          "startsAt": "2026-10-12T10:00:00.000Z",
+          "submissionId": "k57069xrpw7rdk526bxdws4xhn8c8bzh",
+          "title": "Verification Talk (edited)",
+          "track": "AI Engineering"
+        },
+        {
+          "durationMinutes": 45,
+          "room": "Main Stage",
+          "roomId": "js745hdnwkj3r08kq2ses0rwwd8c990a",
+          "speakers": [
+            "Priya Raghavan"
+          ],
+          "startsAt": "2026-10-12T16:00:00.000Z",
+          "submissionId": "k57966cqpz2tzja2evyt3wp2sh8c827w",
+          "title": "Opening keynote: the year AI engineering grew up",
+          "track": "AI Engineering"
+        },
+        {
+          "durationMinutes": 60,
+          "room": "Main Stage",
+          "roomId": "js745hdnwkj3r08kq2ses0rwwd8c990a",
+          "speakers": [
+            "Sofia Marchetti",
+            "Ava Nakamura"
+          ],
+          "startsAt": "2026-10-12T17:00:00.000Z",
+          "submissionId": "k571w2y9vtbkkjvsdv7zrzy0ws8c8f81",
+          "title": "Building reliable agents: a practitioner's playbook",
+          "track": "AI Engineering"
+        },
+        {
+          "durationMinutes": 45,
+          "room": "Workshop Room",
+          "roomId": "js7fzhyd8w2aky0c4f0m2cgqdd8c8q4k",
+          "speakers": [
+            "Tom Beaumont",
+            "Hana Kobayashi"
+          ],
+          "startsAt": "2026-10-12T17:00:00.000Z",
+          "submissionId": "k57e1d11yvn8g7j0z99nt5jsyn8c912w",
+          "title": "Evaluation harnesses for production LLMs",
+          "track": "AI Engineering"
+        },
+        {
+          "durationMinutes": 45,
+          "room": "Main Stage",
+          "roomId": "js745hdnwkj3r08kq2ses0rwwd8c990a",
+          "speakers": [
+            "Liam Ferguson"
+          ],
+          "startsAt": "2026-10-12T18:15:00.000Z",
+          "submissionId": "k57dt0zqwq0ewbnryhe3rcs3d58c95j4",
+          "title": "Serving four hundred models on one GPU fleet",
+          "track": "Infrastructure"
+        },
+        {
+          "durationMinutes": 60,
+          "room": "Main Stage",
+          "roomId": "js745hdnwkj3r08kq2ses0rwwd8c990a",
+          "speakers": [
+            "Rafael Duarte",
+            "Elena Petrova"
+          ],
+          "startsAt": "2026-10-13T16:30:00.000Z",
+          "submissionId": "k57fe12rbxrw80hjd5t7j56pqs8c853h",
+          "title": "What users actually do with your AI feature",
+          "track": "Product"
+        },
+        {
+          "durationMinutes": 60,
+          "room": "Main Stage",
+          "roomId": "js745hdnwkj3r08kq2ses0rwwd8c990a",
+          "speakers": [
+            "Noah Blackwood",
+            "Daniel Okonkwo",
+            "Ava Nakamura"
+          ],
+          "startsAt": "2026-10-13T23:00:00.000Z",
+          "submissionId": "k57eyfv5e1p44ytjsk2a25j75n8c8d2m",
+          "title": "Closing panel: what we got wrong about agents",
+          "track": "Product"
+        }
+      ],
+      "unscheduled": []
+    }
+  },
+  "list_speakers": {
+    "input": {
+      "onlyWithOutstandingWork": true,
+      "event": "ai-summit-2026"
+    },
+    "output": {
+      "speakerCount": 11,
+      "speakers": [
+        {
+          "company": "Orbit Cloud",
+          "email": "liam.ferguson@example.com",
+          "jobTitle": "Staff Site Reliability Engineer",
+          "missingProfileItems": [
+            "bio",
+            "slides"
+          ],
+          "name": "Liam Ferguson",
+          "outstandingTasks": [
+            {
+              "dueAt": "2026-08-14T02:11:47.683Z",
+              "kind": "confirm",
+              "taskId": "k978gb9gyqa75yqdpvvvzzs8z18c93qq",
+              "title": "Confirm your biography"
+            },
+            {
+              "dueAt": "2026-08-31T02:11:47.683Z",
+              "kind": "upload",
+              "taskId": "k978cc3bbnmte7cetp9sh1nxbs8c9njb",
+              "title": "Upload your slides"
+            }
+          ],
+          "personId": "m970psm50jw50q39mvnamh13q18c890d",
+          "sessions": [
+            "Serving four hundred models on one GPU fleet"
+          ]
+        },
+        {
+          "company": "Terrafirma",
+          "email": "rafael.duarte@example.com",
+          "jobTitle": "Solutions Architect",
+          "missingProfileItems": [
+            "headshot",
+            "slides"
+          ],
+          "name": "Rafael Duarte",
+          "outstandingTasks": [
+            {
+              "dueAt": "2026-08-13T02:11:47.683Z",
+              "kind": "headshot",
+              "taskId": "k970584cgzrm6h507jgz6a1ncs8c8q55",
+              "title": "Upload your headshot"
+            },
+            {
+              "dueAt": "2026-08-31T02:11:47.683Z",
+              "kind": "upload",
+              "taskId": "k970bw40nntfd00snrjy43e7558c9mr9",
+              "title": "Upload your slides"
+            }
+          ],
+          "personId": "m973ba18qc4ww2hkn7p3m9affd8c95p0",
+          "sessions": [
+            "What users actually do with your AI feature"
+          ]
+        },
+        {
+          "company": "Vantage Labs",
+          "email": "sofia.marchetti@example.com",
+          "jobTitle": "Founding Engineer",
+          "missingProfileItems": [
+            "headshot",
+            "slides"
+          ],
+          "name": "Sofia Marchetti",
+          "outstandingTasks": [
+            {
+              "dueAt": "2026-08-09T02:11:47.683Z",
+              "kind": "headshot",
+              "taskId": "k971d7g58wjd6f7w2nrq84kqs58c8xz6",
+              "title": "Upload your headshot"
+            },
+            {
+              "dueAt": "2026-08-31T02:11:47.683Z",
+              "kind": "upload",
+              "taskId": "k97d2f3e5hyk733qbwz47gqd9d8c8c49",
+              "title": "Upload your slides"
+            }
+          ],
+          "personId": "m970kzd4ahtmr3z2ptq82cpke98c847h",
+          "sessions": [
+            "Building reliable agents: a practitioner's playbook"
+          ]
+        },
+        {
+          "company": "Ridgeline",
+          "email": "tom.beaumont@example.com",
+          "jobTitle": "Developer Advocate",
+          "missingProfileItems": [
+            "bio",
+            "slides"
+          ],
+          "name": "Tom Beaumont",
+          "outstandingTasks": [
+            {
+              "dueAt": "2026-08-12T02:11:47.683Z",
+              "kind": "confirm",
+              "taskId": "k97ez1vcnyp8btgbmbcny169098c8q6f",
+              "title": "Confirm your biography"
+            },
+            {
+              "dueAt": "2026-08-31T02:11:47.683Z",
+              "kind": "upload",
+              "taskId": "k976qn5g6b47yh3rmbyqxm73858c8cdf",
+              "title": "Upload your slides"
+            }
+          ],
+          "personId": "m97ceh6685545kyzhvcph0crx98c88hg",
+          "sessions": [
+            "Evaluation harnesses for production LLMs"
+          ]
+        },
+        {
+          "company": "Lumen AI",
+          "email": "ava.nakamura@example.com",
+          "jobTitle": "Staff ML Engineer",
+          "missingProfileItems": [
+            "slides"
+          ],
+          "name": "Ava Nakamura",
+          "outstandingTasks": [
+            {
+              "dueAt": "2026-08-13T02:11:47.683Z",
+              "kind": "upload",
+              "taskId": "k97bwtann864c1r8x2kp6vnyzx8c980k",
+              "title": "Upload your slides"
+            }
+          ],
+          "personId": "m97b332ex1scb3r9jx70wxnjz98c8pse",
+          "sessions": [
+            "Building reliable agents: a practitioner's playbook",
+            "Closing panel: what we got wrong about agents"
+          ]
+        },
+        {
+          "company": "Fathom Robotics",
+          "email": "noah.blackwood@example.com",
+          "jobTitle": "Chief Technology Officer",
+          "missingProfileItems": [
+            "slides"
+          ],
+          "name": "Noah Blackwood",
+          "outstandingTasks": [
+            {
+              "dueAt": null,
+              "kind": "upload",
+              "taskId": "k973kxhb9me7src76jddzapgkd8c8sa3",
+              "title": "Upload your slides"
+            }
+          ],
+          "personId": "m970xcfyzcqb0vkdyr35xzf3zd8c9ahd",
+          "sessions": [
+            "Cost modelling for inference-heavy products",
+            "Closing panel: what we got wrong about agents"
+          ]
+        },
+        {
+          "company": null,
+          "email": "verify-e2e-mso0yha0@example.com",
+          "jobTitle": "QA Engineer",
+          "missingProfileItems": [
+            "headshot"
+          ],
+          "name": "Vera Efftest",
+          "outstandingTasks": [
+            {
+              "dueAt": null,
+              "kind": "headshot",
+              "taskId": "k97297q54vm0jt62p4hzmzzs618c8pp9",
+              "title": "Upload your headshot"
+            }
+          ],
+          "personId": "m97d5b6x73a9dz135d3r4rj8cn8c88rv",
+          "sessions": [
+            "Verification Talk (edited)"
+          ]
+        },
+        {
+          "company": "Cirrus Payments",
+          "email": "yara.haddad@example.com",
+          "jobTitle": "Senior Engineer",
+          "missingProfileItems": [
+            "slides"
+          ],
+          "name": "Yara Haddad",
+          "outstandingTasks": [
+            {
+              "dueAt": null,
+              "kind": "upload",
+              "taskId": "k97e19qdg9wd8hjhjp0dqrapq58c9d1k",
+              "title": "Upload your slides"
+            }
+          ],
+          "personId": "m97ftp8f5c8jy0wvmj3kt30g1d8c809w",
+          "sessions": [
+            "Structured output without the sadness"
+          ]
+        },
+        {
+          "company": "Meridian Health",
+          "email": "daniel.okonkwo@example.com",
+          "jobTitle": "Director of AI",
+          "missingProfileItems": [
+            "slides"
+          ],
+          "name": "Daniel Okonkwo",
+          "outstandingTasks": [],
+          "personId": "m97dgej6jsm16famm5kmmmgds18c8xrg",
+          "sessions": [
+            "Closing panel: what we got wrong about agents"
+          ]
+        },
+        {
+          "company": "Runway Analytics",
+          "email": "elena.petrova@example.com",
+          "jobTitle": "Product Lead",
+          "missingProfileItems": [
+            "slides"
+          ],
+          "name": "Elena Petrova",
+          "outstandingTasks": [],
+          "personId": "m971evz5ynmv9aacazxsmr4dy58c8g74",
+          "sessions": [
+            "What users actually do with your AI feature"
+          ]
+        },
+        {
+          "company": "Institute for Applied ML",
+          "email": "hana.kobayashi@example.com",
+          "jobTitle": "Research Engineer",
+          "missingProfileItems": [
+            "slides"
+          ],
+          "name": "Hana Kobayashi",
+          "outstandingTasks": [],
+          "personId": "m972p9h1pj3yvybmtj2ehwj5498c9903",
+          "sessions": [
+            "Evaluation harnesses for production LLMs"
+          ]
+        }
+      ]
+    }
+  },
+  "get_speaker_portal_link": {
+    "input": {
+      "event": "ai-summit-2026",
+      "speaker": "liam.ferguson@example.com"
+    },
+    "output": {
+      "email": "liam.ferguson@example.com",
+      "name": "Liam Ferguson",
+      "note": "A private magic link — it signs this speaker straight into their portal. Share it only with them.",
+      "personId": "m970psm50jw50q39mvnamh13q18c890d",
+      "portalUrl": "http://localhost:3000/portal/t/demo-liam-ferguson"
+    }
+  },
+  "list_templates": {
+    "input": {
+      "event": "ai-summit-2026"
+    },
+    "output": {
+      "note": "Placeholders use {{variable}} syntax and are filled in when the email is queued.",
+      "templates": [
+        {
+          "body": "Hi {{firstName}},\n\nThanks for submitting “{{sessionTitle}}” to {{eventName}}. Your proposal is in and our programme committee will review it alongside the rest of the call for papers.\n\nYou can review or update your submission at any time before the call closes from your speaker portal:\n{{portalLink}}\n\nWe'll be in touch as soon as decisions are made. Thank you for sharing your work with us.\n\n— The {{eventName}} programme team",
+          "customized": true,
+          "key": "confirmation",
+          "name": "Submission received",
+          "subject": "We received your submission for {{eventName}}"
+        },
+        {
+          "body": "Hi {{firstName}},\n\nGreat news: “{{sessionTitle}}” has been accepted for {{eventName}}. We had a strong field this year and we're genuinely excited to have you on the programme.\n\nA few next steps so we can get you ready:\n\n1. Open your speaker portal: {{portalLink}}\n2. Confirm your biography and upload a headshot — both appear on the public programme.\n3. Work through the tasks listed in the portal before their due dates (slides, travel details, and anything else we need from you).\n\nIf your session has already been scheduled you'll find a calendar invite attached to this email, and the exact time and room in the portal.\n\nPlease let us know if anything changes on your side — we'd rather hear early.\n\nWelcome aboard,\nThe {{eventName}} programme team",
+          "customized": true,
+          "key": "accepted",
+          "name": "Submission accepted",
+          "subject": "Congratulations — “{{sessionTitle}}” is in the {{eventName}} programme"
+        },
+        {
+          "body": "Hi {{firstName}},\n\nThank you for submitting “{{sessionTitle}}” to {{eventName}}. After careful review by our programme committee, we're not able to include it in this year's programme.\n\nThis was a genuinely difficult round — we received far more strong proposals than we have slots, and a decision not to schedule a talk says much more about the shape of the agenda than about the quality of the work.\n\nWe hope you'll still join us, and we'd very much welcome a submission from you next time. Your submission history stays available in your portal:\n{{portalLink}}\n\nThank you for taking the time to write it up.\n\n— The {{eventName}} programme team",
+          "customized": true,
+          "key": "declined",
+          "name": "Submission not accepted",
+          "subject": "Your submission to {{eventName}}"
+        },
+        {
+          "body": "Hi {{firstName}},\n\nYour submission “{{sessionTitle}}” made it through review for {{eventName}}, but we've run out of slots in the programme for now — so we've placed it on our waitlist.\n\nThat means: if a slot opens up, yours is one of the first talks we'll reach for. We'll contact you straight away if that happens, and we'll confirm either way before the event.\n\nNothing is needed from you right now. You can check the current status any time in your speaker portal:\n{{portalLink}}\n\nThanks for your patience — and for a proposal we'd genuinely like to find room for.\n\n— The {{eventName}} programme team",
+          "customized": true,
+          "key": "waitlisted",
+          "name": "Submission waitlisted",
+          "subject": "“{{sessionTitle}}” is on the {{eventName}} waitlist"
+        },
+        {
+          "body": "Hi {{firstName}},\n\nA friendly nudge — you still have a few speaker tasks outstanding for {{eventName}}. They usually take less than ten minutes in total.\n\nOpen your portal to see exactly what's left and complete it inline:\n{{portalLink}}\n\nGetting these in on time lets us publish the programme, print your details correctly and make sure your session runs smoothly on the day.\n\nIf something is blocking you, just reply to this email and we'll help.\n\nThank you,\nThe {{eventName}} programme team",
+          "customized": true,
+          "key": "reminder",
+          "name": "Outstanding tasks reminder",
+          "subject": "A quick reminder: outstanding tasks for {{eventName}}"
+        }
+      ],
+      "variables": [
+        "speakerName",
+        "firstName",
+        "sessionTitle",
+        "eventName",
+        "portalLink"
+      ]
+    }
+  },
+  "list_outbox": {
+    "input": {
+      "event": "ai-summit-2026"
+    },
+    "output": {
+      "counts": {
+        "preview": 24,
+        "sent": 2
+      },
+      "messages": [
+        {
+          "calendarInviteAttached": false,
+          "error": null,
+          "sentAt": null,
+          "status": "preview",
+          "subject": "Venue update for AI Engineer Summit 2026",
+          "templateKey": "custom-bulk",
+          "to": "verify-e2e-mso0yha0@example.com"
+        },
+        {
+          "calendarInviteAttached": false,
+          "error": null,
+          "sentAt": null,
+          "status": "preview",
+          "subject": "Venue update for AI Engineer Summit 2026",
+          "templateKey": "custom-bulk",
+          "to": "daniel.okonkwo@example.com"
+        },
+        {
+          "calendarInviteAttached": false,
+          "error": null,
+          "sentAt": null,
+          "status": "preview",
+          "subject": "Venue update for AI Engineer Summit 2026",
+          "templateKey": "custom-bulk",
+          "to": "priya.raghavan@example.com"
+        },
+        {
+          "calendarInviteAttached": false,
+          "error": null,
+          "sentAt": null,
+          "status": "preview",
+          "subject": "Venue update for AI Engineer Summit 2026",
+          "templateKey": "custom-bulk",
+          "to": "elena.petrova@example.com"
+        },
+        {
+          "calendarInviteAttached": false,
+          "error": null,
+          "sentAt": null,
+          "status": "preview",
+          "subject": "Venue update for AI Engineer Summit 2026",
+          "templateKey": "custom-bulk",
+          "to": "rafael.duarte@example.com"
+        },
+        {
+          "calendarInviteAttached": false,
+          "error": null,
+          "sentAt": null,
+          "status": "preview",
+          "subject": "Venue update for AI Engineer Summit 2026",
+          "templateKey": "custom-bulk",
+          "to": "liam.ferguson@example.com"
+        },
+        {
+          "calendarInviteAttached": false,
+          "error": null,
+          "sentAt": null,
+          "status": "preview",
+          "subject": "Venue update for AI Engineer Summit 2026",
+          "templateKey": "custom-bulk",
+          "to": "hana.kobayashi@example.com"
+        },
+        {
+          "calendarInviteAttached": false,
+          "error": null,
+          "sentAt": null,
+          "status": "preview",
+          "subject": "Venue update for AI Engineer Summit 2026",
+          "templateKey": "custom-bulk",
+          "to": "tom.beaumont@example.com"
+        },
+        {
+          "calendarInviteAttached": false,
+          "error": null,
+          "sentAt": null,
+          "status": "preview",
+          "subject": "Venue update for AI Engineer Summit 2026",
+          "templateKey": "custom-bulk",
+          "to": "ava.nakamura@example.com"
+        },
+        {
+          "calendarInviteAttached": false,
+          "error": null,
+          "sentAt": null,
+          "status": "preview",
+          "subject": "Venue update for AI Engineer Summit 2026",
+          "templateKey": "custom-bulk",
+          "to": "sofia.marchetti@example.com"
+        },
+        {
+          "calendarInviteAttached": false,
+          "error": null,
+          "sentAt": null,
+          "status": "preview",
+          "subject": "Venue update for AI Engineer Summit 2026",
+          "templateKey": "custom-bulk",
+          "to": "noah.blackwood@example.com"
+        },
+        {
+          "calendarInviteAttached": false,
+          "error": null,
+          "sentAt": null,
+          "status": "preview",
+          "subject": "Venue update for AI Engineer Summit 2026",
+          "templateKey": "custom-bulk",
+          "to": "yara.haddad@example.com"
+        },
+        {
+          "calendarInviteAttached": false,
+          "error": null,
+          "sentAt": null,
+          "status": "preview",
+          "subject": "A quick reminder: outstanding tasks for AI Engineer Summit 2026",
+          "templateKey": "reminder",
+          "to": "verify-e2e-mso0yha0@example.com"
+        },
+        {
+          "calendarInviteAttached": false,
+          "error": null,
+          "sentAt": null,
+          "status": "preview",
+          "subject": "A quick reminder: outstanding tasks for AI Engineer Summit 2026",
+          "templateKey": "reminder",
+          "to": "noah.blackwood@example.com"
+        },
+        {
+          "calendarInviteAttached": false,
+          "error": null,
+          "sentAt": null,
+          "status": "preview",
+          "subject": "A quick reminder: outstanding tasks for AI Engineer Summit 2026",
+          "templateKey": "reminder",
+          "to": "yara.haddad@example.com"
+        },
+        {
+          "calendarInviteAttached": false,
+          "error": null,
+          "sentAt": null,
+          "status": "preview",
+          "subject": "A quick reminder: outstanding tasks for AI Engineer Summit 2026",
+          "templateKey": "reminder",
+          "to": "rafael.duarte@example.com"
+        },
+        {
+          "calendarInviteAttached": false,
+          "error": null,
+          "sentAt": null,
+          "status": "preview",
+          "subject": "A quick reminder: outstanding tasks for AI Engineer Summit 2026",
+          "templateKey": "reminder",
+          "to": "liam.ferguson@example.com"
+        },
+        {
+          "calendarInviteAttached": false,
+          "error": null,
+          "sentAt": null,
+          "status": "preview",
+          "subject": "A quick reminder: outstanding tasks for AI Engineer Summit 2026",
+          "templateKey": "reminder",
+          "to": "tom.beaumont@example.com"
+        },
+        {
+          "calendarInviteAttached": false,
+          "error": null,
+          "sentAt": null,
+          "status": "preview",
+          "subject": "A quick reminder: outstanding tasks for AI Engineer Summit 2026",
+          "templateKey": "reminder",
+          "to": "sofia.marchetti@example.com"
+        },
+        {
+          "calendarInviteAttached": false,
+          "error": null,
+          "sentAt": null,
+          "status": "preview",
+          "subject": "A quick reminder: outstanding tasks for AI Engineer Summit 2026",
+          "templateKey": "reminder",
+          "to": "ava.nakamura@example.com"
+        },
+        {
+          "calendarInviteAttached": false,
+          "error": null,
+          "sentAt": null,
+          "status": "preview",
+          "subject": "Congratulations — “Verification Talk” is in the AI Engineer Summit 2026 programme",
+          "templateKey": "accepted",
+          "to": "verify-e2e-mso0yha0@example.com"
+        },
+        {
+          "calendarInviteAttached": false,
+          "error": null,
+          "sentAt": null,
+          "status": "preview",
+          "subject": "Congratulations — “Cost modelling for inference-heavy products” is in the AI Engineer Summit 2026 programme",
+          "templateKey": "accepted",
+          "to": "noah.blackwood@example.com"
+        },
+        {
+          "calendarInviteAttached": false,
+          "error": null,
+          "sentAt": null,
+          "status": "preview",
+          "subject": "Congratulations — “Structured output without the sadness” is in the AI Engineer Summit 2026 programme",
+          "templateKey": "accepted",
+          "to": "yara.haddad@example.com"
+        },
+        {
+          "calendarInviteAttached": false,
+          "error": null,
+          "sentAt": null,
+          "status": "preview",
+          "subject": "A quick reminder: outstanding tasks for AI Engineer Summit 2026",
+          "templateKey": "reminder",
+          "to": "tom.beaumont@example.com"
+        },
+        {
+          "calendarInviteAttached": true,
+          "error": null,
+          "sentAt": "2026-08-06T02:11:47.683Z",
+          "status": "sent",
+          "subject": "Congratulations — “Building reliable agents: a practitioner's playbook” is in the AI Engineer Summit 2026 programme",
+          "templateKey": "accepted",
+          "to": "sofia.marchetti@example.com"
+        }
+      ],
+      "note": "\"preview\" means it was rendered but not actually mailed — demo recipients (@example.com) and deployments without RESEND_API_KEY never send."
+    }
+  },
+  "add_manual_session": {
+    "input": {
+      "title": "Copilot Verification Keynote",
+      "event": "ai-summit-2026"
+    },
+    "output": {
+      "kind": "session",
+      "speakers": [],
+      "status": "accepted",
+      "submissionId": "k57103zpxr889q0nw61zdyhwa58c8s56",
+      "title": "Copilot Verification Keynote"
+    }
+  },
+  "assign_task": {
+    "input": {
+      "kind": "confirm",
+      "dueAt": "2026-08-18T09:00:00Z",
+      "title": "Copilot verification check",
+      "speakers": [
+        "liam.ferguson@example.com"
+      ],
+      "event": "ai-summit-2026"
+    },
+    "output": {
+      "assignedTo": [
+        "liam.ferguson@example.com"
+      ],
+      "created": 1,
+      "dueAt": "2026-08-18T09:00:00.000Z",
+      "kind": "confirm",
+      "note": "Speakers see this in their portal. Use send_reminders to nudge them by email.",
+      "title": "Copilot verification check"
+    }
+  },
+  "create_event": {
+    "input": {
+      "name": "Copilot Verification Event"
+    },
+    "output": {
+      "eventId": "j9726nrwb529ang7nfwxjvdms18c8zz4",
+      "name": "Copilot Verification Event",
+      "publicSubmitUrlHint": "http://localhost:3000/submit/<form-slug>",
+      "slug": "copilot-verification-event"
+    }
+  },
+  "update_template": {
+    "input": {
+      "subject": "A quick nudge about {{eventName}}",
+      "body": "Hi {{firstName}},\n\nA friendly nudge — you still have a few speaker tasks outstanding for {{eventName}}. They usually take less than ten minutes in total.\n\nOpen your portal to see exactly what's left and complete it inline:\n{{portalLink}}\n\nGetting these in on time lets us publish the programme, print your details correctly and make sure your session runs smoothly on the day.\n\nIf something is blocking you, just reply to this email and we'll help.\n\nThank you,\nThe {{eventName}} programme team",
+      "key": "reminder",
+      "event": "ai-summit-2026"
+    },
+    "output": {
+      "body": "Hi {{firstName}},\n\nA friendly nudge — you still have a few speaker tasks outstanding for {{eventName}}. They usually take less than ten minutes in total.\n\nOpen your portal to see exactly what's left and complete it inline:\n{{portalLink}}\n\nGetting these in on time lets us publish the programme, print your details correctly and make sure your session runs smoothly on the day.\n\nIf something is blocking you, just reply to this email and we'll help.\n\nThank you,\nThe {{eventName}} programme team",
+      "key": "reminder",
+      "name": "Outstanding tasks reminder",
+      "note": "Preview it with send_test_email before it goes out for real.",
+      "subject": "A quick nudge about {{eventName}}"
+    }
+  },
+  "schedule_session": {
+    "input": {
+      "durationMinutes": 30,
+      "startsAt": "2026-10-12T17:00:00Z",
+      "room": "Main Stage",
+      "submissionId": "k579pva3bwgr7bg6662004vm6s8c8vr8"
+    },
+    "output": {
+      "conflicts": [
+        "Both booked in Main Stage at the same time"
+      ],
+      "durationMinutes": 30,
+      "room": "Main Stage",
+      "startsAt": "2026-10-12T17:00:00.000Z",
+      "submissionId": "k579pva3bwgr7bg6662004vm6s8c8vr8",
+      "title": "Copilot Verification Keynote"
+    }
+  }
+}

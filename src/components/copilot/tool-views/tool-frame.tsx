@@ -1,4 +1,4 @@
-import type { ComponentType, ReactNode } from "react"
+import type { ReactNode } from "react"
 import { RiArrowDownSLine, RiToolsLine } from "@remixicon/react"
 
 import { cn } from "@/lib/utils"
@@ -10,7 +10,10 @@ import {
 import { StatusPill } from "@/components/shared/status-pill"
 import { FieldGrid, JsonBlock } from "@/components/copilot/tool-views/shared"
 import { humanizeArgName, summarizeToolArgs } from "@/lib/copilot"
-import type { CopilotToolState } from "@/components/copilot/tool-views/registry"
+import type {
+  CopilotToolState,
+  ToolIconComponent,
+} from "@/components/copilot/tool-views/registry"
 
 /**
  * The frame every tool call wears.
@@ -44,7 +47,7 @@ export type ToolFrameProps = {
   /** Raw tool name, shown in the expanded receipt. */
   toolName: string
   state: CopilotToolState
-  icon?: ComponentType<{ size?: number; className?: string }>
+  icon?: ToolIconComponent
   input: unknown
   output?: unknown
   errorText?: string
@@ -67,7 +70,7 @@ export function ToolFrame({
   children,
   className,
 }: ToolFrameProps) {
-  const chip = STATE_CHIP[state] ?? STATE_CHIP["input-available"]
+  const chip = STATE_CHIP[state]
   const args = summarizeToolArgs(input)
   const running = state === "input-streaming" || state === "input-available"
 

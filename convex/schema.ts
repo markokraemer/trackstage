@@ -97,7 +97,12 @@ export default defineSchema({
     timezone: v.string(), // IANA
     startsAt: v.optional(v.number()), // epoch ms
     endsAt: v.optional(v.number()),
+    // Event branding (convex/files.ts). The logo shows on the public pages and
+    // in the speaker portal header; the background is the optional hero image
+    // behind the public header. Both are storage blobs the organizer owns —
+    // replacing or clearing one deletes the blob it replaces.
     logoId: v.optional(v.id("_storage")),
+    backgroundId: v.optional(v.id("_storage")),
     // Go-live gate for the public program (sbek AIA-07). Unset ⇒ the public
     // pages render "Schedule coming soon" with no sessions, however many are
     // accepted and scheduled internally. Set by agenda.publishAgenda.
@@ -299,7 +304,10 @@ export default defineSchema({
     .index("by_eventId", ["eventId"])
     .index("by_personId", ["personId"])
     .index("by_submissionId", ["submissionId"])
-    .index("by_taskId", ["taskId"]),
+    .index("by_taskId", ["taskId"])
+    // "Who else points at this blob?" — asked before every storage.delete so a
+    // file is never deleted out from under a version that still shows it.
+    .index("by_storageId", ["storageId"]),
 
   // ——— Communications ——————————————————————————————————————————————————
   emailTemplates: defineTable({

@@ -94,7 +94,7 @@ export function QueueBanner({
     <>
       <Alert
         className={cn(
-          "flex flex-wrap items-center gap-x-4 gap-y-3 border-primary/20 bg-accent",
+          "flex flex-wrap items-center gap-x-4 gap-y-3 border-border bg-accent",
           className
         )}
       >

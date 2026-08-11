@@ -55,11 +55,16 @@ function DropdownMenuLabel({
   className,
   inset,
   ...props
-}: MenuPrimitive.GroupLabel.Props & {
+}: React.ComponentProps<"div"> & {
   inset?: boolean
 }) {
+  // Deliberately a plain styled div, NOT Base UI's GroupLabel: GroupLabel
+  // throws unless nested in <Menu.Group>, and three separate slices tripped
+  // that at runtime. A presentational label can't crash; wrap in
+  // DropdownMenuGroup where the aria-labelledby association matters.
   return (
-    <MenuPrimitive.GroupLabel
+    <div
+      role="presentation"
       data-slot="dropdown-menu-label"
       data-inset={inset}
       className={cn(

@@ -15,6 +15,23 @@ export default [
     },
   },
   {
+    // Deterministic guard for a Base UI footgun that repeatedly reached
+    // runtime: <Button render={<a/>}/<Link/>}> logs a console error unless
+    // nativeButton is declared. Force the author to decide explicitly.
+    files: ["src/**/*.tsx"],
+    rules: {
+      "no-restricted-syntax": [
+        "error",
+        {
+          selector:
+            "JSXOpeningElement[name.name='Button']:has(JSXAttribute[name.name='render']):not(:has(JSXAttribute[name.name='nativeButton']))",
+          message:
+            "Button with a render prop must declare nativeButton explicitly (nativeButton={false} when rendering <a>/<Link>).",
+        },
+      ],
+    },
+  },
+  {
     // Interior.dev registry files reference jsx-a11y rules our config doesn't
     // ship; scoped override instead of installing a plugin for vendored code.
     files: ["src/components/interior/**"],

@@ -190,7 +190,7 @@ export function QuestionsStep({
       />
 
       {trackQuestion ? (
-        <div className="flex items-start gap-2.5 rounded-lg border border-primary/15 bg-accent px-3.5 py-3 text-sm text-foreground/80">
+        <div className="flex items-start gap-2.5 rounded-lg border border-border bg-accent px-3.5 py-3 text-sm text-foreground/80">
           <RiSignpostLine
             size={16}
             aria-hidden

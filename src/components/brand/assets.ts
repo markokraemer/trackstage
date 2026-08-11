@@ -93,7 +93,7 @@ export function markSvg(size: number, tone: BrandTone = "color"): string {
   )
 }
 
-/** Mark inside a rounded brand-petrol (or white) tile — the app icon shape. */
+/** Mark inside a rounded brand-blue (or white) tile — the app icon shape. */
 export function markBoxedSvg(
   size: number,
   tone: BrandTone = "color",

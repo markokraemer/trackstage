@@ -39,7 +39,7 @@ export function InsightBanner({
   return (
     <Alert
       className={cn(
-        "items-center gap-x-3 border-primary/15 bg-accent px-4 py-3 sm:flex sm:justify-between",
+        "items-center gap-x-3 border-border bg-accent px-4 py-3 sm:flex sm:justify-between",
         className,
       )}
     >

@@ -111,7 +111,7 @@ export function FormCard({
 
         <div className="flex shrink-0 flex-wrap items-center gap-2">
           <CopyLinkButton slug={form.slug} size="sm" />
-          <Button
+          <Button nativeButton={false}
             variant="outline"
             size="sm"
             render={

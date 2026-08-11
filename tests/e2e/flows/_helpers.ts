@@ -1,0 +1,234 @@
+import { expect } from "@playwright/test"
+import type { Locator, Page } from "@playwright/test"
+import { ConvexHttpClient } from "convex/browser"
+import { api } from "../../../convex/_generated/api.js"
+import { env, watchConsole } from "../utils"
+import type { ConsoleWatcher } from "../utils"
+
+export { env, watchConsole, assertNoErrorBoundary } from "../utils"
+export { DEMO_ORGANIZER, ORGANIZER_STATE, organizerConvexClient } from "../utils"
+
+export const MAIN_EVENT_SLUG = "ai-summit-2026"
+export const MAIN_EVENT_NAME = "AI Engineer Summit 2026"
+export const DEMO_WORKSPACE_NAME = "AI Engineer"
+
+/** A collision-proof identity for a spec run. */
+export function unique(prefix: string) {
+  return `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`
+}
+
+/**
+ * Emails ending in @example.com never leave the deployment: `deliverPending`
+ * marks them "preview" instead of handing them to Resend. Every synthetic
+ * recipient a test creates MUST use this so a run can never send real mail.
+ */
+export function testEmail(prefix: string) {
+  return `${unique(prefix)}@example.com`
+}
+
+// ——— Backend access ————————————————————————————————————————————————————————
+
+/** Anonymous Convex client (public queries only). */
+export function anonConvexClient() {
+  return new ConvexHttpClient(env.VITE_CONVEX_URL)
+}
+
+/** Sign in over Better Auth REST; returns the raw Convex JWT. */
+export async function signInApi(email: string, password: string) {
+  const res = await fetch(`${env.VITE_CONVEX_SITE_URL}/api/auth/sign-in/email`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Origin: "http://localhost:3000" },
+    body: JSON.stringify({ email, password }),
+  })
+  if (!res.ok) throw new Error(`sign-in failed for ${email}: ${res.status}`)
+  const jwt = res.headers
+    .getSetCookie()
+    .find((c) => c.includes("convex_jwt="))
+    ?.match(/convex_jwt=([^;]+)/)?.[1]
+  if (!jwt) throw new Error("no convex_jwt cookie in sign-in response")
+  return decodeURIComponent(jwt)
+}
+
+export async function signUpApi(name: string, email: string, password: string) {
+  const res = await fetch(`${env.VITE_CONVEX_SITE_URL}/api/auth/sign-up/email`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Origin: "http://localhost:3000" },
+    body: JSON.stringify({ name, email, password }),
+  })
+  if (!res.ok) throw new Error(`sign-up failed for ${email}: ${res.status}`)
+}
+
+export async function clientFor(email: string, password: string) {
+  const client = new ConvexHttpClient(env.VITE_CONVEX_URL)
+  client.setAuth(await signInApi(email, password))
+  return client
+}
+
+/**
+ * Resolve the demo event by slug through an authed client. Specs must call
+ * this rather than caching an id: other agents reseed this deployment
+ * mid-run, which recreates the event with a brand-new id.
+ */
+export async function mainEvent(client: ConvexHttpClient) {
+  const events: Array<{ _id: string; slug: string; name: string }> =
+    await client.query(api.events.list, {})
+  const main = events.find((e) => e.slug === MAIN_EVENT_SLUG)
+  if (!main) {
+    throw new Error(
+      `seed missing "${MAIN_EVENT_SLUG}" — run \`pnpm exec convex run seed:setup\``,
+    )
+  }
+  return main
+}
+
+// ——— UI plumbing ———————————————————————————————————————————————————————————
+
+/** Arm console tracking and return the watcher (call assertClean at the end). */
+export function armed(page: Page): ConsoleWatcher {
+  return watchConsole(page)
+}
+
+/**
+ * Fill a controlled input in a way that survives React hydration. Filling
+ * before hydration finishes gets wiped when the controlled input mounts, so we
+ * re-fill until the value sticks.
+ */
+export async function fillStable(locator: Locator, value: string) {
+  for (let attempt = 0; attempt < 6; attempt++) {
+    await locator.fill(value)
+    await locator.page().waitForTimeout(150)
+    if ((await locator.inputValue()) === value) return
+  }
+  throw new Error(`could not stabilise input value "${value}"`)
+}
+
+/** Sign in through the real UI (hydration-retried, same shape as auth.setup). */
+export async function uiSignIn(page: Page, email: string, password: string) {
+  await page.goto("/login", { waitUntil: "networkidle" })
+  for (let attempt = 0; attempt < 5; attempt++) {
+    await fillStable(page.getByLabel("Email").first(), email)
+    await fillStable(page.getByLabel("Password").first(), password)
+    await page.getByRole("button", { name: /^sign in$/i }).first().click()
+    try {
+      await page.waitForURL(/\/app/, { timeout: 10_000 })
+      return
+    } catch {
+      if (!page.url().includes("/app")) {
+        await page.goto("/login", { waitUntil: "networkidle" })
+      }
+    }
+  }
+  throw new Error(`UI sign-in never reached /app for ${email}`)
+}
+
+/** Sign up a brand-new organizer through the real UI. */
+export async function uiSignUp(
+  page: Page,
+  name: string,
+  email: string,
+  password: string,
+) {
+  await page.goto("/login", { waitUntil: "networkidle" })
+  for (let attempt = 0; attempt < 5; attempt++) {
+    await page.getByRole("tab", { name: /create account/i }).first().click()
+    await fillStable(page.getByLabel(/your name/i).first(), name)
+    await fillStable(page.getByLabel("Email").first(), email)
+    await fillStable(page.getByLabel("Password").first(), password)
+    await page.getByRole("button", { name: /^create account$/i }).first().click()
+    try {
+      await page.waitForURL(/\/app/, { timeout: 15_000 })
+      return
+    } catch {
+      if (!page.url().includes("/app")) {
+        await page.goto("/login", { waitUntil: "networkidle" })
+      }
+    }
+  }
+  throw new Error(`UI sign-up never reached /app for ${email}`)
+}
+
+/** Wait for the organizer shell to be interactive. */
+export async function waitForShell(page: Page) {
+  await expect(
+    page.getByRole("button", { name: /switch event/i }).first(),
+  ).toBeVisible({ timeout: 30_000 })
+}
+
+/**
+ * Pin the shell to a named event. Other agents reseed mid-run and a fresh
+ * browser lands on whichever event comes back first, so every organizer spec
+ * calls this before asserting anything event-scoped.
+ */
+export async function selectEvent(page: Page, name = MAIN_EVENT_NAME) {
+  const switcher = page.getByRole("button", { name: /switch event/i }).first()
+  await expect(switcher).toBeVisible({ timeout: 30_000 })
+  if ((await switcher.textContent())?.includes(name)) return
+  await switcher.click()
+  await page.getByRole("menuitem", { name: new RegExp(name, "i") }).first().click()
+  await expect(switcher).toContainText(new RegExp(name, "i"), { timeout: 15_000 })
+}
+
+/** Open an organizer route with the demo event selected. */
+export async function gotoApp(page: Page, path: string) {
+  await page.goto(path, { waitUntil: "domcontentloaded" })
+  await waitForShell(page)
+  await selectEvent(page)
+}
+
+/** Sonner toast text (any toast currently on screen). */
+export function toasts(page: Page) {
+  return page.locator("[data-sonner-toast]")
+}
+
+export async function expectToast(page: Page, pattern: RegExp, timeout = 15_000) {
+  await expect(toasts(page).filter({ hasText: pattern }).first()).toBeVisible({
+    timeout,
+  })
+}
+
+/** Dismiss every visible toast so it can't intercept later clicks. */
+export async function clearToasts(page: Page) {
+  const all = toasts(page)
+  for (let i = (await all.count()) - 1; i >= 0; i--) {
+    await all.nth(i).click({ force: true }).catch(() => {})
+  }
+  await page.waitForTimeout(200)
+}
+
+/**
+ * Poll a backend predicate. Used where the assertion is about data the UI
+ * doesn't necessarily surface (outbox status transitions, task completion).
+ */
+export async function until<T>(
+  fn: () => Promise<T>,
+  predicate: (value: T) => boolean,
+  { timeout = 30_000, interval = 750, label = "condition" } = {},
+): Promise<T> {
+  const deadline = Date.now() + timeout
+  let last: T | undefined
+  let lastError: unknown
+  while (Date.now() < deadline) {
+    try {
+      last = await fn()
+      if (predicate(last)) return last
+      lastError = undefined
+    } catch (error) {
+      lastError = error
+    }
+    await new Promise((r) => setTimeout(r, interval))
+  }
+  const detail = lastError
+    ? `last error: ${String((lastError as Error).message ?? lastError).slice(0, 200)}`
+    : `last value: ${JSON.stringify(last)?.slice(0, 400)}`
+  throw new Error(`timed out waiting for ${label} — ${detail}`)
+}
+
+/** True when the locator resolves to at least one element within `timeout`. */
+export async function present(locator: Locator, timeout = 3_000) {
+  try {
+    await locator.first().waitFor({ state: "visible", timeout })
+    return true
+  } catch {
+    return false
+  }
+}

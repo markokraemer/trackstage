@@ -161,8 +161,15 @@ async function purgeEvent(ctx: MutationCtx, eventId: Id<"events">) {
     await ctx.db.delete("people", row._id)
   }
 
+  const embeds = await ctx.db
+    .query("embeds")
+    .withIndex("by_eventId", (q) => q.eq("eventId", eventId))
+    .take(500)
+  for (const row of embeds) await ctx.db.delete("embeds", row._id)
+
   const event = await ctx.db.get("events", eventId)
   if (event?.logoId) await ctx.storage.delete(event.logoId)
+  if (event?.backgroundId) await ctx.storage.delete(event.backgroundId)
   await ctx.db.delete("events", eventId)
 }
 

@@ -181,6 +181,9 @@ trail visible).
     beautiful. we can one-to-one take it over." Match the whole Attio vibe; SHOW THE
     ACTUAL PRODUCT: literally capture real product screenshots and GIFs via the
     Chromium browser MCP (drive the seeded app, record) and put them on the landing.
+    TRIM (Marko, after review): the landing is STILL too complex — simplify AND
+    beautify: fewer sections, less copy, more air. Right-click logo = brand context
+    menu, never auto-redirect.
     Use the Mobbin MCP EXTENSIVELY for component references (look at screens visually,
     recreate as needed for the new design language). The AI chat surfaces there too.
 26. **Hardcore real-time, everything instant**: latency must be perfect across the

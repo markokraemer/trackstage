@@ -1,6 +1,7 @@
 import { v } from "convex/values"
 import { mutation, query } from "./_generated/server"
 import { requireEventAccess } from "./lib/auth"
+import { enrichUploads } from "./lib/files"
 
 // Organizer-side task management (create/assign onboarding + file-request
 // tasks) and content review (approve / request changes on uploads).
@@ -129,36 +130,30 @@ export const listUploads = query({
     if (args.approvalStatus) {
       uploads = uploads.filter((u) => u.approvalStatus === args.approvalStatus)
     }
+    const rows = uploads.sort((a, b) => b._creationTime - a._creationTime)
+    // Real size/type/checksum from the `_storage` system table — plus the
+    // "identical to v2" hint, so nobody re-reviews the same bytes twice.
+    const files = await enrichUploads(ctx, rows)
     return await Promise.all(
-      uploads
-        .sort((a, b) => b._creationTime - a._creationTime)
-        .map(async (upload) => {
-          const [person, submission, url] = await Promise.all([
-            ctx.db.get(upload.personId),
-            upload.submissionId ? ctx.db.get(upload.submissionId) : null,
-            ctx.storage.getUrl(upload.storageId),
-          ])
-          return {
-            id: upload._id,
-            filename: upload.filename,
-            contentType: upload.contentType,
-            size: upload.size,
-            version: upload.version,
-            approvalStatus: upload.approvalStatus,
-            reviewNote: upload.reviewNote,
-            uploadedAt: upload._creationTime,
-            url,
-            person: person
-              ? {
-                  id: person._id,
-                  name:
-                    `${person.firstName} ${person.lastName}`.trim() ||
-                    person.email,
-                }
-              : null,
-            submissionTitle: submission?.title,
-          }
-        }),
+      files.map(async (file, index) => {
+        const row = rows[index]
+        const [person, submission] = await Promise.all([
+          ctx.db.get(row.personId),
+          row.submissionId ? ctx.db.get(row.submissionId) : null,
+        ])
+        return {
+          ...file,
+          person: person
+            ? {
+                id: person._id,
+                name:
+                  `${person.firstName} ${person.lastName}`.trim() ||
+                  person.email,
+              }
+            : null,
+          submissionTitle: submission?.title,
+        }
+      }),
     )
   },
 })

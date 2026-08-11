@@ -17,6 +17,7 @@
     "cf-typegen": "wrangler types --include-runtime=false",
     "test:backend": "convex run seed:setup && node scripts/verify-backend.mjs",
     "test:e2e": "playwright test",
+    "test:flows": "playwright test --project=flows",
     "test:all": "pnpm test && pnpm test:backend && pnpm test:e2e"
   },
   "dependencies": {
@@ -39,6 +40,7 @@
     "@radix-ui/react-use-controllable-state": "^1.2.6",
     "@remixicon/react": "^4.9.0",
     "@rive-app/react-webgl2": "^4.31.0",
+    "@shadcn/react": "^0.3.0",
     "@streamdown/cjk": "^1.0.3",
     "@streamdown/code": "^1.1.1",
     "@streamdown/math": "^1.0.2",

@@ -4,7 +4,12 @@ import { useQuery } from "@tanstack/react-query"
 import { convexQuery } from "@convex-dev/react-query"
 import { api } from "@convex/_generated/api"
 import type { Id } from "@convex/_generated/dataModel"
-import { RiListCheck3, RiSettings3Line, RiUserVoiceLine } from "@remixicon/react"
+import {
+  RiListCheck3,
+  RiSettings3Line,
+  RiUserAddLine,
+  RiUserVoiceLine,
+} from "@remixicon/react"
 
 import { PageHeader } from "@/components/shared/page-header"
 import { EmptyState } from "@/components/shared/empty-state"
@@ -12,11 +17,22 @@ import { DataToolbar } from "@/components/shared/data-toolbar"
 import { Button, buttonVariants } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import { WORKFLOW_OPTIONS } from "@/components/dashboard/speaker-workflow-select"
 import { useCurrentEvent } from "@/lib/current-event"
 import {
   SpeakersTable,
   SpeakersTableSkeleton,
 } from "@/components/dashboard/speakers-table"
+import type { SpeakerRosterRow } from "@/components/dashboard/speakers-table"
+import { AddSpeakerDialog } from "@/components/dashboard/add-speaker-dialog"
+import { SpeakerProfileDrawer } from "@/components/dashboard/speaker-profile-drawer"
 import { AssignTaskDialog } from "@/components/dashboard/assign-task-dialog"
 import { RemindIncompleteButton } from "@/components/dashboard/remind-incomplete-button"
 import { APP_ROUTES } from "@/components/dashboard/app-routes"
@@ -26,6 +42,14 @@ export const Route = createFileRoute("/app/speakers/")({
 })
 
 type FilterTab = "all" | "attention" | "ready"
+
+/** Sentinel for "don't filter by workflow status" (sbek SPK-04 filterable). */
+const ALL_WORKFLOW = "all"
+
+const WORKFLOW_FILTER_OPTIONS = [
+  { value: ALL_WORKFLOW, label: "Any status" },
+  ...WORKFLOW_OPTIONS,
+]
 
 const TAB_LABELS: Record<FilterTab, string> = {
   all: "All speakers",
@@ -43,9 +67,12 @@ function SpeakersPage() {
   const { event, isEmpty } = useCurrentEvent()
   const [search, setSearch] = useState("")
   const [tab, setTab] = useState<FilterTab>("all")
+  const [workflow, setWorkflow] = useState<string>(ALL_WORKFLOW)
   const [selected, setSelected] = useState<Array<string>>([])
   const [assignOpen, setAssignOpen] = useState(false)
   const [assignTo, setAssignTo] = useState<Array<Id<"people">>>([])
+  const [addOpen, setAddOpen] = useState(false)
+  const [editing, setEditing] = useState<SpeakerRosterRow | null>(null)
 
   const { data: rows } = useQuery(
     convexQuery(
@@ -70,6 +97,9 @@ function SpeakersPage() {
         row.missing.length > 0 || row.tasks.done < row.tasks.total
       if (tab === "attention" && !needsAttention) return false
       if (tab === "ready" && needsAttention) return false
+      if (workflow !== ALL_WORKFLOW && row.workflowStatus !== workflow) {
+        return false
+      }
       if (!term) return true
       return (
         row.name.toLowerCase().includes(term) ||
@@ -80,7 +110,7 @@ function SpeakersPage() {
         )
       )
     })
-  }, [rows, search, tab])
+  }, [rows, search, tab, workflow])
 
   const speakerOptions = useMemo(
     () =>
@@ -133,11 +163,16 @@ function SpeakersPage() {
               />
               <Button
                 size="sm"
+                variant="outline"
                 onClick={() => openAssign([])}
                 disabled={speakerOptions.length === 0}
               >
                 <RiListCheck3 aria-hidden />
                 Assign task
+              </Button>
+              <Button size="sm" onClick={() => setAddOpen(true)}>
+                <RiUserAddLine aria-hidden />
+                Add speaker
               </Button>
             </>
           ) : null
@@ -150,21 +185,44 @@ function SpeakersPage() {
         placeholder="Search by name, email, company or session…"
         searchLabel="Search speakers"
         filters={
-          <Tabs
-            value={tab}
-            onValueChange={(value) => setTab(value as FilterTab)}
-          >
-            <TabsList>
-              {(Object.keys(TAB_LABELS) as Array<FilterTab>).map((key) => (
-                <TabsTrigger key={key} value={key}>
-                  {TAB_LABELS[key]}
-                  <span className="ml-1.5 tabular-nums opacity-60">
-                    {counts[key]}
-                  </span>
-                </TabsTrigger>
-              ))}
-            </TabsList>
-          </Tabs>
+          <>
+            <Tabs
+              value={tab}
+              onValueChange={(value) => setTab(value as FilterTab)}
+            >
+              <TabsList>
+                {(Object.keys(TAB_LABELS) as Array<FilterTab>).map((key) => (
+                  <TabsTrigger key={key} value={key}>
+                    {TAB_LABELS[key]}
+                    <span className="ml-1.5 tabular-nums opacity-60">
+                      {counts[key]}
+                    </span>
+                  </TabsTrigger>
+                ))}
+              </TabsList>
+            </Tabs>
+
+            <Select
+              items={WORKFLOW_FILTER_OPTIONS}
+              value={workflow}
+              onValueChange={(value) => setWorkflow(String(value))}
+            >
+              <SelectTrigger
+                size="sm"
+                aria-label="Filter by speaker status"
+                className="w-40"
+              >
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {WORKFLOW_FILTER_OPTIONS.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </>
         }
       />
 
@@ -200,15 +258,21 @@ function SpeakersPage() {
       ) : rows.length === 0 ? (
         <EmptyState
           icon={RiUserVoiceLine}
-          title="No accepted speakers yet"
-          description="Speakers land here automatically the moment you accept a submission. Then you can assign them tasks, copy their portal link, and track what's missing."
+          title="No speakers yet"
+          description="Speakers land here automatically the moment you accept a submission — or add a keynote, sponsor or moderator by hand. Then you can assign them tasks, copy their portal link, and track what's missing."
           action={
-            <Link
-              to={APP_ROUTES.submissions}
-              className={buttonVariants()}
-            >
-              Review submissions
-            </Link>
+            <div className="flex flex-wrap items-center justify-center gap-2">
+              <Button onClick={() => setAddOpen(true)}>
+                <RiUserAddLine aria-hidden />
+                Add speaker
+              </Button>
+              <Link
+                to={APP_ROUTES.submissions}
+                className={buttonVariants({ variant: "outline" })}
+              >
+                Review submissions
+              </Link>
+            </div>
           }
         />
       ) : visible.length === 0 ? (
@@ -234,18 +298,34 @@ function SpeakersPage() {
           selected={selected}
           onSelectedChange={setSelected}
           onAssignTask={(personId) => openAssign([personId])}
+          onEditProfile={setEditing}
         />
       )}
 
       {event ? (
-        <AssignTaskDialog
-          eventId={event._id}
-          speakers={speakerOptions}
-          open={assignOpen}
-          onOpenChange={setAssignOpen}
-          initialPersonIds={assignTo}
-        />
+        <>
+          <AssignTaskDialog
+            eventId={event._id}
+            speakers={speakerOptions}
+            open={assignOpen}
+            onOpenChange={setAssignOpen}
+            initialPersonIds={assignTo}
+          />
+          <AddSpeakerDialog
+            eventId={event._id}
+            open={addOpen}
+            onOpenChange={setAddOpen}
+          />
+        </>
       ) : null}
+
+      <SpeakerProfileDrawer
+        speaker={editing}
+        open={editing !== null}
+        onOpenChange={(next) => {
+          if (!next) setEditing(null)
+        }}
+      />
     </div>
   )
 }

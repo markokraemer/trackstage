@@ -65,7 +65,7 @@ function PlanDetailPage() {
   })
 
   const backButton = (
-    <Button variant="outline" size="sm" render={<Link to="/app/evaluation" search={{ tab: "plans" }} />}>
+    <Button nativeButton={false} variant="outline" size="sm" render={<Link to="/app/evaluation" search={{ tab: "plans" }} />}>
       <RiArrowLeftLine aria-hidden />
       All plans
     </Button>
@@ -80,7 +80,7 @@ function PlanDetailPage() {
           title="We couldn't find that plan"
           description="It may have been deleted. Head back to Evaluation to see the plans that are still running."
           action={
-            <Button render={<Link to="/app/evaluation" search={{ tab: "plans" }} />}>
+            <Button nativeButton={false} render={<Link to="/app/evaluation" search={{ tab: "plans" }} />}>
               Back to Evaluation
             </Button>
           }

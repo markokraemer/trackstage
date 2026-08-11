@@ -3,6 +3,13 @@ import type { Doc, Id } from "./_generated/dataModel"
 import type { MutationCtx, QueryCtx } from "./_generated/server"
 import { mutation, query } from "./_generated/server"
 import { requirePerson } from "./lib/auth"
+import {
+  assertAllowedUpload,
+  enrichUploads,
+  nextVersion,
+  replaceHeadshot,
+  storageMeta,
+} from "./lib/files"
 
 // ————————————————————————————————————————————————————————————————————————
 // Speaker portal. All functions authenticate with the person's portalToken
@@ -95,6 +102,8 @@ export const home = query({
         timezone: event.timezone,
         startsAt: event.startsAt,
         endsAt: event.endsAt,
+        // The speaker should see the event's own branding, not ours.
+        logoUrl: event.logoId ? await ctx.storage.getUrl(event.logoId) : null,
       },
       me: {
         id: person._id,
@@ -260,6 +269,9 @@ export const attachUpload = mutation({
     portalToken: v.string(),
     storageId: v.id("_storage"),
     filename: v.string(),
+    // Accepted for compatibility but NOT trusted: size and type are read back
+    // from the `_storage` system table, so a hand-rolled client can't claim a
+    // 200 MB deck is 2 KB.
     contentType: v.optional(v.string()),
     size: v.optional(v.number()),
     taskId: v.optional(v.id("tasks")),
@@ -269,34 +281,24 @@ export const attachUpload = mutation({
   handler: async (ctx, args) => {
     const person = await requirePerson(ctx, args.portalToken)
 
+    const meta = await storageMeta(ctx, args.storageId)
+    if (!meta) {
+      throw new Error("That upload didn't finish — please try again.")
+    }
+    assertAllowedUpload(meta, args.filename)
+
     if (args.isHeadshot) {
-      await ctx.db.patch(person._id, { headshotId: args.storageId })
+      // Replaces the photo AND deletes the one it replaces (convex/lib/files).
+      await replaceHeadshot(ctx, person, args.storageId)
       await completeTasksOfKind(ctx, person._id, "headshot")
     }
 
     // Versioning: next version within the same slot (task or submission).
-    const previous = args.taskId
-      ? await ctx.db
-          .query("uploads")
-          .withIndex("by_taskId", (q) => q.eq("taskId", args.taskId))
-          .collect()
-      : args.submissionId
-        ? (
-            await ctx.db
-              .query("uploads")
-              .withIndex("by_submissionId", (q) =>
-                q.eq("submissionId", args.submissionId),
-              )
-              .collect()
-          ).filter((u) => u.personId === person._id)
-        : (
-            await ctx.db
-              .query("uploads")
-              .withIndex("by_personId", (q) => q.eq("personId", person._id))
-              .collect()
-          ).filter((u) => !u.taskId && !u.submissionId)
-
-    const version = previous.length + 1
+    const version = await nextVersion(ctx, {
+      personId: person._id,
+      taskId: args.taskId,
+      submissionId: args.submissionId,
+    })
     const uploadId = await ctx.db.insert("uploads", {
       eventId: person.eventId,
       personId: person._id,
@@ -304,8 +306,8 @@ export const attachUpload = mutation({
       taskId: args.taskId,
       storageId: args.storageId,
       filename: args.filename,
-      contentType: args.contentType,
-      size: args.size,
+      contentType: meta.contentType ?? args.contentType,
+      size: meta.size,
       version,
       approvalStatus: "pending",
     })
@@ -328,22 +330,10 @@ export const myUploads = query({
       .query("uploads")
       .withIndex("by_personId", (q) => q.eq("personId", person._id))
       .collect()
-    return await Promise.all(
-      uploads
-        .sort((a, b) => b._creationTime - a._creationTime)
-        .map(async (u) => ({
-          id: u._id,
-          filename: u.filename,
-          contentType: u.contentType,
-          size: u.size,
-          version: u.version,
-          approvalStatus: u.approvalStatus,
-          reviewNote: u.reviewNote,
-          taskId: u.taskId,
-          submissionId: u.submissionId,
-          url: await ctx.storage.getUrl(u.storageId),
-          uploadedAt: u._creationTime,
-        })),
+    // Size, type and the "identical to v2" hint all come from `_storage`.
+    return await enrichUploads(
+      ctx,
+      uploads.sort((a, b) => b._creationTime - a._creationTime),
     )
   },
 })

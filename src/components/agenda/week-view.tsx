@@ -30,6 +30,7 @@ import {
   conflictsForSession,
   sessionsOnDay,
   speakerLabel,
+  windowForDay,
 } from "./agenda-model"
 import {
   formatMinutes,
@@ -56,6 +57,7 @@ export interface WeekViewProps {
   /** Every day the event covers — used to tint the event's own days. */
   dayKeys: Array<string>
   timeZone: string
+  /** Default window; widened here to fit everything anywhere in the week. */
   windowStartMinutes: number
   windowEndMinutes: number
   focusId?: string
@@ -71,13 +73,33 @@ export function WeekView({
   dayKey,
   dayKeys,
   timeZone,
-  windowStartMinutes,
-  windowEndMinutes,
+  windowStartMinutes: defaultStartMinutes,
+  windowEndMinutes: defaultEndMinutes,
   focusId,
   onOpenDay,
 }: WeekViewProps) {
   const keys = React.useMemo(() => weekKeys(dayKey), [dayKey])
   const eventDays = React.useMemo(() => new Set(dayKeys), [dayKeys])
+
+  const inWeek = React.useMemo(
+    () =>
+      keys.flatMap((key) => sessionsOnDay(sessions, key, timeZone)),
+    [keys, sessions, timeZone]
+  )
+
+  // One shared window across all seven columns, widened so an early or late
+  // session on any day of the week stays visible.
+  const { startMinutes: windowStartMinutes, endMinutes: windowEndMinutes } =
+    React.useMemo(
+      () =>
+        windowForDay(
+          inWeek,
+          timeZone,
+          defaultStartMinutes / 60,
+          defaultEndMinutes / 60
+        ),
+      [inWeek, timeZone, defaultStartMinutes, defaultEndMinutes]
+    )
 
   const hourMarks = React.useMemo(() => {
     const marks: Array<number> = []
@@ -93,10 +115,6 @@ export function WeekView({
   const gridTemplateColumns = `${AXIS_WIDTH}px repeat(7, minmax(${MIN_COLUMN_WIDTH}px, 1fr))`
   const minWidth = AXIS_WIDTH + 7 * MIN_COLUMN_WIDTH
   const hourPx = 60 * WEEK_PIXELS_PER_MINUTE
-
-  const inWeek = sessions.filter((session) =>
-    keys.some((key) => sessionsOnDay([session], key, timeZone).length > 0)
-  )
 
   return (
     <div className="flex flex-col gap-3">

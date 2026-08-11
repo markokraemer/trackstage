@@ -82,7 +82,7 @@ export function SetupStep({
         </p>
         <div className="mt-3 flex flex-wrap gap-2">
           <CopyLinkButton slug={slug} />
-          <Button
+          <Button nativeButton={false}
             variant="outline"
             render={
               <a

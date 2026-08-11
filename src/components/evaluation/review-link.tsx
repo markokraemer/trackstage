@@ -89,7 +89,7 @@ export function OpenReviewLink({
   className?: string
 }) {
   return (
-    <Button
+    <Button nativeButton={false}
       variant="ghost"
       size="sm"
       className={className}

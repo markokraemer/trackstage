@@ -64,6 +64,75 @@ export function useCopilotPanel(): {
   }
 }
 
+// ——— Panel width ————————————————————————————————————————————————————————
+//
+// The panel is a workspace, not a notification: an organizer reading a
+// submissions table next to a copilot answer needs to decide how the screen is
+// split, and that decision should survive a reload. Width lives here (not in
+// component state) for the same reason the conversation does — the panel
+// unmounts on every close.
+
+const WIDTH_STORAGE_KEY = "sb.copilotPanelWidth"
+
+/** Below this the tool cards start wrapping badly. */
+export const COPILOT_PANEL_MIN_WIDTH = 360
+/** Above this it stops being a side panel. */
+export const COPILOT_PANEL_MAX_WIDTH = 720
+export const COPILOT_PANEL_DEFAULT_WIDTH = 460
+
+/** The hard ceiling, also bounded by the viewport so it can't eat the app. */
+export function copilotPanelMaxWidth(): number {
+  if (typeof window === "undefined") return COPILOT_PANEL_MAX_WIDTH
+  return Math.max(
+    COPILOT_PANEL_MIN_WIDTH,
+    Math.min(COPILOT_PANEL_MAX_WIDTH, Math.round(window.innerWidth * 0.6)),
+  )
+}
+
+export function clampCopilotPanelWidth(width: number): number {
+  if (!Number.isFinite(width)) return COPILOT_PANEL_DEFAULT_WIDTH
+  return Math.round(
+    Math.min(copilotPanelMaxWidth(), Math.max(COPILOT_PANEL_MIN_WIDTH, width)),
+  )
+}
+
+let panelWidth: number | null = null
+
+function readStoredWidth(): number {
+  if (panelWidth !== null) return panelWidth
+  if (typeof window === "undefined") return COPILOT_PANEL_DEFAULT_WIDTH
+  const stored = Number(window.localStorage.getItem(WIDTH_STORAGE_KEY))
+  panelWidth = stored ? clampCopilotPanelWidth(stored) : COPILOT_PANEL_DEFAULT_WIDTH
+  return panelWidth
+}
+
+export function setCopilotPanelWidth(width: number): void {
+  const next = clampCopilotPanelWidth(width)
+  if (panelWidth === next) return
+  panelWidth = next
+  if (typeof window !== "undefined") {
+    try {
+      window.localStorage.setItem(WIDTH_STORAGE_KEY, String(next))
+    } catch {
+      // Private mode / quota — the width still works for this session.
+    }
+  }
+  notify()
+}
+
+/** Double-click on the handle: back to the width the panel ships with. */
+export function resetCopilotPanelWidth(): void {
+  setCopilotPanelWidth(COPILOT_PANEL_DEFAULT_WIDTH)
+}
+
+export function useCopilotPanelWidth(): number {
+  return useSyncExternalStore(
+    subscribe,
+    readStoredWidth,
+    () => COPILOT_PANEL_DEFAULT_WIDTH,
+  )
+}
+
 // ——— Event context carried on every request ——————————————————————————————
 
 export type CopilotEventContext = {

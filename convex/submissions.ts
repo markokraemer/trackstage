@@ -5,6 +5,7 @@ import type { MutationCtx, QueryCtx } from "./_generated/server"
 import { mutation, query } from "./_generated/server"
 import { scheduleAirtableSync } from "./airtable"
 import { randomToken, requireEventAccess } from "./lib/auth"
+import { enrichUploads } from "./lib/files"
 
 export const STATUSES = [
   "draft",
@@ -121,13 +122,13 @@ export const get = query({
       .query("uploads")
       .withIndex("by_submissionId", (q) => q.eq("submissionId", submission._id))
       .collect()
-    const uploadsWithUrls = await Promise.all(
-      uploads.map(async (u) => ({
-        ...u,
-        url: await ctx.storage.getUrl(u.storageId),
-      })),
+    // Real metadata from `_storage` (size, type, sha256) rather than whatever
+    // the browser claimed when the file was attached — see convex/lib/files.ts.
+    const enriched = await enrichUploads(
+      ctx,
+      uploads.sort((a, b) => b._creationTime - a._creationTime),
     )
-    return { ...joined, uploads: uploadsWithUrls }
+    return { ...joined, uploads: enriched }
   },
 })
 

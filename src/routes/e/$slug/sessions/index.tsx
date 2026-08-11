@@ -149,10 +149,14 @@ function SessionsPage() {
       {data.totalResults === 0 ? (
         <EmptyState
           icon={RiFileList3Line}
-          title="No sessions published yet"
-          description="Once the organizer accepts sessions they show up here with their full description, speakers, time and room."
+          title={data.publicMessage ?? "No sessions published yet"}
+          description={
+            data.publicMessage
+              ? "The organizer hasn't published the programme yet. This page fills in the moment they do."
+              : "Once the organizer accepts sessions they show up here with their full description, speakers, time and room."
+          }
           action={
-            <Button
+            <Button nativeButton={false}
               variant="outline"
               render={
                 <Link to="/e/$slug" params={{ slug }} search={(prev) => prev} />

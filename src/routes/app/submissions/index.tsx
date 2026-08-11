@@ -305,7 +305,7 @@ function SubmissionsPage() {
           title="Create your event first"
           description="Submissions belong to an event. Set up your event name, dates, and tracks, then publish a call for papers to start collecting talks."
           action={
-            <Button render={<a href="/app/settings" />}>
+            <Button nativeButton={false} render={<a href="/app/settings" />}>
               Go to event settings
             </Button>
           }
@@ -341,7 +341,7 @@ function SubmissionsPage() {
           onCommit={() => handleCommit("accept_queue")}
           secondaryAction={
             tab === "all" ? (
-              <Button
+              <Button nativeButton={false}
                 variant="outline"
                 render={
                   <Link
@@ -364,7 +364,7 @@ function SubmissionsPage() {
           onCommit={() => handleCommit("decline_queue")}
           secondaryAction={
             tab === "all" ? (
-              <Button
+              <Button nativeButton={false}
                 variant="outline"
                 render={
                   <Link
@@ -495,7 +495,7 @@ function SubmissionsPage() {
               }
               secondaryAction={
                 tab === "all" ? (
-                  <Button variant="outline" render={<a href="/app/forms" />}>
+                  <Button nativeButton={false} variant="outline" render={<a href="/app/forms" />}>
                     Share your form link
                   </Button>
                 ) : null

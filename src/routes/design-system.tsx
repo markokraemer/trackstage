@@ -268,27 +268,33 @@ interface Swatch {
 }
 
 const SURFACE_COLORS: Array<Swatch> = [
-  { name: "Page background", token: "--background", hex: "#F8FAFC" },
+  { name: "Page background", token: "--background", hex: "#FAFAFA" },
   { name: "Card", token: "--card", hex: "#FFFFFF" },
-  { name: "Sidebar", token: "--sidebar", hex: "#F1F5F9" },
-  { name: "Muted", token: "--muted", hex: "#F1F5F9" },
-  { name: "Accent (tint)", token: "--accent", hex: "#EEF1FC" },
-  { name: "Border", token: "--border", hex: "#E5E7EB" },
+  { name: "Sidebar", token: "--sidebar", hex: "#FAFAFA" },
+  { name: "Muted", token: "--muted", hex: "#F7F7F8" },
+  { name: "Accent (hover/selected)", token: "--accent", hex: "#F4F4F5" },
+  { name: "Border", token: "--border", hex: "#EAEAEC" },
 ]
 
 const BRAND_COLORS: Array<Swatch> = [
   { name: "Primary", token: "--primary", hex: "#2F5CE0", fg: "#FFFFFF" },
-  { name: "Text (navy)", token: "--foreground", hex: "#1B1E27", fg: "#FFFFFF" },
+  {
+    name: "Primary hover",
+    token: "--primary-hover",
+    hex: "#2950C0",
+    fg: "#FFFFFF",
+  },
+  { name: "Text (ink)", token: "--foreground", hex: "#17171A", fg: "#FFFFFF" },
   {
     name: "Muted text",
     token: "--muted-foreground",
-    hex: "#64748B",
+    hex: "#6E6E76",
     fg: "#FFFFFF",
   },
   {
     name: "Accent text",
     token: "--accent-foreground",
-    hex: "#1E3FA8",
+    hex: "#17171A",
     fg: "#FFFFFF",
   },
   {
@@ -316,8 +322,20 @@ const STATUS_COLORS: Array<Swatch> = [
   },
   { name: "Red fill", token: "--status-red-bg", hex: "#FEE2E2" },
   { name: "Red text", token: "--status-red-fg", hex: "#991B1B", fg: "#FFFFFF" },
-  { name: "Gray fill", token: "--status-gray-bg", hex: "#F1F5F9" },
-  { name: "Blue fill", token: "--status-blue-bg", hex: "#E4EBFC" },
+  { name: "Gray fill", token: "--status-gray-bg", hex: "#F4F4F5" },
+  { name: "Neutral fill", token: "--status-blue-bg", hex: "#F4F4F5" },
+]
+
+/**
+ * Categorical tints — the ONE place a soft colour is allowed outside the status
+ * ramp. Track, format, level, language, free tags. Never state.
+ */
+const TAG_COLORS: Array<Swatch> = [
+  { name: "Tag · blue", token: "--tag-blue-bg", hex: "#E6F0FB" },
+  { name: "Tag · green", token: "--tag-green-bg", hex: "#E7F4EC" },
+  { name: "Tag · amber", token: "--tag-amber-bg", hex: "#FBF0DC" },
+  { name: "Tag · purple", token: "--tag-purple-bg", hex: "#F3EAFB" },
+  { name: "Tag · gray", token: "--tag-gray-bg", hex: "#F4F4F5" },
 ]
 
 const TYPE_SCALE = [
@@ -427,9 +445,16 @@ function DesignSystemPage() {
               </h1>
               <p className="container-reading mt-2 text-sm text-muted-foreground">
                 Every token, primitive, and app pattern in one place. Light mode
-                only, primary blue <code className="font-mono">#2F5CE0</code>,
-                8px controls and 12px cards. Components are shadcn on Base UI —
-                always extend these rather than hand-rolling new ones.
+                only. The chrome is neutral — every grey is chroma ≤ 2, so
+                nothing but the data carries colour — and Sessionboard blue{" "}
+                <code className="font-mono">#2F5CE0</code> is permitted in
+                exactly five places: primary buttons, links, focus rings, the
+                active nav item, and{" "}
+                <code className="font-mono">--chart-1</code>. Controls are 40px
+                (<code className="font-mono">--control-h</code>), compact
+                controls 36px, table rows 44px; 8px radii on controls, 12px on
+                cards. Components are shadcn on Base UI — always extend these
+                rather than hand-rolling new ones.
               </p>
             </div>
 
@@ -713,7 +738,7 @@ function DesignSystemPage() {
             <Section
               id="color"
               title="Color"
-              description="All colors come from CSS custom properties in src/styles.css. Never hardcode a hex in a component."
+              description="All colors come from CSS custom properties in src/styles.css. Never hardcode a hex in a component. The policy, borrowed verbatim from Stripe: colour is reserved for status signals. Chrome is neutral — every grey below is chroma ≤ 2 — and the accent is permitted in exactly five places: primary buttons, links, focus rings, the active nav item, and --chart-1. If you are reaching for a colour anywhere else, the answer is a hairline or a muted label."
             >
               <SubTitle>Surfaces</SubTitle>
               <SwatchGrid swatches={SURFACE_COLORS} />
@@ -721,6 +746,8 @@ function DesignSystemPage() {
               <SwatchGrid swatches={BRAND_COLORS} />
               <SubTitle>Status</SubTitle>
               <SwatchGrid swatches={STATUS_COLORS} />
+              <SubTitle>Categorical tags</SubTitle>
+              <SwatchGrid swatches={TAG_COLORS} />
             </Section>
 
             {/* ----------------------------------------------- TYPOGRAPHY */}
@@ -1097,7 +1124,7 @@ function DesignSystemPage() {
             <Section
               id="status"
               title="Status pills"
-              description="Identical wording organizer-side and speaker-side. Green = will speak, amber = undecided, red = declined, gray = draft/withdrawn. Queue states carry a ring because they are staged, not committed."
+              description="Identical wording organizer-side and speaker-side. Green = will speak, amber = undecided, red = declined, gray = draft/withdrawn — and Active/Scheduled are neutral, because blue means clickable now. The DEFAULT is variant=&quot;dot&quot;: a coloured dot plus a plain ink label, which is what tables and detail panes render. variant=&quot;pill&quot; is the filled version, kept for the places where emphasis is the message — queue banners and drawer headers — where queue states also carry a ring because they are staged, not committed."
             >
               <Sample label="Submission pipeline">
                 <div className="flex flex-wrap items-center gap-2">
@@ -1119,6 +1146,13 @@ function DesignSystemPage() {
                   <StatusPill status="pending" size="sm" />
                   <StatusPill status="declined" dot={false} />
                   <StatusPill status="accept_queue" dot={false} />
+                </div>
+              </Sample>
+              <Sample label="variant=&quot;pill&quot; — emphasis only">
+                <div className="flex flex-wrap items-center gap-2">
+                  {SUBMISSION_STATUSES.map((status) => (
+                    <StatusPill key={status} status={status} variant="pill" />
+                  ))}
                 </div>
               </Sample>
             </Section>
@@ -1585,8 +1619,8 @@ function DesignSystemPage() {
             {/* --------------------------------------------- EXPLORATIONS */}
             <Section
               id="explorations"
-              title="Explorations — candidate design languages"
-              description="Not shipped, not decided. The current language stays exactly as it is until Marko picks from these (docs/memory/RULES.md #20). Three independent axes — feel, accent, type — each rendered on the same mini organizer dashboard so the only thing that moves is the variable under test. Everything here is scoped to its panel; the app's tokens and font stack are untouched."
+              title="Explorations — decided"
+              description="Candidate E, “De-blued”, is SHIPPED (Marko, 2026-08-11): neutral chrome everywhere, Sessionboard blue #2F5CE0 kept and confined to primary buttons, links, focus rings, the active nav item and --chart-1. The teal/petrol accent family was reviewed and rejected; type stays on Inter for now. The other candidates and their live panels have been removed — this section is the record of the decision, not a chooser."
             >
               <DesignExplorations />
             </Section>

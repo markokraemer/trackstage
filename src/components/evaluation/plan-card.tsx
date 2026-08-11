@@ -100,7 +100,7 @@ export function PlanCard({ plan }: { plan: PlanCardData }) {
             ? `${overdue ? "Was due" : "Due"} ${format(due, "MMM d, yyyy")}`
             : "No due date"}
         </p>
-        <Button
+        <Button nativeButton={false}
           variant="ghost"
           size="sm"
           render={

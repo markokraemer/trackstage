@@ -151,30 +151,7 @@ export const TASK_KIND_LABEL: Record<string, string> = {
   form: "Form",
 }
 
-/** Nicely formatted file size ("2.4 MB"). */
-export function formatBytes(bytes?: number): string | null {
-  if (!bytes || bytes <= 0) return null
-  const units = ["B", "KB", "MB", "GB"]
-  let value = bytes
-  let unit = 0
-  while (value >= 1024 && unit < units.length - 1) {
-    value /= 1024
-    unit += 1
-  }
-  return `${value >= 10 || unit === 0 ? Math.round(value) : value.toFixed(1)} ${units[unit]}`
-}
-
-/** How an organizer's file review reads to the speaker. */
-export function uploadStatusMeta(approvalStatus: string): {
-  label: string
-  status: string
-} {
-  switch (approvalStatus) {
-    case "approved":
-      return { label: "Approved", status: "accepted" }
-    case "changes_requested":
-      return { label: "Changes requested", status: "declined" }
-    default:
-      return { label: "Awaiting review", status: "pending" }
-  }
-}
+// File helpers deliberately DO NOT live here: `formatBytes`, type labels and
+// icons are in `src/lib/files.ts`, and the approval wording is
+// `approvalMeta` in `src/components/shared/file-row.tsx` — organizers and
+// speakers must read the same sentence about the same file.

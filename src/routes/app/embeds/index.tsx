@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from "react"
 import { createFileRoute } from "@tanstack/react-router"
 import { useQuery } from "@tanstack/react-query"
-import { convexQuery } from "@convex-dev/react-query"
+import { convexQuery, useConvexMutation } from "@convex-dev/react-query"
 import { api } from "@convex/_generated/api"
+import type { Doc, Id } from "@convex/_generated/dataModel"
 import { toast } from "sonner"
 import {
   RiCheckLine,
@@ -11,15 +12,11 @@ import {
   RiExternalLinkLine,
   RiEyeLine,
   RiFileCopyLine,
-  RiGalleryLine,
-  RiLayoutGridLine,
-  RiListCheck2,
-  RiListUnordered,
   RiRefreshLine,
+  RiSaveLine,
   RiSettings3Line,
   RiSmartphoneLine,
 } from "@remixicon/react"
-import type { RemixiconComponentType } from "@remixicon/react"
 
 import { cn } from "@/lib/utils"
 import { Card } from "@/components/ui/card"
@@ -43,7 +40,16 @@ import { PageHeader } from "@/components/shared/page-header"
 import { EmptyState } from "@/components/shared/empty-state"
 import { StatusPill } from "@/components/shared/status-pill"
 import { widgetSearchToQuery } from "@/components/public/widget-search"
-import type { WidgetSearch } from "@/components/public/widget-search"
+import { SavedEmbeds } from "@/components/embeds/saved-embeds"
+import {
+  EMBED_FORMATS,
+  WIDGET_TYPES,
+  escapeHtml,
+  formatById,
+  searchFor,
+  widgetById,
+} from "@/components/embeds/embed-config"
+import type { EmbedOptions } from "@/components/embeds/embed-config"
 import { useCurrentEvent } from "@/lib/current-event"
 
 /**
@@ -52,79 +58,14 @@ import { useCurrentEvent } from "@/lib/current-event"
  * Sessionboard makes organizers create, name and publish an embed record, then
  * wait ~60 minutes for the widget cache to catch up. Ours is a link: every
  * public page already renders bare with `?embed=1`, so this screen is a
- * configurator that writes query params, previews the real widget in an
- * iframe, and hands over a snippet. Nothing to publish, and the embed shows
- * live data the moment the organizer changes the program.
+ * generator — pick a widget, pick what shows, pick a delivery format, preview
+ * the real thing, copy the snippet. Configurations can be saved and reopened
+ * (that's all a "saved embed" is here), and every live format shows current
+ * data the moment the organizer changes the program.
  */
 export const Route = createFileRoute("/app/embeds/")({
   component: EmbedsPage,
 })
-
-interface WidgetType {
-  id: string
-  name: string
-  description: string
-  icon: RemixiconComponentType
-  /** Path under the event, e.g. "/sessions". */
-  path: string
-  /** Params that define this widget (on top of the organizer's options). */
-  params: WidgetSearch
-  /** Sensible iframe height. */
-  height: number
-}
-
-const WIDGET_TYPES: Array<WidgetType> = [
-  {
-    id: "agenda",
-    name: "Agenda",
-    description:
-      "The wall-planner grid: rooms across the top, time down the side, one day at a time.",
-    icon: RiLayoutGridLine,
-    path: "",
-    params: { view: "rooms" },
-    height: 900,
-  },
-  {
-    id: "itinerary",
-    name: "Schedule itinerary",
-    description:
-      "The chronological day-by-day agenda with day tabs and full session cards.",
-    icon: RiListCheck2,
-    path: "",
-    params: { view: "time" },
-    height: 900,
-  },
-  {
-    id: "sessions",
-    name: "Sessions list",
-    description:
-      "A searchable catalog of every session, with track, format and room filters.",
-    icon: RiListUnordered,
-    path: "/sessions",
-    params: {},
-    height: 900,
-  },
-  {
-    id: "speaker-gallery",
-    name: "Speaker gallery",
-    description:
-      "A photo grid of your speakers. Clicking a face opens their bio and sessions.",
-    icon: RiGalleryLine,
-    path: "/speakers",
-    params: { view: "gallery" },
-    height: 800,
-  },
-  {
-    id: "speaker-list",
-    name: "Speakers list",
-    description:
-      "A directory that pairs each speaker with the sessions they're presenting.",
-    icon: RiListUnordered,
-    path: "/speakers",
-    params: { view: "list" },
-    height: 900,
-  },
-]
 
 const ALL_TRACKS = "All tracks"
 
@@ -135,8 +76,10 @@ function EmbedsPage() {
   const activeEvent = events.find((event) => event.slug === activeSlug)
 
   const [widgetId, setWidgetId] = useState(WIDGET_TYPES[0].id)
-  const widget =
-    WIDGET_TYPES.find((type) => type.id === widgetId) ?? WIDGET_TYPES[0]
+  const widget = widgetById(widgetId)
+
+  const [formatId, setFormatId] = useState(EMBED_FORMATS[0].id)
+  const format = formatById(formatId)
 
   const [showDescriptions, setShowDescriptions] = useState(true)
   const [showSpeakers, setShowSpeakers] = useState(true)
@@ -146,6 +89,11 @@ function EmbedsPage() {
   const [height, setHeight] = useState(widget.height)
   const [device, setDevice] = useState<"desktop" | "mobile">("desktop")
   const [refreshKey, setRefreshKey] = useState(0)
+
+  // Saved-embed state: the row currently loaded, and the name to save under.
+  const [savedId, setSavedId] = useState<Id<"embeds"> | null>(null)
+  const [embedName, setEmbedName] = useState("")
+  const [saving, setSaving] = useState(false)
 
   // The height default follows the widget unless the organizer typed one.
   useEffect(() => {
@@ -158,27 +106,43 @@ function EmbedsPage() {
       activeSlug ? { slug: activeSlug } : "skip",
     ),
   )
+  const { data: speakerData } = useQuery(
+    convexQuery(
+      api.publicData.speakers,
+      activeSlug && widget.dataset === "speakers" ? { slug: activeSlug } : "skip",
+    ),
+  )
+  const embedsQuery = useQuery(
+    convexQuery(
+      api.embeds.list,
+      activeEvent ? { eventId: activeEvent._id } : "skip",
+    ),
+  )
+  const saveEmbed = useConvexMutation(api.embeds.save)
 
   const [origin, setOrigin] = useState("")
   useEffect(() => {
     setOrigin(window.location.origin)
   }, [])
 
-  const search: WidgetSearch = {
-    embed: true,
-    ...widget.params,
-    hideDescriptions: showDescriptions ? undefined : true,
-    hideSpeakers: showSpeakers ? undefined : true,
-    hideImages: showPhotos ? undefined : true,
-    hideSearch: showSearch ? undefined : true,
+  const options: EmbedOptions = {
+    format: formatId,
+    hideDescriptions: !showDescriptions,
+    hideSpeakers: !showSpeakers,
+    hideImages: !showPhotos,
+    hideSearch: !showSearch,
     track: track === ALL_TRACKS ? undefined : track,
+    height,
   }
+
+  const search = searchFor(widget, options)
 
   const relativeUrl = activeSlug
     ? `/e/${activeSlug}${widget.path}${widgetSearchToQuery(search)}`
     : ""
   const publicUrl = `${origin || "https://your-sessionboard-site.com"}${relativeUrl}`
-  const snippet = useMemo(
+
+  const iframeSnippet = useMemo(
     () =>
       [
         `<iframe`,
@@ -193,11 +157,165 @@ function EmbedsPage() {
     [publicUrl, widget.name, activeEvent?.name, height],
   )
 
-  const icsFeedUrl = useMemo(() => {
+  /** A plain, unstyled snapshot of the current program. */
+  const htmlSnippet = useMemo(() => {
+    if (widget.dataset === "speakers") {
+      const rows = speakerData?.speakers ?? []
+      if (rows.length === 0) return "<!-- No speakers to export yet -->"
+      return [
+        `<ul class="sessionboard-speakers">`,
+        ...rows.map((speaker) =>
+          [
+            `  <li>`,
+            `    <strong>${escapeHtml(speaker.name)}</strong>`,
+            speaker.jobTitle || speaker.company
+              ? `    <span>${escapeHtml([speaker.jobTitle, speaker.company].filter(Boolean).join(", "))}</span>`
+              : null,
+            showDescriptions && speaker.bio
+              ? `    <p>${escapeHtml(speaker.bio)}</p>`
+              : null,
+            `  </li>`,
+          ]
+            .filter(Boolean)
+            .join("\n"),
+        ),
+        `</ul>`,
+      ].join("\n")
+    }
+
+    const days = (program?.days ?? []).map((day) => ({
+      ...day,
+      sessions:
+        track === ALL_TRACKS
+          ? day.sessions
+          : day.sessions.filter((session) => session.track?.name === track),
+    }))
+    const withSessions = days.filter((day) => day.sessions.length > 0)
+    if (withSessions.length === 0) return "<!-- No scheduled sessions yet -->"
+    return [
+      `<div class="sessionboard-agenda">`,
+      ...withSessions.flatMap((day) => [
+        `  <h3>${escapeHtml(day.label)}</h3>`,
+        `  <ul>`,
+        ...day.sessions.map((session) =>
+          [
+            `    <li>`,
+            `      <strong>${escapeHtml(session.title)}</strong>`,
+            session.room ? `      <span>${escapeHtml(session.room.name)}</span>` : null,
+            showSpeakers && session.speakers.length > 0
+              ? `      <span>${escapeHtml(session.speakers.map((s) => s.name).join(", "))}</span>`
+              : null,
+            showDescriptions && session.description
+              ? `      <p>${escapeHtml(session.description)}</p>`
+              : null,
+            `    </li>`,
+          ]
+            .filter(Boolean)
+            .join("\n"),
+        ),
+        `  </ul>`,
+      ]),
+      `</div>`,
+    ].join("\n")
+  }, [
+    widget.dataset,
+    speakerData,
+    program,
+    track,
+    showDescriptions,
+    showSpeakers,
+  ])
+
+  const apiBase = useMemo(() => {
     const convexUrl = import.meta.env.VITE_CONVEX_URL as string | undefined
     if (!convexUrl || !activeSlug) return null
-    return `${convexUrl.replace(".convex.cloud", ".convex.site")}/v1/event/${activeSlug}/schedule.ics`
+    return `${convexUrl.replace(".convex.cloud", ".convex.site")}/v1/event/${activeSlug}`
   }, [activeSlug])
+
+  const jsonUrl = apiBase
+    ? `${apiBase}/${widget.dataset === "speakers" ? "speakers" : "sessions"}`
+    : null
+  const icsFeedUrl = apiBase ? `${apiBase}/schedule.ics` : null
+
+  /** What the "Get code" tab hands over, per format. */
+  const deliverable: { value: string; label: string; help: string } = (() => {
+    switch (format.id) {
+      case "link":
+        return {
+          value: publicUrl,
+          label: "Share this link",
+          help: "The widget as its own page. Good for emails, Slack and QR codes.",
+        }
+      case "html":
+        return {
+          value: htmlSnippet,
+          label: "Paste this markup",
+          help: "Unstyled HTML you can restyle to match your site. It's a snapshot of the program right now — copy it again after you change the schedule.",
+        }
+      case "json":
+        return {
+          value: jsonUrl ?? "",
+          label: "REST endpoint",
+          help: "Returns paginated JSON. Send an API key as `Authorization: Bearer …` — create one under Settings → API & MCP.",
+        }
+      case "ics":
+        return {
+          value: icsFeedUrl ?? "",
+          label: "Calendar feed URL",
+          help: "Subscribe-able .ics of the whole program. No key needed — it's public once the agenda is published.",
+        }
+      default:
+        return {
+          value: iframeSnippet,
+          label: "Paste this into your website",
+          help: "Works in any site builder that accepts HTML — Webflow, Wix, Squarespace, WordPress, or your own code.",
+        }
+    }
+  })()
+
+  function loadSaved(embed: Doc<"embeds">) {
+    setSavedId(embed._id)
+    setEmbedName(embed.name)
+    setWidgetId(embed.widget)
+    setFormatId(embed.options.format ?? EMBED_FORMATS[0].id)
+    setShowDescriptions(!embed.options.hideDescriptions)
+    setShowSpeakers(!embed.options.hideSpeakers)
+    setShowPhotos(!embed.options.hideImages)
+    setShowSearch(!embed.options.hideSearch)
+    setTrack(embed.options.track ?? ALL_TRACKS)
+    setHeight(embed.options.height ?? widgetById(embed.widget).height)
+    toast.success(`Loaded “${embed.name}”`)
+  }
+
+  async function handleSave() {
+    if (!activeEvent) return
+    const name = embedName.trim()
+    if (!name) {
+      toast.error("Give this embed a name first")
+      return
+    }
+    setSaving(true)
+    try {
+      const id = await saveEmbed({
+        eventId: activeEvent._id,
+        embedId: savedId ?? undefined,
+        name,
+        widget: widget.id,
+        options,
+      })
+      setSavedId(id)
+      toast.success(savedId ? `Updated “${name}”` : `Saved “${name}”`, {
+        description: "It's in your saved embeds at the top of this page.",
+      })
+    } catch (error) {
+      toast.error("Couldn't save this embed", {
+        description:
+          error instanceof Error ? error.message : "Please try again.",
+      })
+    } finally {
+      setSaving(false)
+    }
+  }
 
   if (hasNoEvent) {
     return (
@@ -215,6 +333,8 @@ function EmbedsPage() {
     )
   }
 
+  const showPreview = format.id === "iframe" || format.id === "link"
+
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
@@ -222,7 +342,7 @@ function EmbedsPage() {
         description="Export a feed of your agenda, sessions, or speakers to place in your app or website."
         actions={
           activeSlug ? (
-            <Button
+            <Button nativeButton={false}
               variant="outline"
               render={
                 <a
@@ -263,6 +383,13 @@ function EmbedsPage() {
           </Select>
         </Field>
       ) : null}
+
+      <SavedEmbeds
+        embeds={embedsQuery.data}
+        activeId={savedId}
+        onLoad={loadSaved}
+        loading={Boolean(activeEvent) && embedsQuery.isPending}
+      />
 
       {/* 1 — pick a widget type */}
       <section className="flex flex-col gap-3">
@@ -320,13 +447,64 @@ function EmbedsPage() {
         </ul>
       </section>
 
-      {/* 2 — configure + preview + copy */}
+      {/* 2 — pick a delivery format */}
+      <section className="flex flex-col gap-3">
+        <div>
+          <h2 className="font-heading text-base font-semibold text-foreground">
+            2. Choose a format
+          </h2>
+          <p className="text-sm text-muted-foreground">
+            How you want to take it away. The first two stay live; the rest are
+            for developers and calendar apps.
+          </p>
+        </div>
+        <ul className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+          {EMBED_FORMATS.map((option) => {
+            const selected = option.id === format.id
+            return (
+              <li key={option.id}>
+                <button
+                  type="button"
+                  aria-pressed={selected}
+                  onClick={() => setFormatId(option.id)}
+                  className={cn(
+                    "flex h-full w-full items-start gap-2.5 rounded-lg border px-3 py-2.5 text-left outline-none transition-colors hover:bg-accent/50 focus-visible:ring-3 focus-visible:ring-ring/50",
+                    selected
+                      ? "border-primary bg-accent/60 ring-1 ring-primary"
+                      : "border-border bg-card",
+                  )}
+                >
+                  <option.icon
+                    size={16}
+                    aria-hidden
+                    className="mt-0.5 shrink-0 text-muted-foreground"
+                  />
+                  <span className="min-w-0">
+                    <span className="block text-sm font-medium text-foreground">
+                      {option.name}
+                    </span>
+                    <span className="block text-xs leading-relaxed text-muted-foreground">
+                      {option.description}
+                    </span>
+                  </span>
+                </button>
+              </li>
+            )
+          })}
+        </ul>
+      </section>
+
+      {/* 3 — configure + preview + copy */}
       <section className="grid gap-4 lg:grid-cols-[minmax(0,320px)_minmax(0,1fr)]">
         <Card className="h-fit gap-5 p-5">
           <div className="flex items-center gap-2">
-            <RiSettings3Line size={16} aria-hidden className="text-muted-foreground" />
+            <RiSettings3Line
+              size={16}
+              aria-hidden
+              className="text-muted-foreground"
+            />
             <h2 className="font-heading text-base font-semibold text-foreground">
-              2. Choose what shows
+              3. Choose what shows
             </h2>
           </div>
 
@@ -369,9 +547,10 @@ function EmbedsPage() {
               Handy for a track-specific landing page on your website.
             </FieldDescription>
             <Select
-              items={[ALL_TRACKS, ...(program?.tracks ?? []).map((t) => t.name)].map(
-                (name) => ({ value: name, label: name }),
-              )}
+              items={[
+                ALL_TRACKS,
+                ...(program?.tracks ?? []).map((t) => t.name),
+              ].map((name) => ({ value: name, label: name }))}
               value={track}
               onValueChange={(next) => setTrack(String(next))}
             >
@@ -389,22 +568,65 @@ function EmbedsPage() {
             </Select>
           </Field>
 
+          {format.id === "iframe" ? (
+            <Field>
+              <FieldLabel htmlFor="opt-height">Height on your site</FieldLabel>
+              <FieldDescription>
+                Pixels. The widget scrolls inside this box.
+              </FieldDescription>
+              <Input
+                id="opt-height"
+                type="number"
+                min={200}
+                max={5000}
+                step={50}
+                value={height}
+                onChange={(event) =>
+                  setHeight(Number(event.target.value) || widget.height)
+                }
+              />
+            </Field>
+          ) : null}
+
+          <Separator />
+
           <Field>
-            <FieldLabel htmlFor="opt-height">Height on your site</FieldLabel>
+            <FieldLabel htmlFor="embed-name">Save this embed</FieldLabel>
             <FieldDescription>
-              Pixels. The widget scrolls inside this box.
+              Name the configuration so you can come back to it.
             </FieldDescription>
-            <Input
-              id="opt-height"
-              type="number"
-              min={200}
-              max={5000}
-              step={50}
-              value={height}
-              onChange={(event) =>
-                setHeight(Number(event.target.value) || widget.height)
-              }
-            />
+            <div className="flex flex-wrap items-center gap-2">
+              <Input
+                id="embed-name"
+                value={embedName}
+                onChange={(event) => setEmbedName(event.target.value)}
+                placeholder="Agenda for the sponsors page"
+                className="min-w-0 flex-1"
+              />
+              <Button
+                variant="outline"
+                onClick={() => void handleSave()}
+                disabled={saving || !activeEvent}
+              >
+                <RiSaveLine aria-hidden />
+                {savedId ? "Update" : "Save"}
+              </Button>
+            </div>
+            {savedId ? (
+              <FieldDescription>
+                Editing a saved embed.{" "}
+                <button
+                  type="button"
+                  className="font-medium text-foreground underline underline-offset-2"
+                  onClick={() => {
+                    setSavedId(null)
+                    setEmbedName("")
+                  }}
+                >
+                  Save as new instead
+                </button>
+              </FieldDescription>
+            ) : null}
           </Field>
 
           {program ? (
@@ -413,161 +635,185 @@ function EmbedsPage() {
               {program.totals.sessions === 1 ? "session" : "sessions"} ·{" "}
               {program.totals.speakers}{" "}
               {program.totals.speakers === 1 ? "speaker" : "speakers"}.
+              {program.publicMessage ? (
+                <>
+                  {" "}
+                  <span className="font-medium text-status-amber-fg">
+                    The schedule isn't published yet — publish it from the
+                    Agenda so this embed shows sessions.
+                  </span>
+                </>
+              ) : null}
             </p>
           ) : null}
         </Card>
 
         <Card className="gap-0 overflow-hidden p-0">
-          <Tabs defaultValue="preview" className="gap-0">
+          <Tabs defaultValue={showPreview ? "preview" : "code"} className="gap-0">
             <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-4 py-3">
               <TabsList variant="line">
-                <TabsTrigger value="preview">
-                  <RiEyeLine size={15} aria-hidden />
-                  Preview
-                </TabsTrigger>
+                {showPreview ? (
+                  <TabsTrigger value="preview">
+                    <RiEyeLine size={15} aria-hidden />
+                    Preview
+                  </TabsTrigger>
+                ) : null}
                 <TabsTrigger value="code">
                   <RiCodeSSlashLine size={15} aria-hidden />
                   Get code
                 </TabsTrigger>
               </TabsList>
-              <div className="flex items-center gap-1">
-                <Button
-                  variant={device === "desktop" ? "secondary" : "ghost"}
-                  size="icon-sm"
-                  aria-label="Desktop preview"
-                  onClick={() => setDevice("desktop")}
-                >
-                  <RiComputerLine aria-hidden />
-                </Button>
-                <Button
-                  variant={device === "mobile" ? "secondary" : "ghost"}
-                  size="icon-sm"
-                  aria-label="Mobile preview"
-                  onClick={() => setDevice("mobile")}
-                >
-                  <RiSmartphoneLine aria-hidden />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon-sm"
-                  aria-label="Refresh preview"
-                  onClick={() => setRefreshKey((key) => key + 1)}
-                >
-                  <RiRefreshLine aria-hidden />
-                </Button>
-              </div>
+              {showPreview ? (
+                <div className="flex items-center gap-1">
+                  <Button
+                    variant={device === "desktop" ? "secondary" : "ghost"}
+                    size="icon-sm"
+                    aria-label="Desktop preview"
+                    onClick={() => setDevice("desktop")}
+                  >
+                    <RiComputerLine aria-hidden />
+                  </Button>
+                  <Button
+                    variant={device === "mobile" ? "secondary" : "ghost"}
+                    size="icon-sm"
+                    aria-label="Mobile preview"
+                    onClick={() => setDevice("mobile")}
+                  >
+                    <RiSmartphoneLine aria-hidden />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    aria-label="Refresh preview"
+                    onClick={() => setRefreshKey((key) => key + 1)}
+                  >
+                    <RiRefreshLine aria-hidden />
+                  </Button>
+                </div>
+              ) : null}
             </div>
 
-            <TabsContent value="preview" className="m-0 bg-muted/40 p-4">
-              {activeSlug ? (
-                <div
-                  className={cn(
-                    "mx-auto overflow-hidden rounded-xl border border-border bg-card shadow-sm transition-[max-width]",
-                    device === "mobile" ? "max-w-[390px]" : "max-w-full",
-                  )}
-                >
-                  <div className="flex items-center gap-2 border-b border-border bg-muted/60 px-3 py-2">
-                    <span className="flex gap-1" aria-hidden>
-                      <span className="size-2.5 rounded-full bg-status-red-dot/70" />
-                      <span className="size-2.5 rounded-full bg-status-amber-dot/70" />
-                      <span className="size-2.5 rounded-full bg-status-green-dot/70" />
-                    </span>
-                    <span className="truncate rounded-full bg-card px-2.5 py-1 text-[11px] text-muted-foreground ring-1 ring-border">
-                      {publicUrl}
-                    </span>
+            {showPreview ? (
+              <TabsContent value="preview" className="m-0 bg-muted/40 p-4">
+                {activeSlug ? (
+                  <div
+                    className={cn(
+                      "mx-auto overflow-hidden rounded-xl border border-border bg-card shadow-sm transition-[max-width]",
+                      device === "mobile" ? "max-w-[390px]" : "max-w-full",
+                    )}
+                  >
+                    <div className="flex items-center gap-2 border-b border-border bg-muted/60 px-3 py-2">
+                      <span className="flex gap-1" aria-hidden>
+                        <span className="size-2.5 rounded-full bg-status-red-dot/70" />
+                        <span className="size-2.5 rounded-full bg-status-amber-dot/70" />
+                        <span className="size-2.5 rounded-full bg-status-green-dot/70" />
+                      </span>
+                      <span className="truncate rounded-full bg-card px-2.5 py-1 text-[11px] text-muted-foreground ring-1 ring-border">
+                        {publicUrl}
+                      </span>
+                    </div>
+                    <iframe
+                      key={`${relativeUrl}-${refreshKey}`}
+                      src={relativeUrl}
+                      title={`${widget.name} preview`}
+                      className="block w-full bg-background"
+                      style={{ height: Math.min(height, 700) }}
+                    />
                   </div>
-                  <iframe
-                    key={`${relativeUrl}-${refreshKey}`}
-                    src={relativeUrl}
-                    title={`${widget.name} preview`}
-                    className="block w-full bg-background"
-                    style={{ height: Math.min(height, 700) }}
-                  />
-                </div>
-              ) : (
-                <Skeleton className="h-[420px] w-full" />
-              )}
-            </TabsContent>
+                ) : (
+                  <Skeleton className="h-[420px] w-full" />
+                )}
+              </TabsContent>
+            ) : null}
 
             <TabsContent value="code" className="m-0 flex flex-col gap-5 p-5">
               <Field>
                 <FieldLabel htmlFor="embed-snippet">
-                  Paste this into your website
+                  {deliverable.label}
                 </FieldLabel>
-                <FieldDescription>
-                  Works in any site builder that accepts HTML — Webflow, Wix,
-                  Squarespace, WordPress, or your own code.
-                </FieldDescription>
-                <Textarea
-                  id="embed-snippet"
-                  readOnly
-                  rows={8}
-                  value={snippet}
-                  onFocus={(event) => event.currentTarget.select()}
-                  className="font-mono text-xs"
-                />
-                <CopyButton
-                  value={snippet}
-                  label="Copy embed code"
-                  className="w-fit self-start"
-                />
+                <FieldDescription>{deliverable.help}</FieldDescription>
+                {format.id === "link" ||
+                format.id === "json" ||
+                format.id === "ics" ? (
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Input
+                      id="embed-snippet"
+                      readOnly
+                      value={deliverable.value}
+                      onFocus={(event) => event.currentTarget.select()}
+                      className="min-w-0 flex-1 font-mono text-xs"
+                    />
+                    <CopyButton value={deliverable.value} label="Copy" />
+                    {format.id === "link" ? (
+                      <Button nativeButton={false}
+                        variant="outline"
+                        render={
+                          <a
+                            href={relativeUrl || "#"}
+                            target="_blank"
+                            rel="noreferrer"
+                          />
+                        }
+                      >
+                        <RiExternalLinkLine aria-hidden />
+                        Open
+                      </Button>
+                    ) : null}
+                  </div>
+                ) : (
+                  <>
+                    <Textarea
+                      id="embed-snippet"
+                      readOnly
+                      rows={format.id === "html" ? 14 : 8}
+                      value={deliverable.value}
+                      onFocus={(event) => event.currentTarget.select()}
+                      className="font-mono text-xs"
+                    />
+                    <CopyButton
+                      value={deliverable.value}
+                      label={
+                        format.id === "html" ? "Copy HTML" : "Copy embed code"
+                      }
+                      className="w-fit self-start"
+                    />
+                  </>
+                )}
               </Field>
 
-              <Separator />
-
-              <Field>
-                <FieldLabel htmlFor="embed-link">
-                  Or share the direct link
-                </FieldLabel>
-                <FieldDescription>
-                  The same widget as its own page — good for emails, Slack and
-                  QR codes.
-                </FieldDescription>
-                <div className="flex flex-wrap items-center gap-2">
-                  <Input
-                    id="embed-link"
-                    readOnly
-                    value={publicUrl}
-                    onFocus={(event) => event.currentTarget.select()}
-                    className="min-w-0 flex-1 font-mono text-xs"
-                  />
-                  <CopyButton value={publicUrl} label="Copy link" />
-                  <Button
-                    variant="outline"
-                    render={
-                      <a
-                        href={relativeUrl || "#"}
-                        target="_blank"
-                        rel="noreferrer"
-                      />
-                    }
-                  >
-                    <RiExternalLinkLine aria-hidden />
-                    Open
-                  </Button>
-                </div>
-              </Field>
-
-              {icsFeedUrl ? (
+              {format.id === "iframe" ? (
                 <>
                   <Separator />
                   <Field>
-                    <FieldLabel htmlFor="embed-ics">
-                      Calendar feed (.ics)
+                    <FieldLabel htmlFor="embed-link">
+                      Or share the direct link
                     </FieldLabel>
                     <FieldDescription>
-                      Subscribe-able calendar of the whole program, for people
-                      who'd rather live in their calendar app.
+                      The same widget as its own page — good for emails, Slack
+                      and QR codes.
                     </FieldDescription>
                     <div className="flex flex-wrap items-center gap-2">
                       <Input
-                        id="embed-ics"
+                        id="embed-link"
                         readOnly
-                        value={icsFeedUrl}
+                        value={publicUrl}
                         onFocus={(event) => event.currentTarget.select()}
                         className="min-w-0 flex-1 font-mono text-xs"
                       />
-                      <CopyButton value={icsFeedUrl} label="Copy feed" />
+                      <CopyButton value={publicUrl} label="Copy link" />
+                      <Button nativeButton={false}
+                        variant="outline"
+                        render={
+                          <a
+                            href={relativeUrl || "#"}
+                            target="_blank"
+                            rel="noreferrer"
+                          />
+                        }
+                      >
+                        <RiExternalLinkLine aria-hidden />
+                        Open
+                      </Button>
                     </div>
                   </Field>
                 </>

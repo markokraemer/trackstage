@@ -639,7 +639,7 @@ export function SubmissionDetailDrawer({
                         size="sm"
                       />
                       {upload.url ? (
-                        <Button
+                        <Button nativeButton={false}
                           variant="ghost"
                           size="icon-sm"
                           aria-label={`Open ${upload.filename}`}

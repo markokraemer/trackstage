@@ -203,7 +203,7 @@ export function MessageDrawer({
         </dl>
 
         {message.icsAttached ? (
-          <Card className="flex-row items-start gap-3 border-primary/20 bg-accent/60 p-4">
+          <Card className="flex-row items-start gap-3 border-border bg-accent/60 p-4">
             <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-card text-primary ring-1 ring-border">
               <RiCalendarEventLine size={17} aria-hidden />
             </div>

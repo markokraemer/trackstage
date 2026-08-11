@@ -1,30 +1,19 @@
-import { useRef, useState } from "react"
+import { useState } from "react"
 import { useConvexMutation } from "@convex-dev/react-query"
 import { api } from "@convex/_generated/api"
 import { toast } from "sonner"
-import {
-  RiAlertLine,
-  RiCheckLine,
-  RiDownload2Line,
-  RiUpload2Line,
-} from "@remixicon/react"
+import { RiAlertLine, RiCheckLine } from "@remixicon/react"
 
 import { cn } from "@/lib/utils"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
-import { StatusPill } from "@/components/shared/status-pill"
+import { FileDropZone } from "@/components/shared/file-drop-zone"
+import { FileList, FileRow } from "@/components/shared/file-row"
+import { MAX_IMAGE_BYTES, MAX_UPLOAD_BYTES } from "@/lib/files"
 import { usePortal } from "./portal-context"
 import type { PortalTask, PortalUpload } from "./portal-context"
 import { usePortalUpload } from "./use-portal-upload"
-import {
-  TASK_KIND_LABEL,
-  dueInfo,
-  formatBytes,
-  formatDate,
-  uploadStatusMeta,
-} from "./portal-utils"
-
-const MAX_BYTES = 25 * 1024 * 1024
+import { TASK_KIND_LABEL, dueInfo, formatDate } from "./portal-utils"
 
 export interface TaskItemProps {
   task: PortalTask
@@ -41,8 +30,7 @@ export interface TaskItemProps {
 export function TaskItem({ task, uploads }: TaskItemProps) {
   const { portalToken } = usePortal()
   const completeTask = useConvexMutation(api.portal.completeTask)
-  const { upload, isUploading } = usePortalUpload()
-  const inputRef = useRef<HTMLInputElement>(null)
+  const { upload } = usePortalUpload()
   const [isCompleting, setIsCompleting] = useState(false)
 
   const done = Boolean(task.completedAt)
@@ -68,29 +56,23 @@ export function TaskItem({ task, uploads }: TaskItemProps) {
     }
   }
 
-  async function handleFile(event: React.ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0]
-    event.target.value = ""
-    if (!file) return
-    if (file.size > MAX_BYTES) {
-      toast.error("That file is larger than 25 MB. Please upload a smaller one.")
-      return
-    }
-    try {
-      await upload(file, {
+  async function handleUpload(
+    file: File,
+    onProgress: (percent: number) => void,
+  ) {
+    await upload(
+      file,
+      {
         taskId: task.id,
         isHeadshot: task.kind === "headshot" ? true : undefined,
-      })
-      toast.success(
-        uploads.length > 0
-          ? "New version uploaded — the organizers will review it."
-          : "Uploaded. The organizers will review it.",
-      )
-    } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : "We couldn't upload that file.",
-      )
-    }
+      },
+      onProgress,
+    )
+    toast.success(
+      uploads.length > 0
+        ? "New version uploaded — the organizers will review it."
+        : "Uploaded. The organizers will review it.",
+    )
   }
 
   return (
@@ -158,92 +140,52 @@ export function TaskItem({ task, uploads }: TaskItemProps) {
         ) : null}
 
         {uploads.length > 0 ? (
-          <ul className="mt-3 divide-y divide-border rounded-lg border border-border">
-            {uploads.map((file) => {
-              const meta = uploadStatusMeta(file.approvalStatus)
-              const size = formatBytes(file.size)
-              return (
-                <li
-                  key={file.id}
-                  className="flex flex-wrap items-center gap-x-3 gap-y-1 px-3 py-2"
-                >
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-medium text-foreground">
-                      {file.filename}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      Version {file.version}
-                      {size ? ` · ${size}` : ""} ·{" "}
-                      {formatDate(file.uploadedAt)}
-                    </p>
-                  </div>
-                  <StatusPill
-                    status={meta.status}
-                    label={meta.label}
-                    size="sm"
-                  />
-                  {file.url ? (
-                    <Button
-                      variant="ghost"
-                      size="icon-sm"
-                      aria-label={`Download ${file.filename}`}
-                      nativeButton={false}
-                      render={
-                        <a href={file.url} target="_blank" rel="noreferrer" />
-                      }
-                    >
-                      <RiDownload2Line aria-hidden />
-                    </Button>
-                  ) : null}
-                </li>
-              )
-            })}
-          </ul>
+          <FileList className="mt-3">
+            {uploads.map((file) => (
+              <FileRow
+                key={file.id}
+                file={file}
+                meta={`Uploaded ${formatDate(file.uploadedAt)}`}
+              />
+            ))}
+          </FileList>
         ) : null}
 
-        <div className="mt-3 flex flex-wrap items-center gap-2">
-          {isFileTask ? (
-            <>
-              <input
-                ref={inputRef}
-                type="file"
-                accept={task.kind === "headshot" ? "image/*" : undefined}
-                className="sr-only"
-                aria-label={`Choose a file for ${task.title}`}
-                onChange={handleFile}
-              />
-              <Button
-                variant={done && !needsChanges ? "outline" : "default"}
-                size="sm"
-                disabled={isUploading}
-                onClick={() => inputRef.current?.click()}
-              >
-                <RiUpload2Line aria-hidden />
-                {isUploading
-                  ? "Uploading…"
-                  : uploads.length > 0
-                    ? "Upload a new version"
-                    : task.kind === "headshot"
-                      ? "Upload my headshot"
-                      : "Upload a file"}
+        {isFileTask ? (
+          <FileDropZone
+            size="sm"
+            className="mt-3"
+            imagesOnly={task.kind === "headshot"}
+            maxBytes={
+              task.kind === "headshot" ? MAX_IMAGE_BYTES : MAX_UPLOAD_BYTES
+            }
+            label={
+              uploads.length > 0
+                ? "Drop a new version here, or click to choose one"
+                : task.kind === "headshot"
+                  ? "Drop your headshot here, or click to choose one"
+                  : "Drop your file here, or click to choose one"
+            }
+            onUpload={handleUpload}
+            onError={(message) => toast.error(message)}
+          />
+        ) : null}
+
+        {!done && (canConfirm || !isFileTask) ? (
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            {canConfirm ? (
+              <Button size="sm" disabled={isCompleting} onClick={handleComplete}>
+                <RiCheckLine aria-hidden />
+                {isCompleting ? "Saving…" : "Mark complete"}
               </Button>
-            </>
-          ) : null}
-
-          {canConfirm && !done ? (
-            <Button size="sm" disabled={isCompleting} onClick={handleComplete}>
-              <RiCheckLine aria-hidden />
-              {isCompleting ? "Saving…" : "Mark complete"}
-            </Button>
-          ) : null}
-
-          {!isFileTask && !canConfirm && !done ? (
-            <p className="text-sm text-muted-foreground">
-              The organizers will tick this off once they've received your
-              response.
-            </p>
-          ) : null}
-        </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                The organizers will tick this off once they've received your
+                response.
+              </p>
+            )}
+          </div>
+        ) : null}
       </div>
     </li>
   )

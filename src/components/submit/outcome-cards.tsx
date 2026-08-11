@@ -1,3 +1,4 @@
+import * as React from "react"
 import { Link } from "@tanstack/react-router"
 import {
   RiArrowRightLine,
@@ -24,12 +25,36 @@ export interface SuccessCardProps {
   onSubmitAnother?: () => void
 }
 
+/** Seconds the auto-redirect waits, so the confirmation is actually readable. */
+const AUTO_REDIRECT_SECONDS = 3
+
 export function SuccessCard({
   form,
   email,
   portalToken,
   onSubmitAnother,
 }: SuccessCardProps) {
+  const portalHref = `/portal/t/${portalToken}`
+  // The organizer's "take them straight to the portal" toggle
+  // (`forms.settings.autoRedirectToPortal`). Counts down out loud and can be
+  // cancelled — a redirect that fires with no warning reads as a bug.
+  const [secondsLeft, setSecondsLeft] = React.useState<number | null>(
+    form.autoRedirectToPortal ? AUTO_REDIRECT_SECONDS : null,
+  )
+
+  React.useEffect(() => {
+    if (secondsLeft === null) return
+    if (secondsLeft <= 0) {
+      window.location.href = portalHref
+      return
+    }
+    const timer = window.setTimeout(
+      () => setSecondsLeft((current) => (current === null ? null : current - 1)),
+      1000,
+    )
+    return () => window.clearTimeout(timer)
+  }, [secondsLeft, portalHref])
+
   return (
     <SubmitShell eventName={form.event.name} formTitle={form.externalTitle}>
       <div className="space-y-6 text-center">
@@ -64,13 +89,29 @@ export function SuccessCard({
           {/* A plain link: the portal is a separate, token-authenticated
               surface, so this is a full navigation rather than a client-side
               route transition. */}
-          <a
-            href={`/portal/t/${portalToken}`}
-            className={buttonVariants({ size: "lg" })}
-          >
-            Continue to portal
+          <a href={portalHref} className={buttonVariants({ size: "lg" })}>
+            {secondsLeft !== null && secondsLeft > 0
+              ? `Continue to portal — ${secondsLeft}s`
+              : "Continue to portal"}
             <RiArrowRightLine aria-hidden />
           </a>
+
+          {secondsLeft !== null ? (
+            <p
+              aria-live="polite"
+              className="text-xs text-muted-foreground"
+            >
+              Taking you to your speaker portal in {Math.max(secondsLeft, 0)}{" "}
+              second{secondsLeft === 1 ? "" : "s"}.{" "}
+              <button
+                type="button"
+                onClick={() => setSecondsLeft(null)}
+                className="font-medium text-foreground underline underline-offset-2"
+              >
+                Stay here
+              </button>
+            </p>
+          ) : null}
 
           {onSubmitAnother ? (
             <Button type="button" variant="ghost" onClick={onSubmitAnother}>

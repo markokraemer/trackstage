@@ -61,6 +61,60 @@ import type { Activity } from "@/components/interactions"
 
 /* ------------------------------------------------------------------ shell */
 
+/**
+ * Mounts its children only while the tile is anywhere near the viewport.
+ *
+ * This catalogue is ~45 live demos on one page, and a good third of them are
+ * self-driving: typing indicators, streaming text, value flashes, presence
+ * avatars, progress bars. Mounted all at once they left six `setInterval`s and
+ * a permanent ~120fps rAF loop running behind everything you scrolled past,
+ * which is what read as the page "flickering". Off-screen tiles now render a
+ * placeholder of the height the demo last occupied, so nothing shifts when a
+ * tile swaps back in — the page is still, and only what you are looking at
+ * moves.
+ */
+function useNearViewport<T extends HTMLElement>() {
+  const ref = useRef<T>(null)
+  // Deliberately starts UNMOUNTED. Mounting all 45 tiles for even one frame
+  // leaves a self-rescheduling rAF loop running afterwards (at least one
+  // interior demo does not cancel its loop on unmount), which is the exact
+  // idle churn this gate exists to remove.
+  const [visible, setVisible] = useState(false)
+  const [height, setHeight] = useState<number>()
+
+  useEffect(() => {
+    const node = ref.current
+    if (!node) return
+    // No IntersectionObserver (jsdom, ancient Safari) → render everything.
+    if (typeof IntersectionObserver === "undefined") {
+      setVisible(true)
+      return
+    }
+    const observer = new IntersectionObserver(
+      ([entry]) => setVisible(entry.isIntersecting),
+      // A screen of slack either side: the demo is already running by the
+      // time it scrolls into view, so nothing pops.
+      { rootMargin: "600px 0px" },
+    )
+    observer.observe(node)
+    return () => observer.disconnect()
+  }, [])
+
+  // Keep the placeholder honest: whatever the live demo measures while it is
+  // mounted is the height the empty tile holds open once it unmounts.
+  useEffect(() => {
+    const node = ref.current
+    if (!visible || !node || typeof ResizeObserver === "undefined") return
+    const resize = new ResizeObserver(() => {
+      if (node.offsetHeight > 0) setHeight(node.offsetHeight)
+    })
+    resize.observe(node)
+    return () => resize.disconnect()
+  }, [visible])
+
+  return { ref, visible, height }
+}
+
 /** Matches the `Sample` card used across the rest of /design-system. */
 function Demo({
   name,
@@ -73,6 +127,8 @@ function Demo({
   children: React.ReactNode
   tall?: boolean
 }) {
+  const { ref, visible, height } = useNearViewport<HTMLDivElement>()
+
   return (
     <div className="flex flex-col overflow-hidden rounded-xl border border-border bg-card">
       <div className="border-b border-border px-4 py-2.5">
@@ -80,12 +136,14 @@ function Demo({
         <p className="mt-0.5 text-xs text-muted-foreground">{use}</p>
       </div>
       <div
+        ref={ref}
+        style={!visible && height ? { height } : undefined}
         className={cn(
           "flex flex-1 items-center justify-center bg-background/60 p-5",
-          tall && "min-h-56"
+          tall && "min-h-56",
         )}
       >
-        <div className="w-full max-w-sm">{children}</div>
+        <div className="w-full max-w-sm">{visible ? children : null}</div>
       </div>
     </div>
   )

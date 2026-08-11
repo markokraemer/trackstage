@@ -42,7 +42,7 @@ function ItineraryPage() {
   const { event, speaker, days, unscheduled } = data
 
   const backLink = (
-    <Button
+    <Button nativeButton={false}
       variant="ghost"
       size="sm"
       className="-ml-2 w-fit text-muted-foreground"
@@ -127,10 +127,14 @@ function ItineraryPage() {
       {sessions.length === 0 ? (
         <EmptyState
           icon={RiCalendarEventLine}
-          title="No sessions scheduled yet"
-          description={`${speaker.name} doesn't have a published session time yet. Check the full schedule for what's already announced.`}
+          title={data.publicMessage ?? "No sessions scheduled yet"}
+          description={
+            data.publicMessage
+              ? `The organizer hasn't published the programme yet, so ${speaker.name}'s times aren't public. Check back soon.`
+              : `${speaker.name} doesn't have a published session time yet. Check the full schedule for what's already announced.`
+          }
           action={
-            <Button
+            <Button nativeButton={false}
               variant="outline"
               render={
                 <Link to="/e/$slug" params={{ slug }} search={(prev) => prev} />

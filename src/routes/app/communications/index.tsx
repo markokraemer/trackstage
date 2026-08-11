@@ -2,7 +2,11 @@ import { useState } from "react"
 import { createFileRoute } from "@tanstack/react-router"
 import { useQuery } from "@tanstack/react-query"
 import { convexQuery } from "@convex-dev/react-query"
-import { RiCalendarEventLine, RiMailSettingsLine } from "@remixicon/react"
+import {
+  RiCalendarEventLine,
+  RiMailSendLine,
+  RiMailSettingsLine,
+} from "@remixicon/react"
 
 import { api } from "@convex/_generated/api"
 import type { Id } from "@convex/_generated/dataModel"
@@ -14,6 +18,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { TooltipProvider } from "@/components/ui/tooltip"
 import { EmptyState } from "@/components/shared/empty-state"
 import { PageHeader } from "@/components/shared/page-header"
+import { ComposeDialog } from "@/components/comms/compose-dialog"
 import { MESSAGE_STATUS_FILTERS } from "@/components/comms/constants"
 import { MessageDrawer } from "@/components/comms/message-drawer"
 import { OutboxTable } from "@/components/comms/outbox-table"
@@ -57,6 +62,7 @@ function CommunicationsPage() {
   const [openMessageId, setOpenMessageId] = useState<Id<"messages"> | null>(
     null,
   )
+  const [composeOpen, setComposeOpen] = useState(false)
 
   const { event, isLoading: eventsLoading } = useCurrentEvent()
   const eventId = event?._id
@@ -104,7 +110,7 @@ function CommunicationsPage() {
           title="Create your event first"
           description="Emails are written per event — acceptances, declines, waitlist notes and task reminders all carry the event's name and its speaker portal links."
           action={
-            <Button render={<a href="/app/settings" />}>Go to Settings</Button>
+            <Button nativeButton={false} render={<a href="/app/settings" />}>Go to Settings</Button>
           }
         />
       </div>
@@ -117,6 +123,12 @@ function CommunicationsPage() {
         <PageHeader
           title="Communications"
           description="The wording of every email your event sends, and a full record of everything that has gone out."
+          actions={
+            <Button onClick={() => setComposeOpen(true)} disabled={!eventId}>
+              <RiMailSendLine aria-hidden />
+              Compose
+            </Button>
+          }
         />
 
         <Tabs
@@ -190,6 +202,13 @@ function CommunicationsPage() {
             setOpenTemplateKey(null)
             goToTab("outbox")
           }}
+        />
+
+        <ComposeDialog
+          eventId={eventId}
+          open={composeOpen}
+          onOpenChange={setComposeOpen}
+          onSent={() => goToTab("outbox")}
         />
 
         <MessageDrawer

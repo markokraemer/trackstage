@@ -3,6 +3,7 @@ import { useConvexMutation } from "@convex-dev/react-query"
 import { api } from "@convex/_generated/api"
 import type { Id } from "@convex/_generated/dataModel"
 
+import { uploadToStorage } from "@/lib/files"
 import { usePortal } from "./portal-context"
 
 export interface PortalUploadTarget {
@@ -16,8 +17,12 @@ export interface PortalUploadTarget {
 
 /**
  * The three-step Convex file upload, wrapped so every portal screen does it
- * the same way: ask for a signed URL → POST the file → record it against the
- * task/submission/profile.
+ * the same way: ask for a signed URL → PUSH the bytes (with real progress) →
+ * record the file against the task/submission/profile.
+ *
+ * The server re-reads size and MIME type from the `_storage` system table when
+ * it attaches, so what we send here is a convenience, never the source of
+ * truth.
  */
 export function usePortalUpload() {
   const { portalToken } = usePortal()
@@ -26,19 +31,15 @@ export function usePortalUpload() {
   const [isUploading, setIsUploading] = useState(false)
 
   const upload = useCallback(
-    async (file: File, target: PortalUploadTarget = {}) => {
+    async (
+      file: File,
+      target: PortalUploadTarget = {},
+      onProgress?: (percent: number) => void,
+    ) => {
       setIsUploading(true)
       try {
         const uploadUrl = await generateUploadUrl({ portalToken })
-        const response = await fetch(uploadUrl, {
-          method: "POST",
-          headers: file.type ? { "Content-Type": file.type } : undefined,
-          body: file,
-        })
-        if (!response.ok) {
-          throw new Error("The file could not be uploaded. Please try again.")
-        }
-        const { storageId } = (await response.json()) as { storageId: string }
+        const storageId = await uploadToStorage(uploadUrl, file, onProgress)
         await attachUpload({
           portalToken,
           storageId: storageId as Id<"_storage">,

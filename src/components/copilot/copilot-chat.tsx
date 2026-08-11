@@ -6,21 +6,23 @@ import { RiErrorWarningLine, RiSparkling2Line } from "@remixicon/react"
 
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
-import {
-  InputGroup,
-  InputGroupAddon,
-} from "@/components/ui/input-group"
-import {
-  Conversation,
-  ConversationContent,
-  ConversationScrollButton,
-} from "@/components/ai-elements/conversation"
-import { Loader } from "@/components/ai-elements/loader"
+import { InputGroupAddon } from "@/components/ui/input-group"
+import { Bubble, BubbleContent } from "@/components/ui/bubble"
+import { Marker, MarkerContent, MarkerIcon } from "@/components/ui/marker"
 import {
   Message,
   MessageContent,
-  MessageResponse,
-} from "@/components/ai-elements/message"
+} from "@/components/ui/message"
+import {
+  MessageScroller,
+  MessageScrollerButton,
+  MessageScrollerContent,
+  MessageScrollerItem,
+  MessageScrollerProvider,
+  MessageScrollerViewport,
+} from "@/components/ui/message-scroller"
+import { Loader } from "@/components/ai-elements/loader"
+import { MessageResponse } from "@/components/ai-elements/message"
 import {
   PromptInput,
   PromptInputBody,
@@ -42,9 +44,21 @@ import { useCurrentEvent } from "@/lib/current-event"
  * instance out of src/lib/copilot-store.ts, so navigating away from a screen
  * — or from the panel to the full page — never loses the thread.
  *
+ * THE CHROME IS SHADCN'S CHAT PRIMITIVES (June 2026 release), per rule #17:
+ * `MessageScroller` owns the transcript's scroll behaviour — anchored turns,
+ * following a streamed reply only while the reader is at the live edge, and a
+ * jump-to-latest control — which is exactly the class of thing that is easy to
+ * get subtly wrong by hand. `Message`/`Bubble` lay out the rows (user turns as
+ * bubbles, assistant turns full-width so tables and tool cards get the width
+ * they need) and `Marker` carries the system/status rows.
+ *
+ * AI ELEMENTS STAYS for the AI-specific parts shadcn deliberately does not
+ * ship: the composer (`prompt-input`), the tool visualisation and the
+ * approval `Confirmation` — see copilot-tool-part.tsx.
+ *
  * Everything the model can do comes from our MCP server, and every
  * destructive call arrives here as an approval card the organizer has to
- * accept before anything happens (see copilot-tool-part.tsx).
+ * accept before anything happens.
  */
 
 export type CopilotChatProps = {
@@ -107,71 +121,114 @@ export function CopilotChat({
 
   return (
     <div className={cn("flex min-h-0 flex-1 flex-col", className)}>
-      <Conversation className="min-h-0 flex-1">
-        <ConversationContent
-          className={cn("gap-6", isPage ? "mx-auto w-full max-w-3xl p-6" : "p-4")}
-        >
-          {isEmpty ? (
-            <CopilotEmptyState
-              variant={variant}
-              headline={headline}
-              eventName={event?.name}
-              onPick={ask}
-            />
-          ) : null}
+      <MessageScrollerProvider
+        autoScroll
+        defaultScrollPosition="last-anchor"
+        scrollPreviousItemPeek={64}
+      >
+        <MessageScroller className="min-h-0 flex-1">
+          <MessageScrollerViewport>
+            <MessageScrollerContent
+              aria-busy={status === "streaming"}
+              className={cn(
+                "gap-6",
+                isPage ? "mx-auto w-full max-w-3xl p-6" : "p-4",
+              )}
+            >
+              {isEmpty ? (
+                <CopilotEmptyState
+                  variant={variant}
+                  headline={headline}
+                  eventName={event?.name}
+                  onPick={ask}
+                />
+              ) : null}
 
-          {messages.map((message) => (
-            <Message key={message.id} from={message.role} className="max-w-full">
-              <MessageContent>
-                {message.parts.map((part, index) => {
-                  const key = `${message.id}-${index}`
+              {messages.map((message) => {
+                const isUser = message.role === "user"
+                return (
+                  <MessageScrollerItem
+                    key={message.id}
+                    messageId={message.id}
+                    scrollAnchor={isUser}
+                  >
+                    <Message align={isUser ? "end" : "start"}>
+                      <MessageContent>
+                        {isUser ? (
+                          <Bubble variant="tinted" align="end">
+                            <BubbleContent>
+                              {message.parts
+                                .map((part) =>
+                                  part.type === "text" ? part.text : "",
+                                )
+                                .join("")}
+                            </BubbleContent>
+                          </Bubble>
+                        ) : (
+                          message.parts.map((part, index) => {
+                            const key = `${message.id}-${index}`
 
-                  if (part.type === "text") {
-                    return part.text ? (
-                      <MessageResponse key={key}>{part.text}</MessageResponse>
-                    ) : null
-                  }
+                            if (part.type === "text") {
+                              return part.text ? (
+                                <MessageResponse key={key}>
+                                  {part.text}
+                                </MessageResponse>
+                              ) : null
+                            }
 
-                  if (part.type === "reasoning") {
-                    return null
-                  }
+                            if (part.type === "reasoning") return null
 
-                  // Covers both static (`tool-<name>`) and dynamic tool parts.
-                  if (isToolUIPart(part)) {
-                    return (
-                      <CopilotToolPart
-                        key={key}
-                        part={part}
-                        disabled={busy}
-                        onApprovalResponse={approve}
-                      />
-                    )
-                  }
+                            // Covers static (`tool-<name>`) and dynamic parts.
+                            if (isToolUIPart(part)) {
+                              return (
+                                <CopilotToolPart
+                                  key={key}
+                                  part={part}
+                                  disabled={busy}
+                                  onApprovalResponse={approve}
+                                />
+                              )
+                            }
 
-                  return null
-                })}
-              </MessageContent>
-            </Message>
-          ))}
+                            return null
+                          })
+                        )}
+                      </MessageContent>
+                    </Message>
+                  </MessageScrollerItem>
+                )
+              })}
 
-          {status === "submitted" ? (
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Loader size={14} />
-              Thinking…
-            </div>
-          ) : null}
+              {status === "submitted" ? (
+                <MessageScrollerItem messageId="copilot-status">
+                  <Marker role="status">
+                    <MarkerIcon>
+                      <Loader size={14} />
+                    </MarkerIcon>
+                    <MarkerContent className="shimmer">Thinking…</MarkerContent>
+                  </Marker>
+                </MessageScrollerItem>
+              ) : null}
 
-          {error ? (
-            <div className="flex items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">
-              <RiErrorWarningLine size={16} aria-hidden className="mt-0.5 shrink-0" />
-              <span className="min-w-0">
-                {error.message || "The copilot hit an error. Try again."}
-              </span>
-            </div>
-          ) : null}
-        </ConversationContent>
-        <ConversationScrollButton />
-      </Conversation>
+              {error ? (
+                <MessageScrollerItem messageId="copilot-error">
+                  <div className="flex items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">
+                    <RiErrorWarningLine
+                      size={16}
+                      aria-hidden
+                      className="mt-0.5 shrink-0"
+                    />
+                    <span className="min-w-0">
+                      {error.message || "The copilot hit an error. Try again."}
+                    </span>
+                  </div>
+                </MessageScrollerItem>
+              ) : null}
+            </MessageScrollerContent>
+          </MessageScrollerViewport>
+          <MessageScrollerButton />
+        </MessageScroller>
+      </MessageScrollerProvider>
 
       <div
         className={cn(
@@ -179,16 +236,16 @@ export function CopilotChat({
           isPage ? "px-6 py-4" : "p-3",
         )}
       >
-        <div className={cn(isPage && "mx-auto w-full max-w-3xl")}>
+        <div className={cn("space-y-2", isPage && "mx-auto w-full max-w-3xl")}>
           {!isEmpty ? (
-            <Suggestions className="mb-2">
+            <Suggestions>
               {COPILOT_SUGGESTIONS.slice(0, 3).map((suggestion) => (
                 <Suggestion
                   key={suggestion}
                   suggestion={suggestion}
                   disabled={busy}
                   onClick={ask}
-                  className="h-7 text-xs"
+                  className="h-7 rounded-full text-xs"
                 />
               ))}
             </Suggestions>
@@ -196,34 +253,32 @@ export function CopilotChat({
 
           <PromptInput onSubmit={submit}>
             <PromptInputBody>
-              <InputGroup>
-                <PromptInputTextarea
-                  placeholder={
-                    event
-                      ? `Ask about ${event.name}…`
-                      : "Ask the Sessionboard copilot…"
-                  }
-                  className="min-h-16"
-                />
-                <InputGroupAddon align="block-end">
-                  <span className="text-xs text-muted-foreground">
-                    Runs on your Sessionboard MCP tools
-                  </span>
-                  {busy ? (
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="outline"
-                      className="ml-auto"
-                      onClick={() => stop()}
-                    >
-                      Stop
-                    </Button>
-                  ) : (
-                    <PromptInputSubmit status={status} className="ml-auto" />
-                  )}
-                </InputGroupAddon>
-              </InputGroup>
+              <PromptInputTextarea
+                placeholder={
+                  event
+                    ? `Ask about ${event.name}…`
+                    : "Ask the Sessionboard copilot…"
+                }
+                className="max-h-40 min-h-11 px-3 py-2.5 text-sm"
+              />
+              <InputGroupAddon align="block-end" className="gap-2">
+                <span className="truncate text-xs text-muted-foreground">
+                  Runs on your Sessionboard MCP tools
+                </span>
+                {busy ? (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="ml-auto"
+                    onClick={() => stop()}
+                  >
+                    Stop
+                  </Button>
+                ) : (
+                  <PromptInputSubmit status={status} className="ml-auto" />
+                )}
+              </InputGroupAddon>
             </PromptInputBody>
           </PromptInput>
         </div>
@@ -281,7 +336,7 @@ function CopilotEmptyState({
             key={suggestion}
             suggestion={suggestion}
             onClick={onPick}
-            className="h-8 text-xs"
+            className="h-8 rounded-full text-xs"
           />
         ))}
       </div>

@@ -98,14 +98,16 @@ function SchedulePage() {
       {days.length === 0 ? (
         <EmptyState
           icon={RiCalendarEventLine}
-          title="The schedule isn't published yet"
+          title={data.publicMessage ?? "The schedule isn't published yet"}
           description={
-            search.track
-              ? `No sessions on the "${search.track}" track have been scheduled yet. Try another track.`
-              : "Sessions appear here as soon as the organizer accepts them and gives them a time slot. Check back soon."
+            data.publicMessage
+              ? "The organizer is still putting the programme together. This page fills in the moment they publish it."
+              : search.track
+                ? `No sessions on the "${search.track}" track have been scheduled yet. Try another track.`
+                : "Sessions appear here as soon as the organizer accepts them and gives them a time slot. Check back soon."
           }
           action={
-            <Button
+            <Button nativeButton={false}
               variant="outline"
               render={
                 <Link to="/e/$slug/speakers" params={{ slug }} search={(prev) => prev} />
@@ -130,7 +132,7 @@ function SchedulePage() {
                   <RiArrowLeftSLine aria-hidden />
                 </Button>
               ) : (
-                <Button
+                <Button nativeButton={false}
                   variant="outline"
                   size="icon-sm"
                   aria-label="Previous day"
@@ -187,7 +189,7 @@ function SchedulePage() {
                   <RiArrowRightSLine aria-hidden />
                 </Button>
               ) : (
-                <Button
+                <Button nativeButton={false}
                   variant="outline"
                   size="icon-sm"
                   aria-label="Next day"

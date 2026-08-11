@@ -1,49 +1,50 @@
 import { RiAlarmWarningLine, RiMailSendLine } from "@remixicon/react"
-import type { DynamicToolUIPart, ToolUIPart } from "ai"
 
-import { cn } from "@/lib/utils"
 import {
   Confirmation,
   ConfirmationAction,
   ConfirmationActions,
   ConfirmationTitle,
 } from "@/components/ai-elements/confirmation"
-import {
-  Tool,
-  ToolContent,
-  ToolHeader,
-  ToolInput,
-  ToolOutput,
-} from "@/components/ai-elements/tool"
+import { Loader } from "@/components/ai-elements/loader"
 import {
   humanizeToolName,
   isDestructiveTool,
   sendsEmail,
   summarizeToolArgs,
 } from "@/lib/copilot"
+import { ToolFrame } from "@/components/copilot/tool-views/tool-frame"
 import {
-  CopilotJsonBlock,
-  CopilotToolResult,
-} from "@/components/copilot/copilot-tool-result"
+  CopilotToolOutput,
+  toolIcon,
+} from "@/components/copilot/tool-views/registry"
+import type { CopilotToolPart as ToolPart } from "@/components/copilot/tool-views/registry"
+import { FieldGrid, ToolAlert } from "@/components/copilot/tool-views/shared"
 
 /**
  * One tool call, rendered.
  *
- * Two jobs, and they are not the same job:
+ * Three jobs, and they are not the same job:
  *
  *  - the APPROVAL CARD, for destructive tools the server has suspended
  *    (`state: "approval-requested"`). This is the only thing standing between
  *    "the copilot suggested emailing 40 speakers" and "40 speakers got an
  *    email", so it leads with what will happen and to how many people, and
  *    the two buttons are unambiguous.
- *  - the RECEIPT, for everything else: a quiet collapsible row with the raw
- *    parameters and result, plus a rich rendering of the result when we know
- *    its shape (copilot-tool-result.tsx).
+ *  - the RESULT, once the tool has run: a purpose-built rendering per tool
+ *    (tool-views/registry.tsx) — a form card with a copyable public link, a
+ *    submissions table, an agenda day summary — rather than JSON.
+ *  - the RECEIPT above it: a collapsed frame naming the tool and its state,
+ *    which expands to the exact arguments and the raw response.
+ *
+ * Tool parts arrive from `useChat` as `dynamic-tool` parts (our tools are
+ * discovered from the MCP server at runtime), so everything keys off
+ * `part.toolName`; static `tool-<name>` parts are handled too, for free.
  */
 
-export type CopilotToolPart = ToolUIPart | DynamicToolUIPart
+export type CopilotToolPart = ToolPart
 
-function toolNameOf(part: CopilotToolPart): string {
+function toolNameOf(part: ToolPart): string {
   return part.type === "dynamic-tool"
     ? part.toolName
     : part.type.slice("tool-".length)
@@ -54,14 +55,15 @@ export function CopilotToolPart({
   onApprovalResponse,
   disabled = false,
 }: {
-  part: CopilotToolPart
+  part: ToolPart
   onApprovalResponse: (approvalId: string, approved: boolean) => void
   disabled?: boolean
 }) {
   const toolName = toolNameOf(part)
   const label = humanizeToolName(toolName)
   const destructive = isDestructiveTool(toolName)
-  const args = summarizeToolArgs(part.input)
+  const emails = sendsEmail(toolName)
+  const Icon = toolIcon(toolName)
 
   // ——— The gate ————————————————————————————————————————————————————————
   if (part.state === "approval-requested") {
@@ -69,47 +71,37 @@ export function CopilotToolPart({
     // there is nothing for the organizer to press.
     if (part.approval.isAutomatic) {
       return (
-        <p className="text-sm text-muted-foreground">
+        <p className="flex items-center gap-2 text-sm text-muted-foreground">
+          <Loader size={14} />
           Checking approval for {label.toLowerCase()}…
         </p>
       )
     }
+    const args = summarizeToolArgs(part.input)
     return (
       <Confirmation
         approval={part.approval}
         state={part.state}
-        className="border-status-amber-dot/40 bg-status-amber-bg/50"
+        className="border-status-amber-dot/40 bg-status-amber-bg/40"
       >
-        <div className="flex items-start gap-2">
-          {sendsEmail(toolName) ? (
-            <RiMailSendLine
-              size={16}
-              aria-hidden
-              className="mt-0.5 shrink-0 text-status-amber-fg"
-            />
-          ) : (
-            <RiAlarmWarningLine
-              size={16}
-              aria-hidden
-              className="mt-0.5 shrink-0 text-status-amber-fg"
-            />
-          )}
+        <div className="flex items-start gap-2.5">
+          <span
+            aria-hidden
+            className="mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-md bg-status-amber-bg text-status-amber-fg"
+          >
+            {emails ? (
+              <RiMailSendLine size={16} />
+            ) : (
+              <RiAlarmWarningLine size={16} />
+            )}
+          </span>
           <div className="min-w-0 flex-1 space-y-2">
-            <ConfirmationTitle className="block font-medium text-foreground">
+            <ConfirmationTitle className="block text-sm font-medium text-foreground">
               {label}
-              {sendsEmail(toolName) ? " — this sends real email" : ""}
+              {emails ? " — this sends real email" : ""}
             </ConfirmationTitle>
             {args.length > 0 ? (
-              <dl className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-1 text-xs">
-                {args.map((entry) => (
-                  <div key={entry.label} className="contents">
-                    <dt className="text-muted-foreground">{entry.label}</dt>
-                    <dd className="min-w-0 truncate font-medium text-foreground">
-                      {entry.value}
-                    </dd>
-                  </div>
-                ))}
-              </dl>
+              <FieldGrid entries={args} />
             ) : (
               <p className="text-xs text-muted-foreground">No parameters.</p>
             )}
@@ -134,51 +126,51 @@ export function CopilotToolPart({
     )
   }
 
+  const frame = (
+    <ToolFrame
+      title={label}
+      toolName={toolName}
+      state={part.state}
+      icon={Icon}
+      input={part.input}
+      output={part.state === "output-available" ? part.output : undefined}
+      errorText={part.state === "output-error" ? part.errorText : undefined}
+      emphasis={destructive}
+    />
+  )
+
   if (part.state === "output-denied") {
     return (
-      <p className="text-sm text-muted-foreground">
-        <span className="font-medium text-foreground">{label}</span> — cancelled,
-        nothing was changed.
-      </p>
+      <div className="space-y-2">
+        {frame}
+        <p className="text-sm text-muted-foreground">
+          Cancelled — nothing was changed.
+        </p>
+      </div>
     )
   }
 
-  // ——— The receipt ———————————————————————————————————————————————————————
-  const rich =
-    part.state === "output-available" ? (
-      <CopilotToolResult toolName={toolName} output={part.output} />
-    ) : null
+  if (part.state === "output-error") {
+    return (
+      <div className="space-y-2">
+        {frame}
+        <ToolAlert title={`${label} failed`}>
+          {part.errorText || "The tool returned an error."}
+        </ToolAlert>
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-2">
-      <Tool
-        className={cn(
-          "group mb-0 border-border bg-card text-left",
-          destructive && "border-status-amber-dot/40",
-        )}
-      >
-        <ToolHeader
-          title={label}
-          type={`tool-${toolName}`}
-          state={part.state}
-          className="cursor-pointer px-3 py-2 hover:bg-muted/50"
+      {frame}
+      {part.state === "output-available" ? (
+        <CopilotToolOutput
+          toolName={toolName}
+          input={part.input}
+          output={part.output}
         />
-        <ToolContent className="border-t border-border">
-          <ToolInput input={part.input} />
-          {part.state === "output-available" ? (
-            <div className="space-y-2 p-4 pt-0">
-              <h4 className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
-                Result
-              </h4>
-              <CopilotJsonBlock value={part.output} />
-            </div>
-          ) : null}
-          {part.state === "output-error" ? (
-            <ToolOutput output={undefined} errorText={part.errorText} />
-          ) : null}
-        </ToolContent>
-      </Tool>
-      {rich}
+      ) : null}
     </div>
   )
 }

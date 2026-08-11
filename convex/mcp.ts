@@ -652,6 +652,13 @@ export const updateFormSettings = internalMutation({
     if (Object.keys(patch).length === 0) {
       throw new Error("Nothing to update — pass at least one setting.")
     }
+    // Snapshot before the write so callers can show a real before/after — an
+    // "updated!" with no previous value is unverifiable by the reader.
+    const previous = {
+      status: form.status,
+      closeAt: iso(form.closeAt),
+      settings: form.settings,
+    }
     await ctx.db.patch(form._id, patch)
     const updated = await ctx.db.get(form._id)
     return {
@@ -660,6 +667,7 @@ export const updateFormSettings = internalMutation({
       closeAt: iso(updated?.closeAt),
       publicUrl: publicFormUrl(form.slug),
       settings: updated?.settings,
+      previous,
     }
   },
 })
@@ -1354,7 +1362,9 @@ export const assignTask = internalMutation({
     const title = args.title.trim()
     if (!title) throw new Error("A task title is required.")
     const kind = args.kind ?? "confirm"
-    const kinds = ["profile", "headshot", "upload", "form", "confirm"]
+    // "form" is intentionally not offered: nothing in the portal ever read it,
+    // so a task created with it could never be completed.
+    const kinds = ["profile", "headshot", "upload", "confirm"]
     if (!kinds.includes(kind)) {
       throw new Error(`Invalid task kind "${kind}". One of: ${kinds.join(", ")}.`)
     }
@@ -2232,7 +2242,7 @@ export const TOOLS: Array<ToolDef> = [
     name: "assign_task",
     title: "Assign a speaker task",
     description:
-      "Assigns an onboarding task to one or more speakers — it appears in their portal immediately. Kinds: profile (complete bio), headshot, upload (send a file such as slides), form, confirm (acknowledge something). Assigning does not email anyone; run send_reminders for that.",
+      "Assigns an onboarding task to one or more speakers — it appears in their portal immediately. Kinds: profile (completes itself once their bio is filled in), headshot (completes on upload), upload (they send a file such as slides, you review it), confirm (one click to acknowledge). Assigning does not email anyone; run send_reminders for that.",
     inputSchema: schema(
       {
         event: EVENT_ARG,
@@ -2244,7 +2254,7 @@ export const TOOLS: Array<ToolDef> = [
         title: { type: "string", description: "e.g. \"Upload your slides\"." },
         kind: {
           type: "string",
-          enum: ["profile", "headshot", "upload", "form", "confirm"],
+          enum: ["profile", "headshot", "upload", "confirm"],
           description: "Default \"confirm\".",
         },
         instructions: { type: "string" },

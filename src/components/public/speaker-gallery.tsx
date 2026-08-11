@@ -287,7 +287,7 @@ export function SpeakerDetailDialog({
               <DialogClose render={<Button variant="outline" />}>
                 Close
               </DialogClose>
-              <Button
+              <Button nativeButton={false}
                 render={
                   <Link
                     to="/e/$slug/itinerary/$personId"

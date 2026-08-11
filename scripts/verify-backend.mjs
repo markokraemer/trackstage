@@ -276,6 +276,43 @@ ok("outstanding tasks tracked", overview.outstandingTaskCount >= 1)
 ok("chase list present", Array.isArray(overview.topSpeakersByOutstandingTasks))
 const roster = await client.query(api.dashboard.speakersRoster, { eventId: main._id })
 ok("roster includes our speaker w/ portal token", roster.some((s) => s.email === verifyEmail && s.portalToken))
+ok("roster rows carry a workflow status", roster.every((s) => ["invited", "confirmed", "dropped"].includes(s.workflowStatus)))
+
+// ————— Speakers admin: manual add, profile edit, workflow status —————
+section("Speakers admin")
+const manualEmail = `manual-speaker-${Date.now().toString(36)}@example.com`
+const manual = await client.mutation(api.speakersAdmin.addManual, {
+  eventId: main._id, firstName: "Manu", lastName: "Alvarez", email: manualEmail,
+  company: "Keynote Co", jobTitle: "CTO", workflowStatus: "invited",
+})
+ok("addManual creates a person with a portal token", manual.created && /^[0-9a-f]{48}$/.test(manual.portalToken))
+const rosterAfterAdd = await client.query(api.dashboard.speakersRoster, { eventId: main._id })
+const manualRow = rosterAfterAdd.find((s) => s.email === manualEmail)
+ok("manually added speaker appears in the roster", !!manualRow, `roster has ${rosterAfterAdd.length} rows`)
+ok("manual speaker keeps its workflow status", manualRow?.workflowStatus === "invited")
+ok("manual speaker has no sessions yet", manualRow?.sessions.length === 0)
+await throws("addManual rejects a junk email", () =>
+  client.mutation(api.speakersAdmin.addManual, {
+    eventId: main._id, firstName: "X", lastName: "Y", email: "nope",
+  }), "valid email")
+const dupe = await client.mutation(api.speakersAdmin.addManual, {
+  eventId: main._id, firstName: "Manu", lastName: "Alvarez", email: manualEmail,
+})
+ok("addManual is idempotent on email (no duplicate people)", dupe.created === false && dupe.personId === manual.personId)
+await client.mutation(api.speakersAdmin.updateProfile, {
+  personId: manual.personId,
+  patch: { bio: "Organizer-written bio for the public page.", headshotNote: "Needs a higher-res file" },
+})
+const rosterAfterEdit = await client.query(api.dashboard.speakersRoster, { eventId: main._id })
+const editedRow = rosterAfterEdit.find((s) => s.email === manualEmail)
+ok("organizer-side bio edit persists (CNT-10)", editedRow?.bio?.includes("Organizer-written") && editedRow?.hasBio)
+ok("headshot note persists, organizer-only", editedRow?.headshotNote === "Needs a higher-res file")
+await client.mutation(api.speakersAdmin.setWorkflowStatus, {
+  personId: manual.personId, workflowStatus: "confirmed",
+})
+const rosterAfterStatus = await client.query(api.dashboard.speakersRoster, { eventId: main._id })
+ok("workflow status change persists (SPK-04)",
+  rosterAfterStatus.find((s) => s.email === manualEmail)?.workflowStatus === "confirmed")
 
 // ————— Public widgets data —————
 section("Public data")
@@ -292,12 +329,99 @@ ok("cross-event isolation: other slug can't see our session",
   (await client.query(api.publicData.sessionDetail, { slug: "design-systems-day", submissionId: String(submitted.submissionId) })).session === null)
 ok("no portal tokens leaked publicly", !JSON.stringify({ sched, speakers, sessions }).includes(PT))
 
+// ————— Publish gate / go-live (sbek AIA-07) —————
+section("Agenda publish gate")
+ok("seeded main event is published", sched.published === true && sched.publicMessage === null)
+// The second seeded event is deliberately left unpublished — it has an accepted,
+// scheduled session, so an empty schedule can only come from the gate.
+const draftBoard = await client.query(api.agenda.board, { eventId: other._id })
+ok("unpublished event still has a scheduled session internally", draftBoard.scheduled.length >= 1)
+const draftSchedule = await client.query(api.publicData.schedule, { slug: "design-systems-day" })
+ok("unpublished event's public schedule is empty", draftSchedule.days.length === 0 && draftSchedule.totals.sessions === 0)
+ok("unpublished event says “Schedule coming soon”", draftSchedule.publicMessage === "Schedule coming soon")
+ok("unpublished event still exposes its name/dates", draftSchedule.event.name === "Design Systems Day")
+const draftSessions = await client.query(api.publicData.sessionsList, { slug: "design-systems-day" })
+ok("unpublished event's public sessions list is empty", draftSessions.sessions.length === 0 && draftSessions.published === false)
+const draftSpeakers = await client.query(api.publicData.speakers, { slug: "design-systems-day" })
+ok("unpublished event hides session times on speakers", draftSpeakers.speakers.every((s) => s.sessions.length === 0))
+const draftPerson = draftSpeakers.speakers[0]
+if (draftPerson) {
+  const draftItinerary = await client.query(api.publicData.speakerItinerary, {
+    slug: "design-systems-day", personId: String(draftPerson._id),
+  })
+  ok("unpublished event's itinerary is empty", draftItinerary.days.length === 0 && draftItinerary.publicMessage === "Schedule coming soon")
+}
+const publishResult = await client.mutation(api.agenda.publishAgenda, { eventId: other._id })
+ok("publishAgenda reports what went live", publishResult.sessionCount >= 1 && typeof publishResult.agendaPublishedAt === "number")
+const publishedSchedule = await client.query(api.publicData.schedule, { slug: "design-systems-day" })
+ok("publishing reveals the schedule", publishedSchedule.days.length >= 1 && publishedSchedule.publicMessage === null)
+ok("board reports the published stamp back to the organizer",
+  (await client.query(api.agenda.board, { eventId: other._id })).event.agendaPublishedAt !== null)
+await client.mutation(api.agenda.unpublishAgenda, { eventId: other._id })
+const rehiddenSchedule = await client.query(api.publicData.schedule, { slug: "design-systems-day" })
+ok("unpublishing hides it again (reversible)", rehiddenSchedule.days.length === 0 && rehiddenSchedule.publicMessage === "Schedule coming soon")
+
+// ————— Saved embeds (sbek EMB-15) —————
+section("Embeds")
+ok("no saved embeds to start", (await client.query(api.embeds.list, { eventId: main._id })).length === 0)
+const embedId = await client.mutation(api.embeds.save, {
+  eventId: main._id, name: "Sponsors page agenda", widget: "agenda",
+  options: { format: "iframe", hideDescriptions: true, track: "Agents", height: 800 },
+})
+const embedList = await client.query(api.embeds.list, { eventId: main._id })
+ok("embed saved and listed", embedList.length === 1 && embedList[0].name === "Sponsors page agenda")
+ok("embed round-trips its options", embedList[0].options.hideDescriptions === true && embedList[0].options.track === "Agents")
+await client.mutation(api.embeds.save, {
+  eventId: main._id, embedId, name: "Sponsors page agenda (v2)", widget: "speaker-gallery",
+  options: { format: "link" },
+})
+const embedUpdated = await client.query(api.embeds.list, { eventId: main._id })
+ok("saving with an id overwrites instead of duplicating",
+  embedUpdated.length === 1 && embedUpdated[0].widget === "speaker-gallery")
+await throws("unknown widget rejected", () =>
+  client.mutation(api.embeds.save, { eventId: main._id, name: "x", widget: "nope", options: {} }), "unknown widget")
+await throws("unknown format rejected", () =>
+  client.mutation(api.embeds.save, { eventId: main._id, name: "x", widget: "agenda", options: { format: "xml" } }), "unknown embed format")
+await throws("unnamed embed rejected", () =>
+  client.mutation(api.embeds.save, { eventId: main._id, name: "  ", widget: "agenda", options: {} }), "name")
+await client.mutation(api.embeds.remove, { embedId })
+ok("embed deleted", (await client.query(api.embeds.list, { eventId: main._id })).length === 0)
+
 // ————— Comms —————
 section("Comms")
 const templates = await client.query(api.comms.listTemplates, { eventId: main._id })
 ok("5 seeded templates", templates.length >= 5, `got ${templates.length}`)
 const remind = await client.mutation(api.comms.remindIncompleteSpeakers, { eventId: main._id })
 ok("reminders queued for incomplete", typeof remind.queued === "number")
+
+// ————— Bulk composer (sbek SPK-13) —————
+section("Bulk email composer")
+const allCount = await client.query(api.comms.recipientCount, { eventId: main._id, filter: "all_speakers" })
+const acceptedCount = await client.query(api.comms.recipientCount, { eventId: main._id, filter: "accepted" })
+ok("recipient count resolves per filter", allCount >= acceptedCount && acceptedCount >= 1, `all=${allCount} accepted=${acceptedCount}`)
+ok("manual filter with no picks counts zero",
+  (await client.query(api.comms.recipientCount, { eventId: main._id, filter: "manual", personIds: [] })) === 0)
+ok("manual filter counts exactly what's picked",
+  (await client.query(api.comms.recipientCount, { eventId: main._id, filter: "manual", personIds: [manual.personId] })) === 1)
+const outboxBeforeBulk = (await client.query(api.comms.listMessages, { eventId: main._id, limit: 500 })).length
+const bulk = await client.mutation(api.comms.composeBulk, {
+  eventId: main._id, filter: "accepted",
+  subject: "Venue update for {{eventName}}",
+  body: "Hi {{firstName}},\n\nWe've moved to the west hall. Your portal: {{portalLink}}",
+})
+ok("composeBulk queues one message per recipient", bulk.queued === acceptedCount && bulk.queued >= 1, JSON.stringify(bulk))
+const outboxAfterBulk = await client.query(api.comms.listMessages, { eventId: main._id, limit: 500 })
+ok("bulk emails land in the outbox", outboxAfterBulk.length >= outboxBeforeBulk + bulk.queued)
+const bulkRow = outboxAfterBulk.find((m) => m.templateKey === "custom-bulk")
+ok("bulk email keeps the ad-hoc subject, rendered", bulkRow?.subject === "Venue update for AI Engineer Summit 2026", bulkRow?.subject)
+ok("bulk email renders per-person placeholders",
+  Boolean(bulkRow) && !bulkRow.body.includes("{{") && bulkRow.body.includes("/portal/t/"))
+await throws("composeBulk refuses an empty subject", () =>
+  client.mutation(api.comms.composeBulk, { eventId: main._id, filter: "accepted", subject: "  ", body: "x" }), "subject")
+await throws("composeBulk refuses an empty body", () =>
+  client.mutation(api.comms.composeBulk, { eventId: main._id, filter: "accepted", subject: "x", body: " " }), "message")
+await throws("composeBulk refuses an empty audience", () =>
+  client.mutation(api.comms.composeBulk, { eventId: main._id, filter: "manual", personIds: [], subject: "x", body: "y" }), "Nobody matches")
 
 // ————— Core basics: event + workspace lifecycle —————
 section("Core basics (events & workspaces)")
@@ -345,6 +469,22 @@ await throws("stranger cannot read submissions", () =>
   strangerClient.query(api.submissions.counts, { eventId: main._id }), "access")
 await throws("stranger cannot commit queues", () =>
   strangerClient.mutation(api.submissions.commitQueue, { eventId: main._id, queue: "accept_queue" }), "access")
+await throws("stranger cannot add a speaker to our event", () =>
+  strangerClient.mutation(api.speakersAdmin.addManual, {
+    eventId: main._id, firstName: "Nope", lastName: "Nope", email: "nope@example.com",
+  }), "access")
+await throws("stranger cannot edit our speaker's profile", () =>
+  strangerClient.mutation(api.speakersAdmin.updateProfile, {
+    personId: manual.personId, patch: { bio: "hacked" },
+  }), "access")
+await throws("stranger cannot publish our agenda", () =>
+  strangerClient.mutation(api.agenda.publishAgenda, { eventId: main._id }), "access")
+await throws("stranger cannot bulk-email our speakers", () =>
+  strangerClient.mutation(api.comms.composeBulk, {
+    eventId: main._id, filter: "all_speakers", subject: "hi", body: "hi",
+  }), "access")
+await throws("stranger cannot list our saved embeds", () =>
+  strangerClient.query(api.embeds.list, { eventId: main._id }), "access")
 
 // ————— Airtable one-way mirror —————
 section("Airtable")
@@ -476,8 +616,23 @@ if (SITE_URL) {
   const speakers = await toolCall("list_speakers", { event: "ai-summit-2026" })
   ok("list_speakers returns the roster", !speakers.isError && speakers.json?.speakerCount >= 1)
 
-  const guard = await toolCall("commit_decision_queue", { event: "ai-summit-2026", queue: "accept_queue" })
-  ok("commit_decision_queue refuses without confirm:true", guard.isError && /confirm/i.test(guard.text))
+  // Either refusal is correct: the schema-level required-argument check
+  // (JSON-RPC -32602) or the handler's own confirm gate (a tool error).
+  const guardRaw = await rpc("tools/call", {
+    name: "commit_decision_queue",
+    arguments: { event: "ai-summit-2026", queue: "accept_queue" },
+  })
+  const guardMessage =
+    guardRaw.body?.error?.message ??
+    guardRaw.body?.result?.content?.[0]?.text ??
+    ""
+  ok(
+    "commit_decision_queue refuses without confirm:true",
+    (guardRaw.body?.error?.code === -32602 ||
+      guardRaw.body?.result?.isError === true) &&
+      /confirm/i.test(guardMessage),
+    guardMessage.slice(0, 140),
+  )
 
   const badTool = await rpc("tools/call", { name: "no_such_tool", arguments: {} })
   ok("unknown tool → JSON-RPC error", badTool.body?.error?.code === -32602, JSON.stringify(badTool.body).slice(0, 120))

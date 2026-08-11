@@ -151,3 +151,10 @@ the narrative memory; RULES.md is the things circled as important along the way.
     OpenAPI + Scalar API reference, MCP docs showing everything; every API action
     available via MCP too. Task-type dropdown confusion + full-page modal flagged
     (behavior explanations + dead "form" kind removal + proper dialog sizing).
+52. **Landing trim + logo context menu**: landing still too complex ("way too much
+    blah blah") — simplify and beautify; right-click logo should open a context menu
+    (design system, downloads), not auto-redirect. Rename lands with the domain.
+53. **Deterministic error hardening**: after a second MenuGroupContext crash — fix all
+    client-side errors, add lint/strict enforcement to catch the whole class.
+    (Shipped: DropdownMenuLabel hardened to plain div — crash class eliminated;
+    nativeButton lint guard added + 37 violations fixed across 20 files.)
