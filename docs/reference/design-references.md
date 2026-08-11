@@ -500,9 +500,56 @@ question as a column, shift-click range select, a "Selected (n)" bulk-action dro
 email cells. **The two-tier model — compact list inline, full table on demand — is the right answer
 for a CFP table with 40 custom questions.**
 
+### 🖼 Mobbin-verified — the organizer app, and one correction
+
+Screens: [guest list + CSV toast](https://mobbin.com/screens/77625847-95c6-46b2-b900-1b8647c84ed4) ·
+[sort dropdown](https://mobbin.com/screens/41a97731-4ce0-4431-aa89-945af9fe97bf) ·
+[status filter with counts](https://mobbin.com/screens/6f6c2efe-894a-413e-a4ce-a654859d787c) ·
+[inline approve/decline](https://mobbin.com/screens/3e087d90-6cd2-4f6a-9f12-533ad7a5bae0)
+
+- **✅ Correction to the help-doc reading above.** The guest status filter is **not** a tab strip —
+  it's a **dropdown with right-aligned counts**: `All Guests ✓ / Going 1 / Invited 1 / Waitlist 0 /
+  Not Going 0 / Joined 0`, with zero-count options still listed. Sort is a *separate* dropdown
+  (`Name / Email / Approval Status / Register Time ✓`). We should still ship **Stripe's tab strip**
+  for our seven statuses — but the "counts on every option, including zeros" detail is Luma's and
+  worth keeping.
+- **🔥 The single best find: inline Approve / Decline directly in the row.** A pending guest row
+  renders `Standard` (gray chip) · **`✓ Approve`** (green text button) · **`✕ Decline`** (red text
+  button) · `Yesterday`. No drawer, no modal, no navigation — the verdict is one click from the list.
+  **This is our accept/decline queue**, and it is dramatically lighter than the drawer-based flow, and
+  a better fit for a non-technical organizer than Linear's number-key verdicts. Pair the two: inline
+  buttons as the visible affordance, `1`/`2`/`3` as the accelerator.
+- **The organizer app is *also* ~820px-capped and centred**, with **no left sidebar at all** — event
+  context is a breadcrumb (`Demo Product Session ›`) above a large event title, then a **tab row**
+  (`Overview · Guests · Registration · Blasts · Insights · More`) with a simple underline active
+  state. Top bar is `Events / Calendars / Discover` left, `Create Event` + search + bell + avatar
+  right. This confirms the prediction below: the guest list is squeezed enough that they bolted on an
+  `↗` full-screen expand. **We keep our sidebar shell (rule 18b) — but the tab-under-title pattern is
+  right for our *event-level* sub-navigation.**
+- **"At a Glance" — steal this for the dashboard.** A big `1 guest` number, a right-aligned `cap
+  1,000`, a thin full-width **capacity progress bar**, and a dot legend `• 1 Going • 1 Invited`
+  underneath. Zero chart library, reads instantly. → CFP progress (submissions vs target), accepted
+  vs venue capacity, speakers confirmed vs accepted.
+- **Three action cards in a 3-up row**, each an icon tile + label + optional sub-label: `Invite
+  Guests` (blue tile), `Check In Guests` (green tile), `Guest List / Hidden` (amber tile). **The
+  coloured icon tiles are the only colour in the organizer chrome** — and note they're used for
+  *actions*, so if we keep our accent-tinted `EmptyState` tile anywhere, this is the justified place.
+- **The guest list is not a table.** Avatar · name · muted email · right-aligned status badge ·
+  relative timestamp. No column headers, no checkboxes, no borders between rows. Confirms the
+  two-tier model: **low-chrome list inline, real table behind `↗`.** Status badges are small
+  (~11px) soft-tinted pills — `Going` green, `Invited` blue, `Standard` gray.
+- **Export is an icon, not a button** — a download glyph + the `↗` expand glyph, both at the right
+  edge of the `Guest List` section header. Feedback is a **dark pill toast, bottom-centre**:
+  `⟳ Downloading CSV…`. Confirms the Stripe/Vercel toast discipline in the wild.
+- The page still carries a **soft lavender-to-white gradient wash** behind the header — the playful
+  residue survives even in the organizer app. Leave it.
+
 ### (b) Concrete stealable patterns
 
 - 820px public page; 330px meta rail + fluid content. Narrow for public, wide for the app.
+- **Inline `✓ Approve` / `✕ Decline` text buttons in the row** — the review-queue interaction.
+- "At a Glance": big number + cap + progress bar + dot legend.
+- Status filter options carry counts, including zeros.
 - Accent applied as a 2–8% wash + a barely-tinted black + the primary button. Nothing else.
 - Alpha borders at ~8% of foreground.
 - 16px inputs; flat by default; focus = border goes to foreground colour, no ring.
@@ -1214,6 +1261,50 @@ Ranked transferable moves:
 10. **Product screenshots: real UI, cropped, slightly tilted, soft shadow. No fake browser chrome.**
     → our `product-shot.tsx`.
 
+### 🖼 Mobbin-verified — the app, and the pattern worth more than the palette
+
+Screens: [results + bulk-select popover](https://mobbin.com/screens/2d343002-bc23-4545-9dd7-68f38c58f870) ·
+[detail panel](https://mobbin.com/screens/f39c2a7c-edd8-40eb-bec2-4aff8a246f4a) ·
+[skip-profiles variant](https://mobbin.com/screens/5d1da5e4-5eb1-4525-9a36-d5ee160f0f1f) ·
+[shortlisted state](https://mobbin.com/screens/cca1c0b0-1786-4c04-b373-5dce5f417aa8)
+
+The achromatic-app-plus-purple reading from the CSS is confirmed on screen. Three patterns are worth
+more to us than the palette:
+
+- **🔥 Colour as *evidence*: matched phrases highlighted inline in prose.** Each result row carries a
+  plain-English summary — *"Sanjana Kandi is a `Senior System Software Engineer at NVIDIA` with a
+  focus on `building scalable, robust solutions` using Python…"* — where every phrase that satisfied
+  the query is a **soft-tinted inline chip inside the sentence**. The user sees *why* the row matched
+  without opening it. → **Our submissions table and review queue should highlight the matched search
+  terms and the filter-satisfying values inline in the abstract snippet.** This is the single most
+  differentiating interaction in the whole document, it's cheap, and no competitor in our category
+  does anything like it.
+- **🔥 Natural-language query on top, structured chips underneath.** The header shows the human
+  sentence — *"Backend Developer, 2+ years of experience, skilled in Python, based in the US"* with an
+  edit pencil — and directly below it the machine-readable chips it compiled to: `Backend Engineer
+  +5` · `United States +1` · `with` · `2 to 5 years of experience` · `(+12 more filters)` ·
+  `Edit Filters ↗`. **This resolves the tension flagged in §2 and §6** between Stripe's typed grammar
+  and Linear's plain-English operators: show the sentence, expose the chips, let either be edited.
+- **A 3-up stat tile row with uppercase micro-labels** in the detail panel — `AVERAGE TENURE 0 yrs
+  11 mos` / `CURRENT TENURE 3 yrs 8 mos` / `TOTAL EXPERIENCE 3 yrs 9 mos`, each a bordered tile with
+  an ~10px tracked-out gray label above a near-black value. → speaker detail: submissions, acceptance
+  rate, events spoken at.
+
+Also confirmed: **detail opens as a right-hand panel, never a modal** (tabs `Overview · Experience ·
+Education · Technical · Skill Map`, header `Khanh LE 🔗 ⌾` + `Full Profile ↗`) — the same three-pane
+conclusion Notion Calendar and Attio reach. Row anatomy is checkbox · bold name + platform icons ·
+two dotted metadata lines · the AI summary · right-aligned `Shortlist ⌄` + preview eye. Pagination
+reads `1 - 15 of 237` with `‹ ›`, matching Vercel's caption convention. Purple appears **only** on:
+primary buttons (`Continue →`, `Create First Sequence`, `Add to Candidate`, `Upgrade Now`), the
+active nav item, `New Search`, the active tab underline, checked checkboxes, and the `Getting
+Started 83%` progress bar — every other pixel is neutral.
+
+⚠️ **One reference disagreement to adjudicate**: Juicebox puts a persistent `Getting Started 83%`
+onboarding progress bar in the sidebar footer, and Attio ships `Help and first steps ⤢ 3/6`. **Stripe
+explicitly warns against exactly this.** For an organizer who runs one conference a year, Stripe is
+right — if we ship a setup checklist, it belongs on the empty dashboard and must disappear at 100%,
+not live permanently in the chrome.
+
 Page structure, for the landing: hero (*"Win the talent war."*) → live candidate carousel →
 mono-numbered sections `[01]…[04]` → tilted screenshots → 41-logo integration wall → customer stories
 → FAQ. Typography: weights 400/500 do ~85% of the work; `-0.02em` default tracking, `+0.02em` on
@@ -1419,10 +1510,12 @@ to be about events: **Attio's system, at our density.** That means an achromatic
 chroma ≤ 2) neutral ramp with the accent hue kept entirely out of the derived neutrals — Juicebox's
 two decisive lines, `--ring` neutral and `--accent` achromatic — alpha hairlines at ~8% of the
 foreground instead of solid gray rules, elevation as a lighter surface plus a 1px border rather than a
-shadow, and exactly two page backgrounds; all of it governed by **Stripe's written colour policy**
-that colour is a semantic channel and never a decorative one, at roughly **Juicebox's 3% accent
-budget**, so the only saturated pixels on any screen are a status pill, a track chip, an agenda
-block's accent bar, or the single primary button in the top-right of the page header. The accent
+shadow, and exactly two page backgrounds; all of it governed by the rule that four of these products
+independently converged on and Stripe wrote down — **colour belongs to data, never to chrome** — at
+roughly **Juicebox's 3% accent budget**, so the sidebar, toolbar, headers, borders and backgrounds
+are uniformly gray and the only saturated pixels on any screen are a status dot, a track chip, a
+highlighted matched phrase, an agenda block's accent bar, or the single primary button in the
+top-right of the page header. The accent
 itself is **Petrol `#0F6E70`** — a deep, slightly-grayed teal that is 95° from the blue we're
 escaping and 52° from our "Accepted" green, chosen because in a field where Attio, Stripe, Vercel,
 Linear, Clay, Retool and Arc are *all* blue or indigo, not being blue is the differentiator. Onto that
@@ -1441,6 +1534,9 @@ mid-range laptop in a bright hotel ballroom, not an operator living in the tool 
 
 ### The 10 changes, ranked by impact — the rule-19 reconciliation brief
 
+*(Eleven rows: #9½ was added after the Mobbin screen review surfaced a pattern too good to drop and
+too small to displace anything.)*
+
 | # | Change | Why it's ranked here | Touches |
 | --- | --- | --- | --- |
 | 1 | **De-blue the neutrals: retire the slate ramp.** `--background #f8fafc`, `--secondary`/`--muted` `#f1f5f9`, `--muted-foreground #64748b` (chroma **14.5**), `--foreground #1b1e27` (6.7 — even the black is blue), `--sidebar #f1f5f9`, `--border`, `--input`, and the three `--status-gray-*` are all blue-tinted Tailwind *slate*. Rebind every one to **chroma ≤ 2** (`neutral`/`zinc` register; Juicebox's app ships chroma exactly 0). This is Linear's documented fix — *"limiting how much chrome (blue in our case) was used in the calculations"* — and it alone resolves most of "too blue". | The complaint is about the **neutrals**, not the primary. Ten tokens carry the blue independently; `slate-200` measures chroma 4.6 against `zinc` 1.6 and Juicebox's authored mauve 1.9. Highest impact per line changed. | `src/styles.css`, then everything |
@@ -1449,9 +1545,10 @@ mid-range laptop in a bright hotel ballroom, not an operator living in the tool 
 | 4 | **Adopt Petrol `#0F6E70` as the accent, fix the emerald status green, and write the colour policy down.** Full ramp in §10(f): `--primary #0F6E70` / hover `#0D5F60` / active `#0B5153` / surface `#EEF5F5` / surface-hover `#E0ECEC` / border `#B7D4D4`. **Blocking prerequisite:** `--status-green-*` is currently *emerald* (`#065f46` / `#059669` / `#d1fae5`), only 33° from Petrol — move it to true green (`#166534` / `#16A34A` / `#DCFCE7`) to reach 50° separation. Restructure every semantic colour on Juicebox's five-part shape (`{name}` / `-foreground` / `-surface` / `-surface-hover` / `-border`). Then permit the accent in exactly five places — primary button, link text, active sidebar item, selected-row indicator, `--chart-1` — write Stripe's rule into `/design-system` verbatim (*"colour is reserved for status signals"*), and audit the **183** current `bg-primary` / `text-primary` / `bg-accent` / `sidebar-accent` usages against it. | Delivers the "distinctive, not vibe-coded" half of rule 20 with the maths done: 6.03:1 as a button fill, 95° from the old blue, 52° from Accepted green, and distinctive in a field where Attio/Stripe/Vercel/Linear/Clay/Retool/Arc are all blue. The restraint policy is what stops the new hue becoming the new problem. Must land *after* #1–#3 so the accent is judged against neutral chrome. | `src/styles.css`, `status-pill.tsx`, `design-system.tsx`, app-wide audit |
 | 5 | **Rebuild the agenda block on the Notion Calendar recipe.** Pale track-tint surface + 4px saturated left bar + **saturated title text**; solid saturated fill only while dragging/selected; one-line collapse with inline muted time below a height threshold; **hour-only gridlines** (drop the half-slot lines, and recolour the `rgba(15,23,42,…)` gradients off slate); dark now-line with red reserved for conflicts only; shingled overlap cascade so a double-booking reads as an anomaly. Regenerate the 8-swatch track palette in `track-color-picker.tsx` from **one recipe rotated around the hue wheel** (Juicebox: same L and C, hue stepped) so track colours never fight each other — and drop `#2F5CE0` from it, since it's the old brand blue. | The agenda is our clearest differentiator — Sessionize's grid is a CSS-override embed widget — and it's currently the densest concentration of colour in the app. | `src/components/agenda/*` |
 | 6 | **One container-width system.** Rule 20(e), and it's real: `max-w-5xl`(9), `max-w-2xl`(8), `max-w-6xl`(4), `max-w-7xl`(2), plus one-offs. Adopt three named widths — **app 1200px / wide 1400px / public 820px** (Vercel + Luma) — as tokens or a `<PageContainer>` wrapper, with a 64px header and 24px gutters. Public surfaces get 820px with Luma's 330px meta rail. | Inconsistent widths are the loudest "assembled by different agents" tell, and this is exactly what rule 19 exists to fix. Mechanical, verifiable, no judgement calls. | every route |
-| 7 | **Upgrade the submissions table to the Stripe list pattern.** Status tabs **with counts** as the primary filter (All / Pending / Accept Queue / Decline Queue / Accepted / Declined / Withdrawn) → **saved views join that same tab row**, drag-orderable, `⋯` on hover → Attio's three-way save (**Save for everyone / Save as new view / Discard changes**) → default filter chips below, "More filters" grouped → Edit columns → Export honouring the current filter → **filter state in the URL**. Filter grammar stays plain English (*is / is not / includes any / before / after*); boolean nesting hides behind "Convert to advanced condition". | The chair's real workflow is three saved tabs ("my review queue", "needs a second reviewer", "accepted, awaiting confirmation"). URL-shareable filters matter more to organizers than to Stripe's users — they live in Slack and email. | `src/components/submissions/*`, `data-toolbar.tsx` |
+| 7 | **Upgrade the submissions table to the Stripe list pattern, with the 🖼 Mobbin-verified refinements.** Status tabs **with counts (zeros included)** as the primary filter → **saved views join that same tab row**, drag-orderable, `⋯` on hover → Attio's three-way save (`Discard changes` text link + blue split `Save ⌄`, visible only while dirty) → filter chips that read as a sentence with the value as a nested chip → Edit columns → Export honouring the filter → **filter state in the URL**. Plus: **status as a coloured dot + plain text, not a filled pill** (Attio's dense-table rule; keep `StatusPill` for drawers and detail pages), **column-footer aggregations** (`13 count`, average score, % reviewed), and **inline `✓ Approve` / `✕ Decline` text buttons directly in the row** (Luma) with `1`/`2`/`3` as the accelerator. | The chair's real workflow is three saved tabs ("my review queue", "needs a second reviewer", "accepted, awaiting confirmation"). Inline verdicts remove a drawer round-trip from the single most repeated action in the product. URL-shareable filters matter more to organizers than to Stripe's users — they live in Slack and email. | `src/components/submissions/*`, `data-toolbar.tsx`, `status-pill.tsx` |
 | 8 | **Standardize the feedback + empty-state vocabulary.** Four components, delineated: **Note** (inline, 1–2-word Title Case label, one active-voice sentence), **Banner** (page-level, CTA required), **Toast** (`{Noun} {past-participle}`, sentence case, no period, **never "successfully"**, ≤30 chars), **Modal** (destructive confirmation only). Empty states get the Stripe formula — title ends with a period, description <14 words explaining *when* data appears, action in call-and-response with the title, **never "Get started"** — plus the mandatory **two variants** (never-had-data vs filtered-to-zero, the latter quoting the query and offering Clear filters). Render order: **loading → error → empty → content**. | Copy and feedback drift is the second-loudest per-agent tell after layout drift, and it's what makes software feel unserious to a non-technical buyer. Also directly improves the sbek browser-agent's ability to navigate. | `empty-state.tsx`, all toasts/alerts, all list routes |
 | 9 | **Make the multi-tenant model legible: scope-preserving switcher + Personal/Organization/Event settings.** Workspace name **upper-left of the sidebar** → dropdown (Attio and Linear converged on this), with the event picker nested inside it (Stripe puts sandboxes inside the account picker). Switching org or event **keeps you on the same page** — Vercel's *"switch between team and project versions of the same page in one click"*. Settings reorganize into **Personal / Organization / Event**, job-based labels, and **no "Advanced" tab** (Cal.com deleted theirs). Member/team/integration rows use a Vercel-`Entity` row — avatar left, name+email centre, role select + **"Remove Member"** right — not a table. | Rule 18g demands the full multi-tenant spiel; this gives it a shape three reference products independently agree on, and the scope-preserving switch is strictly better for a multi-event organizer. | `src/routes/app/settings/*`, `event-switcher.tsx`, app shell |
+| 9½ | **Show *why* a row matched: highlighted evidence + natural-language filter summary.** 🖼 Juicebox's two signature moves, both cheap: (a) in the submissions list and review queue, render the abstract snippet with **matched search terms and filter-satisfying values as soft-tinted inline chips inside the sentence**, so a reviewer sees the reason without opening the row; (b) above the filter chips, show the **human sentence** the filters compile to ("Pending AI/ML talks, submitted after Aug 1, unreviewed") with an edit affordance, chips underneath, either editable. Also add Luma's **"At a Glance"** block to the dashboard — big number + cap + thin progress bar + dot legend, no chart library. | The only genuinely novel interaction in this document, and nothing in our category (least of all Sessionize) does it. It also directly serves the sbek browser-agent eval, which has to *understand* a list to navigate it. Slotted here because it depends on #7's table landing first. | `src/components/submissions/*`, `src/components/dashboard/*` |
 | 10 | **Speed and craft polish, Linear-grade.** Motion budget **100 / 250 / 350ms**, `transform`/`opacity` only, **nothing animated on a keyboard-triggered action**; optimistic local state on status/rating/toggle with quiet rollback; skeletons shaped like their content, never spinners; `tabular-nums` on every score/count/date column and monospace on IDs; `loading` buttons that **preserve width**; **Space to peek** + `↑`/`↓` in the submissions list *with a visible mouse affordance*; `⌘K` for actions with a **scoped placeholder** ("Search submissions…"), verb-phrase items, and recents when empty; `/` for search; right-click the logo → `/design-system` (rule 20d, Vercel's pattern). | swyx's loudest complaint about Sessionboard was that it's **sluggish** — speed is our stated differentiator, and perceived speed is mostly these details. Ranked last only because it presumes #1–#9 have landed. | `src/components/interior/*`, app shell, all mutations |
 
 **Sequencing note.** Stripe migrated 100+ pages by shipping foundations in the order **typography →
