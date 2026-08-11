@@ -1661,12 +1661,12 @@ if (SITE_URL) {
   ok("custom session statuses are creatable via the API",
     statusWrite.status === 201 && statusWrite.json.system === false && statusWrite.json.pipeline_status === "pending",
     JSON.stringify(statusWrite.json))
-  const statusId = statusWrite.json.id
-  const statusDelete = await call("DELETE", `/event/${EV}/statuses/${statusId}`)
+  const createdStatusId = statusWrite.json.id
+  const statusDelete = await call("DELETE", `/event/${EV}/statuses/${createdStatusId}`)
   ok("custom status soft-deletes", statusDelete.status === 204)
-  const statusRestore = await call("POST", `/event/${EV}/statuses/${statusId}/restore`, { body: {} })
+  const statusRestore = await call("POST", `/event/${EV}/statuses/${createdStatusId}/restore`, { body: {} })
   ok("deleted status restores", statusRestore.status === 200)
-  await call("DELETE", `/event/${EV}/statuses/${statusId}`)
+  await call("DELETE", `/event/${EV}/statuses/${createdStatusId}`)
 
   // ——— Speakers ———
   const speakerSearch = await call("POST", `/event/${EV}/speakers?pageSize=3`, { body: {} })
