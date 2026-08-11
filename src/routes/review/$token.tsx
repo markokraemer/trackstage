@@ -122,7 +122,7 @@ function ReviewPage() {
   const missing = criteria.filter((criterion) => !(criterion.id in scores))
   const nextOpen =
     queue.submissions.find(
-      (s) => s.completedAt === null && s._id !== current?._id,
+      (s) => s.completedAt === null && s._id !== current?._id
     ) ?? null
 
   function save() {
@@ -149,7 +149,7 @@ function ReviewPage() {
           toast.error("Couldn't save your score", {
             description: mutationError.message,
           }),
-      },
+      }
     )
   }
 
@@ -246,7 +246,7 @@ function ReviewPage() {
                         aria-current={active ? "true" : undefined}
                         className={cn(
                           "flex w-full items-start gap-2.5 rounded-lg px-2.5 py-2 text-left transition-colors outline-none hover:bg-muted focus-visible:ring-3 focus-visible:ring-ring/50",
-                          active && "bg-accent",
+                          active && "bg-accent"
                         )}
                       >
                         <span
@@ -254,7 +254,7 @@ function ReviewPage() {
                             "mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full text-[11px] font-semibold",
                             done
                               ? "bg-status-green-bg text-status-green-fg"
-                              : "bg-muted text-muted-foreground",
+                              : "bg-muted text-muted-foreground"
                           )}
                         >
                           {done ? (
@@ -311,7 +311,7 @@ function ReviewPage() {
                   ) : null}
                 </div>
 
-                <h2 className="font-heading mt-3 text-xl font-semibold tracking-tight text-foreground">
+                <h2 className="mt-3 font-heading text-xl font-semibold tracking-tight text-foreground">
                   {current.title}
                 </h2>
 

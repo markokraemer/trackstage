@@ -120,7 +120,7 @@ function OrganizerLayout() {
   }, [status, ensureWorkspace])
 
   const { data: events } = useQuery(
-    convexQuery(api.events.list, status === "authenticated" ? {} : "skip"),
+    convexQuery(api.events.list, status === "authenticated" ? {} : "skip")
   )
   const event = events?.[0]
 
@@ -230,10 +230,7 @@ function OrganizerLayout() {
             </div>
           </div>
 
-          <nav
-            aria-label="Main"
-            className="px-3 pt-2 pb-6 max-md:px-2"
-          >
+          <nav aria-label="Main" className="px-3 pt-2 pb-6 max-md:px-2">
             {NAV_GROUPS.map((group, index) => (
               <div key={group.label ?? index} className="mb-1">
                 {group.label ? (
@@ -252,7 +249,7 @@ function OrganizerLayout() {
                           buttonVariants({ variant: "ghost" }),
                           "w-full justify-start gap-2.5 px-2.5 font-medium text-foreground/80",
                           "hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
-                          "max-md:justify-center max-md:px-0",
+                          "max-md:justify-center max-md:px-0"
                         )}
                         activeProps={{
                           className:
@@ -290,7 +287,7 @@ function initials(value: string): string {
 /** "Oct 12–14, 2026" / "Oct 30 – Nov 2, 2026" / "Oct 12, 2026". */
 function formatEventDates(
   startsAt?: number,
-  endsAt?: number,
+  endsAt?: number
 ): string | undefined {
   if (!startsAt) return undefined
   const start = new Date(startsAt)

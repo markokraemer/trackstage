@@ -5,8 +5,8 @@
  * but put concrete candidates on the design-system page and choose from them.
  * Three independent axes, each shown on the SAME mini organizer dashboard:
  *
- * 1. **Colour & feel** — De-blued (the star), Mercury, Juicebox-soft, against
- *    what we ship today.
+ * 1. **Colour & feel** — De-blued and Attio (the two finalists), Juicebox-soft
+ *    as the soft secondary, against what we ship today.
  * 2. **Accent** — a teal-family alternative to Sessionboard blue, switchable on
  *    every panel below.
  * 3. **Type** — four pairings, from the Inter baseline to a distinctive one.
@@ -25,7 +25,13 @@ import "@fontsource-variable/sora"
 import "./explorations.css"
 
 import { useState } from "react"
-import { RiAddLine, RiArrowRightUpLine, RiCheckLine } from "@remixicon/react"
+import {
+  RiAddLine,
+  RiArrowDownSLine,
+  RiArrowRightUpLine,
+  RiCheckLine,
+  RiFilter3Line,
+} from "@remixicon/react"
 
 import { cn } from "@/lib/utils"
 import { Badge } from "@/components/ui/badge"
@@ -40,7 +46,7 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { PageHeader } from "@/components/shared/page-header"
-import { StatusPill } from "@/components/shared/status-pill"
+import { StatusPill, statusLabel } from "@/components/shared/status-pill"
 
 /* ------------------------------------------------------------- axis: type */
 
@@ -151,6 +157,10 @@ interface PaletteCandidate {
   defaultAccent: string
   /** Restrict the accent picker to a shortlist for this candidate. */
   accentIds?: Array<string>
+  /** Attio has no tinted module banners — the page title just sits there. */
+  headerVariant?: "banner" | "plain"
+  /** `dot` = coloured dot + plain label instead of a tinted pill. */
+  statusStyle?: "pill" | "dot"
 }
 
 /** What ships today: lavender banner, blue-tinted sidebar and pills. */
@@ -194,8 +204,12 @@ const ATTIO_PALETTE: PaletteCandidate = {
   id: "attio",
   defaultAccent: "blue",
   accentIds: ["blue", "teal"],
+  headerVariant: "plain",
+  statusStyle: "dot",
+  // Attio's system, our sizing: hairlines and small radii from the reference,
+  // but taller rows and larger controls than Attio ships (RULES.md #22).
   panelClassName:
-    "[&_[data-slot=card]]:rounded-lg [&_[data-slot=card]]:shadow-none [&_[data-slot=page-header]]:rounded-lg [&_button]:rounded-md",
+    "[&_[data-slot=card]]:rounded-lg [&_[data-slot=card]]:shadow-none [&_button]:rounded-md [&_button]:h-9 [&_th]:py-3 [&_td]:py-4",
   tokens: {
     "--background": "#fbfbfa",
     "--card": "#ffffff",
@@ -294,21 +308,51 @@ const FINALISTS: Array<{
 
 const NAV_ITEMS = ["Dashboard", "Submissions", "Speakers", "Agenda"]
 
-const DEMO_ROWS: Array<{ title: string; speaker: string; status: string }> = [
+/**
+ * Soft data tints for the Track tag — deliberately independent of the chrome
+ * palette, because in the Attio reading colour carries DATA, not chrome.
+ */
+const TRACK_TINTS: Record<string, { bg: string; fg: string }> = {
+  Design: { bg: "#f3eafb", fg: "#5b2f9a" },
+  Platform: { bg: "#e6f0fb", fg: "#1d4e89" },
+  Community: { bg: "#e7f4ec", fg: "#256040" },
+}
+
+type DotTone = "green" | "amber" | "blue"
+
+const DOT_CLASS: Record<DotTone, string> = {
+  green: "bg-status-green-dot",
+  amber: "bg-status-amber-dot",
+  blue: "bg-status-blue-dot",
+}
+
+const DEMO_ROWS: Array<{
+  title: string
+  speaker: string
+  status: string
+  tone: DotTone
+  track: keyof typeof TRACK_TINTS
+}> = [
   {
     title: "Scaling a design system to 40 teams",
     speaker: "Amara Osei",
     status: "accepted",
+    tone: "green",
+    track: "Design",
   },
   {
     title: "What we learned running 300 sessions",
     speaker: "Jonas Lindqvist",
     status: "pending",
+    tone: "amber",
+    track: "Community",
   },
   {
     title: "The programme committee playbook",
     speaker: "Rio Tanaka",
     status: "active",
+    tone: "blue",
+    track: "Platform",
   },
 ]
 
@@ -346,7 +390,7 @@ export function DemoPanel({
       className={cn(
         "overflow-hidden rounded-xl border border-border bg-card",
         palette.panelClassName,
-        className,
+        className
       )}
     >
       <div className="flex">
@@ -362,7 +406,7 @@ export function DemoPanel({
                   "rounded-md px-2.5 py-1.5 text-sm",
                   index === 1
                     ? "bg-sidebar-accent font-semibold text-sidebar-accent-foreground"
-                    : "font-medium text-foreground/80",
+                    : "font-medium text-foreground/80"
                 )}
               >
                 {item}
@@ -373,6 +417,7 @@ export function DemoPanel({
 
         <div className="min-w-0 flex-1 space-y-4 bg-background p-4">
           <PageHeader
+            variant={palette.headerVariant ?? "banner"}
             title="Submissions"
             description="Everything submitted to Frontend Summit 2026, in one table."
             actions={
@@ -406,11 +451,27 @@ export function DemoPanel({
             ))}
           </div>
 
+          {/* Toolbar — view switcher left, view settings right. */}
+          <div className="flex flex-wrap items-center gap-2">
+            <Button variant="outline" size="sm">
+              All submissions
+              <RiArrowDownSLine aria-hidden />
+            </Button>
+            <Button variant="outline" size="sm">
+              <RiFilter3Line aria-hidden />
+              Filter
+            </Button>
+            <Button variant="ghost" size="sm" className="ml-auto">
+              View settings
+            </Button>
+          </div>
+
           <Card className="overflow-hidden p-0">
             <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>Title</TableHead>
+                  <TableHead className="max-md:hidden">Track</TableHead>
                   <TableHead className="max-sm:hidden">Speaker</TableHead>
                   <TableHead className="text-right">Status</TableHead>
                 </TableRow>
@@ -419,11 +480,35 @@ export function DemoPanel({
                 {DEMO_ROWS.map((row) => (
                   <TableRow key={row.title}>
                     <TableCell className="font-medium">{row.title}</TableCell>
+                    <TableCell className="max-md:hidden">
+                      <span
+                        className="inline-flex h-6 items-center rounded-md px-2 text-xs font-medium"
+                        style={{
+                          background: TRACK_TINTS[row.track].bg,
+                          color: TRACK_TINTS[row.track].fg,
+                        }}
+                      >
+                        {row.track}
+                      </span>
+                    </TableCell>
                     <TableCell className="text-muted-foreground max-sm:hidden">
                       {row.speaker}
                     </TableCell>
                     <TableCell className="text-right">
-                      <StatusPill status={row.status} size="sm" />
+                      {palette.statusStyle === "dot" ? (
+                        <span className="inline-flex items-center gap-1.5 text-sm text-foreground">
+                          <span
+                            aria-hidden
+                            className={cn(
+                              "size-2 shrink-0 rounded-full",
+                              DOT_CLASS[row.tone]
+                            )}
+                          />
+                          {statusLabel(row.status)}
+                        </span>
+                      ) : (
+                        <StatusPill status={row.status} size="sm" />
+                      )}
                     </TableCell>
                   </TableRow>
                 ))}
@@ -483,7 +568,7 @@ function Candidate({
         "rounded-2xl p-4",
         featured
           ? "bg-accent ring-1 ring-primary/20"
-          : "bg-muted/60 ring-1 ring-border",
+          : "bg-muted/60 ring-1 ring-border"
       )}
     >
       <DemoPanel
@@ -522,7 +607,7 @@ function Candidate({
               title={`${item.name} · ${item.hex}`}
               className={cn(
                 "flex size-6 items-center justify-center rounded-full ring-1 ring-foreground/10 transition-transform outline-none hover:scale-110 focus-visible:ring-3 focus-visible:ring-ring/50",
-                item.id === accent.id && "ring-2 ring-foreground/40",
+                item.id === accent.id && "ring-2 ring-foreground/40"
               )}
               style={{ background: item.hex }}
             >
@@ -638,9 +723,9 @@ export function DesignExplorations() {
         featured
         badge="F · Attio"
         name="Attio"
-        pairing="near-white warm greys · hairlines · small radii"
-        personality="The gold standard: calm, achromatic, and completely confident that the table is the product."
-        changes="The whole neutral ramp goes near-white and faintly warm (#FBFBFA page, #F9F9F7 sidebar, #E8E8E4 hairlines), cards lose their shadow and keep a single hairline, controls drop to 6–8px radii, and the text hierarchy compresses to three quiet steps. Explicitly NOT taken from Attio: its density — row heights, control sizes and padding stay exactly as they are today, because Attio is too minuscule for a non-technical organizer. Click the teal chip: that is the entire 'unique accent' question in one click."
+        pairing="near-white chrome · colour carries data · sized up"
+        personality="The gold standard: calm, achromatic chrome, and completely confident that the table is the product."
+        changes="Four things at once. (1) The neutral ramp goes near-white and faintly warm — #FBFBFA page, #F9F9F7 sidebar, #E8E8E4 hairlines — and the tinted module banner disappears entirely: the page title just sits on the page. (2) Colour moves off the chrome and onto the data: soft multi-tint Track tags, and status becomes a small coloured dot plus a plain label instead of a filled pill. (3) Blue shrinks to the primary button, links and selected filters. (4) The one thing we do NOT copy is Attio's density — controls go UP to 36–40px and rows to 44px+, because organizers are not power users (RULES.md #22). Click the teal chip: that is the whole unique-accent question in one click."
         palette={ATTIO_PALETTE}
       />
 
@@ -723,7 +808,7 @@ export function DesignExplorations() {
 
       <Heading title="4 · The axes combine">
         Feel, accent and type are independent. Here is the pairing with the most
-        character on the quietest chrome — and one deep-teal Mercury for the
+        character on the quietest chrome — and an Attio/Grotesk build for the
         opposite end.
       </Heading>
 

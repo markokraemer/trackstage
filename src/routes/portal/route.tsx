@@ -74,7 +74,11 @@ function PortalLayout() {
       if (parsed) {
         writePortalToken(parsed)
         url.searchParams.delete("token")
-        window.history.replaceState({}, "", `${url.pathname}${url.search}${url.hash}`)
+        window.history.replaceState(
+          {},
+          "",
+          `${url.pathname}${url.search}${url.hash}`
+        )
       }
     }
     const sync = () => setToken(readPortalToken())
@@ -93,7 +97,7 @@ function PortalLayout() {
     isPending,
     isError,
   } = useQuery(
-    convexQuery(api.portal.home, token ? { portalToken: token } : "skip"),
+    convexQuery(api.portal.home, token ? { portalToken: token } : "skip")
   )
 
   const signOut = useCallback(() => {
@@ -103,7 +107,7 @@ function PortalLayout() {
 
   const contextValue = useMemo(
     () => (token && home ? { portalToken: token, home, signOut } : null),
-    [token, home, signOut],
+    [token, home, signOut]
   )
 
   if (isEntryRoute) return <Outlet />
@@ -151,7 +155,11 @@ function PortalLayout() {
               <DropdownMenu>
                 <DropdownMenuTrigger
                   render={
-                    <Button variant="ghost" size="sm" aria-label="Your account" />
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      aria-label="Your account"
+                    />
                   }
                 >
                   <Avatar className="size-6">

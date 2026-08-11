@@ -37,7 +37,7 @@ export interface BrandMenuProps {
  */
 function brandMenuProps<T extends HTMLElement>(
   disabled: boolean | undefined,
-  onContextMenu: React.MouseEventHandler<T> | undefined,
+  onContextMenu: React.MouseEventHandler<T> | undefined
 ): { onContextMenu?: React.MouseEventHandler<T>; title?: string } {
   if (disabled) return { onContextMenu }
 
@@ -53,8 +53,7 @@ function brandMenuProps<T extends HTMLElement>(
 }
 
 export interface LogoMarkProps
-  extends React.ComponentProps<"span">,
-    BrandMenuProps {
+  extends React.ComponentProps<"span">, BrandMenuProps {
   /** Pixel size of the mark (the box, when boxed). Default 28. */
   size?: number
   /** `boxed` = white mark on a primary-blue rounded square. */
@@ -83,7 +82,7 @@ export function LogoMark({
         variant === "boxed"
           ? "rounded-lg bg-primary text-primary-foreground"
           : "text-primary",
-        className,
+        className
       )}
       {...brandMenu}
       {...props}
@@ -132,7 +131,7 @@ export function Wordmark({ size = "md", className, ...props }: WordmarkProps) {
       className={cn(
         "font-heading font-semibold tracking-tight text-foreground",
         WORD_SIZE[size],
-        className,
+        className
       )}
       {...props}
     >
@@ -141,7 +140,8 @@ export function Wordmark({ size = "md", className, ...props }: WordmarkProps) {
   )
 }
 
-export interface LogoProps extends React.ComponentProps<"span">, BrandMenuProps {
+export interface LogoProps
+  extends React.ComponentProps<"span">, BrandMenuProps {
   size?: keyof typeof WORD_SIZE
   variant?: "plain" | "boxed"
   /** Hide the wordmark (still announced to screen readers). */

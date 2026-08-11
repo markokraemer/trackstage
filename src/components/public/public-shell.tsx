@@ -103,7 +103,7 @@ export function PublicShell({ event, embed, children }: PublicShellProps) {
                   activeOptions={{ exact: item.exact ?? false }}
                   className={cn(
                     buttonVariants({ variant: "ghost", size: "sm" }),
-                    "shrink-0 gap-1.5 rounded-full px-3 text-muted-foreground",
+                    "shrink-0 gap-1.5 rounded-full px-3 text-muted-foreground"
                   )}
                   activeProps={{
                     className:
@@ -129,10 +129,7 @@ export function PublicShell({ event, embed, children }: PublicShellProps) {
       )}
 
       <main
-        className={cn(
-          "container-page flex-1",
-          embed ? "py-4" : "py-6 sm:py-8",
-        )}
+        className={cn("container-page flex-1", embed ? "py-4" : "py-6 sm:py-8")}
       >
         {children}
       </main>
@@ -174,7 +171,7 @@ export function WidgetHeader({
     <div
       className={cn(
         "flex flex-wrap items-end justify-between gap-3 pb-1",
-        className,
+        className
       )}
       {...props}
     >

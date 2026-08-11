@@ -1,6 +1,10 @@
 import { useState } from "react"
 import { useNavigate } from "@tanstack/react-router"
-import { RiArrowRightLine, RiMailOpenLine, RiSparkling2Line } from "@remixicon/react"
+import {
+  RiArrowRightLine,
+  RiMailOpenLine,
+  RiSparkling2Line,
+} from "@remixicon/react"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
@@ -35,7 +39,9 @@ export function PortalSignedOut({
     event.preventDefault()
     const token = parsePortalToken(value)
     if (!token) {
-      setError("That doesn't look like a portal link. Paste the whole link from your email.")
+      setError(
+        "That doesn't look like a portal link. Paste the whole link from your email."
+      )
       return
     }
     setError(null)
@@ -57,7 +63,7 @@ export function PortalSignedOut({
           <div className="mt-6 flex size-12 items-center justify-center rounded-xl bg-accent text-primary">
             <RiMailOpenLine size={22} aria-hidden />
           </div>
-          <h1 className="font-heading mt-4 text-2xl font-semibold tracking-tight">
+          <h1 className="mt-4 font-heading text-2xl font-semibold tracking-tight">
             {reason === "invalid"
               ? "That portal link has expired"
               : "Check your email for your portal link"}
@@ -105,7 +111,11 @@ export function PortalSignedOut({
         <Card className="mt-4 bg-accent/60" size="sm">
           <CardContent className="gap-2">
             <p className="flex items-center gap-2 text-sm font-medium text-foreground">
-              <RiSparkling2Line size={16} aria-hidden className="text-primary" />
+              <RiSparkling2Line
+                size={16}
+                aria-hidden
+                className="text-primary"
+              />
               Just looking around?
             </p>
             <p className="text-sm text-muted-foreground">

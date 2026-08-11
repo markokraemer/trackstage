@@ -2,7 +2,11 @@ import { useId, useState } from "react"
 import { Link, createFileRoute, useNavigate } from "@tanstack/react-router"
 import { useConvexMutation } from "@convex-dev/react-query"
 import { api } from "@convex/_generated/api"
-import { RiArrowLeftLine, RiArrowRightLine, RiSettings3Line } from "@remixicon/react"
+import {
+  RiArrowLeftLine,
+  RiArrowRightLine,
+  RiSettings3Line,
+} from "@remixicon/react"
 import { toast } from "sonner"
 
 import { PageHeader } from "@/components/shared/page-header"
@@ -20,7 +24,10 @@ import {
   FieldTitle,
 } from "@/components/ui/field"
 import { useCurrentEvent } from "@/components/dashboard/use-current-event"
-import { BuilderField, InfoNote } from "@/components/forms-builder/builder-controls"
+import {
+  BuilderField,
+  InfoNote,
+} from "@/components/forms-builder/builder-controls"
 import { FORM_KINDS, friendlyError } from "@/components/forms-builder/model"
 import type { FormKind } from "@/components/forms-builder/model"
 
@@ -108,7 +115,10 @@ function NewFormPage() {
       />
 
       <Card className="max-w-(--container-narrow) gap-6 p-6">
-        <form onSubmit={(formEvent) => void submit(formEvent)} className="flex flex-col gap-6">
+        <form
+          onSubmit={(formEvent) => void submit(formEvent)}
+          className="flex flex-col gap-6"
+        >
           <BuilderField
             htmlFor={`${id}-name`}
             label="Form name"
@@ -140,7 +150,10 @@ function NewFormPage() {
               className="sm:grid-cols-2"
             >
               {FORM_KINDS.map((option) => (
-                <FieldLabel key={option.value} htmlFor={`${id}-${option.value}`}>
+                <FieldLabel
+                  key={option.value}
+                  htmlFor={`${id}-${option.value}`}
+                >
                   <Field orientation="horizontal">
                     <FieldContent>
                       <FieldTitle className="gap-2">
@@ -171,7 +184,10 @@ function NewFormPage() {
           </InfoNote>
 
           <div className="flex items-center justify-end gap-2">
-            <Link to="/app/forms" className={buttonVariants({ variant: "outline" })}>
+            <Link
+              to="/app/forms"
+              className={buttonVariants({ variant: "outline" })}
+            >
               Cancel
             </Link>
             <Button type="submit" disabled={creating || !event}>

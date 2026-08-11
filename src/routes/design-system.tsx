@@ -279,16 +279,41 @@ const SURFACE_COLORS: Array<Swatch> = [
 const BRAND_COLORS: Array<Swatch> = [
   { name: "Primary", token: "--primary", hex: "#2F5CE0", fg: "#FFFFFF" },
   { name: "Text (navy)", token: "--foreground", hex: "#1B1E27", fg: "#FFFFFF" },
-  { name: "Muted text", token: "--muted-foreground", hex: "#64748B", fg: "#FFFFFF" },
-  { name: "Accent text", token: "--accent-foreground", hex: "#1E3FA8", fg: "#FFFFFF" },
-  { name: "Destructive", token: "--destructive", hex: "#DC2626", fg: "#FFFFFF" },
+  {
+    name: "Muted text",
+    token: "--muted-foreground",
+    hex: "#64748B",
+    fg: "#FFFFFF",
+  },
+  {
+    name: "Accent text",
+    token: "--accent-foreground",
+    hex: "#1E3FA8",
+    fg: "#FFFFFF",
+  },
+  {
+    name: "Destructive",
+    token: "--destructive",
+    hex: "#DC2626",
+    fg: "#FFFFFF",
+  },
 ]
 
 const STATUS_COLORS: Array<Swatch> = [
   { name: "Green fill", token: "--status-green-bg", hex: "#D1FAE5" },
-  { name: "Green text", token: "--status-green-fg", hex: "#065F46", fg: "#FFFFFF" },
+  {
+    name: "Green text",
+    token: "--status-green-fg",
+    hex: "#065F46",
+    fg: "#FFFFFF",
+  },
   { name: "Amber fill", token: "--status-amber-bg", hex: "#FEF3C7" },
-  { name: "Amber text", token: "--status-amber-fg", hex: "#92400E", fg: "#FFFFFF" },
+  {
+    name: "Amber text",
+    token: "--status-amber-fg",
+    hex: "#92400E",
+    fg: "#FFFFFF",
+  },
   { name: "Red fill", token: "--status-red-bg", hex: "#FEE2E2" },
   { name: "Red text", token: "--status-red-fg", hex: "#991B1B", fg: "#FFFFFF" },
   { name: "Gray fill", token: "--status-gray-bg", hex: "#F1F5F9" },
@@ -296,24 +321,49 @@ const STATUS_COLORS: Array<Swatch> = [
 ]
 
 const TYPE_SCALE = [
-  { label: "Page title", className: "font-heading text-xl font-semibold", note: "20px / 600" },
-  { label: "Section title", className: "font-heading text-base font-semibold", note: "16px / 600" },
+  {
+    label: "Page title",
+    className: "font-heading text-xl font-semibold",
+    note: "20px / 600",
+  },
+  {
+    label: "Section title",
+    className: "font-heading text-base font-semibold",
+    note: "16px / 600",
+  },
   { label: "Body", className: "text-sm", note: "14px / 400" },
   { label: "Label", className: "text-sm font-medium", note: "14px / 500" },
-  { label: "Helper text", className: "text-sm text-muted-foreground", note: "14px / muted" },
-  { label: "Meta / pill", className: "text-xs text-muted-foreground", note: "12px / muted" },
+  {
+    label: "Helper text",
+    className: "text-sm text-muted-foreground",
+    note: "14px / muted",
+  },
+  {
+    label: "Meta / pill",
+    className: "text-xs text-muted-foreground",
+    note: "12px / muted",
+  },
   {
     label: "Group label",
-    className: "text-[11px] font-semibold tracking-wider uppercase text-muted-foreground",
+    className:
+      "text-[11px] font-semibold tracking-wider uppercase text-muted-foreground",
     note: "11px / 600 / uppercase",
   },
 ]
 
 const WIZARD_STEPS = [
   { id: "setup", title: "Setup", description: "Abstracts or sessions" },
-  { id: "welcome", title: "Welcome screen", description: "What speakers read first" },
+  {
+    id: "welcome",
+    title: "Welcome screen",
+    description: "What speakers read first",
+  },
   { id: "questions", title: "Questions", description: "Fields on the form" },
-  { id: "settings", title: "Form settings", description: "Deadline and limits" },
+  {
+    id: "settings",
+    title: "Form settings",
+    description: "Deadline and limits",
+  },
 ]
 
 function DesignSystemPage() {
@@ -405,7 +455,7 @@ function DesignSystemPage() {
                       <div
                         className={cn(
                           "flex min-h-32 items-center justify-center px-5 py-8",
-                          SURFACES[surface].className,
+                          SURFACES[surface].className
                         )}
                       >
                         {variant.preview(SURFACES[surface].tone)}
@@ -423,9 +473,9 @@ function DesignSystemPage() {
                                 brandSvg(
                                   variant.id,
                                   SURFACES[surface].tone,
-                                  variant.svgSize,
+                                  variant.svgSize
                                 ),
-                                `sessionboard-${variant.id}-${SURFACES[surface].tone}.svg`,
+                                `sessionboard-${variant.id}-${SURFACES[surface].tone}.svg`
                               )
                             }
                           >
@@ -442,7 +492,7 @@ function DesignSystemPage() {
                                   variant.id,
                                   SURFACES[surface].tone,
                                   px,
-                                  `sessionboard-${variant.id}-${SURFACES[surface].tone}-${px}.png`,
+                                  `sessionboard-${variant.id}-${SURFACES[surface].tone}-${px}.png`
                                 )
                               }
                             >
@@ -456,9 +506,9 @@ function DesignSystemPage() {
                   ))}
                 </div>
                 <p className="mt-3 text-xs text-muted-foreground">
-                  Inverse assets are the same geometry painted white — the mark is
-                  drawn with <code className="font-mono">currentColor</code>, so it
-                  is monochrome-safe on any surface.
+                  Inverse assets are the same geometry painted white — the mark
+                  is drawn with <code className="font-mono">currentColor</code>,
+                  so it is monochrome-safe on any surface.
                 </p>
               </Sample>
 
@@ -493,7 +543,7 @@ function DesignSystemPage() {
                       onClick={() =>
                         downloadSvg(
                           socialAvatarSvg(1024),
-                          "sessionboard-social-1024.svg",
+                          "sessionboard-social-1024.svg"
                         )
                       }
                     >
@@ -517,7 +567,10 @@ function DesignSystemPage() {
                 <Sample label="Favicon & app icon">
                   <div className="flex items-end gap-5">
                     {[16, 32, 48].map((px) => (
-                      <span key={px} className="flex flex-col items-center gap-2">
+                      <span
+                        key={px}
+                        className="flex flex-col items-center gap-2"
+                      >
                         <LogoMark size={px} variant="boxed" />
                         <span className="font-mono text-[11px] text-muted-foreground">
                           {px}px
@@ -530,7 +583,10 @@ function DesignSystemPage() {
                       size="xs"
                       variant="outline"
                       onClick={() =>
-                        downloadSvg(markBoxedSvg(64, "color", 0.18), "favicon.svg")
+                        downloadSvg(
+                          markBoxedSvg(64, "color", 0.18),
+                          "favicon.svg"
+                        )
                       }
                     >
                       <RiDownloadLine aria-hidden />
@@ -549,9 +605,10 @@ function DesignSystemPage() {
                     ))}
                   </div>
                   <p className="mt-3 text-xs text-muted-foreground">
-                    Shipped as <code className="font-mono">/favicon.svg</code> plus{" "}
-                    <code className="font-mono">/icon-192.png</code> and{" "}
-                    <code className="font-mono">/icon-512.png</code> in the manifest.
+                    Shipped as <code className="font-mono">/favicon.svg</code>{" "}
+                    plus <code className="font-mono">/icon-192.png</code> and{" "}
+                    <code className="font-mono">/icon-512.png</code> in the
+                    manifest.
                   </p>
                 </Sample>
               </Row>
@@ -680,14 +737,19 @@ function DesignSystemPage() {
                   {[
                     { weight: "font-normal", note: "400 Regular — body copy" },
                     { weight: "font-medium", note: "500 Medium — labels, nav" },
-                    { weight: "font-semibold", note: "600 Semibold — headings" },
+                    {
+                      weight: "font-semibold",
+                      note: "600 Semibold — headings",
+                    },
                     { weight: "font-bold", note: "700 Bold — rare emphasis" },
                   ].map((row) => (
                     <div
                       key={row.note}
                       className="flex flex-wrap items-baseline justify-between gap-3"
                     >
-                      <span className={cn("text-lg tracking-tight", row.weight)}>
+                      <span
+                        className={cn("text-lg tracking-tight", row.weight)}
+                      >
                         The quick brown fox jumps over 12 lazy speakers
                       </span>
                       <span className="font-mono text-xs text-muted-foreground">
@@ -759,7 +821,7 @@ function DesignSystemPage() {
                       <code className="font-mono text-xs text-muted-foreground">
                         {container.token}
                       </code>
-                      <span className="ml-auto font-mono text-xs tabular-nums text-foreground">
+                      <span className="ml-auto font-mono text-xs text-foreground tabular-nums">
                         {container.width}
                       </span>
                       <p className="w-full text-sm text-muted-foreground">
@@ -858,7 +920,7 @@ function DesignSystemPage() {
                     <div
                       className={cn(
                         "size-16 bg-primary/15 ring-1 ring-primary/30",
-                        shape.cls,
+                        shape.cls
                       )}
                     />
                   </Sample>
@@ -931,7 +993,10 @@ function DesignSystemPage() {
                       <FieldDescription>
                         Shown on the public agenda.
                       </FieldDescription>
-                      <Input id="ds-title" placeholder="How we scaled the CFP" />
+                      <Input
+                        id="ds-title"
+                        placeholder="How we scaled the CFP"
+                      />
                     </Field>
                     <Field>
                       <FieldLabel htmlFor="ds-track">Track</FieldLabel>
@@ -955,8 +1020,14 @@ function DesignSystemPage() {
                       />
                     </Field>
                     <Field>
-                      <FieldLabel htmlFor="ds-invalid">Invalid state</FieldLabel>
-                      <Input id="ds-invalid" aria-invalid defaultValue="Not an email" />
+                      <FieldLabel htmlFor="ds-invalid">
+                        Invalid state
+                      </FieldLabel>
+                      <Input
+                        id="ds-invalid"
+                        aria-invalid
+                        defaultValue="Not an email"
+                      />
                     </Field>
                   </FieldGroup>
                 </Sample>
@@ -1069,9 +1140,24 @@ function DesignSystemPage() {
                     </TableHeader>
                     <TableBody>
                       {[
-                        { status: "accepted", title: "Agents in production", track: "AI Engineering", speaker: "Ada Lovelace" },
-                        { status: "pending", title: "Cutting CFP busywork", track: "Product", speaker: "Grace Hopper" },
-                        { status: "decline_queue", title: "Yet another framework", track: "Infrastructure", speaker: "Alan Turing" },
+                        {
+                          status: "accepted",
+                          title: "Agents in production",
+                          track: "AI Engineering",
+                          speaker: "Ada Lovelace",
+                        },
+                        {
+                          status: "pending",
+                          title: "Cutting CFP busywork",
+                          track: "Product",
+                          speaker: "Grace Hopper",
+                        },
+                        {
+                          status: "decline_queue",
+                          title: "Yet another framework",
+                          track: "Infrastructure",
+                          speaker: "Alan Turing",
+                        },
                       ].map((row) => (
                         <TableRow key={row.title}>
                           <TableCell>
@@ -1114,7 +1200,9 @@ function DesignSystemPage() {
                       <AvatarFallback className="text-xs">GH</AvatarFallback>
                     </Avatar>
                     <Avatar className="size-6">
-                      <AvatarFallback className="text-[10px]">AT</AvatarFallback>
+                      <AvatarFallback className="text-[10px]">
+                        AT
+                      </AvatarFallback>
                     </Avatar>
                   </div>
                 </Sample>
@@ -1137,13 +1225,22 @@ function DesignSystemPage() {
                       <TabsTrigger value="accepted">Accepted</TabsTrigger>
                       <TabsTrigger value="pending">Pending</TabsTrigger>
                     </TabsList>
-                    <TabsContent value="all" className="pt-3 text-muted-foreground">
+                    <TabsContent
+                      value="all"
+                      className="pt-3 text-muted-foreground"
+                    >
                       Every submission, whatever its status.
                     </TabsContent>
-                    <TabsContent value="accepted" className="pt-3 text-muted-foreground">
+                    <TabsContent
+                      value="accepted"
+                      className="pt-3 text-muted-foreground"
+                    >
                       Committed acceptances only.
                     </TabsContent>
-                    <TabsContent value="pending" className="pt-3 text-muted-foreground">
+                    <TabsContent
+                      value="pending"
+                      className="pt-3 text-muted-foreground"
+                    >
                       Waiting on a decision.
                     </TabsContent>
                   </Tabs>
@@ -1211,7 +1308,9 @@ function DesignSystemPage() {
                 <Sample label="Toast">
                   <Button
                     variant="outline"
-                    onClick={() => toast.success("Decisions sent to 12 speakers")}
+                    onClick={() =>
+                      toast.success("Decisions sent to 12 speakers")
+                    }
                   >
                     Show toast
                   </Button>
@@ -1219,7 +1318,13 @@ function DesignSystemPage() {
                 <Sample label="Tooltip">
                   <Tooltip>
                     <TooltipTrigger
-                      render={<Button variant="outline" size="icon-sm" aria-label="More info" />}
+                      render={
+                        <Button
+                          variant="outline"
+                          size="icon-sm"
+                          aria-label="More info"
+                        />
+                      }
                     >
                       <RiInformationLine aria-hidden />
                     </TooltipTrigger>
@@ -1266,12 +1371,20 @@ function DesignSystemPage() {
                         <FieldLabel htmlFor="ds-drawer-title">
                           Title<span className="required-asterisk">*</span>
                         </FieldLabel>
-                        <Input id="ds-drawer-title" placeholder="Opening keynote" />
+                        <Input
+                          id="ds-drawer-title"
+                          placeholder="Opening keynote"
+                        />
                       </Field>
                       <Field>
-                        <FieldLabel htmlFor="ds-drawer-status">Status</FieldLabel>
+                        <FieldLabel htmlFor="ds-drawer-status">
+                          Status
+                        </FieldLabel>
                         <Select defaultValue="pending">
-                          <SelectTrigger id="ds-drawer-status" className="w-full">
+                          <SelectTrigger
+                            id="ds-drawer-status"
+                            className="w-full"
+                          >
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
@@ -1333,15 +1446,17 @@ function DesignSystemPage() {
 
                 <Sample label="Alert dialog">
                   <AlertDialog>
-                    <AlertDialogTrigger render={<Button variant="destructive" />}>
+                    <AlertDialogTrigger
+                      render={<Button variant="destructive" />}
+                    >
                       Delete form
                     </AlertDialogTrigger>
                     <AlertDialogContent>
                       <AlertDialogHeader>
                         <AlertDialogTitle>Delete this form?</AlertDialogTitle>
                         <AlertDialogDescription>
-                          Submissions already collected stay, but the public link
-                          stops working immediately.
+                          Submissions already collected stay, but the public
+                          link stops working immediately.
                         </AlertDialogDescription>
                       </AlertDialogHeader>
                       <AlertDialogFooter>
@@ -1439,7 +1554,11 @@ function DesignSystemPage() {
                     Program
                   </p>
                   <div className="flex flex-col gap-0.5">
-                    <NavSample icon={RiFileList3Line} label="Submissions" active />
+                    <NavSample
+                      icon={RiFileList3Line}
+                      label="Submissions"
+                      active
+                    />
                     <NavSample icon={RiSurveyLine} label="Forms" />
                     <NavSample icon={RiCalendarScheduleLine} label="Agenda" />
                     <NavSample icon={RiUserVoiceLine} label="Speakers" />
@@ -1602,7 +1721,7 @@ function NavSample({
         "flex items-center gap-2.5 rounded-md px-2.5 py-2 text-sm font-medium",
         active
           ? "bg-sidebar-accent font-semibold text-sidebar-accent-foreground"
-          : "text-foreground/80",
+          : "text-foreground/80"
       )}
     >
       <Icon size={17} aria-hidden />

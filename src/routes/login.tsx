@@ -71,13 +71,15 @@ function LoginPage() {
           email: email.trim(),
           password,
         })
-        if (signUpError) throw new Error(signUpError.message ?? "Sign-up failed")
+        if (signUpError)
+          throw new Error(signUpError.message ?? "Sign-up failed")
       } else {
         const { error: signInError } = await authClient.signIn.email({
           email: email.trim(),
           password,
         })
-        if (signInError) throw new Error(signInError.message ?? "Sign-in failed")
+        if (signInError)
+          throw new Error(signInError.message ?? "Sign-in failed")
       }
       goToApp()
     } catch (err) {
@@ -87,7 +89,7 @@ function LoginPage() {
           ? "That email and password don't match. Try the demo credentials below."
           : /exist/i.test(message)
             ? "An account with that email already exists — sign in instead."
-            : message || "Something went wrong. Please try again.",
+            : message || "Something went wrong. Please try again."
       )
     } finally {
       setPending(false)

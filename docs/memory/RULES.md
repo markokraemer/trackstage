@@ -149,6 +149,18 @@ trail visible).
     caveat: Attio's items/clickables are too little — make everything A BIT LARGER
     (non-technical organizers use this). Rollout via the design-revamp step +
     reconciliation pass; exploration page still shows the candidates for the record.
+23. **Correct hierarchy + three-level settings, top-notch UX for each**:
+    User → member of → Workspace (organization; Better Auth user, our members/orgs
+    tables) → owns → Events → contain everything else. Concretely:
+    (a) MULTIPLE EVENTS are first-class: create "AI Engineer Summit", then another,
+    switch between and manage them all — an EVENT SWITCHER in the shell's event
+    context block (list + create), pages follow the selected event;
+    (b) ACCOUNT/user settings live in the avatar menu next to Sign out (profile,
+    password, personal API keys);
+    (c) WORKSPACE/organization settings separate (rename, members, roles, switching
+    between workspaces you belong to);
+    (d) EVENT settings one level beneath (details, rooms & tracks) — clearly labeled
+    as event-scoped. Never mix the levels; optimize how you manage everything.
 19. **Mandatory final reconciliation pass**: slice-per-agent parallelism will drift —
     different layouts, spacing, and interaction patterns per slice. Before ship, ONE
     agent reads and reworks the whole app end to end for coherent, standardized,

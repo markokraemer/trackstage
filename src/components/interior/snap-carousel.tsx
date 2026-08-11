@@ -255,8 +255,10 @@ export function useSnapCarousel({
     onScroll,
   }
 
+  const drag: false | "x" = disabled || total < 2 ? false : "x"
+
   const trackProps = {
-    drag: (disabled || total < 2 ? false : "x") as false | "x",
+    drag,
     dragDirectionLock: true,
     dragMomentum: false,
     dragElastic: 0.14,

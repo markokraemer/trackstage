@@ -100,3 +100,7 @@ the narrative memory; RULES.md is the things circled as important along the way.
 36. **MCP/API top-notch**: perfect MCP + API via Better Auth's latest AI-agent
     capabilities; super simple integrated setup for Claude, ChatGPT, Codex —
     connect from anywhere and edit everything.
+37. **Hierarchy + settings IA**: multiple events must be first-class (create AI
+    Engineer Summit, then another, manage/switch all); account settings live where
+    sign-out is; differentiate User vs Organization vs Event settings levels with
+    top-notch UX each; correct organizational structure throughout.
