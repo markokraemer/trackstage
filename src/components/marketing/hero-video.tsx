@@ -77,6 +77,7 @@ export function HeroVideoShot() {
               controls
               autoPlay
               playsInline
+              preload="metadata"
               className="aspect-video w-full rounded-xl bg-black shadow-2xl"
             />
             <button

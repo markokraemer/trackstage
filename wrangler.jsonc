@@ -1,7 +1,11 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "trackstage",
-  "main": "@tanstack/react-start/server-entry",
+  // Custom entry wrapping @tanstack/react-start/server-entry: Cloudflare's
+  // static-asset layer answers Range requests with a 200 + full body, so the
+  // launch film couldn't be scrubbed. src/server.ts slices /launch.mp4 into
+  // real 206 responses and delegates everything else to TanStack Start.
+  "main": "src/server.ts",
   "compatibility_date": "2026-08-01",
   "compatibility_flags": ["nodejs_compat"],
   "observability": {
@@ -21,6 +25,14 @@
   // Declaring `routes` would otherwise turn the workers.dev URL off; keep it
   // on so https://trackstage.kortix.workers.dev remains a working fallback.
   "workers_dev": true,
+  // Static assets normally answer before the Worker runs — which is what we
+  // want, except the asset layer can't do HTTP 206 partial content. Route the
+  // launch film through the Worker (src/server.ts) so video seeking works;
+  // the vite plugin fills in the assets directory at build time.
+  "assets": {
+    "binding": "ASSETS",
+    "run_worker_first": ["/launch.mp4"]
+  },
   // Staging Worker: dev.trackstage.app, deployed by deploy-dev.yml on every
   // green CI run of main/master. Built with `CLOUDFLARE_ENV=dev vite build
   // --mode staging` (.env.staging → the shared DEV Convex deployment
@@ -30,7 +42,13 @@
       "name": "trackstage-dev",
       "routes": [{ "pattern": "dev.trackstage.app", "custom_domain": true }],
       "workers_dev": true,
-      "observability": { "enabled": true }
+      "observability": { "enabled": true },
+      // assets is a per-environment key (not inherited) — mirror the
+      // top-level block so staging seeks the same way production does.
+      "assets": {
+        "binding": "ASSETS",
+        "run_worker_first": ["/launch.mp4"]
+      }
     }
   }
 }
