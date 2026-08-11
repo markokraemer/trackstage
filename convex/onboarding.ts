@@ -39,6 +39,7 @@ export const checklist = query({
   args: { eventId: v.id("events") },
   returns: v.object({
     dismissed: v.boolean(),
+    hasBasics: v.boolean(),
     hasForm: v.boolean(),
     hasOpenForm: v.boolean(),
     hasRoomsOrTracks: v.boolean(),
@@ -76,6 +77,11 @@ export const checklist = query({
 
     return {
       dismissed,
+      // The details the onboarding wizard may have skipped: an event isn't
+      // "described" until its type, place and dates are all filled in.
+      hasBasics: Boolean(
+        event.type && event.venue && event.startsAt && event.endsAt,
+      ),
       hasForm: forms.length > 0,
       hasOpenForm: forms.some((form) => form.status === "open"),
       hasRoomsOrTracks: rooms.length > 0 || tracks.length > 0,

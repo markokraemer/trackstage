@@ -39,7 +39,19 @@ export function GettingStarted() {
   if (data.dismissed || dismissedNow === event._id) return null
 
   const ref = eventRefOf(event)
+  // Marko's order (2026-08-12): describe the event, give it a stage, then
+  // collect, share, and bring the team in.
   const items = [
+    {
+      label: "Add basic event details",
+      done: data.hasBasics,
+      to: appLink.settings(ref),
+    },
+    {
+      label: "Add rooms & tracks",
+      done: data.hasRoomsOrTracks,
+      to: appLink.settingsSection(ref, "rooms-and-tracks"),
+    },
     {
       label: "Build your CFP form",
       done: data.hasForm,
@@ -51,14 +63,11 @@ export function GettingStarted() {
       to: appLink.forms(ref),
     },
     {
-      label: "Add rooms & tracks",
-      done: data.hasRoomsOrTracks,
-      to: appLink.settingsSection(ref, "rooms-and-tracks"),
-    },
-    {
       label: "Invite your team",
       done: data.hasTeam,
-      to: `${appLink.workspaceHub(workspace.slug)}?invite=1&event=${event._id}`,
+      // The workspace settings page's Team section, invite dialog open —
+      // page URL + search params, so it survives the modal→page migration.
+      to: `${appLink.workspaceHub(workspace.slug)}?invite=1&inviteEvent=${event._id}`,
     },
   ]
   const doneCount = items.filter((item) => item.done).length
