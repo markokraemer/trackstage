@@ -196,3 +196,8 @@ the narrative memory; RULES.md is the things circled as important along the way.
 62. **Audit log covers agents**: MCP tool calls, /v1 API writes, and API-key
     lifecycle (create/revoke) are first-class audit events with actor labels
     (tool name + key prefix); Activity feed filterable to "Agents & API".
+63. **App top-bar overhaul**: search must WORK (or be removed — decision: make it
+    work as ⌘K global search); logo symbol duplicated (top-left + event switcher) —
+    dedupe; central nav bar "horrendous" — refactor; View public page + Copilot
+    buttons need to look way better. Also visible: a test event ("Copilot
+    Verification") polluting the switcher — demo-data hygiene.
