@@ -6,6 +6,9 @@
     "prettier.config.js",
     "vite.config.ts"
   ],
+  // The launch-video package (video/) is self-contained with its own deps and
+  // tsconfig — CI has no Remotion node_modules, so the app must not compile it.
+  "exclude": ["node_modules", "video"],
   "compilerOptions": {
     "target": "ES2022",
     "jsx": "react-jsx",

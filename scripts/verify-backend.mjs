@@ -1241,11 +1241,14 @@ const wsDetail = await client.query(api.workspaces.get, { organizationId: ws.id 
 ok("workspace detail shows my role", ["owner", "admin", "member"].includes(wsDetail.myRole))
 await client.mutation(api.workspaces.update, { organizationId: ws.id, patch: { name: ws.name } })
 ok("workspace rename roundtrip", true)
-const newEventId = await client.mutation(api.events.create, {
+// events.create returns {eventId, slug, slugAdjusted} since the hierarchical
+// link refactor (auto-suffixing means the caller must learn the final slug).
+const newEventCreated = await client.mutation(api.events.create, {
   organizationId: ws.id, name: "Verify Event", slug: `verify-event-${Date.now().toString(36)}`,
   timezone: "Europe/Berlin", type: "Meetup",
 })
-ok("event created", typeof newEventId === "string")
+const newEventId = newEventCreated.eventId
+ok("event created", typeof newEventId === "string" && newEventCreated.slugAdjusted === false)
 await client.mutation(api.events.update, { eventId: newEventId, patch: { venue: "Test Hall" } })
 const createdEvent = await client.query(api.events.get, { eventId: newEventId })
 ok("event update persists", createdEvent.venue === "Test Hall")
