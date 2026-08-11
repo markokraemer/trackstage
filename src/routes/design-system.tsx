@@ -21,7 +21,6 @@ import type { RemixiconComponentType } from "@remixicon/react"
 import { cn } from "@/lib/utils"
 import { Logo, LogoMark, Wordmark } from "@/components/brand/logo"
 import { InteractionsCatalog } from "@/components/interactions/catalog"
-import { DesignExplorations } from "@/components/brand/explorations"
 import {
   BRAND_PRIMARY,
   brandSvg,
@@ -158,7 +157,6 @@ const SECTIONS = [
   { id: "overlays", label: "Overlays" },
   { id: "patterns", label: "App patterns" },
   { id: "interactions", label: "Interactions" },
-  { id: "explorations", label: "Explorations" },
 ] as const
 
 /** The one container system — mirrors the `--container-*` tokens in styles.css. */
@@ -1675,15 +1673,6 @@ function DesignSystemPage() {
               description="The interior.dev micro-interaction library, adopted end to end and restyled onto our tokens — same motion, our design language. Every tile below is live; the caption says where it belongs in the product. Import from @/components/interactions; the full map lives in docs/memory/INTERACTIONS.md."
             >
               <InteractionsCatalog />
-            </Section>
-
-            {/* --------------------------------------------- EXPLORATIONS */}
-            <Section
-              id="explorations"
-              title="Explorations — decided"
-              description="Candidate E, “De-blued”, is SHIPPED (Marko, 2026-08-11): neutral chrome everywhere, Trackstage blue #2F5CE0 kept and confined to primary buttons, links, focus rings, the active nav item and --chart-1. The teal/petrol accent family was reviewed and rejected; type stays on Inter for now. The other candidates and their live panels have been removed — this section is the record of the decision, not a chooser."
-            >
-              <DesignExplorations />
             </Section>
           </div>
         </div>
