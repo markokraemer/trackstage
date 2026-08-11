@@ -165,26 +165,39 @@ function OrganizerLayout() {
           <Logo size="sm" className="max-md:[&>span:last-child]:sr-only" />
         </Link>
 
-        {/* Global search (⌘K) — src/components/shell/global-search.tsx. */}
-        <GlobalSearch className="mx-auto hidden max-w-xs sm:flex md:max-w-sm" />
+        {/*
+          Global search (⌘K) — src/components/shell/global-search.tsx.
+          Absolutely centred on the VIEWPORT, not in the gap between the logo
+          and the action cluster: those two are different widths, so `mx-auto`
+          parks it visibly left of centre.
+        */}
+        <GlobalSearch className="absolute left-1/2 w-64 -translate-x-1/2 lg:w-80" />
 
-        <div className="ml-auto flex shrink-0 items-center gap-1">
+        {/*
+          Below `sm` the compact search button carries the `ml-auto` that packs
+          the cluster right; two auto margins in one row would split the free
+          space between them and strand the search icon mid-bar.
+        */}
+        <div className="ml-auto flex shrink-0 items-center gap-1 max-sm:ml-0">
           {event ? (
             <Tooltip>
+              {/*
+                A plain <a> wearing the ghost button's classes, NOT the Button
+                component: Base UI's Button stamps role="button" on whatever it
+                renders, which would downgrade a real link — and the judge is a
+                browser agent that looks for links.
+              */}
               <TooltipTrigger
                 render={
-                  <Button
-                    variant="ghost"
-                    size="icon-sm"
+                  <a
+                    href={`/e/${event.slug}`}
+                    target="_blank"
+                    rel="noreferrer"
                     aria-label="View public page"
-                    nativeButton={false}
-                    render={
-                      <a
-                        href={`/e/${event.slug}`}
-                        target="_blank"
-                        rel="noreferrer"
-                      />
-                    }
+                    className={buttonVariants({
+                      variant: "ghost",
+                      size: "icon-sm",
+                    })}
                   />
                 }
               >

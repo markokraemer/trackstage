@@ -183,27 +183,37 @@ function rememberRecent(term: string): Array<string> {
 
 export function GlobalSearchTrigger({
   onClick,
+  compact = false,
   className,
 }: {
   onClick: () => void
+  /** Icon-only, for viewports too narrow to carry the full pill. */
+  compact?: boolean
   className?: string
 }) {
   return (
     <button
       type="button"
       onClick={onClick}
+      aria-label="Search"
       aria-keyshortcuts="Meta+K Control+K"
       className={cn(
-        "group flex h-(--control-h-sm) w-full items-center gap-2 rounded-lg border border-border bg-muted/40 pr-1.5 pl-2.5",
-        "text-sm text-muted-foreground transition-colors outline-none",
-        "hover:border-border hover:bg-muted hover:text-foreground",
+        "group flex h-(--control-h-sm) items-center rounded-lg text-sm text-muted-foreground",
+        "transition-colors outline-none hover:text-foreground",
         "focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50",
+        compact
+          ? "size-(--control-h-sm) shrink-0 justify-center hover:bg-muted"
+          : "w-full gap-2 border border-border bg-muted/40 pr-1.5 pl-2.5 hover:bg-muted",
         className
       )}
     >
-      <RiSearchLine size={15} aria-hidden className="shrink-0" />
-      <span className="flex-1 truncate text-left">Search</span>
-      <Kbd className="max-sm:hidden">⌘K</Kbd>
+      <RiSearchLine size={compact ? 17 : 15} aria-hidden className="shrink-0" />
+      {compact ? null : (
+        <>
+          <span className="flex-1 truncate text-left">Search</span>
+          <Kbd>⌘K</Kbd>
+        </>
+      )}
     </button>
   )
 }
@@ -325,12 +335,22 @@ export function GlobalSearch({ className }: { className?: string }) {
 
   return (
     <>
-      <GlobalSearchTrigger onClick={() => setOpen(true)} className={className} />
+      {/* The pill at ≥sm, an icon button below it — the palette is the same. */}
+      <GlobalSearchTrigger
+        onClick={() => setOpen(true)}
+        className={cn("max-sm:hidden", className)}
+      />
+      <GlobalSearchTrigger
+        compact
+        onClick={() => setOpen(true)}
+        className="ml-auto sm:hidden"
+      />
 
       <Dialog open={open} onOpenChange={setOpen}>
+        {/* The sr-only DialogTitle below is the accessible name — no aria-label
+            on the popup, or the dialog announces itself twice. */}
         <DialogContent
           showCloseButton={false}
-          aria-label="Search Trackstage"
           className="top-[12vh] max-w-[min(38rem,calc(100%-2rem))] translate-y-0 gap-0 overflow-hidden p-0 sm:max-w-[38rem]"
         >
           <DialogTitle className="sr-only">Search Trackstage</DialogTitle>
