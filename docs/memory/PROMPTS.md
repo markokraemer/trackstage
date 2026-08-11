@@ -5,7 +5,7 @@ These are the raw inputs that produced this repo — replayable against any othe
 agent session for adversarial comparison.
 
 ## claude-code session `118b76be-7bc9-4385-b170-00baeb55f0ff` — the founding session (2026-08-11, scaffold → full build)
-42 prompts.
+43 prompts.
 
 ---
 
@@ -300,7 +300,7 @@ go research ai sdk generative ui best practices and the way it uses it et cetera
 
 ### 31 <sub>2026-08-11T01:56:44.434Z</sub>
 
-CLOUDFLARE_GLOBAL_API_KEY=32f91d07c6cdcd2516d2d28de5bcb15cdda6b
+[REDACTED-SECRET]
 CLOUDFLARE_EMAIL=marko@kortix.ai
  / use my cloudflare stuff and go buy it etc. you do all of it and try these credentials  2. // the whole ux/ui is flickering i think because there are multiple implementations or some shit. it's very weird dude. i think it's quite odd dude. i'm not sure about the explorations. i think just go with the blue or if the e and then the two finalists, remove everything else. we can fully ignore everything else. you can just go with option e.
 
@@ -420,3 +420,10 @@ okay so let's keep working on more of these things simultaneously and spawn all 
 ### 42 <sub>2026-08-11T02:35:31.666Z</sub>
 
 all of these user messages. go analyze all my latest user messages and please persist them in a spec.md file like every single prompt i've ever written from top to bottom. you can have it in a prompt.md file if you can so I can full repro adversarially also let another codex sess run against it / you can take this quad code session id and then just input to create a singular file that i can re-reference and so deterministically just get all the user-based messages from this session id. please save it / and you can even add a little script like regenerate and then also persist all the session ids like this called session id. plus i will persist also any other codecs et cetera session ids so that we can keep doing this. all the prompts, the raw inputs, are persisted to that built a system
+
+---
+
+### 43 <sub>2026-08-11T02:37:47.198Z</sub>
+
+also the api thing by the way is going to serve as a full reference. can you save a prompt.md in my downloads folder that i can give to another agent to do as a complete pass to ensure that all of the criteria that i laid out in this entire session are implemented perfectly?  / [REDACTED-SECRET]
+ 304 │ CLOUDFLARE_EMAIL=marko@kortix.ai if you can also all the images etc. i referenced if they are kind of available, please make sure that they're still available in the prompt somehow. oh shit you can't. there is my cloudflare global ip. you have to remove this for sure

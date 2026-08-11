@@ -56,9 +56,18 @@ export const MCP_TOOL_GROUPS: Array<McpToolGroup> = [
         required: ["name"],
       },
       {
+        name: "delete_event",
+        title: "Delete an event (IRREVERSIBLE)",
+        description: "Permanently deletes an event and EVERYTHING belonging to it: every submission, speaker, CFP form, task, uploaded file, email template and outbox row. There is no undo and no trash. It needs the admin or owner role and TWO independent confirmations: confirm: true, and confirmName set to the event's exact name as list_events returns it. Never guess confirmName — if the user has not named the event they want destroyed, ask them, don't infer it.",
+        readOnly: false,
+        requiresConfirm: true,
+        args: ["event","confirmName","confirm"],
+        required: ["event","confirmName","confirm"],
+      },
+      {
         name: "get_event_overview",
-        title: "Event dashboard stats",
-        description: "The organizer dashboard as data: submission counts by status, outstanding speaker tasks, how many accepted sessions are still unscheduled, agenda conflict count, outbox counts by delivery status, and every CFP form with its public link. Use it to answer \"how is my event doing?\".",
+        title: "Event dashboard stats (deprecated — use get_event_summary)",
+        description: "DEPRECATED ALIAS of get_event_summary, kept so existing scripts keep working; it returns exactly the same payload. Call get_event_summary instead.",
         readOnly: true,
         requiresConfirm: false,
         args: ["event"],
@@ -66,8 +75,8 @@ export const MCP_TOOL_GROUPS: Array<McpToolGroup> = [
       },
       {
         name: "get_event_summary",
-        title: "Summarise an event",
-        description: "One call for the whole picture: a headline sentence, submission counts by status, agenda health (scheduled vs waiting, conflicts), open speaker tasks, every CFP form with its public link, a prioritised \"needs attention\" list of what to do next, and the nearest deadlines. Reach for this first when someone asks how their event is going or what they should do next.",
+        title: "Event status & dashboard stats",
+        description: "THE status call, and the one that used to be split in two (it absorbed get_event_overview). Returns every dashboard number plus the narrative: a headline sentence, submission counts by status, total submissions, agenda health (scheduled, acceptedNotScheduled, conflict count and labels), open vs completed speaker tasks, outbox counts by delivery status, every CFP form with its id, status, closeAt and public link, a prioritised \"needs attention\" list, and the nearest deadlines. Reach for this for \"how is my event doing?\", \"pull the dashboard stats\" or \"what should I do next?\". It does NOT list individual sessions or times — that is get_agenda.",
         readOnly: true,
         requiresConfirm: false,
         args: ["event"],
@@ -123,6 +132,15 @@ export const MCP_TOOL_GROUPS: Array<McpToolGroup> = [
         requiresConfirm: false,
         args: ["form"],
         required: ["form"],
+      },
+      {
+        name: "delete_form",
+        title: "Delete a CFP form (IRREVERSIBLE)",
+        description: "Permanently deletes a call-for-papers form. Admin or owner role, and confirm: true. A form that has ANY submissions (drafts included) is refused — closing it with update_form_settings(status: \"closed\") is what you almost always want, because that keeps the submissions and just stops new ones.",
+        readOnly: false,
+        requiresConfirm: true,
+        args: ["form","confirm"],
+        required: ["form","confirm"],
       },
     ],
   },
@@ -184,7 +202,7 @@ export const MCP_TOOL_GROUPS: Array<McpToolGroup> = [
       {
         name: "get_agenda",
         title: "Get the agenda",
-        description: "The full programme: scheduled sessions in time order (room, start, duration, track, speakers), the unscheduled tray of accepted sessions still waiting for a slot, the room list, and every detected conflict (same room double-booked, or a speaker in two overlapping sessions).",
+        description: "The programme itself — WHICH session is in which room at what time. Scheduled sessions in time order (room, start, duration, track, speakers), the unscheduled tray of accepted sessions still waiting for a slot, a per-room roll-up (byRoom), the room list, and every detected conflict (same room double-booked, or a speaker in two overlapping sessions). Row detail is capped at 40 scheduled and 40 unscheduled; the counts and byRoom totals always cover everything. For status numbers rather than the timetable, use get_event_summary.",
         readOnly: true,
         requiresConfirm: false,
         args: ["event"],
@@ -226,10 +244,10 @@ export const MCP_TOOL_GROUPS: Array<McpToolGroup> = [
       {
         name: "list_speakers",
         title: "Speaker roster",
-        description: "The confirmed speaker roster: everyone attached to an accepted session, their sessions, their outstanding onboarding tasks with due dates, and what's still missing from their profile (bio, headshot, slides). This is the \"who do I need to chase?\" list.",
+        description: "The confirmed speaker roster: everyone attached to an accepted session, their sessions, their outstanding onboarding tasks with due dates, and what's still missing from their profile (bio, headshot, slides). This is the \"who do I need to chase?\" list. The response states its own counts — totalSpeakers, returned, withOpenTasks, withProfileGaps — plus a `summary` sentence; quote those numbers rather than counting rows yourself.",
         readOnly: true,
         requiresConfirm: false,
-        args: ["event","onlyWithOutstandingWork"],
+        args: ["event","onlyWithOutstandingWork","includeProfileGaps"],
         required: ["event"],
       },
       {
@@ -251,6 +269,15 @@ export const MCP_TOOL_GROUPS: Array<McpToolGroup> = [
         required: ["event","speakers","title"],
       },
       {
+        name: "remove_task",
+        title: "Remove a speaker task",
+        description: "Deletes one onboarding task, retracting it from that speaker's portal — the inverse of assign_task, for a task assigned by mistake or no longer needed. Admin or owner role. Task ids come from list_speakers (each speaker's outstandingTasks). Completing a task is the speaker's job in the portal; this removes it outright, so don't use it to mark work as done.",
+        readOnly: false,
+        requiresConfirm: false,
+        args: ["taskId"],
+        required: ["taskId"],
+      },
+      {
         name: "send_reminders",
         title: "Remind speakers with open tasks (SENDS EMAIL)",
         description: "Queues a reminder email to every speaker with incomplete tasks, using the event's reminder template. Anyone already reminded in the last 20 hours is skipped automatically, so calling it twice is safe. Optionally narrow it to tasks due within N days.",
@@ -268,11 +295,20 @@ export const MCP_TOOL_GROUPS: Array<McpToolGroup> = [
       {
         name: "list_templates",
         title: "List email templates",
-        description: "Lists the event's email templates (accepted, declined, waitlisted, reminder, confirmation) with their subject and body, and whether each has been customised or is still the built-in default. Placeholders such as {{firstName}} and {{sessionTitle}} are filled in at send time.",
+        description: "Lists the event's email templates (accepted, declined, waitlisted, reminder, confirmation) with their subject, a 200-character body preview, and whether each has been customised or is still the built-in default. Use get_template for one template's full body. Placeholders such as {{firstName}} and {{sessionTitle}} are filled in at send time.",
         readOnly: true,
         requiresConfirm: false,
         args: ["event"],
         required: ["event"],
+      },
+      {
+        name: "get_template",
+        title: "Get an email template",
+        description: "Returns one email template in full — subject and complete body, and whether it is customised for this event or still the built-in default. Read it before rewriting a template with update_template so you edit the copy that is actually in use.",
+        readOnly: true,
+        requiresConfirm: false,
+        args: ["event","key"],
+        required: ["event","key"],
       },
       {
         name: "update_template",
@@ -305,4 +341,4 @@ export const MCP_TOOL_GROUPS: Array<McpToolGroup> = [
   },
 ]
 
-export const MCP_TOOL_COUNT = 27
+export const MCP_TOOL_COUNT = 31

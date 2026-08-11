@@ -365,9 +365,12 @@ and deleted event orphaned its blobs forever), and `events.logoId` was dead conf
   `schedule.ics`, and the 401 body). Examples in the spec are real payload shapes, not invented.
 - **MCP docs cannot drift** — `scripts/generate-mcp-tools.mjs` parses the `TOOLS` literal in
   `convex/mcp.ts` (brace-balanced scan, not a loose regex) and emits
-  `src/docs/generated/mcp-tools.ts`: all 27 tools with title, description, `readOnly`,
+  `src/docs/generated/mcp-tools.ts`: every tool with title, description, `readOnly`,
   `requiresConfirm` and required args, grouped for the page. It **throws** if a new tool is not
-  assigned to a docs group, and `--check` fails CI when the file is stale.
+  assigned to a docs group, and `--check` fails CI when the file is stale. It caught four
+  tools added mid-session (`get_template`, `delete_event`, `delete_form`, `remove_task`) —
+  the table is now 31. `MCP_TOOL_COUNT` in `src/components/marketing/links.ts` and the
+  settings capabilities card now re-export that generated number instead of hardcoding 27.
 - **Entry points** — landing footer "Developers" column now links Documentation / API reference /
   MCP server; the organizer avatar menu gained a "Docs" item; the speaker-portal avatar menu
   gained "How this works" → the portal guide page.

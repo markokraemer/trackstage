@@ -7,15 +7,21 @@ Playwright. Re-run the script after any visual change to the organizer app,
 speaker portal or public event pages; it overwrites in place, so the page picks
 the new shots up with no code change.
 
+The same script also produces the screenshots for the `/docs` user guide, in
+`public/docs/`. It's one file with three run modes — see
+[`--docs` mode](#--docs-mode-the-docs-user-guide-shots) below.
+
 ## Refresh in one command
 
 ```sh
-pnpm dev                                # dev server on :3000 (leave running)
-pnpm exec convex run seed:setup         # only if the demo data is missing/stale
-node scripts/capture-screenshots.mjs    # ~40s
+pnpm dev                                   # dev server on :3000 (leave running)
+pnpm exec convex run seed:setup            # only if the demo data is missing/stale
+node scripts/capture-screenshots.mjs             # marketing + docs shots (~90s)
+node scripts/capture-screenshots.mjs --marketing # public/screenshots/* only (~40s)
+node scripts/capture-screenshots.mjs --docs      # public/docs/* only (~50s)
 ```
 
-Then eyeball `public/screenshots/*.png` before committing.
+Then eyeball the PNGs before committing.
 
 ## What it produces
 
@@ -58,6 +64,45 @@ holds each shot's alt text and the address shown in the mock browser chrome).
 6. Prints any console errors it saw. These come from the app, not the capture —
    worth a look, but they don't fail the run.
 
+## `--docs` mode: the /docs user-guide shots
+
+`node scripts/capture-screenshots.mjs --docs` drives the same seeded demo
+through every step of the `/docs` user guide and writes ~30 PNGs into
+`public/docs/`. It shares `signIn`, `settle`, `hideDevtools`, `tryClick` and
+`shot` with the marketing capture, and adds:
+
+- `elementShot(page, locator, name)` — crops one element (a dialog, drawer, or
+  card) instead of the full viewport. Used for every modal/drawer shot so the
+  surrounding page chrome doesn't dilute the thing being documented.
+- `captureDocsShots(page)` — one `safeShot(name, fn)` call per file. Every
+  shot is independent and wrapped in try/catch: a renamed label, an emptied
+  queue, or a control that didn't render skips **that one file** and logs
+  `skipped: <name> — <reason>`, everything else still runs. The end of the run
+  prints a summary of exactly what was written and what was skipped.
+- Destructive dialogs (commit a decision queue, invite a teammate, assign a
+  task) are opened, screenshotted, then dismissed with their own **Cancel**
+  button — `review-commit.png` in particular opens the confirmation and
+  presses Cancel, never the real "Send acceptances"/"Send declines" action.
+
+Run it on its own, or let the plain `node scripts/capture-screenshots.mjs`
+(no flags) run it right after the marketing shots in the same signed-in
+session.
+
+### Keeping the right event selected
+
+Every organizer shot depends on "which event is the app currently pointed
+at?", which lives in `localStorage` (`sb.currentEventId`,
+`src/lib/current-event.ts`) and defaults to whatever event loaded first for
+the account. On a shared dev database that is **not reliably the demo
+event** — another agent's seed re-run or verification pass can add, delete,
+or replace events mid-capture, which silently resets that default. A
+`gotoOrganizer(page, path)` helper wraps every `/app/*` navigation in `--docs`
+mode: after each `goto` it checks the sidebar for "AI Engineer Summit 2026"
+and, if it's showing a different event, re-opens `/app/events`, clicks that
+event's **Open event** button, and re-navigates — so a mid-run reseed heals
+itself on the very next shot instead of quietly producing an empty-state
+screenshot.
+
 ## Knobs
 
 | Env var | Default | Use |
@@ -75,6 +120,15 @@ holds each shot's alt text and the address shown in the mock browser chrome).
 - **Wrong data on screen** (odd times, test rows like "Verification Talk"):
   re-run `pnpm exec convex run seed:setup` first — the shots are only as clean
   as the demo data.
+- **`--docs` shot shows the wrong event** ("Copilot Verification…" or another
+  empty test event instead of "AI Engineer Summit 2026"): shouldn't happen —
+  `gotoOrganizer` re-selects the demo event whenever the sidebar drifts — but
+  if it still does, another agent is actively deleting/recreating events
+  faster than one navigation. Re-run `--docs` once things settle.
+- **`--docs` says a decision queue is empty** (`review-commit` skipped): a
+  concurrent process already committed the seeded accept/decline queue. The
+  script tries decline before giving up; re-seed
+  (`pnpm exec convex run seed:setup`) to restage both queues.
 
 ## Known follow-ups
 

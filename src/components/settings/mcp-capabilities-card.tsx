@@ -7,6 +7,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
+import { MCP_TOOL_COUNT } from "@/docs/generated/mcp-tools"
 
 const EXAMPLE_PROMPTS = [
   "Summarise my event",
@@ -18,7 +19,7 @@ const EXAMPLE_PROMPTS = [
 ]
 
 /**
- * "What you can do with it" — 27 tools across events, forms, submissions &
+ * "What you can do with it" — every MCP tool across events, forms, submissions &
  * decisions, agenda, speakers/tasks and email (`convex/mcp.ts`). Kept as a
  * short prompt list rather than a tool-by-tool dump — organizers think in
  * outcomes, not tool names.
@@ -32,10 +33,10 @@ export function McpCapabilitiesCard() {
           What you can do with it
         </CardTitle>
         <CardDescription>
-          27 tools covering events, forms, submissions &amp; decisions, the
-          agenda, speakers &amp; tasks, and email — anything your assistant
-          can do, it can do here too. Destructive actions (sending decisions,
-          bulk changes) still ask for confirmation.
+          {MCP_TOOL_COUNT} tools covering events, forms, submissions &amp;
+          decisions, the agenda, speakers &amp; tasks, and email — anything your
+          assistant can do, it can do here too. Destructive actions (sending
+          decisions, bulk changes) still ask for confirmation.
         </CardDescription>
       </CardHeader>
       <CardContent>

@@ -29,13 +29,31 @@ function textOf(content) {
     .join("\n")
 }
 
+/** Secrets pasted into chat must never reach the repo (they'd go public). */
+const SECRET_PATTERNS = [
+  /re_[A-Za-z0-9_]{16,}/g, // Resend API keys
+  /sk-or-v1-[A-Za-z0-9]{8,}/g, // OpenRouter keys
+  /sb_live_[0-9a-f]{8,}/g, // our own API keys
+  /\b[0-9a-f]{37}\b/g, // Cloudflare global API key format
+  /(CLOUDFLARE_GLOBAL_API_KEY|CLOUDFLARE_API_KEY|RESEND_API_KEY|OPENROUTER_API_KEY|BETTER_AUTH_SECRET)\s*=\s*\S+/g,
+  /Bearer\s+[A-Za-z0-9._~+/-]{20,}/g,
+]
+
+function redactSecrets(text) {
+  let result = text
+  for (const pattern of SECRET_PATTERNS) {
+    result = result.replace(pattern, "[REDACTED-SECRET]")
+  }
+  return result
+}
+
 /** Strip injected non-human blocks, keep what the human actually typed. */
 function cleanPrompt(raw) {
   let text = raw
   // Injected context/reminders inside user-role messages.
   text = text.replace(/<system-reminder>[\s\S]*?<\/system-reminder>/g, "")
   text = text.replace(/<ip_reminder>[\s\S]*?<\/ip_reminder>/g, "")
-  return text.trim()
+  return redactSecrets(text.trim())
 }
 
 /** True for entries that are events, not typed human prompts. */
@@ -129,5 +147,26 @@ for (const session of sessions) {
   console.log(`${session.id}: ${prompts.length} prompts`)
 }
 
+// ——— HARD VALIDATOR (defense in depth): refuse to write anything that still
+// looks like a secret. Redaction should have caught it; if this fires, a new
+// secret format appeared — add its pattern above. Nothing ships regardless.
+const VALIDATOR_PATTERNS = [
+  /re_[A-Za-z0-9_]{16,}/,
+  /sk-or-v1-[A-Za-z0-9]{8,}/,
+  /sk-[A-Za-z0-9-]{20,}/,
+  /sb_live_[0-9a-f]{8,}/,
+  /\b[0-9a-f]{37}\b/,
+  /gh[pos]_[A-Za-z0-9]{20,}/,
+  /AKIA[0-9A-Z]{16}/,
+  /-----BEGIN [A-Z ]*PRIVATE KEY-----/,
+]
+const leaks = VALIDATOR_PATTERNS.filter((pattern) => pattern.test(out))
+if (leaks.length > 0) {
+  console.error(
+    `REFUSING TO WRITE: output still matches ${leaks.length} secret pattern(s): ${leaks.map(String).join(", ")}`
+  )
+  process.exit(2)
+}
+
 writeFileSync(OUT_FILE, out)
-console.log(`→ ${OUT_FILE} (${total} prompts total)`)
+console.log(`→ ${OUT_FILE} (${total} prompts total, secret-validated)`)

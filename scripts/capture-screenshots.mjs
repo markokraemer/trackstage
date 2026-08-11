@@ -458,20 +458,20 @@ async function captureDocsShots(page) {
   // ——— Build the agenda ——————————————————————————————————————————————
 
   await safeShot("agenda-list", async () => {
-    await page.goto(`${BASE}/app/agenda?view=list`, { waitUntil: "networkidle" })
+    await gotoOrganizer(page, "/app/agenda?view=list")
     await settle(page)
     await shot(page, "agenda-list", DOCS_OUT)
   })
 
   await safeShot("agenda-day", async () => {
-    await page.goto(`${BASE}/app/agenda?view=day`, { waitUntil: "networkidle" })
+    await gotoOrganizer(page, "/app/agenda?view=day")
     await settle(page)
     await scrollGridToProgramme(page)
     await shot(page, "agenda-day", DOCS_OUT)
   })
 
   await safeShot("agenda-conflicts", async () => {
-    await page.goto(`${BASE}/app/agenda?view=conflicts`, { waitUntil: "networkidle" })
+    await gotoOrganizer(page, "/app/agenda?view=conflicts")
     await settle(page)
     await shot(page, "agenda-conflicts", DOCS_OUT)
   })
@@ -479,12 +479,12 @@ async function captureDocsShots(page) {
   // ——— Chase speakers ————————————————————————————————————————————————
 
   await safeShot("speakers-list", async () => {
-    await page.goto(`${BASE}/app/speakers`, { waitUntil: "networkidle" })
+    await gotoOrganizer(page, "/app/speakers")
     await shot(page, "speakers-list", DOCS_OUT)
   })
 
   await safeShot("speaker-tasks", async () => {
-    await page.goto(`${BASE}/app/speakers`, { waitUntil: "networkidle" })
+    await gotoOrganizer(page, "/app/speakers")
     await settle(page)
     const opened = await tryClick(
       page,
@@ -497,37 +497,37 @@ async function captureDocsShots(page) {
   })
 
   await safeShot("communications", async () => {
-    await page.goto(`${BASE}/app/communications`, { waitUntil: "networkidle" })
+    await gotoOrganizer(page, "/app/communications")
     await shot(page, "communications", DOCS_OUT)
   })
 
   // ——— Publish ———————————————————————————————————————————————————————
 
   await safeShot("publish-agenda", async () => {
-    await page.goto(`${BASE}/app/agenda`, { waitUntil: "networkidle" })
+    await gotoOrganizer(page, "/app/agenda")
     await settle(page)
     await elementShot(page, page.locator('[data-slot="page-header"]').first(), "publish-agenda")
   })
 
   await safeShot("public-schedule", async () => {
-    await page.goto(`${BASE}/e/${EVENT_SLUG}`, { waitUntil: "networkidle" })
+    await gotoSafe(page, `${BASE}/e/${EVENT_SLUG}`)
     await shot(page, "public-schedule", DOCS_OUT)
   })
 
   await safeShot("embeds", async () => {
-    await page.goto(`${BASE}/app/embeds`, { waitUntil: "networkidle" })
+    await gotoOrganizer(page, "/app/embeds")
     await shot(page, "embeds", DOCS_OUT)
   })
 
   // ——— Team & workspaces ——————————————————————————————————————————————
 
   await safeShot("workspace-settings", async () => {
-    await page.goto(`${BASE}/app/workspace`, { waitUntil: "networkidle" })
+    await gotoOrganizer(page, "/app/workspace")
     await shot(page, "workspace-settings", DOCS_OUT)
   })
 
   await safeShot("workspace-invite", async () => {
-    await page.goto(`${BASE}/app/workspace`, { waitUntil: "networkidle" })
+    await gotoOrganizer(page, "/app/workspace")
     await settle(page)
     const opened = await tryClick(
       page,
@@ -543,21 +543,21 @@ async function captureDocsShots(page) {
   // settings" in the avatar dropdown navigates to the full /app/account page.
   // That page is the closest real screen, so we shoot it in place of a crop.
   await safeShot("account-settings", async () => {
-    await page.goto(`${BASE}/app/account`, { waitUntil: "networkidle" })
+    await gotoOrganizer(page, "/app/account")
     await shot(page, "account-settings", DOCS_OUT)
   })
 
   // ——— Airtable sync ——————————————————————————————————————————————————
 
   await safeShot("airtable", async () => {
-    await page.goto(`${BASE}/app/settings/integrations`, { waitUntil: "networkidle" })
+    await gotoOrganizer(page, "/app/settings/integrations")
     await shot(page, "airtable", DOCS_OUT)
   })
 
   // ——— AI copilot ————————————————————————————————————————————————————
 
   await safeShot("copilot", async () => {
-    await page.goto(`${BASE}/app/copilot`, { waitUntil: "networkidle" })
+    await gotoOrganizer(page, "/app/copilot")
     await shot(page, "copilot", DOCS_OUT)
   })
 

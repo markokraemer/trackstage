@@ -26,12 +26,26 @@ const GROUPS = [
   {
     id: "workspaces",
     label: "Workspaces & events",
-    tools: ["list_workspaces", "list_events", "create_event", "get_event_overview", "get_event_summary"],
+    tools: [
+      "list_workspaces",
+      "list_events",
+      "create_event",
+      "delete_event",
+      "get_event_overview",
+      "get_event_summary",
+    ],
   },
   {
     id: "forms",
     label: "CFP forms",
-    tools: ["list_forms", "get_form", "create_form", "update_form_settings", "get_public_form_link"],
+    tools: [
+      "list_forms",
+      "get_form",
+      "create_form",
+      "update_form_settings",
+      "get_public_form_link",
+      "delete_form",
+    ],
   },
   {
     id: "submissions",
@@ -52,12 +66,24 @@ const GROUPS = [
   {
     id: "speakers",
     label: "Speakers & tasks",
-    tools: ["list_speakers", "get_speaker_portal_link", "assign_task", "send_reminders"],
+    tools: [
+      "list_speakers",
+      "get_speaker_portal_link",
+      "assign_task",
+      "remove_task",
+      "send_reminders",
+    ],
   },
   {
     id: "email",
     label: "Email",
-    tools: ["list_templates", "update_template", "list_outbox", "send_test_email"],
+    tools: [
+      "list_templates",
+      "get_template",
+      "update_template",
+      "list_outbox",
+      "send_test_email",
+    ],
   },
 ]
 
