@@ -76,7 +76,7 @@
     "output": {
       "workspaces": [
         {
-          "eventCount": 3,
+          "eventCount": 5,
           "name": "AI Engineer",
           "organizationId": "mn7fs8btg5szyhbkqdfhtd4xmn8c8xhg",
           "slug": "ai-engineer",
@@ -244,47 +244,46 @@
   },
   "get_form": {
     "input": {
-      "form": "cfp"
+      "form": "example-call-for-papers"
     },
     "output": {
-      "closeAt": "2026-09-16T06:59:00.000Z",
-      "eventId": "j970azkadykc61nytr2cc7nn358c829f",
-      "externalTitle": "Call for Speakers — AI Engineer Summit 2026",
-      "formId": "jd70qeexqcjc6pyp60x3509azx8c9bwn",
+      "closeAt": null,
+      "eventId": "j9726nrwb529ang7nfwxjvdms18c8zz4",
+      "externalTitle": "Example Call for Papers",
+      "formId": "jd76g25d9w8y183n8hhjx0pzsx8c8v3y",
       "kind": "abstract",
-      "name": "CFP 2026 — main call",
-      "notifyEmails": [
-        "organizer@demo.sessionboard.dev"
-      ],
-      "pageHeading": "Submit a talk",
+      "linkWarning": "http://localhost:3000 is a loopback address (demo URL — set SITE_URL in production). Links below only work on the machine running Sessionboard — don't send them to a speaker.",
+      "name": "Example Call for Papers",
+      "notifyEmails": [],
+      "pageHeading": "Call for Speakers",
       "participantConfig": {
         "chairpersonEnabled": false,
         "fields": [
           {
             "enabled": true,
             "id": "firstName",
-            "label": "First name",
+            "label": "First Name",
             "locked": true,
             "required": true
           },
           {
             "enabled": true,
             "id": "lastName",
-            "label": "Last name",
+            "label": "Last Name",
             "locked": true,
             "required": true
           },
           {
             "enabled": true,
             "id": "email",
-            "label": "Email address",
+            "label": "Email",
             "locked": true,
             "required": true
           },
           {
             "enabled": true,
             "id": "jobTitle",
-            "label": "Job title",
+            "label": "Job Title",
             "locked": false,
             "required": false
           },
@@ -296,8 +295,14 @@
             "required": false
           },
           {
+            "enabled": false,
+            "id": "phone",
+            "label": "Mobile Phone",
+            "locked": false,
+            "required": false
+          },
+          {
             "enabled": true,
-            "help": "60–100 words. Used in the programme if your talk is accepted.",
             "id": "bio",
             "label": "Biography",
             "locked": false,
@@ -309,27 +314,20 @@
             "label": "Headshot",
             "locked": false,
             "required": false
-          },
-          {
-            "enabled": false,
-            "id": "phone",
-            "label": "Phone number",
-            "locked": false,
-            "required": false
           }
         ],
         "moderatorEnabled": false,
         "sendConfirmationEmail": true,
-        "speakerMax": 3,
+        "speakerMax": 4,
         "speakerMin": 1
       },
-      "publicUrl": "http://localhost:3000/submit/cfp",
+      "publicUrl": "http://localhost:3000/submit/example-call-for-papers",
       "questions": [
         {
           "enabled": true,
           "id": "title",
           "isTrackQuestion": false,
-          "label": "Session title",
+          "label": "Title",
           "locked": true,
           "options": null,
           "required": true,
@@ -340,12 +338,12 @@
           "enabled": true,
           "id": "description",
           "isTrackQuestion": false,
-          "label": "Session description",
+          "label": "Description",
           "locked": true,
           "options": null,
           "required": true,
           "showIf": null,
-          "type": "long_text"
+          "type": "rich_text"
         },
         {
           "enabled": true,
@@ -356,7 +354,7 @@
           "options": [
             "Talk",
             "Workshop",
-            "Lightning talk"
+            "Lightning Talk"
           ],
           "required": true,
           "showIf": null,
@@ -368,11 +366,7 @@
           "isTrackQuestion": true,
           "label": "Track",
           "locked": false,
-          "options": [
-            "AI Engineering",
-            "Product",
-            "Infrastructure"
-          ],
+          "options": [],
           "required": true,
           "showIf": null,
           "type": "dropdown"
@@ -381,14 +375,14 @@
           "enabled": true,
           "id": "level",
           "isTrackQuestion": false,
-          "label": "Audience level",
+          "label": "Level",
           "locked": false,
           "options": [
-            "Beginner",
+            "Introductory",
             "Intermediate",
             "Advanced"
           ],
-          "required": true,
+          "required": false,
           "showIf": null,
           "type": "dropdown"
         },
@@ -399,9 +393,7 @@
           "label": "Language",
           "locked": false,
           "options": [
-            "English",
-            "German",
-            "Spanish"
+            "English"
           ],
           "required": false,
           "showIf": null,
@@ -409,44 +401,30 @@
         },
         {
           "enabled": true,
-          "id": "workshopDuration",
+          "id": "tags",
           "isTrackQuestion": false,
-          "label": "Workshop duration",
+          "label": "Tags",
           "locked": false,
           "options": [
-            "90 minutes",
-            "Half day",
-            "Full day"
+            "AI",
+            "Infrastructure",
+            "Product",
+            "Open Source"
           ],
           "required": false,
-          "showIf": {
-            "equals": "Workshop",
-            "questionId": "format"
-          },
-          "type": "dropdown"
-        },
-        {
-          "enabled": true,
-          "id": "takeaways",
-          "isTrackQuestion": false,
-          "label": "Key takeaways",
-          "locked": false,
-          "options": null,
-          "required": false,
           "showIf": null,
-          "type": "long_text"
+          "type": "multi_select"
         }
       ],
       "settings": {
         "allowDrafts": true,
         "autoRedirectToPortal": true,
-        "limitPerUser": 3,
         "sendReminderEmail": true,
-        "successMessage": "Thanks — your proposal is in. We'll email you when the programme committee has reviewed it."
+        "successMessage": "<p>Thank you for submitting to present at our event! We'll review your submission and get back to you soon.</p>"
       },
-      "slug": "cfp",
+      "slug": "example-call-for-papers",
       "status": "open",
-      "welcomeMessage": "We're looking for practitioner talks: things you built, things that broke, and what you learned. You don't need to be a famous speaker — you need a real story and something the audience can use.\n\nThe call closes on 15 September 2026. You may submit up to three proposals, and you can save a draft and come back to it at any time."
+      "welcomeMessage": "<p>We'd love to hear from you! Tell us about the session you'd like to present.</p>"
     }
   },
   "get_public_form_link": {
