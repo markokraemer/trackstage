@@ -44,6 +44,7 @@ import type * as lib_publicLinks from "../lib/publicLinks.js";
 import type * as lib_taskVars from "../lib/taskVars.js";
 import type * as lib_uploadComments from "../lib/uploadComments.js";
 import type * as mcp from "../mcp.js";
+import type * as onboarding from "../onboarding.js";
 import type * as platformEmails from "../platformEmails.js";
 import type * as portal from "../portal.js";
 import type * as publicData from "../publicData.js";
@@ -103,6 +104,7 @@ declare const fullApi: ApiFromModules<{
   "lib/taskVars": typeof lib_taskVars;
   "lib/uploadComments": typeof lib_uploadComments;
   mcp: typeof mcp;
+  onboarding: typeof onboarding;
   platformEmails: typeof platformEmails;
   portal: typeof portal;
   publicData: typeof publicData;
