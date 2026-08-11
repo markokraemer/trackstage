@@ -146,9 +146,11 @@ function accentTokens(hex: string): Record<string, string> {
 interface PaletteCandidate {
   id: string
   tokens: Record<string, string>
-  /** Shape/density overrides that no token can express. */
+  /** Shape overrides that no token can express. Never density — see #20. */
   panelClassName?: string
   defaultAccent: string
+  /** Restrict the accent picker to a shortlist for this candidate. */
+  accentIds?: Array<string>
 }
 
 /** What ships today: lavender banner, blue-tinted sidebar and pills. */
@@ -182,44 +184,48 @@ const DEBLUED_PALETTE: PaletteCandidate = {
 }
 
 /**
- * "Mercury": warm neutral chrome, deep ink text, hairline-plus-shadow depth
- * instead of tint, and a single distinctive accent. Our reading of
- * mercury.com — restrained banking UI where the table is the product.
+ * "Attio": the gold standard Marko named. Near-white warm-grey chrome, hairline
+ * borders instead of fills, small-radius controls, a quiet three-step text
+ * hierarchy and immaculate table craft — with his caveat applied: we take the
+ * SYSTEM, not the density. Row heights, control sizes and padding stay exactly
+ * where they are today, because Attio itself is too minuscule for organizers.
  */
-const MERCURY_PALETTE: PaletteCandidate = {
-  id: "mercury",
-  defaultAccent: "teal",
+const ATTIO_PALETTE: PaletteCandidate = {
+  id: "attio",
+  defaultAccent: "blue",
+  accentIds: ["blue", "teal"],
   panelClassName:
-    "[&_[data-slot=card]]:shadow-sm [&_[data-slot=page-header]]:border-border [&_[data-slot=page-header]]:shadow-xs",
+    "[&_[data-slot=card]]:rounded-lg [&_[data-slot=card]]:shadow-none [&_[data-slot=page-header]]:rounded-lg [&_button]:rounded-md",
   tokens: {
-    "--background": "#faf9f7",
+    "--background": "#fbfbfa",
     "--card": "#ffffff",
-    "--card-foreground": "#1b1a17",
-    "--foreground": "#1b1a17",
-    "--muted": "#f3f1ec",
-    "--muted-foreground": "#6f6a61",
-    "--accent": "#f1efe9",
-    "--accent-foreground": "#1b1a17",
-    "--secondary": "#f3f1ec",
-    "--secondary-foreground": "#1b1a17",
-    "--border": "#e7e2d9",
-    "--input": "#ddd7cc",
-    "--sidebar": "#f6f4ef",
-    "--sidebar-foreground": "#1b1a17",
-    "--sidebar-accent": "#eae6dd",
-    "--sidebar-accent-foreground": "#1b1a17",
-    "--sidebar-border": "#e7e2d9",
-    "--status-green-bg": "#e4efe3",
-    "--status-green-fg": "#2f5d33",
-    "--status-green-dot": "#4d8250",
-    "--status-amber-bg": "#f7eddb",
-    "--status-amber-fg": "#77521c",
-    "--status-amber-dot": "#b97e28",
-    "--status-gray-bg": "#efece6",
-    "--status-gray-fg": "#5c574f",
-    "--status-blue-bg": "#e9efee",
-    "--status-blue-fg": "#245049",
-    "--status-blue-dot": "#5c8a83",
+    "--card-foreground": "#1b1b19",
+    "--foreground": "#1b1b19",
+    "--muted": "#f6f6f4",
+    "--muted-foreground": "#77776f",
+    "--accent": "#f6f6f4",
+    "--accent-foreground": "#1b1b19",
+    "--secondary": "#f6f6f4",
+    "--secondary-foreground": "#1b1b19",
+    "--border": "#e8e8e4",
+    "--input": "#deded8",
+    "--sidebar": "#f9f9f7",
+    "--sidebar-foreground": "#1b1b19",
+    "--sidebar-accent": "#efefeb",
+    "--sidebar-accent-foreground": "#1b1b19",
+    "--sidebar-border": "#e8e8e4",
+    "--status-green-bg": "#e8f1e9",
+    "--status-green-fg": "#33613c",
+    "--status-green-dot": "#4f8b5c",
+    "--status-amber-bg": "#f7efdc",
+    "--status-amber-fg": "#7a5a1e",
+    "--status-amber-dot": "#b98a2c",
+    "--status-gray-bg": "#f0f0ec",
+    "--status-gray-fg": "#5f5f58",
+    "--status-gray-dot": "#a3a39a",
+    "--status-blue-bg": "#eaefee",
+    "--status-blue-fg": "#2a504b",
+    "--status-blue-dot": "#6f938d",
   },
 }
 
@@ -257,6 +263,32 @@ const JUICEBOX_PALETTE: PaletteCandidate = {
     "--status-blue-dot": "#6b9a93",
   },
 }
+
+/** The two to decide between, side by side, before scrolling into detail. */
+const FINALISTS: Array<{
+  badge: string
+  name: string
+  swatches: Array<string>
+  pitch: string
+  cost: string
+}> = [
+  {
+    badge: "E",
+    name: "De-blued",
+    swatches: ["#ffffff", "#f7f8f9", "#f4f5f7", "#eceef1", "#2f5ce0"],
+    pitch:
+      "Today's design language with the blue taken out of the chrome. Nothing moves, nothing resizes — the tint just goes grey.",
+    cost: "Five tokens. Zero risk of regression, zero re-QA of layout.",
+  },
+  {
+    badge: "F",
+    name: "Attio",
+    swatches: ["#ffffff", "#fbfbfa", "#f9f9f7", "#e8e8e4", "#0f766e"],
+    pitch:
+      "Attio's system adopted properly: warm near-white ramp, hairlines instead of fills, small radii, quiet type hierarchy — at our comfortable sizing, not Attio's.",
+    cost: "The full neutral ramp plus radii. One commit, but the whole app wants a visual pass afterwards.",
+  },
+]
 
 /* ------------------------------------------------------------ demo panel */
 
@@ -441,6 +473,9 @@ function Candidate({
 }: CandidateProps) {
   const [accentId, setAccentId] = useState(palette.defaultAccent)
   const accent = ACCENTS.find((item) => item.id === accentId) ?? ACCENTS[0]
+  const chips = palette.accentIds
+    ? ACCENTS.filter((item) => palette.accentIds?.includes(item.id))
+    : ACCENTS
 
   return (
     <section
@@ -478,7 +513,7 @@ function Candidate({
           <span className="text-xs font-medium text-muted-foreground">
             Accent:
           </span>
-          {ACCENTS.map((item) => (
+          {chips.map((item) => (
             <button
               key={item.id}
               type="button"
@@ -549,10 +584,45 @@ export function DesignExplorations() {
         </p>
       </Card>
 
-      <Heading title="1 · Feel — the one to look at first">
-        Same structure, same fonts, different chrome. The recommendation is the
-        smallest change that fixes what you flagged: too much blue.
+      <Heading title="1 · Feel — two finalists, then the rest">
+        Same structure, same fonts, different chrome.{" "}
+        <strong className="font-medium text-foreground/80">E</strong> is the
+        smallest change that fixes what you flagged — too much blue.{" "}
+        <strong className="font-medium text-foreground/80">F</strong> goes
+        further and takes Attio's system wholesale, minus its density.
       </Heading>
+
+      <Card className="gap-0 overflow-hidden p-0">
+        <div className="grid divide-y divide-border sm:grid-cols-2 sm:divide-x sm:divide-y-0">
+          {FINALISTS.map((finalist) => (
+            <div key={finalist.name} className="p-5">
+              <div className="flex items-center gap-2">
+                <Badge>{finalist.badge}</Badge>
+                <h4 className="font-heading text-sm font-semibold tracking-tight">
+                  {finalist.name}
+                </h4>
+              </div>
+              <div className="mt-3 flex gap-1.5">
+                {finalist.swatches.map((hex) => (
+                  <span
+                    key={hex}
+                    title={hex}
+                    className="size-7 rounded-md ring-1 ring-foreground/10"
+                    style={{ background: hex }}
+                  />
+                ))}
+              </div>
+              <p className="mt-3 text-sm text-foreground/80">
+                {finalist.pitch}
+              </p>
+              <p className="mt-1.5 text-sm text-muted-foreground">
+                <span className="font-medium text-foreground/70">Cost: </span>
+                {finalist.cost}
+              </p>
+            </div>
+          ))}
+        </div>
+      </Card>
 
       <Candidate
         featured
@@ -565,29 +635,30 @@ export function DesignExplorations() {
       />
 
       <Candidate
+        featured
+        badge="F · Attio"
+        name="Attio"
+        pairing="near-white warm greys · hairlines · small radii"
+        personality="The gold standard: calm, achromatic, and completely confident that the table is the product."
+        changes="The whole neutral ramp goes near-white and faintly warm (#FBFBFA page, #F9F9F7 sidebar, #E8E8E4 hairlines), cards lose their shadow and keep a single hairline, controls drop to 6–8px radii, and the text hierarchy compresses to three quiet steps. Explicitly NOT taken from Attio: its density — row heights, control sizes and padding stay exactly as they are today, because Attio is too minuscule for a non-technical organizer. Click the teal chip: that is the entire 'unique accent' question in one click."
+        palette={ATTIO_PALETTE}
+      />
+
+      <Candidate
         badge="Baseline"
         name="Current — blue chrome"
         pairing="what ships today"
         personality="Friendly and a little sassy: blue is doing decoration as well as direction."
-        changes="Nothing. Shown here only so the difference above is measurable rather than remembered."
+        changes="Nothing. Shown here only so the two above are measurable rather than remembered."
         palette={CURRENT_PALETTE}
-      />
-
-      <Candidate
-        badge="F · Mercury"
-        name="Mercury"
-        pairing="warm neutrals · ink text · hairline depth"
-        personality="Calm, expensive and grown-up — the table is the product and nothing competes with it."
-        changes="Every grey turns warm (#FAF9F7 page, #F1EFE9 banner), text drops to a deep warm ink, cards get a real hairline plus a soft shadow instead of a tint, and status pills desaturate to match. Deepest change of the four: it replaces the whole neutral ramp, not just the tints."
-        palette={MERCURY_PALETTE}
       />
 
       <Candidate
         badge="G · Juicebox-soft"
         name="Juicebox-soft"
         pairing="warm greys · larger radii · more air"
-        personality="Modern and welcoming — soft edges, roomier rows, still unmistakably business software."
-        changes="Cards and banners go to 16px radii, buttons to 12px, table rows gain ~4px of breathing room, and the neutral ramp warms up a shade past Mercury. Non-technical organizers read this as the least intimidating of the set; it costs the most vertical space."
+        personality="The soft secondary — modern and welcoming, soft edges and roomier rows, still unmistakably business software."
+        changes="Cards and banners go to 16px radii, buttons to 12px, table rows gain ~4px of breathing room, and the neutral ramp warms a shade past Attio. Non-technical organizers read this as the least intimidating of the set; it costs the most vertical space, and it is the furthest from Attio's discipline."
         palette={JUICEBOX_PALETTE}
       />
 
@@ -669,11 +740,11 @@ export function DesignExplorations() {
 
       <Candidate
         badge="F + C"
-        name="Mercury + Grotesk"
-        pairing="Space Grotesk headings · Public Sans body · warm neutrals · deep teal"
+        name="Attio + Grotesk"
+        pairing="Space Grotesk headings · Public Sans body · Attio neutrals"
         personality="The full re-brand: nothing about this screen says it started from a template."
         changes="Everything — neutral ramp, accent and both families. Highest effort, highest distance from today; still one commit, since it is all tokens."
-        palette={MERCURY_PALETTE}
+        palette={ATTIO_PALETTE}
         heading={TYPE_CANDIDATES[2].heading}
         body={TYPE_CANDIDATES[2].body}
       />

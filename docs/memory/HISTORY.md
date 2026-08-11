@@ -93,3 +93,10 @@ the narrative memory; RULES.md is the things circled as important along the way.
 34. **Full MCP server requirement**: complete MCP functionality for Sessionboard —
     operate everything from Claude/Codex/anywhere, auth via Better Auth, "connect and
     it will just work perfectly".
+35. **Attio revamp GO + sizing**: shared the Attio Mobbin flows link — "revamp the
+    full design system to match it closely… doing the same thing"; only dislike:
+    items/clickables too little → make everything a bit larger (non-technical
+    organizers). Mobbin MCP used for real screen extraction.
+36. **MCP/API top-notch**: perfect MCP + API via Better Auth's latest AI-agent
+    capabilities; super simple integrated setup for Claude, ChatGPT, Codex —
+    connect from anywhere and edit everything.

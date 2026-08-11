@@ -9,6 +9,7 @@
  */
 
 import type * as agenda from "../agenda.js";
+import type * as apiKeys from "../apiKeys.js";
 import type * as auth from "../auth.js";
 import type * as comms from "../comms.js";
 import type * as crons from "../crons.js";
@@ -39,6 +40,7 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   agenda: typeof agenda;
+  apiKeys: typeof apiKeys;
   auth: typeof auth;
   comms: typeof comms;
   crons: typeof crons;

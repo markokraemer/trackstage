@@ -351,7 +351,7 @@ export function SliderDetents({
               className="absolute inset-y-0 right-0 left-0"
               style={{ x: offset }}
             >
-              <div className="absolute inset-y-0 right-full w-[2000px] bg-foreground" />
+              <div className="absolute inset-y-0 right-full w-[2000px] bg-primary" />
             </motion.div>
           </div>
         </div>
@@ -379,7 +379,7 @@ export function SliderDetents({
             style={{ x: offset }}
           >
             <motion.div
-              className="absolute top-[4px] h-[20px] w-[18px] rounded-[6px] border-2 border-card bg-foreground"
+              className="absolute top-[4px] h-[20px] w-[18px] rounded-[6px] border-2 border-card bg-primary"
               style={{ marginLeft: -THUMB / 2 }}
               initial={false}
               animate={{ scale: dragging ? 1.08 : 1 }}

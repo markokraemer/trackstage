@@ -58,6 +58,22 @@ export default defineSchema({
     .index("by_email", ["email"])
     .index("by_organizationId_and_userId", ["organizationId", "userId"]),
 
+  // Personal API keys — the credential the MCP server (convex/mcp.ts) and any
+  // scripted client authenticates with. Only the sha-256 hash is stored; the
+  // plaintext `sb_live_…` key is shown to the user exactly once at creation.
+  // A key carries no scope of its own: it resolves to a userId and then runs
+  // through the same membership checks as a browser session.
+  apiKeys: defineTable({
+    userId: v.string(), // Better Auth user id
+    name: v.string(), // human label, e.g. "Claude Code (laptop)"
+    keyHash: v.string(), // sha-256 hex of the full key
+    prefix: v.string(), // e.g. "sb_live_1a2b3c4d" — safe to display
+    createdAt: v.number(),
+    lastUsedAt: v.optional(v.number()),
+  })
+    .index("by_keyHash", ["keyHash"])
+    .index("by_userId", ["userId"]),
+
   // ——— Core setup ———————————————————————————————————————————————————————
   events: defineTable({
     // TEMP-OPTIONAL during legacy purge — tightened right back (see seed.run

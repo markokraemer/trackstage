@@ -25,16 +25,23 @@ export async function requireUser(
   return { userId: user._id, email: user.email, name: user.name || undefined }
 }
 
-export async function requireMembership(
+/**
+ * The membership check itself, for an EXPLICIT user id.
+ *
+ * `requireMembership` (ctx.auth-driven) and the MCP server (API-key-driven,
+ * see convex/mcp.ts) both funnel through this, so both paths enforce exactly
+ * the same rule — there is only one authorization implementation to audit.
+ */
+export async function membershipFor(
   ctx: QueryCtx | MutationCtx,
+  userId: string,
   organizationId: Id<"organizations">,
   minRole: "member" | "admin" | "owner" = "member",
-): Promise<{ user: AuthedUser; member: Doc<"members"> }> {
-  const user = await requireUser(ctx)
+): Promise<Doc<"members">> {
   const member = await ctx.db
     .query("members")
     .withIndex("by_organizationId_and_userId", (q) =>
-      q.eq("organizationId", organizationId).eq("userId", user.userId),
+      q.eq("organizationId", organizationId).eq("userId", userId),
     )
     .unique()
   if (!member) {
@@ -45,6 +52,39 @@ export async function requireMembership(
       `This action requires the ${minRole} role (you are ${member.role}).`,
     )
   }
+  return member
+}
+
+/** Same, but resolving the organization from an event (explicit user id). */
+export async function eventAccessFor(
+  ctx: QueryCtx | MutationCtx,
+  userId: string,
+  eventId: Id<"events">,
+  minRole: "member" | "admin" | "owner" = "member",
+): Promise<{ member: Doc<"members">; event: Doc<"events"> }> {
+  const event = await ctx.db.get(eventId)
+  if (!event || !event.organizationId) throw new Error("Event not found.")
+  const member = await membershipFor(
+    ctx,
+    userId,
+    event.organizationId,
+    minRole,
+  )
+  return { member, event }
+}
+
+export async function requireMembership(
+  ctx: QueryCtx | MutationCtx,
+  organizationId: Id<"organizations">,
+  minRole: "member" | "admin" | "owner" = "member",
+): Promise<{ user: AuthedUser; member: Doc<"members"> }> {
+  const user = await requireUser(ctx)
+  const member = await membershipFor(
+    ctx,
+    user.userId,
+    organizationId,
+    minRole,
+  )
   return { user, member }
 }
 

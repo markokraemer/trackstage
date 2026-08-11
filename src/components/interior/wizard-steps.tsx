@@ -325,7 +325,7 @@ export function WizardSteps({
                   className="relative h-[3px] flex-1 overflow-hidden rounded-[2px] bg-muted shadow-[inset_0_1px_2px_rgba(27,30,39,0.07)]"
                 >
                   <motion.span
-                    className="absolute inset-0 origin-left rounded-[2px] bg-foreground"
+                    className="absolute inset-0 origin-left rounded-[2px] bg-primary"
                     initial={false}
                     animate={{ scaleX: complete || i < at ? 1 : 0 }}
                     transition={reduced ? { duration: 0 } : RAIL}
@@ -418,7 +418,7 @@ export function WizardSteps({
                   : { duration: 0.14, ease: EXIT_EASE },
               }}
               transition={reduced ? { duration: 0 } : CROSSFADE}
-              className="ml-auto grid h-9 place-items-center rounded-md bg-foreground px-3.5 text-[13px] font-medium text-primary-foreground outline-none focus-visible:shadow-[inset_0_0_0_1.5px_var(--primary)]"
+              className="ml-auto grid h-9 place-items-center rounded-md bg-primary px-3.5 text-[13px] font-medium text-primary-foreground outline-none focus-visible:shadow-[inset_0_0_0_1.5px_var(--primary)]"
             >
               <span aria-hidden className="invisible col-start-1 row-start-1">
                 {finishLabel.length > nextLabel.length

@@ -434,7 +434,7 @@ export function SnapCarousel({
                     : { scaleX: 0.36, opacity: 0.26 }
                 }
                 transition={reduced ? { duration: 0 } : CELL}
-                className="block h-[5px] w-[14px] rounded-[1.5px] bg-foreground"
+                className="block h-[5px] w-[14px] rounded-[1.5px] bg-primary"
               />
             </button>
           ))}

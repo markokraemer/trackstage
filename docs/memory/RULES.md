@@ -135,12 +135,20 @@ trail visible).
     (Fable-grade) using these; (d) **right-click on the logo anywhere → /design-system**
     (the classic "download the logo" affordance); (e) **fix the inconsistent container
     widths across the site** — one consistent width system.
-21. **Full MCP server** ("quite important to include"): Sessionboard must expose a
-    complete MCP server so you can talk to and configure your ENTIRE Sessionboard from
-    Claude/Codex/anywhere — interact with everything (events, forms, submissions,
-    decisions, agenda, speakers, comms) in depth. Auth via Better Auth (its MCP/OAuth
-    plugin) so connecting "just works perfectly". Also counts toward the brief's API
-    bonus.
+21. **Full MCP server + API — top-notch** ("quite important"; upgraded): a PERFECT MCP
+    and API. Use all the latest AI-agent capabilities Better Auth offers (MCP/OAuth
+    provider plugin, API-key plugin if it composes with the Convex component). MCP
+    setup must be super simple and integrated for Claude, ChatGPT (connectors), Codex —
+    "connect and it just works perfectly", edit everything from wherever. Counts toward
+    the brief's API bonus.
+22. **Attio revamp is a GO** (upgraded from exploration): "revamp the full design
+    system to match it closely and make sure we are doing the same thing." From the
+    real Mobbin screens: neutral near-white chrome (sidebar ~#FAFAFA, hairline
+    borders), COLOR CARRIES DATA not chrome (soft multi-tint tag pills, status dots
+    with labels), blue only on links/primary saves, quiet muted hierarchy. THE one
+    caveat: Attio's items/clickables are too little — make everything A BIT LARGER
+    (non-technical organizers use this). Rollout via the design-revamp step +
+    reconciliation pass; exploration page still shows the candidates for the record.
 19. **Mandatory final reconciliation pass**: slice-per-agent parallelism will drift —
     different layouts, spacing, and interaction patterns per slice. Before ship, ONE
     agent reads and reworks the whole app end to end for coherent, standardized,
