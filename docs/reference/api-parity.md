@@ -261,9 +261,9 @@ Severity: **P0** = an organizer hits this in a normal week and is blocked ·
 | 3 | Edit track/format/level/language/tags | ✅ detail drawer, Details tab | — | — |
 | 4 | Edit **room / start time / duration** on a session | ⚠️ only from the Agenda (`src/components/agenda/schedule-fields.tsx`); the submission drawer shows them read-only | Organizers who open a session to fix its time must go find it on the board instead. Add the scheduling fields to the drawer. | **P1** |
 | 5 | Session **capacity** | ❌ no per-session capacity anywhere; only room capacity (`rooms-card.tsx`) | Our API reports `capacity` from the assigned room. Either add a real per-session capacity field or keep deriving it — decide, don't leave it implicit. | P2 |
-| 6 | **Delete a session, and restore it** | ❌ NONE — no delete in `convex/submissions.ts` or any UI | The API now soft-deletes and restores. There is no way to remove a mistaken/spam submission in the product at all, and no trash to recover from. **Biggest single gap.** | **P0** |
+| 6 | **Delete a session, and restore it** | ✅ `…` row menu + detail-drawer footer → `delete-submission-dialog.tsx`; Options → Deleted submissions → `deleted-submissions-drawer.tsx`; `submissions.remove` / `restore` | — (closed 2026-08-11; soft delete now filtered out of every organizer/agenda/dashboard/portal/public read too) | — |
 | 7 | **Bulk operations** beyond status | ⚠️ `bulk-bar.tsx` does bulk *status* only | No bulk track/format assignment, no bulk delete. The API does all three. | **P1** |
-| 8 | **Edit custom-field answers** from the organizer side | ⚠️ answers render read-only in the Details tab | Organizers can *see* form answers but not fix a typo in one — while the API can write them. Make the "Form answers" block editable. | **P0** |
+| 8 | **Edit custom-field answers** from the organizer side | ✅ `answers-editor.tsx` — reuses the public form's `QuestionField`, autosaves on blur via `submissions.updateDetails` `answers` patch (merging) | — (closed 2026-08-11) | — |
 | 9 | Define custom fields (form builder) | ✅ `/app/forms/$formId`, `question-editor-drawer.tsx` | — | — |
 | 10 | Session files: view / upload / download / approve / delete | ✅ `submission-files.tsx`, `file-row.tsx` | — | — |
 | 11 | **Rename a file / re-assign it to a participant** | ❌ no rename, no assignment control | The API exposes `PUT .../files/{id}` for exactly this (`title`, `assigned_participant_id`). Speaker deliverables arrive named `Final_v3_REAL.pptx`. | **P1** |
@@ -271,11 +271,11 @@ Severity: **P0** = an organizer hits this in a normal week and is blocked ·
 | 13 | Speakers: list / detail / create / edit | ✅ `/app/speakers`, `speaker-profile-drawer.tsx`, `add-speaker-dialog.tsx` | — | — |
 | 14 | **Organizer-side headshot upload** | ❌ organizer can only leave a `headshotNote`; upload is speaker-portal-only | Every conference ends with an organizer pasting in a headshot the speaker emailed. | **P1** |
 | 15 | Rooms & tracks CRUD | ✅ `/app/settings/rooms-and-tracks` | — | — |
-| 16 | **Manage tags / formats / levels / languages** | ❌ hardcoded in `src/components/submissions/constants.ts`; tags are free text with no registry | The API now edits these through the form question. The UI edits them nowhere — an organizer cannot add a session format without a code change. **Backend is ready; this is a pure UI gap.** | **P0** |
+| 16 | **Manage tags / formats / levels / languages** | ✅ Event settings → **Fields & options** (`/app/settings/fields-and-options`, `value-lists-card.tsx`, `convex/valueLists.ts`) — add / rename (cascades onto sessions) / remove, usage counts, drift flag | — (closed 2026-08-11; writes the same form question the API writes) | — |
 | 17 | Agenda views, drag-drop, publish, auto-place | ✅ six views + `publish-agenda-button.tsx` + `auto-place-dialog.tsx` | — | — |
 | 18 | Agenda drafts / scenario planning | ❌ NONE (confirmed) | Deliberate non-mirror — see above. | — |
 | 19 | Scheduling rules / constraints | ❌ NONE; auto-place params are hardcoded constants in `auto-place-dialog.tsx` | Deliberate non-mirror, but the *auto-place parameters* (day window, length, gap) should at least be organizer-editable in that dialog. | P2 |
-| 20 | **Webhooks management** | ❌ NONE — `convex/webhooks.ts` + full API exist, zero UI (`grep api.webhooks src/` → nothing) | Settings → Integrations needs a Webhooks card: add endpoint, pick events, reveal secret once, rotate, send test, delivery log. All the backend for it already ships. **Backend done, UI missing.** | **P0** |
+| 20 | **Webhooks management** | ✅ Settings → Integrations → `webhooks-card.tsx` + `webhook-deliveries-drawer.tsx`; public wrappers `webhooks.list/eventTypes/create/update/remove/rotate/sendTest/deliveries` | — (closed 2026-08-11) | — |
 | 21 | **API key scopes** | ⚠️ `api-keys-card.tsx` creates keys by name only | `apiKeys.create` now accepts `scopes`; the dialog should offer read-only vs full. | **P1** |
 | 22 | Integrations surface | ⚠️ Airtable card only (`/app/settings/integrations`) | Webhooks belong here too (#20). | **P1** |
 | 23 | Session filters: format / level / language | ⚠️ submissions table filters by status + track + free text | The API filters by all of them. | P2 |
@@ -284,8 +284,13 @@ Severity: **P0** = an organizer hits this in a normal week and is blocked ·
 | 26 | Events list + settings | ✅ `/app/events`, `/app/settings`, `/app/workspace` | — | — |
 
 **The work order, in order:** #6 (delete + restore/trash), #8 (editable answers), #16
-(value-list management), #20 (webhooks UI) are P0 and all four have working backends
-already — they are UI-only builds. Then #4, #7, #11, #14, #21, #22 as P1.
+(value-list management), #20 (webhooks UI) were the P0s — **all four shipped 2026-08-11**
+(see docs/memory/BUILD-LOG.md; screenshots in `docs/verification/p0-api-parity-ui/`).
+Remaining: #4, #7, #11, #14, #21, #22 as P1.
+
+#22 is partly closed by #20 — the Webhooks card lives on Settings → **Integrations**
+rather than API & MCP, because that tab is about credentials while Integrations is about
+things that talk to other systems.
 
 ---
 
