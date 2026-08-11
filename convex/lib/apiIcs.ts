@@ -10,6 +10,8 @@
 // both harder to change.
 // ————————————————————————————————————————————————————————————————————————
 
+import { foldLine } from "./ics"
+
 export function icsEscape(text: string): string {
   return text
     .replace(/\\/g, "\\\\")
@@ -27,17 +29,23 @@ export function icsStamp(ms: number): string {
   )
 }
 
-/** RFC 5545 §3.1: content lines SHOULD be folded at 75 octets. */
+/**
+ * RFC 5545 §3.1: content lines SHOULD be folded at 75 OCTETS.
+ *
+ * This used to slice by `line.length`, which counts UTF-16 code units, not
+ * octets — so a line carrying an em dash (one character, three octets) came out
+ * at 76 and a line carrying an emoji could be cut through the middle of a
+ * surrogate pair, emitting invalid UTF-8 into a subscribed calendar. Measured
+ * on the live feed: two 76-octet lines in a six-session programme.
+ *
+ * The whole-event feed and the single-session invite are separate for good
+ * reasons (see the header), but folding is not one of them — it is the same
+ * paragraph of the same RFC. So this defers to the octet-aware implementation
+ * that already exists and is unit-tested, rather than keeping a second, subtly
+ * wrong copy of it.
+ */
 export function icsFold(line: string): string {
-  if (line.length <= 74) return line
-  const parts: Array<string> = [line.slice(0, 74)]
-  let rest = line.slice(74)
-  while (rest.length > 73) {
-    parts.push(` ${rest.slice(0, 73)}`)
-    rest = rest.slice(73)
-  }
-  if (rest.length > 0) parts.push(` ${rest}`)
-  return parts.join("\r\n")
+  return foldLine(line)
 }
 
 export type IcsEvent = {
