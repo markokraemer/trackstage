@@ -187,10 +187,16 @@ test("edge auto-scroll: dragging to the bottom edge scrolls the grid", async ({ 
   const after = await page.evaluate(() => {
     const c = document.querySelector("[data-room]")
     let el: HTMLElement | null = c as HTMLElement
-    while (el && el.scrollHeight <= el.clientHeight) el = el.parentElement
-    return el ? el.scrollTop : null
+    const chain: Array<string> = []
+    while (el) {
+      if (el.scrollHeight > el.clientHeight + 2) {
+        chain.push(`${el.tagName}.${el.className.slice(0, 40)} top=${el.scrollTop} max=${el.scrollHeight - el.clientHeight}`)
+      }
+      el = el.parentElement
+    }
+    return { chain, windowY: window.scrollY, doc: document.scrollingElement?.scrollTop }
   })
-  console.log("scroller after:", after)
+  console.log("scroll chain after:", JSON.stringify(after, null, 1))
   await page.screenshot({ path: `${OUT}/a1-autoscroll.png` })
   await page.mouse.up()
   await page.waitForTimeout(500)

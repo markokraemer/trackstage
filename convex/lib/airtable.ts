@@ -479,6 +479,56 @@ export class AirtableClient {
     )
   }
 
+  /**
+   * Read records back out — the ONLY read path in the integration, used by
+   * the experimental two-way sync (convex/lib/airtableInbound.ts).
+   *
+   * Deliberately narrow: it asks for named fields only (so a pull never drags
+   * a base's worth of unrelated columns across the wire), follows Airtable's
+   * `offset` pagination, and stops at `maxRecords` so one runaway base cannot
+   * make a sync run unbounded. `cellFormat: "string"` is NOT used — we want
+   * the raw single-select name, not a locale-formatted rendering.
+   */
+  async listRecords(
+    tableName: string,
+    options: {
+      fields?: string[]
+      filterByFormula?: string
+      maxRecords?: number
+      pageSize?: number
+    } = {},
+  ): Promise<Array<{ id: string; fields: Record<string, unknown> }>> {
+    const maxRecords = options.maxRecords ?? 1_000
+    const out: Array<{ id: string; fields: Record<string, unknown> }> = []
+    let offset: string | undefined
+
+    do {
+      const params = new URLSearchParams()
+      params.set("pageSize", String(Math.min(options.pageSize ?? 100, 100)))
+      for (const field of options.fields ?? []) params.append("fields[]", field)
+      if (options.filterByFormula) {
+        params.set("filterByFormula", options.filterByFormula)
+      }
+      if (offset) params.set("offset", offset)
+
+      const page = await this.request<{
+        records?: Array<{ id: string; fields?: Record<string, unknown> }>
+        offset?: string
+      }>(
+        "GET",
+        `/v0/${this.baseId}/${encodeURIComponent(tableName)}?${params.toString()}`,
+      )
+
+      for (const record of page.records ?? []) {
+        out.push({ id: record.id, fields: record.fields ?? {} })
+        if (out.length >= maxRecords) return out
+      }
+      offset = page.offset
+    } while (offset)
+
+    return out
+  }
+
   async createTable(spec: {
     name: string
     description: string

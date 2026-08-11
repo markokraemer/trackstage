@@ -35,6 +35,7 @@
  */
 
 import * as React from "react"
+import { TraversalOrder } from "@dnd-kit/core"
 import type { DragEndEvent, DragMoveEvent, DragStartEvent } from "@dnd-kit/core"
 
 import type {
