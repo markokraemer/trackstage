@@ -217,9 +217,8 @@ test.describe("hierarchy", () => {
         .first()
         .click({ timeout: 3_000 })
     }).toPass({ timeout: 25_000 })
-    // Account settings is a MODAL now — the menu item adds `?settings=account`
-    // in place instead of navigating away.
-    await expect(page).toHaveURL(/settings=account/)
+    // Settings surfaces are PAGES (dialogs are for atomic actions only).
+    await expect(page).toHaveURL(/\/app\/account/)
     await expect(
       page.getByRole("heading", { name: /account settings/i }).first(),
     ).toBeVisible()
@@ -254,22 +253,20 @@ test.describe("hierarchy", () => {
   }) => {
     const watcher = watchConsole(page)
     await page.goto("/app/settings/api-mcp")
-    // Lands back on the event's settings page with the account modal open on
-    // the API & MCP tab (`?settings=account&settingsTab=api-mcp`).
-    await expect(page).toHaveURL(/settings=account/)
-    await expect(page).toHaveURL(/settingsTab=api-mcp/)
+    await expect(page).toHaveURL(/\/app\/account\?tab=api-mcp/)
     await expect(page.getByText(/api keys/i).first()).toBeVisible({
       timeout: 15_000,
     })
     watcher.assertClean("/app/settings/api-mcp redirect")
   })
 
-  test("workspace settings modal renders general, team and events tabs", async ({
+  test("workspace settings page renders general, team and events tabs", async ({
     page,
   }) => {
     const watcher = watchConsole(page)
-    // The legacy hub address resolves to a real page with the workspace
-    // MODAL open — General / Team / Events tabs (docs/memory/RULES.md 23).
+    // A standalone PAGE with General / Team / Events tabs — settings surfaces
+    // are pages, dialogs are for atomic actions only (docs/memory/RULES.md 23,
+    // DESIGN-REVAMP 2026-08-12). The bare legacy address still resolves.
     await page.goto("/app/workspace")
     await expect(
       page.getByRole("heading", { name: /workspace settings/i }).first(),

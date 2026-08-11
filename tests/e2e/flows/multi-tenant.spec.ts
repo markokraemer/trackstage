@@ -457,10 +457,10 @@ test.describe("multi-tenancy", () => {
         await expect(switcher).toContainText(/no event yet/i)
       })
 
-      await test.step('the settings modal lists every workspace under "Your workspaces"', async () => {
-        // Workspace settings stays reachable at its own address (the bare
-        // legacy alias resolves to the workspace in context — the empty one)
-        // — it opens as a MODAL over the page now, same heading as ever.
+      await test.step('the settings page lists every workspace under "Your workspaces"', async () => {
+        // Workspace settings is a standalone PAGE at its own address (the
+        // bare legacy alias resolves to the workspace in context — the empty
+        // one). "Your workspaces" lives on the default General tab.
         await gotoStable(page, "/app/workspace")
         await expect(
           page.getByRole("heading", {

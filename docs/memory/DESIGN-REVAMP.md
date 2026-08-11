@@ -202,3 +202,21 @@ The rule, now also in a comment atop `src/components/ui/button.tsx`:
   grey skin that reads as a fourth style (Auto-place was already correct:
   outline + disabled).
 - Marketing pages' hero CTAs are a different context and keep their own rules.
+
+## Settings surfaces are PAGES; dialogs are for atomic actions; never stack dialogs (2026-08-12)
+
+Marko, after hitting modal-on-modal twice in one day (Invite-a-teammate
+stacked over the workspace-settings modal; Connect-a-client stacked over the
+account modal's API tab): "ugly ass overlay… this dialog and modal handling
+all has to be fixed… instead of being a modal just make it a standalone page
+again." The rule:
+
+- **A settings surface — anything with tabs you dwell in — is a PAGE**
+  (`/app/account`, `/app/:ws/workspace`, event settings). Pages can host
+  ordinary dialogs; modals hosting more modals is what broke.
+- **Dialogs are for atomic actions only**: one quick errand, one confirm, one
+  form — Connect-a-client, New event, delete confirms. Open, act, close.
+- **Never a dialog over a dialog.** If a flow inside a card/dialog needs a
+  second surface, swap the content in place instead (the Team table's invite
+  and per-member access editors are in-place card panels with a ← back
+  arrow — one surface at all times).

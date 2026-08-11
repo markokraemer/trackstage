@@ -16,9 +16,18 @@ function EventDetailsPage() {
   if (!event) return null
   return (
     <div className="flex flex-col gap-8">
-      {/* Remount on event switch so the draft never leaks across events. */}
-      <EventDetailsForm key={event._id} event={event} />
-      <EventBrandingCard key={`branding-${event._id}`} eventId={event._id} />
+      {/*
+        The event's IDENTITY comes first, whole: what it is (details) and how
+        it looks (branding) side by side above the fold (Marko, 2026-08-12:
+        "move the branding up … it's also quite important"). On narrower
+        screens branding stacks directly under the details card — never buried
+        below portal behavior.
+      */}
+      <div className="grid items-start gap-8 xl:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
+        {/* Remount on event switch so the draft never leaks across events. */}
+        <EventDetailsForm key={event._id} event={event} />
+        <EventBrandingCard key={`branding-${event._id}`} eventId={event._id} />
+      </div>
       <PortalBehaviorCard key={`portal-${event._id}`} event={event} />
       {/* Who can open this event lives on its own Team tab now. */}
       <DeleteEventCard key={`danger-${event._id}`} event={event} />

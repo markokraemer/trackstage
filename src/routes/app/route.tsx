@@ -76,10 +76,10 @@ export const Route = createFileRoute("/app")({
   beforeLoad: ({ context, location }) => {
     requireAuthed(context.isAuthenticated, location.href)
   },
-  // Account + Workspace settings are MODALS over whatever page is open,
-  // addressed by `?settings=account|workspace` (Linear-style; validated here
-  // at the shell so the keys ride on every organizer URL). The host renders
-  // at the bottom of the layout; src/components/shell/settings-dialogs.tsx.
+  // LEGACY `?settings=account|workspace` keys from the brief modal era —
+  // validated here at the shell so old URLs stay navigable, then rewritten to
+  // the settings PAGES by the host at the bottom of the layout
+  // (src/components/shell/settings-dialogs.tsx).
   validateSearch: settingsModalSearch,
   component: OrganizerLayout,
 })
@@ -381,18 +381,11 @@ function OrganizerLayout() {
                     {session?.email}
                   </span>
                 </DropdownMenuLabel>
-                {/* Opens the account-settings MODAL in place — a real link
-                    (`?settings=account`), so it deep-links and back-buttons. */}
+                {/* Settings surfaces are PAGES (Marko, 2026-08-12) — dialogs
+                    are for atomic actions only, never stacked. */}
                 <DropdownMenuItem
                   nativeButton={false}
-                  render={
-                    <Link
-                      to="."
-                      search={(prev: Record<string, unknown>) =>
-                        ({ ...prev, settings: "account" }) as never
-                      }
-                    />
-                  }
+                  render={<Link to="/app/account" />}
                 >
                   <RiUserSettingsLine aria-hidden />
                   Account settings
@@ -413,14 +406,14 @@ function OrganizerLayout() {
                 <DropdownMenuLabel className="text-muted-foreground">
                   {workspace?.name ?? "Workspace"}
                 </DropdownMenuLabel>
-                {/* Same pattern: the workspace-settings MODAL, in place. */}
                 <DropdownMenuItem
                   nativeButton={false}
                   render={
                     <Link
-                      to="."
-                      search={(prev: Record<string, unknown>) =>
-                        ({ ...prev, settings: "workspace" }) as never
+                      to={
+                        workspace
+                          ? appLink.workspaceHub(workspace.slug)
+                          : appLink.workspaceHubFallback
                       }
                     />
                   }
@@ -522,7 +515,7 @@ function OrganizerLayout() {
       {/* Mounted at the shell so the conversation survives navigation. */}
       <CopilotPanel />
 
-      {/* Account + Workspace settings modals — driven by `?settings=…`. */}
+      {/* Legacy `?settings=` URLs (the brief modal era) → settings pages. */}
       <SettingsDialogsHost />
 
       {/* Every sidebar destination in memory before it is clicked. */}

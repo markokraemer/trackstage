@@ -74,14 +74,17 @@ export function EventBrandingCard({ eventId }: { eventId: Id<"events"> }) {
           event, not ours.
         </CardDescription>
       </CardHeader>
-      <CardContent className="gap-6">
+      {/* Container-query columns, not viewport ones: this card also lives in
+          the Event details tab's side rail, where the viewport is wide but
+          the card is narrow — the slots must stack there. */}
+      <CardContent className="@container gap-6">
         {isPending ? (
-          <div className="grid gap-5 md:grid-cols-2">
+          <div className="grid gap-5 @lg:grid-cols-2">
             <Skeleton className="h-40 rounded-lg" />
             <Skeleton className="h-40 rounded-lg" />
           </div>
         ) : (
-          <div className="grid gap-6 md:grid-cols-2">
+          <div className="grid gap-6 @lg:grid-cols-2">
             <BrandingSlot
               title="Event logo"
               hint="Square works best — 300 × 300 pixels or larger. PNG, JPG or WebP."

@@ -290,3 +290,18 @@ Account | Workspace | Event sibling-tab row on settings pages. New IA:
   optionally from `workspaces.members.emailVerified` (auth work, separate).
 - Switching workspace INSIDE the modal keeps the modal open on the new
   workspace; the sidebar/avatar switchers still navigate plainly.
+
+## REVERSAL — settings modals flipped back to standalone pages (2026-08-12)
+The settings-modal IA above lasted hours: Marko hit dialog-over-dialog twice
+(invite over the workspace modal, Connect-a-client over the account modal) and
+called it — "instead of being a modal just make it a standalone page again."
+Everything the modal era built carries over 1:1 into page shells:
+`/app/account` (Profile / Security / API & MCP, `?tab=`) and
+`/app/:ws/workspace` (General / Team / Events, `?tab=`, `?invite=1&event=`
+deep link) are full pages again; Team stays first-class in both hosts;
+verified dots, per-event access editing and invite pre-scoping unchanged; the
+member table's invite + access editors became IN-PLACE card panels (back
+arrow), so nothing ever stacks — rule recorded in DESIGN-REVAMP.md. Legacy
+`?settings=…` URLs from the modal window rewrite to the pages via the shell
+host (`settings-dialogs.tsx`, now just an interpreter). Also: Branding lifted
+beside Event details (identity block above the fold) on event settings.

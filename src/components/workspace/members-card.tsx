@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react"
+import type { ReactNode } from "react"
 import { useMutation, useQuery } from "@tanstack/react-query"
 import { convexQuery, useConvexMutation } from "@convex-dev/react-query"
 import { api } from "@convex/_generated/api"
@@ -6,6 +7,7 @@ import type { Id } from "@convex/_generated/dataModel"
 import type { FunctionReturnType } from "convex/server"
 import type { OptimisticLocalStore } from "convex/browser"
 import {
+  RiArrowLeftLine,
   RiDeleteBinLine,
   RiPencilLine,
   RiTeamLine,
@@ -22,15 +24,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
-import {
-  Dialog,
-  DialogClose,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -151,6 +144,27 @@ export function MembersCard({
   const canInvite = canManageTeam(myRole)
   const mayChangeRoles = canChangeRoles(myRole)
 
+  /**
+   * Invite + access editing swap the CARD's content in place instead of
+   * opening a dialog (Marko, 2026-08-12: never a dialog over a dialog — and
+   * this card's hosts have included modals). One surface at all times; the
+   * back arrow returns to the table.
+   */
+  const [panel, setPanel] = useState<
+    { kind: "invite" } | { kind: "access"; memberId: string } | null
+  >(null)
+
+  // Deep link (`?invite=1[&event=…]`) — opens the invite panel the same way
+  // the button does.
+  useEffect(() => {
+    if (inviteOpen) setPanel({ kind: "invite" })
+  }, [inviteOpen])
+
+  const closeInvite = () => {
+    setPanel(null)
+    onInviteClosed?.()
+  }
+
   const scopeEventId = scopeEvent?.id
   const rows = useMemo(
     () =>
@@ -175,6 +189,53 @@ export function MembersCard({
   const limited = rows.filter(
     (row) => row.role === "member" && row.eventIds !== undefined,
   ).length
+
+  // ——— In-place panels: ONE surface, never a second dialog ————————————————
+  if (panel?.kind === "invite") {
+    return (
+      <Card>
+        <InviteMemberPanel
+          organizationId={organizationId}
+          workspaceName={workspaceName}
+          events={events}
+          presetEventIds={
+            inviteEventIds ?? (scopeEvent ? [scopeEvent.id] : undefined)
+          }
+          onClose={closeInvite}
+        />
+      </Card>
+    )
+  }
+  const accessMember =
+    panel?.kind === "access"
+      ? rows.find((row) => row._id === panel.memberId)
+      : undefined
+  if (accessMember) {
+    return (
+      <Card>
+        <MemberAccessPanel
+          email={accessMember.email}
+          events={events}
+          eventIds={accessMember.eventIds}
+          onClose={() => setPanel(null)}
+          onSave={(eventIds) =>
+            setAccess
+              .mutateAsync({
+                memberId: accessMember._id,
+                eventIds: eventIds as Array<Id<"events">> | null,
+              })
+              .then(() => {
+                toast.success(
+                  eventIds === null
+                    ? `${accessMember.email} can now reach every event`
+                    : `${accessMember.email} is limited to ${accessSummary(eventIds, events)}`,
+                )
+              })
+          }
+        />
+      </Card>
+    )
+  }
 
   return (
     <Card>
@@ -208,17 +269,15 @@ export function MembersCard({
             : ""}
         </CardDescription>
         <CardAction>
-          <InviteMemberDialog
-            organizationId={organizationId}
-            workspaceName={workspaceName}
-            events={events}
+          <Button
+            type="button"
+            size="sm"
             disabled={!canInvite}
-            requestOpen={inviteOpen}
-            onClosed={onInviteClosed}
-            presetEventIds={
-              inviteEventIds ?? (scopeEvent ? [scopeEvent.id] : undefined)
-            }
-          />
+            onClick={() => setPanel({ kind: "invite" })}
+          >
+            <RiUserAddLine size={15} aria-hidden />
+            Invite teammate
+          </Button>
         </CardAction>
       </CardHeader>
 
@@ -322,21 +381,8 @@ export function MembersCard({
                           eventIds={member.eventIds}
                           events={events}
                           editable={canInvite && member.role === "member"}
-                          onSave={(eventIds) =>
-                            setAccess
-                              .mutateAsync({
-                                memberId: member._id,
-                                eventIds: eventIds as Array<
-                                  Id<"events">
-                                > | null,
-                              })
-                              .then(() => {
-                                toast.success(
-                                  eventIds === null
-                                    ? `${member.email} can now reach every event`
-                                    : `${member.email} is limited to ${accessSummary(eventIds, events)}`,
-                                )
-                              })
+                          onEdit={() =>
+                            setPanel({ kind: "access", memberId: member._id })
                           }
                         />
                       </TableCell>
@@ -446,17 +492,16 @@ function AccessCell({
   eventIds,
   events,
   editable,
-  onSave,
+  onEdit,
 }: {
   email: string
   role: string
   eventIds: Array<string> | undefined
   events: Array<AccessEvent>
   editable: boolean
-  onSave: (eventIds: Array<string> | null) => Promise<unknown>
+  /** Swaps the card to the in-place access panel — never a dialog. */
+  onEdit: () => void
 }) {
-  const [open, setOpen] = useState(false)
-
   if (role === "owner" || role === "admin") {
     return (
       <span className="text-sm text-muted-foreground">
@@ -473,49 +518,72 @@ function AccessCell({
   }
 
   return (
-    <>
-      <Button
-        type="button"
-        variant="ghost"
-        size="sm"
-        className="-ml-2 max-w-full justify-start gap-1.5 font-normal"
-        aria-label={`Change event access for ${email}`}
-        onClick={() => setOpen(true)}
-      >
-        <span className="truncate">{label}</span>
-        <RiPencilLine
-          size={13}
-          aria-hidden
-          className="shrink-0 text-muted-foreground"
-        />
-      </Button>
-
-      <MemberAccessDialog
-        open={open}
-        onOpenChange={setOpen}
-        email={email}
-        events={events}
-        eventIds={eventIds}
-        onSave={onSave}
+    <Button
+      type="button"
+      variant="ghost"
+      size="sm"
+      className="-ml-2 max-w-full justify-start gap-1.5 font-normal"
+      aria-label={`Change event access for ${email}`}
+      onClick={onEdit}
+    >
+      <span className="truncate">{label}</span>
+      <RiPencilLine
+        size={13}
+        aria-hidden
+        className="shrink-0 text-muted-foreground"
       />
-    </>
+    </Button>
   )
 }
 
-function MemberAccessDialog({
-  open,
-  onOpenChange,
+/**
+ * Header both in-place panels share: back arrow ← returns to the table, a
+ * REAL heading (role=heading, which CardTitle's div is not), description
+ * below. The card stays the one and only surface.
+ */
+function PanelHeader({
+  title,
+  onBack,
+  children,
+}: {
+  title: string
+  onBack: () => void
+  children: ReactNode
+}) {
+  return (
+    <CardHeader className="border-b">
+      <div className="flex items-center gap-2">
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon-sm"
+          aria-label="Back to team"
+          onClick={onBack}
+        >
+          <RiArrowLeftLine size={16} aria-hidden />
+        </Button>
+        <h3 className="font-heading text-base leading-none font-medium">
+          {title}
+        </h3>
+      </div>
+      <CardDescription>{children}</CardDescription>
+    </CardHeader>
+  )
+}
+
+/** Per-member event access, edited in place of the table. */
+function MemberAccessPanel({
   email,
   events,
   eventIds,
   onSave,
+  onClose,
 }: {
-  open: boolean
-  onOpenChange: (open: boolean) => void
   email: string
   events: Array<AccessEvent>
   eventIds: Array<string> | undefined
   onSave: (eventIds: Array<string> | null) => Promise<unknown>
+  onClose: () => void
 }) {
   const [value, setValue] = useState<Array<string> | null>(eventIds ?? null)
   const [error, setError] = useState<string | undefined>()
@@ -531,7 +599,7 @@ function MemberAccessDialog({
     setSaving(true)
     try {
       await onSave(value)
-      onOpenChange(false)
+      onClose()
     } catch (caught) {
       setError(errorMessage(caught, "Couldn't change that person's access."))
     } finally {
@@ -540,28 +608,14 @@ function MemberAccessDialog({
   }
 
   return (
-    <Dialog
-      open={open}
-      onOpenChange={(next) => {
-        // Reopening always starts from what the server currently says.
-        if (next) {
-          setValue(eventIds ?? null)
-          setError(undefined)
-        }
-        onOpenChange(next)
-      }}
-    >
-      <DialogContent>
+    <>
+      <PanelHeader title="Event access" onBack={onClose}>
+        Which events <strong className="font-medium">{email}</strong> can open.
+        Events they aren't given simply don't exist for them — not in the event
+        switcher, not by direct link.
+      </PanelHeader>
+      <CardContent>
         <form onSubmit={submit} noValidate className="flex flex-col gap-6">
-          <DialogHeader>
-            <DialogTitle>Event access</DialogTitle>
-            <DialogDescription>
-              Which events <strong className="font-medium">{email}</strong> can
-              open. Events they aren't given simply don't exist for them — not
-              in the event switcher, not by direct link.
-            </DialogDescription>
-          </DialogHeader>
-
           <EventAccessPicker
             idPrefix={`access-${email}`}
             events={events}
@@ -578,40 +632,39 @@ function MemberAccessDialog({
             </p>
           ) : null}
 
-          <DialogFooter>
-            <DialogClose render={<Button type="button" variant="outline" />}>
+          <div className="flex justify-end gap-2">
+            <Button type="button" variant="outline" onClick={onClose}>
               Cancel
-            </DialogClose>
+            </Button>
             <Button type="submit" disabled={saving}>
               {saving ? "Saving…" : "Save access"}
             </Button>
-          </DialogFooter>
+          </div>
         </form>
-      </DialogContent>
-    </Dialog>
+      </CardContent>
+    </>
   )
 }
 
-/** Invite by email — the invite is emailed through Resend on the server. */
-function InviteMemberDialog({
+/**
+ * Invite by email, in place of the table — the invite is emailed through
+ * Resend on the server. Mounts fresh on every open, so the form always starts
+ * reset with the caller's pre-scoped events.
+ */
+function InviteMemberPanel({
   organizationId,
   workspaceName,
   events,
-  disabled,
-  requestOpen,
-  onClosed,
   presetEventIds,
+  onClose,
 }: {
   organizationId: string
   workspaceName: string
   events: Array<AccessEvent>
-  disabled?: boolean
-  /** A deep link asked for this dialog — open it, pre-scoped. */
-  requestOpen?: boolean
-  onClosed?: () => void
+  /** Arriving from an event's Team tab, the scope is already decided. */
   presetEventIds?: Array<string>
+  onClose: () => void
 }) {
-  const [open, setOpen] = useState(false)
   const [email, setEmail] = useState("")
   const [role, setRole] = useState("member")
   const [access, setAccess] = useState<Array<string> | null>(
@@ -622,27 +675,6 @@ function InviteMemberDialog({
   const addMember = useMutation({
     mutationFn: useConvexMutation(api.workspaces.addMember),
   })
-
-  // The deep link opens the dialog the same way a click does — including the
-  // reset — so the two entry points can't drift apart.
-  const presetKey = presetEventIds?.join(",")
-  useEffect(() => {
-    if (!requestOpen) return
-    setEmail("")
-    setRole("member")
-    setAccess(presetEventIds ?? null)
-    setError(undefined)
-    setOpen(true)
-    // presetEventIds is compared by value through presetKey.
-  }, [requestOpen, presetKey])
-
-  function reset() {
-    setEmail("")
-    setRole("member")
-    // Arriving from an event's Team card, the scope is already decided.
-    setAccess(presetEventIds ?? null)
-    setError(undefined)
-  }
 
   async function submit(formEvent: React.FormEvent) {
     formEvent.preventDefault()
@@ -671,9 +703,8 @@ function InviteMemberDialog({
           scoped === null ? "every event" : accessSummary(scoped, events)
         } the moment they sign in.`,
       })
-      reset()
-      setOpen(false)
-      onClosed?.()
+      // Back to the table, where the new row shows as "Invited".
+      onClose()
     } catch (caught) {
       setError(errorMessage(caught, "Couldn't invite that person."))
     }
@@ -681,105 +712,82 @@ function InviteMemberDialog({
 
   return (
     <>
-      <Button
-        type="button"
-        size="sm"
-        disabled={disabled}
-        onClick={() => setOpen(true)}
-      >
-        <RiUserAddLine size={15} aria-hidden />
-        Invite teammate
-      </Button>
+      <PanelHeader title="Invite a teammate" onBack={onClose}>
+        We'll email them an invite. They join {workspaceName} as soon as they
+        sign in with this address.
+      </PanelHeader>
+      <CardContent>
+        <form onSubmit={submit} noValidate className="flex max-w-xl flex-col gap-6">
+          <LabeledField
+            label="Email address"
+            htmlFor="invite-email"
+            required
+            error={error}
+            description="Use the address they'll sign in with."
+          >
+            <Input
+              id="invite-email"
+              type="email"
+              autoComplete="off"
+              value={email}
+              aria-invalid={error ? true : undefined}
+              placeholder="teammate@yourcompany.com"
+              onChange={(changeEvent) => setEmail(changeEvent.target.value)}
+            />
+          </LabeledField>
 
-      <Dialog
-        open={open}
-        onOpenChange={(next) => {
-          if (next) reset()
-          else onClosed?.()
-          setOpen(next)
-        }}
-      >
-        <DialogContent className="max-h-[88svh] overflow-y-auto">
-          <form onSubmit={submit} noValidate className="flex flex-col gap-6">
-            <DialogHeader>
-              <DialogTitle>Invite a teammate</DialogTitle>
-              <DialogDescription>
-                We'll email them an invite. They join {workspaceName} as soon as
-                they sign in with this address.
-              </DialogDescription>
-            </DialogHeader>
-
-            <LabeledField
-              label="Email address"
-              htmlFor="invite-email"
-              required
-              error={error}
-              description="Use the address they'll sign in with."
+          <LabeledField
+            label="Role"
+            htmlFor="invite-role"
+            description={ROLE_HELP[role]}
+          >
+            <Select
+              value={role}
+              onValueChange={(value) => setRole(String(value))}
             >
-              <Input
-                id="invite-email"
-                type="email"
-                autoComplete="off"
-                value={email}
-                aria-invalid={error ? true : undefined}
-                placeholder="teammate@yourcompany.com"
-                onChange={(changeEvent) => setEmail(changeEvent.target.value)}
+              <SelectTrigger id="invite-role" className="h-9 w-full">
+                {/* Base UI hands the trigger the raw value — spell out the
+                    label, otherwise the closed select reads "member". */}
+                <SelectValue>
+                  {(selected) => roleLabel(String(selected))}
+                </SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="admin">Admin</SelectItem>
+                <SelectItem value="member">Member</SelectItem>
+              </SelectContent>
+            </Select>
+          </LabeledField>
+
+          {/* Admins always run the whole workspace, so the picker only
+              appears for the role it can actually apply to. */}
+          {role === "member" ? (
+            <LabeledField
+              label="Event access"
+              description="Events they aren't given stay completely hidden from them."
+            >
+              <EventAccessPicker
+                idPrefix="invite-access"
+                events={events}
+                value={access}
+                onChange={(next) => {
+                  setAccess(next)
+                  setError(undefined)
+                }}
               />
             </LabeledField>
+          ) : null}
 
-            <LabeledField
-              label="Role"
-              htmlFor="invite-role"
-              description={ROLE_HELP[role]}
-            >
-              <Select
-                value={role}
-                onValueChange={(value) => setRole(String(value))}
-              >
-                <SelectTrigger id="invite-role" className="h-9 w-full">
-                  {/* Base UI hands the trigger the raw value — spell out the
-                      label, otherwise the closed select reads "member". */}
-                  <SelectValue>
-                    {(selected) => roleLabel(String(selected))}
-                  </SelectValue>
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="admin">Admin</SelectItem>
-                  <SelectItem value="member">Member</SelectItem>
-                </SelectContent>
-              </Select>
-            </LabeledField>
-
-            {/* Admins always run the whole workspace, so the picker only
-                appears for the role it can actually apply to. */}
-            {role === "member" ? (
-              <LabeledField
-                label="Event access"
-                description="Events they aren't given stay completely hidden from them."
-              >
-                <EventAccessPicker
-                  idPrefix="invite-access"
-                  events={events}
-                  value={access}
-                  onChange={(next) => {
-                    setAccess(next)
-                    setError(undefined)
-                  }}
-                />
-              </LabeledField>
-            ) : null}
-
-            <DialogFooter>
-              <DialogClose render={<Button type="button" variant="outline" />}>
-                Cancel
-              </DialogClose>
-              <Button type="submit" disabled={addMember.isPending}>
-                {addMember.isPending ? "Sending…" : "Send invite"}
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
+          <div className="flex justify-end gap-2">
+            <Button type="button" variant="outline" onClick={onClose}>
+              Cancel
+            </Button>
+            <Button type="submit" disabled={addMember.isPending}>
+              {addMember.isPending ? "Sending…" : "Send invite"}
+            </Button>
+          </div>
+        </form>
+      </CardContent>
     </>
   )
 }
