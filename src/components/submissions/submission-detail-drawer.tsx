@@ -20,8 +20,6 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Switch } from "@/components/ui/switch"
-import { Badge } from "@/components/ui/badge"
-import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Separator } from "@/components/ui/separator"
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field"
 import {
@@ -35,6 +33,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { DrawerShell } from "@/components/shared/drawer-shell"
 import { EmptyState } from "@/components/shared/empty-state"
 import { SubmissionFiles } from "@/components/submissions/submission-files"
+import { ParticipantsEditor } from "@/components/submissions/participants-editor"
 import { StatusPicker } from "@/components/submissions/status-picker"
 import type { StatusChoice } from "@/components/submissions/status-picker"
 import { TagInput } from "@/components/submissions/tag-input"
@@ -72,12 +71,6 @@ const CORE_QUESTION_IDS = new Set([
   "language",
   "tags",
 ])
-
-const ROLE_LABELS: Record<string, string> = {
-  speaker: "Speaker",
-  chairperson: "Chairperson",
-  moderator: "Moderator",
-}
 
 interface Draft {
   title: string
@@ -611,41 +604,12 @@ export function SubmissionDetailDrawer({
             </TabsContent>
 
             <TabsContent value="participants">
-              {speakers.length === 0 ? (
-                <EmptyState
-                  variant="plain"
-                  icon={RiTeamLine}
-                  title="No people on this submission yet"
-                  description="Speakers added through your form appear here with their role. You can add people to a manually created session when you create it."
-                />
-              ) : (
-                <ul className="flex flex-col gap-2">
-                  {speakers.map((person) => (
-                    <li
-                      key={`${person.personId}-${person.role}`}
-                      className="flex items-center gap-3 rounded-lg border border-border bg-background p-3"
-                    >
-                      <Avatar className="size-9">
-                        <AvatarFallback className="text-xs">
-                          {initials(person.name)}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm font-medium text-foreground">
-                          {person.name}
-                        </p>
-                        <p className="truncate text-xs text-muted-foreground">
-                          {person.email}
-                          {person.company ? ` · ${person.company}` : ""}
-                        </p>
-                      </div>
-                      <Badge variant="outline">
-                        {ROLE_LABELS[person.role] ?? person.role}
-                      </Badge>
-                    </li>
-                  ))}
-                </ul>
-              )}
+              {/* Co-speakers stay editable after submission (sbek ABS-11):
+                  add, re-role and remove people on an existing record. */}
+              <ParticipantsEditor
+                submissionId={submission._id}
+                participants={speakers}
+              />
             </TabsContent>
 
             <TabsContent value="evaluations">
@@ -697,10 +661,46 @@ export function SubmissionDetailDrawer({
                                 : " · in progress"}
                             </p>
                           </div>
-                          <span className="font-heading text-lg font-semibold text-foreground">
-                            {formatScore(evaluation.score)}
-                          </span>
+                          {/* Conflict of interest (sbek ABS-12) */}
+                          {evaluation.recusedAt ? (
+                            <span className="shrink-0 rounded-md bg-status-amber-bg px-2 py-0.5 text-xs font-medium text-status-amber-fg">
+                              Recused
+                            </span>
+                          ) : (
+                            <span className="font-heading text-lg font-semibold text-foreground">
+                              {formatScore(evaluation.score)}
+                            </span>
+                          )}
                         </div>
+                        {evaluation.recusedAt ? (
+                          <p className="mt-2 text-sm text-muted-foreground">
+                            {evaluation.recusalReason
+                              ? `Conflict of interest — "${evaluation.recusalReason}"`
+                              : "Declared a conflict of interest. Excluded from the average."}
+                          </p>
+                        ) : null}
+                        {/* Select + free-text answers (sbek ABS-03) */}
+                        {Object.entries(evaluation.values).length > 0 ? (
+                          <dl className="mt-2 space-y-1">
+                            {evaluation.criteria
+                              .filter(
+                                (criterion) => criterion.id in evaluation.values,
+                              )
+                              .map((criterion) => (
+                                <div
+                                  key={criterion.id}
+                                  className="flex gap-2 text-sm"
+                                >
+                                  <dt className="shrink-0 text-muted-foreground">
+                                    {criterion.label}:
+                                  </dt>
+                                  <dd className="min-w-0 whitespace-pre-wrap text-foreground">
+                                    {evaluation.values[criterion.id]}
+                                  </dd>
+                                </div>
+                              ))}
+                          </dl>
+                        ) : null}
                         {evaluation.comment ? (
                           <p className="mt-2 text-sm whitespace-pre-wrap text-muted-foreground">
                             {evaluation.comment}
@@ -798,9 +798,3 @@ function MetaRow({ label, value }: { label: string; value: string }) {
   )
 }
 
-function initials(value: string): string {
-  const parts = value.trim().split(/\s+/).filter(Boolean)
-  if (parts.length === 0) return "?"
-  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase()
-  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
-}

@@ -127,12 +127,20 @@ export function downloadCsv(filename: string, csv: string): void {
   URL.revokeObjectURL(url)
 }
 
-/** "ai-engineer-world-s-fair-submissions-2026-08-11.csv" */
-export function csvFilename(eventName: string): string {
+/**
+ * "ai-engineer-world-s-fair-submissions-2026-08-11.csv".
+ *
+ * `dataset` names what's in the file — the same rows are exported as "scores"
+ * from Evaluation, where the point of the download is the score columns.
+ */
+export function csvFilename(
+  eventName: string,
+  dataset: "submissions" | "scores" = "submissions"
+): string {
   const slug =
     eventName
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, "-")
       .replace(/^-|-$/g, "") || "event"
-  return `${slug}-submissions-${format(new Date(), "yyyy-MM-dd")}.csv`
+  return `${slug}-${dataset}-${format(new Date(), "yyyy-MM-dd")}.csv`
 }

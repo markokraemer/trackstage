@@ -15,6 +15,10 @@ export const TEMPLATE_VARIABLES = [
   "sessionTitle",
   "eventName",
   "portalLink",
+  // Deadline reminders only (convex/crons.ts): the form's close date, already
+  // formatted in the event's timezone, and a link straight back to the form.
+  "closeDate",
+  "formLink",
 ] as const
 
 export type TemplateVariable = (typeof TEMPLATE_VARIABLES)[number]
@@ -60,6 +64,7 @@ export const TEMPLATE_KEYS = [
   "declined",
   "waitlisted",
   "reminder",
+  "deadline_reminder",
 ] as const
 
 export type TemplateKey = (typeof TEMPLATE_KEYS)[number]
@@ -167,6 +172,25 @@ export const DEFAULT_TEMPLATES: TemplateDefinition[] = [
       "The {{eventName}} programme team",
     ].join("\n"),
   },
+  {
+    key: "deadline_reminder",
+    name: "Draft deadline reminder",
+    subject: "Your draft for {{eventName}} closes on {{closeDate}}",
+    body: [
+      "Hi {{firstName}},",
+      "",
+      "You started a submission for {{eventName}} — “{{sessionTitle}}” — but it's still saved as a draft, so our programme committee can't see it yet.",
+      "",
+      "The call for papers closes on {{closeDate}}. Drafts that aren't submitted by then won't be reviewed.",
+      "",
+      "Pick up where you left off and send it in:",
+      "{{formLink}}",
+      "",
+      "It usually takes a couple of minutes — and we'd genuinely like to read it.",
+      "",
+      "— The {{eventName}} programme team",
+    ].join("\n"),
+  },
 ]
 
 const BY_KEY: Record<string, TemplateDefinition> = Object.fromEntries(
@@ -204,4 +228,116 @@ export function emailFromAddress(): string {
   const from = emailFrom()
   const match = from.match(/<([^>]+)>/)
   return (match ? match[1] : from).trim()
+}
+
+// ——— Branding (gap #29) ——————————————————————————————————————————————————
+// Templates are authored as plain text — that is what an organizer can read,
+// edit and reason about. But a bare text email from an unknown address reads
+// like a phishing attempt to a speaker. So the *stored* body stays plain text
+// (and still ships as the text/plain alternative), and this wrapper dresses it
+// at send time: the event's own logo and name at the top, the copy in the
+// middle, one quiet line at the bottom saying who sent it and where to manage
+// it. Table-based with inline styles because that is the only HTML every mail
+// client agrees on.
+
+export type BrandedEmailInput = {
+  /** The rendered subject — used for the preheader/title only. */
+  subject: string
+  /** The rendered body: plain text, or HTML if the composer wrote HTML. */
+  body: string
+  eventName: string
+  /** Public URL of the event logo, when the organizer uploaded one. */
+  logoUrl?: string | null
+  /** The recipient's speaker-portal link, when they have one. */
+  portalLink?: string | null
+}
+
+/** True when a body was authored as HTML rather than plain text. */
+export function looksLikeHtml(body: string): boolean {
+  return /<[a-z][\s\S]*>/i.test(body)
+}
+
+export function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+}
+
+const URL_IN_TEXT = /(https?:\/\/[^\s<>"')]+)/g
+
+/**
+ * Plain text → HTML: escape, turn bare URLs into links, blank lines into
+ * paragraphs and single newlines into `<br>`. Deliberately conservative — no
+ * markdown, no smart quotes, nothing that could rewrite an organizer's copy.
+ */
+function textToHtml(body: string): string {
+  const escaped = escapeHtml(body)
+  const linked = escaped.replace(
+    URL_IN_TEXT,
+    (url) =>
+      `<a href="${url}" style="color:#2f5ce0;text-decoration:underline;">${url}</a>`,
+  )
+  return linked
+    .split(/\n{2,}/)
+    .map(
+      (block) =>
+        `<p style="margin:0 0 16px 0;">${block.replace(/\n/g, "<br />")}</p>`,
+    )
+    .join("")
+}
+
+/**
+ * Wrap a rendered message in the event's branding. Pure and total: with no
+ * logo it falls back to the event name as a wordmark, and with no portal link
+ * the footer simply drops that clause.
+ */
+export function renderBrandedEmail(input: BrandedEmailInput): string {
+  const eventName = escapeHtml(input.eventName || "Trackstage")
+  const content = looksLikeHtml(input.body)
+    ? input.body
+    : textToHtml(input.body)
+
+  const header = input.logoUrl
+    ? `<img src="${escapeHtml(input.logoUrl)}" alt="${eventName}" height="36" style="display:block;max-height:36px;border:0;outline:none;text-decoration:none;" />`
+    : `<span style="font-size:17px;font-weight:600;color:#17171a;letter-spacing:-0.01em;">${eventName}</span>`
+
+  const footerPortal = input.portalLink
+    ? ` · <a href="${escapeHtml(input.portalLink)}" style="color:#64748b;text-decoration:underline;">manage in your speaker portal</a>`
+    : ""
+
+  return `<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>${escapeHtml(input.subject)}</title>
+</head>
+<body style="margin:0;padding:0;background-color:#f4f5f7;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#f4f5f7;padding:24px 12px;">
+<tr>
+<td align="center">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:560px;width:100%;background-color:#ffffff;border:1px solid #e6e6e9;border-radius:12px;overflow:hidden;">
+<tr>
+<td style="padding:20px 28px;border-bottom:1px solid #f0f0f2;">
+${header}
+</td>
+</tr>
+<tr>
+<td style="padding:28px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:15px;line-height:1.6;color:#17171a;">
+${content}
+</td>
+</tr>
+<tr>
+<td style="padding:16px 28px;border-top:1px solid #f0f0f2;background-color:#fafafa;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:12px;line-height:1.5;color:#64748b;">
+Sent via Trackstage for ${eventName}${footerPortal}
+</td>
+</tr>
+</table>
+</td>
+</tr>
+</table>
+</body>
+</html>`
 }

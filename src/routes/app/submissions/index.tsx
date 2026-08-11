@@ -40,6 +40,12 @@ import { DataToolbar } from "@/components/shared/data-toolbar"
 import type { SubmissionStatus } from "@/components/shared/status-pill"
 import { TrackValue } from "@/components/submissions/field-bits"
 import { StatusTabs } from "@/components/submissions/status-tabs"
+import {
+  KindTabs,
+  isSubmissionKind,
+  kindHint,
+} from "@/components/submissions/kind-tabs"
+import type { SubmissionKindValue } from "@/components/submissions/kind-tabs"
 import { QueueBanner } from "@/components/submissions/queue-banner"
 import { BulkBar } from "@/components/submissions/bulk-bar"
 import { SubmissionsTable } from "@/components/submissions/submissions-table"
@@ -80,6 +86,8 @@ const PAGE_SIZE = 25
 
 interface SubmissionsSearch {
   status?: StatusTabValue
+  /** Abstracts vs Sessions (kind-tabs.tsx). Absent ⇒ both. */
+  kind?: Exclude<SubmissionKindValue, "all">
   q?: string
   track?: string
   id?: string
@@ -91,8 +99,13 @@ export const Route = createFileRoute("/app/submissions/")({
       typeof search.status === "string" && isStatusTab(search.status)
         ? search.status
         : undefined
+    const kind =
+      typeof search.kind === "string" && isSubmissionKind(search.kind)
+        ? search.kind
+        : undefined
     return {
       status: status === "all" ? undefined : status,
+      kind: kind === "all" ? undefined : kind,
       q: typeof search.q === "string" && search.q ? search.q : undefined,
       track:
         typeof search.track === "string" && search.track
@@ -109,6 +122,7 @@ function SubmissionsPage() {
   const navigate = Route.useNavigate()
 
   const tab: StatusTabValue = search.status ?? "all"
+  const kind: SubmissionKindValue = search.kind ?? "all"
   const [query, setQuery] = useState(search.q ?? "")
   const [selectedIds, setSelectedIds] = useState<Array<string>>([])
   const [pendingStatus, setPendingStatus] = useState<
@@ -178,11 +192,32 @@ function SubmissionsPage() {
   useEffect(() => {
     setPage(0)
     setSelectedIds([])
-  }, [tab, search.track, query])
+  }, [tab, kind, search.track, query])
 
   // ——— Derived rows ————————————————————————————————————————————————————
-  const filtered = useMemo(() => {
+  // Abstract vs Session counts for the segmented control. Taken from `rows`,
+  // which the server already narrowed to the active status tab and track — so
+  // the numbers describe the view the organizer is actually looking at, the
+  // same way the status counts do.
+  const kindCounts = useMemo(() => {
     const list: Array<SubmissionRow> = rows ?? []
+    const sessions = list.filter((row) => row.kind === "session").length
+    return {
+      all: list.length,
+      session: sessions,
+      abstract: list.length - sessions,
+    }
+  }, [rows])
+
+  const filtered = useMemo(() => {
+    const byKind: Array<SubmissionRow> = (rows ?? []).filter((row) =>
+      kind === "all"
+        ? true
+        : kind === "session"
+          ? row.kind === "session"
+          : row.kind !== "session"
+    )
+    const list = byKind
     const needle = query.trim().toLowerCase()
     const matched = needle
       ? list.filter((row) => {
@@ -212,7 +247,7 @@ function SubmissionsPage() {
       }
       return (a._creationTime - b._creationTime) * direction
     })
-  }, [rows, query, sort, scores])
+  }, [rows, kind, query, sort, scores])
 
   const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))
   const safePage = Math.min(page, pageCount - 1)
@@ -343,10 +378,24 @@ function SubmissionsPage() {
         description="Review what came in, stage your decisions, then send them when you're ready."
       />
 
+      {/*
+        Two levels of filter, outer above inner (kind-tabs.tsx): WHERE a
+        program item came from, then WHERE it is in the pipeline. Both are
+        links, both live in the URL, and they compose.
+      */}
+      <div className="flex flex-col gap-1.5">
+        <KindTabs
+          value={kind}
+          counts={rows ? kindCounts : undefined}
+          search={{ status: search.status, q: search.q, track: search.track }}
+        />
+        <p className="text-sm text-muted-foreground">{kindHint(kind)}</p>
+      </div>
+
       <StatusTabs
         value={tab}
         counts={counts}
-        search={{ q: search.q, track: search.track }}
+        search={{ q: search.q, track: search.track, kind: search.kind }}
       />
 
       {showAcceptBanner ? (
@@ -499,6 +548,44 @@ function SubmissionsPage() {
                 <Button variant="outline" onClick={() => setQuery("")}>
                   Clear search
                 </Button>
+              }
+            />
+          ) : kind !== "all" ? (
+            // The tab isn't empty — this SEGMENT is. Say which, and give a way
+            // back, or the organizer reads it as "my submissions are gone".
+            <EmptyState
+              variant="plain"
+              icon={RiFileList3Line}
+              title={
+                kind === "session"
+                  ? "No sessions here"
+                  : "No abstracts here"
+              }
+              description={kindHint(kind)}
+              action={
+                <Button nativeButton={false}
+                  variant="outline"
+                  render={
+                    <Link
+                      to="/app/submissions"
+                      search={{ status: search.status, track: search.track }}
+                    />
+                  }
+                >
+                  Show all {kindCounts.all}
+                </Button>
+              }
+              secondaryAction={
+                kind === "session" ? (
+                  <Button onClick={() => setAddOpen(true)}>
+                    <RiAddLine aria-hidden />
+                    Add session
+                  </Button>
+                ) : (
+                  <Button nativeButton={false} variant="outline" render={<a href="/app/forms" />}>
+                    Share your form link
+                  </Button>
+                )
               }
             />
           ) : (

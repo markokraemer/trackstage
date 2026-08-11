@@ -70,8 +70,7 @@ export function FileDropZone({
     ? `PNG, JPG or WebP · up to ${formatBytes(maxBytes)}`
     : `PDF, slides, documents or images · up to ${formatBytes(maxBytes)}`
 
-  async function handleFiles(files: FileList | null) {
-    const file = files?.[0]
+  async function handleFile(file: File | undefined) {
     if (!file || disabled || busy) return
     const problem = validateFile(file, { maxBytes, imagesOnly })
     if (problem) {
@@ -106,9 +105,13 @@ export function FileDropZone({
         disabled={disabled || busy}
         aria-label={label ?? defaultLabel}
         onChange={(event) => {
-          const { files } = event.target
+          // Read the File out FIRST. `input.value = ""` empties the very
+          // FileList the event still points at (same object), so clearing
+          // before reading hands `handleFile` nothing and the upload silently
+          // never happens — verified in Chrome.
+          const file = event.target.files?.[0]
           event.target.value = ""
-          void handleFiles(files)
+          void handleFile(file)
         }}
       />
 
@@ -131,7 +134,7 @@ export function FileDropZone({
         onDrop={(event) => {
           event.preventDefault()
           setIsOver(false)
-          void handleFiles(event.dataTransfer.files)
+          void handleFile(event.dataTransfer.files[0])
         }}
         className={cn(
           "flex cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-border bg-muted/30 text-center transition-colors outline-none",

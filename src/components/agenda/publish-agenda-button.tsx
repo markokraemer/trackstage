@@ -9,6 +9,7 @@
  */
 
 import * as React from "react"
+import { useNavigate } from "@tanstack/react-router"
 import { useConvexMutation } from "@convex-dev/react-query"
 import { api } from "@convex/_generated/api"
 import type { Id } from "@convex/_generated/dataModel"
@@ -52,6 +53,7 @@ export function PublishAgendaButton({
 }: PublishAgendaButtonProps) {
   const [open, setOpen] = React.useState(false)
   const [pending, setPending] = React.useState(false)
+  const navigate = useNavigate()
   const publish = useConvexMutation(api.agenda.publishAgenda)
   const unpublish = useConvexMutation(api.agenda.unpublishAgenda)
   const published = agendaPublishedAt !== null
@@ -67,8 +69,16 @@ export function PublishAgendaButton({
         })
       } else {
         const result = await publish({ eventId })
+        // Publishing is only half the job — the next thing an organizer wants
+        // is this agenda on their own website. Say so, and hand them the door.
         toast.success("Schedule published", {
-          description: `${result.sessionCount} session${result.sessionCount === 1 ? " is" : "s are"} now live at /e/${eventSlug}.`,
+          description: `${result.sessionCount} session${result.sessionCount === 1 ? " is" : "s are"} now live at /e/${eventSlug}. Put it on your own site from Embeds.`,
+          action: {
+            label: "Get embed code",
+            onClick: () => {
+              void navigate({ to: "/app/embeds" })
+            },
+          },
         })
       }
       setOpen(false)

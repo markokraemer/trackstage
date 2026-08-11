@@ -69,8 +69,20 @@ async function insertTasks(
     instructions?: string
     kind: string
     dueAt?: number
+    /** Bind the task (and everything uploaded into it) to one session. */
+    submissionId?: Id<"submissions">
   },
 ): Promise<number> {
+  // A task can only point at a session of this event — otherwise a stale id
+  // from a switched event would file uploads under someone else's programme.
+  let submissionId: Id<"submissions"> | undefined
+  if (args.submissionId) {
+    const submission = await ctx.db.get(args.submissionId)
+    if (!submission || submission.eventId !== args.eventId) {
+      throw new Error("That session doesn't belong to this event.")
+    }
+    submissionId = submission._id
+  }
   let created = 0
   for (const personId of args.personIds) {
     const person = await ctx.db.get(personId)
@@ -81,6 +93,7 @@ async function insertTasks(
       title: args.title,
       instructions: args.instructions,
       kind: args.kind,
+      submissionId,
       dueAt: args.dueAt,
     })
     created++
@@ -96,6 +109,8 @@ export const create = mutation({
     instructions: v.optional(v.string()),
     kind: v.string(), // profile | headshot | upload | form | confirm
     dueAt: v.optional(v.number()),
+    /** Optional: the session this task is about (files land on its Files tab). */
+    submissionId: v.optional(v.id("submissions")),
     /** Also keep this wording in the event's task library for next time. */
     saveAsTemplate: v.optional(v.boolean()),
   },
@@ -115,6 +130,7 @@ export const create = mutation({
       instructions,
       kind: args.kind,
       dueAt: args.dueAt,
+      submissionId: args.submissionId,
     })
 
     // Saving to the library is idempotent on the title: ticking the box twice
@@ -241,6 +257,8 @@ export const assignFromTemplate = mutation({
     templateId: v.id("taskTemplates"),
     personIds: v.array(v.id("people")),
     dueAt: v.optional(v.number()),
+    /** Optional: the session this task is about. */
+    submissionId: v.optional(v.id("submissions")),
   },
   handler: async (ctx, args) => {
     const template = await ctx.db.get(args.templateId)
@@ -256,6 +274,7 @@ export const assignFromTemplate = mutation({
       instructions: template.instructions,
       kind: template.kind,
       dueAt: args.dueAt,
+      submissionId: args.submissionId,
     })
     return { created }
   },
@@ -304,13 +323,23 @@ export const listUploads = query({
   args: {
     eventId: v.id("events"),
     approvalStatus: v.optional(v.string()),
+    /** Only this speaker's files — the Files section of their profile drawer. */
+    personId: v.optional(v.id("people")),
   },
   handler: async (ctx, args) => {
     await requireEventAccess(ctx, args.eventId)
-    let uploads = await ctx.db
-      .query("uploads")
-      .withIndex("by_eventId", (q) => q.eq("eventId", args.eventId))
-      .collect()
+    const personId = args.personId
+    let uploads = personId
+      ? (
+          await ctx.db
+            .query("uploads")
+            .withIndex("by_personId", (q) => q.eq("personId", personId))
+            .collect()
+        ).filter((u) => u.eventId === args.eventId)
+      : await ctx.db
+          .query("uploads")
+          .withIndex("by_eventId", (q) => q.eq("eventId", args.eventId))
+          .collect()
     if (args.approvalStatus) {
       uploads = uploads.filter((u) => u.approvalStatus === args.approvalStatus)
     }
@@ -321,11 +350,15 @@ export const listUploads = query({
     return await Promise.all(
       files.map(async (file, index) => {
         const row = rows[index]
-        const [person, submission, comments] = await Promise.all([
+        const [person, task, comments] = await Promise.all([
           ctx.db.get(row.personId),
-          row.submissionId ? ctx.db.get(row.submissionId) : null,
+          row.taskId ? ctx.db.get(row.taskId) : null,
           threadFor(ctx, row._id),
         ])
+        // A file belongs to a session either directly, or through the task it
+        // was uploaded into ("Upload the slides for THIS talk").
+        const submissionId = row.submissionId ?? task?.submissionId
+        const submission = submissionId ? await ctx.db.get(submissionId) : null
         return {
           ...file,
           person: person
@@ -334,9 +367,16 @@ export const listUploads = query({
                 name:
                   `${person.firstName} ${person.lastName}`.trim() ||
                   person.email,
+                email: person.email,
               }
             : null,
+          submissionId: submission?._id,
           submissionTitle: submission?.title,
+          // What the speaker was asked to do, so the library can be filtered
+          // down to "everything that came in against a slides request".
+          task: task
+            ? { id: task._id, title: task.title, kind: task.kind }
+            : null,
           // The files library's `Comments` / `Last Comment At` columns.
           commentCount: comments.length,
           lastCommentAt:

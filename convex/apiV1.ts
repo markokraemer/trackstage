@@ -236,6 +236,10 @@ async function speakerShape(
     linkedin_url: person.links?.linkedin ?? null,
     twitter_url: person.links?.twitter ?? null,
     workflow_status: person.workflowStatus ?? null,
+    // The per-participant eye toggle (sbek CNT-12). Absent ⇒ visible, exactly
+    // like convex/publicData.ts. Reported truthfully on this organizer surface
+    // so an integration can honour an embargo instead of announcing it.
+    is_public: person.publicVisible !== false,
     created_at: iso(person._creationTime),
     updated_at: iso(updatedAtMs(person)),
     participant_role: role
@@ -266,6 +270,12 @@ type SessionShapeOptions = {
   tracks: Map<Id<"tracks">, Doc<"tracks">>
   /** `expand` values from the request, e.g. ["files"]. */
   expand: Set<string>
+  /**
+   * Drop participants the organizer has hidden, the way convex/publicData.ts
+   * does. Set only on the public-programme reads — an organizer listing every
+   * session still sees every speaker, each carrying its own `is_public`.
+   */
+  publicSpeakersOnly?: boolean
 }
 
 /**
@@ -290,6 +300,7 @@ async function sessionShape(
   for (const participant of participants) {
     const person = await ctx.db.get(participant.personId)
     if (!person) continue
+    if (opts.publicSpeakersOnly && person.publicVisible === false) continue
     const shaped = await speakerShape(ctx, person, participant.role)
     all.push(shaped)
     if (participant.role === "chairperson") chairpersons.push(shaped)
@@ -319,7 +330,15 @@ async function sessionShape(
     // Their composition/abstract discriminator maps exactly onto our `kind`.
     is_abstract: submission.kind === "abstract",
     kind: submission.kind,
-    is_public: submission.status === "accepted",
+    // Truthfully "does this session appear on the public programme": accepted
+    // AND not hidden by the organizer's Display Session checkbox. Reporting it
+    // as public while every web surface hides it (convex/publicData.ts) is how
+    // an embargoed keynote leaks through the integration path.
+    is_public:
+      submission.status === "accepted" && submission.publicVisible !== false,
+    // The checkbox on its own, so a client can tell "not announced yet" from
+    // "not accepted" without guessing.
+    public_visible: submission.publicVisible !== false,
     starts_at: iso(submission.startsAt),
     ends_at: iso(endsAtMs),
     duration_minutes: submission.durationMinutes ?? null,
@@ -508,6 +527,12 @@ type SessionFilters = {
   updatedBefore?: number
   updatedAfter?: number
   includeDeleted?: boolean
+  /**
+   * `true` ⇒ only rows the public may see (the organizer's Display Session
+   * checkbox is on); `false` ⇒ only the hidden ones, which is how an organizer
+   * audits what is currently embargoed. Undefined ⇒ everything, flagged.
+   */
+  publicOnly?: boolean
 }
 
 function matchesFilters(
@@ -515,6 +540,11 @@ function matchesFilters(
   filters: SessionFilters,
 ): boolean {
   if (!filters.includeDeleted && submission.deletedAt !== undefined) return false
+  if (
+    filters.publicOnly !== undefined &&
+    (submission.publicVisible !== false) !== filters.publicOnly
+  )
+    return false
   if (filters.status && submission.status !== filters.status) return false
   if (
     filters.isAbstract !== undefined &&
@@ -549,6 +579,7 @@ const filtersValidator = v.object({
   updatedBefore: v.optional(v.number()),
   updatedAfter: v.optional(v.number()),
   includeDeleted: v.optional(v.boolean()),
+  publicOnly: v.optional(v.boolean()),
 })
 
 // ══════════════════════════════════════════════════════════════════════════
@@ -642,6 +673,9 @@ export const searchSessions = internalQuery({
           rooms: maps.rooms,
           tracks: maps.tracks,
           expand,
+          // Asking for the public programme means asking for it as the public
+          // sees it — hidden speakers drop out of the line-up too.
+          publicSpeakersOnly: args.filters.publicOnly === true,
         }),
       )
     }
@@ -732,6 +766,7 @@ type SessionWriteInput = {
   title?: string
   description?: string
   status?: string
+  is_public?: boolean
   is_abstract?: boolean
   starts_at?: number
   ends_at?: number
@@ -763,6 +798,7 @@ const writeInputValidator = v.object({
   title: v.optional(v.string()),
   description: v.optional(v.string()),
   status: v.optional(v.string()),
+  is_public: v.optional(v.boolean()),
   is_abstract: v.optional(v.boolean()),
   starts_at: v.optional(v.number()),
   ends_at: v.optional(v.number()),
@@ -802,6 +838,9 @@ async function applySessionWrite(
       )
     patch.status = input.status
   }
+  // Sessionboard's "Display Session" checkbox. Writable so an integration can
+  // stage an embargoed keynote and lift the embargo on announcement day.
+  if (input.is_public !== undefined) patch.publicVisible = input.is_public
   if (input.is_abstract !== undefined && !existing)
     patch.kind = input.is_abstract ? "abstract" : "session"
   if (input.starts_at !== undefined) patch.startsAt = input.starts_at
@@ -883,6 +922,7 @@ async function applySessionWrite(
     language: patch.language as string | undefined,
     tags: (patch.tags as Array<string> | undefined) ?? [],
     status: (patch.status as string | undefined) ?? "pending",
+    publicVisible: patch.publicVisible as boolean | undefined,
     submitterId: submitter._id,
     roomId: patch.roomId as Id<"rooms"> | undefined,
     startsAt: patch.startsAt as number | undefined,
@@ -1140,6 +1180,8 @@ export const searchSpeakers = internalQuery({
     userId: v.union(v.string(), v.null()),
     search: v.optional(v.string()),
     workflowStatus: v.optional(v.string()),
+    /** `?public=true|false` — see SessionFilters.publicOnly. */
+    publicOnly: v.optional(v.boolean()),
     sortDir: v.optional(v.string()),
     ...pagingArgs,
   },
@@ -1155,6 +1197,11 @@ export const searchSpeakers = internalQuery({
 
     const needle = args.search?.toLowerCase()
     const filtered = people.filter((person) => {
+      if (
+        args.publicOnly !== undefined &&
+        (person.publicVisible !== false) !== args.publicOnly
+      )
+        return false
       if (args.workflowStatus && person.workflowStatus !== args.workflowStatus)
         return false
       if (!needle) return true
@@ -1256,6 +1303,8 @@ export const writeSpeaker = internalMutation({
       linkedin_url: v.optional(v.string()),
       twitter_url: v.optional(v.string()),
       workflow_status: v.optional(v.string()),
+      /** The per-participant eye toggle — `false` embargoes this speaker. */
+      is_public: v.optional(v.boolean()),
     }),
   },
   returns: v.any(),
@@ -1285,6 +1334,7 @@ export const writeSpeaker = internalMutation({
       if (input.salutation !== undefined) patch.salutation = input.salutation
       if (input.workflow_status !== undefined)
         patch.workflowStatus = input.workflow_status
+      if (input.is_public !== undefined) patch.publicVisible = input.is_public
       if (Object.keys(links).length > 0)
         patch.links = { ...(person.links ?? {}), ...links }
       await ctx.db.patch(person._id, patch)
@@ -1325,6 +1375,7 @@ export const writeSpeaker = internalMutation({
       links: Object.keys(links).length > 0 ? links : undefined,
       portalToken: crypto.randomUUID().replace(/-/g, ""),
       workflowStatus: input.workflow_status ?? "invited",
+      publicVisible: input.is_public,
       updatedAt: Date.now(),
     })
     const person = await ctx.db.get(personId)
@@ -2075,10 +2126,17 @@ export const agendaSnapshot = internalQuery({
           duration_minutes: s.durationMinutes ?? null,
           room_id: s.roomId ?? null,
           track_id: s.trackId ?? null,
+          // On the organizer's agenda a hidden session is still a real slot —
+          // it just isn't announced. Flagged, never dropped.
+          is_public: s.publicVisible !== false,
         })),
       unscheduled: live
         .filter((s) => s.startsAt === undefined)
-        .map((s) => ({ id: s._id, title: s.title })),
+        .map((s) => ({
+          id: s._id,
+          title: s.title,
+          is_public: s.publicVisible !== false,
+        })),
       conflicts,
       totals: {
         scheduled: live.filter((s) => s.startsAt !== undefined).length,

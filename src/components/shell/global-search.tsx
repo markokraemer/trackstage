@@ -7,6 +7,7 @@ import {
   RiAddLine,
   RiArrowRightUpLine,
   RiCalendarScheduleLine,
+  RiCodeSSlashLine,
   RiCornerDownLeftLine,
   RiFileList3Line,
   RiMailSendLine,
@@ -114,6 +115,14 @@ const QUICK_ACTIONS: Array<QuickAction> = [
     keywords: "score reviewers plans rounds judges",
     icon: RiStarLine,
     run: ({ go }) => go("/app/evaluation"),
+  },
+  {
+    id: "embeds",
+    label: "Get embed code",
+    keywords:
+      "embed embeds widget iframe html snippet website wordpress webflow squarespace wix api json ics feed publish agenda to my site",
+    icon: RiCodeSSlashLine,
+    run: ({ go }) => go("/app/embeds"),
   },
   {
     id: "communications",

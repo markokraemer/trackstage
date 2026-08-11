@@ -1,4 +1,10 @@
-import { differenceInCalendarDays, format, isValid, parseISO } from "date-fns"
+import {
+  differenceInCalendarDays,
+  format,
+  formatDistanceToNow,
+  isValid,
+  parseISO,
+} from "date-fns"
 
 /** "Ada Lovelace" → "AL"; "ada@x.com" → "AD". */
 export function initialsOf(value: string): string {
@@ -67,4 +73,13 @@ export function dueLabel(now: number, dueAt?: number): string | undefined {
 export function closesLabel(closeAt?: number): string | undefined {
   if (!closeAt) return undefined
   return `Closes ${format(new Date(closeAt), "MMM d, yyyy")}`
+}
+
+/**
+ * "3 minutes ago" / "2 days ago" — how recent something is, which is the only
+ * thing an organizer scanning a list of uploads actually wants to know. The
+ * exact timestamp goes in a `title` tooltip next to it.
+ */
+export function relativeTime(at: number): string {
+  return formatDistanceToNow(new Date(at), { addSuffix: true })
 }

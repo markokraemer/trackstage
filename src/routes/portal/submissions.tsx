@@ -49,7 +49,7 @@ function PortalSubmissionsPage() {
         <p className="mt-1 text-sm text-muted-foreground">
           {total === 0
             ? "Talks you submit to this event show up here."
-            : "Your talks and their current status. You can update the wording at any time — even once a talk has been accepted."}
+            : "Your talks and their current status. Open one to read it in full — and to edit it, for as long as this event allows changes."}
         </p>
       </div>
 

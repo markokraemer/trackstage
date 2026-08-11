@@ -96,3 +96,23 @@ Format: date · decision · why · status.
   the workers.dev fallback and on localhost. `trustedOrigins` now lists SITE_URL +
   trackstage.app + the workers.dev URL + localhost, with `EXTRA_TRUSTED_ORIGINS`
   (comma-separated deployment env var) for preview origins — no code change to add one. ✅
+- **2026-08-11 · Staged queues are the ONE status the speaker portal does not mirror** —
+  AGENTS.md says statuses use identical wording in both UIs, and that rule stands for
+  every committed status. But `accept_queue`/`decline_queue` exist precisely so the
+  organizer can stage a decision that has not been announced; showing "Decline Queue" to
+  the speaker before the commit email destroys the feature. `convex/portal.ts` maps both
+  to `pending` in ONE place (`submissionSummary`), so the portal card, the drawer pill and
+  every future speaker surface agree, and no organizer surface changes. ✅
+- **2026-08-11 · One server-side verdict decides whether a speaker may edit** — the portal
+  used to re-derive "can I edit?" in three places (`portal-utils.canEdit` on status, the
+  drawer on the event switch, the mutation on both) and knew nothing about the CFP's close
+  date. `portal.ts::editLockFor` now returns `{code, title, message} | null`; the mutation
+  throws `message`, the payload ships the object, the UI only picks an icon and a tone. A
+  save can no longer fail with a rule the screen never showed. Accepted talks are exempt
+  from the close date — swyx's clarification was about acceptance-locking, not deadlines. ✅
+- **2026-08-11 · Public-semantics API endpoints filter; organizer endpoints flag** — a
+  hidden session must vanish from the published-programme reads (`GET /sessions` with no
+  filter, `schedule.ics`) exactly as it does from `/e/{slug}`, but must stay VISIBLE and
+  honestly labelled `is_public: false` on the organizer's own reads. Hardcoding
+  `is_public: status === "accepted"` broke both halves at once. The same rule applies per
+  speaker via their eye toggle, and `?public=true|false` makes either view explicit. ✅

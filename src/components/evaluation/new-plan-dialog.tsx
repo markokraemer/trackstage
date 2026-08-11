@@ -38,6 +38,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
+import { Textarea } from "@/components/ui/textarea"
 import {
   statusLabel,
   StatusPill,
@@ -52,17 +53,52 @@ import { DatePickerField } from "@/components/evaluation/date-picker-field"
  * checkboxes, a calendar — never a raw text box for structured data.
  */
 
+type CriterionKind = "numeric" | "select" | "text"
+
 interface CriterionDraft {
   key: string
   label: string
+  type: CriterionKind
+  /** Choices for a "select" criterion, one per line in the editor. */
+  options: Array<string>
+  /** How much a 1–5 rating counts in the average (sbek ABS-04). */
+  weight: number
 }
 
-const DEFAULT_CRITERIA: Array<CriterionDraft> = [
-  { key: "c1", label: "Overall" },
-  { key: "c2", label: "Relevance" },
+const CRITERION_KINDS: Array<{
+  value: CriterionKind
+  label: string
+  hint: string
+}> = [
+  { value: "numeric", label: "Rating 1–5", hint: "Averaged into the score" },
+  { value: "select", label: "Choice", hint: "Pick one of your options" },
+  { value: "text", label: "Free text", hint: "Optional written answer" },
 ]
 
-let criterionSeq = 2
+function kindLabel(value: string): string {
+  return CRITERION_KINDS.find((kind) => kind.value === value)?.label ?? value
+}
+
+/**
+ * The scorecard every programme committee actually uses: a recommendation, a
+ * couple of ratings, and a box for anything else. Organizers edit it in place
+ * — the point is that a real rubric is one click from ready, not that these
+ * exact rows are special.
+ */
+const DEFAULT_CRITERIA: Array<CriterionDraft> = [
+  {
+    key: "c1",
+    label: "Recommendation",
+    type: "select",
+    options: ["Accept", "Maybe", "Reject"],
+    weight: 1,
+  },
+  { key: "c2", label: "Originality", type: "numeric", options: [], weight: 1 },
+  { key: "c3", label: "Relevance", type: "numeric", options: [], weight: 1 },
+  { key: "c4", label: "Comments", type: "text", options: [], weight: 1 },
+]
+
+let criterionSeq = 4
 function nextCriterionKey(): string {
   criterionSeq += 1
   return `c${criterionSeq}`
@@ -116,6 +152,7 @@ export function NewPlanDialog({
   const [selected, setSelected] = useState<Array<string>>([])
   const [emails, setEmails] = useState<Array<string>>([])
   const [emailDraft, setEmailDraft] = useState("")
+  const [opensDate, setOpensDate] = useState<Date | undefined>(undefined)
   const [dueDate, setDueDate] = useState<Date | undefined>(undefined)
   const [blind, setBlind] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -138,6 +175,7 @@ export function NewPlanDialog({
     setSelected([])
     setEmails([])
     setEmailDraft("")
+    setOpensDate(undefined)
     setDueDate(undefined)
     setBlind(false)
     setError(null)
@@ -223,6 +261,23 @@ export function NewPlanDialog({
       setError("Add at least one thing for evaluators to score.")
       return
     }
+    if (!labelled.some((c) => c.type === "numeric")) {
+      setError(
+        "Add at least one 1–5 rating so submissions can be ranked by score.",
+      )
+      return
+    }
+    const badChoice = labelled.find(
+      (c) =>
+        c.type === "select" &&
+        c.options.filter((option) => option.trim()).length < 2,
+    )
+    if (badChoice) {
+      setError(
+        `"${badChoice.label.trim()}" is a choice — give it at least two options, one per line.`,
+      )
+      return
+    }
     if (selected.length === 0) {
       setError("Pick at least one submission for evaluators to review.")
       return
@@ -240,8 +295,16 @@ export function NewPlanDialog({
     ]
 
     const seen = new Set<string>()
+    // A round opens at the start of its first day and closes at the end of its
+    // last — an organizer picking "Sep 25" means all of Sep 25.
+    const opens = opensDate ? new Date(opensDate) : undefined
+    if (opens) opens.setHours(0, 0, 0, 0)
     const due = dueDate ? new Date(dueDate) : undefined
     if (due) due.setHours(23, 59, 0, 0)
+    if (opens && due && opens.getTime() > due.getTime()) {
+      setError("The round can't close before it opens.")
+      return
+    }
 
     createPlan.mutate(
       {
@@ -251,9 +314,21 @@ export function NewPlanDialog({
         criteria: labelled.map((criterion, index) => ({
           id: criterionId(criterion.label, index, seen),
           label: criterion.label.trim(),
+          type: criterion.type,
+          options:
+            criterion.type === "select"
+              ? criterion.options
+                  .map((option) => option.trim())
+                  .filter(Boolean)
+              : undefined,
+          weight:
+            criterion.type === "numeric" && criterion.weight !== 1
+              ? criterion.weight
+              : undefined,
         })),
         submissionIds: selected as Array<Id<"submissions">>,
         evaluatorEmails,
+        opensAt: opens ? opens.getTime() : undefined,
         dueAt: due ? due.getTime() : undefined,
         blind,
       },
@@ -335,39 +410,160 @@ export function NewPlanDialog({
                 <span className="required-asterisk">*</span>
               </FieldLabel>
               <FieldDescription>
-                Each line becomes a 1–5 rating on the evaluator's screen.
+                Each row is one question on the evaluator's scorecard. Ratings
+                are averaged into the score; choices and free text are recorded
+                but never averaged.
               </FieldDescription>
               <div className="space-y-2">
                 {criteria.map((criterion, index) => (
-                  <div key={criterion.key} className="flex items-center gap-2">
-                    <Input
-                      value={criterion.label}
-                      aria-label={`Scoring criterion ${index + 1}`}
-                      placeholder="e.g. Speaker experience"
-                      onChange={(event) =>
-                        setCriteria((current) =>
-                          current.map((item) =>
-                            item.key === criterion.key
-                              ? { ...item, label: event.target.value }
-                              : item,
-                          ),
-                        )
-                      }
-                    />
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon-sm"
-                      aria-label={`Remove criterion ${criterion.label || index + 1}`}
-                      disabled={criteria.length === 1}
-                      onClick={() =>
-                        setCriteria((current) =>
-                          current.filter((item) => item.key !== criterion.key),
-                        )
-                      }
-                    >
-                      <RiDeleteBinLine aria-hidden />
-                    </Button>
+                  <div
+                    key={criterion.key}
+                    className="rounded-lg border border-border p-2.5"
+                  >
+                    <div className="flex items-center gap-2">
+                      <Input
+                        value={criterion.label}
+                        aria-label={`Scoring criterion ${index + 1}`}
+                        placeholder="e.g. Speaker experience"
+                        onChange={(event) =>
+                          setCriteria((current) =>
+                            current.map((item) =>
+                              item.key === criterion.key
+                                ? { ...item, label: event.target.value }
+                                : item,
+                            ),
+                          )
+                        }
+                      />
+                      <Select
+                        value={criterion.type}
+                        onValueChange={(value) =>
+                          setCriteria((current) =>
+                            current.map((item) =>
+                              item.key === criterion.key
+                                ? {
+                                    ...item,
+                                    type: String(value) as CriterionKind,
+                                    // Give a fresh choice something to pick.
+                                    options:
+                                      value === "select" &&
+                                      item.options.length === 0
+                                        ? ["Accept", "Maybe", "Reject"]
+                                        : item.options,
+                                  }
+                                : item,
+                            ),
+                          )
+                        }
+                      >
+                        <SelectTrigger
+                          aria-label={`Answer type for criterion ${index + 1}`}
+                          className="w-36 shrink-0"
+                        >
+                          <SelectValue>
+                            {(value: string) => kindLabel(value)}
+                          </SelectValue>
+                        </SelectTrigger>
+                        <SelectContent>
+                          {CRITERION_KINDS.map((kind) => (
+                            <SelectItem key={kind.value} value={kind.value}>
+                              {kind.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon-sm"
+                        aria-label={`Remove criterion ${criterion.label || index + 1}`}
+                        disabled={criteria.length === 1}
+                        onClick={() =>
+                          setCriteria((current) =>
+                            current.filter(
+                              (item) => item.key !== criterion.key,
+                            ),
+                          )
+                        }
+                      >
+                        <RiDeleteBinLine aria-hidden />
+                      </Button>
+                    </div>
+
+                    {criterion.type === "select" ? (
+                      <div className="mt-2 pl-0.5">
+                        <label
+                          htmlFor={`criterion-options-${criterion.key}`}
+                          className="text-xs font-medium text-muted-foreground"
+                        >
+                          Options — one per line
+                        </label>
+                        <Textarea
+                          id={`criterion-options-${criterion.key}`}
+                          rows={3}
+                          className="mt-1"
+                          value={criterion.options.join("\n")}
+                          placeholder={"Accept\nMaybe\nReject"}
+                          onChange={(event) =>
+                            setCriteria((current) =>
+                              current.map((item) =>
+                                item.key === criterion.key
+                                  ? {
+                                      ...item,
+                                      options: event.target.value.split("\n"),
+                                    }
+                                  : item,
+                              ),
+                            )
+                          }
+                        />
+                      </div>
+                    ) : null}
+
+                    {criterion.type === "numeric" ? (
+                      <div className="mt-2 flex items-center gap-2 pl-0.5">
+                        <label
+                          htmlFor={`criterion-weight-${criterion.key}`}
+                          className="text-xs font-medium text-muted-foreground"
+                        >
+                          Counts
+                        </label>
+                        <Input
+                          id={`criterion-weight-${criterion.key}`}
+                          type="number"
+                          min={1}
+                          max={100}
+                          step={1}
+                          className="h-8 w-20"
+                          value={String(criterion.weight)}
+                          aria-label={`Weight for criterion ${index + 1}`}
+                          onChange={(event) =>
+                            setCriteria((current) =>
+                              current.map((item) =>
+                                item.key === criterion.key
+                                  ? {
+                                      ...item,
+                                      weight:
+                                        Math.max(
+                                          1,
+                                          Math.min(
+                                            100,
+                                            Math.round(
+                                              Number(event.target.value) || 1,
+                                            ),
+                                          ),
+                                        ),
+                                    }
+                                  : item,
+                              ),
+                            )
+                          }
+                        />
+                        <span className="text-xs text-muted-foreground">
+                          × in the average
+                        </span>
+                      </div>
+                    ) : null}
                   </div>
                 ))}
                 <Button
@@ -377,7 +573,13 @@ export function NewPlanDialog({
                   onClick={() =>
                     setCriteria((current) => [
                       ...current,
-                      { key: nextCriterionKey(), label: "" },
+                      {
+                        key: nextCriterionKey(),
+                        label: "",
+                        type: "numeric",
+                        options: [],
+                        weight: 1,
+                      },
                     ])
                   }
                 >
@@ -586,20 +788,40 @@ export function NewPlanDialog({
               ) : null}
             </Field>
 
-            {/* Due date */}
+            {/* Review window (sbek ABS-01) */}
             <Field>
-              <FieldLabel htmlFor="plan-due">Due date</FieldLabel>
+              <FieldLabel htmlFor="plan-opens">Review window</FieldLabel>
               <FieldDescription>
-                Shown to evaluators on their review page. Optional.
+                Both optional. Before the opening date the review links work but
+                politely hold the queue back; the due date is shown to
+                evaluators and flags the round as overdue for you.
               </FieldDescription>
-              <DatePickerField
-                id="plan-due"
-                value={dueDate}
-                onChange={setDueDate}
-                placeholder="No due date"
-                aria-label="Plan due date"
-                className="max-w-xs"
-              />
+              <div className="grid gap-3 sm:grid-cols-2 sm:max-w-xl">
+                <div className="space-y-1.5">
+                  <span className="text-xs font-medium text-muted-foreground">
+                    Opens
+                  </span>
+                  <DatePickerField
+                    id="plan-opens"
+                    value={opensDate}
+                    onChange={setOpensDate}
+                    placeholder="Open right away"
+                    aria-label="Review window opens"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <span className="text-xs font-medium text-muted-foreground">
+                    Due
+                  </span>
+                  <DatePickerField
+                    id="plan-due"
+                    value={dueDate}
+                    onChange={setDueDate}
+                    placeholder="No due date"
+                    aria-label="Review window due date"
+                  />
+                </div>
+              </div>
             </Field>
 
             {/* Blind review (sbek ABS-07) */}

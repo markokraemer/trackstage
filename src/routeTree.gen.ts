@@ -41,6 +41,7 @@ import { Route as AppEmbedsIndexRouteImport } from './routes/app/embeds/index'
 import { Route as AppEvaluationIndexRouteImport } from './routes/app/evaluation/index'
 import { Route as AppEvaluationPlanIdRouteImport } from './routes/app/evaluation/$planId'
 import { Route as AppEventsIndexRouteImport } from './routes/app/events/index'
+import { Route as AppFilesIndexRouteImport } from './routes/app/files/index'
 import { Route as AppFormsIndexRouteImport } from './routes/app/forms/index'
 import { Route as AppFormsFormIdRouteImport } from './routes/app/forms/$formId'
 import { Route as AppFormsNewRouteImport } from './routes/app/forms/new'
@@ -231,6 +232,11 @@ const AppEvaluationPlanIdRoute = AppEvaluationPlanIdRouteImport.update({
 const AppEventsIndexRoute = AppEventsIndexRouteImport.update({
   id: '/events/',
   path: '/events/',
+  getParentRoute: () => AppRouteRoute,
+} as any)
+const AppFilesIndexRoute = AppFilesIndexRouteImport.update({
+  id: '/files/',
+  path: '/files/',
   getParentRoute: () => AppRouteRoute,
 } as any)
 const AppFormsIndexRoute = AppFormsIndexRouteImport.update({
@@ -445,6 +451,7 @@ export interface FileRoutesByFullPath {
   '/app/embeds/': typeof AppEmbedsIndexRoute
   '/app/evaluation/': typeof AppEvaluationIndexRoute
   '/app/events/': typeof AppEventsIndexRoute
+  '/app/files/': typeof AppFilesIndexRoute
   '/app/forms/': typeof AppFormsIndexRoute
   '/app/settings/': typeof AppSettingsIndexRoute
   '/app/speakers/': typeof AppSpeakersIndexRoute
@@ -504,6 +511,7 @@ export interface FileRoutesByTo {
   '/app/embeds': typeof AppEmbedsIndexRoute
   '/app/evaluation': typeof AppEvaluationIndexRoute
   '/app/events': typeof AppEventsIndexRoute
+  '/app/files': typeof AppFilesIndexRoute
   '/app/forms': typeof AppFormsIndexRoute
   '/app/settings': typeof AppSettingsIndexRoute
   '/app/speakers': typeof AppSpeakersIndexRoute
@@ -569,6 +577,7 @@ export interface FileRoutesById {
   '/app/embeds/': typeof AppEmbedsIndexRoute
   '/app/evaluation/': typeof AppEvaluationIndexRoute
   '/app/events/': typeof AppEventsIndexRoute
+  '/app/files/': typeof AppFilesIndexRoute
   '/app/forms/': typeof AppFormsIndexRoute
   '/app/settings/': typeof AppSettingsIndexRoute
   '/app/speakers/': typeof AppSpeakersIndexRoute
@@ -635,6 +644,7 @@ export interface FileRouteTypes {
     | '/app/embeds/'
     | '/app/evaluation/'
     | '/app/events/'
+    | '/app/files/'
     | '/app/forms/'
     | '/app/settings/'
     | '/app/speakers/'
@@ -694,6 +704,7 @@ export interface FileRouteTypes {
     | '/app/embeds'
     | '/app/evaluation'
     | '/app/events'
+    | '/app/files'
     | '/app/forms'
     | '/app/settings'
     | '/app/speakers'
@@ -758,6 +769,7 @@ export interface FileRouteTypes {
     | '/app/embeds/'
     | '/app/evaluation/'
     | '/app/events/'
+    | '/app/files/'
     | '/app/forms/'
     | '/app/settings/'
     | '/app/speakers/'
@@ -1011,6 +1023,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppEventsIndexRouteImport
       parentRoute: typeof AppRouteRoute
     }
+    '/app/files/': {
+      id: '/app/files/'
+      path: '/files'
+      fullPath: '/app/files/'
+      preLoaderRoute: typeof AppFilesIndexRouteImport
+      parentRoute: typeof AppRouteRoute
+    }
     '/app/forms/': {
       id: '/app/forms/'
       path: '/forms'
@@ -1261,6 +1280,7 @@ interface AppRouteRouteChildren {
   AppEmbedsIndexRoute: typeof AppEmbedsIndexRoute
   AppEvaluationIndexRoute: typeof AppEvaluationIndexRoute
   AppEventsIndexRoute: typeof AppEventsIndexRoute
+  AppFilesIndexRoute: typeof AppFilesIndexRoute
   AppFormsIndexRoute: typeof AppFormsIndexRoute
   AppSpeakersIndexRoute: typeof AppSpeakersIndexRoute
   AppSubmissionsIndexRoute: typeof AppSubmissionsIndexRoute
@@ -1280,6 +1300,7 @@ const AppRouteRouteChildren: AppRouteRouteChildren = {
   AppEmbedsIndexRoute: AppEmbedsIndexRoute,
   AppEvaluationIndexRoute: AppEvaluationIndexRoute,
   AppEventsIndexRoute: AppEventsIndexRoute,
+  AppFilesIndexRoute: AppFilesIndexRoute,
   AppFormsIndexRoute: AppFormsIndexRoute,
   AppSpeakersIndexRoute: AppSpeakersIndexRoute,
   AppSubmissionsIndexRoute: AppSubmissionsIndexRoute,

@@ -91,7 +91,7 @@ export function SettingsStep({
       <SettingRow
         id={`${id}-reminder`}
         title="Send a deadline reminder"
-        description="Emails anyone with an unfinished draft before the form closes. Needs a close date."
+        description="Emails anyone still holding an unfinished draft, once, in the three days before this form closes. Needs a close date; edit the wording under Communications → Draft deadline reminder."
         checked={settings.sendReminderEmail}
         disabled={draft.closeAt === null}
         onCheckedChange={(value) => patchSettings({ sendReminderEmail: value })}

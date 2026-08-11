@@ -10,7 +10,9 @@ import {
   RiErrorWarningLine,
   RiEyeOffLine,
   RiLockLine,
+  RiTimeLine,
   RiTrophyLine,
+  RiUserForbidLine,
 } from "@remixicon/react"
 import { toast } from "sonner"
 
@@ -21,9 +23,23 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Textarea } from "@/components/ui/textarea"
 import { Field, FieldDescription, FieldLabel } from "@/components/ui/field"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import { Logo } from "@/components/brand/logo"
 import { ProgressMeter } from "@/components/evaluation/progress-meter"
-import { ScoreField } from "@/components/evaluation/score-field"
+import {
+  CriterionField,
+  criterionIsRequired,
+  criterionType,
+} from "@/components/evaluation/score-field"
 
 /**
  * Evaluator review queue — `/review/:token` (docs/SPEC.md §4.5).
@@ -52,12 +68,19 @@ function ReviewPage() {
 
   const [currentId, setCurrentId] = useState<string | null>(null)
   const [scores, setScores] = useState<Record<string, number>>({})
+  // Select + free-text answers (sbek ABS-03) — kept apart from the 1–5 scores.
+  const [values, setValues] = useState<Record<string, string>>({})
   const [comment, setComment] = useState("")
   const [showMissing, setShowMissing] = useState(false)
+  const [conflictOpen, setConflictOpen] = useState(false)
+  const [conflictReason, setConflictReason] = useState("")
   const pickedFirst = useRef(false)
 
   const submitScores = useMutation({
     mutationFn: useConvexMutation(api.review.submitScores),
+  })
+  const declareConflict = useMutation({
+    mutationFn: useConvexMutation(api.review.declareConflict),
   })
 
   // Land on the first thing that still needs scoring.
@@ -77,8 +100,10 @@ function ReviewPage() {
   useEffect(() => {
     if (!current) return
     setScores(current.scores ?? {})
+    setValues(current.values ?? {})
     setComment(current.comment ?? "")
     setShowMissing(false)
+    setConflictReason("")
     // Intentionally keyed on the selection only: re-running on every queue
     // refetch would wipe scores the evaluator is mid-way through typing.
   }, [currentId])
@@ -120,7 +145,14 @@ function ReviewPage() {
   const allDone = progress.total > 0 && progress.done >= progress.total
   const due = plan.dueAt === undefined ? undefined : new Date(plan.dueAt)
   const criteria = plan.criteria
-  const missing = criteria.filter((criterion) => !(criterion.id in scores))
+  const opensAt = plan.opensAt === undefined ? undefined : new Date(plan.opensAt)
+  const notYetOpen = queue.notYetOpen
+  const missing = criteria.filter((criterion) => {
+    if (!criterionIsRequired(criterion)) return false
+    return criterionType(criterion) === "numeric"
+      ? !(criterion.id in scores)
+      : !(values[criterion.id] ?? "").trim()
+  })
   const nextOpen =
     queue.submissions.find(
       (s) => s.completedAt === null && s._id !== current?._id
@@ -132,11 +164,18 @@ function ReviewPage() {
       setShowMissing(true)
       return
     }
+    // Drop empty free-text answers rather than storing blank strings.
+    const trimmedValues: Record<string, string> = {}
+    for (const [criterionId, value] of Object.entries(values)) {
+      const trimmed = value.trim()
+      if (trimmed) trimmedValues[criterionId] = trimmed
+    }
     submitScores.mutate(
       {
         token,
         submissionId: current._id,
         scores,
+        values: trimmedValues,
         comment: comment.trim() || undefined,
       },
       {
@@ -154,6 +193,33 @@ function ReviewPage() {
     )
   }
 
+  function recuse() {
+    if (!current) return
+    declareConflict.mutate(
+      {
+        token,
+        submissionId: current._id,
+        reason: conflictReason.trim() || undefined,
+      },
+      {
+        onSuccess: (result) => {
+          setConflictOpen(false)
+          setConflictReason("")
+          toast.success("Conflict declared", {
+            description: `The organizers will see this as recused. ${result.done} of ${result.total} handled.`,
+          })
+          if (nextOpen) setCurrentId(nextOpen._id)
+        },
+        onError: (mutationError: Error) => {
+          setConflictOpen(false)
+          toast.error("Couldn't record that conflict", {
+            description: mutationError.message,
+          })
+        },
+      }
+    )
+  }
+
   return (
     <ReviewShell eventName={event?.name}>
       {/* Greeting + progress */}
@@ -167,6 +233,7 @@ function ReviewPage() {
               You're scoring for{" "}
               <span className="font-medium text-foreground">{plan.name}</span>
               {event ? ` · ${event.name}` : ""}
+              {opensAt ? ` · opens ${format(opensAt, "MMM d, yyyy")}` : ""}
               {due ? ` · due ${format(due, "MMM d, yyyy")}` : ""}
             </p>
           </div>
@@ -208,6 +275,26 @@ function ReviewPage() {
         </Card>
       ) : null}
 
+      {/* Round window (sbek ABS-01) — the link works, the work doesn't yet. */}
+      {notYetOpen ? (
+        <Card className="p-8 text-center">
+          <div className="mx-auto mb-4 flex size-11 items-center justify-center rounded-xl bg-muted text-muted-foreground">
+            <RiTimeLine size={20} aria-hidden />
+          </div>
+          <p className="font-heading text-base font-semibold text-foreground">
+            This round hasn't opened yet
+          </p>
+          <p className="mx-auto mt-1.5 max-w-md text-sm leading-relaxed text-muted-foreground">
+            Reviewing opens on{" "}
+            <span className="font-medium text-foreground">
+              {opensAt ? format(opensAt, "EEEE, MMMM d, yyyy") : "a later date"}
+            </span>
+            . Keep this link — bookmark it if you like — and your queue will be
+            waiting here. Nothing to do until then.
+          </p>
+        </Card>
+      ) : null}
+
       {allDone ? (
         <Card className="border-l-4 border-l-status-green-dot p-5">
           <div className="flex items-start gap-3">
@@ -227,14 +314,14 @@ function ReviewPage() {
         </Card>
       ) : null}
 
-      {queue.submissions.length === 0 ? (
+      {notYetOpen ? null : queue.submissions.length === 0 ? (
         <Card className="p-8 text-center">
           <p className="font-heading text-base font-semibold text-foreground">
             Nothing to review yet
           </p>
           <p className="mt-1.5 text-sm text-muted-foreground">
-            The organizer hasn't assigned any submissions to this round. Check
-            back later — your link keeps working.
+            The organizer hasn't assigned any submissions to you in this round.
+            Check back later — your link keeps working.
           </p>
         </Card>
       ) : (
@@ -279,7 +366,11 @@ function ReviewPage() {
                             {submission.title}
                           </span>
                           <span className="text-xs text-muted-foreground">
-                            {done ? "Scored" : "Not scored yet"}
+                            {submission.recusedAt !== null
+                              ? "Recused"
+                              : done
+                                ? "Scored"
+                                : "Not scored yet"}
                           </span>
                         </span>
                       </button>
@@ -314,7 +405,12 @@ function ReviewPage() {
                   {current.language ? (
                     <Badge variant="secondary">{current.language}</Badge>
                   ) : null}
-                  {current.completedAt !== null ? (
+                  {current.recusedAt !== null ? (
+                    <Badge variant="secondary" className="gap-1">
+                      <RiUserForbidLine size={12} aria-hidden />
+                      You declared a conflict
+                    </Badge>
+                  ) : current.completedAt !== null ? (
                     <Badge variant="secondary" className="gap-1">
                       <RiCheckLine size={12} aria-hidden />
                       You scored this
@@ -381,17 +477,31 @@ function ReviewPage() {
 
               {/* Scoring */}
               <CardContent className="space-y-6 p-6">
+                {current.recusedAt !== null ? (
+                  <p className="rounded-lg border-l-4 border-l-status-amber-dot bg-status-amber-bg/40 px-3 py-2.5 text-sm text-foreground">
+                    You declared a conflict of interest on this submission, so
+                    it is excluded from the scores. Fill the scorecard in below
+                    and save if you'd rather review it after all.
+                  </p>
+                ) : null}
+
                 <div className="space-y-5">
                   {criteria.map((criterion) => (
-                    <ScoreField
+                    <CriterionField
                       key={criterion.id}
-                      criterionId={criterion.id}
-                      label={criterion.label}
-                      value={scores[criterion.id]}
+                      criterion={criterion}
+                      score={scores[criterion.id]}
+                      value={values[criterion.id]}
                       disabled={closed}
-                      onChange={(value) =>
+                      onScoreChange={(value) =>
                         setScores((currentScores) => ({
                           ...currentScores,
+                          [criterion.id]: value,
+                        }))
+                      }
+                      onValueChange={(value) =>
+                        setValues((currentValues) => ({
+                          ...currentValues,
                           [criterion.id]: value,
                         }))
                       }
@@ -423,7 +533,7 @@ function ReviewPage() {
                     role="alert"
                     className="rounded-lg bg-status-red-bg px-3 py-2 text-sm text-status-red-fg"
                   >
-                    Please give a score for{" "}
+                    Please answer{" "}
                     {missing.map((criterion) => criterion.label).join(", ")}{" "}
                     before saving.
                   </p>
@@ -437,6 +547,17 @@ function ReviewPage() {
                     : "Your scores are private to the organizers."}
                 </p>
                 <div className="flex items-center gap-2">
+                  {/* Conflict of interest (sbek ABS-12) */}
+                  {current.recusedAt === null ? (
+                    <Button
+                      variant="ghost"
+                      disabled={closed || declareConflict.isPending}
+                      onClick={() => setConflictOpen(true)}
+                    >
+                      <RiUserForbidLine aria-hidden />
+                      Declare conflict
+                    </Button>
+                  ) : null}
                   {nextOpen ? (
                     <Button
                       variant="ghost"
@@ -462,6 +583,51 @@ function ReviewPage() {
           ) : null}
         </div>
       )}
+
+      {/* Conflict of interest (sbek ABS-12) */}
+      <AlertDialog open={conflictOpen} onOpenChange={setConflictOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Declare a conflict of interest?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Use this when you shouldn't be judging {current?.title ?? "this submission"} —
+              you know the speaker, you work with them, or you're competing with
+              them. It leaves your queue, it is excluded from the scores, and
+              the organizers see it as "Recused". Any scores you entered here
+              are cleared.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="space-y-1.5">
+            <label
+              htmlFor="conflict-reason"
+              className="text-sm font-medium text-foreground"
+            >
+              Reason
+              <span className="ml-2 text-xs font-normal text-muted-foreground">
+                Optional — only the organizers see it
+              </span>
+            </label>
+            <Textarea
+              id="conflict-reason"
+              rows={3}
+              value={conflictReason}
+              placeholder="e.g. The speaker is a colleague on my team."
+              onChange={(reasonEvent) =>
+                setConflictReason(reasonEvent.target.value)
+              }
+            />
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Keep reviewing it</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={declareConflict.isPending}
+              onClick={recuse}
+            >
+              Declare conflict
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </ReviewShell>
   )
 }

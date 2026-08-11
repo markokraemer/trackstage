@@ -25,7 +25,7 @@ export interface StatusTabsProps {
   /** `submissions.counts` result; undefined while loading. */
   counts?: Record<string, number>
   /** Search params preserved when switching tabs. */
-  search: { q?: string; track?: string }
+  search: { q?: string; track?: string; kind?: "abstract" | "session" }
 }
 
 export function StatusTabs({ value, counts, search }: StatusTabsProps) {
@@ -64,6 +64,7 @@ export function StatusTabs({ value, counts, search }: StatusTabsProps) {
                   to="/app/submissions"
                   search={{
                     status: tab.value === "all" ? undefined : tab.value,
+                    kind: search.kind,
                     q: search.q,
                     track: search.track,
                   }}

@@ -62,7 +62,7 @@ differences listed · **OURS-BETTER** = we do more · **N/A** = deliberately not
 | Theirs | Ours | Verdict |
 | --- | --- | --- |
 | `POST /v1/event/{id}/sessions` (search) | `POST /v1/event/{ref}/sessions` | **MATCH.** Same `filters`/`sort`/`expand` body, same `results` + `pagination`. Their `filters.status` enum is identical to our pipeline. We add `filters.trackId`, `tagId`, `search`, `includeDeleted`, and `sort.order` also accepts `startsAt`/`title`. |
-| `GET /v1/event/{id}/sessions` (CRUD proxy) | `GET /v1/event/{ref}/sessions` | **MATCH.** Same query params (`page`, `page_size`, `is_abstract`, `status`, `track_id`, `tag_id`, `search`, `expand`). Ours defaults to the accepted program when no filter is given — the behaviour this endpoint had before parity, preserved so nothing broke. |
+| `GET /v1/event/{id}/sessions` (CRUD proxy) | `GET /v1/event/{ref}/sessions` | **MATCH.** Same query params (`page`, `page_size`, `is_abstract`, `status`, `track_id`, `tag_id`, `search`, `expand`), plus `public=true\|false`. Ours defaults to the **published programme** when no filter is given — the behaviour this endpoint had before parity — which means accepted AND not hidden by the organizer's Display Session checkbox, and hidden participants drop out of the line-up, exactly as on `/e/{slug}` and `schedule.ics`. Pass `?status=accepted` for the organizer's full accepted list with hidden rows flagged. |
 | `POST /v1/event/{id}/sessions/status` | `POST /v1/event/{ref}/sessions/status` | **MATCH.** Lightweight id+status projection, soft-deleted rows included with `deleted_at`. |
 | `GET /v1/event/{id}/sessions/{sid}` | `GET /v1/event/{ref}/sessions/{sid}` | **MATCH**, plus `expand=files` and `expand=deleted`. |
 
@@ -71,6 +71,14 @@ differences listed · **OURS-BETTER** = we do more · **N/A** = deliberately not
 `is_public`, `starts_at`, `ends_at`, `created_at`, `updated_at`, `capacity`,
 `custom_fields[]`, `speakers[]`, `chairpersons[]`, `moderators[]`, `participants[]`,
 `tags[]`, `track{}`, `room{}`, `format{}`, `level{}`, `language{}`, `subsessions[]`.
+
+`is_public` means *"the public actually sees this"* — `status === "accepted"` **and** the
+organizer's Display Session checkbox is on. We add `public_visible` (the checkbox alone,
+so a client can tell "embargoed" from "not accepted yet") and `is_public` on every
+speaker/participant (their eye toggle). Both are writable: `is_public` on session
+create/update and on `POST/PUT /speakers`. `?public=true|false` filters either collection —
+`false` is the embargo audit. Reading and writing them is the only supported way to hold
+a keynote back from the programme without touching its status.
 
 Theirs and not ours, with reasons:
 

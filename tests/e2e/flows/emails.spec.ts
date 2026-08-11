@@ -259,13 +259,20 @@ test.describe("emails", () => {
     const client = await organizerConvexClient()
     const event = await mainEvent(client)
     const marker = unique("bulk")
-    const since = Date.now() - 1
     const watcher = armed(page)
 
     await gotoApp(page, "/app/communications")
-    await page.getByRole("button", { name: /^compose$/i }).first().click()
+    // Compose is disabled until the event context resolves, and this spec runs
+    // after several others have hammered the same page — wait for it to be
+    // usable rather than clicking a disabled button.
+    const compose = page.getByRole("button", { name: /^compose$/i }).first()
+    await expect(compose).toBeEnabled({ timeout: 30_000 })
     const dialog = page.getByRole("dialog").first()
-    await expect(dialog).toBeVisible({ timeout: 15_000 })
+    await expect(async () => {
+      if (await dialog.isVisible().catch(() => false)) return
+      await compose.click({ timeout: 5_000 })
+      await expect(dialog).toBeVisible({ timeout: 5_000 })
+    }).toPass({ timeout: 45_000 })
 
     await fillStable(dialog.locator("#compose-subject"), `Venue update ${marker}`)
     await fillStable(
@@ -297,13 +304,20 @@ test.describe("emails", () => {
     await expectToast(page, /queued \d+ email/i, 30_000)
     await clearToasts(page)
 
-    // The demo event accumulates speakers as the suite runs, so a bulk send
-    // can be dozens of messages; delivery is batched and needs room.
-    const settled = await settledSince(client, event._id, since, {
-      atLeast: promised,
-      timeout: 90_000,
-    })
-    const bulk = settled.filter((m) => m.subject.includes(marker))
+    // Wait on OUR messages, not on everything queued since `since`. Earlier
+    // specs in the same run leave their own mail draining in this shared
+    // outbox, so a "all rows since T are terminal" wait is really a wait on
+    // unrelated traffic — it measured 31 rows on a freshly seeded event and
+    // timed out. The marker makes it exact and fast.
+    const bulk = await until(
+      async () =>
+        (await outbox(client, event._id)).filter((m) =>
+          m.subject.includes(marker),
+        ),
+      (rows) =>
+        rows.length >= promised && rows.every((m) => TERMINAL.has(m.status)),
+      { timeout: 90_000, label: `${promised} settled "${marker}" messages` },
+    )
     expect(bulk.length, "one message per promised recipient").toBe(promised)
     for (const message of bulk) {
       expect(message.status, message.error ?? "").not.toBe("failed")

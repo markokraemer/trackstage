@@ -292,6 +292,11 @@ export default defineSchema({
     // lists, itineraries, the JSON API and the .ics feed — without touching
     // their submission or acceptance status.
     publicVisible: v.optional(v.boolean()),
+    // Travel & logistics notes (sbek SPK-15). Free text on purpose: real
+    // organizers keep "arrives Tue 14:00 LHR, needs a hotel Tue+Wed, vegetarian"
+    // in one place, and forcing that into flight/hotel columns nobody fills in
+    // is how CRMs get abandoned. Organizer-side only — never shown publicly.
+    logistics: v.optional(v.string()),
     // Last REST-API write (convex/apiV1.ts) — see submissions.updatedAt.
     updatedAt: v.optional(v.number()),
   })
@@ -367,8 +372,28 @@ export default defineSchema({
     eventId: v.id("events"),
     name: v.string(),
     round: v.number(),
-    criteria: v.array(v.object({ id: v.string(), label: v.string() })), // 1–5 each
+    criteria: v.array(
+      v.object({
+        id: v.string(),
+        label: v.string(),
+        // How the evaluator answers this criterion (sbek ABS-03). Absent ⇒
+        // "numeric", which is what every criterion was before types existed —
+        // a 1–5 rating. "select" answers one of `options`; "text" is free
+        // prose. Only numeric criteria ever reach an average.
+        type: v.optional(
+          v.union(v.literal("numeric"), v.literal("select"), v.literal("text")),
+        ),
+        // The choices for a "select" criterion, in the order shown.
+        options: v.optional(v.array(v.string())),
+        // Relative importance of a numeric criterion in the weighted average
+        // (sbek ABS-04). Absent ⇒ 1.
+        weight: v.optional(v.number()),
+      }),
+    ),
     submissionIds: v.array(v.id("submissions")),
+    // Round window (sbek ABS-01). `dueAt` closes it, `opensAt` opens it —
+    // before `opensAt` the review link works but politely holds the queue back.
+    opensAt: v.optional(v.number()),
     dueAt: v.optional(v.number()),
     status: v.string(), // open | closed
     // Blind review: evaluators see submissions without speaker identities.
@@ -381,6 +406,12 @@ export default defineSchema({
     email: v.string(),
     name: v.optional(v.string()),
     token: v.string(), // magic review link
+    // Per-evaluator assignment (sbek ABS-05/06). Absent ⇒ this evaluator
+    // reviews the plan's whole pool, which is how every plan behaved before
+    // assignment existed. An empty array means "assigned nothing", on purpose.
+    assignedSubmissionIds: v.optional(v.array(v.id("submissions"))),
+    // Last time the organizer nudged this evaluator (sbek ABS-09).
+    lastRemindedAt: v.optional(v.number()),
   })
     .index("by_planId", ["planId"])
     .index("by_token", ["token"])
@@ -391,8 +422,17 @@ export default defineSchema({
     eventId: v.id("events"),
     submissionId: v.id("submissions"),
     evaluatorId: v.id("evaluators"),
-    scores: v.record(v.string(), v.number()), // criterionId → 1..5
+    scores: v.record(v.string(), v.number()), // criterionId → 1..5 (numeric criteria only)
+    // Answers to non-numeric criteria: criterionId → chosen option / free text
+    // (sbek ABS-03). Kept apart from `scores` so the 1–5 guard on scores never
+    // has to loosen and nothing non-numeric can leak into an average.
+    values: v.optional(v.record(v.string(), v.string())),
     comment: v.optional(v.string()),
+    // Conflict of interest (sbek ABS-12): the evaluator recused themselves.
+    // The row still counts as "handled" for their queue but is excluded from
+    // every average and shown to the organizer as "Recused".
+    recusedAt: v.optional(v.number()),
+    recusalReason: v.optional(v.string()),
     completedAt: v.optional(v.number()),
   })
     .index("by_planId", ["planId"])
@@ -407,11 +447,17 @@ export default defineSchema({
     instructions: v.optional(v.string()),
     kind: v.string(), // profile | headshot | upload | form | confirm
     formId: v.optional(v.id("forms")),
+    // The session this task is about ("upload the slides for THIS talk"). Set
+    // by the organizer when they assign it; every file uploaded against the
+    // task inherits it, so speaker uploads surface on the session's Files tab
+    // instead of vanishing into a task nobody opens.
+    submissionId: v.optional(v.id("submissions")),
     dueAt: v.optional(v.number()),
     completedAt: v.optional(v.number()),
   })
     .index("by_eventId", ["eventId"])
-    .index("by_personId", ["personId"]),
+    .index("by_personId", ["personId"])
+    .index("by_submissionId", ["submissionId"]),
 
   // The reusable task library (product-map delta #10 — "Portals → Tasks").
   // Organizers write "Upload your slides" once and assign it all season, and

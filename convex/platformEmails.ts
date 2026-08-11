@@ -305,3 +305,45 @@ export const recentSubmissionNotifications = internalQuery({
     return { notifications }
   },
 })
+
+// ——— Evaluator reminder (sbek ABS-09) ————————————————————————————————————
+//
+// Evaluators are not event `people` — they have no portal token, no speaker
+// record, and no merge fields — so their nudge is a platform email like a
+// workspace invite rather than an outbox row. Queued one-per-evaluator by
+// `evaluationsAdmin.remindOutstandingEvaluators`; seeded demo reviewers
+// (@example.com) render as previews through the same door as every other
+// platform email.
+
+export const sendEvaluatorReminder = internalAction({
+  args: {
+    toEmail: v.string(),
+    evaluatorName: v.optional(v.string()),
+    eventName: v.string(),
+    planName: v.string(),
+    outstanding: v.number(),
+    reviewToken: v.string(),
+    dueAt: v.optional(v.number()),
+  },
+  returns: v.object({ sent: v.boolean() }),
+  handler: async (_ctx, args) => {
+    const reviewUrl = `${siteUrl()}/review/${args.reviewToken}`
+    const noun = args.outstanding === 1 ? "submission" : "submissions"
+    const due =
+      args.dueAt === undefined
+        ? ""
+        : ` Reviews are due by ${new Date(args.dueAt).toUTCString().slice(0, 16)}.`
+    return await sendTransactionalEmail({
+      to: args.toEmail,
+      kind: "evaluator-reminder",
+      subject: `${args.outstanding} ${noun} still need your review — ${args.eventName}`,
+      previewNote: `review link: ${reviewUrl}`,
+      html: [
+        `<p>Hi ${args.evaluatorName ?? "there"},</p>`,
+        `<p>Thanks for helping review <strong>${args.eventName}</strong>. You still have <strong>${args.outstanding} ${noun}</strong> to score in <strong>${args.planName}</strong>.${due}</p>`,
+        emailButton(reviewUrl, "Open my review queue"),
+        `<p>Your link is private to you — no account or password needed. Scores you have already saved are still there.</p>`,
+      ].join("\n"),
+    })
+  },
+})

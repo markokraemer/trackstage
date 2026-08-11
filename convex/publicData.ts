@@ -34,6 +34,27 @@ export type PublicSpeaker = {
   }
 }
 
+/**
+ * A person on a session, with the role they hold *on that session*. Roles are
+ * per-participation, not per-person: the same human can chair one panel and
+ * speak in another, and both public surfaces have to say so (gap #19).
+ */
+export type PublicSessionSpeaker = PublicSpeaker & { role: string }
+
+/** Roles the product understands, in the wording the UI shows. */
+export const ROLE_LABELS: Record<string, string> = {
+  speaker: "Speaker",
+  chairperson: "Chairperson",
+  moderator: "Moderator",
+}
+
+export function roleLabel(role: string): string {
+  return (
+    ROLE_LABELS[role] ??
+    (role ? role.charAt(0).toUpperCase() + role.slice(1) : "Speaker")
+  )
+}
+
 export type PublicSession = {
   _id: Id<"submissions">
   title: string
@@ -47,7 +68,7 @@ export type PublicSession = {
   level?: string
   language?: string
   tags: Array<string>
-  speakers: Array<PublicSpeaker>
+  speakers: Array<PublicSessionSpeaker>
 }
 
 function personName(person: Doc<"people">): string {
@@ -150,6 +171,12 @@ async function loadProgram(ctx: QueryCtx, slug: string) {
 
   const speakerCache = new Map<Id<"people">, PublicSpeaker>()
   const sessionsByPerson = new Map<Id<"people">, Array<Id<"submissions">>>()
+  // "sessionId:personId" → the role that person holds on that session, so the
+  // speaker directory can label each of a person's sessions correctly.
+  const roleBySessionPerson = new Map<string, string>()
+  // Every distinct role a person holds across the programme, in first-seen
+  // order — the summary the gallery shows next to their name.
+  const rolesByPerson = new Map<Id<"people">, Array<string>>()
 
   const sessions: Array<PublicSession> = []
   for (const submission of submissionRows) {
@@ -159,7 +186,7 @@ async function loadProgram(ctx: QueryCtx, slug: string) {
       .take(64)
     participants.sort((a, b) => a.order - b.order)
 
-    const speakers: Array<PublicSpeaker> = []
+    const speakers: Array<PublicSessionSpeaker> = []
     for (const participant of participants) {
       let speaker = speakerCache.get(participant.personId)
       if (!speaker) {
@@ -184,7 +211,12 @@ async function loadProgram(ctx: QueryCtx, slug: string) {
         }
         speakerCache.set(person._id, speaker)
       }
-      speakers.push(speaker)
+      const role = participant.role || "speaker"
+      speakers.push({ ...speaker, role })
+      roleBySessionPerson.set(`${submission._id}:${speaker._id}`, role)
+      const roles = rolesByPerson.get(speaker._id) ?? []
+      if (!roles.includes(role)) roles.push(role)
+      rolesByPerson.set(speaker._id, roles)
       const list = sessionsByPerson.get(speaker._id) ?? []
       if (!list.includes(submission._id)) list.push(submission._id)
       sessionsByPerson.set(speaker._id, list)
@@ -258,6 +290,8 @@ async function loadProgram(ctx: QueryCtx, slug: string) {
       .map((t) => ({ _id: t._id, name: t.name, color: t.color })),
     speakers: [...speakerCache.values()],
     sessionsByPerson,
+    roleBySessionPerson,
+    rolesByPerson,
   }
 }
 
@@ -363,17 +397,29 @@ export const speakers = query({
               (b.startsAt ?? Number.MAX_SAFE_INTEGER) ||
             a.title.localeCompare(b.title)
         )
+      // The roles this person actually holds (gap #19) — a moderator is not a
+      // speaker, and the directory used to call everyone one.
+      const roles = program.rolesByPerson.get(speaker._id) ?? ["speaker"]
       return {
         ...speaker,
-        sessions: mine.map((s) => ({
-          _id: s._id,
-          title: s.title,
-          startsAt: s.startsAt,
-          endsAt: s.endsAt,
-          durationMinutes: s.durationMinutes,
-          roomName: s.room?.name ?? null,
-          track: s.track,
-        })),
+        roles,
+        roleLabels: roles.map(roleLabel),
+        sessions: mine.map((s) => {
+          const role =
+            program.roleBySessionPerson.get(`${s._id}:${speaker._id}`) ??
+            "speaker"
+          return {
+            _id: s._id,
+            title: s.title,
+            startsAt: s.startsAt,
+            endsAt: s.endsAt,
+            durationMinutes: s.durationMinutes,
+            roomName: s.room?.name ?? null,
+            track: s.track,
+            role,
+            roleLabel: roleLabel(role),
+          }
+        }),
         sessionCount: mine.length,
       }
     })

@@ -31,9 +31,12 @@ import {
   defaultTemplate,
   emailFrom,
   emailFromAddress,
+  looksLikeHtml,
   portalLinkFor,
-  renderTemplate
-  
+  renderBrandedEmail,
+  renderTemplate,
+  siteUrl
+
 } from "./lib/email"
 import type {TemplateDefinition} from "./lib/email";
 import { buildIcs } from "./lib/ics"
@@ -276,6 +279,159 @@ export async function queueTaskReminders(
   }
   return { queued, skipped }
 }
+
+/**
+ * Queue the "your draft closes soon" nudge for every unfinished draft on a form
+ * whose close date is inside `windowMs` — the promise the form builder's "Send
+ * a deadline reminder" toggle makes (gap #11).
+ *
+ * One email per person per form, deduped over the whole window (not the usual
+ * 20h), so a three-day warning window means one reminder, not three.
+ */
+export async function queueDeadlineReminders(
+  ctx: MutationCtx,
+  opts: { eventId: Id<"events">; now: number; windowMs: number },
+): Promise<{ queued: number; skipped: number }> {
+  const forms = await ctx.db
+    .query("forms")
+    .withIndex("by_eventId", (q) => q.eq("eventId", opts.eventId))
+    .take(200)
+
+  const due = forms.filter(
+    (form) =>
+      form.status === "open" &&
+      form.settings.sendReminderEmail &&
+      form.closeAt !== undefined &&
+      form.closeAt > opts.now &&
+      form.closeAt <= opts.now + opts.windowMs,
+  )
+  if (due.length === 0) return { queued: 0, skipped: 0 }
+
+  const event = await ctx.db.get("events", opts.eventId)
+  if (!event) return { queued: 0, skipped: 0 }
+
+  // Every open draft in the event, once — then split per form below.
+  const drafts = await ctx.db
+    .query("submissions")
+    .withIndex("by_eventId_and_status", (q) =>
+      q.eq("eventId", opts.eventId).eq("status", "draft"),
+    )
+    .take(2000)
+
+  let queued = 0
+  let skipped = 0
+  for (const form of due) {
+    const closeDate = formatCloseDate(form.closeAt as number, event.timezone)
+    const formLink = `${siteUrl()}/submit/${form.slug}`
+    // A person with two drafts on the same form is still one human.
+    const seen = new Set<Id<"people">>()
+    for (const draft of drafts) {
+      if (draft.formId !== form._id) continue
+      if (draft.deletedAt !== undefined) continue
+      if (seen.has(draft.submitterId)) continue
+      seen.add(draft.submitterId)
+
+      if (
+        await wasRecentlyMessaged(
+          ctx,
+          draft.submitterId,
+          "deadline_reminder",
+          opts.now,
+          opts.windowMs,
+        )
+      ) {
+        skipped++
+        continue
+      }
+      await queueMessage(ctx, {
+        eventId: opts.eventId,
+        personId: draft.submitterId,
+        templateKey: "deadline_reminder",
+        submissionId: draft._id,
+        extraVars: { closeDate, formLink },
+      })
+      queued++
+    }
+  }
+  return { queued, skipped }
+}
+
+/** "Friday, 14 August 2026 at 5:00 PM GMT+1", in the event's own timezone. */
+function formatCloseDate(closeAt: number, timezone: string): string {
+  try {
+    return new Intl.DateTimeFormat("en-US", {
+      timeZone: timezone,
+      weekday: "long",
+      month: "long",
+      day: "numeric",
+      year: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+      timeZoneName: "short",
+    }).format(new Date(closeAt))
+  } catch {
+    return new Date(closeAt).toUTCString()
+  }
+}
+
+// ——— Branding (gap #29) ———————————————————————————————————————————————————
+// The stored body stays plain text; the event's identity is applied at
+// render/send time. `brandFor` is the one place that answers "whose event is
+// this, what is their logo, and where is this person's portal?" — the sender
+// and the outbox preview both go through it, so what an organizer inspects is
+// what the speaker received.
+
+const brandValidator = v.object({
+  eventName: v.string(),
+  logoUrl: v.union(v.string(), v.null()),
+  portalLink: v.union(v.string(), v.null()),
+})
+
+async function brandFor(
+  ctx: QueryCtx | MutationCtx,
+  eventId: Id<"events">,
+  personId: Id<"people">,
+  eventCache?: Map<Id<"events">, { name: string; logoUrl: string | null }>,
+): Promise<Infer<typeof brandValidator>> {
+  let branding = eventCache?.get(eventId)
+  if (!branding) {
+    const event = await ctx.db.get("events", eventId)
+    branding = {
+      name: event?.name ?? "Trackstage",
+      logoUrl: event?.logoId ? await ctx.storage.getUrl(event.logoId) : null,
+    }
+    eventCache?.set(eventId, branding)
+  }
+  const person = await ctx.db.get("people", personId)
+  return {
+    eventName: branding.name,
+    logoUrl: branding.logoUrl,
+    portalLink: person ? portalLinkFor(person.portalToken) : null,
+  }
+}
+
+/**
+ * The branded HTML for one outbox row — exactly the markup handed to the email
+ * provider. The outbox drawer renders this so "preview" means the real email,
+ * chrome included, not an approximation of it.
+ */
+export const messageHtml = query({
+  args: { eventId: v.id("events"), messageId: v.id("messages") },
+  returns: v.union(v.string(), v.null()),
+  handler: async (ctx, args) => {
+    await requireEventAccess(ctx, args.eventId)
+    const message = await ctx.db.get("messages", args.messageId)
+    if (!message || message.eventId !== args.eventId) return null
+    const brand = await brandFor(ctx, message.eventId, message.personId)
+    return renderBrandedEmail({
+      subject: message.subject,
+      body: message.body,
+      eventName: brand.eventName,
+      logoUrl: brand.logoUrl,
+      portalLink: brand.portalLink,
+    })
+  },
+})
 
 // ——— Templates ————————————————————————————————————————————————————————————
 
@@ -815,6 +971,8 @@ const claimedMessageValidator = v.object({
   subject: v.string(),
   body: v.string(),
   icsAttached: v.boolean(),
+  /** Event identity applied to the HTML part at send time. */
+  brand: brandValidator,
 })
 
 /**
@@ -855,13 +1013,22 @@ export const claimPending = internalMutation({
       })
     }
 
-    return claimable.map((m) => ({
-      messageId: m._id,
-      toEmail: m.toEmail,
-      subject: m.subject,
-      body: m.body,
-      icsAttached: m.icsAttached,
-    }))
+    const eventCache = new Map<
+      Id<"events">,
+      { name: string; logoUrl: string | null }
+    >()
+    const claimed: Array<Infer<typeof claimedMessageValidator>> = []
+    for (const m of claimable) {
+      claimed.push({
+        messageId: m._id,
+        toEmail: m.toEmail,
+        subject: m.subject,
+        body: m.body,
+        icsAttached: m.icsAttached,
+        brand: await brandFor(ctx, m.eventId, m.personId, eventCache),
+      })
+    }
+    return claimed
   },
 })
 
@@ -1000,14 +1167,23 @@ export const deliverPending = internalAction({
           continue
         }
 
-        const isHtml = /<[a-z][\s\S]*>/i.test(message.body)
+        // Always send both parts: the branded HTML (event logo/name header,
+        // the copy, a quiet Trackstage footer) plus the plain-text original as
+        // the fallback for text-only clients. A body an organizer authored as
+        // HTML is embedded as-is inside the same wrapper.
         const payload: Record<string, unknown> = {
           from: emailFrom(),
           to: [message.toEmail],
           subject: message.subject,
+          html: renderBrandedEmail({
+            subject: message.subject,
+            body: message.body,
+            eventName: message.brand.eventName,
+            logoUrl: message.brand.logoUrl,
+            portalLink: message.brand.portalLink,
+          }),
         }
-        if (isHtml) payload.html = message.body
-        else payload.text = message.body
+        if (!looksLikeHtml(message.body)) payload.text = message.body
         if (ics && context) {
           payload.attachments = [
             {

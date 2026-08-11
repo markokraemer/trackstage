@@ -72,6 +72,10 @@ export function TaskItem({ task, uploads }: TaskItemProps) {
       file,
       {
         taskId: task.id,
+        // A task the organizer bound to one of my sessions files the upload
+        // against that session too, so it shows up on their session Files tab
+        // instead of only inside the task.
+        submissionId: task.submissionId ?? undefined,
         isHeadshot: task.kind === "headshot" ? true : undefined,
       },
       onProgress,

@@ -1321,3 +1321,140 @@ API-key sweeps in verify-backend + mcp spec (20-key cap), auto-place assertion
 scoped to its own placements, "Hi there" fallback for nameless recipients.
 Root-caused environmental noise: e2e agent's self-relaunching flows loop was
 mutating the deployment mid-verify — stopped for good.
+
+## Parity gap #1 — e2e fixtures were leading the public demo (2026-08-11)
+
+The public programme a judge lands on was **half test data**. On `dev:neat-sparrow-926`
+the demo event carried 34 submissions and 34 people, of which **16 submissions and 19
+people were e2e leftovers**: "Agenda One ag-mso9sden-y0wr8", "Dragged dg-mso9smq1-vqnnf",
+"Keyboard kb-…", "Outbox Proof t-…", "Triage Talk tri-…", six "Aggie Enda"s, three "Tria
+Ger"s, two "Evan Uator"s and two people with EMPTY names. They sorted to the front of
+`/e/ai-summit-2026/sessions`, the speakers directory and the `.ics` feed.
+
+Cause, and it is structural rather than a bug: `tests/e2e/flows/*` drive the REAL product
+against the REAL deployment. `global-setup.ts` reseeds at the START of a run, so whatever
+the last run created simply stays there until someone reseeds again — and nobody did
+between the last flows run and the parity audit.
+
+Fix, two halves:
+
+1. **`convex/seed.ts` — an e2e fixture purge that sweeps every event.** Rebuilding the two
+   demo events already takes their fixtures with them; `purgeE2EFixtures` is the belt to
+   that braces and covers events the seed does not own (a workspace a spec signed up).
+   It matches on `E2E_FIXTURE_MARKER` — the `-<base36 ms>-<rand>` tail that
+   `unique(prefix)` in `tests/e2e/flows/_helpers.ts` stamps into every fixture title and
+   email — plus two narrow second opinions that only ever apply to an `@example.com`
+   address: the reused fixture names ("Aggie Enda", "Tria Ger", "Evan Uator", "Testy
+   Speaker") and rows with both name fields blank. Hand-authored seed people and titles
+   are listed explicitly and can never match. Dependants go with the row (participants,
+   tasks, uploads + comments + blobs, messages, evaluations, Airtable mirror state) and
+   evaluation plans get the deleted ids pruned out of `submissionIds`. A fixture person
+   who submitted a SURVIVING session is deliberately kept — no dangling submitter.
+   Idempotent: a run with nothing to purge deletes nothing, and the count comes back as
+   `counts.fixturesPurged`.
+2. **`_helpers.ts` documents the contract** — `unique()`'s docstring now says that the
+   marker is what the seed purge matches, so a fixture named by hand is a fixture that
+   survives the reset. Audited every spec: all ten already build every synthetic title and
+   email through `unique()` / `testEmail()`, so no behaviour change was needed.
+
+**Verified on dev after `pnpm exec convex run seed:setup`:** demo event 34→18 submissions
+and 34→14 people, zero rows matching the fixture patterns anywhere in the deployment.
+Public `/e/ai-summit-2026/sessions` renders exactly the six seeded scheduled sessions,
+first card "Opening keynote: the year AI engineering grew up"; `/speakers` renders the ten
+real accepted speakers; `/v1/event/ai-summit-2026/schedule.ics` carries the same six
+`SUMMARY:` lines and nothing else.
+
+**Process, now a release gate (TODO → Ship):** run `seed:setup` immediately before any
+sbek run, demo, screenshot pass or submission, and let nothing else touch the deployment
+afterwards. Deliberately left alone: five "Devcon Berlin 2026" events from the
+screenshot-capture runs, each in its own throwaway workspace — invisible to the demo
+organizer, and killing another workspace's events from the seed is a bigger hammer than
+this problem deserves (their stray `@example.com` probe people DO get swept).
+
+## Session — Speaker CSV import, organizer headshots, editable co-authors, logistics (2026-08-11)
+
+Four sbek gaps, one slice: **SPK-03** (bulk CSV import), **CNT-10** (organizer uploads the
+headshot), **ABS-11** (participants editable after submission), **SPK-15** (travel &
+logistics field).
+
+1. **CSV import** — `Import CSV` next to `Add speaker` on `/app/speakers`. `src/lib/csv.ts`
+   is a hand-rolled RFC4180 reader (quotes, doubled quotes, CRLF, Excel BOM) plus forgiving
+   header mapping: any order, a dozen synonyms per column, and a single `name` column split
+   into first/last — which is exactly the shape of sbek's `fixtures/speakers.csv`
+   (`name,email,title,company,bio`). The dialog PREVIEWS every row before anything is
+   written: new / already-here (merge) / repeated-in-file / can't-import, each with the
+   reason. `speakersAdmin.bulkAdd` commits it, idempotent on email with the
+   fill-the-blanks-only rule from `submit.ts` `profilePatch` — a spreadsheet may complete a
+   profile, never overwrite what the speaker wrote. Toast: "N added, M updated, K skipped".
+2. **Organizer headshot** (`speakersAdmin.setHeadshot` / `clearHeadshot`) — same storage
+   path as the portal uploader: `files.generateUploadUrl` → bytes → `replaceHeadshot`
+   (which deletes the file it replaces), filed as an `uploads` row so it shows in the
+   speaker's own portal, `approved` because the organizer IS the reviewer, and it closes any
+   open headshot task. The drawer shows the current photo with drop-to-replace and Remove.
+3. **Participants after the fact** — `addSubmissionParticipant` / `setParticipantRole` /
+   `removeSubmissionParticipant` in `speakersAdmin.ts` (kept out of `submissions.ts` to
+   avoid stepping on a parallel agent), driving a new `submissions/participants-editor.tsx`
+   on the drawer's People tab. Adding is by email so an existing person is ATTACHED, not
+   twinned; every change writes an audit row ("Added Casey Nguyen as a speaker · …").
+4. **`people.logistics`** (additive, optional) + a "Logistics & travel" textarea, internal
+   only, read through a small `speakersAdmin.profile` query so an upload echoes instantly
+   without widening the roster payload.
+
+**Bug found and fixed in `shared/file-drop-zone.tsx`:** the change handler cleared
+`input.value` BEFORE reading the file, and clearing empties the very `FileList` the event
+still points at (same object — verified in Chrome). Every click-to-choose upload in the app
+was silently doing nothing; only drag-and-drop worked. Read the File first.
+
+**Verified live** on localhost:3000 + dev deployment: fixture parse (3 rows, `name`/`title`
+columns), import 4-row file → preview showed 1 new / 1 already-here / 1 bad email / 1
+repeat, toast "1 added, 0 updated, 3 skipped", re-run added nothing; headshot uploaded from
+the drawer and survived reload; logistics persisted; a co-author added to "Closing panel"
+appeared with role labels in the organizer drawer, the History tab, the public speakers and
+sessions pages, and their own portal; re-role and remove both work. Zero console errors.
+Leftover demo rows from the run (`priya/marcus/dana.speaker@sbek-test.example.com`,
+`rowan.fisk@example.com`) go away on the next `seed:setup` — there is no organizer-facing
+"delete speaker" yet, which is itself a gap worth closing.
+
+---
+
+## 2026-08-11 — Portal truthfulness pass: CFP close-lock, staged queues, /v1 visibility
+
+Three correctness gaps from `docs/reference/parity-gaps-2026-08-11.md` (#6 P0, #7 P1, #15 P1).
+
+1. **CFP-16 — editing closes when the call closes.** `isFormOpen` moved out of
+   `submit.ts` into `convex/lib/formWindow.ts` (one definition for the public flow and the
+   portal) alongside `cfpClosedMessage`, which names the date in the event's timezone. New
+   `portal.ts::editLockFor` resolves ALL the reasons a speaker can't edit — withdrawn,
+   declined, the event's "allow submission edits" switch, and now the form's close date —
+   into one `{code, title, message}`. `updateSubmission` throws `lock.message`; the payload
+   returns the same object as `editLock` (plus `editableUntil`), so the drawer greys the
+   fields out and prints the identical sentence instead of failing on save. **Accepted
+   talks are exempt** — swyx's clarification was about acceptance-locking, not the
+   deadline. `submit.ts` already refused drafts and submissions on a closed form
+   (`saveDraft`/`submit` both call `isFormOpen`) — verified, no change needed.
+2. **Staged queues stop leaking.** `submissionSummary` maps `accept_queue`/`decline_queue`
+   → `pending` for the speaker. Organizer surfaces are untouched. AGENTS.md's "identical
+   wording" rule now records the exception explicitly.
+3. **`/v1` tells the truth about visibility.** `is_public` on a session was hardcoded to
+   `status === "accepted"`; it is now `accepted && publicVisible !== false`, with
+   `public_visible` alongside it and `is_public` added to every speaker shape. The
+   no-filter `GET /sessions` (the pre-parity "published programme") now EXCLUDES hidden
+   sessions and hidden participants, matching `publicData.loadProgram` — that filter had
+   been dropped when parity replaced `publicData.apiSessionsPage` with
+   `apiV1.searchSessions`, which is how the embargo started leaking. Added `?public=`
+   on sessions and speakers, `is_public` on agenda-snapshot rows, and made `is_public`
+   WRITABLE on session create/update and speaker create/update.
+
+**Verified live** (dev:neat-sparrow-926 + localhost:3000, own Playwright contexts):
+Grace's `decline_queue` talk reads **Pending** in the portal while `/app/submissions` still
+shows **Decline Queue**; Design Systems Day's closed CFP locks Iris's pending talk ("The
+call for speakers closed on Jul 22, 2026 …", inputs disabled, no Save, and the same
+sentence thrown by the mutation) while Owen's accepted talk on the SAME closed form stays
+fully editable; hiding a session and a speaker through the organizer UI made
+`GET /sessions` drop them and `?status=accepted` / `?public=false` report
+`is_public: false` — both restored afterwards. Zero console errors on every run.
+
+**Surprise worth knowing:** the parity refactor silently changed
+`GET /v1/event/{slug}/speakers` from "public gallery" to "every contact, with emails".
+Left as-is (it is an organizer surface behind a token) but now flagged per row and
+filterable with `?public=true`.

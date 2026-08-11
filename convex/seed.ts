@@ -45,6 +45,33 @@ const DAY = 24 * 60 * 60 * 1000
  */
 const AGENT_ARTIFACT_EVENT = /^(Copilot Verification|MCP Test|Verify)/i
 
+/**
+ * Signature of an identity minted by `unique(prefix)` in
+ * `tests/e2e/flows/_helpers.ts`:
+ *
+ *   `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`
+ *
+ * Base-36 milliseconds is eight characters beginning with `m` (and stays that
+ * way until 2033), so `-m0000000-abcde` is a shape no human types. Every
+ * fixture the flow suite creates carries it — in the title ("Dragged
+ * dg-mso9smq1-vqnnf") and in the email ("agenda-mso9sden-0yqx0@example.com")
+ * — which is what lets this purge be narrow enough to be safe.
+ */
+const E2E_FIXTURE_MARKER = /-m[0-9a-z]{7}-[0-9a-z]{3,6}(?![0-9a-z])/i
+
+/**
+ * Names the flow specs reuse verbatim for their throwaway speakers, which is
+ * why the demo event ends up with six "Aggie Enda"s. Only ever acted on
+ * together with an `@example.com` address that is not one of ours, so a real
+ * person who happens to share a name is never in scope.
+ */
+const E2E_FIXTURE_PERSON_NAMES = new Set([
+  "aggie enda",
+  "tria ger",
+  "evan uator",
+  "testy speaker",
+])
+
 /** Pacific Daylight Time (UTC−7) — valid for the March–November 2026 window. */
 function pt(year: number, month: number, day: number, hour: number, minute = 0) {
   return Date.UTC(year, month - 1, day, hour + 7, minute)
@@ -225,6 +252,225 @@ async function purgeBySlug(ctx: MutationCtx, slug: string) {
     .withIndex("by_slug", (q) => q.eq("slug", slug))
     .unique()
   if (existing) await purgeEvent(ctx, existing._id)
+}
+
+// ——— e2e fixture purge —————————————————————————————————————————————————————
+//
+// `tests/e2e/flows/*` drive the REAL product against this deployment, so every
+// run leaves its throwaway speakers and sessions behind on whatever event it
+// touched — most of them on the demo event a judge is about to look at
+// ("Dragged dg-mso9smq1-vqnnf" leading the public sessions list, six "Aggie
+// Enda"s in the speakers directory, junk in the .ics feed).
+//
+// Rebuilding the two demo events already takes their fixtures with them. This
+// pass is the belt to that braces: it sweeps EVERY event, so fixtures that
+// landed on an event the seed does not own (a workspace a spec signed up) are
+// cleaned too, and the guarantee "seed:setup ⇒ no test data anywhere" holds
+// whatever a spec did. Idempotent by construction — a run with nothing to
+// purge deletes nothing.
+
+/** Emails belonging to hand-authored seed people. Never purged. */
+function seededPersonEmails(): Set<string> {
+  return new Set(
+    [
+      DEMO_ORGANIZER_EMAIL,
+      // The second event's two people, written inline in `seedSecondEvent`.
+      "iris.chen@example.com",
+      "owen.baptiste@example.com",
+      // Evaluators are their own table, but a spec may have made a person of
+      // one — keep them regardless.
+      "alex.rivera@example.com",
+      "sam.okafor@example.com",
+      ...PEOPLE.map(
+        (p) => `${slugify(`${p.firstName} ${p.lastName}`).replace(/-/g, ".")}@example.com`,
+      ),
+    ].map((email) => email.toLowerCase()),
+  )
+}
+
+/** Titles of hand-authored seed submissions. Never purged. */
+function seededTitles(): Set<string> {
+  return new Set(
+    [
+      ...SUBMISSIONS.map((s) => s.title),
+      // The second event's two submissions, written inline below.
+      "Tokens all the way down",
+      "Migrating 200 components without a freeze",
+    ].map((title) => title.toLowerCase()),
+  )
+}
+
+function isFixtureSubmission(title: string, seeded: Set<string>): boolean {
+  if (seeded.has(title.toLowerCase())) return false
+  return E2E_FIXTURE_MARKER.test(title)
+}
+
+function isFixturePerson(
+  person: { email: string; firstName: string; lastName: string },
+  seeded: Set<string>,
+): boolean {
+  const email = person.email.toLowerCase()
+  if (seeded.has(email)) return false
+  // 1. The unique() marker — carried by every address `testEmail()` mints.
+  if (E2E_FIXTURE_MARKER.test(email)) return true
+  // Everything below is a second opinion on an address that can never reach a
+  // real inbox anyway: `deliverPending` renders @example.com as a preview.
+  if (!email.endsWith("@example.com")) return false
+  // 2. The repeated fixture names ("Aggie Enda" ×6, "Tria Ger" ×3).
+  const name = `${person.firstName} ${person.lastName}`.trim().toLowerCase()
+  if (E2E_FIXTURE_PERSON_NAMES.has(name)) return true
+  // 3. Nameless rows — the CFP specs that submit with an email only. Both
+  //    name fields are required of every real speaker, seeded or organizer-
+  //    entered, so a blank pair on a synthetic address is always ours.
+  return name === ""
+}
+
+/**
+ * Delete every e2e fixture row on `eventId`, plus the rows that hang off them
+ * (participants, tasks, uploads + their comments and blobs, messages,
+ * evaluations, Airtable mirror state), and prune the deleted submissions out
+ * of any evaluation plan that still lists them.
+ */
+async function purgeEventFixtures(
+  ctx: MutationCtx,
+  eventId: Id<"events">,
+  seededEmails: Set<string>,
+  seededSubmissionTitles: Set<string>,
+): Promise<{ submissions: number; people: number }> {
+  const submissions = await ctx.db
+    .query("submissions")
+    .withIndex("by_eventId", (q) => q.eq("eventId", eventId))
+    .take(4000)
+  const people = await ctx.db
+    .query("people")
+    .withIndex("by_eventId", (q) => q.eq("eventId", eventId))
+    .take(4000)
+
+  const doomedSubmissions = new Set(
+    submissions
+      .filter((s) => isFixtureSubmission(s.title, seededSubmissionTitles))
+      .map((s) => s._id),
+  )
+  const fixturePeople = people.filter((p) => isFixturePerson(p, seededEmails))
+
+  // A fixture person who somehow submitted a surviving session stays: losing
+  // the submitter would leave a dangling reference on a row we are keeping.
+  const survivingSubmitters = new Set(
+    submissions.filter((s) => !doomedSubmissions.has(s._id)).map((s) => s.submitterId),
+  )
+  const doomedPeople = new Set(
+    fixturePeople.filter((p) => !survivingSubmitters.has(p._id)).map((p) => p._id),
+  )
+
+  if (doomedSubmissions.size === 0 && doomedPeople.size === 0) {
+    return { submissions: 0, people: 0 }
+  }
+
+  const participants = await ctx.db
+    .query("submissionParticipants")
+    .withIndex("by_eventId", (q) => q.eq("eventId", eventId))
+    .take(8000)
+  for (const row of participants) {
+    if (doomedSubmissions.has(row.submissionId) || doomedPeople.has(row.personId)) {
+      await ctx.db.delete("submissionParticipants", row._id)
+    }
+  }
+
+  const tasks = await ctx.db
+    .query("tasks")
+    .withIndex("by_eventId", (q) => q.eq("eventId", eventId))
+    .take(8000)
+  for (const row of tasks) {
+    if (doomedPeople.has(row.personId)) await ctx.db.delete("tasks", row._id)
+  }
+
+  const uploads = await ctx.db
+    .query("uploads")
+    .withIndex("by_eventId", (q) => q.eq("eventId", eventId))
+    .take(4000)
+  for (const row of uploads) {
+    const doomed =
+      doomedPeople.has(row.personId) ||
+      (row.submissionId !== undefined && doomedSubmissions.has(row.submissionId))
+    if (!doomed) continue
+    const comments = await ctx.db
+      .query("uploadComments")
+      .withIndex("by_uploadId", (q) => q.eq("uploadId", row._id))
+      .take(500)
+    for (const comment of comments) {
+      await ctx.db.delete("uploadComments", comment._id)
+    }
+    await forgetBlob(ctx, row.storageId)
+    await ctx.db.delete("uploads", row._id)
+  }
+
+  const messages = await ctx.db
+    .query("messages")
+    .withIndex("by_eventId", (q) => q.eq("eventId", eventId))
+    .take(8000)
+  for (const row of messages) {
+    const doomed =
+      doomedPeople.has(row.personId) ||
+      (row.submissionId !== undefined && doomedSubmissions.has(row.submissionId))
+    if (doomed) await ctx.db.delete("messages", row._id)
+  }
+
+  for (const submissionId of doomedSubmissions) {
+    const evaluations = await ctx.db
+      .query("evaluations")
+      .withIndex("by_submissionId", (q) => q.eq("submissionId", submissionId))
+      .take(500)
+    for (const row of evaluations) await ctx.db.delete("evaluations", row._id)
+
+    const mirrors = await ctx.db
+      .query("airtableRecordSync")
+      .withIndex("by_submissionId", (q) => q.eq("submissionId", submissionId))
+      .take(100)
+    for (const row of mirrors) await ctx.db.delete("airtableRecordSync", row._id)
+  }
+
+  const plans = await ctx.db
+    .query("evaluationPlans")
+    .withIndex("by_eventId", (q) => q.eq("eventId", eventId))
+    .take(200)
+  for (const plan of plans) {
+    const kept = plan.submissionIds.filter((id) => !doomedSubmissions.has(id))
+    if (kept.length !== plan.submissionIds.length) {
+      await ctx.db.patch("evaluationPlans", plan._id, { submissionIds: kept })
+    }
+  }
+
+  for (const submissionId of doomedSubmissions) {
+    await ctx.db.delete("submissions", submissionId)
+  }
+  for (const person of people) {
+    if (!doomedPeople.has(person._id)) continue
+    if (person.headshotId) await forgetBlob(ctx, person.headshotId)
+    await ctx.db.delete("people", person._id)
+  }
+
+  return { submissions: doomedSubmissions.size, people: doomedPeople.size }
+}
+
+/** Run the fixture purge across every event in the deployment. */
+async function purgeE2EFixtures(
+  ctx: MutationCtx,
+  events: Array<{ _id: Id<"events"> }>,
+): Promise<{ submissions: number; people: number }> {
+  const seededEmails = seededPersonEmails()
+  const seededSubmissionTitles = seededTitles()
+  const total = { submissions: 0, people: 0 }
+  for (const event of events) {
+    const purged = await purgeEventFixtures(
+      ctx,
+      event._id,
+      seededEmails,
+      seededSubmissionTitles,
+    )
+    total.submissions += purged.submissions
+    total.people += purged.people
+  }
+  return total
 }
 
 // ——— Seed data ————————————————————————————————————————————————————————————
@@ -846,6 +1092,8 @@ const seedSummaryValidator = v.object({
     evaluations: v.number(),
     messages: v.number(),
     templates: v.number(),
+    /** e2e fixture rows swept off events the seed does not rebuild. */
+    fixturesPurged: v.number(),
   }),
 })
 
@@ -880,6 +1128,12 @@ export const run = internalMutation({
         await purgeBySlug(ctx, artifact.slug)
       }
     }
+
+    // — e2e fixture purge —————————————————————————————————————————————————
+    // Rebuilding the demo events above already removed the fixtures sitting on
+    // them; this catches the ones the flow suite left on any OTHER event, so
+    // "seed:setup ⇒ no test data anywhere" is true of the whole deployment.
+    const fixturesPurged = await purgeE2EFixtures(ctx, allEvents)
 
     // — Demo workspace + owner membership (Better Auth user id) ——————————
     let organizationId: Id<"organizations">
@@ -1306,6 +1560,31 @@ export const run = internalMutation({
       })
     }
 
+    // — Saved embeds ———————————————————————————————————————————————————————
+    // Two named configurations, so /app/embeds opens with the "saved embeds"
+    // rail populated instead of empty — the feature reads as a place you come
+    // back to, not a one-shot generator (sbek EMB-15).
+    await ctx.db.insert("embeds", {
+      eventId,
+      name: "Agenda for the homepage",
+      widget: "agenda",
+      options: {
+        format: "iframe",
+        height: 900,
+      },
+    })
+    await ctx.db.insert("embeds", {
+      eventId,
+      name: "Speaker gallery for the sponsors page",
+      widget: "speaker-gallery",
+      options: {
+        format: "iframe",
+        hideDescriptions: true,
+        hideSearch: true,
+        height: 720,
+      },
+    })
+
     // — Outbox: 2 sent, 1 preview ————————————————————————————————————————
     const messagesSeeded = await seedOutbox(ctx, {
       eventId,
@@ -1346,6 +1625,7 @@ export const run = internalMutation({
         evaluations: EVALUATIONS.length,
         messages: messagesSeeded,
         templates: DEFAULT_TEMPLATES.length,
+        fixturesPurged: fixturesPurged.submissions + fixturesPurged.people,
       },
     }
   },

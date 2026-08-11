@@ -68,6 +68,17 @@ export function MessageDrawer({
     ),
   )
 
+  // The branded HTML the email provider was handed (event logo + name header,
+  // Trackstage footer). Only fetched while the drawer is open.
+  const { data: brandedHtml } = useQuery(
+    convexQuery(
+      api.comms.messageHtml,
+      open && eventId && message
+        ? { eventId, messageId: message._id }
+        : "skip",
+    ),
+  )
+
   if (!message) return null
 
   const session =
@@ -310,6 +321,7 @@ export function MessageDrawer({
             toEmail={message.toEmail}
             subject={message.subject}
             body={message.body}
+            html={brandedHtml}
           />
         </div>
       </div>

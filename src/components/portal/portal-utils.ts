@@ -133,9 +133,15 @@ export function canWithdraw(submission: PortalSubmission): boolean {
   return !["accepted", "declined", "withdrawn"].includes(submission.status)
 }
 
-/** The backend refuses edits on declined/withdrawn submissions. */
+/**
+ * Whether this speaker may still change this submission. The server decides —
+ * `editLock` is `null` when editing is open, and otherwise carries the exact
+ * sentence `portal.updateSubmission` would refuse with (decided status, the
+ * organizer's portal switch, or the CFP's close date). Never re-derive the
+ * rules here: the whole point is that the screen and the save agree.
+ */
 export function canEdit(submission: PortalSubmission): boolean {
-  return !["declined", "withdrawn"].includes(submission.status)
+  return submission.editLock === null
 }
 
 export function isOpen(task: PortalTask): boolean {

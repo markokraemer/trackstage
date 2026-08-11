@@ -13,9 +13,11 @@ import {
   RiBuilding2Line,
   RiCalendarScheduleLine,
   RiCheckLine,
+  RiCodeSSlashLine,
   RiDashboardLine,
   RiExternalLinkLine,
   RiFileList3Line,
+  RiFolder3Line,
   RiLogoutBoxRLine,
   RiMailSendLine,
   RiSettings3Line,
@@ -93,11 +95,19 @@ const NAV_GROUPS: Array<NavGroup> = [
       { label: "Forms", to: "/app/forms", icon: RiSurveyLine },
       { label: "Evaluation", to: "/app/evaluation", icon: RiStarLine },
       { label: "Agenda", to: "/app/agenda", icon: RiCalendarScheduleLine },
+      // Embeds is the last step of the programme's life — the agenda, once
+      // published, goes onto the organizer's own website. It sits under
+      // Program so "build it, then publish it" reads top to bottom.
+      { label: "Embeds", to: "/app/embeds", icon: RiCodeSSlashLine },
     ],
   },
   {
     items: [
       { label: "Speakers", to: "/app/speakers", icon: RiUserVoiceLine },
+      // Everything speakers send in — slides, headshots, signed forms — with
+      // the session and the approval state (sbek CNT-04/05/13). It sits right
+      // after Speakers because that is whose work it is.
+      { label: "Files", to: "/app/files", icon: RiFolder3Line },
       {
         label: "Communications",
         to: "/app/communications",

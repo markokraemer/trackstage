@@ -74,6 +74,15 @@ portal accounts are nice-to-have. Airtable read-only is fine (bonus, not core).
   goes out when the organizer commits the queue, not when the status is picked.
 - **Statuses use identical wording in organizer and speaker UIs.** Colors: green =
   Accepted/Accept Queue, amber = Pending/Decline Queue, red = Declined.
+  **ONE EXCEPTION — the two staged queues are never speaker-facing:** the speaker portal
+  renders `accept_queue` / `decline_queue` as **Pending** (same word, same amber pill),
+  because the whole point of a queue is that nothing is announced until the organizer
+  commits it. Masked once, server-side, in `convex/portal.ts::submissionSummary`; every
+  organizer surface keeps the real queue status.
+- **Editing a submission from the portal closes when the CFP closes** (sbek CFP-16) —
+  except for `accepted` talks, which stay editable (swyx's clarification was about
+  acceptance-locking, not the deadline). One verdict, `convex/portal.ts::editLockFor`,
+  drives both the greyed-out drawer and the mutation's refusal sentence.
 - **Track** = colored single-select (drives routing + agenda columns). **Tags** = gray
   multi-select. **Format / Level / Language** = plain dropdowns.
 - **Evaluation** happens via **Evaluation Plans**: a plan bundles evaluators + assigned

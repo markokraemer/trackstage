@@ -17,6 +17,7 @@ import {
   renderTaskText,
 } from "./lib/taskVars"
 import { addComment, threadFor } from "./lib/uploadComments"
+import { cfpClosedMessage, isFormOpen } from "./lib/formWindow"
 import { notifySubmissionAdmins } from "./platformEmails"
 
 // ————————————————————————————————————————————————————————————————————————
@@ -61,7 +62,99 @@ function isTaskLocked(task: Doc<"tasks">, behavior: PortalBehavior): boolean {
 const TASK_LOCKED_MESSAGE =
   "The deadline for this task has passed, so it's closed. Email the organizers and they can reopen it for you."
 
-async function submissionSummary(ctx: QueryCtx, s: Doc<"submissions">) {
+// ——— Staged queues are not speaker-facing —————————————————————————————————
+// `accept_queue` / `decline_queue` are the organizer's STAGED decisions: the
+// point of the queue is that nothing is announced until they commit it and the
+// email goes out. So the portal reads both as "Pending" — same word, same
+// amber pill as any other undecided submission — while every organizer surface
+// keeps the real queue status. AGENTS.md's "identical wording in organizer and
+// speaker UIs" rule was written for COMMITTED statuses; this is the exception.
+const SPEAKER_FACING_STATUS: Record<string, string> = {
+  accept_queue: "pending",
+  decline_queue: "pending",
+}
+
+function speakerFacingStatus(status: string): string {
+  return SPEAKER_FACING_STATUS[status] ?? status
+}
+
+// ——— Why a submission can't be edited ————————————————————————————————————
+// Computed once, server-side, so the portal can grey the fields out up front
+// AND the mutation can refuse with the very same sentence. `code` only picks
+// the icon/tone; the words always come from here.
+
+type EditLockCode = "withdrawn" | "declined" | "portal_disabled" | "cfp_closed"
+
+interface EditLock {
+  code: EditLockCode
+  title: string
+  message: string
+}
+
+function editLockFor(
+  submission: Doc<"submissions">,
+  form: Doc<"forms"> | null,
+  behavior: PortalBehavior,
+  timezone?: string,
+): EditLock | null {
+  if (submission.status === "withdrawn") {
+    return {
+      code: "withdrawn",
+      title: "This submission is closed",
+      message: "You withdrew this submission, so it can no longer be edited.",
+    }
+  }
+  if (submission.status === "declined") {
+    return {
+      code: "declined",
+      title: "This submission is closed",
+      message: "This submission was declined, so it can no longer be edited.",
+    }
+  }
+  if (!behavior.allowSubmissionEdits) {
+    return {
+      code: "portal_disabled",
+      title: "Changes go through the organizers",
+      message:
+        "The organizers have turned off editing submissions from the portal. Email them with what you'd like changed and they'll update it for you.",
+    }
+  }
+  // The CFP's own deadline (sbek CFP-16). An ACCEPTED talk is exempt: swyx
+  // clarified that accepted speakers keep polishing their abstract — it is
+  // already in the programme, and the deadline was about accepting new work.
+  if (
+    form &&
+    submission.status !== "accepted" &&
+    !isFormOpen(form).open
+  ) {
+    return {
+      code: "cfp_closed",
+      title: "The call for speakers has closed",
+      message: cfpClosedMessage(form, timezone),
+    }
+  }
+  return null
+}
+
+/**
+ * The moment editing stops being possible, when there is one — the CFP's close
+ * date on a submission that isn't accepted yet. Returned so the portal can say
+ * "editable until Aug 20" INSTEAD of quietly locking on the day.
+ */
+function editableUntil(
+  submission: Doc<"submissions">,
+  form: Doc<"forms"> | null,
+  lock: EditLock | null,
+): number | null {
+  if (lock || !form || submission.status === "accepted") return null
+  return form.closeAt ?? null
+}
+
+async function submissionSummary(
+  ctx: QueryCtx,
+  s: Doc<"submissions">,
+  opts: { behavior: PortalBehavior; timezone?: string },
+) {
   const track = s.trackId ? await ctx.db.get(s.trackId) : null
   const room = s.roomId ? await ctx.db.get(s.roomId) : null
   const participants = await ctx.db
@@ -82,12 +175,18 @@ async function submissionSummary(ctx: QueryCtx, s: Doc<"submissions">) {
           : null
       }),
   )
+  const form = s.formId ? await ctx.db.get(s.formId) : null
+  const lock = editLockFor(s, form, opts.behavior, opts.timezone)
   return {
     id: s._id,
     title: s.title,
     description: s.description,
-    status: s.status,
+    // Never the raw pipeline status — see SPEAKER_FACING_STATUS above.
+    status: speakerFacingStatus(s.status),
     kind: s.kind,
+    // `null` ⇒ the speaker may edit this submission right now.
+    editLock: lock,
+    editableUntil: editableUntil(s, form, lock),
     format: s.format,
     level: s.level,
     language: s.language,
@@ -127,10 +226,15 @@ export const home = query({
       if (s.deletedAt !== undefined) continue
       map.set(s._id, s)
     }
+    // The organizer's three portal switches, resolved once for the whole
+    // payload — the per-submission edit lock needs them too.
+    const behavior = portalBehavior(event)
     const submissions = await Promise.all(
       [...map.values()]
         .sort((a, b) => b._creationTime - a._creationTime)
-        .map((s) => submissionSummary(ctx, s)),
+        .map((s) =>
+          submissionSummary(ctx, s, { behavior, timezone: event.timezone }),
+        ),
     )
 
     const tasks = await ctx.db
@@ -141,7 +245,6 @@ export const home = query({
     // "Always show tasks" off ⇒ the checklist only opens once a session of
     // theirs is accepted, so a portal shared with every submitter doesn't ask
     // people who haven't been accepted yet for slides and headshots.
-    const behavior = portalBehavior(event)
     const hasAcceptedSession = [...map.values()].some(
       (s) => s.status === "accepted",
     )
@@ -201,6 +304,9 @@ export const home = query({
               title: renderTaskText(t.title, taskVars) ?? t.title,
               instructions: renderTaskText(t.instructions, taskVars),
               kind: t.kind,
+              // The session this task is about, when the organizer bound it to
+              // one — files uploaded here land on that session's Files tab.
+              submissionId: t.submissionId,
               dueAt: t.dueAt,
               completedAt: t.completedAt,
               locked: isTaskLocked(t, behavior),
@@ -261,8 +367,10 @@ async function completeTasksOfKind(
 }
 
 // Speakers may edit their submissions — including after acceptance (swyx
-// clarified locking is unused). Editing a draft keeps it draft; editing a
-// submitted one keeps its status.
+// clarified acceptance-locking is unused). Editing a draft keeps it draft;
+// editing a submitted one keeps its status. What DOES close the door is the
+// CFP's own deadline (sbek CFP-16), the organizer's portal switch, and a
+// decided-against status — all three resolved by editLockFor().
 export const updateSubmission = mutation({
   args: {
     portalToken: v.string(),
@@ -285,17 +393,19 @@ export const updateSubmission = mutation({
       submission.submitterId === person._id ||
       participants.some((p) => p.personId === person._id)
     if (!isMine) throw new Error("You don't have access to this submission.")
-    if (["declined", "withdrawn"].includes(submission.status)) {
-      throw new Error("This submission can no longer be edited.")
-    }
-    // The organizer can turn portal editing off for the whole event
-    // (Settings → Event → Speaker portal). Say who to ask instead.
-    const behavior = portalBehavior(await ctx.db.get(submission.eventId))
-    if (!behavior.allowSubmissionEdits) {
-      throw new Error(
-        "The organizers have turned off editing submissions from the portal. Email them with what you'd like changed and they'll update it for you.",
-      )
-    }
+    // Exactly the rules the portal already showed this speaker — decided
+    // status, the event's "allow submission edits" switch, and the CFP's own
+    // close date — so a save never fails with a surprise the UI didn't warn
+    // about. Same sentence in both places (editLockFor above).
+    const event = await ctx.db.get(submission.eventId)
+    const form = submission.formId ? await ctx.db.get(submission.formId) : null
+    const lock = editLockFor(
+      submission,
+      form,
+      portalBehavior(event),
+      event?.timezone,
+    )
+    if (lock) throw new Error(lock.message)
     const { title, description, answers } = args.patch
     await ctx.db.patch(args.submissionId, {
       ...(title !== undefined ? { title } : {}),
@@ -418,13 +528,17 @@ export const attachUpload = mutation({
 
     // A closed task can't be completed by uploading into it either — check
     // before anything is written, so a locked task never gains a file.
-    if (args.taskId) {
-      const target = await ctx.db.get(args.taskId)
-      if (target && target.personId === person._id) {
-        const behavior = portalBehavior(await ctx.db.get(target.eventId))
-        if (isTaskLocked(target, behavior)) throw new Error(TASK_LOCKED_MESSAGE)
-      }
+    const task = args.taskId ? await ctx.db.get(args.taskId) : null
+    if (task && task.personId === person._id) {
+      const behavior = portalBehavior(await ctx.db.get(task.eventId))
+      if (isTaskLocked(task, behavior)) throw new Error(TASK_LOCKED_MESSAGE)
     }
+
+    // A task bound to a session files its uploads against that session, so the
+    // organizer finds the deck on the session's Files tab rather than having
+    // to remember which task it came in through. An explicit `submissionId`
+    // from the caller still wins.
+    const submissionId = args.submissionId ?? task?.submissionId
 
     if (args.isHeadshot) {
       // Replaces the photo AND deletes the one it replaces (convex/lib/files).
@@ -436,12 +550,12 @@ export const attachUpload = mutation({
     const version = await nextVersion(ctx, {
       personId: person._id,
       taskId: args.taskId,
-      submissionId: args.submissionId,
+      submissionId,
     })
     const uploadId = await ctx.db.insert("uploads", {
       eventId: person.eventId,
       personId: person._id,
-      submissionId: args.submissionId,
+      submissionId,
       taskId: args.taskId,
       storageId: args.storageId,
       filename: args.filename,
@@ -451,11 +565,8 @@ export const attachUpload = mutation({
       approvalStatus: "pending",
     })
 
-    if (args.taskId) {
-      const task = await ctx.db.get(args.taskId)
-      if (task && task.personId === person._id && !task.completedAt) {
-        await ctx.db.patch(args.taskId, { completedAt: Date.now() })
-      }
+    if (task && task.personId === person._id && !task.completedAt) {
+      await ctx.db.patch(task._id, { completedAt: Date.now() })
     }
     return uploadId
   },

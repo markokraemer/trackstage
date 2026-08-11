@@ -19,11 +19,46 @@ const CONVEX_SITE_URL = (
   (import.meta.env.VITE_CONVEX_URL ?? "").replace(".convex.cloud", ".convex.site")
 ).replace(/\/+$/, "")
 
+/**
+ * The JWKS clients actually get.
+ *
+ * Better Auth's `mcp()` plugin hardcodes `jwks_uri: <baseURL>/mcp/jwks` into
+ * its authorization-server metadata, but it never registers that route — the
+ * route only exists if the separate `jwt()` plugin is installed, and even then
+ * its default path is `/jwks`. So the document advertised a URL that 404s, and
+ * any spec-compliant connector that resolves `jwks_uri` to verify an RS256
+ * id_token fell over on it.
+ *
+ * We already publish a real RS256 key set: the `convex()` Better Auth plugin
+ * serves one here, and it is the key set our tokens are actually verifiable
+ * against. Point discovery at the JWKS that exists rather than minting a
+ * second one — adding `jwt()` would put a second key of a different algorithm
+ * into the same store for no gain.
+ */
+const JWKS_URI = `${CONVEX_SITE_URL}/api/auth/convex/jwks`
+
+/**
+ * Rewrite `jwks_uri` to the URL that resolves, leaving every other field the
+ * upstream document sets untouched. Anything unparseable is passed straight
+ * through — a broken discovery document is still better than none.
+ */
+function withWorkingJwks(body: string): string {
+  try {
+    const parsed: unknown = JSON.parse(body)
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+      return body
+    }
+    return JSON.stringify({ ...parsed, jwks_uri: JWKS_URI })
+  } catch {
+    return body
+  }
+}
+
 async function metadata() {
   const upstream = await fetch(
     `${CONVEX_SITE_URL}/api/auth/.well-known/oauth-authorization-server`,
   )
-  const body = await upstream.text()
+  const body = withWorkingJwks(await upstream.text())
   return new Response(body, {
     status: upstream.status,
     headers: {

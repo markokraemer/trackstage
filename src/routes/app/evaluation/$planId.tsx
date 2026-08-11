@@ -1,3 +1,4 @@
+import { useState } from "react"
 import { Link, createFileRoute } from "@tanstack/react-router"
 import { useMutation, useQuery } from "@tanstack/react-query"
 import { convexQuery, useConvexMutation } from "@convex-dev/react-query"
@@ -7,8 +8,12 @@ import { format, isBefore } from "date-fns"
 import {
   RiArrowLeftLine,
   RiCheckDoubleLine,
+  RiChatQuoteLine,
+  RiListCheck2,
+  RiMailSendLine,
   RiRestartLine,
   RiStarLine,
+  RiUserForbidLine,
   RiUserStarLine,
 } from "@remixicon/react"
 import { toast } from "sonner"
@@ -36,7 +41,10 @@ import { EmptyState } from "@/components/shared/empty-state"
 import { StatusPill } from "@/components/shared/status-pill"
 import { ProgressMeter } from "@/components/evaluation/progress-meter"
 import { EvaluatorsTable } from "@/components/evaluation/evaluators-table"
+import type { EvaluatorRow } from "@/components/evaluation/evaluators-table"
 import { AddEvaluatorForm } from "@/components/evaluation/add-evaluator-form"
+import { DistributeDialog } from "@/components/evaluation/distribute-dialog"
+import { AssignSubmissionsDialog } from "@/components/evaluation/assign-submissions-dialog"
 
 /**
  * Evaluation plan detail (docs/SPEC.md §4.5): who is reviewing, how far they
@@ -63,6 +71,12 @@ function PlanDetailPage() {
   const closePlan = useMutation({
     mutationFn: useConvexMutation(api.evaluationsAdmin.closePlan),
   })
+  const remind = useMutation({
+    mutationFn: useConvexMutation(
+      api.evaluationsAdmin.remindOutstandingEvaluators,
+    ),
+  })
+  const [assigning, setAssigning] = useState<EvaluatorRow | null>(null)
 
   const backButton = (
     <Button nativeButton={false} variant="outline" size="sm" render={<Link to="/app/evaluation" search={{ tab: "plans" }} />}>
@@ -100,20 +114,56 @@ function PlanDetailPage() {
   }
 
   const { plan, evaluators, submissions, progress } = detail
+  const opens = plan.opensAt === undefined ? undefined : new Date(plan.opensAt)
+  const notYetOpen = opens !== undefined && isBefore(new Date(), opens)
   const due = plan.dueAt === undefined ? undefined : new Date(plan.dueAt)
   const overdue =
     due !== undefined && plan.status === "open" && isBefore(due, new Date())
   const closed = plan.status === "closed"
+  const outstandingReviewers = evaluators.filter(
+    (evaluator) => evaluator.outstanding > 0,
+  ).length
 
   const scored = submissions.filter((s) => s.avgScore !== null)
-  const eventAverage =
-    scored.length === 0
+  const average = (values: Array<number>) =>
+    values.length === 0
       ? null
-      : Math.round(
-          (scored.reduce((total, s) => total + (s.avgScore ?? 0), 0) /
-            scored.length) *
-            100,
-        ) / 100
+      : Math.round((values.reduce((a, b) => a + b, 0) / values.length) * 100) /
+        100
+  const eventAverage = average(scored.map((s) => s.avgScore ?? 0))
+  const eventAverageUnweighted = average(
+    scored.map((s) => s.avgScoreUnweighted ?? 0),
+  )
+
+  function sendReminders() {
+    remind.mutate(
+      { planId: plan._id },
+      {
+        onSuccess: (result) => {
+          if (result.reminded === 0) {
+            toast.success("Everyone is up to date", {
+              description: "No reviewer has outstanding submissions right now.",
+            })
+            return
+          }
+          toast.success(
+            `Reminder sent to ${result.reminded} reviewer${result.reminded === 1 ? "" : "s"}`,
+            {
+              description: `${result.recipients.slice(0, 3).join(", ")}${
+                result.recipients.length > 3
+                  ? ` +${result.recipients.length - 3} more`
+                  : ""
+              }. Each one got their own link and their own outstanding count.`,
+            },
+          )
+        },
+        onError: (error: Error) =>
+          toast.error("Couldn't send the reminders", {
+            description: error.message,
+          }),
+      },
+    )
+  }
 
   function toggleClosed() {
     closePlan.mutate(
@@ -176,6 +226,17 @@ function PlanDetailPage() {
             {evaluators.length}{" "}
             {evaluators.length === 1 ? "evaluator" : "evaluators"}
           </Badge>
+          {notYetOpen ? (
+            <Badge variant="secondary">
+              Opens {format(opens, "MMM d, yyyy")}
+            </Badge>
+          ) : null}
+          {progress.recused > 0 ? (
+            <Badge variant="secondary" className="gap-1">
+              <RiUserForbidLine size={12} aria-hidden />
+              {progress.recused} recused
+            </Badge>
+          ) : null}
         </div>
       </PageHeader>
 
@@ -196,28 +257,47 @@ function PlanDetailPage() {
             />
             <div className="grid gap-4 sm:grid-cols-3">
               <Fact
-                label="Average score"
+                label={plan.weighted ? "Weighted average" : "Average score"}
                 value={eventAverage === null ? "—" : eventAverage.toFixed(1)}
                 hint={
                   eventAverage === null
                     ? "No scores yet"
-                    : `Across ${scored.length} scored ${scored.length === 1 ? "submission" : "submissions"}`
+                    : plan.weighted && eventAverageUnweighted !== null
+                      ? `${eventAverageUnweighted.toFixed(1)} unweighted · ${scored.length} scored`
+                      : `Across ${scored.length} scored ${scored.length === 1 ? "submission" : "submissions"}`
                 }
               />
               <Fact
-                label="Due date"
-                value={due ? format(due, "MMM d, yyyy") : "Not set"}
+                label="Review window"
+                value={
+                  due
+                    ? format(due, "MMM d, yyyy")
+                    : opens
+                      ? `From ${format(opens, "MMM d")}`
+                      : "Not set"
+                }
                 hint={
                   overdue
                     ? "Past due — nudge your evaluators"
-                    : "Shown to evaluators"
+                    : notYetOpen
+                      ? `Opens ${format(opens, "MMM d, yyyy")}`
+                      : opens
+                        ? `Opened ${format(opens, "MMM d, yyyy")}`
+                        : "Shown to evaluators"
                 }
                 tone={overdue ? "warn" : "default"}
               />
               <Fact
-                label="Scored out of"
-                value="5"
-                hint="Every criterion, 1–5"
+                label="Outstanding"
+                value={progress.outstanding}
+                hint={
+                  outstandingReviewers === 0
+                    ? "Every reviewer is done"
+                    : outstandingReviewers === 1
+                      ? "1 reviewer still has work"
+                      : `${outstandingReviewers} reviewers still have work`
+                }
+                tone={progress.outstanding > 0 ? "warn" : "default"}
               />
             </div>
           </CardContent>
@@ -225,26 +305,49 @@ function PlanDetailPage() {
 
         <Card>
           <CardHeader>
-            <CardTitle>What evaluators score</CardTitle>
+            <CardTitle>The scorecard</CardTitle>
             <CardDescription>
-              Each criterion is rated 1–5 on the review page.
+              Ratings are averaged into the score. Choices and free text are
+              recorded for you to read, never averaged.
             </CardDescription>
           </CardHeader>
           <CardContent>
             <ul className="space-y-2">
-              {plan.criteria.map((criterion) => (
-                <li
-                  key={criterion.id}
-                  className="flex items-center gap-2 rounded-lg bg-muted/60 px-3 py-2 text-sm text-foreground"
-                >
-                  <RiStarLine
-                    size={15}
-                    aria-hidden
-                    className="text-muted-foreground"
-                  />
-                  {criterion.label}
-                </li>
-              ))}
+              {plan.criteria.map((criterion) => {
+                const type = criterion.type ?? "numeric"
+                const Icon =
+                  type === "numeric"
+                    ? RiStarLine
+                    : type === "select"
+                      ? RiListCheck2
+                      : RiChatQuoteLine
+                return (
+                  <li
+                    key={criterion.id}
+                    className="flex items-start gap-2 rounded-lg bg-muted/60 px-3 py-2 text-sm text-foreground"
+                  >
+                    <Icon
+                      size={15}
+                      aria-hidden
+                      className="mt-0.5 shrink-0 text-muted-foreground"
+                    />
+                    <span className="min-w-0 flex-1">
+                      <span className="font-medium">{criterion.label}</span>
+                      <span className="block text-xs text-muted-foreground">
+                        {type === "numeric"
+                          ? `Rating 1–5${
+                              criterion.weight && criterion.weight !== 1
+                                ? ` · counts ${criterion.weight}×`
+                                : ""
+                            }`
+                          : type === "select"
+                            ? (criterion.options ?? []).join(" · ")
+                            : "Free text — optional"}
+                      </span>
+                    </span>
+                  </li>
+                )
+              })}
             </ul>
           </CardContent>
         </Card>
@@ -256,11 +359,32 @@ function PlanDetailPage() {
           <CardTitle>Evaluators</CardTitle>
           <CardDescription>
             Everyone reviewing this round. Send each person their own link —
-            they never need an account.
+            they never need an account. Split the pool so nobody is handed all{" "}
+            {submissions.length} submissions.
           </CardDescription>
         </CardHeader>
-        <CardContent className="px-6">
-          <AddEvaluatorForm planId={plan._id} className="pb-2" />
+        <CardContent className="space-y-3 px-6">
+          <AddEvaluatorForm planId={plan._id} className="pb-1" />
+          <div className="flex flex-wrap items-center gap-2">
+            <DistributeDialog
+              planId={plan._id}
+              submissionCount={submissions.length}
+              evaluatorCount={evaluators.length}
+              disabled={closed}
+            />
+            <Button
+              variant="outline"
+              disabled={remind.isPending || outstandingReviewers === 0}
+              onClick={sendReminders}
+            >
+              <RiMailSendLine aria-hidden />
+              {remind.isPending
+                ? "Sending…"
+                : outstandingReviewers === 0
+                  ? "Everyone is up to date"
+                  : `Remind ${outstandingReviewers} outstanding reviewer${outstandingReviewers === 1 ? "" : "s"}`}
+            </Button>
+          </div>
         </CardContent>
         {evaluators.length === 0 ? (
           <EmptyState
@@ -273,6 +397,7 @@ function PlanDetailPage() {
           <div className="border-t border-border">
             <EvaluatorsTable
               showActivity
+              onEditAssignment={setAssigning}
               rows={evaluators.map((evaluator) => ({
                 _id: evaluator._id,
                 email: evaluator.email,
@@ -281,19 +406,45 @@ function PlanDetailPage() {
                 done: evaluator.done,
                 total: evaluator.total,
                 lastActivityAt: evaluator.lastActivityAt,
+                customAssignment: evaluator.customAssignment,
               }))}
             />
           </div>
         )}
       </Card>
 
+      {assigning ? (
+        <AssignSubmissionsDialog
+          open
+          onOpenChange={(next) => {
+            if (!next) setAssigning(null)
+          }}
+          evaluatorId={assigning._id as Id<"evaluators">}
+          evaluatorName={assigning.name ?? assigning.email}
+          customAssignment={assigning.customAssignment === true}
+          assignedSubmissionIds={
+            evaluators.find((evaluator) => evaluator._id === assigning._id)
+              ?.assignedSubmissionIds ?? []
+          }
+          submissions={submissions.map((submission) => ({
+            _id: submission._id,
+            title: submission.title,
+            status: submission.status,
+            track: submission.track
+              ? { name: submission.track.name, color: submission.track.color }
+              : null,
+          }))}
+        />
+      ) : null}
+
       {/* Assigned submissions */}
       <Card className="p-0">
         <CardHeader className="px-6 pt-6">
           <CardTitle>Submissions under review</CardTitle>
           <CardDescription>
-            Average score is the mean of every completed scorecard for that
-            submission.
+            {plan.weighted
+              ? "Average score is the weighted mean of every completed scorecard for that submission. Recusals are excluded."
+              : "Average score is the mean of every completed scorecard for that submission. Recusals are excluded."}
           </CardDescription>
         </CardHeader>
         {submissions.length === 0 ? (
@@ -310,7 +461,9 @@ function PlanDetailPage() {
                   <TableHead>Submission</TableHead>
                   <TableHead className="w-40">Track</TableHead>
                   <TableHead className="w-36">Status</TableHead>
-                  <TableHead className="w-32 text-right">Avg score</TableHead>
+                  <TableHead className="w-36 text-right">
+                    {plan.weighted ? "Weighted avg" : "Avg score"}
+                  </TableHead>
                   <TableHead className="w-28 text-right">Reviews</TableHead>
                 </TableRow>
               </TableHeader>
@@ -349,16 +502,31 @@ function PlanDetailPage() {
                             —
                           </span>
                         ) : (
-                          <span className="text-sm font-semibold text-foreground tabular-nums">
-                            {submission.avgScore.toFixed(1)}
-                            <span className="ml-1 text-xs font-normal text-muted-foreground">
-                              / 5
+                          <>
+                            <span className="text-sm font-semibold text-foreground tabular-nums">
+                              {submission.avgScore.toFixed(1)}
+                              <span className="ml-1 text-xs font-normal text-muted-foreground">
+                                / 5
+                              </span>
                             </span>
-                          </span>
+                            {plan.weighted &&
+                            submission.avgScoreUnweighted !== null ? (
+                              <span className="block text-xs text-muted-foreground tabular-nums">
+                                {submission.avgScoreUnweighted.toFixed(1)}{" "}
+                                unweighted
+                              </span>
+                            ) : null}
+                          </>
                         )}
                       </TableCell>
                       <TableCell className="text-right text-sm text-muted-foreground tabular-nums">
-                        {submission.completedCount} of {evaluators.length}
+                        {submission.completedCount} of{" "}
+                        {submission.assignedCount}
+                        {submission.recusedCount > 0 ? (
+                          <span className="block text-xs text-status-amber-fg">
+                            {submission.recusedCount} recused
+                          </span>
+                        ) : null}
                       </TableCell>
                     </TableRow>
                   ))}

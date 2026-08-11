@@ -9,6 +9,7 @@ import { ShowMore } from "@/components/public/show-more"
 import { MetaChip, TrackChip } from "@/components/public/track-chip"
 import { SaveSessionButton } from "@/components/public/save-session-button"
 import { formatTimeRange, formatWhen } from "@/components/public/format"
+import { ROLE_LABELS } from "@/components/submit/types"
 import type { PublicEvent, PublicSession } from "@/components/public/types"
 import type { WidgetSearch } from "@/components/public/widget-search"
 
@@ -131,6 +132,13 @@ export function SessionCard({
                   >
                     {speaker.name}
                   </Link>
+                  {/* A chairperson or moderator is doing a different job on
+                      this session than the speakers around them — say so. */}
+                  {speaker.role && speaker.role !== "speaker" ? (
+                    <span className="ml-1.5 align-middle text-[11px] font-medium text-primary">
+                      {ROLE_LABELS[speaker.role] ?? speaker.role}
+                    </span>
+                  ) : null}
                   {speaker.jobTitle || speaker.company ? (
                     <p className="truncate text-xs text-muted-foreground">
                       {[speaker.jobTitle, speaker.company]

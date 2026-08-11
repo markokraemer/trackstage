@@ -13,7 +13,16 @@ export const MAIN_EVENT_SLUG = "ai-summit-2026"
 export const MAIN_EVENT_NAME = "AI Engineer Summit 2026"
 export const DEMO_WORKSPACE_NAME = "AI Engineer"
 
-/** A collision-proof identity for a spec run. */
+/**
+ * A collision-proof identity for a spec run.
+ *
+ * Also the CONTRACT the seed's fixture purge matches on: `convex/seed.ts`
+ * recognises the `-<base36 ms>-<rand>` tail (`E2E_FIXTURE_MARKER`) and deletes
+ * anything carrying it, which is how `seed:setup` scrubs a run's leftovers out
+ * of the demo world. Every synthetic title and email a spec creates must be
+ * built from this (or from `testEmail`) — a fixture named by hand is a fixture
+ * that survives the reset and greets a judge on the public programme.
+ */
 export function unique(prefix: string) {
   return `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`
 }

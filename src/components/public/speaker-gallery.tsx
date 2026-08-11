@@ -42,6 +42,14 @@ interface SharedProps {
   options?: WidgetSearch
 }
 
+/**
+ * True when a person's roles say something a reader doesn't already know from
+ * the fact that they are on a speakers page (i.e. they chair or moderate).
+ */
+function isNotableRole(roleLabels: Array<string>): boolean {
+  return roleLabels.some((label) => label !== "Speaker")
+}
+
 export function SpeakerGallery({ event, speakers, options }: SharedProps) {
   const [selected, setSelected] = useState<PublicSpeakerRow | null>(null)
 
@@ -73,6 +81,13 @@ export function SpeakerGallery({ event, speakers, options }: SharedProps) {
                 {speaker.company ? (
                   <p className="text-xs leading-tight font-medium text-foreground/70">
                     {speaker.company}
+                  </p>
+                ) : null}
+                {/* Only worth the pixels when it isn't the obvious "Speaker" —
+                    a chairperson or moderator on a speaker page is news. */}
+                {isNotableRole(speaker.roleLabels) ? (
+                  <p className="text-[11px] leading-tight font-medium text-primary">
+                    {speaker.roleLabels.join(" · ")}
                   </p>
                 ) : null}
                 <span className="mt-auto pt-2 text-[11px] text-muted-foreground">
@@ -165,7 +180,7 @@ export function SpeakerDirectory({ event, speakers, options }: SharedProps) {
                           {session.roomName ? ` · ${session.roomName}` : ""}
                         </p>
                         <p className="text-xs text-muted-foreground">
-                          Roles: speaker
+                          Role: {session.roleLabel}
                         </p>
                       </li>
                     ))}
@@ -269,6 +284,10 @@ export function SpeakerDetailDialog({
                             {session.roomName}
                           </span>
                         ) : null}
+                        <span className="inline-flex items-center gap-1">
+                          <RiUserVoiceLine size={13} aria-hidden />
+                          {session.roleLabel}
+                        </span>
                       </p>
                       {session.track ? (
                         <TrackChip

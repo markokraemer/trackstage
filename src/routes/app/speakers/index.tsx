@@ -9,6 +9,7 @@ import {
   RiEyeOffLine,
   RiListCheck3,
   RiSettings3Line,
+  RiUploadLine,
   RiUserAddLine,
   RiUserVoiceLine,
 } from "@remixicon/react"
@@ -35,6 +36,7 @@ import {
 } from "@/components/dashboard/speakers-table"
 import type { SpeakerRosterRow } from "@/components/dashboard/speakers-table"
 import { AddSpeakerDialog } from "@/components/dashboard/add-speaker-dialog"
+import { ImportSpeakersDialog } from "@/components/dashboard/import-speakers-dialog"
 import { SpeakerProfileDrawer } from "@/components/dashboard/speaker-profile-drawer"
 import { AssignTaskDialog } from "@/components/dashboard/assign-task-dialog"
 import { RemindIncompleteButton } from "@/components/dashboard/remind-incomplete-button"
@@ -99,6 +101,7 @@ function SpeakersPage() {
   const [assignOpen, setAssignOpen] = useState(false)
   const [assignTo, setAssignTo] = useState<Array<Id<"people">>>([])
   const [addOpen, setAddOpen] = useState(false)
+  const [importOpen, setImportOpen] = useState(false)
   const [editing, setEditing] = useState<SpeakerRosterRow | null>(null)
   /** Non-null while a bulk show/hide is in flight (sbek CNT-12). */
   const [bulkVisibility, setBulkVisibility] = useState<boolean | null>(null)
@@ -194,6 +197,11 @@ function SpeakersPage() {
         name: row.name,
         email: row.email,
         company: row.company,
+        // Lets "Assign task" bind the task (and its uploads) to a session.
+        sessions: row.sessions.map((session) => ({
+          _id: session._id,
+          title: session.title,
+        })),
       })),
     [rows],
   )
@@ -281,6 +289,14 @@ function SpeakersPage() {
               >
                 <RiListCheck3 aria-hidden />
                 Assign task
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setImportOpen(true)}
+              >
+                <RiUploadLine aria-hidden />
+                Import CSV
               </Button>
               <Button size="sm" onClick={() => setAddOpen(true)}>
                 <RiUserAddLine aria-hidden />
@@ -396,6 +412,10 @@ function SpeakersPage() {
                 <RiUserAddLine aria-hidden />
                 Add speaker
               </Button>
+              <Button variant="outline" onClick={() => setImportOpen(true)}>
+                <RiUploadLine aria-hidden />
+                Import CSV
+              </Button>
               <Link
                 to={APP_ROUTES.submissions}
                 className={buttonVariants({ variant: "outline" })}
@@ -445,6 +465,12 @@ function SpeakersPage() {
             eventId={event._id}
             open={addOpen}
             onOpenChange={setAddOpen}
+          />
+          <ImportSpeakersDialog
+            eventId={event._id}
+            open={importOpen}
+            onOpenChange={setImportOpen}
+            existingEmails={(rows ?? []).map((row) => row.email)}
           />
         </>
       ) : null}

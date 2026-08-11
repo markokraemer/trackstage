@@ -191,19 +191,49 @@ export const deleteUpload = mutation({
 
 // ——— Reading ——————————————————————————————————————————————————————————————
 
-/** Every file on one submission, with real metadata. Used by the Files tab. */
+/**
+ * Every file on one submission, with real metadata. Used by the Files tab.
+ *
+ * Two ways a file belongs to a session: it was attached to the submission
+ * directly, or it was uploaded into a TASK bound to that session ("upload the
+ * slides for this talk"). The second union is what stops speaker uploads from
+ * being invisible to the organizer — and it also picks up historical rows
+ * written before tasks carried a `submissionId`.
+ */
 export const submissionFiles = query({
   args: { submissionId: v.id("submissions") },
   handler: async (ctx, args) => {
     const submission = await ctx.db.get(args.submissionId)
     if (!submission) throw new Error("Submission not found.")
     await requireEventAccess(ctx, submission.eventId)
-    const rows = await ctx.db
+    const direct = await ctx.db
       .query("uploads")
       .withIndex("by_submissionId", (q) =>
         q.eq("submissionId", args.submissionId),
       )
       .collect()
+
+    const tasks = await ctx.db
+      .query("tasks")
+      .withIndex("by_submissionId", (q) =>
+        q.eq("submissionId", args.submissionId),
+      )
+      .collect()
+    const viaTask = (
+      await Promise.all(
+        tasks.map((task) =>
+          ctx.db
+            .query("uploads")
+            .withIndex("by_taskId", (q) => q.eq("taskId", task._id))
+            .collect(),
+        ),
+      )
+    ).flat()
+
+    const seen = new Map<string, (typeof direct)[number]>()
+    for (const row of [...direct, ...viaTask]) seen.set(row._id, row)
+    const rows = [...seen.values()]
+
     const files = await enrichUploads(
       ctx,
       rows.sort((a, b) => b._creationTime - a._creationTime),

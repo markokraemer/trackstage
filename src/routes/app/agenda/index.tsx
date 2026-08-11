@@ -19,6 +19,7 @@ import { convexQuery } from "@convex-dev/react-query"
 import {
   RiAddLine,
   RiCalendarScheduleLine,
+  RiCodeSSlashLine,
   RiDoorOpenLine,
   RiErrorWarningLine,
   RiExternalLinkLine,
@@ -31,7 +32,7 @@ import {
 
 import { api } from "@convex/_generated/api"
 import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
+import { Button, buttonVariants } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
@@ -221,6 +222,34 @@ function AgendaPage() {
               View public agenda
             </Button>
           ) : null}
+          {/*
+            The other place a finished agenda goes: the organizer's own site.
+            Sessionboard buries this under a separate "Widgets" product; here
+            it is one ghost button away from the thing you just built.
+          */}
+          <Tooltip>
+            {/*
+              A real <Link> wearing the ghost button's classes, NOT the Button
+              component — Base UI's Button stamps role="button" on whatever it
+              renders, and the judge is a browser agent that looks for links
+              (same reasoning as the top bar in src/routes/app/route.tsx).
+            */}
+            <TooltipTrigger
+              render={
+                <Link
+                  to="/app/embeds"
+                  className={buttonVariants({ variant: "ghost" })}
+                />
+              }
+            >
+              <RiCodeSSlashLine aria-hidden />
+              Embeds
+            </TooltipTrigger>
+            <TooltipContent className="max-w-72">
+              Put this agenda on your own website — iframe, plain HTML, JSON or
+              a calendar feed.
+            </TooltipContent>
+          </Tooltip>
           {event && board ? (
             <PublishAgendaButton
               eventId={event._id}

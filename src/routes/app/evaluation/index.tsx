@@ -7,11 +7,13 @@ import type { Id } from "@convex/_generated/dataModel"
 import {
   RiAddLine,
   RiCheckboxCircleLine,
+  RiDownloadLine,
   RiFileList3Line,
   RiGroupLine,
   RiStarLine,
   RiUserStarLine,
 } from "@remixicon/react"
+import { toast } from "sonner"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -26,6 +28,11 @@ import { AvgScoreBars } from "@/components/evaluation/avg-score-bars"
 import { PlanCard } from "@/components/evaluation/plan-card"
 import { NewPlanDialog } from "@/components/evaluation/new-plan-dialog"
 import { EvaluatorsTable } from "@/components/evaluation/evaluators-table"
+import {
+  buildSubmissionsCsv,
+  csvFilename,
+  downloadCsv,
+} from "@/components/submissions/export-csv"
 import { useCurrentEvent } from "@/lib/current-event"
 
 const TABS = ["summary", "plans", "evaluators"] as const
@@ -68,6 +75,39 @@ function EvaluationPage() {
   )
   const { data: evaluators } = useQuery(
     convexQuery(api.evaluationsAdmin.listEvaluators, eventArgs),
+  )
+
+  // The results export (sbek ABS-13). The scores lived one screen away on
+  // Submissions → Options, which is the wrong place to look for them once
+  // you're reading averages — so the same CSV is offered here, where the
+  // results are. Every row carries Average score + Reviews alongside the
+  // status, which is exactly the "who did we score, and how" sheet an
+  // organizer takes into a programme-committee call.
+  const { data: exportRows } = useQuery(
+    convexQuery(api.submissions.exportData, eventArgs),
+  )
+  const { data: scoresBySubmission } = useQuery(
+    convexQuery(api.evaluationsAdmin.scoresBySubmission, eventArgs),
+  )
+
+  function exportScores() {
+    const rows = exportRows ?? []
+    if (rows.length === 0) {
+      toast.error("There's nothing to export yet.")
+      return
+    }
+    downloadCsv(
+      csvFilename(event?.name ?? "event", "scores"),
+      buildSubmissionsCsv(rows, scoresBySubmission ?? {}),
+    )
+    toast.success(`Exported ${rows.length} submissions with their scores.`)
+  }
+
+  const exportButton = (
+    <Button variant="outline" onClick={exportScores} disabled={!exportRows}>
+      <RiDownloadLine aria-hidden />
+      Export scores
+    </Button>
   )
 
   const nextRound = useMemo(() => {
@@ -118,7 +158,12 @@ function EvaluationPage() {
       <PageHeader
         title="Evaluation"
         description="Score submissions with a panel of reviewers, one round at a time. Every reviewer gets a private link — no accounts to create."
-        actions={newPlanButton}
+        actions={
+          <>
+            {exportButton}
+            {newPlanButton}
+          </>
+        }
       />
 
       <Tabs

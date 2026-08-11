@@ -1,4 +1,9 @@
-import { RiCalendarEventLine, RiMapPin2Line, RiUser3Line } from "@remixicon/react"
+import {
+  RiCalendarEventLine,
+  RiLockLine,
+  RiMapPin2Line,
+  RiUser3Line,
+} from "@remixicon/react"
 
 import { cn } from "@/lib/utils"
 import { StatusPill } from "@/components/shared/status-pill"
@@ -107,6 +112,19 @@ export function SubmissionCard({
               {submission.scheduled.room}
             </span>
           ) : null}
+        </p>
+      ) : null}
+
+      {/* Editing closed for a reason the status pill doesn't already tell them
+          (a passed CFP deadline, or an event that takes changes by email). Said
+          here, on the list, so opening the drawer is never a surprise. */}
+      {detailed &&
+      submission.editLock &&
+      submission.editLock.code !== "declined" &&
+      submission.editLock.code !== "withdrawn" ? (
+        <p className="mt-2.5 inline-flex items-center gap-1.5 text-xs text-muted-foreground">
+          <RiLockLine size={13} aria-hidden />
+          {submission.editLock.title}
         </p>
       ) : null}
 

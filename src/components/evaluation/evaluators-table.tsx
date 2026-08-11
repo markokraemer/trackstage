@@ -4,7 +4,7 @@ import { useConvexMutation } from "@convex-dev/react-query"
 import { api } from "@convex/_generated/api"
 import type { Id } from "@convex/_generated/dataModel"
 import { formatDistanceToNow } from "date-fns"
-import { RiDeleteBinLine } from "@remixicon/react"
+import { RiDeleteBinLine, RiEditLine } from "@remixicon/react"
 import { toast } from "sonner"
 
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
@@ -52,6 +52,8 @@ export interface EvaluatorRow {
   planName?: string
   planStatus?: string
   lastActivityAt?: number | null
+  /** True when the organizer hand-picked this reviewer's list (sbek ABS-06). */
+  customAssignment?: boolean
 }
 
 export interface EvaluatorsTableProps {
@@ -60,13 +62,20 @@ export interface EvaluatorsTableProps {
   showPlan?: boolean
   /** Show the "Last scored" column (the plan detail table). */
   showActivity?: boolean
+  /**
+   * Show the "Assigned" column with an Edit button (the plan detail table).
+   * Called with the row the organizer wants to re-assign.
+   */
+  onEditAssignment?: (row: EvaluatorRow) => void
 }
 
 export function EvaluatorsTable({
   rows,
   showPlan = false,
   showActivity = false,
+  onEditAssignment,
 }: EvaluatorsTableProps) {
+  const showAssignment = onEditAssignment !== undefined
   return (
     <div className="overflow-x-auto">
       <Table>
@@ -74,6 +83,9 @@ export function EvaluatorsTable({
           <TableRow>
             <TableHead>Evaluator</TableHead>
             {showPlan ? <TableHead>Plan</TableHead> : null}
+            {showAssignment ? (
+              <TableHead className="w-40">Assigned</TableHead>
+            ) : null}
             <TableHead className="w-56">Progress</TableHead>
             {showActivity ? (
               <TableHead className="w-36">Last scored</TableHead>
@@ -113,6 +125,27 @@ export function EvaluatorsTable({
                     {row.planStatus ? (
                       <StatusPill status={row.planStatus} size="sm" />
                     ) : null}
+                  </div>
+                </TableCell>
+              ) : null}
+
+              {showAssignment ? (
+                <TableCell>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-sm text-foreground tabular-nums">
+                      {row.total}
+                    </span>
+                    <span className="text-xs text-muted-foreground">
+                      {row.customAssignment ? "hand-picked" : "whole pool"}
+                    </span>
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      aria-label={`Edit what ${row.name ?? row.email} reviews`}
+                      onClick={() => onEditAssignment(row)}
+                    >
+                      <RiEditLine aria-hidden />
+                    </Button>
                   </div>
                 </TableCell>
               ) : null}

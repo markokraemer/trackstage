@@ -92,7 +92,9 @@ Source of truth for everything Marko asked + build status. Update continuously.
   submissions, marketing, public) — crawler will catch; sweep at reconciliation
 - ⏳ /app intermittent SSR error "null useRef" from copilot/ai-elements dependency — investigate
 - ⏳ Move /app/settings/api-mcp → /app/account/api-mcp (account-level by nature)
-- ⏳ Dev deployment has stray "MCP Test Event" from live-fire suite — reseed before demos
+- ✅ Dev deployment collects agent/e2e artifacts — `seed:setup` now purges them (agent
+  events by name, e2e fixtures by the `unique()` marker on any event). Reseed before
+  demos: see the RELEASE GATE line under **Ship**
 
 ## MCP ergonomic fixes (from live-fire test — docs/reference/mcp-live-test.md)
 **Fix pass shipped 2026-08-11 — surface is now 31 tools (was 27); fix-list items 1–8 done.**
@@ -164,6 +166,13 @@ Source of truth for everything Marko asked + build status. Update continuously.
 - ⏳ README: product tour, self-host, API docs, screenshots
 - ⏳ Submission: fill swyx's form, flip repo public, submissionNotes for sbek config
 - ⏳ Manual verification prep: .ics imports (Google/Apple/Outlook), email previews
+- 🔁 **RELEASE GATE — run `pnpm exec convex run seed:setup` immediately before any sbek
+  run, demo, screenshot pass or submission** (dev AND prod). The e2e flow suite drives the
+  real product against the real deployment, so every run leaves fixtures ("Dragged
+  dg-mso9…", six "Aggie Enda"s) on the demo event, where they lead the public sessions
+  list, the speakers directory and the .ics feed. Seeding is the reset button: it rebuilds
+  both demo events and sweeps e2e fixtures off every other event (`purgeE2EFixtures` in
+  `convex/seed.ts`). Nothing else may run against the deployment afterwards.
 
 ## Coverage audit gaps
 From `docs/reference/coverage-matrix.md` (2026-08-11, 175 items · 124 covered · 19 partial ·

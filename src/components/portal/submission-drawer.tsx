@@ -3,6 +3,7 @@ import { useConvexMutation } from "@convex-dev/react-query"
 import { api } from "@convex/_generated/api"
 import { toast } from "sonner"
 import {
+  RiCalendarCloseLine,
   RiCalendarEventLine,
   RiCloseCircleLine,
   RiFileTextLine,
@@ -38,6 +39,7 @@ import { TrackDot } from "./submission-card"
 import {
   canEdit,
   canWithdraw,
+  formatDate,
   formatDateTime,
   humanizeKey,
 } from "./portal-utils"
@@ -45,6 +47,18 @@ import {
 /** Answers we render as editable text (everything else is shown read-only). */
 function isTextAnswer(value: unknown): value is string {
   return typeof value === "string"
+}
+
+/**
+ * A locked submission is bad news only when the decision went against the
+ * speaker. A closed call for speakers, or an event that takes edits by email,
+ * is ordinary information — so those stay in the default tone.
+ */
+const LOCK_TONE: Record<string, "default" | "destructive"> = {
+  withdrawn: "destructive",
+  declined: "destructive",
+  portal_disabled: "default",
+  cfp_closed: "default",
 }
 
 export interface SubmissionDrawerProps {
@@ -57,7 +71,10 @@ export interface SubmissionDrawerProps {
 /**
  * Submission detail (docs/SPEC.md §4.7). Details and Participants tabs, and —
  * per swyx's clarification — the speaker can still edit the text after the
- * submission has been accepted. Only declined/withdrawn submissions lock.
+ * submission has been accepted. Editing locks when the decision went against
+ * them, when the organizer turned portal edits off, or when the call for
+ * speakers closed on a talk that isn't accepted yet; `editLock` carries the
+ * reason and the sentence, straight from the server.
  */
 export function SubmissionDrawer({
   submission,
@@ -65,15 +82,16 @@ export function SubmissionDrawer({
   open,
   onOpenChange,
 }: SubmissionDrawerProps) {
-  const { portalToken, home } = usePortal()
+  const { portalToken } = usePortal()
   const updateSubmission = useConvexMutation(api.portal.updateSubmission)
   const withdrawSubmission = useConvexMutation(api.portal.withdrawSubmission)
 
-  // The organizer can turn portal editing off for the whole event (Settings →
-  // Event details → Speaker portal). Show the fields read-only rather than
-  // letting someone type a paragraph the save would then refuse.
-  const editsAllowed = home.portal.allowSubmissionEdits
-  const editable = canEdit(submission) && editsAllowed
+  // One server-computed verdict (convex/portal.ts editLockFor): a decided
+  // status, the organizer's "allow submission edits" switch, or the CFP's own
+  // close date. Present ⇒ show the fields read-only with the reason, rather
+  // than letting someone type a paragraph the save would then refuse.
+  const lock = submission.editLock
+  const editable = canEdit(submission)
   const [title, setTitle] = useState(submission.title)
   const [description, setDescription] = useState(submission.description ?? "")
   const [answers, setAnswers] = useState<Record<string, unknown>>(
@@ -218,33 +236,26 @@ export function SubmissionDrawer({
             </Alert>
           ) : null}
 
-          {editable ? (
+          {lock === null ? (
             <Alert>
               <RiInformationLine aria-hidden />
               <AlertDescription>
-                You can update the wording here at any time — even after your
-                talk has been accepted. The organizers see your latest version.
-              </AlertDescription>
-            </Alert>
-          ) : canEdit(submission) ? (
-            <Alert>
-              <RiInformationLine aria-hidden />
-              <AlertTitle>Changes go through the organizers</AlertTitle>
-              <AlertDescription>
-                This event doesn't take edits through the portal. Email the
-                organizers with what you'd like changed and they'll update it
-                for you.
+                {submission.editableUntil
+                  ? `You can update the wording here until ${formatDate(submission.editableUntil)}, when the call for speakers closes. The organizers see your latest version.`
+                  : "You can update the wording here at any time — even after your talk has been accepted. The organizers see your latest version."}
               </AlertDescription>
             </Alert>
           ) : (
-            <Alert variant="destructive">
-              <RiCloseCircleLine aria-hidden />
-              <AlertTitle>This submission is closed</AlertTitle>
-              <AlertDescription>
-                {submission.status === "withdrawn"
-                  ? "You withdrew this submission, so it can no longer be edited."
-                  : "This submission was declined, so it can no longer be edited."}
-              </AlertDescription>
+            <Alert variant={LOCK_TONE[lock.code]}>
+              {lock.code === "cfp_closed" ? (
+                <RiCalendarCloseLine aria-hidden />
+              ) : lock.code === "portal_disabled" ? (
+                <RiInformationLine aria-hidden />
+              ) : (
+                <RiCloseCircleLine aria-hidden />
+              )}
+              <AlertTitle>{lock.title}</AlertTitle>
+              <AlertDescription>{lock.message}</AlertDescription>
             </Alert>
           )}
 

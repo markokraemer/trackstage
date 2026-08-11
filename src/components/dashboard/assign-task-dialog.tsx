@@ -71,6 +71,9 @@ export const TASK_KINDS = [
 /** Sentinel for "no library task" — Base UI selects want a real value. */
 const FROM_SCRATCH = "scratch"
 
+/** Sentinel for "this task isn't about one particular session". */
+const NO_SESSION = "none"
+
 /**
  * The placeholders an organizer may drop into the instructions. Rendered per
  * speaker when the portal shows the task, so one wording reads personally for
@@ -86,6 +89,8 @@ export interface AssignTaskSpeaker {
   name: string
   email: string
   company?: string
+  /** Their accepted sessions — the choices for "For session…". */
+  sessions?: Array<{ _id: string; title: string }>
 }
 
 export interface AssignTaskDialogProps {
@@ -120,6 +125,7 @@ export function AssignTaskDialog({
   const [showErrors, setShowErrors] = useState(false)
   const [templateId, setTemplateId] = useState<string>(FROM_SCRATCH)
   const [saveAsTemplate, setSaveAsTemplate] = useState(false)
+  const [submissionId, setSubmissionId] = useState<string>(NO_SESSION)
 
   const createTask = useConvexMutation(api.tasksAdmin.create)
   const { data: templates } = useQuery(
@@ -149,6 +155,7 @@ export function AssignTaskDialog({
       setShowErrors(false)
       setTemplateId(FROM_SCRATCH)
       setSaveAsTemplate(false)
+      setSubmissionId(NO_SESSION)
       setSelected(initialPersonIds ? initialPersonIds.map(String) : [])
     }
   }, [open, initialPersonIds])
@@ -184,6 +191,43 @@ export function AssignTaskDialog({
     )
   }, [speakers, search])
 
+  /**
+   * "For session…" only offers sessions EVERY selected speaker is on: with one
+   * speaker that is simply their sessions, with two co-speakers it is the talk
+   * they share. Anything else would file a speaker's slides against a session
+   * they aren't part of.
+   */
+  const sessionOptions = useMemo(() => {
+    const rows = speakers.filter((speaker) =>
+      selected.includes(String(speaker.personId)),
+    )
+    if (rows.length === 0) return []
+    const shared = new Map<string, string>()
+    for (const session of rows[0].sessions ?? []) {
+      if (
+        rows.every((row) =>
+          (row.sessions ?? []).some((s) => s._id === session._id),
+        )
+      ) {
+        shared.set(session._id, session.title)
+      }
+    }
+    return [
+      { value: NO_SESSION, label: "Not about a particular session" },
+      ...[...shared.entries()].map(([value, label]) => ({ value, label })),
+    ]
+  }, [speakers, selected])
+
+  // Drop a session choice that the current selection no longer shares.
+  useEffect(() => {
+    if (
+      submissionId !== NO_SESSION &&
+      !sessionOptions.some((option) => option.value === submissionId)
+    ) {
+      setSubmissionId(NO_SESSION)
+    }
+  }, [sessionOptions, submissionId])
+
   const titleMissing = title.trim().length === 0
   const noSpeakers = selected.length === 0
 
@@ -213,6 +257,10 @@ export function AssignTaskDialog({
         instructions: instructions.trim() || undefined,
         kind,
         dueAt,
+        submissionId:
+          submissionId === NO_SESSION
+            ? undefined
+            : (submissionId as Id<"submissions">),
         saveAsTemplate: saveAsTemplate || undefined,
       })
       onOpenChange(false)
@@ -485,6 +533,34 @@ export function AssignTaskDialog({
                 </div>
               )}
             </Field>
+
+            {/* Only worth asking once we know whose sessions to offer — and
+                only when the selection actually shares one. */}
+            {sessionOptions.length > 1 ? (
+              <Field>
+                <FieldLabel htmlFor="task-session">For session</FieldLabel>
+                <FieldDescription>
+                  Optional. Anything they upload for this task is filed against
+                  that session, so you find it on the session's Files tab.
+                </FieldDescription>
+                <Select
+                  items={sessionOptions}
+                  value={submissionId}
+                  onValueChange={(next) => setSubmissionId(String(next))}
+                >
+                  <SelectTrigger id="task-session" aria-label="For session">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {sessionOptions.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </Field>
+            ) : null}
 
             <Field>
               <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-border px-3 py-2.5 hover:bg-accent/40">

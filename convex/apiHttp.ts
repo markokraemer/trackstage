@@ -366,6 +366,10 @@ function readSessionFilters(
   if (typeof search === "string" && search) filters.search = search
   const includeDeleted = readBool(pick("include_deleted", "includeDeleted"))
   if (includeDeleted !== undefined) filters.includeDeleted = includeDeleted
+  // `?public=true` — only what the published programme shows; `?public=false`
+  // — only what the organizer has hidden (the embargo audit).
+  const publicOnly = readBool(pick("public", "public"))
+  if (publicOnly !== undefined) filters.publicOnly = publicOnly
 
   const createdBefore = readTime(created.before)
   if (createdBefore !== undefined) filters.createdBefore = createdBefore
@@ -407,6 +411,10 @@ function readSessionInput(body: Record<string, unknown>): Record<string, unknown
   if (status !== undefined) input.status = status
   const isAbstract = readBool(get("is_abstract", "isAbstract"))
   if (isAbstract !== undefined) input.is_abstract = isAbstract
+  // Sessionboard's "Display Session" checkbox — `false` keeps an accepted
+  // session off every public surface without changing its status.
+  const isPublic = readBool(get("is_public", "isPublic", "display_session"))
+  if (isPublic !== undefined) input.is_public = isPublic
   const startsAt = readTime(get("starts_at", "startsAt", "startTime"))
   if (startsAt !== undefined) input.starts_at = startsAt
   const endsAt = readTime(get("ends_at", "endsAt", "endTime"))
@@ -795,9 +803,15 @@ async function handleEventScoped(
         const filters = readSessionFilters(url, method === "POST" ? body : null)
         // The pre-parity GET returned the published programme. Keep that as
         // the default so existing consumers see exactly what they always saw;
-        // any explicit filter opts into the full pipeline.
-        if (method === "GET" && Object.keys(filters).length === 0)
+        // any explicit filter opts into the full pipeline. "The published
+        // programme" means what the PUBLIC sees, so a session the organizer
+        // hid with Display Session is excluded here exactly as it is from
+        // /e/{slug} and schedule.ics — pass `?status=accepted` to get the
+        // organizer's full accepted list, hidden rows flagged `is_public`.
+        if (method === "GET" && Object.keys(filters).length === 0) {
           filters.status = "accepted"
+          filters.publicOnly = true
+        }
         const sort = readSort(url, method === "POST" ? body : null)
         const result = await ctx.runQuery(internal.apiV1.searchSessions, {
           eventRef,
@@ -1065,6 +1079,11 @@ async function handleEventScoped(
           workflowStatus:
             url.searchParams.get("workflow_status") ??
             str(filters.workflowStatus),
+          // `?public=true|false` — the per-speaker eye toggle. Unset returns
+          // every contact, each carrying its own `is_public`.
+          publicOnly: readBool(
+            url.searchParams.get("public") ?? filters.public,
+          ),
           sortDir: sort.sortDir,
           page: paging.page,
           pageSize: paging.pageSize,
@@ -1385,6 +1404,9 @@ function readSpeakerInput(body: Record<string, unknown>): Record<string, unknown
     const value = str(get(...sources))
     if (value !== undefined) input[target] = value
   }
+  // The per-participant eye toggle — the only non-string field here.
+  const isPublic = readBool(get("is_public", "isPublic", "public_visible"))
+  if (isPublic !== undefined) input.is_public = isPublic
   return input
 }
 

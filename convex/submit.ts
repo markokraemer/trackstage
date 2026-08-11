@@ -6,6 +6,7 @@ import { mutation, query } from "./_generated/server"
 import { scheduleAirtableSync } from "./airtable"
 import { emitWebhook } from "./webhooks"
 import { randomToken } from "./lib/auth"
+import { isFormOpen } from "./lib/formWindow"
 import { notifySubmissionAdmins } from "./platformEmails"
 
 // ————————————————————————————————————————————————————————————————————————
@@ -25,19 +26,6 @@ const participantArg = v.object({
   phone: v.optional(v.string()),
   bio: v.optional(v.string()),
 })
-
-function isFormOpen(form: Doc<"forms">): { open: boolean; reason?: string } {
-  if (form.status !== "open") {
-    return { open: false, reason: "This call for speakers is closed." }
-  }
-  if (form.closeAt && Date.now() > form.closeAt) {
-    return {
-      open: false,
-      reason: "The submission deadline for this form has passed.",
-    }
-  }
-  return { open: true }
-}
 
 /** Questions actually visible given current answers (conditional logic). */
 function visibleQuestions(

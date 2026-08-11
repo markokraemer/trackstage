@@ -36,6 +36,10 @@ export const TEMPLATE_META: Record<string, TemplateMeta | undefined> = {
     label: "Task reminder",
     when: "Sent by “Remind incomplete speakers”, and once a day automatically for tasks coming due.",
   },
+  deadline_reminder: {
+    label: "Draft deadline reminder",
+    when: "Sent once, automatically, in the three days before a form closes — to anyone still holding an unfinished draft. Turn it on per form in the form builder’s Settings step.",
+  },
 }
 
 /** Friendly name for a template key, falling back to the stored name. */
@@ -68,6 +72,14 @@ const PLACEHOLDER_COPY: Record<
   portalLink: {
     label: "Speaker portal link",
     sample: "https://trackstage.app/portal/t/8f3a…",
+  },
+  closeDate: {
+    label: "Form close date (deadline reminders)",
+    sample: "Friday, August 14, 2026 at 5:00 PM EDT",
+  },
+  formLink: {
+    label: "Submission form link (deadline reminders)",
+    sample: "https://trackstage.app/submit/cfp",
   },
 }
 
