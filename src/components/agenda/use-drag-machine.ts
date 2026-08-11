@@ -24,6 +24,14 @@
  *   one column, Enter drops, Escape cancels — driving the identical preview,
  *   chip and warnings, and narrating each step into an aria-live region. That
  *   is both the accessible path and a deterministic path for a browser agent.
+ *
+ * The one structural decision worth stating out loud: **what you are holding
+ * and where it would land are two different pieces of state**. The grab lives
+ * for the whole gesture; the target is null whenever the pointer is off the
+ * grid. Collapsing them into one — which is the obvious first draft — makes the
+ * card in your hand, the dimmed original and the 15-minute rules all blink out
+ * the instant you cross the tray, which reads as "the drag broke" even though
+ * it hasn't. Keeping them apart is what makes the gesture feel continuous.
  */
 
 import * as React from "react"
@@ -104,9 +112,18 @@ export interface DragMachineOptions {
   onCommit: (placement: DragPlacement) => void
 }
 
-interface DragState {
+/**
+ * What is in the organizer's hand. Lives for the whole gesture — deliberately
+ * separate from the target, so a pointer excursion off the grid never looks
+ * like the drag ended.
+ */
+interface GrabState {
   sessionId: string
   source: "pointer" | "keyboard"
+}
+
+/** Where it would land right now. Null while the pointer is off the grid. */
+interface TargetState {
   columnKey: string
   minutes: number
 }
@@ -117,6 +134,12 @@ export interface AgendaDragMachine {
   source: "pointer" | "keyboard" | null
   isKeyboard: boolean
   placement: DragPlacement | null
+  /**
+   * Something is in the air, but the pointer is nowhere droppable. The card
+   * still follows the cursor and the original stays dimmed; the ghost is
+   * honestly absent and the chip says to come back to the grid.
+   */
+  isOffGrid: boolean
   /** The ghost for one column — null unless the drop would land there. */
   ghostFor: (columnKey: string) => DragPlacement | null
   announcement: string
@@ -156,7 +179,8 @@ export function useDragMachine(
     columnOf,
   } = options
 
-  const [drag, setDrag] = React.useState<DragState | null>(null)
+  const [held, setHeld] = React.useState<GrabState | null>(null)
+  const [target, setTarget] = React.useState<TargetState | null>(null)
   const [announcement, setAnnouncement] = React.useState("")
 
   // Handlers read the freshest inputs without re-subscribing every render.
@@ -164,7 +188,7 @@ export function useDragMachine(
   latest.current = options
 
   const activeSession =
-    sessions.find((session) => session.id === drag?.sessionId) ?? null
+    sessions.find((session) => session.id === held?.sessionId) ?? null
 
   const clampMinutes = React.useCallback(
     (minutes: number, durationMinutes: number) =>
@@ -176,12 +200,15 @@ export function useDragMachine(
     [windowStartMinutes, windowEndMinutes]
   )
 
-  /** Resolve a (column, minutes) pair into everything a drop needs to know. */
+  /** Resolve a (session, column, minutes) triple into what a drop needs. */
   const resolve = React.useCallback(
-    (state: DragState | null): DragPlacement | null => {
-      if (!state) return null
+    (
+      grab: GrabState | null,
+      state: TargetState | null
+    ): DragPlacement | null => {
+      if (!grab || !state) return null
       const session = latest.current.sessions.find(
-        (candidate) => candidate.id === state.sessionId
+        (candidate) => candidate.id === grab.sessionId
       )
       const column = latest.current.columns.find(
         (candidate) => candidate.key === state.columnKey
@@ -227,13 +254,13 @@ export function useDragMachine(
   // the deps: an optimistic board update mid-drag must move the ghost and
   // re-check the warnings on the very next render.
   const placement = React.useMemo(
-    () => resolve(drag),
-    [drag, resolve, columns, boardSessions]
+    () => resolve(held, target),
+    [held, target, resolve, columns, boardSessions]
   )
 
   /** Where a session sits right now, in this view's coordinates. */
   const locate = React.useCallback(
-    (session: AgendaSession): { columnKey: string; minutes: number } | null => {
+    (session: AgendaSession): TargetState | null => {
       const list = latest.current.columns
       // A tray session belongs to no column yet — start it in the first one.
       const columnKey =
@@ -277,7 +304,7 @@ export function useDragMachine(
   )
 
   const targetFromEvent = React.useCallback(
-    (event: DragMoveEvent | DragEndEvent): DragState | null => {
+    (event: DragMoveEvent | DragEndEvent): TargetState | null => {
       const columnKey = columnKeyFromDroppableId(String(event.over?.id ?? ""))
       if (!columnKey) return null
       const minutes = minutesFromRects(
@@ -285,12 +312,7 @@ export function useDragMachine(
         event.over?.rect
       )
       if (minutes === null) return null
-      return {
-        sessionId: String(event.active.id),
-        source: "pointer",
-        columnKey,
-        minutes,
-      }
+      return { columnKey, minutes }
     },
     [minutesFromRects]
   )
@@ -301,91 +323,105 @@ export function useDragMachine(
         (candidate) => candidate.id === String(event.active.id)
       )
       if (!session) return
-      const here = locate(session)
-      setDrag(
-        here
-          ? {
-              sessionId: session.id,
-              source: "pointer",
-              columnKey: here.columnKey,
-              minutes: here.minutes,
-            }
-          : null
-      )
+      setHeld({ sessionId: session.id, source: "pointer" })
+      setTarget(locate(session))
     },
     [locate]
   )
 
   const onDragMove = React.useCallback(
     (event: DragMoveEvent) => {
-      const next = targetFromEvent(event)
-      // Off the grid entirely (over the tray, say) → no ghost, honestly.
-      setDrag(next)
+      // Off the grid entirely (over the tray, say) → no ghost, honestly. The
+      // grab itself survives, so the card stays in your hand.
+      setTarget(targetFromEvent(event))
     },
     [targetFromEvent]
   )
 
   const onDragEnd = React.useCallback(
     (event: DragEndEvent) => {
-      const next = resolve(targetFromEvent(event))
-      setDrag(null)
+      const next = resolve(
+        { sessionId: String(event.active.id), source: "pointer" },
+        targetFromEvent(event)
+      )
+      setHeld(null)
+      setTarget(null)
       if (!next) return
       latest.current.onCommit(next)
     },
     [resolve, targetFromEvent]
   )
 
-  const onDragCancel = React.useCallback(() => setDrag(null), [])
+  const onDragCancel = React.useCallback(() => {
+    setHeld(null)
+    setTarget(null)
+  }, [])
 
   // ——— Keyboard ———————————————————————————————————————————————————————————
 
+  // Read inside the state updaters below, which must stay free of stale
+  // closures without re-creating the window key listener on every move.
+  const heldRef = React.useRef<GrabState | null>(null)
+  heldRef.current = held
+  const targetRef = React.useRef<TargetState | null>(null)
+  targetRef.current = target
+
+  /**
+   * Move the target by whole columns and whole 15-minute slots.
+   *
+   * The clamp happens *here*, not only when the placement is resolved: let the
+   * stored minutes run past the end of the day and the next few ArrowUps go
+   * nowhere while the number unwinds, which feels like the keys stopped
+   * working. Clamping the state keeps every press worth exactly one slot.
+   */
   const nudge = React.useCallback(
     (columnStep: number, slotStep: number) => {
-      setDrag((current) => {
+      setTarget((current) => {
         if (!current) return current
         const list = latest.current.columns
         const index = list.findIndex((column) => column.key === current.columnKey)
         const nextIndex = clamp(index + columnStep, 0, list.length - 1)
+        const duration =
+          latest.current.sessions.find(
+            (session) => session.id === heldRef.current?.sessionId
+          )?.durationMinutes ?? SLOT_MINUTES
         return {
-          ...current,
           columnKey: list[nextIndex]?.key ?? current.columnKey,
-          minutes: current.minutes + slotStep * SLOT_MINUTES,
+          minutes: clampMinutes(
+            current.minutes + slotStep * SLOT_MINUTES,
+            duration
+          ),
         }
       })
     },
-    []
+    [clampMinutes]
   )
 
   const commitKeyboard = React.useCallback(() => {
-    setDrag((current) => {
-      const next = resolve(current)
-      if (next) {
-        latest.current.onCommit(next)
-        setAnnouncement(
-          `Dropped ${next.session.title} at ${formatMinutes(next.minutes)}, ${next.column.name}.`
-        )
-      }
-      return null
-    })
+    const next = resolve(heldRef.current, targetRef.current)
+    setHeld(null)
+    setTarget(null)
+    if (!next) return
+    latest.current.onCommit(next)
+    setAnnouncement(
+      `Dropped ${next.session.title} at ${formatMinutes(next.minutes)}, ${next.column.name}.`
+    )
   }, [resolve])
 
   const cancel = React.useCallback(() => {
-    setDrag((current) => {
-      if (current) setAnnouncement("Move cancelled. The session stayed put.")
-      return null
-    })
+    if (heldRef.current) {
+      setAnnouncement("Move cancelled. The session stayed put.")
+    }
+    setHeld(null)
+    setTarget(null)
   }, [])
 
   const grab = React.useCallback(
     (session: AgendaSession) => {
       const here = locate(session)
       if (!here) return
-      setDrag({
-        sessionId: session.id,
-        source: "keyboard",
-        columnKey: here.columnKey,
-        minutes: here.minutes,
-      })
+      setHeld({ sessionId: session.id, source: "keyboard" })
+      setTarget(here)
       setAnnouncement(
         `Picked up ${session.title}. Use the arrow keys to move it, Enter to drop, Escape to cancel.`
       )
@@ -397,15 +433,15 @@ export function useDragMachine(
     (session: AgendaSession) => (event: React.KeyboardEvent) => {
       if (event.key !== "Enter" && event.key !== " ") return
       // Only the pick-up gesture; once grabbed the window listener takes over.
-      if (drag) return
+      if (held) return
       event.preventDefault()
       event.stopPropagation()
       grab(session)
     },
-    [drag, grab]
+    [held, grab]
   )
 
-  const grabbedByKeyboard = drag?.source === "keyboard"
+  const grabbedByKeyboard = held?.source === "keyboard"
 
   React.useEffect(() => {
     if (!grabbedByKeyboard) return
@@ -467,16 +503,17 @@ export function useDragMachine(
 
   const isGrabbed = React.useCallback(
     (sessionId: string) =>
-      drag?.source === "keyboard" && drag.sessionId === sessionId,
-    [drag]
+      held?.source === "keyboard" && held.sessionId === sessionId,
+    [held]
   )
 
   return {
     activeSession,
-    activeId: drag?.sessionId ?? null,
-    source: drag?.source ?? null,
-    isKeyboard: grabbedByKeyboard,
+    activeId: held?.sessionId ?? null,
+    source: held?.source ?? null,
+    isKeyboard: Boolean(grabbedByKeyboard),
     placement,
+    isOffGrid: held !== null && placement === null,
     ghostFor,
     announcement,
     dndHandlers: { onDragStart, onDragMove, onDragEnd, onDragCancel },

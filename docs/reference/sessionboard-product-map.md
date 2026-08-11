@@ -254,8 +254,8 @@ a 4-step wizard `Overview · Rounds · Evaluators · Assignments`:
 - Plan deep-dive tabs: **Submissions** (ID · Title · Evaluators · Progress · Avg score · Status; Grouped/Flat) · **Rounds** (bulk **Promote to next round / Demote to previous**) · **Evaluators** (per-evaluator `⋯`: **Resend invite email · Edit assignments · Remove from plan**) · **Review**.
 `NEW` — the per-reviewer caps + auto-distribute + COI/abstain + impact preview are collectively TODO [15]/[16] with a full design.
 
-**Evaluation Summary** page: `# of Evaluations · # of Evaluated Sessions · # of Evaluation Plans ·
-# of Evaluators`, **Highest and Lowest Scoring Sessions**, Completion Status chart, **Average
+**Evaluation Summary** page: `# of Evaluations · # of Evaluated Sessions · # of Evaluation Plans · # of Evaluators`,
+**Highest and Lowest Scoring Sessions**, Completion Status chart, **Average
 Session Score by Plan** bar chart, **Top 10 Sessions**, and — `NEW` and genuinely clever —
 **"Thought-Provoking" Sessions: sessions that received a wide range of evaluator feedback from
 the highest and the lowest score** (i.e. rank by score *variance*). 2.0 adds Started / In progress
@@ -538,7 +538,7 @@ Read directly off the video frames — these are the things the transcripts unde
 
 ## 6. NEW findings — index
 
-Ninety-four distinct findings are labelled `NEW` above. Grouped by area for the parity loop:
+Eighty-eight distinct findings are labelled `NEW` above. Grouped by area for the parity loop:
 
 | Area | Count | Highest-value items |
 |---|---|---|

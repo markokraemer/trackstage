@@ -323,8 +323,11 @@ export function TrackView({
       <KeyboardDragHint id={HINT_ID} />
       <DragAnnouncer message={machine.announcement} />
 
-      {machine.source === "pointer" && machine.placement ? (
-        <PointerDragChip placement={machine.placement} />
+      {machine.source === "pointer" && activeSession ? (
+        <PointerDragChip
+          placement={machine.placement}
+          title={activeSession.title}
+        />
       ) : null}
 
       <DragOverlay dropAnimation={null}>

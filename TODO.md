@@ -114,6 +114,11 @@ Source of truth for everything Marko asked + build status. Update continuously.
 - ⏳ Docs-only leftover: README Authorization section should say a revoked API key surfaces
   in Claude Code as a "requires re-authorization" prompt (spec-correct, but surprising)
 
+## Post-rename cleanup
+- ⏳ Re-run scripts/capture-screenshots.mjs + capture-walkthrough: form-builder.png shows
+  an error state, in-shot sidebar still reads "Sessionboard" (pre-rename). Run after
+  deploy agent lands + dev server settles.
+
 ## Quality / hill-climb
 - ⏳ First full pass review vs screenshots + video (UX 1:1 check), then vs SPEC acceptance
   criteria

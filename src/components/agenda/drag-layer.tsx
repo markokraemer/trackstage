@@ -187,13 +187,47 @@ function DragChipBody({
 }
 
 /**
+ * The chip while the pointer is somewhere nothing can land — over the tray,
+ * the toolbar, the page margin.
+ *
+ * Saying nothing here is worse than it sounds: the ghost has just vanished, so
+ * without a word the organizer has to guess whether the drag is still live.
+ * One neutral line keeps the gesture legible until they're back on the grid.
+ */
+function OffGridChipBody({ title }: { title: string }) {
+  return (
+    <div
+      data-slot="agenda-drag-chip"
+      data-conflicted="false"
+      data-off-grid="true"
+      className="flex max-w-72 flex-col gap-0.5 rounded-lg bg-foreground px-2.5 py-1.5 text-left text-background shadow-lg ring-1 ring-black/10"
+    >
+      <span className="truncate text-[12px] leading-4 font-semibold">
+        {title}
+      </span>
+      <span className="text-[11px] leading-4 opacity-80">
+        Move back over the grid to place it
+      </span>
+    </div>
+  )
+}
+
+/**
  * The chip that follows the mouse.
  *
  * It listens for pointer moves itself and writes the transform straight onto
  * the node inside a rAF, so a 120 Hz mouse never re-renders the grid — the one
  * place in the agenda where bypassing React is the right call.
  */
-export function PointerDragChip({ placement }: { placement: DragPlacement }) {
+export function PointerDragChip({
+  placement,
+  title,
+}: {
+  /** Null while the pointer is off the grid — the chip stays, the slot goes. */
+  placement: DragPlacement | null
+  /** Fallback label for the off-grid state. */
+  title: string
+}) {
   const ref = React.useRef<HTMLDivElement | null>(null)
 
   React.useEffect(() => {
@@ -230,7 +264,11 @@ export function PointerDragChip({ placement }: { placement: DragPlacement }) {
       ref={ref}
       className="pointer-events-none fixed top-0 left-0 z-9999 opacity-0 transition-opacity duration-100"
     >
-      <DragChipBody placement={placement} />
+      {placement ? (
+        <DragChipBody placement={placement} />
+      ) : (
+        <OffGridChipBody title={title} />
+      )}
     </div>
   )
 }

@@ -86,7 +86,7 @@ test.describe("form builder", () => {
       await page.getByRole("menuitem", { name: /^dropdown/i }).first().click()
       const drawer = page.getByRole("dialog").first()
       await expect(drawer).toBeVisible({ timeout: 20_000 })
-      await fillStable(drawer.getByLabel("Question", { exact: true }).first(), triggerLabel)
+      await fillStable(drawer.getByLabel(/^question/i).first(), triggerLabel)
       // Give it two known options.
       const optionInputs = drawer.getByLabel(/answer option \d+/i)
       while ((await optionInputs.count()) < 2) {
@@ -102,7 +102,7 @@ test.describe("form builder", () => {
       await page.getByRole("menuitem", { name: /^short text/i }).first().click()
       const drawer2 = page.getByRole("dialog").first()
       await expect(drawer2).toBeVisible({ timeout: 20_000 })
-      await fillStable(drawer2.getByLabel("Question", { exact: true }).first(), dependentLabel)
+      await fillStable(drawer2.getByLabel(/^question/i).first(), dependentLabel)
       await drawer2
         .getByRole("switch", { name: /only show this question sometimes/i })
         .first()
