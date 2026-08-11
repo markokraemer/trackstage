@@ -49,9 +49,12 @@ export function ScalarReference({ specUrl }: { specUrl: string }) {
           forceDarkModeState: "light",
           darkMode: false,
           hideDarkModeToggle: true,
-          hideClientButton: true,
+          // Single column: our docs sidebar is already the navigation, and the
+          // page above already carries the download button and the endpoint list.
           layout: "classic",
           showSidebar: false,
+          showToolbar: "never",
+          documentDownloadType: "none",
         })
         setState("ready")
       } catch {

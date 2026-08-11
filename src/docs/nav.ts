@@ -12,9 +12,10 @@ import {
   RiSurveyLine,
   RiTeamLine,
   RiTableLine,
-  RiUserVoiceLine,
-  type RemixiconComponentType,
+  RiUserVoiceLine
+  
 } from "@remixicon/react"
+import type {RemixiconComponentType} from "@remixicon/react";
 import type { LinkProps } from "@tanstack/react-router"
 
 /**

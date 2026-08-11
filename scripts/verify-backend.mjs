@@ -176,6 +176,59 @@ const submitted = await client.mutation(api.submit.submit, {
 })
 ok("submission accepted with track routing", !!submitted.submissionId)
 
+// ————— Submission side-effects: confirmation + organizer alerts —————
+// Both were configured-but-inert before the coverage audit (matrix #84, #69):
+// `sendConfirmationEmail` and `notifyEmails` were stored and read by nothing.
+section("Submission side-effects")
+const outboxAfterSubmit = await client.query(api.comms.listMessages, {
+  eventId: main._id, limit: 500,
+})
+const confirmation = outboxAfterSubmit.find(
+  (m) => m.templateKey === "confirmation" && m.toEmail === verifyEmail,
+)
+ok("confirmation email queued for the submitter", !!confirmation)
+ok("confirmation names the submission and renders every placeholder",
+  Boolean(confirmation) && !confirmation.body.includes("{{") &&
+    confirmation.body.includes("Verification Talk") &&
+    confirmation.body.includes("/portal/t/"),
+  confirmation?.subject)
+ok("confirmation is linked to the submission", confirmation?.submissionId === submitted.submissionId)
+
+// Negative: the toggle actually gates the send.
+await client.mutation(api.forms.update, {
+  formId: cfp._id,
+  patch: { participantConfig: { ...formFull.participantConfig, sendConfirmationEmail: false } },
+})
+const quietEmail = `verify-quiet-${Date.now().toString(36)}@example.com`
+const quietIdent = await client.mutation(api.submit.identify, { slug: "cfp", email: quietEmail })
+const quietSubmission = await client.mutation(api.submit.submit, {
+  slug: "cfp", portalToken: quietIdent.portalToken, title: "Quiet Talk", answers: { ...goodAnswers, title: "Quiet Talk" },
+  participants: [{ firstName: "Quinn", lastName: "Quiet", email: quietEmail, role: "speaker" }],
+})
+const outboxQuiet = await client.query(api.comms.listMessages, { eventId: main._id, limit: 500 })
+ok("sendConfirmationEmail=false sends nothing",
+  !outboxQuiet.some((m) => m.toEmail === quietEmail))
+await client.mutation(api.forms.update, {
+  formId: cfp._id,
+  patch: { participantConfig: { ...formFull.participantConfig, sendConfirmationEmail: true } },
+})
+
+// notifyEmails goes to organizer addresses, which are NOT event people — so
+// these bypass the outbox entirely. The scheduler is the durable evidence.
+const notifyProbe = convexRun("platformEmails:recentSubmissionNotifications")
+const newAlerts = notifyProbe.notifications.filter((n) => n.kind === "new")
+ok("new-submission alert scheduled for the form's notify list",
+  newAlerts.some((n) => n.submissionTitle === "Verification Talk" &&
+    n.to.includes("organizer@demo.sessionboard.dev")),
+  JSON.stringify(newAlerts.slice(0, 2)))
+ok("alert deep-links to the submission in the organizer app",
+  newAlerts.some((n) => n.link.includes(`/app/submissions?id=${submitted.submissionId}`)))
+ok("alert scheduling never fails the submission",
+  newAlerts.every((n) => n.state !== "failed"))
+ok("every submission on a notified form raises an alert",
+  newAlerts.some((n) => n.submissionTitle === "Quiet Talk"),
+  `quiet submission ${quietSubmission.submissionId}`)
+
 // ————— Organizer pipeline: queues + commit —————
 section("Submissions pipeline")
 const counts0 = await client.query(api.submissions.counts, { eventId: main._id })
@@ -213,6 +266,12 @@ await client.mutation(api.portal.updateSubmission, {
 })
 const home3 = await client.query(api.portal.home, { portalToken: PT })
 ok("accepted submission still editable (swyx rule)", home3.submissions.some((s) => s.title.includes("edited")))
+const updatedAlerts = convexRun("platformEmails:recentSubmissionNotifications")
+  .notifications.filter((n) => n.kind === "updated")
+ok("speaker edit alerts the form's notify list",
+  updatedAlerts.some((n) => n.submissionTitle.includes("edited") &&
+    n.to.includes("organizer@demo.sessionboard.dev")),
+  JSON.stringify(updatedAlerts.slice(0, 2)))
 await throws("cannot withdraw accepted", () =>
   client.mutation(api.portal.withdrawSubmission, { portalToken: PT, submissionId: submitted.submissionId }), "accepted")
 await throws("bad portal token rejected", () => client.query(api.portal.home, { portalToken: "bogus" }), "portal link")

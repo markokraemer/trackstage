@@ -3,9 +3,10 @@ import {
   RiArrowRightSLine,
   RiBookOpenLine,
   RiCodeSSlashLine,
-  RiRobot2Line,
-  type RemixiconComponentType,
+  RiRobot2Line
+  
 } from "@remixicon/react"
+import type {RemixiconComponentType} from "@remixicon/react";
 import type { LinkProps } from "@tanstack/react-router"
 
 import { DOCS_NAV } from "@/docs/nav"

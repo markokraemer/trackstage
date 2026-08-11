@@ -3,6 +3,7 @@ import { format, isBefore } from "date-fns"
 import {
   RiArrowRightLine,
   RiCalendarEventLine,
+  RiEyeOffLine,
   RiFileList3Line,
   RiGroupLine,
   RiStarLine,
@@ -28,6 +29,8 @@ export interface PlanCardData {
   completedEvaluations: number
   totalEvaluations: number
   avgScore: number | null
+  /** Blind round — evaluators never see who submitted (sbek ABS-07). */
+  blind?: boolean
 }
 
 /**
@@ -56,11 +59,18 @@ export function PlanCard({ plan }: { plan: PlanCardData }) {
             <Badge variant="secondary" className="shrink-0">
               Round {plan.round}
             </Badge>
+            {plan.blind ? (
+              <Badge variant="secondary" className="shrink-0 gap-1">
+                <RiEyeOffLine size={12} aria-hidden />
+                Blind
+              </Badge>
+            ) : null}
           </div>
           <p className="mt-1 text-xs text-muted-foreground">
             {plan.status === "open"
               ? "Evaluators can score right now."
               : "Scoring is closed — results are final."}
+            {plan.blind ? " Evaluators won't see who submitted." : ""}
           </p>
         </div>
         <StatusPill status={plan.status} />

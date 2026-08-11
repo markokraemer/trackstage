@@ -5,9 +5,10 @@ import {
   RiImageLine,
   RiInformationLine,
   RiAlertLine,
-  RiCheckboxCircleLine,
-  type RemixiconComponentType,
+  RiCheckboxCircleLine
+  
 } from "@remixicon/react"
+import type {RemixiconComponentType} from "@remixicon/react";
 
 import { cn } from "@/lib/utils"
 import { EXTERNAL_LINK_PROPS } from "@/components/marketing/links"

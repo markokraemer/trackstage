@@ -15,6 +15,7 @@ import { createAuth } from "./auth"
 import { eventAccessFor, membershipFor, randomToken } from "./lib/auth"
 import { hashApiKey } from "./apiKeys"
 import { autoPlaceCore, computeConflicts } from "./agenda"
+import { deleteEventCascade } from "./events"
 import { ensureOnboardingTasks, withJoins } from "./submissions"
 import { queueMessage, queueTaskReminders } from "./comms"
 import {
@@ -1084,7 +1085,17 @@ export const addManualSession = internalMutation({
       })
       added.push(email)
     }
-    return { submissionId, title, kind, status, speakers: added }
+    // format/track are echoed back for the same reason create_form echoes its
+    // name: two sessions added in one turn have to be tellable apart.
+    return {
+      submissionId,
+      title,
+      kind,
+      status,
+      format: args.format ?? null,
+      track: args.track ?? null,
+      speakers: added,
+    }
   },
 })
 
@@ -1758,6 +1769,111 @@ export const sendTestEmail = internalMutation({
 })
 
 // ══════════════════════════════════════════════════════════════════════════
+// Deletion
+//
+// The live-fire test's one real gap in "do everything via MCP": an operator
+// could create events, forms and tasks and never remove any of them, so
+// cleaning up needed a direct Convex call outside MCP. These close that gap
+// WITHOUT becoming the thing that lets a confused model wipe a conference —
+// each one reuses the same semantics (and, for events, the same code path) as
+// the web app's own delete, and the destructive end of the range is guarded
+// twice over: admin role, `confirm: true`, and the event's own name echoed
+// back.
+// ══════════════════════════════════════════════════════════════════════════
+
+export const deleteEvent = internalMutation({
+  args: { userId: v.string(), event: v.string(), confirmName: v.string() },
+  returns: v.any(),
+  handler: async (ctx, args) => {
+    const event = await resolveEvent(ctx, args.userId, args.event, "admin")
+    if (args.confirmName.trim() !== event.name.trim()) {
+      // Deliberately does NOT quote the correct name back: the whole point of
+      // the echo is that the caller already knows which event it is holding.
+      throw new Error(
+        `confirmName "${args.confirmName}" does not match this event's name. Pass the event's name exactly as list_events returns it — nothing was deleted.`,
+      )
+    }
+    // A receipt: what the cascade is about to destroy, counted before it goes.
+    const stats = await eventStats(ctx, event)
+    const people = await ctx.db
+      .query("people")
+      .withIndex("by_eventId", (q) => q.eq("eventId", event._id))
+      .take(MAX_ROWS)
+    const rooms = await ctx.db
+      .query("rooms")
+      .withIndex("by_eventId", (q) => q.eq("eventId", event._id))
+      .take(MAX_ROWS)
+    const removed = {
+      submissions: stats.submissions.length,
+      forms: stats.forms.length,
+      people: people.length,
+      tasks: stats.tasks.length,
+      rooms: rooms.length,
+    }
+    // The identical cascade the web app runs (convex/events.ts), including the
+    // storage sweep — an MCP delete must not leave orphaned blobs behind.
+    await deleteEventCascade(ctx, event._id)
+    return {
+      deleted: true,
+      eventId: event._id,
+      name: event.name,
+      slug: event.slug,
+      removed,
+      note: "The event and everything belonging to it (submissions, speakers, forms, tasks, uploads, emails) are gone. This cannot be undone.",
+    }
+  },
+})
+
+export const deleteForm = internalMutation({
+  args: { userId: v.string(), form: v.string() },
+  returns: v.any(),
+  handler: async (ctx, args) => {
+    const form = await resolveForm(ctx, args.userId, args.form, "admin")
+    // Same rule as forms.remove: a form that collected anything is history,
+    // not clutter. Drafts count — a speaker is mid-submission behind them.
+    const submissions = await ctx.db
+      .query("submissions")
+      .withIndex("by_formId", (q) => q.eq("formId", form._id))
+      .take(MAX_ROWS)
+    if (submissions.length > 0) {
+      throw new Error(
+        `"${form.internalName}" has ${submissions.length} submission(s) and cannot be deleted — deleting it would destroy them. Close it instead: update_form_settings(form: "${form.slug}", status: "closed").`,
+      )
+    }
+    await ctx.db.delete(form._id)
+    return {
+      deleted: true,
+      formId: form._id,
+      name: form.internalName,
+      slug: form.slug,
+      note: "The form is gone. Its public URL now 404s.",
+    }
+  },
+})
+
+export const removeTask = internalMutation({
+  args: { userId: v.string(), taskId: v.string() },
+  returns: v.any(),
+  handler: async (ctx, args) => {
+    const id = requireId(ctx, "tasks", args.taskId)
+    const task = await ctx.db.get(id)
+    if (!task) throw new Error("Task not found — it may already have been removed.")
+    // tasksAdmin.remove is admin-only; an MCP caller gets no cheaper bar.
+    await eventAccessFor(ctx, args.userId, task.eventId, "admin")
+    const person = await ctx.db.get(task.personId)
+    await ctx.db.delete(id)
+    return {
+      removed: true,
+      taskId: id,
+      title: task.title,
+      speaker: person ? person.email : null,
+      wasCompleted: task.completedAt !== undefined,
+      note: "It has disappeared from that speaker's portal. Re-create it with assign_task if that was a mistake.",
+    }
+  },
+})
+
+// ══════════════════════════════════════════════════════════════════════════
 // Meta
 // ══════════════════════════════════════════════════════════════════════════
 
@@ -2058,9 +2174,9 @@ export const TOOLS: Array<ToolDef> = [
   },
   {
     name: "get_event_overview",
-    title: "Event dashboard stats",
+    title: "Event dashboard stats (deprecated — use get_event_summary)",
     description:
-      "The organizer dashboard as data: submission counts by status, outstanding speaker tasks, how many accepted sessions are still unscheduled, agenda conflict count, outbox counts by delivery status, and every CFP form with its public link. Use it to answer \"how is my event doing?\".",
+      "DEPRECATED ALIAS of get_event_summary, kept so existing scripts keep working; it returns exactly the same payload. Call get_event_summary instead.",
     inputSchema: schema({ event: EVENT_ARG }, ["event"]),
     readOnly: true,
     run: (ctx, userId, args) =>
@@ -2324,7 +2440,7 @@ export const TOOLS: Array<ToolDef> = [
     name: "get_agenda",
     title: "Get the agenda",
     description:
-      "The full programme: scheduled sessions in time order (room, start, duration, track, speakers), the unscheduled tray of accepted sessions still waiting for a slot, the room list, and every detected conflict (same room double-booked, or a speaker in two overlapping sessions).",
+      "The programme itself — WHICH session is in which room at what time. Scheduled sessions in time order (room, start, duration, track, speakers), the unscheduled tray of accepted sessions still waiting for a slot, a per-room roll-up (byRoom), the room list, and every detected conflict (same room double-booked, or a speaker in two overlapping sessions). Row detail is capped at 40 scheduled and 40 unscheduled; the counts and byRoom totals always cover everything. For status numbers rather than the timetable, use get_event_summary.",
     inputSchema: schema({ event: EVENT_ARG }, ["event"]),
     readOnly: true,
     run: (ctx, userId, args) =>
@@ -2399,13 +2515,19 @@ export const TOOLS: Array<ToolDef> = [
     name: "list_speakers",
     title: "Speaker roster",
     description:
-      "The confirmed speaker roster: everyone attached to an accepted session, their sessions, their outstanding onboarding tasks with due dates, and what's still missing from their profile (bio, headshot, slides). This is the \"who do I need to chase?\" list.",
+      "The confirmed speaker roster: everyone attached to an accepted session, their sessions, their outstanding onboarding tasks with due dates, and what's still missing from their profile (bio, headshot, slides). This is the \"who do I need to chase?\" list. The response states its own counts — totalSpeakers, returned, withOpenTasks, withProfileGaps — plus a `summary` sentence; quote those numbers rather than counting rows yourself.",
     inputSchema: schema(
       {
         event: EVENT_ARG,
         onlyWithOutstandingWork: {
           type: "boolean",
-          description: "Return only speakers who still owe you something.",
+          description:
+            "Return only speakers with at least one INCOMPLETE TASK. Nothing else — an unfinished profile alone does not qualify unless you also pass includeProfileGaps.",
+        },
+        includeProfileGaps: {
+          type: "boolean",
+          description:
+            "Widen the filter to speakers whose PROFILE is incomplete (missing bio, headshot or slides) even when they have zero open tasks. On its own it returns exactly those speakers; combined with onlyWithOutstandingWork it returns either.",
         },
       },
       ["event"],
@@ -2416,6 +2538,7 @@ export const TOOLS: Array<ToolDef> = [
         userId,
         event: args.event,
         onlyWithOutstandingWork: args.onlyWithOutstandingWork,
+        includeProfileGaps: args.includeProfileGaps,
       }),
   },
   {
@@ -2503,11 +2626,35 @@ export const TOOLS: Array<ToolDef> = [
     name: "list_templates",
     title: "List email templates",
     description:
-      "Lists the event's email templates (accepted, declined, waitlisted, reminder, confirmation) with their subject and body, and whether each has been customised or is still the built-in default. Placeholders such as {{firstName}} and {{sessionTitle}} are filled in at send time.",
+      "Lists the event's email templates (accepted, declined, waitlisted, reminder, confirmation) with their subject, a 200-character body preview, and whether each has been customised or is still the built-in default. Use get_template for one template's full body. Placeholders such as {{firstName}} and {{sessionTitle}} are filled in at send time.",
     inputSchema: schema({ event: EVENT_ARG }, ["event"]),
     readOnly: true,
     run: (ctx, userId, args) =>
       ctx.runQuery(internal.mcp.listTemplates, { userId, event: args.event }),
+  },
+  {
+    name: "get_template",
+    title: "Get an email template",
+    description:
+      "Returns one email template in full — subject and complete body, and whether it is customised for this event or still the built-in default. Read it before rewriting a template with update_template so you edit the copy that is actually in use.",
+    inputSchema: schema(
+      {
+        event: EVENT_ARG,
+        key: {
+          type: "string",
+          enum: TEMPLATE_KEYS,
+          description: "Which template to read.",
+        },
+      },
+      ["event", "key"],
+    ),
+    readOnly: true,
+    run: (ctx, userId, args) =>
+      ctx.runQuery(internal.mcp.getTemplate, {
+        userId,
+        event: args.event,
+        key: args.key,
+      }),
   },
   {
     name: "update_template",
@@ -2577,7 +2724,11 @@ export const TOOLS: Array<ToolDef> = [
           enum: TEMPLATE_KEYS,
           description: "Which template to proof.",
         },
-        to: { type: "string", description: "Override recipient. Defaults to your own address." },
+        to: {
+          type: "string",
+          description:
+            "Omit to send to yourself. Only set this if the user named a specific address — never fill it in from your own context.",
+        },
       },
       ["event", "key"],
     ),
@@ -2591,12 +2742,97 @@ export const TOOLS: Array<ToolDef> = [
       }),
   },
 
+  // ——— Deletion ———————————————————————————————————————————————————————————
+  {
+    name: "delete_event",
+    title: "Delete an event (IRREVERSIBLE)",
+    description:
+      "Permanently deletes an event and EVERYTHING belonging to it: every submission, speaker, CFP form, task, uploaded file, email template and outbox row. There is no undo and no trash. It needs the admin or owner role and TWO independent confirmations: confirm: true, and confirmName set to the event's exact name as list_events returns it. Never guess confirmName — if the user has not named the event they want destroyed, ask them, don't infer it.",
+    inputSchema: schema(
+      {
+        event: EVENT_ARG,
+        confirmName: {
+          type: "string",
+          description:
+            "The event's exact name (case and punctuation), as returned by list_events. A mismatch deletes nothing.",
+        },
+        confirm: {
+          type: "boolean",
+          description: "Must be true. Guards against deleting a conference by accident.",
+        },
+      },
+      ["event", "confirmName", "confirm"],
+    ),
+    readOnly: false,
+    run: (ctx, userId, args) => {
+      if (args.confirm !== true) {
+        throw new Error(
+          "Refusing to delete an event without confirm: true. Check what you are about to destroy with get_event_summary, then call again with confirm: true and confirmName set to the event's exact name.",
+        )
+      }
+      return ctx.runMutation(internal.mcp.deleteEvent, {
+        userId,
+        event: args.event,
+        confirmName: args.confirmName,
+      })
+    },
+  },
+  {
+    name: "delete_form",
+    title: "Delete a CFP form (IRREVERSIBLE)",
+    description:
+      "Permanently deletes a call-for-papers form. Admin or owner role, and confirm: true. A form that has ANY submissions (drafts included) is refused — closing it with update_form_settings(status: \"closed\") is what you almost always want, because that keeps the submissions and just stops new ones.",
+    inputSchema: schema(
+      {
+        form: { type: "string", description: "Form id or slug (see list_forms)." },
+        confirm: {
+          type: "boolean",
+          description: "Must be true. Guards against deleting a live CFP by accident.",
+        },
+      },
+      ["form", "confirm"],
+    ),
+    readOnly: false,
+    run: (ctx, userId, args) => {
+      if (args.confirm !== true) {
+        throw new Error(
+          "Refusing to delete a form without confirm: true. If you only want to stop new submissions, call update_form_settings(status: \"closed\") instead; otherwise call again with confirm: true.",
+        )
+      }
+      return ctx.runMutation(internal.mcp.deleteForm, {
+        userId,
+        form: args.form,
+      })
+    },
+  },
+  {
+    name: "remove_task",
+    title: "Remove a speaker task",
+    description:
+      "Deletes one onboarding task, retracting it from that speaker's portal — the inverse of assign_task, for a task assigned by mistake or no longer needed. Admin or owner role. Task ids come from list_speakers (each speaker's outstandingTasks). Completing a task is the speaker's job in the portal; this removes it outright, so don't use it to mark work as done.",
+    inputSchema: schema(
+      {
+        taskId: {
+          type: "string",
+          description: "From list_speakers → speakers[].outstandingTasks[].taskId.",
+        },
+      },
+      ["taskId"],
+    ),
+    readOnly: false,
+    run: (ctx, userId, args) =>
+      ctx.runMutation(internal.mcp.removeTask, {
+        userId,
+        taskId: args.taskId,
+      }),
+  },
+
   // ——— Meta ———————————————————————————————————————————————————————————————
   {
     name: "get_event_summary",
-    title: "Summarise an event",
+    title: "Event status & dashboard stats",
     description:
-      "One call for the whole picture: a headline sentence, submission counts by status, agenda health (scheduled vs waiting, conflicts), open speaker tasks, every CFP form with its public link, a prioritised \"needs attention\" list of what to do next, and the nearest deadlines. Reach for this first when someone asks how their event is going or what they should do next.",
+      "THE status call, and the one that used to be split in two (it absorbed get_event_overview). Returns every dashboard number plus the narrative: a headline sentence, submission counts by status, total submissions, agenda health (scheduled, acceptedNotScheduled, conflict count and labels), open vs completed speaker tasks, outbox counts by delivery status, every CFP form with its id, status, closeAt and public link, a prioritised \"needs attention\" list, and the nearest deadlines. Reach for this for \"how is my event doing?\", \"pull the dashboard stats\" or \"what should I do next?\". It does NOT list individual sessions or times — that is get_agenda.",
     inputSchema: schema({ event: EVENT_ARG }, ["event"]),
     readOnly: true,
     run: (ctx, userId, args) =>
@@ -2709,7 +2945,7 @@ function initializeResult(requested: unknown) {
       version: SERVER_VERSION,
     },
     instructions:
-      "Sessionboard runs conferences: call-for-papers forms, submissions and accept/decline decisions, the agenda, the speaker roster and their tasks, and the emails that go out. Start with list_events, then get_event_summary for the state of play. Every `event` argument takes an id or a slug. Decisions are two-step on purpose: set_submission_status stages them, commit_decision_queue is what actually emails the speakers.",
+      "Sessionboard runs conferences: call-for-papers forms, submissions and accept/decline decisions, the agenda, the speaker roster and their tasks, and the emails that go out. Start with list_events, then get_event_summary for the state of play (it is the whole dashboard — get_agenda is for the timetable itself). Every `event` argument takes an id or a slug. Decisions are two-step on purpose: set_submission_status stages them, commit_decision_queue is what actually emails the speakers. The same care applies to deletion: delete_event and delete_form need confirm: true, and delete_event also needs the event's exact name in confirmName — never infer a deletion the user did not explicitly ask for.",
   }
 }
 
