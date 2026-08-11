@@ -268,6 +268,39 @@
     .container-reading {
         max-width: var(--container-reading);
     }
+
+    /*
+     * Documentation prose (/docs). One class instead of a utility on every
+     * paragraph, so a docs page stays readable as plain JSX — the point of
+     * rule 27's "never gigantic text": short paragraphs, generous rhythm.
+     */
+    .doc-prose {
+        @apply text-[0.9375rem] leading-7 text-muted-foreground;
+    }
+    .doc-prose > * + * {
+        @apply mt-4;
+    }
+    .doc-prose strong {
+        @apply font-medium text-foreground;
+    }
+    .doc-prose a {
+        @apply font-medium text-primary underline underline-offset-4 decoration-primary/30 hover:decoration-primary;
+    }
+    .doc-prose code {
+        @apply rounded-[0.3rem] border border-border bg-muted px-1 py-0.5 font-mono text-[0.8125em] text-foreground;
+    }
+    .doc-prose ul {
+        @apply list-disc space-y-1.5 pl-5 marker:text-border;
+    }
+    .doc-prose ol {
+        @apply list-decimal space-y-1.5 pl-5 marker:text-muted-foreground;
+    }
+    .doc-prose h2 {
+        @apply font-heading mt-10 text-lg font-semibold tracking-[-0.02em] text-foreground;
+    }
+    .doc-prose h3 {
+        @apply font-heading mt-8 text-base font-semibold tracking-[-0.01em] text-foreground;
+    }
 }
 
 @layer base {

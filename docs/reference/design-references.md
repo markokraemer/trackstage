@@ -35,12 +35,20 @@ it maps onto, and what to deliberately leave behind.
    artifact here), Sessionize (the competitor we're beating).
 7. **Mercury — considered, rejected.** See the note at the end.
 
-**Method note.** mobbin.com returns HTTP 403 to every unauthenticated request and no Mobbin MCP
-server is connected in this environment, so no Mobbin screen sets were readable. Everything below
-comes from the products' own sites, help centres, design-system docs, engineering blogs, and — where
-it mattered — their **served CSS/JS bundles**, which is how the exact token values here were
-obtained. Unofficial community "DESIGN.md" reconstructions are flagged as such and are never used
-as the authority for anything.
+**Method note.** Most of this doc comes from the products' own sites, help centres, design-system
+docs, engineering blogs, and — where it mattered — their **served CSS/JS bundles**, which is how the
+exact token values here were obtained. Unofficial community "DESIGN.md" reconstructions are flagged
+as such and are never used as the authority for anything.
+
+Direct `WebFetch` of mobbin.com returns HTTP 403, but a **Mobbin MCP server became available
+mid-research**, and real screen sets were reviewed for **Attio, Juicebox, and Luma** (marked
+🖼 **Mobbin-verified** below — these are observations from actual product screenshots, and they both
+confirm and in one case *correct* the CSS-derived findings). **Notion Calendar is not in Mobbin's web
+library** — a search for its day/week grid returns Notion's *database* calendar view, not the
+standalone app — so §4 remains sourced from Notion's own full-resolution product screenshots on
+`images.ctfassets.net`. Linear, Stripe, Vercel, Cal.com and Sessionize were not cross-checked against
+Mobbin; their sections rest on published design-system docs and served bundles, which for those five
+is the stronger source anyway.
 
 ---
 
@@ -165,10 +173,58 @@ overview across five motions**, each with an interactive mockup carrying realist
 customers"). Logo wall. **Colour used almost entirely for data semantics** — risk red, positive
 highlighted — never decoration.
 
+### 🖼 Mobbin-verified — what the real screens show
+
+Screens: [table + sort popover](https://mobbin.com/screens/162a06bc-8151-456b-8590-044508c2bfa1) ·
+[condition dropdown](https://mobbin.com/screens/6dd2d5c3-e23c-4f63-b299-9e00f308be10) ·
+[aggregation menu](https://mobbin.com/screens/9b7cd195-28c6-472d-a3f3-4c3b93f8362b) ·
+[collapsed sidebar](https://mobbin.com/screens/e1fcdf36-7726-4a8a-9ca7-7188daa3be36) ·
+[active filter](https://mobbin.com/screens/1feec693-b9aa-4028-8c79-0271a6b7e4d5) ·
+[currency aggregation](https://mobbin.com/screens/a44be622-b84a-4805-ad7a-6f600ece6356)
+
+- **⚠️ Nuance on "near-monochrome": Attio's chrome is monochrome, but its *cells* are not.** The
+  Categories column is a wall of soft-tinted multi-select pills (B2B blue, B2C purple, E-commerce
+  green, Finance amber, Internet violet…) — genuinely colourful. The discipline is precisely the one
+  Stripe writes down: **colour belongs to data, never to chrome.** Sidebar, toolbar, headers, borders
+  and backgrounds are all gray; the only saturated pixels are tag pills, status dots, and the Save
+  button. This is the single most transferable observation in the doc.
+- **In a dense table, status is a coloured dot + plain text, not a filled pill.** The "Connection
+  strength" column renders `● Very weak` / `● Very strong` / `● No communication` — an 8px dot plus
+  ordinary body text. Filled pills are reserved for the multi-select tag columns. → **our submissions
+  table should use dot + text for status and keep `StatusPill` for detail pages and drawers**, which
+  is exactly Vercel's "subtle level for dense surfaces" rule arrived at independently.
+- **The three-way save is confirmed, and its placement is specific**: `Discard changes` as a plain
+  text link sitting immediately left of a **blue split-button `Save ⌄`**, both at the far right of
+  the filter bar — visible *only* while the view is dirty. Blue appears here and essentially nowhere
+  else on the screen.
+- **Filter chips read as a sentence**: `⇅ Sorted by Record ID +1` · `👤 Employee range less than
+  [1K-5K]` · `+`. The **value is a nested tinted chip inside the filter chip**, and the `+1` overflow
+  counter collapses extra sort keys.
+- **Condition vocabulary is plain English, confirmed on screen**: `is / is not / less than / greater
+  than / empty / not empty`. No boolean UI visible anywhere by default.
+- **Column-footer aggregations are a real, prominent feature** — every column ends in a `+ Add
+  calculation` affordance, opening `Count empty / Count filled / Percent empty / Percent filled / Sum
+  / Average / Min / Max`, and the row also carries a live `13 count`. Results render right-aligned in
+  the footer (`US$85,325,000.00 avg`). → **our submissions table footer should show count, average
+  score, and % reviewed**, which is a genuinely useful organizer readout we'd otherwise have built as
+  a separate stats card.
+- **Sort popover**: `Record ID` + `Descending` + `✕` per key, then `+ Add sort` and a muted
+  `ⓘ Learn about sorting` link — inline docs at the point of confusion.
+- **Sidebar structure confirmed**: workspace name `ASMobbin ⌄` top-left, then `Quick actions ⌘K` and
+  a `/` search row, then `Notifications / Tasks / Notes / Emails / Reports / Automations`, then
+  grouped `Favorites`, `Records`, `Lists`. Footer carries `Invite teammates`, `Help and first steps
+  ⤢ 3/6`, and a trial banner. Collapsible via a toggle with a `Collapse sidebar ⌘\` tooltip.
+- **Row height is visibly tight (~36px) and column headers are ~11px** — direct visual confirmation
+  of Marko's "too minuscule" note, and of why we take the system but not the sizing.
+- **Views-as-dropdown is confirmed** (`▦ All Companies ⌄`, `▦ Non-US Companies ⌄`) — which supports
+  the "what NOT to take" call below: we want a visible tab strip instead.
+
 ### (b) Concrete stealable patterns
 
-- Near-monochrome surfaces + **one accent used sparingly**. Three independent sources converge on
+- Near-monochrome **chrome** + colour confined to data cells. Four independent sources converge on
   this; it is the whole visual thesis.
+- Status as **dot + text** in dense tables; filled pills only on detail surfaces.
+- Column-footer aggregations (`count`, `average`) as a built-in readout.
 - Three-way save: **Save for everyone / Save as new view / Discard changes**, with unsaved state
   shown as a diff.
 - Boolean logic hidden behind **"Convert to advanced condition"** until asked for.

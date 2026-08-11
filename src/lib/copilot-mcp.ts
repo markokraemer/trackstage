@@ -61,7 +61,7 @@ async function rpc(
   connection: McpConnection,
   method: string,
   params: Record<string, unknown> | undefined,
-  id: number | null,
+  id: number | null
 ): Promise<unknown> {
   const body =
     id === null
@@ -86,7 +86,7 @@ async function rpc(
     throw new McpTransportError(
       `Could not reach the Sessionboard MCP server at ${connection.endpoint}: ${
         cause instanceof Error ? cause.message : String(cause)
-      }`,
+      }`
     )
   }
 
@@ -95,26 +95,26 @@ async function rpc(
 
   if (response.status === 401 || response.status === 403) {
     throw new McpTransportError(
-      "The Sessionboard MCP server rejected the copilot's credentials.",
+      "The Sessionboard MCP server rejected the copilot's credentials."
     )
   }
 
   const text = await response.text()
   if (!response.ok && text.length === 0) {
     throw new McpTransportError(
-      `Sessionboard MCP server returned ${response.status}.`,
+      `Sessionboard MCP server returned ${response.status}.`
     )
   }
 
   const payload = parseBody(text, response.headers.get("content-type"))
   if (!payload) {
     throw new McpTransportError(
-      `Sessionboard MCP server returned an unreadable ${method} response.`,
+      `Sessionboard MCP server returned an unreadable ${method} response.`
     )
   }
   if (payload.error) {
     throw new McpTransportError(
-      `${method} failed: ${payload.error.message} (code ${payload.error.code})`,
+      `${method} failed: ${payload.error.message} (code ${payload.error.code})`
     )
   }
   return payload.result
@@ -123,7 +123,7 @@ async function rpc(
 /** Accepts either a plain JSON body or an SSE stream carrying JSON-RPC frames. */
 function parseBody(
   text: string,
-  contentType: string | null,
+  contentType: string | null
 ): JsonRpcResponse | null {
   const isEventStream = (contentType ?? "").includes("text/event-stream")
   const candidates = isEventStream
@@ -162,9 +162,12 @@ function sanitizeSchema(schema: unknown): Record<string, unknown> {
     if (Array.isArray(value)) return value.map(clone)
     if (value === null || typeof value !== "object") return value
     const out: Record<string, unknown> = {}
-    for (const [key, entry] of Object.entries(value as Record<string, unknown>)) {
+    for (const [key, entry] of Object.entries(
+      value as Record<string, unknown>
+    )) {
       if (key === "additionalProperties") continue
-      if (key === "required" && Array.isArray(entry) && entry.length === 0) continue
+      if (key === "required" && Array.isArray(entry) && entry.length === 0)
+        continue
       out[key] = clone(entry)
     }
     return out
@@ -205,13 +208,18 @@ export type LoadedMcpTools = {
  * the SDK do the suspend/resume dance natively.
  */
 export async function loadMcpTools(
-  connection: McpConnection,
+  connection: McpConnection
 ): Promise<LoadedMcpTools> {
-  await rpc(connection, "initialize", {
-    protocolVersion: PROTOCOL_VERSION,
-    capabilities: {},
-    clientInfo: CLIENT_INFO,
-  }, 1)
+  await rpc(
+    connection,
+    "initialize",
+    {
+      protocolVersion: PROTOCOL_VERSION,
+      capabilities: {},
+      clientInfo: CLIENT_INFO,
+    },
+    1
+  )
 
   // Stateless server, but the lifecycle notification is part of the contract.
   await rpc(connection, "notifications/initialized", {}, null).catch(() => {})
@@ -225,30 +233,31 @@ export async function loadMcpTools(
     (entry: unknown): entry is McpToolDescriptor =>
       entry !== null &&
       typeof entry === "object" &&
-      typeof (entry as { name?: unknown }).name === "string",
+      typeof (entry as { name?: unknown }).name === "string"
   )
 
   const tools: ToolSet = {}
   let callId = 100
   for (const descriptor of descriptors) {
     tools[descriptor.name] = tool({
-      description: descriptor.description ?? descriptor.title ?? descriptor.name,
+      description:
+        descriptor.description ?? descriptor.title ?? descriptor.name,
       inputSchema: jsonSchema<Record<string, unknown>>(
-        sanitizeSchema(descriptor.inputSchema) as never,
+        sanitizeSchema(descriptor.inputSchema) as never
       ),
       execute: async (input) => {
         const result = (await rpc(
           connection,
           "tools/call",
           { name: descriptor.name, arguments: input },
-          (callId += 1),
+          (callId += 1)
         )) as McpToolCallResult
         const payload = unwrapToolResult(result)
         if (result.isError === true) {
           // Surface it as a tool error so the model can read it and retry —
           // the AI SDK renders this as `output-error` in the UI.
           throw new Error(
-            typeof payload === "string" ? payload : JSON.stringify(payload),
+            typeof payload === "string" ? payload : JSON.stringify(payload)
           )
         }
         return payload

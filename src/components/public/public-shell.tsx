@@ -46,7 +46,7 @@ export interface PublicShellProps {
   event: Pick<
     PublicEvent,
     "name" | "slug" | "venue" | "timezone" | "startsAt" | "endsAt"
-  > & { logoUrl?: string | null }
+  > & { logoUrl?: string | null; backgroundUrl?: string | null }
   /** Bare widget mode — no header, no nav. */
   embed?: boolean
   children: React.ReactNode
@@ -59,34 +59,59 @@ export function PublicShell({ event, embed, children }: PublicShellProps) {
   return (
     <div className="flex min-h-svh flex-col bg-background">
       {embed ? null : (
-        <header className="border-b border-border bg-card">
+        <header
+          className={cn(
+            "border-b border-border bg-card",
+            // The organizer's own header image, when they've uploaded one
+            // (Settings → Event details → Branding). Tinted so the event name
+            // stays readable over any photograph.
+            event.backgroundUrl && "relative bg-cover bg-center"
+          )}
+          style={
+            event.backgroundUrl
+              ? {
+                  backgroundImage: `linear-gradient(to bottom, color-mix(in oklch, var(--card) 82%, transparent), var(--card)), url(${event.backgroundUrl})`,
+                }
+              : undefined
+          }
+        >
           <div className="container-page pt-6 pb-0">
             <div className="flex flex-wrap items-start justify-between gap-3">
-              <div className="min-w-0">
-                <h1 className="font-heading text-xl leading-tight font-semibold tracking-tight text-balance text-foreground sm:text-2xl">
-                  <Link
-                    to="/e/$slug"
-                    params={{ slug: event.slug }}
-                    search={(prev) => prev}
-                    className="rounded-sm outline-none hover:text-primary focus-visible:ring-3 focus-visible:ring-ring/50"
-                  >
-                    {event.name}
-                  </Link>
-                </h1>
-                <p className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
-                  {dates ? (
-                    <span className="inline-flex items-center gap-1.5">
-                      <RiCalendarEventLine size={15} aria-hidden />
-                      {dates}
-                    </span>
-                  ) : null}
-                  {event.venue ? (
-                    <span className="inline-flex items-center gap-1.5">
-                      <RiMapPin2Line size={15} aria-hidden />
-                      {event.venue}
-                    </span>
-                  ) : null}
-                </p>
+              <div className="flex min-w-0 items-center gap-3">
+                {/* Event branding when present; the name alone otherwise. */}
+                {event.logoUrl ? (
+                  <img
+                    src={event.logoUrl}
+                    alt=""
+                    className="size-12 shrink-0 rounded-lg border border-border bg-background object-contain sm:size-14"
+                  />
+                ) : null}
+                <div className="min-w-0">
+                  <h1 className="font-heading text-xl leading-tight font-semibold tracking-tight text-balance text-foreground sm:text-2xl">
+                    <Link
+                      to="/e/$slug"
+                      params={{ slug: event.slug }}
+                      search={(prev) => prev}
+                      className="rounded-sm outline-none hover:text-primary focus-visible:ring-3 focus-visible:ring-ring/50"
+                    >
+                      {event.name}
+                    </Link>
+                  </h1>
+                  <p className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
+                    {dates ? (
+                      <span className="inline-flex items-center gap-1.5">
+                        <RiCalendarEventLine size={15} aria-hidden />
+                        {dates}
+                      </span>
+                    ) : null}
+                    {event.venue ? (
+                      <span className="inline-flex items-center gap-1.5">
+                        <RiMapPin2Line size={15} aria-hidden />
+                        {event.venue}
+                      </span>
+                    ) : null}
+                  </p>
+                </div>
               </div>
             </div>
 

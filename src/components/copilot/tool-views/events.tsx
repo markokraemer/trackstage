@@ -118,7 +118,9 @@ export function EventsView({ output }: ToolOutputProps) {
                     </span>
                   ) : null}
                   {str(row.organizationName) ? (
-                    <span className="truncate">{str(row.organizationName)}</span>
+                    <span className="truncate">
+                      {str(row.organizationName)}
+                    </span>
                   ) : null}
                 </div>
               </div>
@@ -142,7 +144,10 @@ export function EventCreatedView({ output }: ToolOutputProps) {
     <Banner icon={<RiCalendarEventLine size={16} />} title={`${name} created`}>
       <FieldGrid
         entries={[
-          { label: "Slug", value: <code className="font-mono">{str(output.slug) ?? "—"}</code> },
+          {
+            label: "Slug",
+            value: <code className="font-mono">{str(output.slug) ?? "—"}</code>,
+          },
         ]}
       />
       <div className="flex flex-wrap items-center gap-3 pt-1">
@@ -237,7 +242,8 @@ export function EventStatsView({ output }: ToolOutputProps) {
                 {
                   label: "Open tasks",
                   value: openTasks,
-                  tone: openTasks > 0 ? ("warn" as const) : ("default" as const),
+                  tone:
+                    openTasks > 0 ? ("warn" as const) : ("default" as const),
                 },
               ]
             : []),
@@ -306,7 +312,7 @@ export function EventStatsView({ output }: ToolOutputProps) {
                 <span className="min-w-0 flex-1 truncate text-sm text-foreground">
                   {str(form.name) ?? "CFP form"}
                 </span>
-                {str(form.closesAt) ?? str(form.closeAt) ? (
+                {(str(form.closesAt) ?? str(form.closeAt)) ? (
                   <span className="shrink-0 text-xs text-muted-foreground">
                     closes {formatDate(form.closesAt ?? form.closeAt)}
                   </span>
@@ -327,7 +333,10 @@ export function EventStatsView({ output }: ToolOutputProps) {
             {deadlines.slice(0, 4).map((deadline, index) => {
               const days = num(deadline.daysAway)
               return (
-                <Row key={str(deadline.what) ?? index} className="items-center py-2">
+                <Row
+                  key={str(deadline.what) ?? index}
+                  className="items-center py-2"
+                >
                   <span className="min-w-0 flex-1 truncate text-sm text-foreground">
                     {str(deadline.what) ?? "Deadline"}
                   </span>

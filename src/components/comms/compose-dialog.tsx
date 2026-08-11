@@ -146,8 +146,8 @@ export function ComposeDialog({
       setBody((current) => `${current}${snippet}`)
       return
     }
-    const start = textarea.selectionStart ?? body.length
-    const end = textarea.selectionEnd ?? body.length
+    const start = textarea.selectionStart
+    const end = textarea.selectionEnd
     const next = `${body.slice(0, start)}${snippet}${body.slice(end)}`
     setBody(next)
     requestAnimationFrame(() => {

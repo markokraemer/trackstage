@@ -9,10 +9,7 @@ import { Button } from "@/components/ui/button"
 import { InputGroupAddon } from "@/components/ui/input-group"
 import { Bubble, BubbleContent } from "@/components/ui/bubble"
 import { Marker, MarkerContent, MarkerIcon } from "@/components/ui/marker"
-import {
-  Message,
-  MessageContent,
-} from "@/components/ui/message"
+import { Message, MessageContent } from "@/components/ui/message"
 import {
   MessageScroller,
   MessageScrollerButton,
@@ -87,8 +84,14 @@ export function CopilotChat({
     })
   }, [event?._id, event?.name, event?.slug])
 
-  const { messages, sendMessage, status, error, addToolApprovalResponse, stop } =
-    useChat<UIMessage>({ chat })
+  const {
+    messages,
+    sendMessage,
+    status,
+    error,
+    addToolApprovalResponse,
+    stop,
+  } = useChat<UIMessage>({ chat })
 
   const busy = status === "submitted" || status === "streaming"
 
@@ -98,7 +101,7 @@ export function CopilotChat({
       if (!text || busy) return
       void sendMessage({ text })
     },
-    [busy, sendMessage],
+    [busy, sendMessage]
   )
 
   const ask = useCallback(
@@ -106,14 +109,14 @@ export function CopilotChat({
       if (busy) return
       void sendMessage({ text })
     },
-    [busy, sendMessage],
+    [busy, sendMessage]
   )
 
   const approve = useCallback(
     (approvalId: string, approved: boolean) => {
       addToolApprovalResponse({ id: approvalId, approved })
     },
-    [addToolApprovalResponse],
+    [addToolApprovalResponse]
   )
 
   const isEmpty = messages.length === 0
@@ -132,7 +135,7 @@ export function CopilotChat({
               aria-busy={status === "streaming"}
               className={cn(
                 "gap-6",
-                isPage ? "mx-auto w-full max-w-3xl p-6" : "p-4",
+                isPage ? "mx-auto w-full max-w-3xl p-6" : "p-4"
               )}
             >
               {isEmpty ? (
@@ -159,7 +162,7 @@ export function CopilotChat({
                             <BubbleContent>
                               {message.parts
                                 .map((part) =>
-                                  part.type === "text" ? part.text : "",
+                                  part.type === "text" ? part.text : ""
                                 )
                                 .join("")}
                             </BubbleContent>
@@ -233,7 +236,7 @@ export function CopilotChat({
       <div
         className={cn(
           "shrink-0 border-t border-border bg-card",
-          isPage ? "px-6 py-4" : "p-3",
+          isPage ? "px-6 py-4" : "p-3"
         )}
       >
         <div className={cn("space-y-2", isPage && "mx-auto w-full max-w-3xl")}>
@@ -303,14 +306,14 @@ function CopilotEmptyState({
     <div
       className={cn(
         "flex flex-col items-center text-center",
-        isPage ? "gap-4 py-16" : "gap-3 py-10",
+        isPage ? "gap-4 py-16" : "gap-3 py-10"
       )}
     >
       <span
         aria-hidden
         className={cn(
           "flex items-center justify-center rounded-2xl bg-primary/10 text-primary",
-          isPage ? "size-14" : "size-11",
+          isPage ? "size-14" : "size-11"
         )}
       >
         <RiSparkling2Line size={isPage ? 26 : 20} />
@@ -319,7 +322,7 @@ function CopilotEmptyState({
         <h2
           className={cn(
             "font-heading font-semibold text-foreground",
-            isPage ? "text-xl" : "text-base",
+            isPage ? "text-xl" : "text-base"
           )}
         >
           {headline ?? "Ask your Sessionboard copilot"}

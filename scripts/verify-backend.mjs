@@ -6,6 +6,9 @@
 import { ConvexHttpClient } from "convex/browser"
 import { api } from "../convex/_generated/api.js"
 import { readFileSync } from "node:fs"
+import { createHash } from "node:crypto"
+import { execFileSync } from "node:child_process"
+import { fileURLToPath } from "node:url"
 
 const env = Object.fromEntries(
   readFileSync(new URL("../.env.local", import.meta.url), "utf8")
@@ -43,6 +46,29 @@ async function throws(name, fn, match) {
   }
 }
 const section = (name) => console.log(`\n■ ${name}`)
+
+// ————— File-storage helpers —————
+const REPO_ROOT = fileURLToPath(new URL("..", import.meta.url))
+/**
+ * Call an INTERNAL Convex function through the CLI. The HTTP client can only
+ * reach public functions, and proving "the blob is really gone" must not
+ * require exposing storage internals on the public API.
+ */
+function convexRun(fn, args = {}) {
+  const out = execFileSync(
+    "pnpm",
+    ["exec", "convex", "run", fn, JSON.stringify(args)],
+    { encoding: "utf8", cwd: REPO_ROOT, stdio: ["ignore", "pipe", "pipe"] },
+  )
+  const start = out.indexOf("{")
+  return JSON.parse(start === -1 ? out.trim() : out.slice(start))
+}
+const sha256Hex = (value) => createHash("sha256").update(value).digest("hex")
+/** PNG magic number + padding — enough bytes to be a file, small enough to be free. */
+const PNG_BYTES = new Uint8Array([
+  0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0x00, 0x00, 0x0d,
+  0x49, 0x48, 0x44, 0x52, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01,
+])
 
 // ————— Auth (Better Auth) —————
 section("Auth")
@@ -222,6 +248,109 @@ await client.mutation(api.portal.attachUpload, {
 })
 const myUploads2 = await client.query(api.portal.myUploads, { portalToken: PT })
 ok("re-upload increments version", myUploads2.some((u) => u.filename === "slides.pdf" && u.version === versionBefore + 1))
+
+// ————— File metadata comes from `_storage`, never from the client —————
+const slideRows = myUploads2.filter((u) => u.filename === "slides.pdf").sort((a, b) => b.version - a.version)
+const newestSlide = slideRows[0]
+ok("upload carries real size from the _storage system table", newestSlide.size === 2, `got ${newestSlide.size}`)
+ok("upload carries the sha256 checksum", /^[0-9a-f]{64}$/.test(newestSlide.sha256 ?? ""), newestSlide.sha256)
+ok("sha256 matches the bytes we actually sent", newestSlide.sha256 === sha256Hex("v2"), newestSlide.sha256)
+ok("content type resolved from storage", newestSlide.contentType === "application/pdf")
+ok("isImage flag is false for a PDF", newestSlide.isImage === false)
+ok("blob resolves to a signed URL", typeof newestSlide.url === "string" && newestSlide.url.startsWith("http"))
+// The client LIES about its size — the server must ignore it.
+const liarUrl = await client.mutation(api.portal.generateUploadUrl, { portalToken: PT })
+const liarRes = await fetch(liarUrl, { method: "POST", headers: { "Content-Type": "application/pdf" }, body: new Blob(["twelve-bytes-and-then-some"]) })
+const { storageId: liarStorageId } = await liarRes.json()
+await client.mutation(api.portal.attachUpload, {
+  portalToken: PT, storageId: liarStorageId, filename: "liar.pdf", contentType: "text/x-fake",
+  size: 1, submissionId: submitted.submissionId,
+})
+const afterLiar = await client.query(api.portal.myUploads, { portalToken: PT })
+const liarRow = afterLiar.find((u) => u.filename === "liar.pdf")
+ok("client-claimed size is ignored (real bytes win)", liarRow.size === 26, `got ${liarRow.size}`)
+ok("client-claimed content type is ignored", liarRow.contentType === "application/pdf", liarRow.contentType)
+await throws("oversized/unsupported types are refused server-side", () =>
+  client.mutation(api.portal.attachUpload, {
+    portalToken: PT, storageId: liarStorageId, filename: "payload.exe", submissionId: submitted.submissionId,
+  }), "file type")
+await throws("attaching a storage id that never landed is refused", () =>
+  client.mutation(api.portal.attachUpload, {
+    portalToken: PT, storageId: newestSlide.id, filename: "nope.pdf",
+  }))
+
+// Same bytes uploaded twice into one slot → flagged, not silently duplicated.
+const dupeUrl = await client.mutation(api.portal.generateUploadUrl, { portalToken: PT })
+const dupeRes = await fetch(dupeUrl, { method: "POST", headers: { "Content-Type": "application/pdf" }, body: new Blob(["v2"]) })
+const { storageId: dupeStorageId } = await dupeRes.json()
+await client.mutation(api.portal.attachUpload, {
+  portalToken: PT, storageId: dupeStorageId, filename: "slides.pdf", contentType: "application/pdf",
+  taskId: slidesTask?.id, submissionId: submitted.submissionId,
+})
+const afterDupe = await client.query(api.portal.myUploads, { portalToken: PT })
+const dupeRow = afterDupe.filter((u) => u.filename === "slides.pdf").sort((a, b) => b.version - a.version)[0]
+ok("re-uploading identical bytes is flagged as a duplicate", dupeRow.duplicateOfVersion === versionBefore + 1, JSON.stringify({ v: dupeRow.version, dupe: dupeRow.duplicateOfVersion }))
+
+// ————— Headshot replacement deletes the blob it replaces —————
+async function uploadHeadshot(bytes) {
+  const url = await client.mutation(api.portal.generateUploadUrl, { portalToken: PT })
+  const res = await fetch(url, { method: "POST", headers: { "Content-Type": "image/png" }, body: new Blob([bytes], { type: "image/png" }) })
+  const { storageId: id } = await res.json()
+  await client.mutation(api.portal.attachUpload, {
+    portalToken: PT, storageId: id, filename: "headshot.png", contentType: "image/png", isHeadshot: true,
+  })
+  return id
+}
+const headshotA = await uploadHeadshot("headshot-one")
+const headshotB = await uploadHeadshot("headshot-two")
+const homeHeadshot = await client.query(api.portal.home, { portalToken: PT })
+ok("headshot shows on the profile", typeof homeHeadshot.me.headshotUrl === "string")
+const blobState = convexRun("files:blobsExist", { storageIds: [headshotA, headshotB] })
+ok("replacing a headshot DELETES the old blob", blobState[headshotA] === false)
+ok("the current headshot blob survives", blobState[headshotB] === true)
+const uploadsAfterHeadshot = await client.query(api.portal.myUploads, { portalToken: PT })
+ok("the superseded profile-photo row is gone too", !uploadsAfterHeadshot.some((u) => u.id === headshotA))
+
+// ————— Organizer-side: attach on behalf of a speaker, then delete —————
+const orgUploadUrl = await client.mutation(api.files.generateUploadUrl, { eventId: main._id })
+const orgRes = await fetch(orgUploadUrl, { method: "POST", headers: { "Content-Type": "application/pdf" }, body: new Blob(["organizer-attached-deck"]) })
+const { storageId: orgStorageId } = await orgRes.json()
+const orgUploadId = await client.mutation(api.files.attachUploadAsOrganizer, {
+  submissionId: submitted.submissionId, storageId: orgStorageId, filename: "organizer-deck.pdf",
+})
+const submissionFiles = await client.query(api.files.submissionFiles, { submissionId: submitted.submissionId })
+const orgFile = submissionFiles.find((f) => f.id === orgUploadId)
+ok("organizer can attach a file on a speaker's behalf", !!orgFile && orgFile.approvalStatus === "approved")
+ok("organizer-attached file is filed under the primary speaker", orgFile.personName?.length > 0, orgFile.personName)
+ok("the speaker sees it in their portal", (await client.query(api.portal.myUploads, { portalToken: PT })).some((u) => u.id === orgUploadId))
+await throws("an anonymous caller cannot attach files to our submission", () =>
+  anonClient.mutation(api.files.attachUploadAsOrganizer, {
+    submissionId: submitted.submissionId, storageId: orgStorageId, filename: "evil.pdf",
+  }))
+await client.mutation(api.files.deleteUpload, { uploadId: orgUploadId })
+ok("deleting a version removes the row", !(await client.query(api.files.submissionFiles, { submissionId: submitted.submissionId })).some((f) => f.id === orgUploadId))
+ok("deleting a version deletes the blob", convexRun("files:blobsExist", { storageIds: [orgStorageId] })[orgStorageId] === false)
+
+// ————— Event branding: upload → serve publicly → replace → clear —————
+const logoUrlEndpoint = await client.mutation(api.files.generateUploadUrl, { eventId: main._id })
+const logoRes = await fetch(logoUrlEndpoint, { method: "POST", headers: { "Content-Type": "image/png" }, body: new Blob([PNG_BYTES], { type: "image/png" }) })
+const { storageId: logoStorageId } = await logoRes.json()
+await client.mutation(api.files.setEventBranding, { eventId: main._id, slot: "logo", storageId: logoStorageId, filename: "logo.png" })
+const branding = await client.query(api.files.eventBranding, { eventId: main._id })
+ok("event logo stored with real metadata", branding.logo?.size === PNG_BYTES.length && branding.logo?.contentType === "image/png")
+ok("event logo serves a signed URL", typeof branding.logo?.url === "string")
+const publicEvent = await client.query(api.events.getBySlug, { slug: "ai-summit-2026" })
+ok("public event page gets the logo URL", typeof publicEvent.logoUrl === "string")
+ok("speaker portal gets the logo URL", typeof (await client.query(api.portal.home, { portalToken: PT })).event.logoUrl === "string")
+const logoImage = await fetch(branding.logo.url)
+ok("the logo actually downloads", logoImage.status === 200 && Number(logoImage.headers.get("content-length")) === PNG_BYTES.length)
+await throws("branding refuses a non-image", () =>
+  client.mutation(api.files.setEventBranding, { eventId: main._id, slot: "logo", storageId: orgStorageId, filename: "deck.pdf" }))
+await throws("an anonymous caller cannot brand our event", () =>
+  anonClient.mutation(api.files.setEventBranding, { eventId: main._id, slot: "logo", storageId: null }))
+await client.mutation(api.files.setEventBranding, { eventId: main._id, slot: "logo", storageId: null })
+ok("clearing the logo deletes the blob", convexRun("files:blobsExist", { storageIds: [logoStorageId] })[logoStorageId] === false)
+ok("public page falls back to no logo", (await client.query(api.events.getBySlug, { slug: "ai-summit-2026" })).logoUrl === null)
 
 // ————— Agenda + conflicts + auto-place —————
 section("Agenda")

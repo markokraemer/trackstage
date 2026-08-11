@@ -5,7 +5,6 @@ import { api } from "@convex/_generated/api"
 import type { Id } from "@convex/_generated/dataModel"
 import {
   RiAttachment2,
-  RiExternalLinkLine,
   RiFileTextLine,
   RiStarLine,
   RiTeamLine,
@@ -31,8 +30,8 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { DrawerShell } from "@/components/shared/drawer-shell"
 import { EmptyState } from "@/components/shared/empty-state"
-import { StatusPill } from "@/components/shared/status-pill"
 import type { SubmissionStatus } from "@/components/shared/status-pill"
+import { SubmissionFiles } from "@/components/submissions/submission-files"
 import { StatusPicker } from "@/components/submissions/status-picker"
 import { TagInput } from "@/components/submissions/tag-input"
 import { ChoiceValue, TrackValue } from "@/components/submissions/field-bits"
@@ -610,54 +609,11 @@ export function SubmissionDetailDrawer({
             </TabsContent>
 
             <TabsContent value="files">
-              {submission.uploads.length === 0 ? (
-                <EmptyState
-                  variant="plain"
-                  icon={RiAttachment2}
-                  title="No files attached"
-                  description="Slides, headshots, and anything a speaker uploads against this submission show up here with their approval status."
-                />
-              ) : (
-                <ul className="flex flex-col gap-2">
-                  {submission.uploads.map((upload) => (
-                    <li
-                      key={upload._id}
-                      className="flex items-center gap-3 rounded-lg border border-border bg-background p-3"
-                    >
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm font-medium text-foreground">
-                          {upload.filename}
-                        </p>
-                        <p className="truncate text-xs text-muted-foreground">
-                          Version {upload.version} ·{" "}
-                          {relativeDate(upload._creationTime)}
-                        </p>
-                      </div>
-                      <StatusPill
-                        status={approvalTone(upload.approvalStatus)}
-                        label={approvalLabel(upload.approvalStatus)}
-                        size="sm"
-                      />
-                      {upload.url ? (
-                        <Button nativeButton={false}
-                          variant="ghost"
-                          size="icon-sm"
-                          aria-label={`Open ${upload.filename}`}
-                          render={
-                            <a
-                              href={upload.url}
-                              target="_blank"
-                              rel="noreferrer"
-                            />
-                          }
-                        >
-                          <RiExternalLinkLine aria-hidden />
-                        </Button>
-                      ) : null}
-                    </li>
-                  ))}
-                </ul>
-              )}
+              <SubmissionFiles
+                submissionId={submission._id}
+                eventId={submission.eventId}
+                title={submission.title}
+              />
             </TabsContent>
           </>
         )}
@@ -675,18 +631,6 @@ function MetaRow({ label, value }: { label: string; value: string }) {
       <dd className="truncate text-sm text-foreground">{value}</dd>
     </div>
   )
-}
-
-function approvalLabel(status: string): string {
-  if (status === "approved") return "Approved"
-  if (status === "changes_requested") return "Changes requested"
-  return "Awaiting review"
-}
-
-function approvalTone(status: string): string {
-  if (status === "approved") return "complete"
-  if (status === "changes_requested") return "failed"
-  return "pending"
 }
 
 function initials(value: string): string {

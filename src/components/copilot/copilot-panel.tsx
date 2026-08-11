@@ -15,6 +15,7 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet"
 import { CopilotChat } from "@/components/copilot/copilot-chat"
+import { CopilotAppContext } from "@/components/copilot/copilot-app-context"
 import {
   COPILOT_PANEL_MIN_WIDTH,
   clampCopilotPanelWidth,
@@ -79,56 +80,61 @@ export function CopilotPanel() {
   }, [width])
 
   return (
-    <Sheet open={open} onOpenChange={setOpen} modal={false}>
-      <SheetContent
-        side="right"
-        showOverlay={false}
-        showCloseButton
-        aria-label="Sessionboard copilot"
-        style={{ width: `min(100vw, ${width}px)` }}
-        className="flex w-full flex-col gap-0 p-0 sm:max-w-none"
-      >
-        <ResizeHandle width={width} />
+    <>
+      {/* Mounted whether or not the panel is open: the copilot must already
+          know what screen the organizer came from the moment they open it. */}
+      <CopilotAppContext />
+      <Sheet open={open} onOpenChange={setOpen} modal={false}>
+        <SheetContent
+          side="right"
+          showOverlay={false}
+          showCloseButton
+          aria-label="Sessionboard copilot"
+          style={{ width: `min(100vw, ${width}px)` }}
+          className="flex w-full flex-col gap-0 p-0 sm:max-w-none"
+        >
+          <ResizeHandle width={width} />
 
-        <header className="flex shrink-0 items-center gap-2 border-b border-border px-4 py-3">
-          <span
-            aria-hidden
-            className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary"
-          >
-            <RiSparkling2Line size={16} />
-          </span>
-          <div className="min-w-0 flex-1">
-            <SheetTitle className="truncate text-sm">Copilot</SheetTitle>
-            <SheetDescription className="truncate text-xs">
-              {event?.name ?? "No event selected"}
-            </SheetDescription>
-          </div>
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            aria-label="New chat"
-            title="New chat"
-            onClick={newChat}
-          >
-            <RiAddLine size={16} aria-hidden />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            aria-label="Open full page"
-            title="Open full page"
-            nativeButton={false}
-            render={<Link to="/app/copilot" onClick={() => setOpen(false)} />}
-          >
-            <RiExpandDiagonalLine size={16} aria-hidden />
-          </Button>
-          {/* Leaves room for SheetContent's built-in close button. */}
-          <span aria-hidden className="w-7" />
-        </header>
+          <header className="flex shrink-0 items-center gap-2 border-b border-border px-4 py-3">
+            <span
+              aria-hidden
+              className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary"
+            >
+              <RiSparkling2Line size={16} />
+            </span>
+            <div className="min-w-0 flex-1">
+              <SheetTitle className="truncate text-sm">Copilot</SheetTitle>
+              <SheetDescription className="truncate text-xs">
+                {event?.name ?? "No event selected"}
+              </SheetDescription>
+            </div>
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              aria-label="New chat"
+              title="New chat"
+              onClick={newChat}
+            >
+              <RiAddLine size={16} aria-hidden />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              aria-label="Open full page"
+              title="Open full page"
+              nativeButton={false}
+              render={<Link to="/app/copilot" onClick={() => setOpen(false)} />}
+            >
+              <RiExpandDiagonalLine size={16} aria-hidden />
+            </Button>
+            {/* Leaves room for SheetContent's built-in close button. */}
+            <span aria-hidden className="w-7" />
+          </header>
 
-        <CopilotChat variant="panel" className="min-h-0 flex-1" />
-      </SheetContent>
-    </Sheet>
+          <CopilotChat variant="panel" className="min-h-0 flex-1" />
+        </SheetContent>
+      </Sheet>
+    </>
   )
 }
 
@@ -148,7 +154,7 @@ function ResizeHandle({ width }: { width: number }) {
     () => () => {
       if (frame.current !== null) cancelAnimationFrame(frame.current)
     },
-    [],
+    []
   )
 
   const applyWidth = useCallback((next: number) => {
@@ -173,7 +179,7 @@ function ResizeHandle({ width }: { width: number }) {
       // viewport edge.
       applyWidth(window.innerWidth - pointerEvent.clientX)
     },
-    [applyWidth, dragging],
+    [applyWidth, dragging]
   )
 
   const endDrag = useCallback((pointerEvent: React.PointerEvent) => {
@@ -204,7 +210,7 @@ function ResizeHandle({ width }: { width: number }) {
         resetCopilotPanelWidth()
       }
     },
-    [width],
+    [width]
   )
 
   return (
@@ -227,7 +233,7 @@ function ResizeHandle({ width }: { width: number }) {
       onKeyDown={onKeyDown}
       className={cn(
         "group absolute inset-y-0 left-0 z-20 flex w-2 cursor-col-resize touch-none items-center justify-center",
-        "focus-visible:outline-none",
+        "focus-visible:outline-none"
       )}
     >
       {/* The visible affordance: a hairline that thickens on hover/drag. */}
@@ -235,14 +241,14 @@ function ResizeHandle({ width }: { width: number }) {
         aria-hidden
         className={cn(
           "h-full w-px bg-transparent transition-colors",
-          "group-hover:bg-primary/40 group-focus-visible:bg-primary group-data-[dragging]:bg-primary",
+          "group-hover:bg-primary/40 group-focus-visible:bg-primary group-data-[dragging]:bg-primary"
         )}
       />
       <span
         aria-hidden
         className={cn(
           "absolute h-8 w-1 rounded-full bg-border opacity-0 transition-opacity",
-          "group-hover:opacity-100 group-focus-visible:opacity-100 group-data-[dragging]:opacity-100",
+          "group-hover:opacity-100 group-focus-visible:opacity-100 group-data-[dragging]:opacity-100"
         )}
       />
     </div>

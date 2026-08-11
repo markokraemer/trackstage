@@ -46,4 +46,8 @@ Format: date · decision · why · status.
 - **2026-08-11 · Toasts are pinned to `theme="light"`** — Sonner was following the OS
   theme on a light-mode-only app, so its dark rule painted the description line
   `hsl(0 0% 91%)` — near-white on white. Every toast colour now comes from a token. ✅
+- **2026-08-11 · Right-click the logo opens a MENU, never a redirect** — RULES #20d's
+  "right-click → /design-system" shipped as an auto-navigate and felt like a hijack.
+  The affordance is a context menu that *offers* the design system alongside SVG/PNG
+  download and copy-as-SVG (Vercel/Linear). New `ui/context-menu.tsx` on Base UI. ✅
 

@@ -101,7 +101,9 @@ export function readCopilotContext(category?: string): string {
 
 /** Test/debug helper — the raw registry, in render order. */
 export function copilotReadables(): Array<CopilotReadable> {
-  return [...readables.values()].sort((a, b) => (a.order ?? 100) - (b.order ?? 100))
+  return [...readables.values()].sort(
+    (a, b) => (a.order ?? 100) - (b.order ?? 100)
+  )
 }
 
 /**

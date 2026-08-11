@@ -45,7 +45,9 @@ export function asArray(value: unknown): Array<Record<string, unknown>> | null {
 /** Array of non-empty strings — always an array, never null. */
 export function strList(value: unknown): Array<string> {
   if (!Array.isArray(value)) return []
-  return value.filter((entry): entry is string => typeof entry === "string" && entry.length > 0)
+  return value.filter(
+    (entry): entry is string => typeof entry === "string" && entry.length > 0
+  )
 }
 
 export function str(value: unknown): string | null {
@@ -122,7 +124,7 @@ export function formatDayHeading(iso: unknown): string | null {
 
 /** Groups anything with a `startsAt` by calendar day, in time order. */
 export function groupByDay<T extends { startsAt?: unknown }>(
-  rows: Array<T>,
+  rows: Array<T>
 ): Array<{ key: string; heading: string; rows: Array<T> }> {
   const groups = new Map<string, Array<T>>()
   for (const row of rows) {
@@ -236,7 +238,7 @@ export function Rows({
       data-slot="tool-rows"
       className={cn(
         "divide-y divide-border overflow-hidden rounded-lg border border-border bg-card",
-        className,
+        className
       )}
     >
       {children}
@@ -276,7 +278,7 @@ export function Tile({
         tone === "good" && "border-status-green-dot/40 bg-status-green-bg/30",
         tone === "warn" && "border-status-amber-dot/40 bg-status-amber-bg/40",
         tone === "bad" && "border-status-red-dot/40 bg-status-red-bg/40",
-        className,
+        className
       )}
     >
       {children}
@@ -333,7 +335,7 @@ export function Banner({
         "flex items-start gap-2.5 rounded-lg border p-3",
         tone === "good" && "border-status-green-dot/40 bg-status-green-bg/40",
         tone === "warn" && "border-status-amber-dot/40 bg-status-amber-bg/50",
-        tone === "neutral" && "border-border bg-muted/40",
+        tone === "neutral" && "border-border bg-muted/40"
       )}
     >
       <span
@@ -342,7 +344,7 @@ export function Banner({
           "mt-0.5 shrink-0",
           tone === "good" && "text-status-green-fg",
           tone === "warn" && "text-status-amber-fg",
-          tone === "neutral" && "text-muted-foreground",
+          tone === "neutral" && "text-muted-foreground"
         )}
       >
         {icon ?? <RiCheckLine size={16} />}
@@ -375,13 +377,13 @@ export function StatCard({
         "min-w-[5.5rem] flex-1 rounded-lg border border-border bg-card px-3 py-2",
         tone === "good" && "border-status-green-dot/40 bg-status-green-bg/30",
         tone === "warn" && "border-status-amber-dot/40 bg-status-amber-bg/40",
-        tone === "bad" && "border-status-red-dot/40 bg-status-red-bg/40",
+        tone === "bad" && "border-status-red-dot/40 bg-status-red-bg/40"
       )}
     >
       <div className="truncate text-[11px] font-medium tracking-wide text-muted-foreground uppercase">
         {label}
       </div>
-      <div className="mt-0.5 text-lg leading-none font-semibold tabular-nums text-foreground">
+      <div className="mt-0.5 text-lg leading-none font-semibold text-foreground tabular-nums">
         {value}
       </div>
     </div>
@@ -428,7 +430,7 @@ export function MiniProgress({
       aria-valuemax={100}
       className={cn(
         "block h-1.5 w-full overflow-hidden rounded-full bg-muted",
-        className,
+        className
       )}
     >
       <span
@@ -436,7 +438,7 @@ export function MiniProgress({
           "block h-full rounded-full transition-all",
           tone === "good" && "bg-status-green-dot",
           tone === "warn" && "bg-status-amber-dot",
-          tone === "default" && "bg-primary",
+          tone === "default" && "bg-primary"
         )}
         style={{ width: `${clamped}%` }}
       />
@@ -461,7 +463,7 @@ export function FieldGrid({
     <dl
       className={cn(
         "grid grid-cols-[minmax(0,auto)_minmax(0,1fr)] gap-x-3 gap-y-1.5 text-xs",
-        className,
+        className
       )}
     >
       {entries.map((entry, index) => (
@@ -523,7 +525,7 @@ export function Chip({
         tone === "warn" &&
           "border-status-amber-dot/40 bg-status-amber-bg/60 text-status-amber-fg",
         tone === "muted" && "text-muted-foreground",
-        className,
+        className
       )}
     >
       {children}
@@ -595,7 +597,7 @@ export function OpenLink({
       rel="noreferrer"
       className={cn(
         "inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline",
-        className,
+        className
       )}
     >
       {children}
@@ -631,7 +633,7 @@ export function GoLink({
       params={params as never}
       className={cn(
         "inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline",
-        className,
+        className
       )}
     >
       {children}
@@ -662,7 +664,9 @@ export function JsonBlock({ value }: { value: unknown }) {
   return (
     <CodeBlock
       code={
-        typeof value === "string" ? value : JSON.stringify(value ?? null, null, 2)
+        typeof value === "string"
+          ? value
+          : JSON.stringify(value ?? null, null, 2)
       }
       language="json"
     />

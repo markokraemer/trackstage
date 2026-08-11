@@ -138,5 +138,16 @@ export function createZip(entries: Array<ZipEntry>, now = new Date()): Blob {
   ev.setUint32(12, centralSize, true)
   ev.setUint32(16, offset, true)
 
-  return new Blob([...locals, ...centrals, end], { type: "application/zip" })
+  // One contiguous buffer rather than a list of views: `Blob` only accepts
+  // `ArrayBufferView<ArrayBuffer>`, and a Uint8Array we allocate ourselves is
+  // the one thing guaranteed to be backed by a plain ArrayBuffer.
+  const parts = [...locals, ...centrals, end]
+  const total = parts.reduce((sum, part) => sum + part.length, 0)
+  const out = new Uint8Array(total)
+  let cursor = 0
+  for (const part of parts) {
+    out.set(part, cursor)
+    cursor += part.length
+  }
+  return new Blob([out.buffer], { type: "application/zip" })
 }

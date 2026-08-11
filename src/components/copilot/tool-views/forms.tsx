@@ -234,15 +234,18 @@ export function FormDetailView({ output }: ToolOutputProps) {
         {enabledQuestions.length > 10 ? (
           <Note>
             +{enabledQuestions.length - 10} more question
-            {enabledQuestions.length - 10 === 1 ? "" : "s"} — open the builder to
-            see them all.
+            {enabledQuestions.length - 10 === 1 ? "" : "s"} — open the builder
+            to see them all.
           </Note>
         ) : null}
 
         {settings ? (
           <FieldGrid
             entries={[
-              { label: "Drafts", value: bool(settings.allowDrafts) ? "Allowed" : "Off" },
+              {
+                label: "Drafts",
+                value: bool(settings.allowDrafts) ? "Allowed" : "Off",
+              },
               {
                 label: "Reminders",
                 value: bool(settings.sendReminderEmail) ? "On" : "Off",
@@ -317,7 +320,9 @@ function settingValue(key: string, value: unknown): ReactNode {
   if (typeof value === "boolean") return value ? "On" : "Off"
   if (key === "closeAt") return formatDate(value) ?? String(value)
   if (key === "successMessage") {
-    const text = String(value).replace(/<[^>]*>/g, " ").trim()
+    const text = String(value)
+      .replace(/<[^>]*>/g, " ")
+      .trim()
     return text.length > 60 ? `${text.slice(0, 59)}…` : text
   }
   return String(value)
@@ -335,11 +340,15 @@ export function FormSettingsUpdatedView({ input, output }: ToolOutputProps) {
     ...settings,
   }
   const before: Record<string, unknown> = previous
-    ? { status: previous.status, closeAt: previous.closeAt, ...previousSettings }
+    ? {
+        status: previous.status,
+        closeAt: previous.closeAt,
+        ...previousSettings,
+      }
     : {}
 
   const changed = Object.keys(requested).filter(
-    (key) => key !== "form" && key in SETTING_LABELS,
+    (key) => key !== "form" && key in SETTING_LABELS
   )
 
   return (

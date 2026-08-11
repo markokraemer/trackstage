@@ -126,8 +126,14 @@ export const TOOL_VIEWS: Record<string, ToolViewSpec | undefined> = {
   },
 
   // Submissions & decisions
-  list_submissions: { icon: RiPresentationLine, OutputView: SubmissionsListView },
-  get_submission: { icon: RiPresentationLine, OutputView: SubmissionDetailView },
+  list_submissions: {
+    icon: RiPresentationLine,
+    OutputView: SubmissionsListView,
+  },
+  get_submission: {
+    icon: RiPresentationLine,
+    OutputView: SubmissionDetailView,
+  },
   set_submission_status: {
     icon: RiPresentationLine,
     OutputView: StatusChangedView,

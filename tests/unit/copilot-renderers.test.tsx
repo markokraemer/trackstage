@@ -51,9 +51,8 @@ vi.mock("@tanstack/react-router", () => ({
   },
 }))
 
-const { CopilotToolOutput, TOOL_VIEWS, hasToolView } = await import(
-  "@/components/copilot/tool-views/registry"
-)
+const { CopilotToolOutput, TOOL_VIEWS, hasToolView } =
+  await import("@/components/copilot/tool-views/registry")
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "../..")
 
@@ -220,8 +219,16 @@ const SHAPES: Record<string, Payload> = {
         "2 staged in the accept queue — commit_decision_queue sends the acceptance emails",
       ],
       upcomingDeadlines: [
-        { what: 'CFP "Main CFP 2026" closes', when: "2026-08-01T00:00:00.000Z", daysAway: 3 },
-        { what: "AI Engineer Summit 2026 starts", when: "2026-09-14T16:00:00.000Z", daysAway: 47 },
+        {
+          what: 'CFP "Main CFP 2026" closes',
+          when: "2026-08-01T00:00:00.000Z",
+          daysAway: 3,
+        },
+        {
+          what: "AI Engineer Summit 2026 starts",
+          when: "2026-09-14T16:00:00.000Z",
+          daysAway: 47,
+        },
       ],
     },
   },
@@ -259,16 +266,58 @@ const SHAPES: Record<string, Payload> = {
       closeAt: "2026-08-01T00:00:00.000Z",
       publicUrl: "http://localhost:3000/submit/main-cfp-2026",
       questions: [
-        { id: "title", label: "Title", type: "short_text", required: true, enabled: true, locked: true, options: null, showIf: null, isTrackQuestion: false },
-        { id: "track", label: "Track", type: "dropdown", required: true, enabled: true, locked: false, options: ["Agents", "Infra"], showIf: null, isTrackQuestion: true },
-        { id: "level", label: "Level", type: "dropdown", required: false, enabled: false, locked: false, options: ["Intro"], showIf: { questionId: "track" }, isTrackQuestion: false },
+        {
+          id: "title",
+          label: "Title",
+          type: "short_text",
+          required: true,
+          enabled: true,
+          locked: true,
+          options: null,
+          showIf: null,
+          isTrackQuestion: false,
+        },
+        {
+          id: "track",
+          label: "Track",
+          type: "dropdown",
+          required: true,
+          enabled: true,
+          locked: false,
+          options: ["Agents", "Infra"],
+          showIf: null,
+          isTrackQuestion: true,
+        },
+        {
+          id: "level",
+          label: "Level",
+          type: "dropdown",
+          required: false,
+          enabled: false,
+          locked: false,
+          options: ["Intro"],
+          showIf: { questionId: "track" },
+          isTrackQuestion: false,
+        },
       ],
       participantConfig: {
         speakerMin: 1,
         speakerMax: 4,
         fields: [
-          { id: "firstName", label: "First Name", required: true, enabled: true, locked: true },
-          { id: "phone", label: "Mobile Phone", required: false, enabled: false, locked: false },
+          {
+            id: "firstName",
+            label: "First Name",
+            required: true,
+            enabled: true,
+            locked: true,
+          },
+          {
+            id: "phone",
+            label: "Mobile Phone",
+            required: false,
+            enabled: false,
+            locked: false,
+          },
         ],
       },
       settings: { allowDrafts: true, sendReminderEmail: true, limitPerUser: 3 },
@@ -276,7 +325,11 @@ const SHAPES: Record<string, Payload> = {
     },
   },
   create_form: {
-    input: { event: "ai-summit-2026", name: "Copilot Verification CFP", kind: "abstract" },
+    input: {
+      event: "ai-summit-2026",
+      name: "Copilot Verification CFP",
+      kind: "abstract",
+    },
     output: {
       formId: "form2",
       slug: "copilot-verification-cfp",
@@ -325,10 +378,17 @@ const SHAPES: Record<string, Payload> = {
         format: "Talk",
         level: "Intermediate",
         tags: ["AI"],
-        speakers: [`Ada Lovelace <ada${index}@example.com>`, "Grace Hopper <grace@example.com>"],
+        speakers: [
+          `Ada Lovelace <ada${index}@example.com>`,
+          "Grace Hopper <grace@example.com>",
+        ],
         scheduled:
           index === 0
-            ? { startsAt: "2026-09-14T17:00:00.000Z", durationMinutes: 45, room: "Main Stage" }
+            ? {
+                startsAt: "2026-09-14T17:00:00.000Z",
+                durationMinutes: 45,
+                room: "Main Stage",
+              }
             : null,
       })),
     },
@@ -345,7 +405,11 @@ const SHAPES: Record<string, Payload> = {
       level: "Intermediate",
       tags: ["AI", "Infrastructure"],
       speakers: ["Ada Lovelace <ada@example.com>"],
-      scheduled: { startsAt: "2026-09-14T17:00:00.000Z", durationMinutes: 45, room: "Main Stage" },
+      scheduled: {
+        startsAt: "2026-09-14T17:00:00.000Z",
+        durationMinutes: 45,
+        room: "Main Stage",
+      },
       description: "<p>A talk about running agents at scale.</p>",
       answers: { format: "Talk" },
       formName: "Main CFP 2026",
@@ -355,7 +419,12 @@ const SHAPES: Record<string, Payload> = {
         { name: "Ada Lovelace", email: "ada@example.com", role: "speaker" },
       ],
       uploads: [
-        { filename: "slides.pdf", version: 2, approvalStatus: "pending", reviewNote: null },
+        {
+          filename: "slides.pdf",
+          version: 2,
+          approvalStatus: "pending",
+          reviewNote: null,
+        },
       ],
       evaluation: {
         completedReviews: 3,
@@ -380,12 +449,21 @@ const SHAPES: Record<string, Payload> = {
       queue: "accept_queue",
       committed: 3,
       emailsQueued: 4,
-      titles: ["Scaling agents in production", "The RAG we deserve", "Eval-driven development"],
+      titles: [
+        "Scaling agents in production",
+        "The RAG we deserve",
+        "Eval-driven development",
+      ],
       note: "Decision emails are queued in the outbox; check them with list_outbox.",
     },
   },
   add_manual_session: {
-    input: { event: "ai-summit-2026", title: "Copilot Verification Keynote", track: "Agents", format: "Keynote" },
+    input: {
+      event: "ai-summit-2026",
+      title: "Copilot Verification Keynote",
+      track: "Agents",
+      format: "Keynote",
+    },
     output: {
       submissionId: "sub99",
       title: "Copilot Verification Keynote",
@@ -408,12 +486,48 @@ const SHAPES: Record<string, Payload> = {
         { roomId: "room2", name: "Workshop Room", capacity: 80 },
       ],
       scheduled: [
-        { submissionId: "sub0", title: "Opening keynote", startsAt: "2026-09-14T17:00:00.000Z", durationMinutes: 45, room: "Main Stage", roomId: "room1", track: "Agents", speakers: ["Ada Lovelace"] },
-        { submissionId: "sub1", title: "Eval-driven development", startsAt: "2026-09-14T18:00:00.000Z", durationMinutes: 45, room: "Workshop Room", roomId: "room2", track: "Infra", speakers: ["Grace Hopper"] },
-        { submissionId: "sub2", title: "Day two opener", startsAt: "2026-09-15T17:00:00.000Z", durationMinutes: 30, room: "Main Stage", roomId: "room1", track: null, speakers: [] },
+        {
+          submissionId: "sub0",
+          title: "Opening keynote",
+          startsAt: "2026-09-14T17:00:00.000Z",
+          durationMinutes: 45,
+          room: "Main Stage",
+          roomId: "room1",
+          track: "Agents",
+          speakers: ["Ada Lovelace"],
+        },
+        {
+          submissionId: "sub1",
+          title: "Eval-driven development",
+          startsAt: "2026-09-14T18:00:00.000Z",
+          durationMinutes: 45,
+          room: "Workshop Room",
+          roomId: "room2",
+          track: "Infra",
+          speakers: ["Grace Hopper"],
+        },
+        {
+          submissionId: "sub2",
+          title: "Day two opener",
+          startsAt: "2026-09-15T17:00:00.000Z",
+          durationMinutes: 30,
+          room: "Main Stage",
+          roomId: "room1",
+          track: null,
+          speakers: [],
+        },
       ],
       unscheduled: [
-        { submissionId: "sub3", title: "The RAG we deserve", startsAt: null, durationMinutes: 45, room: null, roomId: null, track: "Agents", speakers: ["Alan Turing"] },
+        {
+          submissionId: "sub3",
+          title: "The RAG we deserve",
+          startsAt: null,
+          durationMinutes: 45,
+          room: null,
+          roomId: null,
+          track: "Agents",
+          speakers: ["Alan Turing"],
+        },
       ],
       conflicts: [
         {
@@ -426,7 +540,12 @@ const SHAPES: Record<string, Payload> = {
     },
   },
   schedule_session: {
-    input: { submissionId: "sub99", room: "Main Stage", startsAt: "2026-09-14T17:00:00Z", durationMinutes: 30 },
+    input: {
+      submissionId: "sub99",
+      room: "Main Stage",
+      startsAt: "2026-09-14T17:00:00Z",
+      durationMinutes: 30,
+    },
     output: {
       submissionId: "sub99",
       title: "Copilot Verification Keynote",
@@ -466,7 +585,12 @@ const SHAPES: Record<string, Payload> = {
           jobTitle: "Principal Engineer",
           sessions: ["Scaling agents in production"],
           outstandingTasks: [
-            { taskId: "t1", title: "Upload your slides", kind: "upload", dueAt: "2026-09-01T00:00:00.000Z" },
+            {
+              taskId: "t1",
+              title: "Upload your slides",
+              kind: "upload",
+              dueAt: "2026-09-01T00:00:00.000Z",
+            },
           ],
           missingProfileItems: ["bio", "headshot"],
         },
@@ -494,7 +618,11 @@ const SHAPES: Record<string, Payload> = {
     },
   },
   assign_task: {
-    input: { event: "ai-summit-2026", speakers: ["ada@example.com"], title: "Upload your slides" },
+    input: {
+      event: "ai-summit-2026",
+      speakers: ["ada@example.com"],
+      title: "Upload your slides",
+    },
     output: {
       created: 1,
       title: "Upload your slides",
@@ -516,15 +644,37 @@ const SHAPES: Record<string, Payload> = {
     input: { event: "ai-summit-2026" },
     output: {
       templates: [
-        { key: "accepted", name: "Accepted", subject: "You're in!", body: "<p>Hi {{firstName}}</p>", customized: true },
-        { key: "reminder", name: "Reminder", subject: "A quick nudge", body: "<p>Please finish your tasks.</p>", customized: false },
+        {
+          key: "accepted",
+          name: "Accepted",
+          subject: "You're in!",
+          body: "<p>Hi {{firstName}}</p>",
+          customized: true,
+        },
+        {
+          key: "reminder",
+          name: "Reminder",
+          subject: "A quick nudge",
+          body: "<p>Please finish your tasks.</p>",
+          customized: false,
+        },
       ],
-      variables: ["speakerName", "firstName", "sessionTitle", "eventName", "portalLink"],
+      variables: [
+        "speakerName",
+        "firstName",
+        "sessionTitle",
+        "eventName",
+        "portalLink",
+      ],
       note: "Placeholders use {{variable}} syntax.",
     },
   },
   update_template: {
-    input: { event: "ai-summit-2026", key: "reminder", subject: "A quick nudge about {{eventName}}" },
+    input: {
+      event: "ai-summit-2026",
+      key: "reminder",
+      subject: "A quick nudge about {{eventName}}",
+    },
     output: {
       key: "reminder",
       name: "Reminder",
@@ -538,8 +688,24 @@ const SHAPES: Record<string, Payload> = {
     output: {
       counts: { sent: 12, preview: 3 },
       messages: [
-        { to: "ada@example.com", subject: "You're in!", templateKey: "accepted", status: "sent", calendarInviteAttached: true, sentAt: "2026-07-01T09:00:00.000Z", error: null },
-        { to: "grace@example.com", subject: "A quick nudge", templateKey: "reminder", status: "failed", calendarInviteAttached: false, sentAt: null, error: "Mailbox unavailable" },
+        {
+          to: "ada@example.com",
+          subject: "You're in!",
+          templateKey: "accepted",
+          status: "sent",
+          calendarInviteAttached: true,
+          sentAt: "2026-07-01T09:00:00.000Z",
+          error: null,
+        },
+        {
+          to: "grace@example.com",
+          subject: "A quick nudge",
+          templateKey: "reminder",
+          status: "failed",
+          calendarInviteAttached: false,
+          sentAt: null,
+          error: "Mailbox unavailable",
+        },
       ],
       note: '"preview" means it was rendered but not actually mailed.',
     },
@@ -577,7 +743,7 @@ function renderTool(toolName: string, payload: Payload) {
       toolName={toolName}
       input={payload.input}
       output={payload.output}
-    />,
+    />
   )
 }
 
@@ -592,7 +758,7 @@ describe("copilot tool-view registry", () => {
 
   it("does not register views for tools the MCP server doesn't expose", () => {
     const extra = Object.keys(TOOL_VIEWS).filter(
-      (name) => !(ALL_TOOLS as ReadonlyArray<string>).includes(name),
+      (name) => !(ALL_TOOLS as ReadonlyArray<string>).includes(name)
     )
     expect(extra).toEqual([])
   })
@@ -664,22 +830,34 @@ describe("what each view actually says", () => {
   })
 
   it("get_event_summary leads with stats and the needs-attention list", () => {
-    const { container } = renderTool("get_event_summary", SHAPES.get_event_summary)
-    expect(container.querySelectorAll("[data-slot=stat-card]").length).toBeGreaterThan(2)
-    expect(container.textContent).toContain("8 submission(s) still pending review")
+    const { container } = renderTool(
+      "get_event_summary",
+      SHAPES.get_event_summary
+    )
+    expect(
+      container.querySelectorAll("[data-slot=stat-card]").length
+    ).toBeGreaterThan(2)
+    expect(container.textContent).toContain(
+      "8 submission(s) still pending review"
+    )
     expect(container.textContent).toContain("Needs attention")
   })
 
   it("get_event_overview renders the same shape from a different payload", () => {
-    const { container } = renderTool("get_event_overview", SHAPES.get_event_overview)
-    expect(container.querySelectorAll("[data-slot=stat-card]").length).toBeGreaterThan(2)
+    const { container } = renderTool(
+      "get_event_overview",
+      SHAPES.get_event_overview
+    )
+    expect(
+      container.querySelectorAll("[data-slot=stat-card]").length
+    ).toBeGreaterThan(2)
     expect(container.textContent).toContain("AI Engineer Summit 2026")
   })
 
   it("create_form gives the public link a copy button and both next steps", () => {
     const { container } = renderTool("create_form", SHAPES.create_form)
     expect(container.textContent).toContain(
-      "http://localhost:3000/submit/copilot-verification-cfp",
+      "http://localhost:3000/submit/copilot-verification-cfp"
     )
     expect(screen.getByRole("button", { name: /copy/i })).toBeTruthy()
     const builder = screen.getByText(/edit in form builder/i).closest("a")
@@ -689,13 +867,21 @@ describe("what each view actually says", () => {
   })
 
   it("get_public_form_link renders the URL as a copyable affordance", () => {
-    const { container } = renderTool("get_public_form_link", SHAPES.get_public_form_link)
-    expect(container.querySelector("code")?.textContent).toContain("/submit/main-cfp-2026")
+    const { container } = renderTool(
+      "get_public_form_link",
+      SHAPES.get_public_form_link
+    )
+    expect(container.querySelector("code")?.textContent).toContain(
+      "/submit/main-cfp-2026"
+    )
     expect(screen.getByRole("button", { name: /copy/i })).toBeTruthy()
   })
 
   it("update_form_settings shows a real before → after row", () => {
-    const { container } = renderTool("update_form_settings", SHAPES.update_form_settings)
+    const { container } = renderTool(
+      "update_form_settings",
+      SHAPES.update_form_settings
+    )
     expect(container.textContent).toContain("Status")
     // Both the old and the new status pill are present.
     const pills = container.querySelectorAll("[data-slot=status-pill]")
@@ -705,24 +891,37 @@ describe("what each view actually says", () => {
   })
 
   it("list_submissions caps at 8 rows and links the filter through", () => {
-    const { container } = renderTool("list_submissions", SHAPES.list_submissions)
+    const { container } = renderTool(
+      "list_submissions",
+      SHAPES.list_submissions
+    )
     expect(container.querySelectorAll("tbody tr").length).toBe(8)
     const more = screen.getByText(/view all 12 in submissions/i).closest("a")
     expect(more?.getAttribute("href")).toContain("status=pending")
-    expect(container.querySelectorAll("[data-slot=track-dot]").length).toBeGreaterThan(0)
+    expect(
+      container.querySelectorAll("[data-slot=track-dot]").length
+    ).toBeGreaterThan(0)
   })
 
   it("set_submission_status renders the old → new transition", () => {
-    const { container } = renderTool("set_submission_status", SHAPES.set_submission_status)
-    const statuses = [...container.querySelectorAll("[data-slot=status-pill]")].map(
-      (pill) => pill.getAttribute("data-status"),
+    const { container } = renderTool(
+      "set_submission_status",
+      SHAPES.set_submission_status
     )
+    const statuses = [
+      ...container.querySelectorAll("[data-slot=status-pill]"),
+    ].map((pill) => pill.getAttribute("data-status"))
     expect(statuses).toEqual(["pending", "accept_queue"])
   })
 
   it("commit_decision_queue reports the counts and links the outbox", () => {
-    const { container } = renderTool("commit_decision_queue", SHAPES.commit_decision_queue)
-    expect(container.textContent).toContain("3 acceptances committed · 4 emails queued")
+    const { container } = renderTool(
+      "commit_decision_queue",
+      SHAPES.commit_decision_queue
+    )
+    expect(container.textContent).toContain(
+      "3 acceptances committed · 4 emails queued"
+    )
     const outbox = screen.getByText(/check the outbox/i).closest("a")
     expect(outbox?.getAttribute("href")).toContain("tab=outbox")
   })
@@ -731,19 +930,29 @@ describe("what each view actually says", () => {
     const { container } = renderTool("get_agenda", SHAPES.get_agenda)
     expect(container.textContent).toContain("Main Stage · 1")
     expect(container.textContent).toContain("1 conflict to resolve")
-    expect(container.textContent).toContain("Main Stage is double-booked at 10:00")
-    expect(container.textContent).toContain("1 accepted session waiting for a slot")
+    expect(container.textContent).toContain(
+      "Main Stage is double-booked at 10:00"
+    )
+    expect(container.textContent).toContain(
+      "1 accepted session waiting for a slot"
+    )
   })
 
   it("schedule_session shows the slot and any clash it created", () => {
-    const { container } = renderTool("schedule_session", SHAPES.schedule_session)
+    const { container } = renderTool(
+      "schedule_session",
+      SHAPES.schedule_session
+    )
     expect(container.textContent).toContain("Main Stage")
     expect(container.textContent).toContain("30 min")
     expect(container.textContent).toContain("double-booked")
   })
 
   it("auto_place_sessions summarises placed vs left over", () => {
-    const { container } = renderTool("auto_place_sessions", SHAPES.auto_place_sessions)
+    const { container } = renderTool(
+      "auto_place_sessions",
+      SHAPES.auto_place_sessions
+    )
     expect(container.textContent).toContain("4 sessions placed")
     expect(container.textContent).toContain("Wouldn't fit")
   })
@@ -758,7 +967,10 @@ describe("what each view actually says", () => {
   })
 
   it("get_speaker_portal_link treats the URL as a credential", () => {
-    const { container } = renderTool("get_speaker_portal_link", SHAPES.get_speaker_portal_link)
+    const { container } = renderTool(
+      "get_speaker_portal_link",
+      SHAPES.get_speaker_portal_link
+    )
     expect(container.textContent).toContain("private")
     expect(container.querySelector("code")?.textContent).toContain("/portal/t/")
     expect(screen.getByRole("button", { name: /copy/i })).toBeTruthy()
@@ -773,9 +985,9 @@ describe("what each view actually says", () => {
   it("list_outbox pills every delivery status and surfaces errors", () => {
     const { container } = renderTool("list_outbox", SHAPES.list_outbox)
     expect(container.textContent).toContain("Mailbox unavailable")
-    const statuses = [...container.querySelectorAll("[data-slot=status-pill]")].map(
-      (pill) => pill.getAttribute("data-status"),
-    )
+    const statuses = [
+      ...container.querySelectorAll("[data-slot=status-pill]"),
+    ].map((pill) => pill.getAttribute("data-status"))
     expect(statuses).toContain("failed")
   })
 
@@ -799,13 +1011,16 @@ describe("what each view actually says", () => {
       ["list_forms", { forms: [] }],
       ["list_outbox", { counts: {}, messages: [] }],
       ["list_events", { events: [] }],
-      ["get_agenda", { scheduled: [], unscheduled: [], rooms: [], conflicts: [] }],
+      [
+        "get_agenda",
+        { scheduled: [], unscheduled: [], rooms: [], conflicts: [] },
+      ],
     ]
     for (const [toolName, output] of cases) {
       const { container, unmount } = renderTool(toolName, { input: {}, output })
       expect(
         container.textContent?.trim().length ?? 0,
-        `${toolName} empty state`,
+        `${toolName} empty state`
       ).toBeGreaterThan(10)
       unmount()
     }

@@ -158,7 +158,9 @@ export function SubmissionsListView({ input, output }: ToolOutputProps) {
                         <span className="inline-flex items-center gap-1">
                           <RiTimeLine size={12} aria-hidden />
                           {formatWhen(scheduled.startsAt) ?? "scheduled"}
-                          {str(scheduled.room) ? ` · ${str(scheduled.room)}` : ""}
+                          {str(scheduled.room)
+                            ? ` · ${str(scheduled.room)}`
+                            : ""}
                         </span>
                       ) : null}
                     </div>
@@ -218,7 +220,9 @@ export function SubmissionDetailView({ output }: ToolOutputProps) {
               {track ? <TrackTag track={track} /> : null}
               {str(output.format) ? <span>{str(output.format)}</span> : null}
               {str(output.level) ? <span>{str(output.level)}</span> : null}
-              {str(output.formName) ? <span>via {str(output.formName)}</span> : null}
+              {str(output.formName) ? (
+                <span>via {str(output.formName)}</span>
+              ) : null}
             </div>
           </div>
         </div>
@@ -242,7 +246,10 @@ export function SubmissionDetailView({ output }: ToolOutputProps) {
         {participants.length > 0 ? (
           <Rows>
             {participants.map((person, index) => (
-              <Row key={str(person.email) ?? index} className="items-center py-2">
+              <Row
+                key={str(person.email) ?? index}
+                className="items-center py-2"
+              >
                 <Avatar className="size-6 shrink-0">
                   <AvatarFallback className="text-[10px]">
                     {initials(str(person.name) ?? str(person.email) ?? "?")}
@@ -305,7 +312,10 @@ export function SubmissionDetailView({ output }: ToolOutputProps) {
         {uploads.length > 0 ? (
           <Rows>
             {uploads.map((upload, index) => (
-              <Row key={str(upload.filename) ?? index} className="items-center py-2">
+              <Row
+                key={str(upload.filename) ?? index}
+                className="items-center py-2"
+              >
                 <span className="min-w-0 flex-1 truncate font-mono text-xs text-foreground">
                   {str(upload.filename) ?? "file"}
                 </span>
@@ -319,9 +329,7 @@ export function SubmissionDetailView({ output }: ToolOutputProps) {
           </Rows>
         ) : null}
 
-        <GoLink {...submissionTarget(submissionId)}>
-          Open in Submissions
-        </GoLink>
+        <GoLink {...submissionTarget(submissionId)}>Open in Submissions</GoLink>
       </Tile>
     </Panel>
   )
@@ -404,9 +412,7 @@ export function DecisionQueueCommittedView({ output }: ToolOutputProps) {
             </li>
           ))}
           {titles.length > 5 ? (
-            <li className="text-muted-foreground">
-              +{titles.length - 5} more
-            </li>
+            <li className="text-muted-foreground">+{titles.length - 5} more</li>
           ) : null}
         </ul>
       ) : null}

@@ -185,4 +185,17 @@ Newest entries at the bottom. Every work session appends what actually happened.
   live: "Public link copied" renders title `#17171A` (17.1:1) and the URL `#6E6E76` (5.05:1).
   Screens re-shot at 1440px: /, /login, /app, /app/submissions, /app/agenda, /app/settings,
   /app/speakers, /app/forms, /design-system.
+- brand-menu slice: right-clicking a logo used to `window.location.assign("/design-system")`
+  — a right-click that teleports you off the page ("went in the nut bar"). Replaced with a
+  real brand CONTEXT MENU at the cursor (Vercel/Linear pattern): **View design system ·
+  Download logo (SVG) · Download logo (PNG) · Copy logo as SVG**, the last three wired to the
+  existing `brandSvg` / `downloadSvg` / `downloadBrandPng` generators in `brand/assets.ts`, so
+  the menu can never hand out a logo that differs from the rendered one. New
+  `src/components/ui/context-menu.tsx` wraps Base UI's `ContextMenu` with the dropdown's exact
+  styling (label is a plain div for the same reason `DropdownMenuLabel` is). `Logo`/`LogoMark`
+  now wrap in `<BrandMenu>`; the lockup owns the menu and its nested mark opts out, so you
+  never get two menus. `disableBrandMenu` still returns the browser's own menu. Verified live:
+  four items render at the cursor, right-click does NOT navigate, "Copy logo as SVG" puts real
+  SVG on the clipboard, left-click still navigates, "View design system" goes to /design-system,
+  zero console errors.
 

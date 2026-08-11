@@ -82,19 +82,19 @@ export function ToolFrame({
       className={cn(
         "w-full overflow-hidden rounded-lg border border-border bg-card",
         emphasis && "border-status-amber-dot/40",
-        className,
+        className
       )}
     >
       <CollapsibleTrigger
         className={cn(
-          "group flex w-full items-center gap-2.5 px-3 py-2 text-left transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40",
+          "group flex w-full items-center gap-2.5 px-3 py-2 text-left transition-colors hover:bg-muted/50 focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:outline-none"
         )}
       >
         <span
           aria-hidden
           className={cn(
             "flex size-6 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground",
-            running && "animate-pulse",
+            running && "animate-pulse"
           )}
         >
           <Icon size={14} />

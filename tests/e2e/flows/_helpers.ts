@@ -83,9 +83,22 @@ export async function mainEvent(client: ConvexHttpClient) {
 
 // ——— UI plumbing ———————————————————————————————————————————————————————————
 
+/**
+ * Console noise that is a REAL product bug, already failing loudly in
+ * `tests/e2e/crawl.spec.ts` (the dedicated console-cleanliness net) and written
+ * up in `tests/e2e/KNOWN-ISSUES.md`. Flow specs tolerate it so a known,
+ * documented defect in one component can't mask a regression in the ten
+ * journeys these files exist to protect. Delete an entry the moment its
+ * KNOWN-ISSUES row is fixed — crawl.spec will tell you.
+ */
+export const KNOWN_CONSOLE_NOISE = [
+  // KI-1: Base UI Tabs render Links via `render`, keeping nativeButton=true.
+  /Base UI: A component that acts as a button expected a native <button>/i,
+]
+
 /** Arm console tracking and return the watcher (call assertClean at the end). */
-export function armed(page: Page): ConsoleWatcher {
-  return watchConsole(page)
+export function armed(page: Page, extraIgnored: Array<RegExp> = []): ConsoleWatcher {
+  return watchConsole(page, [...KNOWN_CONSOLE_NOISE, ...extraIgnored])
 }
 
 /**
@@ -129,19 +142,28 @@ export async function uiSignUp(
   password: string,
 ) {
   await page.goto("/login", { waitUntil: "networkidle" })
-  for (let attempt = 0; attempt < 5; attempt++) {
-    await page.getByRole("tab", { name: /create account/i }).first().click()
-    await fillStable(page.getByLabel(/your name/i).first(), name)
-    await fillStable(page.getByLabel("Email").first(), email)
-    await fillStable(page.getByLabel("Password").first(), password)
-    await page.getByRole("button", { name: /^create account$/i }).first().click()
+  for (let attempt = 0; attempt < 6; attempt++) {
     try {
+      // The signup tab only responds once React has hydrated; before that the
+      // click is swallowed and the name field never mounts.
+      const nameField = page.getByLabel(/your name/i).first()
+      await expect(async () => {
+        await page.getByRole("tab", { name: /create account/i }).first().click()
+        await expect(nameField).toBeVisible({ timeout: 2_000 })
+      }).toPass({ timeout: 30_000 })
+
+      await fillStable(nameField, name)
+      await fillStable(page.getByLabel("Email").first(), email)
+      await fillStable(page.getByLabel("Password").first(), password)
+      await page
+        .getByRole("button", { name: /^create account$/i })
+        .first()
+        .click()
       await page.waitForURL(/\/app/, { timeout: 15_000 })
       return
     } catch {
-      if (!page.url().includes("/app")) {
-        await page.goto("/login", { waitUntil: "networkidle" })
-      }
+      if (page.url().includes("/app")) return
+      await page.goto("/login", { waitUntil: "networkidle" })
     }
   }
   throw new Error(`UI sign-up never reached /app for ${email}`)

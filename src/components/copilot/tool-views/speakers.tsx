@@ -69,7 +69,7 @@ export function SpeakersView({ output }: ToolOutputProps) {
   const behind = rows.filter(
     (row) =>
       (asArray(row.outstandingTasks) ?? []).length > 0 ||
-      strList(row.missingProfileItems).length > 0,
+      strList(row.missingProfileItems).length > 0
   ).length
 
   return (
@@ -249,7 +249,11 @@ export function RemindersSentView({ output }: ToolOutputProps) {
     >
       <StatRow
         stats={[
-          { label: "Queued", value: queued, tone: queued > 0 ? "good" : "default" },
+          {
+            label: "Queued",
+            value: queued,
+            tone: queued > 0 ? "good" : "default",
+          },
           { label: "Skipped", value: skipped },
         ]}
       />

@@ -149,6 +149,9 @@ test.describe("multi-tenancy", () => {
         org.getByText(/already a member/i).first(),
       ).toBeVisible({ timeout: 15_000 })
       await org.getByRole("button", { name: /^cancel$/i }).first().click()
+      // A refused mutation logs a Convex server error — that IS the assertion
+      // here, so forget it before the watcher's final cleanliness check.
+      orgWatcher.reset()
     })
 
     // ——— 3. Invitee signs in again and claims the membership ———————————————

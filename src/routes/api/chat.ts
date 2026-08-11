@@ -46,6 +46,12 @@ type ChatRequestBody = {
   messages?: Array<UIMessage>
   eventName?: string
   eventSlug?: string
+  /**
+   * What the organizer has on screen right now — page, filters, selection —
+   * collected client-side by src/lib/copilot-context.ts. Context, not truth:
+   * the prompt tells the model to still read facts through tools.
+   */
+  appContext?: string
 }
 
 /**
@@ -65,11 +71,18 @@ function readEnv(name: string): string | undefined {
 function jsonError(message: string, status: number): Response {
   return new Response(JSON.stringify({ error: message }), {
     status,
-    headers: { "Content-Type": "application/json", "Cache-Control": "no-store" },
+    headers: {
+      "Content-Type": "application/json",
+      "Cache-Control": "no-store",
+    },
   })
 }
 
-async function handlePost({ request }: { request: Request }): Promise<Response> {
+async function handlePost({
+  request,
+}: {
+  request: Request
+}): Promise<Response> {
   // ——— Who is asking? Better Auth cookie → Convex identity ———————————————
   // fetchAuthQuery reads the request's cookies (getRequestHeaders) and mints
   // the Convex JWT, so an unauthenticated caller resolves to null and stops
@@ -88,7 +101,7 @@ async function handlePost({ request }: { request: Request }): Promise<Response> 
   if (!apiKey) {
     return jsonError(
       "The copilot is not configured: OPENROUTER_API_KEY is missing on the server.",
-      500,
+      500
     )
   }
 
@@ -106,7 +119,7 @@ async function handlePost({ request }: { request: Request }): Promise<Response> 
   // ——— Tools: our MCP server, authenticated as this user ————————————————
   const siteUrl = (import.meta.env.VITE_CONVEX_SITE_URL ?? "").replace(
     /\/+$/,
-    "",
+    ""
   )
   let tools: ToolSet = {}
   let toolNames: Array<string> = []
@@ -140,6 +153,8 @@ async function handlePost({ request }: { request: Request }): Promise<Response> 
       eventName: body.eventName,
       eventSlug: body.eventSlug,
       userName: user.name ?? undefined,
+      appContext:
+        typeof body.appContext === "string" ? body.appContext : undefined,
       toolNames,
     }),
     messages: modelMessages,

@@ -140,7 +140,18 @@ function PortalLayout() {
               to="/portal"
               className="flex min-w-0 items-center gap-2.5 rounded-md outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
             >
-              <LogoMark size={28} variant="boxed" />
+              {/* The event's own logo when the organizer uploaded one
+                  (Settings → Event details → Branding) — a speaker should see
+                  whose event this is, not our mark. */}
+              {event.logoUrl ? (
+                <img
+                  src={event.logoUrl}
+                  alt=""
+                  className="size-7 shrink-0 rounded-md border border-border bg-background object-contain"
+                />
+              ) : (
+                <LogoMark size={28} variant="boxed" />
+              )}
               <span className="min-w-0">
                 <span className="block truncate text-sm font-semibold text-foreground">
                   {event.name}

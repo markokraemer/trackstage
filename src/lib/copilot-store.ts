@@ -1,7 +1,12 @@
 import { useCallback, useSyncExternalStore } from "react"
 import { Chat } from "@ai-sdk/react"
-import { DefaultChatTransport, lastAssistantMessageIsCompleteWithApprovalResponses } from "ai"
+import {
+  DefaultChatTransport,
+  lastAssistantMessageIsCompleteWithApprovalResponses,
+} from "ai"
 import type { UIMessage } from "ai"
+
+import { readCopilotContext } from "@/lib/copilot-context"
 
 /**
  * Copilot conversation state, deliberately OUTSIDE the React tree.
@@ -55,7 +60,7 @@ export function useCopilotPanel(): {
   const open = useSyncExternalStore(
     subscribe,
     () => panelOpen,
-    () => false,
+    () => false
   )
   return {
     open,
@@ -85,14 +90,14 @@ export function copilotPanelMaxWidth(): number {
   if (typeof window === "undefined") return COPILOT_PANEL_MAX_WIDTH
   return Math.max(
     COPILOT_PANEL_MIN_WIDTH,
-    Math.min(COPILOT_PANEL_MAX_WIDTH, Math.round(window.innerWidth * 0.6)),
+    Math.min(COPILOT_PANEL_MAX_WIDTH, Math.round(window.innerWidth * 0.6))
   )
 }
 
 export function clampCopilotPanelWidth(width: number): number {
   if (!Number.isFinite(width)) return COPILOT_PANEL_DEFAULT_WIDTH
   return Math.round(
-    Math.min(copilotPanelMaxWidth(), Math.max(COPILOT_PANEL_MIN_WIDTH, width)),
+    Math.min(copilotPanelMaxWidth(), Math.max(COPILOT_PANEL_MIN_WIDTH, width))
   )
 }
 
@@ -102,7 +107,9 @@ function readStoredWidth(): number {
   if (panelWidth !== null) return panelWidth
   if (typeof window === "undefined") return COPILOT_PANEL_DEFAULT_WIDTH
   const stored = Number(window.localStorage.getItem(WIDTH_STORAGE_KEY))
-  panelWidth = stored ? clampCopilotPanelWidth(stored) : COPILOT_PANEL_DEFAULT_WIDTH
+  panelWidth = stored
+    ? clampCopilotPanelWidth(stored)
+    : COPILOT_PANEL_DEFAULT_WIDTH
   return panelWidth
 }
 
@@ -129,7 +136,7 @@ export function useCopilotPanelWidth(): number {
   return useSyncExternalStore(
     subscribe,
     readStoredWidth,
-    () => COPILOT_PANEL_DEFAULT_WIDTH,
+    () => COPILOT_PANEL_DEFAULT_WIDTH
   )
 }
 
@@ -181,6 +188,10 @@ function createChat(id: string): Chat<UIMessage> {
           messages,
           eventName: eventContext.eventName,
           eventSlug: eventContext.eventSlug,
+          // What the organizer is looking at, read at SEND time so "decline
+          // this one" resolves against the screen they are on right now
+          // (src/lib/copilot-context.ts).
+          appContext: readCopilotContext(),
           ...body,
         },
       }),
@@ -231,7 +242,7 @@ export function useCopilotChat(eventId: string | undefined): {
   const generation = useSyncExternalStore(
     subscribe,
     () => generations.get(key) ?? 0,
-    () => 0,
+    () => 0
   )
   // `generation` is what makes this recompute after a reset; the lookup below
   // reads it back out of the registry, so the value itself is unused.

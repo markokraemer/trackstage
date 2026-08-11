@@ -53,12 +53,14 @@ export const EMAIL_TOOLS: ReadonlySet<string> = new Set([
 export function isDestructiveTool(toolName: string): boolean {
   if (DESTRUCTIVE_TOOLS.has(toolName)) return true
   return /(^|_)(delete|remove|destroy|purge|bulk|archive|reset)(_|$)/.test(
-    toolName,
+    toolName
   )
 }
 
 export function sendsEmail(toolName: string): boolean {
-  return EMAIL_TOOLS.has(toolName) || /(^|_)(send|email|notify)(_|$)/.test(toolName)
+  return (
+    EMAIL_TOOLS.has(toolName) || /(^|_)(send|email|notify)(_|$)/.test(toolName)
+  )
 }
 
 // ——— Humanising ————————————————————————————————————————————————————————
@@ -109,7 +111,9 @@ export function summarizeToolArgs(input: unknown): Array<ArgSummaryEntry> {
       : [{ label: "Input", value: clip(String(input)) }]
   }
   return Object.entries(input as Record<string, unknown>)
-    .filter(([, value]) => value !== undefined && value !== null && value !== "")
+    .filter(
+      ([, value]) => value !== undefined && value !== null && value !== ""
+    )
     .map(([key, value]) => ({
       label: humanizeArgName(key),
       value: clip(
@@ -117,7 +121,7 @@ export function summarizeToolArgs(input: unknown): Array<ArgSummaryEntry> {
           ? value
           : typeof value === "number" || typeof value === "boolean"
             ? String(value)
-            : JSON.stringify(value),
+            : JSON.stringify(value)
       ),
     }))
 }
@@ -157,9 +161,11 @@ export function copilotSystemPrompt(context: {
   eventName?: string
   eventSlug?: string
   userName?: string
+  /** Live screen state from src/lib/copilot-context.ts. */
+  appContext?: string
   toolNames: Array<string>
 }): string {
-  const { eventName, eventSlug, userName, toolNames } = context
+  const { eventName, eventSlug, userName, appContext, toolNames } = context
   const lines: Array<string> = [
     "You are the Sessionboard copilot — the in-app assistant for the organizer running a conference.",
     "",
@@ -180,12 +186,23 @@ export function copilotSystemPrompt(context: {
       "",
       `The organizer is currently looking at the event "${eventName}"${
         eventSlug ? ` (slug: ${eventSlug})` : ""
-      }. Assume any unqualified question is about this event and pass it as the \`event\` argument. Only ask which event they mean if they clearly mean a different one.`,
+      }. Assume any unqualified question is about this event and pass it as the \`event\` argument. Only ask which event they mean if they clearly mean a different one.`
     )
   } else {
     lines.push(
       "",
-      "No event is selected in the UI. Call list_events first and ask which one they mean if it is ambiguous.",
+      "No event is selected in the UI. Call list_events first and ask which one they mean if it is ambiguous."
+    )
+  }
+  if (appContext) {
+    // The "readable context" pattern (docs/reference/copilot-sota.md): the
+    // screen is ambient context so "decline this one" resolves, but it is NOT
+    // a source of facts — a model that reads a count off a filter chip instead
+    // of calling a tool is the exact failure this prompt guards against.
+    lines.push(
+      "",
+      'ON SCREEN RIGHT NOW (what the organizer is looking at — use it to resolve "this", "here", "these", and to pick sensible defaults; it is context, NOT a source of facts, so still read every number, name and status from a tool):',
+      appContext
     )
   }
   lines.push("", `Today is ${new Date().toISOString().slice(0, 10)} (UTC).`)
@@ -194,7 +211,7 @@ export function copilotSystemPrompt(context: {
   } else {
     lines.push(
       "",
-      "WARNING: no tools are available right now (the Sessionboard MCP server could not be reached). Do not pretend to read or change anything — tell the organizer the connection failed.",
+      "WARNING: no tools are available right now (the Sessionboard MCP server could not be reached). Do not pretend to read or change anything — tell the organizer the connection failed."
     )
   }
   return lines.join("\n")

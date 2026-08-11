@@ -132,7 +132,9 @@ export function TemplatesView({ output }: ToolOutputProps) {
           ))}
         </div>
       ) : null}
-      <MoreLink target={{ to: "/app/communications", search: { tab: "templates" } }}>
+      <MoreLink
+        target={{ to: "/app/communications", search: { tab: "templates" } }}
+      >
         Open Communications
       </MoreLink>
     </Panel>
@@ -203,7 +205,10 @@ export function OutboxView({ input, output }: ToolOutputProps) {
 
       <Rows>
         {rows.slice(0, 8).map((row, index) => (
-          <Row key={`${str(row.to) ?? index}-${index}`} className="items-start py-2">
+          <Row
+            key={`${str(row.to) ?? index}-${index}`}
+            className="items-start py-2"
+          >
             <RiMailSendLine
               size={15}
               aria-hidden
@@ -227,7 +232,9 @@ export function OutboxView({ input, output }: ToolOutputProps) {
                 ) : null}
               </div>
               {str(row.error) ? (
-                <p className="mt-1 text-xs text-destructive">{str(row.error)}</p>
+                <p className="mt-1 text-xs text-destructive">
+                  {str(row.error)}
+                </p>
               ) : null}
             </div>
             <StatusPill status={str(row.status) ?? "scheduled"} size="sm" />
@@ -260,7 +267,10 @@ export function TestEmailView({ output }: ToolOutputProps) {
     return <ToolAlert title="The test email had no recipient." />
   }
   return (
-    <Banner icon={<RiMailCheckLine size={16} />} title={`Test email sent to ${to}`}>
+    <Banner
+      icon={<RiMailCheckLine size={16} />}
+      title={`Test email sent to ${to}`}
+    >
       <FieldGrid
         entries={[
           { label: "Template", value: str(output.templateKey) ?? "—" },

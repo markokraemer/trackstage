@@ -331,8 +331,13 @@ export const blobsExist = internalQuery({
   handler: async (ctx, args) => {
     const out: Record<string, boolean> = {}
     for (const id of args.storageIds) {
-      const doc = await ctx.db.system.get("_storage", id as Id<"_storage">)
-      out[id] = doc !== null
+      try {
+        const doc = await ctx.db.system.get("_storage", id as Id<"_storage">)
+        out[id] = doc !== null
+      } catch {
+        // Not even a well-formed storage id — it certainly doesn't exist.
+        out[id] = false
+      }
     }
     return out
   },

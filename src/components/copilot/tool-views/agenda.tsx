@@ -307,7 +307,11 @@ export function AutoPlaceView({ output }: ToolOutputProps) {
     >
       <StatRow
         stats={[
-          { label: "Placed", value: placed, tone: placed > 0 ? "good" : "warn" },
+          {
+            label: "Placed",
+            value: placed,
+            tone: placed > 0 ? "good" : "warn",
+          },
           {
             label: "Wouldn't fit",
             value: remaining,

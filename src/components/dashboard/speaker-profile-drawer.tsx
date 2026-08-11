@@ -58,17 +58,20 @@ export function SpeakerProfileDrawer({
   // to the row while it is open are deliberately NOT merged in — nothing is
   // more hostile than a text field that rewrites itself under the cursor.
   const personId = speaker?.personId
+  const draftSource = open ? speaker : null
   React.useEffect(() => {
-    if (!open || !speaker) return
-    const [first, ...rest] = speaker.name.split(" ")
-    setFirstName(speaker.firstName ?? first ?? "")
-    setLastName(speaker.lastName ?? rest.join(" "))
-    setJobTitle(speaker.jobTitle ?? "")
-    setCompany(speaker.company ?? "")
-    setBio(speaker.bio ?? "")
-    setHeadshotNote(speaker.headshotNote ?? "")
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, personId])
+    if (!draftSource) return
+    const [first, ...rest] = draftSource.name.split(" ")
+    setFirstName(draftSource.firstName ?? first)
+    setLastName(draftSource.lastName ?? rest.join(" "))
+    setJobTitle(draftSource.jobTitle ?? "")
+    setCompany(draftSource.company ?? "")
+    setBio(draftSource.bio ?? "")
+    setHeadshotNote(draftSource.headshotNote ?? "")
+    // Keyed on `personId` alone on purpose: `draftSource` gets a new identity
+    // on every reactive roster update, and re-seeding then would rewrite the
+    // organizer's text under their cursor.
+  }, [personId])
 
   async function save() {
     if (!speaker) return

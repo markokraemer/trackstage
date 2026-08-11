@@ -67,6 +67,8 @@ export async function demoFixtures() {
 
 export interface ConsoleWatcher {
   errors: string[]
+  /** Forget everything seen so far — use after a deliberate negative case. */
+  reset: () => void
   assertClean: (context: string) => void
 }
 
@@ -75,12 +77,16 @@ export interface ConsoleWatcher {
  * console.error fails the test — this is the net that catches runtime UI
  * breakage (missing providers, bad hook usage, hydration errors) everywhere.
  */
-export function watchConsole(page: Page): ConsoleWatcher {
+export function watchConsole(
+  page: Page,
+  extraIgnored: Array<RegExp> = [],
+): ConsoleWatcher {
   const errors: string[] = []
   const IGNORED = [
     /Download the React DevTools/i,
     /\[vite\]/i,
     /Failed to load resource.*40[34]/i, // route-level 404s are asserted separately
+    ...extraIgnored,
   ]
   page.on("console", (message) => {
     if (message.type() !== "error") return
@@ -93,6 +99,9 @@ export function watchConsole(page: Page): ConsoleWatcher {
   })
   return {
     errors,
+    reset() {
+      errors.length = 0
+    },
     assertClean(context: string) {
       if (errors.length > 0) {
         throw new Error(
