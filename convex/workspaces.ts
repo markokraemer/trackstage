@@ -3,6 +3,7 @@ import { internal } from "./_generated/api"
 import type { Id } from "./_generated/dataModel"
 import type { MutationCtx } from "./_generated/server"
 import { mutation, query } from "./_generated/server"
+import { authComponent } from "./auth"
 import {
   isWorkspaceWideRole,
   myMemberships,
@@ -70,12 +71,27 @@ export const members = query({
   args: { organizationId: v.id("organizations") },
   handler: async (ctx, args) => {
     await requireMembership(ctx, args.organizationId)
-    return await ctx.db
+    const rows = await ctx.db
       .query("members")
       .withIndex("by_organizationId", (q) =>
         q.eq("organizationId", args.organizationId),
       )
       .collect()
+    // Each row carries the teammate's email-verification status for the Team
+    // table, read server-side from the Better Auth user table (members.userId
+    // IS that table's _id — see lib/auth.requireUser). A pending invite
+    // (userId === "") has no auth user yet, so the field stays undefined and
+    // the UI can render it as "invited" rather than unverified.
+    return await Promise.all(
+      rows.map(async (row) => {
+        let emailVerified: boolean | undefined
+        if (row.userId !== "") {
+          const authUser = await authComponent.getAnyUserById(ctx, row.userId)
+          if (authUser) emailVerified = authUser.emailVerified === true
+        }
+        return { ...row, emailVerified }
+      }),
+    )
   },
 })
 
