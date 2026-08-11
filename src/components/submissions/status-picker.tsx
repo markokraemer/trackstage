@@ -1,41 +1,44 @@
-import { useState } from "react"
+import { useRef, useState } from "react"
 import { Link } from "@tanstack/react-router"
-import {
-  RiArrowDownSLine,
-  RiCheckLine,
-  RiRefreshLine,
-  RiSettings3Line,
-} from "@remixicon/react"
+import { RiArrowDownSLine, RiCheckLine, RiSettings3Line } from "@remixicon/react"
 
 import { cn } from "@/lib/utils"
-import { Button, buttonVariants } from "@/components/ui/button"
+import { buttonVariants } from "@/components/ui/button"
 import {
   Popover,
   PopoverContent,
-  PopoverDescription,
   PopoverHeader,
   PopoverTitle,
   PopoverTrigger,
 } from "@/components/ui/popover"
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { StatusPill } from "@/components/shared/status-pill"
 import type { SubmissionStatus } from "@/components/shared/status-pill"
-import {
-  resolveStatusOption,
-  useStatusCatalog,
-} from "@/lib/status-catalog"
+import { resolveStatusOption, useStatusCatalog } from "@/lib/status-catalog"
 import type { StatusOption } from "@/lib/status-catalog"
 import { appLink, legacyAppLink } from "@/lib/app-links"
 import { useCurrentEvent } from "@/lib/current-event"
 
 /**
  * Inline status editor for the submissions table (docs/ux/03 image13): click the
- * pill in the cell, pick a new one, confirm with Save. The selection is *staged*
- * — nothing is written until Save — so a misclick during fast triage is free.
+ * pill in the cell, click a status, done. **One click applies it** — there is no
+ * Save/Cancel pair, because triage is a list of small decisions and a two-step
+ * confirm on every row is the thing that made this feel like software from 2011.
+ * The row updates optimistically and a toast is the receipt (Escape/click-away
+ * cancels, and re-picking is one click away).
+ *
+ * That is safe precisely BECAUSE of the two-phase decision model: picking
+ * "Accept Queue" only *stages* the decision — `submissions.setStatus` writes the
+ * status and nothing else. Speakers hear nothing until the organizer commits the
+ * queue from the banner (`commitQueue`), which is the real confirm step. The
+ * quiet footnote in the popover says exactly that.
  *
  * The list comes from the event's status catalogue (Settings → Statuses), so a
  * renamed built-in and a custom status like "Waitlist" both show up here with
  * the organizer's own wording and colour. What gets written is still the
- * pipeline enum — see `src/lib/status-catalog.ts` for why.
+ * pipeline enum — see `src/lib/status-catalog.ts` for why. Editing the catalogue
+ * is configuration, not picking, so it lives as a gear in the header rather than
+ * as a third button competing with the choice itself.
  *
  * Extends the shadcn `Popover` + shared `StatusPill` primitives.
  */
@@ -45,6 +48,8 @@ export interface StatusChoice {
   status: SubmissionStatus
   /** The custom label picked, when it isn't a plain built-in. */
   statusId?: string
+  /** The organizer-facing name of the status picked — for the toast receipt. */
+  label: string
 }
 
 export interface StatusPickerProps {
@@ -56,6 +61,18 @@ export interface StatusPickerProps {
   onSave: (next: StatusChoice) => void | Promise<void>
   disabled?: boolean
   className?: string
+}
+
+/**
+ * The toast receipt both call sites show after a pick. Queue statuses get the
+ * caveat spelled out, because "Accept Queue" looking like a decision is exactly
+ * the misread the two-phase model has to prevent.
+ */
+export function statusSavedMessage(choice: StatusChoice): string {
+  if (choice.status === "accept_queue" || choice.status === "decline_queue") {
+    return `Staged as ${choice.label}. Nothing emailed yet — send the queue when you're ready.`
+  }
+  return `Status set to ${choice.label}.`
 }
 
 /** Stable identity for an option — custom rows by id, built-ins by status. */
@@ -77,43 +94,40 @@ export function StatusPicker({
     ? appLink.settingsSection(eventRef, "statuses")
     : legacyAppLink.settings
   const [open, setOpen] = useState(false)
-  const [staged, setStaged] = useState<StatusOption | null>(null)
-  const [saving, setSaving] = useState(false)
+  // What we just picked, shown on the trigger until the parent's data catches
+  // up — so the pill never flashes back to the old status mid-write.
+  const [optimistic, setOptimistic] = useState<StatusOption | null>(null)
+  // Opening lands on the status the submission already has, not on the gear —
+  // otherwise the first Tab stop is "leave this screen".
+  const currentItemRef = useRef<HTMLButtonElement | null>(null)
 
-  const current = resolveStatusOption(statuses, status, statusId)
-  const selected = staged ?? current
-  const dirty = staged !== null && optionKey(staged) !== optionKey(current)
-  const pending =
-    statuses.find((option) => option.systemKey === "pending") ?? current
+  const server = resolveStatusOption(statuses, status, statusId)
+  const current =
+    optimistic && optionKey(optimistic) !== optionKey(server)
+      ? optimistic
+      : server
 
-  function handleOpenChange(next: boolean) {
-    setOpen(next)
-    if (!next) setStaged(null)
-  }
-
-  async function handleSave() {
-    // `dirty` is only ever true when something is staged, so TypeScript
-    // narrows `staged` to non-null from here on.
-    if (!dirty) {
-      handleOpenChange(false)
-      return
-    }
-    setSaving(true)
+  async function pick(option: StatusOption) {
+    setOpen(false)
+    if (optionKey(option) === optionKey(current)) return
+    setOptimistic(option)
     try {
       await onSave({
-        status: staged.pipelineStatus,
+        status: option.pipelineStatus,
         // Built-ins carry no label — the pipeline value says it all, and
         // leaving the label off keeps the row clean.
-        statusId: staged.systemKey ? undefined : (staged._id ?? undefined),
+        statusId: option.systemKey ? undefined : (option._id ?? undefined),
+        label: option.name,
       })
-      handleOpenChange(false)
     } finally {
-      setSaving(false)
+      // Either the write landed (and `server` now matches) or it failed and the
+      // caller has said so — either way the truth is the server's again.
+      setOptimistic(null)
     }
   }
 
   return (
-    <Popover open={open} onOpenChange={handleOpenChange}>
+    <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger
         disabled={disabled}
         render={
@@ -142,37 +156,48 @@ export function StatusPicker({
         />
       </PopoverTrigger>
 
-      <PopoverContent align="start" className="w-72 gap-0 p-3">
-        <PopoverHeader className="flex-row items-center justify-between gap-2">
-          <PopoverTitle>Status</PopoverTitle>
-          <Button
-            type="button"
-            variant="ghost"
-            size="xs"
-            onClick={() => setStaged(pending)}
-            disabled={optionKey(selected) === optionKey(pending)}
-          >
-            <RiRefreshLine aria-hidden />
-            Reset
-          </Button>
+      <PopoverContent
+        align="start"
+        className="w-64 gap-0 p-1.5"
+        initialFocus={currentItemRef}
+      >
+        <PopoverHeader className="flex-row items-center justify-between gap-2 px-1.5 pt-1 pb-2">
+          <PopoverTitle className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
+            Status
+          </PopoverTitle>
+          <Tooltip>
+            <TooltipTrigger
+              render={
+                <Link
+                  to={statusesSettingsLink as never}
+                  aria-label="Edit statuses"
+                  className={buttonVariants({
+                    variant: "ghost",
+                    size: "icon-xs",
+                    className: "-mr-1 text-muted-foreground",
+                  })}
+                >
+                  <RiSettings3Line aria-hidden />
+                </Link>
+              }
+            />
+            <TooltipContent>Edit statuses</TooltipContent>
+          </Tooltip>
         </PopoverHeader>
-        <PopoverDescription className="mt-1">
-          Pick a status, then save. Queue statuses don't email anyone yet.
-        </PopoverDescription>
 
-        <div className="mt-3 flex max-h-72 flex-col gap-0.5 overflow-y-auto">
+        <div className="flex max-h-72 flex-col gap-0.5 overflow-y-auto">
           {statuses.map((option) => {
-            const isSelected = optionKey(selected) === optionKey(option)
+            const isCurrent = optionKey(current) === optionKey(option)
             return (
               <button
                 key={optionKey(option)}
+                ref={isCurrent ? currentItemRef : undefined}
                 type="button"
-                aria-pressed={isSelected}
-                onClick={() => setStaged(option)}
+                aria-pressed={isCurrent}
+                onClick={() => void pick(option)}
                 className={cn(
-                  "flex items-center justify-between gap-2 rounded-md px-2 py-1.5 text-left outline-none",
-                  "hover:bg-muted focus-visible:ring-3 focus-visible:ring-ring/50",
-                  isSelected && "bg-accent hover:bg-accent"
+                  "flex items-center justify-between gap-2 rounded-md px-1.5 py-1.5 text-left outline-none",
+                  "hover:bg-muted focus-visible:ring-3 focus-visible:ring-ring/50"
                 )}
               >
                 <StatusPill
@@ -181,11 +206,11 @@ export function StatusPicker({
                   tone={option.color}
                   size="sm"
                 />
-                {isSelected ? (
+                {isCurrent ? (
                   <RiCheckLine
                     size={16}
                     aria-hidden
-                    className="shrink-0 text-primary"
+                    className="mr-1 shrink-0 text-muted-foreground"
                   />
                 ) : null}
               </button>
@@ -193,43 +218,9 @@ export function StatusPicker({
           })}
         </div>
 
-        <div className="mt-3 flex items-center gap-1.5 border-t pt-3 text-xs text-muted-foreground">
-          <span>New status:</span>
-          <StatusPill
-            status={selected.pipelineStatus}
-            label={selected.name}
-            tone={selected.color}
-            size="sm"
-          />
-        </div>
-
-        <div className="mt-3 flex items-center justify-between gap-2">
-          <Link
-            to={statusesSettingsLink as never}
-            className={buttonVariants({ variant: "ghost", size: "sm" })}
-          >
-            <RiSettings3Line aria-hidden />
-            Edit statuses
-          </Link>
-          <div className="flex items-center gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => handleOpenChange(false)}
-            >
-              Cancel
-            </Button>
-            <Button
-              type="button"
-              size="sm"
-              onClick={() => void handleSave()}
-              disabled={!dirty || saving}
-            >
-              Save
-            </Button>
-          </div>
-        </div>
+        <p className="mt-1.5 border-t px-1.5 pt-2 pb-1 text-xs text-muted-foreground">
+          Queue statuses don't email anyone until you send the queue.
+        </p>
       </PopoverContent>
     </Popover>
   )

@@ -337,3 +337,28 @@ them (copilot surfaces already said "Event settings"). Implemented as
 settingsNavFor + a pinned footer SidebarNav (mt-auto) in
 src/routes/app/route.tsx and src/components/shell/mobile-nav.tsx;
 SidebarNav grew className/ariaLabel props for the tighter footer rhythm.
+
+## Inline status picker applies on one click; no Save, no Cancel (2026-08-12)
+Marko, on the submissions-table status popover: "FIX THE UX/UI here — you see
+this, with the Edit statuses fucking it up." The footer crammed three actions
+(a navigation link styled as a button, Cancel, a half-disabled Save) under a
+"New status: Accepted" recap that repeated what the checkmark already said —
+a modal confirmation ritual around a one-word decision. Now: clicking a status
+writes it immediately (optimistic pill, popover closes) and the toast is the
+receipt. Save/Cancel/Reset and the recap line are gone; Escape or click-away
+is the cancel; re-picking is one click.
+Safe *because* the two-phase decision model is untouched: picking "Accept
+Queue" still only stages — `submissions.setStatus` writes a status and emails
+nobody; `commitQueue` from the banner is the real confirm, and it is where
+sbek CFP-12's "staging is silent" contract lives. The queue caveat moved into
+the toast ("Staged as Accept Queue. Nothing emailed yet — send the queue when
+you're ready.", `statusSavedMessage`, shared with the drawer and the row's
+✓ Accept / ✕ Decline quick actions) plus one quiet footnote in the popover.
+"Edit statuses" is configuration, not picking: it is a gear icon in the
+popover header (tooltip, links to Settings → Statuses), so the footer holds
+nothing. Opening the popover focuses the *current* status, not the gear.
+Note this deliberately diverges from Sessionboard's own picker
+(docs/ux/03-…md: "confirming this status change requires an explicit save") —
+their extra step is the sluggishness swyx complained about.
+tests/e2e/flows/triage-decisions.spec.ts follows the new interaction (no Save
+click; asserts the popover closes and the toast repeats the caveat).

@@ -54,6 +54,7 @@ import type {
   SortKey,
   SubmissionRow,
 } from "@/components/submissions/submissions-table"
+import { statusSavedMessage } from "@/components/submissions/status-picker"
 import type { StatusChoice } from "@/components/submissions/status-picker"
 import { AddSubmissionDrawer } from "@/components/submissions/add-submission-drawer"
 import { DeleteSubmissionDialog } from "@/components/submissions/delete-submission-dialog"
@@ -297,6 +298,9 @@ function SubmissionsPage() {
           ? (choice.statusId as Id<"sessionStatuses">)
           : undefined,
       })
+      // The picker applies on one click, so the toast is the receipt — and it
+      // carries the queue caveat when a queue status was picked.
+      toast.success(statusSavedMessage(choice))
     } catch (error) {
       toast.error(errorMessage(error, "Could not change the status."))
     } finally {

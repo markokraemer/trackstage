@@ -35,7 +35,10 @@ import { DrawerShell } from "@/components/shared/drawer-shell"
 import { EmptyState } from "@/components/shared/empty-state"
 import { SubmissionFiles } from "@/components/submissions/submission-files"
 import { ParticipantsEditor } from "@/components/submissions/participants-editor"
-import { StatusPicker } from "@/components/submissions/status-picker"
+import {
+  StatusPicker,
+  statusSavedMessage,
+} from "@/components/submissions/status-picker"
 import type { StatusChoice } from "@/components/submissions/status-picker"
 import { TagInput } from "@/components/submissions/tag-input"
 import { ChoiceValue, TrackValue } from "@/components/submissions/field-bits"
@@ -217,7 +220,7 @@ export function SubmissionDetailDrawer({
           ? (next.statusId as Id<"sessionStatuses">)
           : undefined,
       })
-      toast.success("Status updated.")
+      toast.success(statusSavedMessage(next))
     } catch (error) {
       toast.error(errorMessage(error, "Could not change the status."))
     }

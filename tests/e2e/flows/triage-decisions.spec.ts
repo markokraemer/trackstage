@@ -104,10 +104,15 @@ test.describe("triage and decisions", () => {
       .getByRole("button", { name: new RegExp(`change status of ${title}`, "i") })
       .first()
       .click()
-    const popover = page.getByText(/pick a status, then save/i).first()
+    const popover = page.getByText(/queue statuses don't email anyone/i).first()
     await expect(popover).toBeVisible({ timeout: 15_000 })
+    // One click applies — there is no Save step in the picker any more.
     await page.getByRole("button", { name: /^accept queue$/i }).first().click()
-    await page.getByRole("button", { name: /^save$/i }).first().click()
+    await expect(popover).toBeHidden({ timeout: 15_000 })
+    // The toast is the receipt, and it repeats the queue caveat.
+    await expect(
+      page.getByText(/nothing emailed yet/i).first(),
+    ).toBeVisible({ timeout: 15_000 })
 
     await until(
       async () =>

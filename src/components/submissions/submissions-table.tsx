@@ -339,6 +339,8 @@ export function SubmissionsTable({
                             event.stopPropagation()
                             void onStatusChange(row._id, {
                               status: "accept_queue",
+                              label: systemStatusOption(statuses, "accept_queue")
+                                .name,
                             })
                           }}
                         >
@@ -354,6 +356,10 @@ export function SubmissionsTable({
                             event.stopPropagation()
                             void onStatusChange(row._id, {
                               status: "decline_queue",
+                              label: systemStatusOption(
+                                statuses,
+                                "decline_queue"
+                              ).name,
                             })
                           }}
                         >
@@ -389,7 +395,10 @@ export function SubmissionsTable({
                           <DropdownMenuItem
                             key={quick}
                             onClick={() =>
-                              void onStatusChange(row._id, { status: quick })
+                              void onStatusChange(row._id, {
+                                status: quick,
+                                label: systemStatusOption(statuses, quick).name,
+                              })
                             }
                           >
                             Move to {systemStatusOption(statuses, quick).name}
