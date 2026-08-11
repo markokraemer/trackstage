@@ -305,19 +305,30 @@ function SpeakersPage() {
         actions={
           event ? (
             <>
-              <RemindIncompleteButton
-                eventId={event._id}
-                incompleteCount={counts.attention}
-              />
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => openAssign([])}
-                disabled={speakerOptions.length === 0}
-              >
-                <RiListCheck3 aria-hidden />
-                Assign task
-              </Button>
+              {/* Row-scoped actions live in exactly ONE place at a time. With
+                  nothing ticked they belong up here (they act on the whole
+                  roster); the moment there is a selection the contextual bar
+                  below takes over and these step aside, so "Assign task" is
+                  never offered twice at once with two different scopes.
+                  "Import CSV" and "Add speaker" are page-scoped — they mean
+                  the same thing whatever is ticked — so they stay put. */}
+              {selected.length === 0 ? (
+                <>
+                  <RemindIncompleteButton
+                    eventId={event._id}
+                    incompleteCount={counts.attention}
+                  />
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => openAssign([])}
+                    disabled={speakerOptions.length === 0}
+                  >
+                    <RiListCheck3 aria-hidden />
+                    Assign task
+                  </Button>
+                </>
+              ) : null}
               <Button
                 size="sm"
                 variant="outline"
@@ -405,6 +416,9 @@ function SpeakersPage() {
         }
       />
 
+      {/* The selection bar is the single action surface while rows are ticked
+          (see the page header above). The count sentence carries the scope, so
+          the buttons say plainly what they do — no "…to selected" suffix. */}
       {selected.length > 0 ? (
         <Card
           size="sm"
@@ -419,7 +433,7 @@ function SpeakersPage() {
               onClick={() => openAssign(selected as Array<Id<"people">>)}
             >
               <RiListCheck3 aria-hidden />
-              Assign task to selected
+              Assign task
             </Button>
             <Button
               size="sm"

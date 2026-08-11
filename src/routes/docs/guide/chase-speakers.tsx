@@ -38,7 +38,8 @@ function Page() {
           <p className="doc-prose">
             <strong>Assign to</strong> is further down the dialog — tick
             everyone who needs to do this. Ticking rows in the table first
-            pre-fills it, and “Assign task to selected” appears above the list.
+            pre-fills it: a bar appears above the list saying how many speakers
+            are selected, with “Assign task” right there in it.
           </p>
         </Step>
 
