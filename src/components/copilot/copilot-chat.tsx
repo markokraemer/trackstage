@@ -22,7 +22,6 @@ import { Loader } from "@/components/ai-elements/loader"
 import { MessageResponse } from "@/components/ai-elements/message"
 import {
   PromptInput,
-  PromptInputBody,
   PromptInputSubmit,
   PromptInputTextarea,
 } from "@/components/ai-elements/prompt-input"
@@ -254,35 +253,42 @@ export function CopilotChat({
             </Suggestions>
           ) : null}
 
-          <PromptInput onSubmit={submit}>
-            <PromptInputBody>
-              <PromptInputTextarea
-                placeholder={
-                  event
-                    ? `Ask about ${event.name}…`
-                    : "Ask the Sessionboard copilot…"
-                }
-                className="max-h-40 min-h-11 px-3 py-2.5 text-sm"
-              />
-              <InputGroupAddon align="block-end" className="gap-2">
-                <span className="truncate text-xs text-muted-foreground">
-                  Runs on your Sessionboard MCP tools
-                </span>
-                {busy ? (
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    className="ml-auto"
-                    onClick={() => stop()}
-                  >
-                    Stop
-                  </Button>
-                ) : (
-                  <PromptInputSubmit status={status} className="ml-auto" />
-                )}
-              </InputGroupAddon>
-            </PromptInputBody>
+          {/*
+            NO `PromptInputBody` here, deliberately. It renders
+            `display: contents`, which flattens the LAYOUT tree but not the DOM
+            tree — and `InputGroup`'s styling is driven by `:has(> …)` selectors
+            that only see real DOM children. Wrapping the composer in it makes
+            the group miss its own textarea and block-end addon, and the input
+            collapses into the 24px-wide sliver Marko screenshotted. The
+            textarea and the toolbar must be direct children of `PromptInput`.
+          */}
+          <PromptInput onSubmit={submit} className="rounded-xl">
+            <PromptInputTextarea
+              placeholder={
+                event
+                  ? `Ask about ${event.name}…`
+                  : "Ask the Sessionboard copilot…"
+              }
+              className="max-h-40 min-h-11 px-3 py-2.5 text-sm"
+            />
+            <InputGroupAddon align="block-end" className="gap-2">
+              <span className="truncate text-xs text-muted-foreground">
+                Runs on your Sessionboard MCP tools
+              </span>
+              {busy ? (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="ml-auto"
+                  onClick={() => stop()}
+                >
+                  Stop
+                </Button>
+              ) : (
+                <PromptInputSubmit status={status} className="ml-auto" />
+              )}
+            </InputGroupAddon>
           </PromptInput>
         </div>
       </div>

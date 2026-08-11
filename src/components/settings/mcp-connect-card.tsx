@@ -15,20 +15,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Input } from "@/components/ui/input"
 import { CopyButton } from "@/components/settings/copy-button"
 import { CodeSnippet } from "@/components/settings/code-snippet"
+import { mcpEndpoint } from "@/lib/deployment-urls"
 
 const PLACEHOLDER_KEY = "sb_live_xxx"
-
-/** `${VITE_CONVEX_SITE_URL}/mcp`, falling back to deriving it from
- * `VITE_CONVEX_URL` — same pattern as `src/routes/app/embeds/index.tsx`. */
-function getMcpEndpoint(): string {
-  const site = import.meta.env.VITE_CONVEX_SITE_URL as string | undefined
-  if (site) return `${site}/mcp`
-  const convexUrl = import.meta.env.VITE_CONVEX_URL as string | undefined
-  if (convexUrl) {
-    return `${convexUrl.replace(".convex.cloud", ".convex.site")}/mcp`
-  }
-  return "https://your-deployment.convex.site/mcp"
-}
 
 /**
  * "Connect from your AI assistant" — the MCP setup surface (docs/memory/
@@ -36,7 +25,7 @@ function getMcpEndpoint(): string {
  * client-specific tabs, every snippet copyable on its own.
  */
 export function McpConnectCard({ apiKey }: { apiKey: string | null }) {
-  const endpoint = getMcpEndpoint()
+  const endpoint = mcpEndpoint()
   const key = apiKey ?? PLACEHOLDER_KEY
 
   return (

@@ -63,7 +63,8 @@ function convexRun(fn, args = {}) {
   const start = out.indexOf("{")
   return JSON.parse(start === -1 ? out.trim() : out.slice(start))
 }
-const sha256Hex = (value) => createHash("sha256").update(value).digest("hex")
+/** Convex stores the checksum base64-encoded (NOT hex, despite the docs). */
+const sha256Of = (value) => createHash("sha256").update(value).digest("base64")
 /** PNG magic number + padding — enough bytes to be a file, small enough to be free. */
 const PNG_BYTES = new Uint8Array([
   0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0x00, 0x00, 0x0d,
@@ -253,8 +254,8 @@ ok("re-upload increments version", myUploads2.some((u) => u.filename === "slides
 const slideRows = myUploads2.filter((u) => u.filename === "slides.pdf").sort((a, b) => b.version - a.version)
 const newestSlide = slideRows[0]
 ok("upload carries real size from the _storage system table", newestSlide.size === 2, `got ${newestSlide.size}`)
-ok("upload carries the sha256 checksum", /^[0-9a-f]{64}$/.test(newestSlide.sha256 ?? ""), newestSlide.sha256)
-ok("sha256 matches the bytes we actually sent", newestSlide.sha256 === sha256Hex("v2"), newestSlide.sha256)
+ok("upload carries the sha256 checksum", /^[A-Za-z0-9+/]{43}=$/.test(newestSlide.sha256 ?? ""), newestSlide.sha256)
+ok("sha256 matches the bytes we actually sent", newestSlide.sha256 === sha256Of("v2"), newestSlide.sha256)
 ok("content type resolved from storage", newestSlide.contentType === "application/pdf")
 ok("isImage flag is false for a PDF", newestSlide.isImage === false)
 ok("blob resolves to a signed URL", typeof newestSlide.url === "string" && newestSlide.url.startsWith("http"))
@@ -270,9 +271,13 @@ const afterLiar = await client.query(api.portal.myUploads, { portalToken: PT })
 const liarRow = afterLiar.find((u) => u.filename === "liar.pdf")
 ok("client-claimed size is ignored (real bytes win)", liarRow.size === 26, `got ${liarRow.size}`)
 ok("client-claimed content type is ignored", liarRow.contentType === "application/pdf", liarRow.contentType)
-await throws("oversized/unsupported types are refused server-side", () =>
+// An executable, honestly labelled, is refused — the allowlist is server-side.
+const exeUrl = await client.mutation(api.portal.generateUploadUrl, { portalToken: PT })
+const exeRes = await fetch(exeUrl, { method: "POST", headers: { "Content-Type": "application/x-msdownload" }, body: new Blob(["MZ-not-really"]) })
+const { storageId: exeStorageId } = await exeRes.json()
+await throws("unsupported file types are refused server-side", () =>
   client.mutation(api.portal.attachUpload, {
-    portalToken: PT, storageId: liarStorageId, filename: "payload.exe", submissionId: submitted.submissionId,
+    portalToken: PT, storageId: exeStorageId, filename: "payload.exe", submissionId: submitted.submissionId,
   }), "file type")
 await throws("attaching a storage id that never landed is refused", () =>
   client.mutation(api.portal.attachUpload, {
@@ -570,8 +575,14 @@ await client.mutation(api.events.update, { eventId: newEventId, patch: { venue: 
 const createdEvent = await client.query(api.events.get, { eventId: newEventId })
 ok("event update persists", createdEvent.venue === "Test Hall")
 await client.mutation(api.roomsTracks.addRoom, { eventId: newEventId, name: "Solo Room" })
+// Give the throwaway event a branding blob so the delete has storage to clean.
+const doomedUploadUrl = await client.mutation(api.files.generateUploadUrl, { eventId: newEventId })
+const doomedRes = await fetch(doomedUploadUrl, { method: "POST", headers: { "Content-Type": "image/png" }, body: new Blob([PNG_BYTES], { type: "image/png" }) })
+const { storageId: doomedStorageId } = await doomedRes.json()
+await client.mutation(api.files.setEventBranding, { eventId: newEventId, slot: "logo", storageId: doomedStorageId, filename: "logo.png" })
 await client.mutation(api.events.remove, { eventId: newEventId })
 ok("event delete cascades", (await client.query(api.events.list, {})).every((e) => e._id !== newEventId))
+ok("event delete also deletes its stored files", convexRun("files:blobsExist", { storageIds: [doomedStorageId] })[doomedStorageId] === false)
 const inviteEmail = `invitee-${Date.now().toString(36)}@example.com`
 await client.mutation(api.workspaces.addMember, { organizationId: ws.id, email: inviteEmail, role: "member" })
 const memberRows = await client.query(api.workspaces.members, { organizationId: ws.id })
@@ -614,6 +625,12 @@ await throws("stranger cannot bulk-email our speakers", () =>
   }), "access")
 await throws("stranger cannot list our saved embeds", () =>
   strangerClient.query(api.embeds.list, { eventId: main._id }), "access")
+await throws("stranger cannot mint an upload URL for our event", () =>
+  strangerClient.mutation(api.files.generateUploadUrl, { eventId: main._id }), "access")
+await throws("stranger cannot read our submission's files", () =>
+  strangerClient.query(api.files.submissionFiles, { submissionId: submitted.submissionId }), "access")
+await throws("stranger cannot read our event branding", () =>
+  strangerClient.query(api.files.eventBranding, { eventId: main._id }), "access")
 
 // ————— Airtable one-way mirror —————
 section("Airtable")
@@ -824,6 +841,28 @@ if (SITE_URL) {
 } else {
   ok("SITE_URL missing — skipped MCP checks", false, "add VITE_CONVEX_SITE_URL to .env.local")
 }
+
+// ————— Storage housekeeping —————
+// The whole point of the lifecycle work: after a full run that uploaded,
+// replaced, attached and deleted files, nothing may be left rotting.
+section("Storage housekeeping")
+const sweepPreview = convexRun("files:sweepOrphans", { deleteUnreferenced: false, minAgeMinutes: 0 })
+ok("orphan sweep scans in a single pass", sweepPreview.scanComplete === true, JSON.stringify(sweepPreview))
+ok("no dangling upload rows (row without a blob)", sweepPreview.danglingRowsDeleted === 0)
+ok("no dangling headshot references", sweepPreview.danglingHeadshotsCleared === 0)
+// The refused .exe upload landed in storage but was never attached — exactly
+// the leak this sweep exists for.
+ok("sweep spots the blob whose attach was refused", sweepPreview.unreferencedBlobs >= 1,
+  JSON.stringify(sweepPreview))
+ok("dry run deletes nothing", sweepPreview.unreferencedBlobsDeleted === 0)
+const swept = convexRun("files:sweepOrphans", { deleteUnreferenced: true, minAgeMinutes: 0 })
+ok("sweep deletes every unreferenced blob it found", swept.unreferencedBlobsDeleted === swept.unreferencedBlobs && swept.unreferencedBlobsDeleted >= 1,
+  JSON.stringify(swept))
+ok("the refused upload's bytes are gone", convexRun("files:blobsExist", { storageIds: [exeStorageId] })[exeStorageId] === false)
+const sweepAfter = convexRun("files:sweepOrphans", { deleteUnreferenced: false, minAgeMinutes: 0 })
+ok("storage is clean after the sweep", sweepAfter.unreferencedBlobs === 0,
+  `${sweepAfter.unreferencedBlobs} orphans / ${sweepAfter.unreferencedBytes} bytes`)
+ok("every file still in use survived the sweep", (await client.query(api.portal.myUploads, { portalToken: PT })).every((u) => !u.missing && u.url))
 
 // ————— Summary —————
 console.log(`\n━━━ ${passed} passed, ${failed} failed ━━━`)

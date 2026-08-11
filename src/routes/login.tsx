@@ -1,6 +1,11 @@
 import { useEffect, useState } from "react"
 import { Link, createFileRoute, useNavigate } from "@tanstack/react-router"
-import { RiLoginBoxLine, RiUserAddLine } from "@remixicon/react"
+import {
+  RiArrowLeftLine,
+  RiLoginBoxLine,
+  RiMailSendLine,
+  RiUserAddLine,
+} from "@remixicon/react"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -24,6 +29,8 @@ const DEMO_PASSWORD = "demo2026"
 export interface LoginSearch {
   /** Where to land after a successful sign-in. */
   redirect?: string
+  /** `?mode=forgot` opens the card straight in "reset my password" state. */
+  mode?: "forgot"
 }
 
 /**
@@ -43,27 +50,32 @@ function oauthReturnTo(search: Record<string, unknown>): string | undefined {
   return `/api/auth/mcp/authorize?${params.toString()}`
 }
 
+type Mode = "signin" | "signup" | "forgot"
+
 export const Route = createFileRoute("/login")({
   validateSearch: (search: Record<string, unknown>): LoginSearch => ({
     redirect:
       typeof search.redirect === "string" && search.redirect.startsWith("/")
         ? search.redirect
         : oauthReturnTo(search),
+    mode: search.mode === "forgot" ? "forgot" : undefined,
   }),
   component: LoginPage,
 })
 
 function LoginPage() {
   const navigate = useNavigate()
-  const { redirect: redirectTo } = Route.useSearch()
+  const { redirect: redirectTo, mode: modeFromUrl } = Route.useSearch()
   const { isAuthenticated } = useSession()
 
-  const [mode, setMode] = useState<"signin" | "signup">("signin")
+  const [mode, setMode] = useState<Mode>(modeFromUrl === "forgot" ? "forgot" : "signin")
   const [name, setName] = useState("")
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [error, setError] = useState<string | null>(null)
   const [pending, setPending] = useState(false)
+  /** Set once the reset request came back — the card becomes a receipt. */
+  const [resetSentTo, setResetSentTo] = useState<string | null>(null)
 
   const goToApp = () => {
     if (!redirectTo) {
@@ -92,6 +104,21 @@ function LoginPage() {
     setError(null)
     setPending(true)
     try {
+      if (mode === "forgot") {
+        const address = email.trim()
+        // Better Auth answers "if this email exists, check your inbox" whether
+        // or not the account is real, and the email itself is sent in the
+        // background on the Convex side — so the only honest UI is the same
+        // receipt in both cases. Never branch on whether the address exists.
+        const { error: resetError } = await authClient.requestPasswordReset({
+          email: address,
+          redirectTo: "/reset-password",
+        })
+        if (resetError)
+          throw new Error(resetError.message ?? "Could not send the reset link")
+        setResetSentTo(address)
+        return
+      }
       if (mode === "signup") {
         const { error: signUpError } = await authClient.signUp.email({
           name: name.trim() || email.split("@")[0],
@@ -126,9 +153,27 @@ function LoginPage() {
   const fillDemo = () => {
     setError(null)
     setMode("signin")
+    setResetSentTo(null)
     setEmail(DEMO_EMAIL)
     setPassword(DEMO_PASSWORD)
   }
+
+  const switchMode = (next: Mode) => {
+    setMode(next)
+    setError(null)
+    setResetSentTo(null)
+  }
+
+  const heading =
+    mode === "signin"
+      ? "Sign in"
+      : mode === "signup"
+        ? "Create your account"
+        : "Reset your password"
+  const subheading =
+    mode === "forgot"
+      ? "We'll email you a link to choose a new password."
+      : "Organizer access to your events, submissions, and speakers."
 
   return (
     <main className="flex min-h-svh flex-col items-center justify-center bg-background py-12">
@@ -143,31 +188,54 @@ function LoginPage() {
         <Card className="gap-0 p-6">
           <div className="mb-5 space-y-1 text-center">
             <h1 className="font-heading text-lg font-semibold tracking-tight">
-              {mode === "signin" ? "Sign in" : "Create your account"}
+              {resetSentTo ? "Check your email" : heading}
             </h1>
             <p className="text-sm text-muted-foreground">
-              Organizer access to your events, submissions, and speakers.
+              {resetSentTo
+                ? `If an account exists for ${resetSentTo}, a reset link is on its way.`
+                : subheading}
             </p>
           </div>
 
-          <Tabs
-            value={mode}
-            onValueChange={(value) => {
-              setMode(value as "signin" | "signup")
-              setError(null)
-            }}
-            className="mb-5"
-          >
-            <TabsList className="w-full">
-              <TabsTrigger value="signin" className="flex-1">
-                Sign in
-              </TabsTrigger>
-              <TabsTrigger value="signup" className="flex-1">
-                Create account
-              </TabsTrigger>
-            </TabsList>
-          </Tabs>
+          {mode === "forgot" ? null : (
+            <Tabs
+              value={mode}
+              onValueChange={(value) => switchMode(value as Mode)}
+              className="mb-5"
+            >
+              <TabsList className="w-full">
+                <TabsTrigger value="signin" className="flex-1">
+                  Sign in
+                </TabsTrigger>
+                <TabsTrigger value="signup" className="flex-1">
+                  Create account
+                </TabsTrigger>
+              </TabsList>
+            </Tabs>
+          )}
 
+          {resetSentTo ? (
+            <div className="space-y-5">
+              <Alert>
+                <AlertTitle>Reset link sent</AlertTitle>
+                <AlertDescription>
+                  Open it within the hour and you'll be able to set a new
+                  password. Nothing in your inbox? Check spam, or try another
+                  address.
+                </AlertDescription>
+              </Alert>
+              <Button
+                type="button"
+                size="lg"
+                variant="outline"
+                className="w-full"
+                onClick={() => switchMode("signin")}
+              >
+                <RiArrowLeftLine aria-hidden />
+                Back to sign in
+              </Button>
+            </div>
+          ) : (
           <form onSubmit={onSubmit} noValidate>
             <FieldGroup className="gap-5">
               {mode === "signup" ? (
@@ -198,31 +266,46 @@ function LoginPage() {
                 />
               </Field>
 
-              <Field>
-                <FieldLabel htmlFor="password">Password</FieldLabel>
-                <Input
-                  id="password"
-                  name="password"
-                  type="password"
-                  autoComplete={
-                    mode === "signup" ? "new-password" : "current-password"
-                  }
-                  required
-                  placeholder="••••••••"
-                  value={password}
-                  onChange={(event) => setPassword(event.target.value)}
-                />
-                {mode === "signup" ? (
-                  <FieldDescription>At least 8 characters.</FieldDescription>
-                ) : null}
-              </Field>
+              {mode === "forgot" ? null : (
+                <Field>
+                  <div className="flex items-baseline justify-between gap-3">
+                    <FieldLabel htmlFor="password">Password</FieldLabel>
+                    {mode === "signin" ? (
+                      <button
+                        type="button"
+                        onClick={() => switchMode("forgot")}
+                        className="rounded-sm text-sm text-muted-foreground underline-offset-4 outline-none hover:text-foreground hover:underline focus-visible:ring-3 focus-visible:ring-ring/50"
+                      >
+                        Forgot password?
+                      </button>
+                    ) : null}
+                  </div>
+                  <Input
+                    id="password"
+                    name="password"
+                    type="password"
+                    autoComplete={
+                      mode === "signup" ? "new-password" : "current-password"
+                    }
+                    required
+                    placeholder="••••••••"
+                    value={password}
+                    onChange={(event) => setPassword(event.target.value)}
+                  />
+                  {mode === "signup" ? (
+                    <FieldDescription>At least 8 characters.</FieldDescription>
+                  ) : null}
+                </Field>
+              )}
 
               {error ? (
                 <Alert variant="destructive" className="bg-destructive/5">
                   <AlertTitle>
                     {mode === "signin"
                       ? "We couldn't sign you in"
-                      : "We couldn't create your account"}
+                      : mode === "signup"
+                        ? "We couldn't create your account"
+                        : "We couldn't send the reset link"}
                   </AlertTitle>
                   <AlertDescription>{error}</AlertDescription>
                 </Alert>
@@ -236,21 +319,42 @@ function LoginPage() {
               >
                 {mode === "signin" ? (
                   <RiLoginBoxLine aria-hidden />
-                ) : (
+                ) : mode === "signup" ? (
                   <RiUserAddLine aria-hidden />
+                ) : (
+                  <RiMailSendLine aria-hidden />
                 )}
                 {pending
                   ? mode === "signin"
                     ? "Signing in…"
-                    : "Creating account…"
+                    : mode === "signup"
+                      ? "Creating account…"
+                      : "Sending link…"
                   : mode === "signin"
                     ? "Sign in"
-                    : "Create account"}
+                    : mode === "signup"
+                      ? "Create account"
+                      : "Email me a reset link"}
               </Button>
+
+              {mode === "forgot" ? (
+                <Button
+                  type="button"
+                  size="lg"
+                  variant="ghost"
+                  className="w-full"
+                  onClick={() => switchMode("signin")}
+                >
+                  <RiArrowLeftLine aria-hidden />
+                  Back to sign in
+                </Button>
+              ) : null}
             </FieldGroup>
           </form>
+          )}
         </Card>
 
+        {mode === "forgot" ? null : (
         <Card className="mt-4 gap-0 bg-accent px-4 py-4 ring-primary/15">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
@@ -274,6 +378,7 @@ function LoginPage() {
             </Button>
           </div>
         </Card>
+        )}
 
         <p className="mt-6 text-center text-sm text-muted-foreground">
           <Link to="/" className="hover:text-foreground hover:underline">

@@ -84,7 +84,16 @@ export function CopilotPanel() {
       {/* Mounted whether or not the panel is open: the copilot must already
           know what screen the organizer came from the moment they open it. */}
       <CopilotAppContext />
-      <Sheet open={open} onOpenChange={setOpen} modal={false}>
+      {/*
+        `dismissible={false}` is the other half of `modal={false}`. A non-modal
+        panel exists so the organizer can keep working in the table behind it —
+        but Base UI's default outside-press dismissal means the first click on
+        that table closes the copilot, which is the opposite of the point. It
+        also made the resize handle unusable: a drag that ends past the panel's
+        left edge counts as an outside press. Escape and the close button
+        remain the ways out.
+      */}
+      <Sheet open={open} onOpenChange={setOpen} modal={false} dismissible={false}>
         <SheetContent
           side="right"
           showOverlay={false}

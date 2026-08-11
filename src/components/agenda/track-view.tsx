@@ -184,17 +184,19 @@ export function TrackView({
                 backgroundImage: `repeating-linear-gradient(to bottom, var(--border) 0px, var(--border) 1px, transparent 1px, transparent ${hourPx}px), repeating-linear-gradient(to bottom, var(--border) 0px, var(--border) 0.5px, transparent 0.5px, transparent ${SLOT_MINUTES * PIXELS_PER_MINUTE}px)`,
               }}
             >
-              {sessions.filter(column.match).map((session) => (
+              {laneOut(sessions.filter(column.match), timeZone).map((slot) => (
                 <TrackBlock
-                  key={session.id}
-                  session={session}
+                  key={slot.session.id}
+                  session={slot.session}
                   rooms={rooms}
                   conflicts={conflicts}
-                  conflicted={conflictIds.has(session.id)}
+                  conflicted={conflictIds.has(slot.session.id)}
                   dayKeys={dayKeys}
                   timeZone={timeZone}
                   windowStartMinutes={windowStartMinutes}
-                  focused={focusId === session.id}
+                  focused={focusId === slot.session.id}
+                  lane={slot.lane}
+                  lanes={slot.lanes}
                 />
               ))}
             </div>
@@ -212,6 +214,32 @@ export function TrackView({
   )
 }
 
+/**
+ * Split one track's sessions into side-by-side lanes.
+ *
+ * A track column is not a room: two talks on the same track can run at once in
+ * different rooms, and stacking them would hide one behind the other — the
+ * exact thing this view exists to reveal. Greedy interval partitioning: put
+ * each session in the first lane whose last session has already finished.
+ */
+function laneOut(
+  sessions: Array<ScheduledSession>,
+  timeZone: string,
+): Array<{ session: ScheduledSession; lane: number; lanes: number }> {
+  const ordered = [...sessions].sort((a, b) => a.startsAt - b.startsAt)
+  const laneEnds: Array<number> = []
+  const placed = ordered.map((session) => {
+    const start = minutesIntoDay(session.startsAt, timeZone)
+    const end = start + session.durationMinutes
+    let lane = laneEnds.findIndex((laneEnd) => laneEnd <= start)
+    if (lane === -1) lane = laneEnds.length
+    laneEnds[lane] = end
+    return { session, lane }
+  })
+  const lanes = Math.max(1, laneEnds.length)
+  return placed.map((slot) => ({ ...slot, lanes }))
+}
+
 interface TrackBlockProps {
   session: ScheduledSession
   rooms: Array<AgendaRoom>
@@ -221,6 +249,8 @@ interface TrackBlockProps {
   timeZone: string
   windowStartMinutes: number
   focused: boolean
+  lane: number
+  lanes: number
 }
 
 function TrackBlock({
@@ -232,15 +262,26 @@ function TrackBlock({
   timeZone,
   windowStartMinutes,
   focused,
+  lane,
+  lanes,
 }: TrackBlockProps) {
   const [open, setOpen] = React.useState(false)
   const start = minutesIntoDay(session.startsAt, timeZone)
   const top = (start - windowStartMinutes) * PIXELS_PER_MINUTE
   const height = Math.max(session.durationMinutes * PIXELS_PER_MINUTE, 22)
   const roomName = rooms.find((room) => room._id === session.roomId)?.name
+  const width = 100 / lanes
 
   return (
-    <div className="absolute right-1 left-1 z-10" style={{ top, height }}>
+    <div
+      className="absolute z-10 px-1"
+      style={{
+        top,
+        height,
+        left: `${lane * width}%`,
+        width: `${width}%`,
+      }}
+    >
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger
           render={

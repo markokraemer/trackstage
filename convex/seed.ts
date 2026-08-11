@@ -71,6 +71,22 @@ const AVATAR_COLORS = [
 
 // ——— Purge —————————————————————————————————————————————————————————————————
 
+/**
+ * Delete a stored blob, tolerating one that is already gone.
+ *
+ * The seed's whole promise is "run me again and land on identical data". A
+ * dangling storage id — a row whose blob was already deleted by a branding
+ * replace, a half-finished earlier purge, anything — must not be able to abort
+ * the rebuild and leave the demo world in pieces.
+ */
+async function forgetBlob(ctx: MutationCtx, storageId: Id<"_storage">) {
+  try {
+    await ctx.storage.delete(storageId)
+  } catch {
+    /* already gone — nothing to forget */
+  }
+}
+
 /** Delete every row (and stored file) belonging to one event. */
 async function purgeEvent(ctx: MutationCtx, eventId: Id<"events">) {
   const rooms = await ctx.db
@@ -96,7 +112,7 @@ async function purgeEvent(ctx: MutationCtx, eventId: Id<"events">) {
     .withIndex("by_eventId", (q) => q.eq("eventId", eventId))
     .take(2000)
   for (const row of uploads) {
-    await ctx.storage.delete(row.storageId)
+    await forgetBlob(ctx, row.storageId)
     await ctx.db.delete("uploads", row._id)
   }
 
@@ -157,7 +173,7 @@ async function purgeEvent(ctx: MutationCtx, eventId: Id<"events">) {
     .withIndex("by_eventId", (q) => q.eq("eventId", eventId))
     .take(2000)
   for (const row of people) {
-    if (row.headshotId) await ctx.storage.delete(row.headshotId)
+    if (row.headshotId) await forgetBlob(ctx, row.headshotId)
     await ctx.db.delete("people", row._id)
   }
 
@@ -168,8 +184,8 @@ async function purgeEvent(ctx: MutationCtx, eventId: Id<"events">) {
   for (const row of embeds) await ctx.db.delete("embeds", row._id)
 
   const event = await ctx.db.get("events", eventId)
-  if (event?.logoId) await ctx.storage.delete(event.logoId)
-  if (event?.backgroundId) await ctx.storage.delete(event.backgroundId)
+  if (event?.logoId) await forgetBlob(ctx, event.logoId)
+  if (event?.backgroundId) await forgetBlob(ctx, event.backgroundId)
   await ctx.db.delete("events", eventId)
 }
 

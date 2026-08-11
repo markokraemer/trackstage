@@ -137,6 +137,7 @@ export const listPlans = query({
         status: plan.status,
         dueAt: plan.dueAt,
         criteria: plan.criteria,
+        blind: plan.blind === true,
         submissionIds: plan.submissionIds,
         submissionCount,
         evaluatorCount: evaluators.length,
@@ -228,6 +229,7 @@ export const planDetail = query({
         criteria: plan.criteria,
         dueAt: plan.dueAt,
         status: plan.status,
+        blind: plan.blind === true,
         submissionIds: plan.submissionIds,
       },
       evaluators,
@@ -342,6 +344,8 @@ export const createPlan = mutation({
     submissionIds: v.array(v.id("submissions")),
     evaluatorEmails: v.array(v.string()),
     dueAt: v.optional(v.number()),
+    /** Blind round: evaluators never see who submitted (sbek ABS-07). */
+    blind: v.optional(v.boolean()),
   },
   returns: v.id("evaluationPlans"),
   handler: async (ctx, args) => {
@@ -366,6 +370,7 @@ export const createPlan = mutation({
       submissionIds,
       dueAt: args.dueAt,
       status: "open",
+      blind: args.blind === true ? true : undefined,
     })
 
     const seen = new Set<string>()
@@ -394,6 +399,7 @@ export const updatePlan = mutation({
     dueAt: v.optional(v.number()),
     clearDueAt: v.optional(v.boolean()),
     status: v.optional(v.union(v.literal("open"), v.literal("closed"))),
+    blind: v.optional(v.boolean()),
   },
   returns: v.null(),
   handler: async (ctx, args) => {
@@ -424,6 +430,9 @@ export const updatePlan = mutation({
     if (args.clearDueAt) patch.dueAt = undefined
     else if (args.dueAt !== undefined) patch.dueAt = args.dueAt
     if (args.status !== undefined) patch.status = args.status
+    // Store `undefined` rather than `false` so the flag reads the same whether
+    // a plan predates blind review or had it turned off.
+    if (args.blind !== undefined) patch.blind = args.blind ? true : undefined
 
     await ctx.db.patch(plan._id, patch)
     return null

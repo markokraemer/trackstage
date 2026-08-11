@@ -142,22 +142,25 @@ export function FileRow({
         ) : null}
       </div>
 
-      {showStatus ? (
-        <StatusPill status={status.status} label={status.label} size="sm" />
-      ) : null}
-
-      {file.url ? (
-        <Button
-          variant="ghost"
-          size="icon-sm"
-          aria-label={`Download ${file.filename}`}
-          disabled={downloading}
-          onClick={() => void handleDownload()}
-        >
-          <RiDownload2Line aria-hidden />
-        </Button>
-      ) : null}
-      {actions}
+      {/* Status and actions travel together so they never split across lines
+          in a narrow container like the submission drawer. */}
+      <span className="flex shrink-0 items-center gap-1">
+        {showStatus ? (
+          <StatusPill status={status.status} label={status.label} size="sm" />
+        ) : null}
+        {file.url ? (
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            aria-label={`Download ${file.filename}`}
+            disabled={downloading}
+            onClick={() => void handleDownload()}
+          >
+            <RiDownload2Line aria-hidden />
+          </Button>
+        ) : null}
+        {actions}
+      </span>
     </li>
   )
 }

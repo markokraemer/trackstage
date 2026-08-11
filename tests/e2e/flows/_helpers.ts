@@ -117,7 +117,7 @@ export async function fillStable(locator: Locator, value: string) {
 
 /** Sign in through the real UI (hydration-retried, same shape as auth.setup). */
 export async function uiSignIn(page: Page, email: string, password: string) {
-  await page.goto("/login", { waitUntil: "networkidle" })
+  await gotoStable(page, "/login", "networkidle")
   for (let attempt = 0; attempt < 5; attempt++) {
     await fillStable(page.getByLabel("Email").first(), email)
     await fillStable(page.getByLabel("Password").first(), password)
@@ -127,7 +127,7 @@ export async function uiSignIn(page: Page, email: string, password: string) {
       return
     } catch {
       if (!page.url().includes("/app")) {
-        await page.goto("/login", { waitUntil: "networkidle" })
+        await gotoStable(page, "/login", "networkidle")
       }
     }
   }
@@ -141,7 +141,7 @@ export async function uiSignUp(
   email: string,
   password: string,
 ) {
-  await page.goto("/login", { waitUntil: "networkidle" })
+  await gotoStable(page, "/login", "networkidle")
   for (let attempt = 0; attempt < 6; attempt++) {
     try {
       // The signup tab only responds once React has hydrated; before that the
@@ -163,7 +163,7 @@ export async function uiSignUp(
       return
     } catch {
       if (page.url().includes("/app")) return
-      await page.goto("/login", { waitUntil: "networkidle" })
+      await gotoStable(page, "/login", "networkidle")
     }
   }
   throw new Error(`UI sign-up never reached /app for ${email}`)
@@ -190,11 +190,58 @@ export async function selectEvent(page: Page, name = MAIN_EVENT_NAME) {
   await expect(switcher).toContainText(new RegExp(name, "i"), { timeout: 15_000 })
 }
 
+/**
+ * Navigate, retrying the aborts the Vite dev server produces when another
+ * agent saves a file mid-navigation (`net::ERR_ABORTED`). Product failures
+ * still surface — only the transport-level abort is retried.
+ */
+export async function gotoStable(
+  page: Page,
+  path: string,
+  waitUntil: "domcontentloaded" | "networkidle" = "domcontentloaded",
+) {
+  let lastError: unknown
+  for (let attempt = 0; attempt < 4; attempt++) {
+    try {
+      return await page.goto(path, { waitUntil })
+    } catch (error) {
+      lastError = error
+      if (!/ERR_ABORTED|ERR_CONNECTION|frame was detached/i.test(String(error))) {
+        throw error
+      }
+      await page.waitForTimeout(1_000)
+    }
+  }
+  throw lastError
+}
+
 /** Open an organizer route with the demo event selected. */
 export async function gotoApp(page: Page, path: string) {
-  await page.goto(path, { waitUntil: "domcontentloaded" })
+  await gotoStable(page, path)
   await waitForShell(page)
   await selectEvent(page)
+}
+
+/**
+ * Click a button until the page has visibly moved on. Public pages are
+ * server-rendered, so the first click can land before React has hydrated and
+ * is simply swallowed. Idempotent: if `settled` is already visible the click
+ * is skipped, so a retry can never over-advance a wizard.
+ */
+export async function advance(
+  page: Page,
+  buttonName: RegExp,
+  settled: Locator,
+  { timeout = 45_000 } = {},
+) {
+  await expect(async () => {
+    if (await settled.first().isVisible().catch(() => false)) return
+    await page
+      .getByRole("button", { name: buttonName })
+      .first()
+      .click({ timeout: 5_000 })
+    await expect(settled.first()).toBeVisible({ timeout: 4_000 })
+  }).toPass({ timeout })
 }
 
 /** Sonner toast text (any toast currently on screen). */

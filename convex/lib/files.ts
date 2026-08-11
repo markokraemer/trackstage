@@ -70,6 +70,11 @@ export function isImageType(contentType?: string): boolean {
 export interface StorageMeta {
   size: number
   contentType?: string
+  /**
+   * Convex returns this BASE64-encoded (`+wTctpc…=`), not the base16 the docs
+   * claim — verified against the live deployment in scripts/verify-backend.mjs.
+   * Treat it as an opaque identity token: equal string ⇒ identical bytes.
+   */
   sha256: string
   storedAt: number
 }

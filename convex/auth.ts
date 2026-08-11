@@ -3,12 +3,16 @@ import { mcp, organization } from "better-auth/plugins"
 import { createClient  } from "@convex-dev/better-auth"
 import type {GenericCtx} from "@convex-dev/better-auth";
 import { convex } from "@convex-dev/better-auth/plugins"
+import { requireActionCtx } from "@convex-dev/better-auth/utils"
 import authConfig from "./auth.config"
-import { components } from "./_generated/api"
+import { components, internal } from "./_generated/api"
 import { query } from "./_generated/server"
 import type { DataModel } from "./_generated/dataModel"
 
 const siteUrl = process.env.SITE_URL ?? "http://localhost:3000"
+
+/** How long a password-reset link stays valid. Mirrored into the email copy. */
+const RESET_PASSWORD_TTL_SECONDS = 60 * 60
 
 export const authComponent = createClient<DataModel>(components.betterAuth)
 
@@ -19,6 +23,36 @@ export const createAuth = (ctx: GenericCtx<DataModel>) => {
     emailAndPassword: {
       enabled: true,
       requireEmailVerification: false,
+      resetPasswordTokenExpiresIn: RESET_PASSWORD_TTL_SECONDS,
+      /**
+       * "Forgot password?" (rule 18e — every lifecycle email is real mail).
+       *
+       * Better Auth calls this from its `/request-password-reset` endpoint,
+       * which only ever runs over HTTP — i.e. inside an httpAction — so the
+       * ctx closed over here is an action ctx by the time this fires.
+       * `requireActionCtx` is the component's sanctioned way to narrow it
+       * (createAuth is also called from queries/mutations, where `ctx` has no
+       * scheduler and no fetch).
+       *
+       * The send is SCHEDULED rather than awaited on purpose: Resend latency
+       * must not sit in the user's request, and a mail failure must never turn
+       * into a non-200 — the endpoint answers "if this email exists, check
+       * your inbox" either way, and that non-disclosure is the whole point.
+       * (Better Auth already returns that same response, without calling this,
+       * for an address that has no account.)
+       */
+      sendResetPassword: async ({ user, url }) => {
+        await requireActionCtx(ctx).scheduler.runAfter(
+          0,
+          internal.platformEmails.sendPasswordReset,
+          {
+            toEmail: user.email,
+            userName: user.name,
+            url,
+            expiresInMinutes: Math.round(RESET_PASSWORD_TTL_SECONDS / 60),
+          }
+        )
+      },
     },
     plugins: [
       // Multi-tenancy: organizations own events; members carry roles

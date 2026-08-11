@@ -9,6 +9,7 @@ import { useConvexMutation } from "@convex-dev/react-query"
 import { api } from "@convex/_generated/api"
 import {
   RiArrowDownSLine,
+  RiBookOpenLine,
   RiBuilding2Line,
   RiCalendarScheduleLine,
   RiCheckLine,
@@ -263,6 +264,12 @@ function OrganizerLayout() {
                   </DropdownMenuSub>
                 ) : null}
               </DropdownMenuGroup>
+
+              <DropdownMenuSeparator />
+              <DropdownMenuItem nativeButton={false} render={<Link to="/docs" />}>
+                <RiBookOpenLine aria-hidden />
+                Docs
+              </DropdownMenuItem>
 
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={signOut}>

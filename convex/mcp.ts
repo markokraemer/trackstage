@@ -83,6 +83,15 @@ const INVALID_PARAMS = -32602
 
 const MAX_ROWS = 4000
 
+// ── Payload caps ──────────────────────────────────────────────────────────
+// The live-fire test's clearest lesson: any tool result over ~2KB gets
+// summarised lossily by the model before the user sees it, and rows silently
+// disappear. So the verbose tools now cap their detail and SAY they capped it,
+// with a named follow-up call for the rest.
+const MAX_OPTIONS = 10 // per question, in get_form
+const MAX_AGENDA_ROWS = 40 // scheduled/unscheduled rows in get_agenda
+const TEMPLATE_PREVIEW_CHARS = 200 // body preview in list_templates
+
 // ——————————————————————————————————————————————————————————————————————————
 // Shared helpers (server side, inside queries/mutations)
 // ——————————————————————————————————————————————————————————————————————————
@@ -156,6 +165,32 @@ function iso(ms: number | undefined | null): string | null {
 
 function publicFormUrl(slug: string): string {
   return `${siteUrl()}/submit/${slug}`
+}
+
+/**
+ * Every public/portal link this server returns is built from SITE_URL, which
+ * falls back to http://localhost:3000 when the deployment never set it. In the
+ * live-fire test that meant an MCP client was handed `http://localhost:3000/…`
+ * links with nothing marking them as unusable, and the model passed them on.
+ *
+ * The URL itself is left MACHINE-CLEAN (the copilot renders it as a copy
+ * button, and a parenthetical glued onto the href would break that); the
+ * warning rides alongside as its own field, which is what the model actually
+ * reads before it quotes a link to a human.
+ */
+const LOOPBACK_HOST =
+  /^https?:\/\/(localhost|127\.0\.0\.1|0\.0\.0\.0|\[::1\])(:\d+)?(\/|$)/i
+
+function linkWarning(): string | undefined {
+  const base = siteUrl()
+  if (!LOOPBACK_HOST.test(base)) return undefined
+  return `${base} is a loopback address (demo URL — set SITE_URL in production). Links below only work on the machine running Sessionboard — don't send them to a speaker.`
+}
+
+/** Adds `linkWarning` to a payload that carries links, when one applies. */
+function withLinkWarning<T extends object>(payload: T): T {
+  const warning = linkWarning()
+  return warning ? { ...payload, linkWarning: warning } : payload
 }
 
 // ══════════════════════════════════════════════════════════════════════════
@@ -323,7 +358,12 @@ export const createEvent = internalMutation({
       startsAt: args.startsAt,
       endsAt: args.endsAt,
     })
-    return { eventId, slug, name, publicSubmitUrlHint: `${siteUrl()}/submit/<form-slug>` }
+    return withLinkWarning({
+      eventId,
+      slug,
+      name,
+      publicSubmitUrlHint: `${siteUrl()}/submit/<form-slug>`,
+    })
   },
 })
 
@@ -372,46 +412,23 @@ async function eventStats(ctx: QueryCtx, event: Doc<"events">) {
   }
 }
 
+/**
+ * `get_event_overview` used to be its own tool with its own payload, and the
+ * live-fire test showed a model cannot tell "overview" from "summary" from the
+ * names alone — it lost a head-to-head with `get_agenda` for "pull the
+ * dashboard stats". The two payloads overlapped ~80%, so they are now ONE:
+ * every dashboard number the overview carried lives in the summary, and this
+ * query exists only to keep the old tool name answering.
+ */
 export const eventOverview = internalQuery({
   args: { userId: v.string(), event: v.string() },
   returns: v.any(),
   handler: async (ctx, args) => {
     const event = await resolveEvent(ctx, args.userId, args.event)
-    const stats = await eventStats(ctx, event)
-    const conflicts = await computeConflicts(ctx, event._id)
-    const messages = await ctx.db
-      .query("messages")
-      .withIndex("by_eventId", (q) => q.eq("eventId", event._id))
-      .take(MAX_ROWS)
-    const outboxByStatus: Record<string, number> = {}
-    for (const message of messages) {
-      outboxByStatus[message.status] = (outboxByStatus[message.status] ?? 0) + 1
-    }
     return {
-      event: {
-        eventId: event._id,
-        name: event.name,
-        slug: event.slug,
-        timezone: event.timezone,
-        startsAt: iso(event.startsAt),
-        endsAt: iso(event.endsAt),
-        venue: event.venue ?? null,
-      },
-      totalSubmissions: stats.submissions.length,
-      statusCounts: stats.statusCounts,
-      openTaskCount: stats.openTasks.length,
-      scheduledSessions: stats.scheduledCount,
-      acceptedNotYetScheduled: stats.unscheduledAccepted,
-      agendaConflicts: conflicts.length,
-      outbox: outboxByStatus,
-      forms: stats.forms.map((form) => ({
-        formId: form._id,
-        name: form.internalName,
-        slug: form.slug,
-        status: form.status,
-        closeAt: iso(form.closeAt),
-        publicUrl: publicFormUrl(form.slug),
-      })),
+      ...(await eventSummaryPayload(ctx, event)),
+      deprecated:
+        "get_event_overview is a deprecated alias of get_event_summary and returns exactly the same payload. Call get_event_summary instead.",
     }
   },
 })
@@ -448,7 +465,7 @@ export const listForms = internalQuery({
         draftCount: submissions.filter((s) => s.status === "draft").length,
       })
     }
-    return { forms: rows }
+    return withLinkWarning({ formCount: rows.length, forms: rows })
   },
 })
 
@@ -482,7 +499,7 @@ export const getForm = internalQuery({
   returns: v.any(),
   handler: async (ctx, args) => {
     const form = await resolveForm(ctx, args.userId, args.form)
-    return {
+    return withLinkWarning({
       formId: form._id,
       eventId: form.eventId,
       name: form.internalName,
@@ -494,21 +511,35 @@ export const getForm = internalQuery({
       status: form.status,
       closeAt: iso(form.closeAt),
       publicUrl: publicFormUrl(form.slug),
-      questions: form.questions.map((question) => ({
-        id: question.id,
-        label: question.label,
-        type: question.type,
-        required: question.required,
-        enabled: question.enabled,
-        locked: question.locked,
-        options: question.options ?? null,
-        showIf: question.showIf ?? null,
-        isTrackQuestion: question.isTrackQuestion ?? false,
-      })),
+      questions: form.questions.map((question) => {
+        // A tag or country dropdown can carry hundreds of options; the whole
+        // payload then gets lossily compressed by the model before the user
+        // ever sees it. Ten is enough to characterise the question — the count
+        // says how many were held back.
+        const options = question.options ?? null
+        const truncated = options !== null && options.length > MAX_OPTIONS
+        return {
+          id: question.id,
+          label: question.label,
+          type: question.type,
+          required: question.required,
+          enabled: question.enabled,
+          locked: question.locked,
+          options: truncated ? options!.slice(0, MAX_OPTIONS) : options,
+          ...(truncated
+            ? {
+                optionCount: options!.length,
+                optionsTruncated: `…${options!.length - MAX_OPTIONS} more`,
+              }
+            : {}),
+          showIf: question.showIf ?? null,
+          isTrackQuestion: question.isTrackQuestion ?? false,
+        }
+      }),
       participantConfig: form.participantConfig,
       settings: form.settings,
       notifyEmails: form.notifyEmails,
-    }
+    })
   },
 })
 
@@ -601,7 +632,16 @@ export const createForm = internalMutation({
       },
       notifyEmails: [],
     })
-    return { formId, slug, publicUrl: publicFormUrl(slug), status: "open" }
+    // `name` and `kind` are echoed back so a caller that creates two forms in
+    // one turn can tell them apart without a second round trip.
+    return withLinkWarning({
+      formId,
+      name,
+      kind,
+      slug,
+      publicUrl: publicFormUrl(slug),
+      status: "open",
+    })
   },
 })
 
@@ -661,14 +701,15 @@ export const updateFormSettings = internalMutation({
     }
     await ctx.db.patch(form._id, patch)
     const updated = await ctx.db.get(form._id)
-    return {
+    return withLinkWarning({
       formId: form._id,
+      name: form.internalName,
       status: updated?.status,
       closeAt: iso(updated?.closeAt),
       publicUrl: publicFormUrl(form.slug),
       settings: updated?.settings,
       previous,
-    }
+    })
   },
 })
 
@@ -680,7 +721,7 @@ export const publicFormLink = internalQuery({
     const now = Date.now()
     const closed =
       form.status !== "open" || (form.closeAt !== undefined && form.closeAt < now)
-    return {
+    return withLinkWarning({
       formId: form._id,
       name: form.internalName,
       publicUrl: publicFormUrl(form.slug),
@@ -690,7 +731,7 @@ export const publicFormLink = internalQuery({
       note: closed
         ? "This form is not accepting submissions right now — reopen it with update_form_settings."
         : "Share this link with prospective speakers.",
-    }
+    })
   },
 })
 
@@ -1104,6 +1145,26 @@ export const getAgenda = internalQuery({
     scheduled.sort((a, b) => (a.startsAt ?? "").localeCompare(b.startsAt ?? ""))
     const conflicts = await computeConflicts(ctx, event._id)
 
+    // A per-room roll-up first: on a big programme the row detail below is
+    // capped, and these totals stay true whatever the cap does. They are also
+    // the shape most "how full is each room?" questions actually want.
+    const byRoom = rooms.map((room) => {
+      const inRoom = scheduled.filter((session) => session.roomId === room._id)
+      return {
+        room: room.name,
+        roomId: room._id,
+        capacity: room.capacity ?? null,
+        sessionCount: inRoom.length,
+        firstStartsAt: inRoom[0]?.startsAt ?? null,
+        lastStartsAt: inRoom[inRoom.length - 1]?.startsAt ?? null,
+      }
+    })
+
+    const truncatedNote = (total: number, kept: number, what: string) =>
+      total > kept
+        ? `…${total - kept} more ${what} session(s) omitted. Use list_submissions(status: "accepted") or narrow by room with the byRoom totals.`
+        : undefined
+
     return {
       event: {
         name: event.name,
@@ -1116,8 +1177,18 @@ export const getAgenda = internalQuery({
         name: room.name,
         capacity: room.capacity ?? null,
       })),
-      scheduled,
-      unscheduled,
+      scheduledCount: scheduled.length,
+      unscheduledCount: unscheduled.length,
+      conflictCount: conflicts.length,
+      byRoom,
+      scheduled: scheduled.slice(0, MAX_AGENDA_ROWS),
+      ...(scheduled.length > MAX_AGENDA_ROWS
+        ? { scheduledTruncated: truncatedNote(scheduled.length, MAX_AGENDA_ROWS, "scheduled") }
+        : {}),
+      unscheduled: unscheduled.slice(0, MAX_AGENDA_ROWS),
+      ...(unscheduled.length > MAX_AGENDA_ROWS
+        ? { unscheduledTruncated: truncatedNote(unscheduled.length, MAX_AGENDA_ROWS, "unscheduled") }
+        : {}),
       conflicts: conflicts.map((conflict) => ({
         kind: conflict.kind,
         problem: conflict.label,
@@ -1229,11 +1300,25 @@ export const autoPlaceSessions = internalMutation({
 // Speakers & tasks
 // ══════════════════════════════════════════════════════════════════════════
 
+/**
+ * The roster, and the one tool where a model gave the operator a WRONG NUMBER
+ * in the live-fire test: `onlyWithOutstandingWork` used to mean "open tasks OR
+ * an incomplete profile", the model read it as "open tasks", and it reported 8
+ * of 11 rows as the chase list.
+ *
+ * Two changes make that failure impossible. The flag now means EXACTLY "has ≥1
+ * incomplete task" — nothing else — and profile gaps are opted into separately
+ * with `includeProfileGaps`. And the response states its own arithmetic
+ * (`summary`, plus `totalSpeakers` / `withOpenTasks` / `withProfileGaps` /
+ * `returned`), so a model that miscounts the rows contradicts a sentence
+ * sitting right next to them.
+ */
 export const listSpeakers = internalQuery({
   args: {
     userId: v.string(),
     event: v.string(),
     onlyWithOutstandingWork: v.optional(v.boolean()),
+    includeProfileGaps: v.optional(v.boolean()),
   },
   returns: v.any(),
   handler: async (ctx, args) => {
@@ -1275,13 +1360,11 @@ export const listSpeakers = internalQuery({
       if (!person.bio?.trim()) missing.push("bio")
       if (!person.headshotId) missing.push("headshot")
       if (uploads.length === 0) missing.push("slides")
-      if (
-        args.onlyWithOutstandingWork &&
-        openTasks.length === 0 &&
-        missing.length === 0
-      ) {
-        continue
-      }
+      // Every speaker is built first and filtered second, so the counts below
+      // are over the WHOLE roster and never over the filtered slice.
+      const reasons: Array<string> = []
+      if (openTasks.length > 0) reasons.push("open_tasks")
+      if (missing.length > 0) reasons.push("incomplete_profile")
       rows.push({
         personId: person._id,
         name: personName(person),
@@ -1296,6 +1379,7 @@ export const listSpeakers = internalQuery({
           dueAt: iso(task.dueAt),
         })),
         missingProfileItems: missing,
+        outstandingReason: reasons,
       })
     }
     rows.sort(
@@ -1303,7 +1387,51 @@ export const listSpeakers = internalQuery({
         b.outstandingTasks.length - a.outstandingTasks.length ||
         a.name.localeCompare(b.name),
     )
-    return { speakerCount: rows.length, speakers: rows }
+
+    const totalSpeakers = rows.length
+    const withOpenTasks = rows.filter((r) => r.outstandingTasks.length > 0).length
+    const withProfileGaps = rows.filter((r) => r.missingProfileItems.length > 0).length
+    const withEither = rows.filter((r) => r.outstandingReason.length > 0).length
+
+    const onlyOpenTasks = args.onlyWithOutstandingWork === true
+    const includeGaps = args.includeProfileGaps === true
+    const filtered = onlyOpenTasks
+      ? rows.filter((r) =>
+          includeGaps
+            ? r.outstandingReason.length > 0
+            : r.outstandingTasks.length > 0,
+        )
+      : includeGaps
+        ? rows.filter((r) => r.missingProfileItems.length > 0)
+        : rows
+
+    const filterDescription = onlyOpenTasks
+      ? includeGaps
+        ? "speakers with ≥1 incomplete task OR an incomplete profile"
+        : "speakers with ≥1 incomplete task"
+      : includeGaps
+        ? "speakers with an incomplete profile"
+        : "the whole confirmed roster"
+
+    return {
+      // The sentence exists so a model cannot restate the row count wrongly:
+      // the arithmetic is already written out next to the rows.
+      summary: `${filtered.length} of ${totalSpeakers} confirmed speaker(s) returned — filter: ${filterDescription}. Across the whole roster: ${withOpenTasks} with open tasks, ${withProfileGaps} with an incomplete profile, ${withEither} with either.`,
+      filter: {
+        onlyWithOutstandingWork: onlyOpenTasks,
+        includeProfileGaps: includeGaps,
+        means: filterDescription,
+      },
+      totalSpeakers,
+      returned: filtered.length,
+      withOpenTasks,
+      withProfileGaps,
+      withOpenTasksOrProfileGaps: withEither,
+      // Kept for callers written against the old shape; it has always meant
+      // "rows in this response".
+      speakerCount: filtered.length,
+      speakers: filtered,
+    }
   },
 })
 
@@ -1336,13 +1464,13 @@ export const speakerPortalLink = internalQuery({
   handler: async (ctx, args) => {
     const event = await resolveEvent(ctx, args.userId, args.event)
     const person = await findPerson(ctx, event._id, args.speaker)
-    return {
+    return withLinkWarning({
       personId: person._id,
       name: personName(person),
       email: person.email,
       portalUrl: portalLinkFor(person.portalToken),
       note: "A private magic link — it signs this speaker straight into their portal. Share it only with them.",
-    }
+    })
   },
 })
 
@@ -1433,11 +1561,22 @@ export const listTemplates = internalQuery({
       .withIndex("by_eventId", (q) => q.eq("eventId", event._id))
       .take(200)
     const byKey = new Map(stored.map((row) => [row.key, row]))
+    // Five full email bodies is several KB of prose the model then compresses
+    // lossily. The list carries subjects and a preview; get_template is the
+    // named call for the one body a caller actually wants to read or rewrite.
+    const preview = (body: string) => ({
+      bodyPreview:
+        body.length > TEMPLATE_PREVIEW_CHARS
+          ? `${body.slice(0, TEMPLATE_PREVIEW_CHARS)}…`
+          : body,
+      bodyLength: body.length,
+      bodyTruncated: body.length > TEMPLATE_PREVIEW_CHARS,
+    })
     const rows = stored.map((row) => ({
       key: row.key,
       name: row.name,
       subject: row.subject,
-      body: row.body,
+      ...preview(row.body),
       customized: true,
     }))
     for (const template of DEFAULT_TEMPLATES) {
@@ -1446,14 +1585,45 @@ export const listTemplates = internalQuery({
         key: template.key,
         name: template.name,
         subject: template.subject,
-        body: template.body,
+        ...preview(template.body),
         customized: false,
       })
     }
     return {
+      templateCount: rows.length,
       templates: rows,
       variables: ["speakerName", "firstName", "sessionTitle", "eventName", "portalLink"],
-      note: "Placeholders use {{variable}} syntax and are filled in when the email is queued.",
+      note: "Bodies are previewed to the first 200 characters — call get_template for the full text of one. Placeholders use {{variable}} syntax and are filled in when the email is queued.",
+    }
+  },
+})
+
+export const getTemplate = internalQuery({
+  args: { userId: v.string(), event: v.string(), key: v.string() },
+  returns: v.any(),
+  handler: async (ctx, args) => {
+    const event = await resolveEvent(ctx, args.userId, args.event)
+    const key = args.key.trim()
+    if (!(TEMPLATE_KEYS as ReadonlyArray<string>).includes(key)) {
+      throw new Error(
+        `Unknown template key "${args.key}". One of: ${TEMPLATE_KEYS.join(", ")}.`,
+      )
+    }
+    const existing = await ctx.db
+      .query("emailTemplates")
+      .withIndex("by_eventId_and_key", (q) =>
+        q.eq("eventId", event._id).eq("key", key),
+      )
+      .unique()
+    const fallback = defaultTemplate(key)
+    return {
+      key,
+      name: existing?.name ?? fallback.name,
+      subject: existing?.subject ?? fallback.subject,
+      body: existing?.body ?? fallback.body,
+      customized: existing !== null,
+      variables: ["speakerName", "firstName", "sessionTitle", "eventName", "portalLink"],
+      note: "Rewrite it with update_template, then proof it with send_test_email.",
     }
   },
 })
@@ -1596,103 +1766,133 @@ export const eventSummary = internalQuery({
   returns: v.any(),
   handler: async (ctx, args) => {
     const event = await resolveEvent(ctx, args.userId, args.event)
-    const stats = await eventStats(ctx, event)
-    const conflicts = await computeConflicts(ctx, event._id)
-    const now = Date.now()
-
-    const pending = stats.statusCounts.pending
-    const acceptQueue = stats.statusCounts.accept_queue
-    const declineQueue = stats.statusCounts.decline_queue
-
-    const needsAttention: Array<string> = []
-    if (pending > 0) needsAttention.push(`${pending} submission(s) still pending review`)
-    if (acceptQueue > 0) {
-      needsAttention.push(
-        `${acceptQueue} staged in the accept queue — commit_decision_queue sends the acceptance emails`,
-      )
-    }
-    if (declineQueue > 0) {
-      needsAttention.push(`${declineQueue} staged in the decline queue`)
-    }
-    if (stats.unscheduledAccepted > 0) {
-      needsAttention.push(
-        `${stats.unscheduledAccepted} accepted session(s) not on the agenda yet — try auto_place_sessions`,
-      )
-    }
-    if (conflicts.length > 0) {
-      needsAttention.push(`${conflicts.length} agenda conflict(s) to resolve`)
-    }
-    if (stats.openTasks.length > 0) {
-      needsAttention.push(
-        `${stats.openTasks.length} outstanding speaker task(s) — send_reminders will nudge them`,
-      )
-    }
-
-    const deadlines: Array<{ what: string; when: string; daysAway: number }> = []
-    for (const form of stats.forms) {
-      if (form.closeAt === undefined) continue
-      deadlines.push({
-        what: `CFP "${form.internalName}" closes`,
-        when: new Date(form.closeAt).toISOString(),
-        daysAway: Math.round((form.closeAt - now) / 86_400_000),
-      })
-    }
-    for (const task of stats.openTasks) {
-      if (task.dueAt === undefined) continue
-      deadlines.push({
-        what: `Speaker task "${task.title}" due`,
-        when: new Date(task.dueAt).toISOString(),
-        daysAway: Math.round((task.dueAt - now) / 86_400_000),
-      })
-    }
-    if (event.startsAt !== undefined) {
-      deadlines.push({
-        what: `${event.name} starts`,
-        when: new Date(event.startsAt).toISOString(),
-        daysAway: Math.round((event.startsAt - now) / 86_400_000),
-      })
-    }
-    deadlines.sort((a, b) => a.daysAway - b.daysAway)
-
-    const headline =
-      `${event.name} — ${stats.submissions.length} submission(s): ` +
-      `${stats.statusCounts.accepted} accepted, ${pending} pending, ` +
-      `${stats.statusCounts.declined} declined. ` +
-      `${stats.scheduledCount} session(s) scheduled across ${stats.forms.length} form(s).`
-
-    return {
-      headline,
-      event: {
-        eventId: event._id,
-        name: event.name,
-        slug: event.slug,
-        timezone: event.timezone,
-        startsAt: iso(event.startsAt),
-        endsAt: iso(event.endsAt),
-        venue: event.venue ?? null,
-      },
-      submissions: stats.statusCounts,
-      agenda: {
-        scheduled: stats.scheduledCount,
-        acceptedNotScheduled: stats.unscheduledAccepted,
-        conflicts: conflicts.map((c) => c.label),
-      },
-      speakerTasks: {
-        open: stats.openTasks.length,
-        completed: stats.tasks.length - stats.openTasks.length,
-      },
-      forms: stats.forms.map((form) => ({
-        name: form.internalName,
-        status: form.status,
-        publicUrl: publicFormUrl(form.slug),
-        closesAt: iso(form.closeAt),
-      })),
-      needsAttention:
-        needsAttention.length > 0 ? needsAttention : ["Nothing outstanding — you're in good shape."],
-      upcomingDeadlines: deadlines.slice(0, 8),
-    }
+    return await eventSummaryPayload(ctx, event)
   },
 })
+
+/**
+ * THE one event read-model: the narrative summary AND every dashboard number
+ * `get_event_overview` used to return on its own (total submissions, open task
+ * count, conflict count, outbox counts by status, forms with ids and links).
+ *
+ * Field names are deliberately normalised against the rest of the surface —
+ * `closeAt` (never `closesAt`, which `list_forms`/`get_form` never used) and
+ * `acceptedNotScheduled` (never `acceptedNotYetScheduled`) — because a model
+ * that meets the same value under two names hedges instead of answering.
+ */
+async function eventSummaryPayload(ctx: QueryCtx, event: Doc<"events">) {
+  const stats = await eventStats(ctx, event)
+  const conflicts = await computeConflicts(ctx, event._id)
+  const now = Date.now()
+
+  const messages = await ctx.db
+    .query("messages")
+    .withIndex("by_eventId", (q) => q.eq("eventId", event._id))
+    .take(MAX_ROWS)
+  const outboxByStatus: Record<string, number> = {}
+  for (const message of messages) {
+    outboxByStatus[message.status] = (outboxByStatus[message.status] ?? 0) + 1
+  }
+
+  const pending = stats.statusCounts.pending
+  const acceptQueue = stats.statusCounts.accept_queue
+  const declineQueue = stats.statusCounts.decline_queue
+
+  const needsAttention: Array<string> = []
+  if (pending > 0) needsAttention.push(`${pending} submission(s) still pending review`)
+  if (acceptQueue > 0) {
+    needsAttention.push(
+      `${acceptQueue} staged in the accept queue — commit_decision_queue sends the acceptance emails`,
+    )
+  }
+  if (declineQueue > 0) {
+    needsAttention.push(`${declineQueue} staged in the decline queue`)
+  }
+  if (stats.unscheduledAccepted > 0) {
+    needsAttention.push(
+      `${stats.unscheduledAccepted} accepted session(s) not on the agenda yet — try auto_place_sessions`,
+    )
+  }
+  if (conflicts.length > 0) {
+    needsAttention.push(`${conflicts.length} agenda conflict(s) to resolve`)
+  }
+  if (stats.openTasks.length > 0) {
+    needsAttention.push(
+      `${stats.openTasks.length} outstanding speaker task(s) — send_reminders will nudge them`,
+    )
+  }
+
+  const deadlines: Array<{ what: string; when: string; daysAway: number }> = []
+  for (const form of stats.forms) {
+    if (form.closeAt === undefined) continue
+    deadlines.push({
+      what: `CFP "${form.internalName}" closes`,
+      when: new Date(form.closeAt).toISOString(),
+      daysAway: Math.round((form.closeAt - now) / 86_400_000),
+    })
+  }
+  for (const task of stats.openTasks) {
+    if (task.dueAt === undefined) continue
+    deadlines.push({
+      what: `Speaker task "${task.title}" due`,
+      when: new Date(task.dueAt).toISOString(),
+      daysAway: Math.round((task.dueAt - now) / 86_400_000),
+    })
+  }
+  if (event.startsAt !== undefined) {
+    deadlines.push({
+      what: `${event.name} starts`,
+      when: new Date(event.startsAt).toISOString(),
+      daysAway: Math.round((event.startsAt - now) / 86_400_000),
+    })
+  }
+  deadlines.sort((a, b) => a.daysAway - b.daysAway)
+
+  const headline =
+    `${event.name} — ${stats.submissions.length} submission(s): ` +
+    `${stats.statusCounts.accepted} accepted, ${pending} pending, ` +
+    `${stats.statusCounts.declined} declined. ` +
+    `${stats.scheduledCount} session(s) scheduled across ${stats.forms.length} form(s).`
+
+  return withLinkWarning({
+    headline,
+    event: {
+      eventId: event._id,
+      name: event.name,
+      slug: event.slug,
+      timezone: event.timezone,
+      startsAt: iso(event.startsAt),
+      endsAt: iso(event.endsAt),
+      venue: event.venue ?? null,
+    },
+    totalSubmissions: stats.submissions.length,
+    submissions: stats.statusCounts,
+    agenda: {
+      scheduled: stats.scheduledCount,
+      acceptedNotScheduled: stats.unscheduledAccepted,
+      conflictCount: conflicts.length,
+      conflicts: conflicts.map((c) => c.label),
+    },
+    speakerTasks: {
+      open: stats.openTasks.length,
+      completed: stats.tasks.length - stats.openTasks.length,
+    },
+    outbox: outboxByStatus,
+    forms: stats.forms.map((form) => ({
+      formId: form._id,
+      name: form.internalName,
+      slug: form.slug,
+      status: form.status,
+      closeAt: iso(form.closeAt),
+      publicUrl: publicFormUrl(form.slug),
+    })),
+    needsAttention:
+      needsAttention.length > 0
+        ? needsAttention
+        : ["Nothing outstanding — you're in good shape."],
+    upcomingDeadlines: deadlines.slice(0, 8),
+  })
+}
 
 // ══════════════════════════════════════════════════════════════════════════
 // Tool registry

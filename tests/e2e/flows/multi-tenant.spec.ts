@@ -8,6 +8,7 @@ import {
   clientFor,
   expectToast,
   fillStable,
+  gotoStable,
   organizerConvexClient,
   testEmail,
   uiSignIn,
@@ -80,7 +81,7 @@ test.describe("multi-tenancy", () => {
 
       // Organizer surfaces must be empty, not merely hidden.
       for (const route of ["/app/submissions", "/app/speakers", "/app/agenda"]) {
-        await fresh.goto(route, { waitUntil: "domcontentloaded" })
+        await gotoStable(fresh, route)
         await waitForShell(fresh)
         await expect(fresh.locator("body")).not.toContainText(
           new RegExp(MAIN_EVENT_NAME, "i"),
@@ -108,7 +109,7 @@ test.describe("multi-tenancy", () => {
     const orgWatcher = armed(org)
 
     await test.step("organizer invites the fresh email", async () => {
-      await org.goto("/app/workspace", { waitUntil: "domcontentloaded" })
+      await gotoStable(org, "/app/workspace")
       await expect(
         org.getByRole("heading", { name: /workspace settings/i }).first(),
       ).toBeVisible({ timeout: 30_000 })
@@ -183,7 +184,7 @@ test.describe("multi-tenancy", () => {
       })
 
       // Real access, not just a menu entry: the submissions table loads.
-      await claim.goto("/app/submissions", { waitUntil: "domcontentloaded" })
+      await gotoStable(claim, "/app/submissions")
       await expect(
         claim.getByRole("tab", { name: /^all/i }).first(),
       ).toBeVisible({ timeout: 30_000 })
@@ -275,7 +276,7 @@ test.describe("multi-tenancy", () => {
     const watcher = armed(page)
     try {
       await uiSignUp(page, "Plain Member", memberEmail, PASSWORD)
-      await page.goto("/app/workspace", { waitUntil: "domcontentloaded" })
+      await gotoStable(page, "/app/workspace")
       await expect(
         page.getByRole("heading", { name: /workspace settings/i }).first(),
       ).toBeVisible({ timeout: 30_000 })

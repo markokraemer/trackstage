@@ -26,7 +26,7 @@ const COLUMN_TITLE_CLASS = "text-sm font-medium text-background"
 interface FooterLink {
   label: string
   /** Typed router destination, plain href, or an external URL. */
-  to?: "/login" | "/design-system"
+  to?: "/login" | "/design-system" | "/docs" | "/docs/api" | "/docs/mcp"
   href?: string
   external?: boolean
 }
@@ -61,8 +61,10 @@ const COLUMNS: Array<FooterColumn> = [
   {
     title: "Developers",
     links: [
-      { label: "README & API docs", href: GITHUB_README_URL, external: true },
-      { label: "MCP server", href: GITHUB_README_URL, external: true },
+      { label: "Documentation", to: "/docs" },
+      { label: "API reference", to: "/docs/api" },
+      { label: "MCP server", to: "/docs/mcp" },
+      { label: "README", href: GITHUB_README_URL, external: true },
       { label: "Source on GitHub", href: GITHUB_URL, external: true },
       { label: "Report an issue", href: GITHUB_ISSUES_URL, external: true },
       { label: "MIT license", href: GITHUB_LICENSE_URL, external: true },

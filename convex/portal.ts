@@ -10,6 +10,7 @@ import {
   replaceHeadshot,
   storageMeta,
 } from "./lib/files"
+import { notifySubmissionAdmins } from "./platformEmails"
 
 // ————————————————————————————————————————————————————————————————————————
 // Speaker portal. All functions authenticate with the person's portalToken
@@ -218,6 +219,18 @@ export const updateSubmission = mutation({
       ...(description !== undefined ? { description } : {}),
       ...(answers !== undefined ? { answers } : {}),
     })
+    // Tell the form's notify list a speaker changed something under review.
+    // Fire-and-forget: a mail problem must never fail the speaker's edit.
+    try {
+      await notifySubmissionAdmins(ctx, {
+        submissionId: args.submissionId,
+        kind: "updated",
+        submitterName:
+          `${person.firstName} ${person.lastName}`.trim() || person.email,
+      })
+    } catch (error) {
+      console.error("submission notification could not be scheduled", error)
+    }
     return null
   },
 })

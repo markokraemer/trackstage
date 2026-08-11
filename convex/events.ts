@@ -1,4 +1,6 @@
 import { v } from "convex/values"
+import type { Id } from "./_generated/dataModel"
+import type { MutationCtx } from "./_generated/server"
 import { mutation, query } from "./_generated/server"
 import { myMemberships, requireEventAccess, requireMembership } from "./lib/auth"
 import { deleteEventBlobs } from "./lib/files"
@@ -111,48 +113,62 @@ export const update = mutation({
   },
 })
 
+/**
+ * The cascade itself, with NO authorization of its own — every caller must have
+ * already proved the caller may delete this event. It lives outside `remove` so
+ * the MCP `delete_event` tool (convex/mcp.ts, which authorizes against a
+ * Better Auth user id rather than `ctx.auth`) deletes through the exact same
+ * path instead of maintaining a second, drifting copy of the table list.
+ */
+export async function deleteEventCascade(
+  ctx: MutationCtx,
+  eventId: Id<"events">,
+): Promise<void> {
+  // Storage first — it reads the rows that are about to be deleted. Without
+  // this, every uploaded deck, headshot and logo would outlive its event as
+  // an unreachable blob nobody can ever find again.
+  await deleteEventBlobs(ctx, eventId)
+  const byEventId = [
+    "rooms",
+    "tracks",
+    "forms",
+    "people",
+    "submissions",
+    "submissionParticipants",
+    "evaluationPlans",
+    "evaluators",
+    "tasks",
+    "uploads",
+    "emailTemplates",
+    "messages",
+    "embeds",
+  ] as const
+  for (const table of byEventId) {
+    const rows = await ctx.db
+      .query(table)
+      .withIndex("by_eventId", (q) => q.eq("eventId", eventId))
+      .collect()
+    for (const row of rows) {
+      if (table === "evaluationPlans") {
+        const evals = await ctx.db
+          .query("evaluations")
+          .withIndex("by_planId", (q) => q.eq("planId", row._id as never))
+          .collect()
+        for (const e of evals) await ctx.db.delete(e._id)
+      }
+      await ctx.db.delete(row._id)
+    }
+  }
+  await ctx.db.delete(eventId)
+}
+
 // Delete an event and every row that belongs to it. Admin-only and
 // deliberately explicit — the UI must confirm with the event name.
 export const remove = mutation({
   args: { eventId: v.id("events") },
   handler: async (ctx, args) => {
     await requireEventAccess(ctx, args.eventId, "admin")
-    // Storage first — it reads the rows that are about to be deleted. Without
-    // this, every uploaded deck, headshot and logo would outlive its event as
-    // an unreachable blob nobody can ever find again.
-    await deleteEventBlobs(ctx, args.eventId)
-    const byEventId = [
-      "rooms",
-      "tracks",
-      "forms",
-      "people",
-      "submissions",
-      "submissionParticipants",
-      "evaluationPlans",
-      "evaluators",
-      "tasks",
-      "uploads",
-      "emailTemplates",
-      "messages",
-      "embeds",
-    ] as const
-    for (const table of byEventId) {
-      const rows = await ctx.db
-        .query(table)
-        .withIndex("by_eventId", (q) => q.eq("eventId", args.eventId))
-        .collect()
-      for (const row of rows) {
-        if (table === "evaluationPlans") {
-          const evals = await ctx.db
-            .query("evaluations")
-            .withIndex("by_planId", (q) => q.eq("planId", row._id as never))
-            .collect()
-          for (const e of evals) await ctx.db.delete(e._id)
-        }
-        await ctx.db.delete(row._id)
-      }
-    }
-    await ctx.db.delete(args.eventId)
+    await deleteEventCascade(ctx, args.eventId)
     return null
   },
 })

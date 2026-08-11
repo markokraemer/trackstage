@@ -42,7 +42,6 @@ export const generateUploadUrl = mutation({
 // ——— Event branding ———————————————————————————————————————————————————————
 
 const BRANDING_SLOTS = { logo: "logoId", background: "backgroundId" } as const
-type BrandingSlot = keyof typeof BRANDING_SLOTS
 
 export const eventBranding = query({
   args: { eventId: v.id("events") },
@@ -85,7 +84,7 @@ export const setEventBranding = mutation({
   returns: v.null(),
   handler: async (ctx, args) => {
     const { event } = await requireEventAccess(ctx, args.eventId, "admin")
-    const field = BRANDING_SLOTS[args.slot as BrandingSlot]
+    const field = BRANDING_SLOTS[args.slot]
     const previous = event[field]
 
     if (args.storageId !== null) {

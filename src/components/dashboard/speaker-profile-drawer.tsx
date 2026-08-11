@@ -14,7 +14,6 @@
 import * as React from "react"
 import { useConvexMutation } from "@convex-dev/react-query"
 import { api } from "@convex/_generated/api"
-import type { Id } from "@convex/_generated/dataModel"
 import { RiExternalLinkLine, RiImageLine, RiSaveLine } from "@remixicon/react"
 import { toast } from "sonner"
 
@@ -82,7 +81,7 @@ export function SpeakerProfileDrawer({
     setSaving(true)
     try {
       await updateProfile({
-        personId: speaker.personId as Id<"people">,
+        personId: speaker.personId,
         patch: {
           firstName,
           lastName,

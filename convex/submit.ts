@@ -1,9 +1,11 @@
 import { v } from "convex/values"
+import { internal } from "./_generated/api"
 import type { Doc, Id } from "./_generated/dataModel"
 import type { MutationCtx } from "./_generated/server"
 import { mutation, query } from "./_generated/server"
 import { scheduleAirtableSync } from "./airtable"
 import { randomToken } from "./lib/auth"
+import { notifySubmissionAdmins } from "./platformEmails"
 
 // ————————————————————————————————————————————————————————————————————————
 // Public CFP submission flow. Token model: the Account step identifies the
@@ -412,6 +414,50 @@ export const submit = mutation({
       })
     }
     await upsertParticipants(ctx, form, submissionId, args.participants)
+
+    // ——— Side effects. None of these may lose the submission ———————————
+    // The row is already written; a mail failure here must not roll the
+    // speaker's work back, so each side effect is isolated and logged.
+
+    // "Send submission confirmation email" (form builder → Notifications).
+    // Goes to the submitter and every speaker on the proposal — a co-speaker
+    // added by someone else still gets told their name is on a talk. The
+    // preview/@example.com rule is inherited from the outbox, not re-built.
+    if (form.participantConfig.sendConfirmationEmail) {
+      const participantRows = await ctx.db
+        .query("submissionParticipants")
+        .withIndex("by_submissionId", (q) => q.eq("submissionId", submissionId))
+        .collect()
+      const recipients = new Set<Id<"people">>([person._id])
+      for (const row of participantRows) {
+        if (row.role === "speaker") recipients.add(row.personId)
+      }
+      for (const personId of recipients) {
+        try {
+          await ctx.runMutation(internal.comms.queueForPerson, {
+            eventId: form.eventId,
+            personId,
+            templateKey: "confirmation",
+            submissionId,
+          })
+        } catch (error) {
+          console.error("confirmation email could not be queued", error)
+        }
+      }
+    }
+
+    // Alert the organizers on the form's notify list (Notifications step).
+    try {
+      await notifySubmissionAdmins(ctx, {
+        submissionId,
+        kind: "new",
+        submitterName:
+          `${person.firstName} ${person.lastName}`.trim() || person.email,
+      })
+    } catch (error) {
+      console.error("submission notification could not be scheduled", error)
+    }
+
     // Mirror to Airtable within seconds (no-op unless connected).
     await scheduleAirtableSync(ctx, form.eventId)
 

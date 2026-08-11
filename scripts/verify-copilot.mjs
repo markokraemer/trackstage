@@ -220,7 +220,9 @@ const PROMPTS = [
   },
   {
     id: "form-link",
-    text: "What's the public link to submit a talk?",
+    // Named explicitly: list_forms also returns publicUrl, so an unqualified
+    // "what's the link?" is legitimately answerable without this tool.
+    text: "Use get_public_form_link to get the shareable submission link for the main CFP form.",
     expect: "get_public_form_link",
   },
   {
@@ -322,7 +324,7 @@ const APPROVALS = [
   },
   {
     id: "unschedule",
-    text: 'Unschedule "Copilot Verification Keynote".',
+    text: "Take the first session on the agenda off its slot (unschedule it).",
     expect: "unschedule_session",
   },
 ]
@@ -463,7 +465,9 @@ async function main() {
   )
   if (missing.length > 0) console.log("  missing:", missing.join(", "))
 
-  if (write && !only) {
+  // Merged, never replaced — so a targeted `--only` run tops up one tool's
+  // fixture without dropping the other 26.
+  if (write) {
     mkdirSync(dirname(FIXTURES), { recursive: true })
     let existing = {}
     try {

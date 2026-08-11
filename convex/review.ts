@@ -51,6 +51,10 @@ export const queue = query({
   handler: async (ctx, args) => {
     const { evaluator, plan } = await requireEvaluator(ctx, args.token)
     const event = await ctx.db.get(plan.eventId)
+    // Blind round (sbek ABS-07): the identities are stripped HERE, on the
+    // server, not hidden in the UI — an evaluator reading the network response
+    // must not be able to recover who submitted.
+    const anonymized = plan.blind === true
     const mine = await myEvaluations(ctx, evaluator._id)
     const bySubmission = new Map<string, Doc<"evaluations">>()
     for (const evaluation of mine) {
@@ -65,24 +69,31 @@ export const queue = query({
       const track = submission.trackId
         ? await ctx.db.get(submission.trackId)
         : null
-      const participants = await ctx.db
-        .query("submissionParticipants")
-        .withIndex("by_submissionId", (q) =>
-          q.eq("submissionId", submission._id)
-        )
-        .take(64)
-      participants.sort((a, b) => a.order - b.order)
 
-      const speakers = []
-      for (const participant of participants) {
-        const person = await ctx.db.get(participant.personId)
-        // Blind-ish review: names + affiliation only, never contact details.
-        speakers.push({
-          name: personName(person),
-          jobTitle: person?.jobTitle,
-          company: person?.company,
-          role: participant.role,
-        })
+      const speakers: Array<{
+        name: string
+        jobTitle?: string
+        company?: string
+        role: string
+      }> = []
+      if (!anonymized) {
+        const participants = await ctx.db
+          .query("submissionParticipants")
+          .withIndex("by_submissionId", (q) =>
+            q.eq("submissionId", submission._id)
+          )
+          .take(64)
+        participants.sort((a, b) => a.order - b.order)
+        for (const participant of participants) {
+          const person = await ctx.db.get(participant.personId)
+          // Names + affiliation only, never contact details.
+          speakers.push({
+            name: personName(person),
+            jobTitle: person?.jobTitle,
+            company: person?.company,
+            role: participant.role,
+          })
+        }
       }
 
       const existing = bySubmission.get(submission._id) ?? null
@@ -127,7 +138,10 @@ export const queue = query({
         criteria: plan.criteria,
         dueAt: plan.dueAt,
         status: plan.status,
+        blind: anonymized,
       },
+      /** True when speaker identities were withheld from this payload. */
+      anonymized,
       submissions,
       progress: { done, total: submissions.length },
     }

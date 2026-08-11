@@ -8,6 +8,7 @@ import {
   RiArrowRightLine,
   RiCheckLine,
   RiErrorWarningLine,
+  RiEyeOffLine,
   RiLockLine,
   RiTrophyLine,
 } from "@remixicon/react"
@@ -171,6 +172,16 @@ function ReviewPage() {
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <Badge variant="secondary">Round {plan.round}</Badge>
+            {queue.anonymized ? (
+              <Badge
+                variant="secondary"
+                className="gap-1"
+                title="Speaker names, job titles and companies are withheld for this round."
+              >
+                <RiEyeOffLine size={12} aria-hidden />
+                Blind review
+              </Badge>
+            ) : null}
             {closed ? (
               <Badge variant="secondary" className="gap-1">
                 <RiLockLine size={12} aria-hidden />
@@ -335,7 +346,13 @@ function ReviewPage() {
                   </div>
                 ) : null}
 
-                {current.speakers.length > 0 ? (
+                {queue.anonymized ? (
+                  <p className="mt-4 flex items-center gap-1.5 text-xs text-muted-foreground">
+                    <RiEyeOffLine size={13} aria-hidden />
+                    Blind review — score this on the abstract alone. Speaker
+                    details are withheld for this round.
+                  </p>
+                ) : current.speakers.length > 0 ? (
                   <div className="mt-4">
                     <p className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
                       {current.speakers.length === 1 ? "Speaker" : "Speakers"}

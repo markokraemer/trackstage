@@ -65,7 +65,7 @@ export function HeadshotUploader({
         onDrop={(event) => {
           event.preventDefault()
           setIsOver(false)
-          void handleFile(event.dataTransfer.files?.[0])
+          void handleFile(event.dataTransfer.files[0])
         }}
         className={cn(
           "rounded-full p-1 transition-colors",

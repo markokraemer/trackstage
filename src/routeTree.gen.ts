@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AppRouteRouteImport } from './routes/app/route'
 import { Route as DesignSystemRouteImport } from './routes/design-system'
+import { Route as DocsRouteRouteImport } from './routes/docs/route'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as PortalRouteRouteImport } from './routes/portal/route'
 import { Route as DotwellKnownOauthAuthorizationServerRouteImport } from './routes/[.]well-known/oauth-authorization-server'
@@ -21,6 +22,9 @@ import { Route as AppAccountRouteImport } from './routes/app/account'
 import { Route as AppCopilotRouteImport } from './routes/app/copilot'
 import { Route as AppSettingsRouteRouteImport } from './routes/app/settings/route'
 import { Route as AppWorkspaceRouteImport } from './routes/app/workspace'
+import { Route as DocsIndexRouteImport } from './routes/docs/index'
+import { Route as DocsApiRouteImport } from './routes/docs/api'
+import { Route as DocsMcpRouteImport } from './routes/docs/mcp'
 import { Route as ESlugRouteRouteImport } from './routes/e/$slug/route'
 import { Route as PortalIndexRouteImport } from './routes/portal/index'
 import { Route as PortalProfileRouteImport } from './routes/portal/profile'
@@ -44,6 +48,17 @@ import { Route as AppSettingsIntegrationsRouteImport } from './routes/app/settin
 import { Route as AppSettingsRoomsAndTracksRouteImport } from './routes/app/settings/rooms-and-tracks'
 import { Route as AppSpeakersIndexRouteImport } from './routes/app/speakers/index'
 import { Route as AppSubmissionsIndexRouteImport } from './routes/app/submissions/index'
+import { Route as DocsGuideAiCopilotRouteImport } from './routes/docs/guide/ai-copilot'
+import { Route as DocsGuideAirtableSyncRouteImport } from './routes/docs/guide/airtable-sync'
+import { Route as DocsGuideBuildTheAgendaRouteImport } from './routes/docs/guide/build-the-agenda'
+import { Route as DocsGuideChaseSpeakersRouteImport } from './routes/docs/guide/chase-speakers'
+import { Route as DocsGuideCreateACfpFormRouteImport } from './routes/docs/guide/create-a-cfp-form'
+import { Route as DocsGuideGettingStartedRouteImport } from './routes/docs/guide/getting-started'
+import { Route as DocsGuidePublishYourProgramRouteImport } from './routes/docs/guide/publish-your-program'
+import { Route as DocsGuideReviewAndDecideRouteImport } from './routes/docs/guide/review-and-decide'
+import { Route as DocsGuideShareAndCollectRouteImport } from './routes/docs/guide/share-and-collect'
+import { Route as DocsGuideSpeakerPortalRouteImport } from './routes/docs/guide/speaker-portal'
+import { Route as DocsGuideTeamAndWorkspacesRouteImport } from './routes/docs/guide/team-and-workspaces'
 import { Route as ESlugIndexRouteImport } from './routes/e/$slug/index'
 import { Route as ESlugMyScheduleRouteImport } from './routes/e/$slug/my-schedule'
 import { Route as ESlugSpeakersRouteImport } from './routes/e/$slug/speakers'
@@ -65,6 +80,11 @@ const AppRouteRoute = AppRouteRouteImport.update({
 const DesignSystemRoute = DesignSystemRouteImport.update({
   id: '/design-system',
   path: '/design-system',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DocsRouteRoute = DocsRouteRouteImport.update({
+  id: '/docs',
+  path: '/docs',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LoginRoute = LoginRouteImport.update({
@@ -112,6 +132,21 @@ const AppWorkspaceRoute = AppWorkspaceRouteImport.update({
   id: '/workspace',
   path: '/workspace',
   getParentRoute: () => AppRouteRoute,
+} as any)
+const DocsIndexRoute = DocsIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => DocsRouteRoute,
+} as any)
+const DocsApiRoute = DocsApiRouteImport.update({
+  id: '/api',
+  path: '/api',
+  getParentRoute: () => DocsRouteRoute,
+} as any)
+const DocsMcpRoute = DocsMcpRouteImport.update({
+  id: '/mcp',
+  path: '/mcp',
+  getParentRoute: () => DocsRouteRoute,
 } as any)
 const ESlugRouteRoute = ESlugRouteRouteImport.update({
   id: '/e/$slug',
@@ -229,6 +264,65 @@ const AppSubmissionsIndexRoute = AppSubmissionsIndexRouteImport.update({
   path: '/submissions/',
   getParentRoute: () => AppRouteRoute,
 } as any)
+const DocsGuideAiCopilotRoute = DocsGuideAiCopilotRouteImport.update({
+  id: '/guide/ai-copilot',
+  path: '/guide/ai-copilot',
+  getParentRoute: () => DocsRouteRoute,
+} as any)
+const DocsGuideAirtableSyncRoute = DocsGuideAirtableSyncRouteImport.update({
+  id: '/guide/airtable-sync',
+  path: '/guide/airtable-sync',
+  getParentRoute: () => DocsRouteRoute,
+} as any)
+const DocsGuideBuildTheAgendaRoute = DocsGuideBuildTheAgendaRouteImport.update({
+  id: '/guide/build-the-agenda',
+  path: '/guide/build-the-agenda',
+  getParentRoute: () => DocsRouteRoute,
+} as any)
+const DocsGuideChaseSpeakersRoute = DocsGuideChaseSpeakersRouteImport.update({
+  id: '/guide/chase-speakers',
+  path: '/guide/chase-speakers',
+  getParentRoute: () => DocsRouteRoute,
+} as any)
+const DocsGuideCreateACfpFormRoute = DocsGuideCreateACfpFormRouteImport.update({
+  id: '/guide/create-a-cfp-form',
+  path: '/guide/create-a-cfp-form',
+  getParentRoute: () => DocsRouteRoute,
+} as any)
+const DocsGuideGettingStartedRoute = DocsGuideGettingStartedRouteImport.update({
+  id: '/guide/getting-started',
+  path: '/guide/getting-started',
+  getParentRoute: () => DocsRouteRoute,
+} as any)
+const DocsGuidePublishYourProgramRoute =
+  DocsGuidePublishYourProgramRouteImport.update({
+    id: '/guide/publish-your-program',
+    path: '/guide/publish-your-program',
+    getParentRoute: () => DocsRouteRoute,
+  } as any)
+const DocsGuideReviewAndDecideRoute =
+  DocsGuideReviewAndDecideRouteImport.update({
+    id: '/guide/review-and-decide',
+    path: '/guide/review-and-decide',
+    getParentRoute: () => DocsRouteRoute,
+  } as any)
+const DocsGuideShareAndCollectRoute =
+  DocsGuideShareAndCollectRouteImport.update({
+    id: '/guide/share-and-collect',
+    path: '/guide/share-and-collect',
+    getParentRoute: () => DocsRouteRoute,
+  } as any)
+const DocsGuideSpeakerPortalRoute = DocsGuideSpeakerPortalRouteImport.update({
+  id: '/guide/speaker-portal',
+  path: '/guide/speaker-portal',
+  getParentRoute: () => DocsRouteRoute,
+} as any)
+const DocsGuideTeamAndWorkspacesRoute =
+  DocsGuideTeamAndWorkspacesRouteImport.update({
+    id: '/guide/team-and-workspaces',
+    path: '/guide/team-and-workspaces',
+    getParentRoute: () => DocsRouteRoute,
+  } as any)
 const ESlugIndexRoute = ESlugIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -268,6 +362,7 @@ const ESlugSessionsSessionIdRoute = ESlugSessionsSessionIdRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/app': typeof AppRouteRouteWithChildren
+  '/docs': typeof DocsRouteRouteWithChildren
   '/portal': typeof PortalRouteRouteWithChildren
   '/design-system': typeof DesignSystemRoute
   '/login': typeof LoginRoute
@@ -278,12 +373,15 @@ export interface FileRoutesByFullPath {
   '/app/account': typeof AppAccountRoute
   '/app/copilot': typeof AppCopilotRoute
   '/app/workspace': typeof AppWorkspaceRoute
+  '/docs/api': typeof DocsApiRoute
+  '/docs/mcp': typeof DocsMcpRoute
   '/portal/profile': typeof PortalProfileRoute
   '/portal/submissions': typeof PortalSubmissionsRoute
   '/portal/tasks': typeof PortalTasksRoute
   '/review/$token': typeof ReviewTokenRoute
   '/submit/$slug': typeof SubmitSlugRoute
   '/app/': typeof AppIndexRoute
+  '/docs/': typeof DocsIndexRoute
   '/portal/': typeof PortalIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/app/evaluation/$planId': typeof AppEvaluationPlanIdRoute
@@ -292,6 +390,17 @@ export interface FileRoutesByFullPath {
   '/app/settings/api-mcp': typeof AppSettingsApiMcpRoute
   '/app/settings/integrations': typeof AppSettingsIntegrationsRoute
   '/app/settings/rooms-and-tracks': typeof AppSettingsRoomsAndTracksRoute
+  '/docs/guide/ai-copilot': typeof DocsGuideAiCopilotRoute
+  '/docs/guide/airtable-sync': typeof DocsGuideAirtableSyncRoute
+  '/docs/guide/build-the-agenda': typeof DocsGuideBuildTheAgendaRoute
+  '/docs/guide/chase-speakers': typeof DocsGuideChaseSpeakersRoute
+  '/docs/guide/create-a-cfp-form': typeof DocsGuideCreateACfpFormRoute
+  '/docs/guide/getting-started': typeof DocsGuideGettingStartedRoute
+  '/docs/guide/publish-your-program': typeof DocsGuidePublishYourProgramRoute
+  '/docs/guide/review-and-decide': typeof DocsGuideReviewAndDecideRoute
+  '/docs/guide/share-and-collect': typeof DocsGuideShareAndCollectRoute
+  '/docs/guide/speaker-portal': typeof DocsGuideSpeakerPortalRoute
+  '/docs/guide/team-and-workspaces': typeof DocsGuideTeamAndWorkspacesRoute
   '/e/$slug/my-schedule': typeof ESlugMyScheduleRoute
   '/e/$slug/speakers': typeof ESlugSpeakersRoute
   '/portal/t/$token': typeof PortalTTokenRoute
@@ -318,12 +427,15 @@ export interface FileRoutesByTo {
   '/app/account': typeof AppAccountRoute
   '/app/copilot': typeof AppCopilotRoute
   '/app/workspace': typeof AppWorkspaceRoute
+  '/docs/api': typeof DocsApiRoute
+  '/docs/mcp': typeof DocsMcpRoute
   '/portal/profile': typeof PortalProfileRoute
   '/portal/submissions': typeof PortalSubmissionsRoute
   '/portal/tasks': typeof PortalTasksRoute
   '/review/$token': typeof ReviewTokenRoute
   '/submit/$slug': typeof SubmitSlugRoute
   '/app': typeof AppIndexRoute
+  '/docs': typeof DocsIndexRoute
   '/portal': typeof PortalIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/app/evaluation/$planId': typeof AppEvaluationPlanIdRoute
@@ -332,6 +444,17 @@ export interface FileRoutesByTo {
   '/app/settings/api-mcp': typeof AppSettingsApiMcpRoute
   '/app/settings/integrations': typeof AppSettingsIntegrationsRoute
   '/app/settings/rooms-and-tracks': typeof AppSettingsRoomsAndTracksRoute
+  '/docs/guide/ai-copilot': typeof DocsGuideAiCopilotRoute
+  '/docs/guide/airtable-sync': typeof DocsGuideAirtableSyncRoute
+  '/docs/guide/build-the-agenda': typeof DocsGuideBuildTheAgendaRoute
+  '/docs/guide/chase-speakers': typeof DocsGuideChaseSpeakersRoute
+  '/docs/guide/create-a-cfp-form': typeof DocsGuideCreateACfpFormRoute
+  '/docs/guide/getting-started': typeof DocsGuideGettingStartedRoute
+  '/docs/guide/publish-your-program': typeof DocsGuidePublishYourProgramRoute
+  '/docs/guide/review-and-decide': typeof DocsGuideReviewAndDecideRoute
+  '/docs/guide/share-and-collect': typeof DocsGuideShareAndCollectRoute
+  '/docs/guide/speaker-portal': typeof DocsGuideSpeakerPortalRoute
+  '/docs/guide/team-and-workspaces': typeof DocsGuideTeamAndWorkspacesRoute
   '/e/$slug/my-schedule': typeof ESlugMyScheduleRoute
   '/e/$slug/speakers': typeof ESlugSpeakersRoute
   '/portal/t/$token': typeof PortalTTokenRoute
@@ -353,6 +476,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/app': typeof AppRouteRouteWithChildren
+  '/docs': typeof DocsRouteRouteWithChildren
   '/portal': typeof PortalRouteRouteWithChildren
   '/design-system': typeof DesignSystemRoute
   '/login': typeof LoginRoute
@@ -363,12 +487,15 @@ export interface FileRoutesById {
   '/app/account': typeof AppAccountRoute
   '/app/copilot': typeof AppCopilotRoute
   '/app/workspace': typeof AppWorkspaceRoute
+  '/docs/api': typeof DocsApiRoute
+  '/docs/mcp': typeof DocsMcpRoute
   '/portal/profile': typeof PortalProfileRoute
   '/portal/submissions': typeof PortalSubmissionsRoute
   '/portal/tasks': typeof PortalTasksRoute
   '/review/$token': typeof ReviewTokenRoute
   '/submit/$slug': typeof SubmitSlugRoute
   '/app/': typeof AppIndexRoute
+  '/docs/': typeof DocsIndexRoute
   '/portal/': typeof PortalIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/app/evaluation/$planId': typeof AppEvaluationPlanIdRoute
@@ -377,6 +504,17 @@ export interface FileRoutesById {
   '/app/settings/api-mcp': typeof AppSettingsApiMcpRoute
   '/app/settings/integrations': typeof AppSettingsIntegrationsRoute
   '/app/settings/rooms-and-tracks': typeof AppSettingsRoomsAndTracksRoute
+  '/docs/guide/ai-copilot': typeof DocsGuideAiCopilotRoute
+  '/docs/guide/airtable-sync': typeof DocsGuideAirtableSyncRoute
+  '/docs/guide/build-the-agenda': typeof DocsGuideBuildTheAgendaRoute
+  '/docs/guide/chase-speakers': typeof DocsGuideChaseSpeakersRoute
+  '/docs/guide/create-a-cfp-form': typeof DocsGuideCreateACfpFormRoute
+  '/docs/guide/getting-started': typeof DocsGuideGettingStartedRoute
+  '/docs/guide/publish-your-program': typeof DocsGuidePublishYourProgramRoute
+  '/docs/guide/review-and-decide': typeof DocsGuideReviewAndDecideRoute
+  '/docs/guide/share-and-collect': typeof DocsGuideShareAndCollectRoute
+  '/docs/guide/speaker-portal': typeof DocsGuideSpeakerPortalRoute
+  '/docs/guide/team-and-workspaces': typeof DocsGuideTeamAndWorkspacesRoute
   '/e/$slug/my-schedule': typeof ESlugMyScheduleRoute
   '/e/$slug/speakers': typeof ESlugSpeakersRoute
   '/portal/t/$token': typeof PortalTTokenRoute
@@ -399,6 +537,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/app'
+    | '/docs'
     | '/portal'
     | '/design-system'
     | '/login'
@@ -409,12 +548,15 @@ export interface FileRouteTypes {
     | '/app/account'
     | '/app/copilot'
     | '/app/workspace'
+    | '/docs/api'
+    | '/docs/mcp'
     | '/portal/profile'
     | '/portal/submissions'
     | '/portal/tasks'
     | '/review/$token'
     | '/submit/$slug'
     | '/app/'
+    | '/docs/'
     | '/portal/'
     | '/api/auth/$'
     | '/app/evaluation/$planId'
@@ -423,6 +565,17 @@ export interface FileRouteTypes {
     | '/app/settings/api-mcp'
     | '/app/settings/integrations'
     | '/app/settings/rooms-and-tracks'
+    | '/docs/guide/ai-copilot'
+    | '/docs/guide/airtable-sync'
+    | '/docs/guide/build-the-agenda'
+    | '/docs/guide/chase-speakers'
+    | '/docs/guide/create-a-cfp-form'
+    | '/docs/guide/getting-started'
+    | '/docs/guide/publish-your-program'
+    | '/docs/guide/review-and-decide'
+    | '/docs/guide/share-and-collect'
+    | '/docs/guide/speaker-portal'
+    | '/docs/guide/team-and-workspaces'
     | '/e/$slug/my-schedule'
     | '/e/$slug/speakers'
     | '/portal/t/$token'
@@ -449,12 +602,15 @@ export interface FileRouteTypes {
     | '/app/account'
     | '/app/copilot'
     | '/app/workspace'
+    | '/docs/api'
+    | '/docs/mcp'
     | '/portal/profile'
     | '/portal/submissions'
     | '/portal/tasks'
     | '/review/$token'
     | '/submit/$slug'
     | '/app'
+    | '/docs'
     | '/portal'
     | '/api/auth/$'
     | '/app/evaluation/$planId'
@@ -463,6 +619,17 @@ export interface FileRouteTypes {
     | '/app/settings/api-mcp'
     | '/app/settings/integrations'
     | '/app/settings/rooms-and-tracks'
+    | '/docs/guide/ai-copilot'
+    | '/docs/guide/airtable-sync'
+    | '/docs/guide/build-the-agenda'
+    | '/docs/guide/chase-speakers'
+    | '/docs/guide/create-a-cfp-form'
+    | '/docs/guide/getting-started'
+    | '/docs/guide/publish-your-program'
+    | '/docs/guide/review-and-decide'
+    | '/docs/guide/share-and-collect'
+    | '/docs/guide/speaker-portal'
+    | '/docs/guide/team-and-workspaces'
     | '/e/$slug/my-schedule'
     | '/e/$slug/speakers'
     | '/portal/t/$token'
@@ -483,6 +650,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/app'
+    | '/docs'
     | '/portal'
     | '/design-system'
     | '/login'
@@ -493,12 +661,15 @@ export interface FileRouteTypes {
     | '/app/account'
     | '/app/copilot'
     | '/app/workspace'
+    | '/docs/api'
+    | '/docs/mcp'
     | '/portal/profile'
     | '/portal/submissions'
     | '/portal/tasks'
     | '/review/$token'
     | '/submit/$slug'
     | '/app/'
+    | '/docs/'
     | '/portal/'
     | '/api/auth/$'
     | '/app/evaluation/$planId'
@@ -507,6 +678,17 @@ export interface FileRouteTypes {
     | '/app/settings/api-mcp'
     | '/app/settings/integrations'
     | '/app/settings/rooms-and-tracks'
+    | '/docs/guide/ai-copilot'
+    | '/docs/guide/airtable-sync'
+    | '/docs/guide/build-the-agenda'
+    | '/docs/guide/chase-speakers'
+    | '/docs/guide/create-a-cfp-form'
+    | '/docs/guide/getting-started'
+    | '/docs/guide/publish-your-program'
+    | '/docs/guide/review-and-decide'
+    | '/docs/guide/share-and-collect'
+    | '/docs/guide/speaker-portal'
+    | '/docs/guide/team-and-workspaces'
     | '/e/$slug/my-schedule'
     | '/e/$slug/speakers'
     | '/portal/t/$token'
@@ -528,6 +710,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AppRouteRoute: typeof AppRouteRouteWithChildren
+  DocsRouteRoute: typeof DocsRouteRouteWithChildren
   PortalRouteRoute: typeof PortalRouteRouteWithChildren
   DesignSystemRoute: typeof DesignSystemRoute
   LoginRoute: typeof LoginRoute
@@ -560,6 +743,13 @@ declare module '@tanstack/react-router' {
       path: '/design-system'
       fullPath: '/design-system'
       preLoaderRoute: typeof DesignSystemRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/docs': {
+      id: '/docs'
+      path: '/docs'
+      fullPath: '/docs'
+      preLoaderRoute: typeof DocsRouteRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/login': {
@@ -624,6 +814,27 @@ declare module '@tanstack/react-router' {
       fullPath: '/app/workspace'
       preLoaderRoute: typeof AppWorkspaceRouteImport
       parentRoute: typeof AppRouteRoute
+    }
+    '/docs/': {
+      id: '/docs/'
+      path: '/'
+      fullPath: '/docs/'
+      preLoaderRoute: typeof DocsIndexRouteImport
+      parentRoute: typeof DocsRouteRoute
+    }
+    '/docs/api': {
+      id: '/docs/api'
+      path: '/api'
+      fullPath: '/docs/api'
+      preLoaderRoute: typeof DocsApiRouteImport
+      parentRoute: typeof DocsRouteRoute
+    }
+    '/docs/mcp': {
+      id: '/docs/mcp'
+      path: '/mcp'
+      fullPath: '/docs/mcp'
+      preLoaderRoute: typeof DocsMcpRouteImport
+      parentRoute: typeof DocsRouteRoute
     }
     '/e/$slug': {
       id: '/e/$slug'
@@ -786,6 +997,83 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppSubmissionsIndexRouteImport
       parentRoute: typeof AppRouteRoute
     }
+    '/docs/guide/ai-copilot': {
+      id: '/docs/guide/ai-copilot'
+      path: '/guide/ai-copilot'
+      fullPath: '/docs/guide/ai-copilot'
+      preLoaderRoute: typeof DocsGuideAiCopilotRouteImport
+      parentRoute: typeof DocsRouteRoute
+    }
+    '/docs/guide/airtable-sync': {
+      id: '/docs/guide/airtable-sync'
+      path: '/guide/airtable-sync'
+      fullPath: '/docs/guide/airtable-sync'
+      preLoaderRoute: typeof DocsGuideAirtableSyncRouteImport
+      parentRoute: typeof DocsRouteRoute
+    }
+    '/docs/guide/build-the-agenda': {
+      id: '/docs/guide/build-the-agenda'
+      path: '/guide/build-the-agenda'
+      fullPath: '/docs/guide/build-the-agenda'
+      preLoaderRoute: typeof DocsGuideBuildTheAgendaRouteImport
+      parentRoute: typeof DocsRouteRoute
+    }
+    '/docs/guide/chase-speakers': {
+      id: '/docs/guide/chase-speakers'
+      path: '/guide/chase-speakers'
+      fullPath: '/docs/guide/chase-speakers'
+      preLoaderRoute: typeof DocsGuideChaseSpeakersRouteImport
+      parentRoute: typeof DocsRouteRoute
+    }
+    '/docs/guide/create-a-cfp-form': {
+      id: '/docs/guide/create-a-cfp-form'
+      path: '/guide/create-a-cfp-form'
+      fullPath: '/docs/guide/create-a-cfp-form'
+      preLoaderRoute: typeof DocsGuideCreateACfpFormRouteImport
+      parentRoute: typeof DocsRouteRoute
+    }
+    '/docs/guide/getting-started': {
+      id: '/docs/guide/getting-started'
+      path: '/guide/getting-started'
+      fullPath: '/docs/guide/getting-started'
+      preLoaderRoute: typeof DocsGuideGettingStartedRouteImport
+      parentRoute: typeof DocsRouteRoute
+    }
+    '/docs/guide/publish-your-program': {
+      id: '/docs/guide/publish-your-program'
+      path: '/guide/publish-your-program'
+      fullPath: '/docs/guide/publish-your-program'
+      preLoaderRoute: typeof DocsGuidePublishYourProgramRouteImport
+      parentRoute: typeof DocsRouteRoute
+    }
+    '/docs/guide/review-and-decide': {
+      id: '/docs/guide/review-and-decide'
+      path: '/guide/review-and-decide'
+      fullPath: '/docs/guide/review-and-decide'
+      preLoaderRoute: typeof DocsGuideReviewAndDecideRouteImport
+      parentRoute: typeof DocsRouteRoute
+    }
+    '/docs/guide/share-and-collect': {
+      id: '/docs/guide/share-and-collect'
+      path: '/guide/share-and-collect'
+      fullPath: '/docs/guide/share-and-collect'
+      preLoaderRoute: typeof DocsGuideShareAndCollectRouteImport
+      parentRoute: typeof DocsRouteRoute
+    }
+    '/docs/guide/speaker-portal': {
+      id: '/docs/guide/speaker-portal'
+      path: '/guide/speaker-portal'
+      fullPath: '/docs/guide/speaker-portal'
+      preLoaderRoute: typeof DocsGuideSpeakerPortalRouteImport
+      parentRoute: typeof DocsRouteRoute
+    }
+    '/docs/guide/team-and-workspaces': {
+      id: '/docs/guide/team-and-workspaces'
+      path: '/guide/team-and-workspaces'
+      fullPath: '/docs/guide/team-and-workspaces'
+      preLoaderRoute: typeof DocsGuideTeamAndWorkspacesRouteImport
+      parentRoute: typeof DocsRouteRoute
+    }
     '/e/$slug/': {
       id: '/e/$slug/'
       path: '/'
@@ -897,6 +1185,44 @@ const AppRouteRouteWithChildren = AppRouteRoute._addFileChildren(
   AppRouteRouteChildren,
 )
 
+interface DocsRouteRouteChildren {
+  DocsApiRoute: typeof DocsApiRoute
+  DocsMcpRoute: typeof DocsMcpRoute
+  DocsIndexRoute: typeof DocsIndexRoute
+  DocsGuideAiCopilotRoute: typeof DocsGuideAiCopilotRoute
+  DocsGuideAirtableSyncRoute: typeof DocsGuideAirtableSyncRoute
+  DocsGuideBuildTheAgendaRoute: typeof DocsGuideBuildTheAgendaRoute
+  DocsGuideChaseSpeakersRoute: typeof DocsGuideChaseSpeakersRoute
+  DocsGuideCreateACfpFormRoute: typeof DocsGuideCreateACfpFormRoute
+  DocsGuideGettingStartedRoute: typeof DocsGuideGettingStartedRoute
+  DocsGuidePublishYourProgramRoute: typeof DocsGuidePublishYourProgramRoute
+  DocsGuideReviewAndDecideRoute: typeof DocsGuideReviewAndDecideRoute
+  DocsGuideShareAndCollectRoute: typeof DocsGuideShareAndCollectRoute
+  DocsGuideSpeakerPortalRoute: typeof DocsGuideSpeakerPortalRoute
+  DocsGuideTeamAndWorkspacesRoute: typeof DocsGuideTeamAndWorkspacesRoute
+}
+
+const DocsRouteRouteChildren: DocsRouteRouteChildren = {
+  DocsApiRoute: DocsApiRoute,
+  DocsMcpRoute: DocsMcpRoute,
+  DocsIndexRoute: DocsIndexRoute,
+  DocsGuideAiCopilotRoute: DocsGuideAiCopilotRoute,
+  DocsGuideAirtableSyncRoute: DocsGuideAirtableSyncRoute,
+  DocsGuideBuildTheAgendaRoute: DocsGuideBuildTheAgendaRoute,
+  DocsGuideChaseSpeakersRoute: DocsGuideChaseSpeakersRoute,
+  DocsGuideCreateACfpFormRoute: DocsGuideCreateACfpFormRoute,
+  DocsGuideGettingStartedRoute: DocsGuideGettingStartedRoute,
+  DocsGuidePublishYourProgramRoute: DocsGuidePublishYourProgramRoute,
+  DocsGuideReviewAndDecideRoute: DocsGuideReviewAndDecideRoute,
+  DocsGuideShareAndCollectRoute: DocsGuideShareAndCollectRoute,
+  DocsGuideSpeakerPortalRoute: DocsGuideSpeakerPortalRoute,
+  DocsGuideTeamAndWorkspacesRoute: DocsGuideTeamAndWorkspacesRoute,
+}
+
+const DocsRouteRouteWithChildren = DocsRouteRoute._addFileChildren(
+  DocsRouteRouteChildren,
+)
+
 interface PortalRouteRouteChildren {
   PortalProfileRoute: typeof PortalProfileRoute
   PortalSubmissionsRoute: typeof PortalSubmissionsRoute
@@ -942,6 +1268,7 @@ const ESlugRouteRouteWithChildren = ESlugRouteRoute._addFileChildren(
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AppRouteRoute: AppRouteRouteWithChildren,
+  DocsRouteRoute: DocsRouteRouteWithChildren,
   PortalRouteRoute: PortalRouteRouteWithChildren,
   DesignSystemRoute: DesignSystemRoute,
   LoginRoute: LoginRoute,

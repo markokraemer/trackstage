@@ -561,20 +561,28 @@ export function LinkRow({
           {label}
         </div>
       ) : null}
-      <div className="flex items-center gap-2 rounded-lg border border-border bg-muted/40 py-1.5 pr-1.5 pl-3">
-        <code className="min-w-0 flex-1 truncate font-mono text-xs text-foreground select-all">
+      {/*
+        The URL gets its own line and WRAPS rather than truncating. In a 360px
+        panel a one-line layout clips it to "http://local…", which is useless
+        for the one thing this component exists to do: let the organizer read
+        the link before they paste it somewhere public.
+      */}
+      <div className="space-y-2 rounded-lg border border-border bg-muted/40 p-2">
+        <code className="block w-full font-mono text-xs leading-relaxed break-all text-foreground select-all">
           {url}
         </code>
-        <CopyButton value={url} className="h-8 shrink-0 px-2.5 text-xs" />
-        <a
-          href={url}
-          target="_blank"
-          rel="noreferrer"
-          className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-md border border-border bg-card px-2.5 text-xs font-medium text-foreground transition-colors hover:bg-secondary focus-visible:border-ring focus-visible:outline-none"
-        >
-          {openLabel}
-          <RiExternalLinkLine size={13} aria-hidden />
-        </a>
+        <div className="flex items-center justify-end gap-2">
+          <CopyButton value={url} className="h-8 shrink-0 px-2.5 text-xs" />
+          <a
+            href={url}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-md border border-border bg-card px-2.5 text-xs font-medium text-foreground transition-colors hover:bg-secondary focus-visible:border-ring focus-visible:outline-none"
+          >
+            {openLabel}
+            <RiExternalLinkLine size={13} aria-hidden />
+          </a>
+        </div>
       </div>
     </div>
   )

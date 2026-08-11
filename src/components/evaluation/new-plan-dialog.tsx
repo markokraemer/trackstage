@@ -37,6 +37,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { Switch } from "@/components/ui/switch"
 import {
   statusLabel,
   StatusPill,
@@ -116,6 +117,7 @@ export function NewPlanDialog({
   const [emails, setEmails] = useState<Array<string>>([])
   const [emailDraft, setEmailDraft] = useState("")
   const [dueDate, setDueDate] = useState<Date | undefined>(undefined)
+  const [blind, setBlind] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const seeded = useRef(false)
 
@@ -137,6 +139,7 @@ export function NewPlanDialog({
     setEmails([])
     setEmailDraft("")
     setDueDate(undefined)
+    setBlind(false)
     setError(null)
   }, [open, nextRound])
 
@@ -252,6 +255,7 @@ export function NewPlanDialog({
         submissionIds: selected as Array<Id<"submissions">>,
         evaluatorEmails,
         dueAt: due ? due.getTime() : undefined,
+        blind,
       },
       {
         onSuccess: (planId) => {
@@ -595,6 +599,25 @@ export function NewPlanDialog({
                 placeholder="No due date"
                 aria-label="Plan due date"
                 className="max-w-xs"
+              />
+            </Field>
+
+            {/* Blind review (sbek ABS-07) */}
+            <Field
+              orientation="horizontal"
+              className="items-start justify-between gap-6 rounded-lg border border-border p-4"
+            >
+              <div className="min-w-0">
+                <FieldLabel htmlFor="plan-blind">Blind review</FieldLabel>
+                <FieldDescription>
+                  Evaluators won't see who submitted — names, job titles and
+                  companies are stripped from their review page.
+                </FieldDescription>
+              </div>
+              <Switch
+                id="plan-blind"
+                checked={blind}
+                onCheckedChange={(value) => setBlind(Boolean(value))}
               />
             </Field>
 

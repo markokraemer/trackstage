@@ -199,3 +199,128 @@ Newest entries at the bottom. Every work session appends what actually happened.
   SVG on the clipboard, left-click still navigates, "View design system" goes to /design-system,
   zero console errors.
 
+
+## 2026-08-11 ~03:50–04:40 — Parity fix wave 1 (coverage-matrix UI gaps)
+
+Six gaps from `docs/reference/coverage-matrix.md`, UI + the minimal backend each needed.
+
+- **Agenda Week + Track views** (matrix #144 / brief #5 "list, day, week, track, or room").
+  `VIEWS` is now `list · day · week · track · rooms · conflicts`, same `?view=` URL pattern.
+  New `agenda-time.ts` helpers (`weekStartKey`/`weekKeys`/`formatWeekdayShort`/`formatWeekRange`,
+  Monday-first) so the week math lives with the rest of the timezone math.
+  `week-view.tsx` — 7 day columns at HALF the Day grid's zoom (`WEEK_PIXELS_PER_MINUTE`),
+  one shared window widened over the whole week (not just the selected day), event days
+  tinted, per-day session count links into the Day grid, 2-lane overlap nudge.
+  `track-view.tsx` — the Day grid with tracks as columns + a "No track" column that only
+  appears when something is untracked. A track is NOT a room: two talks on one track can run
+  at once in different rooms, so `laneOut()` does greedy interval partitioning and puts them
+  side by side (percentage widths) instead of hiding one behind the other.
+- **Publish / go-live** (sbek AIA-07 `handoff`). `events.agendaPublishedAt` (optional) +
+  `agenda.publishAgenda` / `unpublishAgenda` (admin). `agenda.board` returns `slug` +
+  `agendaPublishedAt`. Toolbar: `[Publish agenda]` with a confirm dialog ("Makes the schedule
+  visible on your public event page" + what goes live + reversible) ↔ `Published · <date>`
+  pill with `Unpublish`. `convex/publicData.ts` gates on it: unset ⇒ `sessions: []` /
+  `days: []` / `session: null` plus `publicMessage: "Schedule coming soon"` on schedule,
+  sessionsList, sessionDetail and speakerItinerary; the speaker gallery keeps the PEOPLE but
+  drops their slots (matches the button's own copy). `/e/` empty states read `publicMessage`.
+  Seed publishes the main demo event; **Design Systems Day stays unpublished on purpose** —
+  it has an accepted, scheduled session, so an empty public schedule can only come from the gate.
+- **Speakers roster completeness** (SPK-02 / SPK-04 / CNT-10). New `convex/speakersAdmin.ts`:
+  `addManual` (idempotent on email — fills blanks instead of duplicating), `updateProfile`,
+  `setWorkflowStatus`. New optional `people.workflowStatus` (invited|confirmed|dropped) and
+  `people.headshotNote` (internal, never public). `workflowStatus`'s presence is also what
+  keeps a hand-added speaker on the derive-only roster before they have an accepted session
+  (`dashboard.speakersRoster`). UI: `[Add speaker]` dialog, an inline status select per row
+  (`speaker-workflow-select.tsx`), an "Any status" filter, and a profile drawer with editable
+  bio + headshot note. The drawer deliberately does NOT merge reactive updates into open
+  fields — a text box that rewrites itself under the cursor is worse than a stale one.
+  Organizers note what they need about a headshot; the IMAGE stays the speaker's to upload.
+- **Bulk email composer** (SPK-13). `comms.composeBulk` + `comms.recipientCount` (the composer's
+  live count and the send call the same `resolveBulkRecipients`, so they can't disagree).
+  Filters: all speakers / accepted / incomplete tasks / manual picks. `queueMessage` gained an
+  optional `override: {subject, body}` so ad-hoc copy still renders per-person placeholders and
+  still lands in the ordinary outbox — the @example.com preview rule is inherited, not re-built.
+  UI: `[Compose]` on Communications, merge-field chips that insert at the cursor, live "this
+  will send N emails", toast + jump to the Outbox.
+- **Embed generator last mile** (EMB-15, the rubric's highest-value single item). New `embeds`
+  table + `convex/embeds.ts` (list/save/remove, widget + format validated server-side; cascades
+  in `events.remove` and `seed.purgeEvent`). Page restructured into 1. widget → 2. **format**
+  (embedded widget / direct link / static HTML / JSON feed / calendar feed) → 3. options, with
+  a saved-embeds shelf that loads a configuration back into the configurator. Static HTML is
+  generated from the live program and says out loud that it's a snapshot. Shared vocabulary in
+  `components/embeds/embed-config.ts`.
+- **`autoRedirectToPortal` honoured** (#65). The submit success card counts down 3s out loud
+  ("Continue to portal — 3s" + "Stay here" cancel) and then navigates. A settings toggle that
+  did nothing now does something visible.
+- **Assign-a-task dialog reworked** (Marko feedback on the screenshot): task type was a bare
+  Select of jargon — now radio cards under "What should the speaker do?", each stating its own
+  completion behaviour ("Ticks itself off as soon as their bio is filled in"). **"Fill out a
+  form" removed everywhere** (dialog + MCP `assign_task` enum/description) — audit-confirmed
+  dead config, nothing ever read `kind: "form"`, so it was a promise the portal couldn't keep.
+  The modal no longer stretches the page: `max-h-[85svh]`, header and footer pinned, fields
+  scroll inside.
+- **verify-backend extended** (+52 checks, 122 → **174 passed, 0 failed**, stable over 3 runs):
+  publish gate (draft event has a scheduled session internally but an empty public schedule,
+  `publicMessage`, publish reveals it, unpublish re-hides it), saved embeds CRUD + validation,
+  composeBulk (per-filter counts, one message per recipient, rendered placeholders, empty
+  subject/body/audience refused), manual speaker (created with a portal token, appears in the
+  roster, idempotent on email, bio + headshot note + workflow status persist), and five new
+  cross-org refusals (add speaker, edit profile, publish, bulk email, list embeds).
+  One pre-existing assertion was widened, not weakened: another slice added schema-level
+  required-argument validation to the MCP server, so `commit_decision_queue` without
+  `confirm` now refuses with JSON-RPC `-32602` instead of a tool error. Both are correct
+  refusals; the check now accepts either and still requires the word "confirm".
+- Verified live in the browser: Week grid (7 columns, day counts, session blocks), Track grid
+  (colour-dotted track columns, side-by-side parallel sessions), Published pill + Unpublish,
+  roster Status column with hand-added speakers at 0 sessions, embed generator with the format
+  step and the gated preview rendering "Schedule coming soon".
+
+## 2026-08-11 ~04:00–04:45 — File storage, end to end (Convex-maxing)
+Storage was the one Convex primitive we used at 30%: uploads worked, but the app trusted the
+browser's `size`/`contentType`, never called `storage.delete` **once** (every replaced headshot
+and deleted event orphaned its blobs forever), and `events.logoId` was dead config.
+- **Metadata is now read, never accepted.** `convex/lib/files.ts` is the new storage layer:
+  `storageMeta` reads `ctx.db.system.get("_storage", id)` for the real size, MIME type and
+  sha256; `assertAllowedUpload` gates on those (25 MB cap, allowlist of images/PDF/decks/docs/
+  zip, SVG deliberately excluded) at attach time; `enrichUploads` builds one read model —
+  size, type, checksum, signed URL, `isImage`, `missing`, `duplicateOfVersion` — shared by
+  `portal.myUploads`, `tasksAdmin.listUploads`, `submissions.get` and `files.submissionFiles`.
+  Same sha256 in a slot renders as "identical to v2" instead of a third silent copy.
+  Convex returns sha256 **base64**-encoded, not the base16 the docs claim (verified live).
+- **Nothing orphans any more.** `replaceHeadshot` treats the profile photo as a current value:
+  a replacement deletes the superseded loose upload row AND its blob, while a headshot attached
+  to a task/submission (a reviewed deliverable) survives. `deleteUploadRow` (organizer "delete
+  version") drops row + blob and clears `headshotId` if it pointed there. `releaseBlob` never
+  deletes a blob another row still references (new `uploads.by_storageId` index).
+  `events.remove` → `deleteEventCascade` now calls `deleteEventBlobs` FIRST (it reads the rows
+  it is about to delete); the seed purge covers logo + background too.
+  `files.sweepOrphans` (internalMutation, `pnpm exec convex run files:sweepOrphans`) drops
+  dangling rows/headshot refs and — with `deleteUnreferenced` — blobs nothing points at, with
+  a `minAgeMinutes` guard so an in-flight upload is never mistaken for rot.
+- **New `convex/files.ts`** (organizer side, all `requireEventAccess`): `generateUploadUrl`,
+  `eventBranding` + `setEventBranding` (admin; replacing/clearing deletes the old blob),
+  `attachUploadAsOrganizer` (files a deck that arrived by email against the primary speaker,
+  version-aware, starts `approved`), `deleteUpload`, `submissionFiles`, `sweepOrphans`,
+  `blobsExist` (internal; how a black-box test proves bytes are really gone).
+- **Event branding closes TODO [10]**: `events.backgroundId` added; Settings → Event details
+  gets a Branding card (logo + optional header background, previews, sizes, remove); the logo
+  now renders in the `/e/` public header and the speaker-portal header, with the background as
+  a tinted hero — text fallback when unset. `events.getBySlug` and `portal.home` serve the URLs.
+- **Upload UX**, shadcn-first and shared: `src/components/shared/file-drop-zone.tsx`
+  (drag-drop, click, client validation before the bytes move, real XHR progress) and
+  `file-row.tsx` (image thumbnail or typed icon, human size, version, dedupe hint, status,
+  download-as-real-filename). Portal tasks, the headshot uploader, the submission drawer's
+  Files tab and event branding all use them; `src/lib/files.ts` holds the one copy of the
+  limits, allowlist, labels/icons and the progress upload.
+- **"Download files bundle" parity with no new dependency**: `src/lib/zip.ts` is a ~150-line
+  store-only ZIP writer (CRC32, local headers, central directory, EOCD). Files tab → "Download
+  all" fetches every file and saves one `.zip`. Six unit tests, including a real `unzip`
+  round-trip (117 unit tests pass).
+- **verify-backend Files section rebuilt** (+34 checks, **217 passed, 0 failed**): metadata
+  matches the bytes (a client that claims `size: 1` for 26 bytes is ignored), sha256 matches
+  a locally computed digest, unsupported types refused server-side, duplicate detection,
+  headshot replacement deletes the old blob (`blobsExist` → false) while the current one
+  survives, organizer attach → visible in the speaker's portal → delete removes row and blob,
+  logo upload → served publicly → cleared → blob gone, event delete takes its blobs with it,
+  three more cross-org refusals, and a housekeeping section that makes the sweep find, then
+  delete, the one blob whose attach was refused — ending on zero orphans.

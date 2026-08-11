@@ -11,6 +11,7 @@ import { convexQuery } from "@convex-dev/react-query"
 import { api } from "@convex/_generated/api"
 import {
   RiArrowDownSLine,
+  RiBookOpenLine,
   RiCalendarLine,
   RiLogoutBoxRLine,
   RiMapPin2Line,
@@ -202,6 +203,13 @@ function PortalLayout() {
                   >
                     <RiUser3Line aria-hidden />
                     My profile
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    nativeButton={false}
+                    render={<Link to="/docs/guide/speaker-portal" />}
+                  >
+                    <RiBookOpenLine aria-hidden />
+                    How this works
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={signOut}>
                     <RiLogoutBoxRLine aria-hidden />

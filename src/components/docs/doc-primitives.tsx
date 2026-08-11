@@ -141,6 +141,19 @@ export function Shot({
   )
 }
 
+// ——— Inline link ——————————————————————————————————————————————————————————
+
+/** An in-prose link to another docs page (client-side, styled by `.doc-prose`). */
+export function DocLink({
+  to,
+  children,
+}: {
+  to: React.ComponentProps<typeof Link>["to"]
+  children: React.ReactNode
+}) {
+  return <Link to={to}>{children}</Link>
+}
+
 // ——— Callout ——————————————————————————————————————————————————————————————
 
 const CALLOUT_TONES = {
