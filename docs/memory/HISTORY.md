@@ -177,3 +177,7 @@ the narrative memory; RULES.md is the things circled as important along the way.
     frame-by-frame vision analysis of walkthrough videos. End state restated:
     full product-parity clone that just works — very UX-friendly, simple,
     intuitive, whole flow very clear.
+58. **Landing trim (re-raised) + self-host docs**: remove slop incl. from the nav
+    bar; less yap ("it already looks quite nice, so it's not bad" — trim, don't
+    rebuild). Docs are important: keep them clear, and add a SELF-HOST page as the
+    final, smallest docs item — docs stay mostly product docs + one how-to-self-host.
