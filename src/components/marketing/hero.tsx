@@ -1,9 +1,9 @@
-import { useNavigate } from "@tanstack/react-router"
+import { Link } from "@tanstack/react-router"
 import { RiArrowRightLine, RiGithubFill } from "@remixicon/react"
 
 import { cn } from "@/lib/utils"
 import { buttonVariants } from "@/components/ui/button"
-import { PepButton, TextReveal } from "@/components/interactions"
+import { TextReveal } from "@/components/interactions"
 import { ProductShot } from "@/components/marketing/product-shot"
 import { DISPLAY_HEADING, GridBackdrop } from "@/components/marketing/section"
 import { EXTERNAL_LINK_PROPS, GITHUB_URL } from "@/components/marketing/links"
@@ -15,11 +15,11 @@ import { EXTERNAL_LINK_PROPS, GITHUB_URL } from "@/components/marketing/links"
  * sitting on a faint graph-paper wash. The old proof-point row said what the
  * chip and the pricing band already say, so it's gone (trim pass, 2026-08-11).
  *
- * The headline arrives word by word (`TextReveal`) and the primary CTA has
- * press depth (`PepButton`). Nothing else on this page moves on its own.
+ * The headline arrives word by word (`TextReveal`); the primary CTA is the
+ * house flat button (press-depth retired — Marko, 2026-08-11: "looks a bit
+ * odd"). Nothing else on this page moves on its own.
  */
 export function Hero() {
-  const navigate = useNavigate()
 
   return (
     <section className="relative w-full overflow-hidden border-b border-border/70 bg-card pt-16 pb-0 sm:pt-24">
@@ -55,14 +55,13 @@ export function Hero() {
           </p>
 
           <div className="mt-9 flex w-full flex-col items-stretch justify-center gap-2.5 sm:w-auto sm:flex-row sm:items-center">
-            <PepButton
-              size="lg"
-              className="px-5"
-              onClick={() => navigate({ to: "/login" })}
+            <Link
+              to="/login"
+              className={buttonVariants({ size: "lg", className: "px-5" })}
             >
               Get started free
               <RiArrowRightLine aria-hidden />
-            </PepButton>
+            </Link>
             <a
               href={GITHUB_URL}
               {...EXTERNAL_LINK_PROPS}

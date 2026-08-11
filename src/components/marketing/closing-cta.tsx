@@ -39,10 +39,6 @@ export function ClosingCta() {
         </p>
 
         <div className="mt-9 flex w-full flex-col items-stretch justify-center gap-2.5 sm:w-auto sm:flex-row sm:items-center">
-          {/*
-           * Plain Button, deliberately: press-depth stays on the hero CTA only
-           * (Marko, 2026-08-11 — "not really necessary… looks a bit odd").
-           */}
           <Link to="/login" className={buttonVariants({ size: "lg", className: "px-5" })}>
             Get started free
             <RiArrowRightLine aria-hidden />
