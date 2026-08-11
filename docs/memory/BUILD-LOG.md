@@ -2206,3 +2206,11 @@ skeleton-shaped, which is what rule 26 asks for.
 *Untouched on purpose:* the mount-only `setAuth` effect in `__root.tsx` that unpauses the
 anonymous socket. *Not mine, still failing:* `video/` (another agent, untracked) and
 `tests/e2e/flows/speakers-portal.spec.ts` are the only typecheck/eslint errors in the repo.
+
+## sbek FULL BASELINE (2026-08-11 14:17)
+Overall 86.3% over 91.4% judged coverage. Areas: CFP 74.2 · ABS 86 · SPK 90.6 ·
+CNT 77.1 · AIA 100 · EMB 95.7. 21 manual items (copied to docs/submission/).
+Verdict analysis: no hard fails — gaps are turn-limit cannot_judge (several test
+already-built features; baseline ran against pre-mega-wave prod for early areas)
++ unobservable halves (email egress) that manual finalize recovers. Hill-climb:
+rerun weak areas at 150 turns vs new prod after release-gate reseed.
