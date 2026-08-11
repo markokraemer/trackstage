@@ -29,7 +29,7 @@ export const SUBMISSION_KINDS = [
     value: "all",
     label: "All",
     /** Shown under the strip so the vocabulary teaches itself. */
-    hint: "Everything in your program — abstracts people submitted, plus sessions you added yourself.",
+    hint: "Everything in your program — abstracts under review, plus confirmed sessions.",
   },
   {
     value: "abstract",
@@ -39,7 +39,7 @@ export const SUBMISSION_KINDS = [
   {
     value: "session",
     label: "Sessions",
-    hint: "Program items you added by hand — keynotes, sponsor slots, breaks. They skip the queue and start out accepted.",
+    hint: "Confirmed program items — keynotes, sponsor slots, breaks. Added directly or through a sessions form, they skip the review queue and start out accepted.",
   },
 ] as const
 
