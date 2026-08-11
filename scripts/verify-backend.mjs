@@ -977,21 +977,24 @@ ok("unpublishing hides it again (reversible)", rehiddenSchedule.days.length === 
 
 // ————— Saved embeds (sbek EMB-15) —————
 section("Embeds")
-ok("no saved embeds to start", (await client.query(api.embeds.list, { eventId: main._id })).length === 0)
+// The seed ships saved embeds (EMB-15 reachability) — assert relative to them.
+const embedBaseline = (await client.query(api.embeds.list, { eventId: main._id })).length
 const embedId = await client.mutation(api.embeds.save, {
   eventId: main._id, name: "Sponsors page agenda", widget: "agenda",
   options: { format: "iframe", hideDescriptions: true, track: "Agents", height: 800 },
 })
 const embedList = await client.query(api.embeds.list, { eventId: main._id })
-ok("embed saved and listed", embedList.length === 1 && embedList[0].name === "Sponsors page agenda")
-ok("embed round-trips its options", embedList[0].options.hideDescriptions === true && embedList[0].options.track === "Agents")
+const savedEmbed = embedList.find((e) => e.name === "Sponsors page agenda")
+ok("embed saved and listed", embedList.length === embedBaseline + 1 && !!savedEmbed)
+ok("embed round-trips its options", savedEmbed?.options.hideDescriptions === true && savedEmbed?.options.track === "Agents")
 await client.mutation(api.embeds.save, {
   eventId: main._id, embedId, name: "Sponsors page agenda (v2)", widget: "speaker-gallery",
   options: { format: "link" },
 })
 const embedUpdated = await client.query(api.embeds.list, { eventId: main._id })
 ok("saving with an id overwrites instead of duplicating",
-  embedUpdated.length === 1 && embedUpdated[0].widget === "speaker-gallery")
+  embedUpdated.length === embedBaseline + 1 &&
+    embedUpdated.find((e) => e._id === embedId)?.widget === "speaker-gallery")
 await throws("unknown widget rejected", () =>
   client.mutation(api.embeds.save, { eventId: main._id, name: "x", widget: "nope", options: {} }), "unknown widget")
 await throws("unknown format rejected", () =>
@@ -999,7 +1002,8 @@ await throws("unknown format rejected", () =>
 await throws("unnamed embed rejected", () =>
   client.mutation(api.embeds.save, { eventId: main._id, name: "  ", widget: "agenda", options: {} }), "name")
 await client.mutation(api.embeds.remove, { embedId })
-ok("embed deleted", (await client.query(api.embeds.list, { eventId: main._id })).length === 0)
+ok("embed deleted",
+  (await client.query(api.embeds.list, { eventId: main._id })).length === embedBaseline)
 
 // ————— Comms —————
 section("Comms")
