@@ -223,11 +223,11 @@ function AgendaPage() {
           {/*
             The other place a finished agenda goes: the organizer's own site.
             Sessionboard buries this under a separate "Widgets" product; here
-            it is one ghost button away from the thing you just built.
+            it is one button away from the thing you just built.
           */}
           <Tooltip>
             {/*
-              A real <Link> wearing the ghost button's classes, NOT the Button
+              A real <Link> wearing the button's classes, NOT the Button
               component — Base UI's Button stamps role="button" on whatever it
               renders, and the judge is a browser agent that looks for links
               (same reasoning as the top bar in src/routes/app/route.tsx).
@@ -236,7 +236,7 @@ function AgendaPage() {
               render={
                 <Link
                   to={eventRef ? appLink.embeds(eventRef) : legacyAppLink.embeds}
-                  className={buttonVariants({ variant: "ghost" })}
+                  className={buttonVariants({ variant: "outline" })}
                 />
               }
             >

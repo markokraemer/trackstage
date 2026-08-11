@@ -118,7 +118,13 @@ export function PublishAgendaButton({
           </Button>
         </div>
       ) : (
-        <Button onClick={() => setOpen(true)}>
+        /*
+         * Outline, not primary: publishing is an occasional state-change, and
+         * the header's ONE primary is "Add session" (see the hierarchy rule in
+         * src/components/ui/button.tsx). The confirm inside the dialog is
+         * where this action gets its blue.
+         */
+        <Button variant="outline" onClick={() => setOpen(true)}>
           <RiRocketLine aria-hidden />
           Publish agenda
         </Button>
