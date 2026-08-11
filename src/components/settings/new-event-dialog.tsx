@@ -34,6 +34,7 @@ import {
   slugify,
   slugifyInput,
 } from "@/components/settings/slug"
+import { readTourPhase, writeTourPhase } from "@/lib/onboarding-storage"
 import { setCurrentEventId, useCurrentEvent } from "@/lib/current-event"
 import { errorMessage } from "@/lib/errors"
 import { appLink, legacyAppLink } from "@/lib/app-links"
@@ -134,15 +135,18 @@ export function NewEventDialog({
       setSlug("")
       setSlugTouched(false)
       setErrors({})
-      // Land in the new event's DASHBOARD — the event's home, with the
-      // switcher already on it. (Was: event settings; the first thing a new
-      // organizer saw after creating their event was a settings page.)
-      // (The legacy/empty-state route underneath also redirects the moment
-      // the new event lands in the reactive list — LegacyAppRedirect defers
-      // to a pending navigation, so this one is the last word.)
+      // During the guided tour, creating the event IS the current step: hand
+      // the tour on to its "details" phase and land on the settings page it
+      // highlights. Otherwise: the new event's DASHBOARD — the event's home,
+      // with the switcher already on it. (LegacyAppRedirect defers to a
+      // pending navigation, so this one is the last word.)
+      const touring = readTourPhase() !== null
+      if (touring) writeTourPhase("details")
       await navigate({
         href: workspaceSlug
-          ? appLink.dashboard({ workspaceSlug, eventSlug: created.slug })
+          ? touring
+            ? appLink.settings({ workspaceSlug, eventSlug: created.slug })
+            : appLink.dashboard({ workspaceSlug, eventSlug: created.slug })
           : legacyAppLink.dashboard,
         replace: false,
       })

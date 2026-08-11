@@ -18,14 +18,17 @@ import { requireEventAccess, requireUser } from "./lib/auth"
 
 export const status = query({
   args: {},
-  returns: v.object({ done: v.boolean() }),
+  returns: v.object({ done: v.boolean(), tourDone: v.boolean() }),
   handler: async (ctx) => {
     const user = await requireUser(ctx)
     const flags = await ctx.db
       .query("userFlags")
       .withIndex("by_userId", (q) => q.eq("userId", user.userId))
       .unique()
-    return { done: flags?.onboardingDoneAt !== undefined }
+    return {
+      done: flags?.onboardingDoneAt !== undefined,
+      tourDone: flags?.tourDoneAt !== undefined,
+    }
   },
 })
 
@@ -117,8 +120,42 @@ export const dismissChecklist = mutation({
   },
 })
 
-/** Idempotent: finishing or skipping the stepper both land here. */
+/**
+ * Idempotent: finishing or skipping the stepper both land here. `tour: true`
+ * additionally closes the dashboard spotlight tour — skipping onboarding
+ * means "no hand-holding", so both flags fall together on skip, while a
+ * FINISHED stepper leaves the tour flag open for the dashboard to run it.
+ */
 export const markDone = mutation({
+  args: { tour: v.optional(v.boolean()) },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const user = await requireUser(ctx)
+    const now = Date.now()
+    const patch: { onboardingDoneAt: number; tourDoneAt?: number } = {
+      onboardingDoneAt: now,
+      ...(args.tour ? { tourDoneAt: now } : {}),
+    }
+    const flags = await ctx.db
+      .query("userFlags")
+      .withIndex("by_userId", (q) => q.eq("userId", user.userId))
+      .unique()
+    if (flags) {
+      await ctx.db.patch(flags._id, {
+        onboardingDoneAt: flags.onboardingDoneAt ?? now,
+        ...(args.tour && flags.tourDoneAt === undefined
+          ? { tourDoneAt: now }
+          : {}),
+      })
+      return null
+    }
+    await ctx.db.insert("userFlags", { userId: user.userId, ...patch })
+    return null
+  },
+})
+
+/** The spotlight tour ended (finished or "End tour") — never again. */
+export const markTourDone = mutation({
   args: {},
   returns: v.null(),
   handler: async (ctx) => {
@@ -128,14 +165,14 @@ export const markDone = mutation({
       .withIndex("by_userId", (q) => q.eq("userId", user.userId))
       .unique()
     if (flags) {
-      if (flags.onboardingDoneAt === undefined) {
-        await ctx.db.patch(flags._id, { onboardingDoneAt: Date.now() })
+      if (flags.tourDoneAt === undefined) {
+        await ctx.db.patch(flags._id, { tourDoneAt: Date.now() })
       }
       return null
     }
     await ctx.db.insert("userFlags", {
       userId: user.userId,
-      onboardingDoneAt: Date.now(),
+      tourDoneAt: Date.now(),
     })
     return null
   },

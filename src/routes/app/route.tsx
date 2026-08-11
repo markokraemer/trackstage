@@ -50,6 +50,7 @@ import {
   OnboardingTakeoverPending,
   useOnboardingGate,
 } from "@/components/onboarding/onboarding-takeover"
+import { DashboardTour } from "@/components/onboarding/dashboard-tour"
 import { GettingStarted } from "@/components/shell/getting-started"
 import { ShellEventSwitcher } from "@/components/shell/event-switcher"
 import { MobileNav } from "@/components/shell/mobile-nav"
@@ -121,9 +122,9 @@ function navGroupsFor(ref: EventRef | undefined): Array<NavGroup> {
       label: "Program",
       items: [
         { label: "Submissions", to: to("submissions"), icon: RiFileList3Line },
-        { label: "Forms", to: to("forms"), icon: RiSurveyLine },
-        { label: "Evaluation", to: to("evaluation"), icon: RiStarLine },
-        { label: "Agenda", to: to("agenda"), icon: RiCalendarScheduleLine },
+        { label: "Forms", to: to("forms"), icon: RiSurveyLine, tour: "nav-forms" },
+        { label: "Evaluation", to: to("evaluation"), icon: RiStarLine, tour: "nav-evaluation" },
+        { label: "Agenda", to: to("agenda"), icon: RiCalendarScheduleLine, tour: "nav-agenda" },
         // Embeds is the last step of the programme's life — the agenda, once
         // published, goes onto the organizer's own website. It sits under
         // Program so "build it, then publish it" reads top to bottom.
@@ -475,6 +476,10 @@ function OrganizerLayout() {
 
       {/* Mounted at the shell so the conversation survives navigation. */}
       <CopilotPanel />
+
+      {/* First-run guided tour — confetti welcome + driver.js spotlights.
+          Armed ONLY by the onboarding takeover's finish; inert otherwise. */}
+      <DashboardTour />
 
       {/* Legacy `?settings=` URLs (the brief modal era) → settings pages. */}
       <SettingsDialogsHost />

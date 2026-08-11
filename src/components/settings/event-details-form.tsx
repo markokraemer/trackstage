@@ -204,7 +204,7 @@ export function EventDetailsForm({ event }: { event: EventSummary }) {
   return (
     <>
       <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-6">
-        <Card>
+        <Card data-tour="event-details">
           <CardHeader>
             <CardTitle>Event details</CardTitle>
             <CardDescription>
@@ -237,7 +237,10 @@ export function EventDetailsForm({ event }: { event: EventSummary }) {
                 error={errors.slug}
                 hint="The short, lowercase name used in your public web address. Changing it changes the link you've shared."
                 footer={
-                  <span className="flex flex-wrap items-center gap-1">
+                  <span
+                    data-tour="public-link"
+                    className="flex flex-wrap items-center gap-1"
+                  >
                     <span>Public page:</span>
                     <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-[11px] text-foreground">
                       {publicUrl}

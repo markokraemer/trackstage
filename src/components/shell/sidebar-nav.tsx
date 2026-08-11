@@ -9,6 +9,8 @@ export interface NavItem {
   to: string
   icon: RemixiconComponentType
   exact?: boolean
+  /** Anchor id for the first-run guided tour (`data-tour` attribute). */
+  tour?: string
 }
 
 export interface NavGroup {
@@ -47,6 +49,7 @@ export function SidebarNav({
                 <Link
                   to={item.to}
                   title={item.label}
+                  data-tour={item.tour}
                   activeOptions={{ exact: item.exact ?? false }}
                   onClick={onNavigate}
                   className={cn(

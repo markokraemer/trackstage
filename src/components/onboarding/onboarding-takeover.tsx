@@ -3,15 +3,7 @@ import { Link, useNavigate } from "@tanstack/react-router"
 import { useMutation, useQuery } from "@tanstack/react-query"
 import { convexQuery, useConvexMutation } from "@convex-dev/react-query"
 import { api } from "@convex/_generated/api"
-import {
-  RiArrowRightLine,
-  RiCalendarScheduleLine,
-  RiCheckboxCircleLine,
-  RiLinkM,
-  RiMailSendLine,
-  RiSurveyLine,
-} from "@remixicon/react"
-import type { RemixiconComponentType } from "@remixicon/react"
+import { RiArrowRightLine, RiMailSendLine } from "@remixicon/react"
 import { toast } from "sonner"
 
 import { cn } from "@/lib/utils"
@@ -34,7 +26,7 @@ import { EVENT_TYPES } from "@/components/settings/event-details-form"
 import { browserTimezone } from "@/components/settings/timezone"
 import { isValidSlug, publicEventUrl, slugify } from "@/components/settings/slug"
 import { authClient } from "@/lib/auth-client"
-import { FRESH_SIGNUP_KEY } from "@/lib/onboarding-storage"
+import { FRESH_SIGNUP_KEY, writeTourPhase } from "@/lib/onboarding-storage"
 import { useSession } from "@/lib/session"
 import { setCurrentEventId, useCurrentEvent } from "@/lib/current-event"
 import { appLink } from "@/lib/app-links"
@@ -47,11 +39,13 @@ import { errorMessage } from "@/lib/errors"
  * `/app` address renders THIS instead of the shell: no sidebar, no top bar,
  * just the logo and one calm card per step.
  *
- * The flow ("make it the full event-settings onboarding as well"):
+ * The flow (Marko, definitive shape — "keep the full-page onboarding, but
+ * the final step is an interactive walk through the platform"):
  *
  *   workspace name → confirm email → YOUR EVENT (name + type + description)
- *   → WHEN & WHERE (dates, timezone, venue) → ONE how-it-works screen
- *   → land on the new event's dashboard.
+ *   → WHEN & WHERE (dates, timezone, venue) → finish INTO the app: the new
+ *   event's settings page, confetti + welcome, and the guided driver.js tour
+ *   (src/components/onboarding/dashboard-tour.tsx) — no docs screen.
  *
  * Only the event NAME is required — every other field is optional with
  * honest defaults (timezone = browser, dates = blank, not fake), and the
@@ -241,24 +235,8 @@ const STEP_WORKSPACE = 0
 const STEP_EMAIL = 1
 const STEP_EVENT = 2
 const STEP_WHEN = 3
-const STEP_HOW = 4
 
-// ONE screen, not a sequence (Marko, 2026-08-12: four separate how-it-works
-// steps "is overkill by a lot") — the whole product in four glances, then the
-// docs for anyone who wants more.
-interface HowPoint {
-  icon: RemixiconComponentType
-  text: string
-}
-
-const HOW_POINTS: Array<HowPoint> = [
-  { icon: RiSurveyLine, text: "Build your CFP form — the questions speakers answer." },
-  { icon: RiLinkM, text: "Share the public link — proposals land in Submissions." },
-  { icon: RiCheckboxCircleLine, text: "Review with your team, then accept and decline in batches." },
-  { icon: RiCalendarScheduleLine, text: "Drag the agenda together — speakers get their own portal." },
-]
-
-const TOTAL_STEPS = STEP_HOW + 1
+const TOTAL_STEPS = STEP_WHEN + 1
 
 export function OnboardingTakeover({
   mode,
@@ -376,14 +354,27 @@ export function OnboardingTakeover({
   }
 
   // ——— Step actions ———————————————————————————————————————————————————————
-  function persistDone() {
-    void markDone({}).catch(() => {})
-  }
-
+  /** Skipping means "no hand-holding": wizard AND tour, both closed. */
   function skip() {
-    persistDone()
+    void markDone({ tour: true }).catch(() => {})
     onDone()
   }
+
+  /** Into the app: the new event's settings page, welcome moment armed. */
+  const finishIntoTour = useCallback(
+    (slug: string) => {
+      void markDone({}).catch(() => {})
+      // The ONE place the guided tour is ever armed.
+      writeTourPhase("welcome")
+      onDone()
+      if (workspaceSlug) {
+        void navigate({
+          href: appLink.settings({ workspaceSlug, eventSlug: slug }),
+        })
+      }
+    },
+    [markDone, onDone, navigate, workspaceSlug],
+  )
 
   function continueFromWorkspace() {
     const name = workspaceName.trim()
@@ -427,7 +418,7 @@ export function OnboardingTakeover({
   async function createFirstEvent() {
     if (created) {
       // Back-and-forth after a successful create must not create twice.
-      setStep(STEP_HOW)
+      finishIntoTour(created.slug)
       return
     }
     if (startsAt && endsAt && endsAt < startsAt) {
@@ -455,7 +446,7 @@ export function OnboardingTakeover({
       })
       setCurrentEventId(result.eventId, workspaceId)
       setCreated({ slug: result.slug, eventId: result.eventId })
-      setStep(STEP_HOW)
+      finishIntoTour(result.slug)
     } catch (caught) {
       // Name problems belong to the previous card — send the person there.
       const message = errorMessage(caught, "Couldn't create that event.")
@@ -467,16 +458,6 @@ export function OnboardingTakeover({
       }
     } finally {
       setBusy(false)
-    }
-  }
-
-  async function finishHow() {
-    persistDone()
-    onDone()
-    if (created && workspaceSlug) {
-      await navigate({
-        href: appLink.dashboard({ workspaceSlug, eventSlug: created.slug }),
-      })
     }
   }
 
@@ -799,48 +780,7 @@ export function OnboardingTakeover({
                   </>
                 ) : null}
 
-                {mode === "wizard" && step === STEP_HOW ? (
-                  <>
-                    <StepHeading
-                      title="You're set — here's how it works"
-                      detail={
-                        created
-                          ? `“${eventName.trim() || "Your event"}” is ready. From here, the whole flow is:`
-                          : "From here, the whole flow is:"
-                      }
-                    />
-                    <ul className="flex flex-col gap-2.5">
-                      {HOW_POINTS.map((point) => (
-                        <li
-                          key={point.text}
-                          className="flex items-center gap-3 rounded-lg border border-border bg-muted/30 px-3.5 py-3"
-                        >
-                          <span className="flex size-8 shrink-0 items-center justify-center rounded-lg border border-border bg-card text-primary">
-                            <point.icon size={16} aria-hidden />
-                          </span>
-                          <span className="text-sm text-foreground">
-                            {point.text}
-                          </span>
-                        </li>
-                      ))}
-                    </ul>
-                    <p className="text-center">
-                      <Link
-                        to="/docs"
-                        target="_blank"
-                        className="text-sm font-medium text-primary underline-offset-4 hover:underline"
-                      >
-                        Check out the docs →
-                      </Link>
-                    </p>
-                    <StepFooter onSkip={skip}>
-                      <Button type="button" onClick={() => void finishHow()}>
-                        Go to your dashboard
-                      </Button>
-                    </StepFooter>
-                  </>
-                ) : null}
-              </div>
+             </div>
             </CardContent>
           </Card>
         </div>

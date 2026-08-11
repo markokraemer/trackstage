@@ -168,7 +168,7 @@ export function FirstRunDashboard() {
               call for papers, submissions, speakers and agenda — everything
               starts there.
             </p>
-            <div className="mt-4">
+            <div className="mt-4" data-tour="create-event">
               <NewEventDialog label="Create your first event" />
             </div>
           </div>

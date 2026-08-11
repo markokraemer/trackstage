@@ -133,6 +133,8 @@ export default defineSchema({
     userId: v.string(), // Better Auth user id
     /** Set when the onboarding stepper was finished or skipped. */
     onboardingDoneAt: v.optional(v.number()),
+    /** Set when the dashboard spotlight tour was finished or skipped. */
+    tourDoneAt: v.optional(v.number()),
     /**
      * Events whose sidebar "Getting started" checklist this user closed with
      * its ✕ — gone forever for them, per event. Bounded by the number of
