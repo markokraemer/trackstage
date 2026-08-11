@@ -1,6 +1,8 @@
 import { Link } from "@tanstack/react-router"
 import { RiCheckLine, RiGithubFill } from "@remixicon/react"
 
+import { DeclareWinnerButton } from "@/components/marketing/declare-winner-button"
+
 import { cn } from "@/lib/utils"
 import { Badge } from "@/components/ui/badge"
 import { buttonVariants } from "@/components/ui/button"
@@ -34,6 +36,15 @@ const CLOUD_POINTS = [
   "No credit card, no sales call",
 ]
 
+const WINNER_POINTS = [
+  "One time. Not a subscription.",
+  "Bragging rights (non-transferable)",
+  "About three months of what you pay today",
+]
+
+/** Stripe Checkout link for the $10,000 card. */
+const STRIPE_CHECKOUT_URL = "https://pay.kortix.com/b/9B6cN597kaK38NH76nbo400"
+
 export function Pricing() {
   return (
     <MarketingSection id={SECTION_IDS.pricing} tone="muted">
@@ -43,8 +54,8 @@ export function Pricing() {
         description="Every feature, both ways. No seats, no tiers, no quote-on-request."
       />
 
-      {/* Two flat cells in one bordered container — the house plan table. */}
-      <div className="mx-auto mt-12 grid max-w-3xl gap-px overflow-hidden rounded-2xl border border-border bg-border sm:grid-cols-2">
+      {/* Three flat cells in one bordered container — the house plan table. */}
+      <div className="mx-auto mt-12 grid max-w-5xl gap-px overflow-hidden rounded-2xl border border-border bg-border sm:grid-cols-3">
         <PlanCard
           name="Self-host"
           price="$0"
@@ -75,6 +86,21 @@ export function Pricing() {
             <Link to="/login" className={buttonVariants({ size: "lg", className: "w-full" })}>
               Get started free
             </Link>
+          }
+        />
+
+        <PlanCard
+          name="Declare the winner"
+          price="$10,000"
+          cadence="one time, voluntary"
+          summary="You know who you are. The prize has a Buy Now button — because of course it does."
+          points={WINNER_POINTS}
+          action={
+            <DeclareWinnerButton
+              variant="outline"
+              checkoutUrl={STRIPE_CHECKOUT_URL}
+              className="w-full"
+            />
           }
         />
       </div>
