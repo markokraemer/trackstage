@@ -14,14 +14,15 @@ import {
   RiExternalLinkLine,
   RiEyeLine,
   RiFileCopyLine,
+  RiInformationLine,
   RiRefreshLine,
   RiSaveLine,
-  RiSettings3Line,
   RiSmartphoneLine,
 } from "@remixicon/react"
 
 import { cn } from "@/lib/utils"
 import { Card } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
 import { Button, buttonVariants } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -29,16 +30,17 @@ import { Switch } from "@/components/ui/switch"
 import { Textarea } from "@/components/ui/textarea"
 import { Separator } from "@/components/ui/separator"
 import { Skeleton } from "@/components/ui/skeleton"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Field, FieldDescription, FieldLabel } from "@/components/ui/field"
 import { PageHeader } from "@/components/shared/page-header"
 import { EmptyState } from "@/components/shared/empty-state"
-import { StatusPill } from "@/components/shared/status-pill"
 import { widgetSearchToQuery } from "@/components/public/widget-search"
 import { SavedEmbeds } from "@/components/embeds/saved-embeds"
+import { OptionCard, OptionGroupLabel } from "@/components/embeds/option-card"
 import {
   EMBED_FORMATS,
+  FORMAT_GROUPS,
+  WIDGET_GROUPS,
   WIDGET_TYPES,
   escapeHtml,
   formatById,
@@ -123,7 +125,9 @@ function EmbedsPage() {
   const { data: speakerData } = useQuery(
     convexQuery(
       api.publicData.speakers,
-      activeSlug && widget.dataset === "speakers" ? { slug: activeSlug } : "skip",
+      activeSlug && widget.dataset === "speakers"
+        ? { slug: activeSlug }
+        : "skip",
     ),
   )
   const embedsQuery = useQuery(
@@ -163,6 +167,8 @@ function EmbedsPage() {
   // copy already pasted around the web. An unsaved configuration is just a
   // link, exactly as before.
   const search = searchFor(widget, options, savedId ?? undefined)
+
+  const trackSummary = tracks.length === 0 ? ALL_TRACKS : tracks.join(", ")
 
   const relativeUrl =
     activeSlug && activeWorkspaceSlug
@@ -234,7 +240,9 @@ function EmbedsPage() {
           [
             `    <li>`,
             `      <strong>${escapeHtml(session.title)}</strong>`,
-            session.room ? `      <span>${escapeHtml(session.room.name)}</span>` : null,
+            session.room
+              ? `      <span>${escapeHtml(session.room.name)}</span>`
+              : null,
             showSpeakers && session.speakers.length > 0
               ? `      <span>${escapeHtml(session.speakers.map((s) => s.name).join(", "))}</span>`
               : null,
@@ -279,44 +287,73 @@ function EmbedsPage() {
       }`
     : null
 
-  /** What the "Get code" tab hands over, per format. */
-  const deliverable: { value: string; label: string; help: string } = (() => {
+  /**
+   * What step 4 hands over, per format. `where` is the "what do I paste where"
+   * line — the single sentence that turns a box of code into an instruction,
+   * for an organizer who has never touched an embed before.
+   */
+  const deliverable: {
+    value: string
+    label: string
+    help: string
+    where: string
+    /** URL formats get a select-one-line input; code formats get a block. */
+    kind: "url" | "code"
+  } = (() => {
     switch (format.id) {
       case "link":
         return {
           value: publicUrl,
-          label: "Share this link",
-          help: "The widget as its own page. Good for emails, Slack and QR codes.",
+          label: "Your link",
+          kind: "url",
+          help: "The widget as its own page, always up to date.",
+          where:
+            "Paste it anywhere a link goes — your newsletter, a Slack message, or behind a QR code on your signage.",
         }
       case "html":
         return {
           value: htmlSnippet,
-          label: "Paste this markup",
-          help: "Unstyled HTML you can restyle to match your site. It's a snapshot of the program right now — copy it again after you change the schedule.",
+          label: "Your markup",
+          kind: "code",
+          help: "Unstyled HTML you can restyle to match your site.",
+          where:
+            "Paste into an HTML block on your page. This is a snapshot of the programme right now — copy it again after you change the schedule.",
         }
       case "json":
         return {
           value: jsonUrl ?? "",
-          label: "REST endpoint",
-          help: "Returns paginated JSON. Send an API key as `Authorization: Bearer …` — create one under Settings → API & MCP.",
+          label: "Your REST endpoint",
+          kind: "url",
+          help: "Returns paginated JSON of this event.",
+          where:
+            "Send this to whoever builds your site, together with an API key from Settings → API & MCP (it goes in an Authorization: Bearer header).",
         }
       case "xml":
         return {
           value: xmlFeedUrl ?? "",
-          label: "XML feed URL",
-          help: "A live XML document of the published programme — point your CMS or site builder's feed importer at it. No key needed.",
+          label: "Your XML feed",
+          kind: "url",
+          help: "A live XML document of the published programme. No key needed.",
+          where:
+            "Paste it into your CMS or site builder's feed importer — it re-reads the programme on its own.",
         }
       case "ics":
         return {
           value: icsFeedUrl ?? "",
-          label: "Calendar feed URL",
-          help: "Subscribe-able .ics of the whole program. No key needed — it's public once the agenda is published.",
+          label: "Your calendar feed",
+          kind: "url",
+          help: "A subscribe-able .ics of the whole programme. No key needed.",
+          where:
+            "Share it with attendees, or add it under “Subscribe by URL” in Google, Outlook or Apple Calendar.",
         }
       default:
         return {
           value: iframeSnippet,
-          label: "Paste this into your website",
-          help: "Works in any site builder that accepts HTML — Webflow, Wix, Squarespace, WordPress, or your own code.",
+          label: "Your embed code",
+          kind: "code",
+          help: "One snippet, always showing live data.",
+          where:
+            "In your site builder, add an Embed / Custom HTML block where you want the widget and paste this in. Webflow, Wix, Squarespace and WordPress all have one.",
         }
     }
   })()
@@ -362,8 +399,7 @@ function EmbedsPage() {
       })
     } catch (error) {
       toast.error("Couldn't save this embed", {
-        description:
-          errorMessage(error, "Please try again."),
+        description: errorMessage(error, "Please try again."),
       })
     } finally {
       setSaving(false)
@@ -387,6 +423,23 @@ function EmbedsPage() {
   }
 
   const showPreview = format.id === "iframe" || format.id === "link"
+
+  /**
+   * Which of step 3's controls actually reach the chosen format. A JSON or
+   * calendar feed carries the whole published programme and has no appearance
+   * at all, so its knobs are hidden rather than sitting there doing nothing —
+   * a switch that changes nothing is worse than no switch.
+   */
+  const applies = {
+    /** Descriptions and speaker names — present in the static HTML too. */
+    layout: showPreview || format.id === "html",
+    /** Photos and in-widget search only exist in a rendered widget. */
+    interactive: showPreview,
+    branding: showPreview,
+    height: format.id === "iframe",
+    tracks: format.id !== "json" && format.id !== "ics",
+  }
+  const configurable = applies.layout || applies.tracks
 
   return (
     <div className="flex flex-col gap-6">
@@ -416,264 +469,248 @@ function EmbedsPage() {
       />
 
       {/* 1 — pick a widget type */}
-      <section className="flex flex-col gap-3">
-        <div>
-          <h2 className="font-heading text-base font-semibold text-foreground">
-            1. Choose a widget
-          </h2>
-          <p className="text-sm text-muted-foreground">
-            Each one is a live view of this event — it updates itself whenever
-            you change the program. No re-publishing.
-          </p>
-        </div>
-        <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-          {WIDGET_TYPES.map((type) => {
-            const selected = type.id === widget.id
-            return (
-              <li key={type.id}>
-                <Card
-                  size="sm"
-                  className={cn(
-                    "h-full p-0 transition-shadow",
-                    selected && "ring-2 ring-primary",
-                  )}
-                >
-                  <button
-                    type="button"
-                    aria-pressed={selected}
-                    onClick={() => setWidgetId(type.id)}
-                    className="flex h-full w-full flex-col items-start gap-1.5 rounded-xl p-4 text-left outline-none transition-colors hover:bg-accent/50 focus-visible:ring-3 focus-visible:ring-ring/50"
-                  >
-                    <span className="flex w-full items-center gap-2">
-                      <span className="flex size-8 items-center justify-center rounded-lg bg-accent text-accent-foreground">
-                        <type.icon size={17} aria-hidden />
-                      </span>
-                      <span className="font-medium text-foreground">
-                        {type.name}
-                      </span>
-                      {selected ? (
-                        <StatusPill
-                          status="active"
-                          label="Selected"
-                          size="sm"
-                          className="ml-auto"
-                        />
-                      ) : null}
-                    </span>
-                    <span className="text-sm leading-relaxed text-muted-foreground">
-                      {type.description}
-                    </span>
-                  </button>
-                </Card>
-              </li>
-            )
-          })}
-        </ul>
+      <section className="flex flex-col gap-4">
+        <StepHeading
+          step={1}
+          title="Choose a widget"
+          description="Each one is a live view of this event — it updates itself whenever you change the program. No re-publishing."
+        />
+        {WIDGET_GROUPS.map((group) => (
+          <div key={group.dataset} className="flex flex-col gap-2">
+            <OptionGroupLabel label={group.label} />
+            <ul className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+              {WIDGET_TYPES.filter(
+                (type) => type.dataset === group.dataset,
+              ).map((type) => (
+                <li key={type.id}>
+                  <OptionCard
+                    icon={type.icon}
+                    name={type.name}
+                    description={type.description}
+                    selected={type.id === widget.id}
+                    onSelect={() => setWidgetId(type.id)}
+                  />
+                </li>
+              ))}
+            </ul>
+          </div>
+        ))}
       </section>
 
       {/* 2 — pick a delivery format */}
-      <section className="flex flex-col gap-3">
-        <div>
-          <h2 className="font-heading text-base font-semibold text-foreground">
-            2. Choose a format
-          </h2>
-          <p className="text-sm text-muted-foreground">
-            How you want to take it away. The first two stay live; the rest are
-            for developers and calendar apps.
-          </p>
-        </div>
-        <ul className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
-          {EMBED_FORMATS.map((option) => {
-            const selected = option.id === format.id
-            return (
-              <li key={option.id}>
-                <button
-                  type="button"
-                  aria-pressed={selected}
-                  onClick={() => setFormatId(option.id)}
-                  className={cn(
-                    "flex h-full w-full items-start gap-2.5 rounded-lg border px-3 py-2.5 text-left outline-none transition-colors hover:bg-accent/50 focus-visible:ring-3 focus-visible:ring-ring/50",
-                    selected
-                      ? "border-primary bg-accent/60 ring-1 ring-primary"
-                      : "border-border bg-card",
-                  )}
-                >
-                  <option.icon
-                    size={16}
-                    aria-hidden
-                    className="mt-0.5 shrink-0 text-muted-foreground"
+      <section className="flex flex-col gap-4">
+        <StepHeading
+          step={2}
+          title="Choose a format"
+          description="How you want to take it away. Most organizers want the embedded widget."
+        />
+        {FORMAT_GROUPS.map((group) => (
+          <div key={group.group} className="flex flex-col gap-2">
+            <OptionGroupLabel label={group.label} hint={group.hint} />
+            <ul className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+              {EMBED_FORMATS.filter(
+                (option) => option.group === group.group,
+              ).map((option) => (
+                <li key={option.id}>
+                  <OptionCard
+                    icon={option.icon}
+                    name={option.name}
+                    description={option.description}
+                    selected={option.id === format.id}
+                    onSelect={() => setFormatId(option.id)}
+                    badge={
+                      option.recommended ? (
+                        <Badge variant="secondary">Recommended</Badge>
+                      ) : option.snapshot ? (
+                        <Badge
+                          variant="outline"
+                          className="text-muted-foreground"
+                        >
+                          Snapshot
+                        </Badge>
+                      ) : null
+                    }
                   />
-                  <span className="min-w-0">
-                    <span className="block text-sm font-medium text-foreground">
-                      {option.name}
-                    </span>
-                    <span className="block text-xs leading-relaxed text-muted-foreground">
-                      {option.description}
-                    </span>
-                  </span>
-                </button>
-              </li>
-            )
-          })}
-        </ul>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ))}
       </section>
 
-      {/* 3 — configure + preview + copy */}
-      <section className="grid gap-4 lg:grid-cols-[minmax(0,320px)_minmax(0,1fr)]">
+      {/* 3 — configure · 4 — copy + preview */}
+      <section className="grid gap-4 lg:grid-cols-[minmax(0,340px)_minmax(0,1fr)]">
         <Card className="h-fit gap-5 p-5">
-          <div className="flex items-center gap-2">
-            <RiSettings3Line
-              size={16}
-              aria-hidden
-              className="text-muted-foreground"
-            />
-            <h2 className="font-heading text-base font-semibold text-foreground">
-              3. Choose what shows
-            </h2>
-          </div>
+          <StepHeading step={3} title="Choose what shows" />
 
-          <div className="flex flex-col gap-4">
-            <OptionSwitch
-              id="opt-descriptions"
-              label="Session descriptions"
-              description="The abstract under each title, with a Show more link."
-              checked={showDescriptions}
-              onChange={setShowDescriptions}
-            />
-            <OptionSwitch
-              id="opt-speakers"
-              label="Speakers on cards"
-              description="Names, job titles and companies under each session."
-              checked={showSpeakers}
-              onChange={setShowSpeakers}
-            />
-            <OptionSwitch
-              id="opt-photos"
-              label="Speaker photos"
-              description="Turn off to show initials instead of headshots."
-              checked={showPhotos}
-              onChange={setShowPhotos}
-            />
-            <OptionSwitch
-              id="opt-search"
-              label="Search and filters"
-              description="Let visitors search and filter inside the widget."
-              checked={showSearch}
-              onChange={setShowSearch}
-            />
-          </div>
+          {configurable ? null : (
+            <p className="text-sm text-muted-foreground">
+              The {format.name.toLowerCase()} carries the whole published
+              programme, so there's nothing to configure. Name it below if you
+              want to come back to it.
+            </p>
+          )}
 
-          <Separator />
+          {applies.layout ? (
+            <div className="flex flex-col gap-4">
+              <OptionSwitch
+                id="opt-descriptions"
+                label="Session descriptions"
+                description="The abstract under each title, with a Show more link."
+                checked={showDescriptions}
+                onChange={setShowDescriptions}
+              />
+              <OptionSwitch
+                id="opt-speakers"
+                label="Speakers on cards"
+                description="Names, job titles and companies under each session."
+                checked={showSpeakers}
+                onChange={setShowSpeakers}
+              />
+              {applies.interactive ? (
+                <>
+                  <OptionSwitch
+                    id="opt-photos"
+                    label="Speaker photos"
+                    description="Turn off to show initials instead of headshots."
+                    checked={showPhotos}
+                    onChange={setShowPhotos}
+                  />
+                  <OptionSwitch
+                    id="opt-search"
+                    label="Search and filters"
+                    description="Let visitors search and filter inside the widget."
+                    checked={showSearch}
+                    onChange={setShowSearch}
+                  />
+                </>
+              ) : null}
+            </div>
+          ) : null}
+
+          {applies.layout && applies.tracks ? <Separator /> : null}
 
           {/* Which tracks — several, not one: a sponsor page often covers two
               rooms of a conference, and picking them one at a time meant two
               embeds where one would do. Nothing ticked = the whole program. */}
-          <Field>
-            <FieldLabel>Tracks to include</FieldLabel>
-            <FieldDescription>
-              Leave everything unticked to show the whole program, or pick the
-              tracks this page is about.
-            </FieldDescription>
-            {(program?.tracks ?? []).length === 0 ? (
-              <p className="text-xs text-muted-foreground">
-                This event has no tracks yet — add them under Settings → Event.
-              </p>
-            ) : (
-              <div className="flex flex-col gap-2 rounded-lg border border-border p-3">
-                <label className="flex cursor-pointer items-center gap-2 text-sm font-medium text-foreground">
-                  <Checkbox
-                    checked={tracks.length === 0}
-                    onCheckedChange={() => setTracks([])}
-                  />
-                  {ALL_TRACKS}
-                </label>
-                <div className="flex flex-col gap-2 border-t border-border pt-2">
-                  {(program?.tracks ?? []).map((item) => (
-                    <label
-                      key={item._id}
-                      className="flex cursor-pointer items-center gap-2 text-sm text-foreground"
-                    >
-                      <Checkbox
-                        checked={tracks.includes(item.name)}
-                        onCheckedChange={(checked) =>
-                          setTracks((prev) =>
-                            checked
-                              ? [...prev, item.name]
-                              : prev.filter((name) => name !== item.name),
-                          )
-                        }
-                      />
-                      <span
-                        aria-hidden
-                        className="size-2.5 shrink-0 rounded-full"
-                        style={{ backgroundColor: item.color }}
-                      />
-                      {item.name}
-                    </label>
-                  ))}
+          {applies.tracks ? (
+            <Field>
+              <FieldLabel>Tracks to include</FieldLabel>
+              <FieldDescription>
+                Leave everything unticked to show the whole program, or pick the
+                tracks this page is about.
+              </FieldDescription>
+              {(program?.tracks ?? []).length === 0 ? (
+                <p className="text-xs text-muted-foreground">
+                  This event has no tracks yet — add them under Settings →
+                  Event.
+                </p>
+              ) : (
+                <div className="flex flex-col gap-2 rounded-lg border border-border p-3">
+                  <label className="flex cursor-pointer items-center gap-2 text-sm font-medium text-foreground">
+                    <Checkbox
+                      checked={tracks.length === 0}
+                      onCheckedChange={() => setTracks([])}
+                    />
+                    {ALL_TRACKS}
+                  </label>
+                  <div className="flex flex-col gap-2 border-t border-border pt-2">
+                    {(program?.tracks ?? []).map((item) => (
+                      <label
+                        key={item._id}
+                        className="flex cursor-pointer items-center gap-2 text-sm text-foreground"
+                      >
+                        <Checkbox
+                          checked={tracks.includes(item.name)}
+                          onCheckedChange={(checked) =>
+                            setTracks((prev) =>
+                              checked
+                                ? [...prev, item.name]
+                                : prev.filter((name) => name !== item.name),
+                            )
+                          }
+                        />
+                        <span
+                          aria-hidden
+                          className="size-2.5 shrink-0 rounded-full"
+                          style={{ backgroundColor: item.color }}
+                        />
+                        {item.name}
+                      </label>
+                    ))}
+                  </div>
                 </div>
-              </div>
-            )}
-          </Field>
+              )}
+            </Field>
+          ) : null}
 
-          <Separator />
+          {applies.branding ? (
+            <>
+              <Separator />
 
-          {/* Branding — the widget lives on somebody else's page and should
+              {/* Branding — the widget lives on somebody else's page and should
               look like it belongs there. Colour repaints links and buttons
               only; the surfaces stay neutral so it never fights the host. */}
-          <Field>
-            <FieldLabel htmlFor="opt-accent">Accent colour</FieldLabel>
-            <FieldDescription>
-              Used for links and buttons inside the widget. Leave empty to use
-              the Trackstage blue.
-            </FieldDescription>
-            <div className="flex flex-wrap items-center gap-2">
-              <span
-                aria-hidden
-                className="size-8 shrink-0 rounded-lg ring-1 ring-foreground/10"
-                style={{ backgroundColor: accentHex || "var(--primary)" }}
-              />
-              <Input
-                id="opt-accent"
-                value={accent}
-                onChange={(event) => setAccent(event.target.value)}
-                placeholder="#0F6E70"
-                spellCheck={false}
-                className="min-w-0 flex-1 font-mono text-xs uppercase"
-              />
-              {accent ? (
-                <Button variant="ghost" size="sm" onClick={() => setAccent("")}>
-                  Reset
-                </Button>
-              ) : null}
-            </div>
-            <div className="flex flex-wrap gap-1.5">
-              {ACCENT_PRESETS.map((preset) => (
-                <button
-                  key={preset.value}
-                  type="button"
-                  aria-label={preset.name}
-                  aria-pressed={accentHex === preset.value}
-                  onClick={() => setAccent(preset.value)}
-                  className={cn(
-                    "size-6 rounded-md ring-1 ring-foreground/10 outline-none transition hover:scale-110 focus-visible:ring-3 focus-visible:ring-ring/50",
-                    accentHex === preset.value && "ring-2 ring-foreground/60",
-                  )}
-                  style={{ backgroundColor: preset.value }}
-                />
-              ))}
-            </div>
-          </Field>
+              <Field>
+                <FieldLabel htmlFor="opt-accent">Accent colour</FieldLabel>
+                <FieldDescription>
+                  Used for links and buttons inside the widget. Leave empty to
+                  use the Trackstage blue.
+                </FieldDescription>
+                <div className="flex flex-wrap items-center gap-2">
+                  <span
+                    aria-hidden
+                    className="size-8 shrink-0 rounded-lg ring-1 ring-foreground/10"
+                    style={{ backgroundColor: accentHex || "var(--primary)" }}
+                  />
+                  <Input
+                    id="opt-accent"
+                    value={accent}
+                    onChange={(event) => setAccent(event.target.value)}
+                    placeholder="#0F6E70"
+                    spellCheck={false}
+                    className="min-w-0 flex-1 font-mono text-xs uppercase"
+                  />
+                  {accent ? (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setAccent("")}
+                    >
+                      Reset
+                    </Button>
+                  ) : null}
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                  {ACCENT_PRESETS.map((preset) => (
+                    <button
+                      key={preset.value}
+                      type="button"
+                      aria-label={preset.name}
+                      aria-pressed={accentHex === preset.value}
+                      onClick={() => setAccent(preset.value)}
+                      className={cn(
+                        "size-8 rounded-md ring-1 ring-foreground/10 transition outline-none hover:scale-110 focus-visible:ring-3 focus-visible:ring-ring/50",
+                        accentHex === preset.value &&
+                          "ring-2 ring-foreground/60",
+                      )}
+                      style={{ backgroundColor: preset.value }}
+                    />
+                  ))}
+                </div>
+              </Field>
 
-          <OptionSwitch
-            id="opt-header"
-            label="Event name and logo"
-            description="Adds a small branded header above the widget."
-            checked={showHeader}
-            onChange={setShowHeader}
-          />
+              <OptionSwitch
+                id="opt-header"
+                label="Event name and logo"
+                description="Adds a small branded header above the widget."
+                checked={showHeader}
+                onChange={setShowHeader}
+              />
+            </>
+          ) : null}
 
-          {format.id === "iframe" ? (
+          {applies.height ? (
             <Field>
               <FieldLabel htmlFor="opt-height">Height on your site</FieldLabel>
               <FieldDescription>
@@ -698,8 +735,8 @@ function EmbedsPage() {
           <Field>
             <FieldLabel htmlFor="embed-name">Save this embed</FieldLabel>
             <FieldDescription>
-              Name the configuration so you can come back to it — and so you
-              can turn this embed off later without editing your website.
+              Name the configuration so you can come back to it — and so you can
+              turn this embed off later without editing your website.
             </FieldDescription>
             <div className="flex flex-wrap items-center gap-2">
               <Input
@@ -786,22 +823,163 @@ function EmbedsPage() {
           ) : null}
         </Card>
 
-        <Card className="gap-0 overflow-hidden p-0">
-          <Tabs defaultValue={showPreview ? "preview" : "code"} className="gap-0">
-            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-4 py-3">
-              <TabsList variant="line">
-                {showPreview ? (
-                  <TabsTrigger value="preview">
-                    <RiEyeLine size={15} aria-hidden />
-                    Preview
-                  </TabsTrigger>
-                ) : null}
-                <TabsTrigger value="code">
-                  <RiCodeSSlashLine size={15} aria-hidden />
-                  Get code
-                </TabsTrigger>
-              </TabsList>
-              {showPreview ? (
+        {/* The deliverable sits above the preview and outside any tab. It used
+            to live behind a "Get code" tab that was not the default one, so
+            the page's whole reason to exist — the snippet and the Copy button
+            — was one click out of sight. */}
+        <div className="flex min-w-0 flex-col gap-4">
+          <Card className="gap-4 p-5">
+            <div className="flex flex-col gap-2.5">
+              <StepHeading
+                step={4}
+                title="Copy the code"
+                description={deliverable.help}
+              />
+              {/* What the snippet below currently reflects — so a change made
+                  in steps 1–3 is visibly connected to the code. */}
+              <p className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
+                <span>Showing:</span>
+                {[
+                  widget.name,
+                  format.name,
+                  ...(applies.tracks ? [trackSummary] : []),
+                ].map((chip) => (
+                  <span
+                    key={chip}
+                    className="rounded-md bg-muted px-1.5 py-0.5 font-medium text-foreground"
+                  >
+                    {chip}
+                  </span>
+                ))}
+              </p>
+            </div>
+
+            <Field>
+              <FieldLabel htmlFor="embed-snippet">
+                {deliverable.label}
+              </FieldLabel>
+              {deliverable.kind === "url" ? (
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                  <Input
+                    id="embed-snippet"
+                    readOnly
+                    value={deliverable.value}
+                    onFocus={(event) => event.currentTarget.select()}
+                    className="min-w-0 flex-1 font-mono text-xs"
+                  />
+                  <div className="flex items-center gap-2">
+                    <CopyButton
+                      value={deliverable.value}
+                      label="Copy link"
+                      className="flex-1 sm:flex-none"
+                    />
+                    {format.id === "link" ? (
+                      <a
+                        href={relativeUrl || "#"}
+                        target="_blank"
+                        rel="noreferrer"
+                        className={buttonVariants({
+                          variant: "outline",
+                          size: "lg",
+                        })}
+                      >
+                        <RiExternalLinkLine aria-hidden />
+                        Open
+                      </a>
+                    ) : null}
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <Textarea
+                    id="embed-snippet"
+                    readOnly
+                    rows={format.id === "html" ? 12 : 8}
+                    value={deliverable.value}
+                    onFocus={(event) => event.currentTarget.select()}
+                    className="font-mono text-xs"
+                  />
+                  <CopyButton
+                    value={deliverable.value}
+                    label={format.id === "html" ? "Copy HTML" : "Copy code"}
+                    className="w-full sm:w-fit sm:self-start"
+                  />
+                </>
+              )}
+            </Field>
+
+            {/* "What do I paste where" — the sentence a first-time organizer
+                actually needs, next to the thing they just copied. */}
+            <p className="flex items-start gap-2 rounded-lg bg-muted/60 p-3 text-xs leading-relaxed text-muted-foreground">
+              <RiInformationLine
+                size={15}
+                aria-hidden
+                className="mt-px shrink-0"
+              />
+              <span>
+                <span className="font-medium text-foreground">
+                  Where this goes:{" "}
+                </span>
+                {deliverable.where}
+              </span>
+            </p>
+
+            {format.id === "iframe" ? (
+              <>
+                <Separator />
+                <Field>
+                  <FieldLabel htmlFor="embed-link">
+                    Or share the direct link
+                  </FieldLabel>
+                  <FieldDescription>
+                    The same widget as its own page — good for emails, Slack and
+                    QR codes.
+                  </FieldDescription>
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                    <Input
+                      id="embed-link"
+                      readOnly
+                      value={publicUrl}
+                      onFocus={(event) => event.currentTarget.select()}
+                      className="min-w-0 flex-1 font-mono text-xs"
+                    />
+                    <div className="flex items-center gap-2">
+                      <CopyButton
+                        value={publicUrl}
+                        label="Copy link"
+                        variant="outline"
+                        className="flex-1 sm:flex-none"
+                      />
+                      <a
+                        href={relativeUrl || "#"}
+                        target="_blank"
+                        rel="noreferrer"
+                        className={buttonVariants({
+                          variant: "outline",
+                          size: "lg",
+                        })}
+                      >
+                        <RiExternalLinkLine aria-hidden />
+                        Open
+                      </a>
+                    </div>
+                  </div>
+                </Field>
+              </>
+            ) : null}
+          </Card>
+
+          {showPreview ? (
+            <Card className="gap-0 overflow-hidden p-0">
+              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-4 py-3">
+                <p className="flex items-center gap-2 font-heading text-sm font-semibold text-foreground">
+                  <RiEyeLine
+                    size={15}
+                    aria-hidden
+                    className="text-muted-foreground"
+                  />
+                  Live preview
+                </p>
                 <div className="flex items-center gap-1">
                   <Button
                     variant={device === "desktop" ? "secondary" : "ghost"}
@@ -828,11 +1006,8 @@ function EmbedsPage() {
                     <RiRefreshLine aria-hidden />
                   </Button>
                 </div>
-              ) : null}
-            </div>
-
-            {showPreview ? (
-              <TabsContent value="preview" className="m-0 bg-muted/40 p-4">
+              </div>
+              <div className="bg-muted/40 p-4">
                 {activeSlug ? (
                   <div
                     className={cn(
@@ -855,104 +1030,51 @@ function EmbedsPage() {
                       src={relativeUrl}
                       title={`${widget.name} preview`}
                       className="block w-full bg-background"
-                      style={{ height: Math.min(height, 700) }}
+                      style={{ height: Math.min(height, 560) }}
                     />
                   </div>
                 ) : (
                   <Skeleton className="h-[420px] w-full" />
                 )}
-              </TabsContent>
-            ) : null}
-
-            <TabsContent value="code" className="m-0 flex flex-col gap-5 p-5">
-              <Field>
-                <FieldLabel htmlFor="embed-snippet">
-                  {deliverable.label}
-                </FieldLabel>
-                <FieldDescription>{deliverable.help}</FieldDescription>
-                {format.id === "link" ||
-                format.id === "json" ||
-                format.id === "xml" ||
-                format.id === "ics" ? (
-                  <div className="flex flex-wrap items-center gap-2">
-                    <Input
-                      id="embed-snippet"
-                      readOnly
-                      value={deliverable.value}
-                      onFocus={(event) => event.currentTarget.select()}
-                      className="min-w-0 flex-1 font-mono text-xs"
-                    />
-                    <CopyButton value={deliverable.value} label="Copy" />
-                    {format.id === "link" ? (
-                      <a
-                        href={relativeUrl || "#"}
-                        target="_blank"
-                        rel="noreferrer"
-                        className={buttonVariants({ variant: "outline" })}
-                      >
-                        <RiExternalLinkLine aria-hidden />
-                        Open
-                      </a>
-                    ) : null}
-                  </div>
-                ) : (
-                  <>
-                    <Textarea
-                      id="embed-snippet"
-                      readOnly
-                      rows={format.id === "html" ? 14 : 8}
-                      value={deliverable.value}
-                      onFocus={(event) => event.currentTarget.select()}
-                      className="font-mono text-xs"
-                    />
-                    <CopyButton
-                      value={deliverable.value}
-                      label={
-                        format.id === "html" ? "Copy HTML" : "Copy embed code"
-                      }
-                      className="w-fit self-start"
-                    />
-                  </>
-                )}
-              </Field>
-
-              {format.id === "iframe" ? (
-                <>
-                  <Separator />
-                  <Field>
-                    <FieldLabel htmlFor="embed-link">
-                      Or share the direct link
-                    </FieldLabel>
-                    <FieldDescription>
-                      The same widget as its own page — good for emails, Slack
-                      and QR codes.
-                    </FieldDescription>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <Input
-                        id="embed-link"
-                        readOnly
-                        value={publicUrl}
-                        onFocus={(event) => event.currentTarget.select()}
-                        className="min-w-0 flex-1 font-mono text-xs"
-                      />
-                      <CopyButton value={publicUrl} label="Copy link" />
-                      <a
-                        href={relativeUrl || "#"}
-                        target="_blank"
-                        rel="noreferrer"
-                        className={buttonVariants({ variant: "outline" })}
-                      >
-                        <RiExternalLinkLine aria-hidden />
-                        Open
-                      </a>
-                    </div>
-                  </Field>
-                </>
-              ) : null}
-            </TabsContent>
-          </Tabs>
-        </Card>
+              </div>
+            </Card>
+          ) : null}
+        </div>
       </section>
+    </div>
+  )
+}
+
+/**
+ * The numbered step marker. The four steps used to be plain "1." prefixes that
+ * disappeared into the headings; the dark disc is the same one the form-builder
+ * wizard uses for its active step, so the page reads as a sequence.
+ */
+function StepHeading({
+  step,
+  title,
+  description,
+}: {
+  step: number
+  title: string
+  description?: string
+}) {
+  return (
+    <div className="flex items-start gap-2.5">
+      <span
+        aria-hidden
+        className="mt-px flex size-6 shrink-0 items-center justify-center rounded-full bg-foreground text-[11px] font-semibold text-background"
+      >
+        {step}
+      </span>
+      <div className="min-w-0">
+        <h2 className="font-heading text-base font-semibold text-foreground">
+          {title}
+        </h2>
+        {description ? (
+          <p className="text-sm text-muted-foreground">{description}</p>
+        ) : null}
+      </div>
     </div>
   )
 }
@@ -989,20 +1111,28 @@ function OptionSwitch({
   )
 }
 
+/**
+ * Copying is the point of this page, so the button is the primary blue one and
+ * 44px tall — and it says "Copied" in place for two seconds on top of the toast,
+ * because a toast that has already faded is not a confirmation.
+ */
 function CopyButton({
   value,
   label,
   className,
+  variant = "default",
 }: {
   value: string
   label: string
   className?: string
+  variant?: "default" | "outline"
 }) {
   const [copied, setCopied] = useState(false)
 
   return (
     <Button
-      variant="outline"
+      variant={variant}
+      size="lg"
       className={className}
       onClick={() => {
         void copyText(value).then((ok) => {
