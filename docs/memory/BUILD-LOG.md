@@ -1458,3 +1458,9 @@ fully editable; hiding a session and a speaker through the organizer UI made
 `GET /v1/event/{slug}/speakers` from "public gallery" to "every contact, with emails".
 Left as-is (it is an organizer surface behind a token) but now flagged per row and
 filterable with `?public=true`.
+
+## Gate3 GREEN after parity fix wave (2026-08-11 ~11:10)
+Full re-gate on the integrated 7-agent wave: typecheck 0 · lint 0 · 147 unit ·
+verify-backend 516/0 (embeds baseline sync) · flows 3× consecutive exit 0
+(48+1retry / 49 / 49). Prod deployed via CI. Two spec syncs: embeds baseline,
+evaluation required-select answering. → Reconciliation pass (#3) launched.
