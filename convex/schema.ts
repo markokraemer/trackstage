@@ -166,6 +166,9 @@ export default defineSchema({
     phone: v.optional(v.string()),
     bio: v.optional(v.string()),
     headshotId: v.optional(v.id("_storage")),
+    // Internal organizer note about the speaker's photo ("waiting on a
+    // higher-res file", "crop tighter"). Never shown publicly.
+    headshotNote: v.optional(v.string()),
     links: v.optional(
       v.object({
         linkedin: v.optional(v.string()),

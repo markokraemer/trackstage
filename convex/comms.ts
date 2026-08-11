@@ -92,6 +92,12 @@ export type QueueMessageArgs = {
   extraVars?: Record<string, string>
   /** Send somewhere other than the person's own address (template test sends). */
   toEmailOverride?: string
+  /**
+   * Ad-hoc copy that bypasses the stored template (the bulk composer). The
+   * placeholders are still rendered per recipient, so `{{firstName}}` works
+   * exactly as it does in a saved template.
+   */
+  override?: { subject: string; body: string }
 }
 
 /**
@@ -119,7 +125,8 @@ export async function queueMessage(
     }
   }
 
-  const template = await resolveTemplate(ctx, args.eventId, args.templateKey)
+  const template =
+    args.override ?? (await resolveTemplate(ctx, args.eventId, args.templateKey))
   const vars: Record<string, string> = {
     speakerName: `${person.firstName} ${person.lastName}`.trim(),
     firstName: person.firstName,
@@ -478,6 +485,163 @@ export const sendTestToSelf = mutation({
     })
     await ctx.scheduler.runAfter(0, internal.comms.deliverPending, {})
     return { messageId, toEmail: user.email }
+  },
+})
+
+// ——— Bulk composer (sbek SPK-13) ————————————————————————————————————————
+// Templates cover the moments the system knows about (accepted, declined,
+// reminder). This covers everything else an organizer needs to say: "the venue
+// changed", "here's your green room time". One subject + body, one audience
+// filter, one message per recipient — each rendered with that person's own
+// placeholders and dropped into the same outbox as every other email, so the
+// preview/delivery path is identical.
+
+/** Who a bulk email goes to. */
+export const BULK_FILTERS = [
+  "all_speakers",
+  "accepted",
+  "incomplete_tasks",
+  "manual",
+] as const
+
+const bulkFilterValidator = v.union(
+  v.literal("all_speakers"),
+  v.literal("accepted"),
+  v.literal("incomplete_tasks"),
+  v.literal("manual"),
+)
+
+/**
+ * Resolve a filter to concrete person ids. Exported so the composer's live
+ * "this will go to N people" count and the send itself can never disagree —
+ * `recipientCount` and `composeBulk` call exactly this.
+ */
+export async function resolveBulkRecipients(
+  ctx: QueryCtx | MutationCtx,
+  eventId: Id<"events">,
+  filter: (typeof BULK_FILTERS)[number],
+  personIds?: Array<Id<"people">>,
+): Promise<Array<Id<"people">>> {
+  if (filter === "manual") {
+    const picked: Array<Id<"people">> = []
+    for (const personId of personIds ?? []) {
+      const person = await ctx.db.get("people", personId)
+      if (person && person.eventId === eventId) picked.push(person._id)
+    }
+    return [...new Set(picked)]
+  }
+
+  if (filter === "incomplete_tasks") {
+    const tasks = await ctx.db
+      .query("tasks")
+      .withIndex("by_eventId", (q) => q.eq("eventId", eventId))
+      .take(2000)
+    const ids = new Set<Id<"people">>()
+    for (const task of tasks) {
+      if (task.completedAt === undefined) ids.add(task.personId)
+    }
+    return [...ids]
+  }
+
+  if (filter === "accepted") {
+    const accepted = await ctx.db
+      .query("submissions")
+      .withIndex("by_eventId_and_status", (q) =>
+        q.eq("eventId", eventId).eq("status", "accepted"),
+      )
+      .take(2000)
+    const ids = new Set<Id<"people">>()
+    for (const submission of accepted) {
+      const participants = await ctx.db
+        .query("submissionParticipants")
+        .withIndex("by_submissionId", (q) =>
+          q.eq("submissionId", submission._id),
+        )
+        .take(64)
+      for (const participant of participants) ids.add(participant.personId)
+    }
+    return [...ids]
+  }
+
+  // all_speakers — everyone on a submission of any status, plus anyone the
+  // organizer manages by hand (speakersAdmin.addManual).
+  const participants = await ctx.db
+    .query("submissionParticipants")
+    .withIndex("by_eventId", (q) => q.eq("eventId", eventId))
+    .take(4000)
+  const ids = new Set<Id<"people">>(participants.map((p) => p.personId))
+  const managed = await ctx.db
+    .query("people")
+    .withIndex("by_eventId", (q) => q.eq("eventId", eventId))
+    .take(4000)
+  for (const person of managed) {
+    if (person.workflowStatus !== undefined) ids.add(person._id)
+  }
+  return [...ids]
+}
+
+/** Live audience size for the composer, before anything is sent. */
+export const recipientCount = query({
+  args: {
+    eventId: v.id("events"),
+    filter: bulkFilterValidator,
+    personIds: v.optional(v.array(v.id("people"))),
+  },
+  returns: v.number(),
+  handler: async (ctx, args) => {
+    await requireEventAccess(ctx, args.eventId)
+    const ids = await resolveBulkRecipients(
+      ctx,
+      args.eventId,
+      args.filter,
+      args.personIds,
+    )
+    return ids.length
+  },
+})
+
+export const composeBulk = mutation({
+  args: {
+    eventId: v.id("events"),
+    filter: bulkFilterValidator,
+    subject: v.string(),
+    body: v.string(),
+    /** Only read when `filter` is "manual". */
+    personIds: v.optional(v.array(v.id("people"))),
+  },
+  returns: v.object({ queued: v.number(), recipients: v.number() }),
+  handler: async (ctx, args) => {
+    await requireEventAccess(ctx, args.eventId)
+    const subject = args.subject.trim()
+    const body = args.body.trim()
+    if (!subject) throw new Error("Add a subject line.")
+    if (!body) throw new Error("Write a message before sending.")
+
+    const recipients = await resolveBulkRecipients(
+      ctx,
+      args.eventId,
+      args.filter,
+      args.personIds,
+    )
+    if (recipients.length === 0) {
+      throw new Error(
+        "Nobody matches that audience yet — pick a different filter.",
+      )
+    }
+
+    let queued = 0
+    for (const personId of recipients) {
+      await queueMessage(ctx, {
+        eventId: args.eventId,
+        personId,
+        // Groups these in the outbox without pretending to be a saved template.
+        templateKey: "custom-bulk",
+        override: { subject, body },
+      })
+      queued++
+    }
+    await ctx.scheduler.runAfter(0, internal.comms.deliverPending, {})
+    return { queued, recipients: recipients.length }
   },
 })
 

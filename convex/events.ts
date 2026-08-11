@@ -114,6 +114,7 @@ export const remove = mutation({
       "uploads",
       "emailTemplates",
       "messages",
+      "embeds",
     ] as const
     for (const table of byEventId) {
       const rows = await ctx.db

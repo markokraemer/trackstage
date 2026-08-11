@@ -169,6 +169,60 @@ export function shiftDayKey(dayKey: string, days: number): string {
   return `${pad(shifted.getUTCFullYear(), 4)}-${pad(shifted.getUTCMonth() + 1, 2)}-${pad(shifted.getUTCDate(), 2)}`
 }
 
+/** Day-of-week index for a day key: 0 = Sunday … 6 = Saturday. */
+export function weekdayIndex(dayKey: string): number {
+  const { year, month, day } = splitDayKey(dayKey)
+  return new Date(Date.UTC(year, month - 1, day)).getUTCDay()
+}
+
+/**
+ * The Monday of the week `dayKey` falls in — the anchor of the Week view's
+ * seven columns. Monday-first matches how conference weeks are talked about.
+ */
+export function weekStartKey(dayKey: string): string {
+  const weekday = weekdayIndex(dayKey)
+  // Sunday (0) belongs to the week that started six days earlier.
+  return shiftDayKey(dayKey, weekday === 0 ? -6 : 1 - weekday)
+}
+
+/** The seven day keys of the week containing `dayKey`, Monday first. */
+export function weekKeys(dayKey: string): Array<string> {
+  const start = weekStartKey(dayKey)
+  return Array.from({ length: 7 }, (_, index) => shiftDayKey(start, index))
+}
+
+/** "Mon 12" — the compact column head used by the Week view. */
+export function formatWeekdayShort(dayKey: string): {
+  weekday: string
+  day: string
+} {
+  const { year, month, day } = splitDayKey(dayKey)
+  const date = new Date(Date.UTC(year, month - 1, day))
+  return {
+    weekday: date.toLocaleDateString("en-US", {
+      weekday: "short",
+      timeZone: "UTC",
+    }),
+    day: String(day),
+  }
+}
+
+/** "Oct 12 – Oct 18, 2026" for a week's seven keys. */
+export function formatWeekRange(keys: Array<string>): string {
+  if (keys.length === 0) return ""
+  const first = splitDayKey(keys[0])
+  const last = splitDayKey(keys[keys.length - 1])
+  const fmt = (parts: { year: number; month: number; day: number }) =>
+    new Date(
+      Date.UTC(parts.year, parts.month - 1, parts.day)
+    ).toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      timeZone: "UTC",
+    })
+  return `${fmt(first)} – ${fmt(last)}, ${last.year}`
+}
+
 /** Inclusive list of day keys between two epochs, in the event timezone. */
 export function dayKeysBetween(
   startsAt: number,

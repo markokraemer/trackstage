@@ -274,6 +274,20 @@ export const speakersRoster = query({
       )
     }
 
+    // The roster is everyone who speaks at an accepted session PLUS anyone the
+    // organizer manages by hand (speakersAdmin.addManual stamps
+    // `workflowStatus`, which is what makes a speaker with no accepted
+    // submission yet visible here — sbek SPK-02).
+    const managed = (
+      await ctx.db
+        .query("people")
+        .withIndex("by_eventId", (q) => q.eq("eventId", args.eventId))
+        .take(MAX_ROWS)
+    ).filter((person) => person.workflowStatus !== undefined)
+    for (const person of managed) {
+      if (!sessionsByPerson.has(person._id)) sessionsByPerson.set(person._id, [])
+    }
+
     const rows = []
     for (const [personId, sessions] of sessionsByPerson) {
       const person = await ctx.db.get(personId as Id<"people">)
@@ -297,6 +311,11 @@ export const speakersRoster = query({
         email: person.email,
         company: person.company,
         jobTitle: person.jobTitle,
+        bio: person.bio,
+        // invited | confirmed | dropped. Speakers derived from an accepted
+        // submission and never touched by hand read as "confirmed".
+        workflowStatus: person.workflowStatus ?? "confirmed",
+        headshotNote: person.headshotNote,
         hasBio: Boolean(person.bio && person.bio.trim().length > 0),
         hasHeadshot: Boolean(person.headshotId),
         headshotUrl,
