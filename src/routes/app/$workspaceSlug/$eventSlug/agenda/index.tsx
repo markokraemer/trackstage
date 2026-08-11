@@ -371,8 +371,11 @@ function AgendaPage() {
             <Tabs
               value={view}
               onValueChange={(value) => setView(value as AgendaView)}
+              className="min-w-0 max-w-full"
             >
-              <TabsList variant="line">
+              {/* Six views don't fit a phone — scroll the strip, same recipe
+                  as the submissions status tabs. */}
+              <TabsList variant="line" className="max-w-full justify-start overflow-x-auto">
                 {tabs.map((tab) => (
                   <TabsTrigger key={tab.value} value={tab.value}>
                     <tab.icon aria-hidden />

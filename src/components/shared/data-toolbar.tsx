@@ -87,13 +87,18 @@ export function DataToolbar({
       ) : null}
 
       {filters ? (
-        <div className="flex flex-wrap items-center gap-2">{filters}</div>
+        // `min-w-0 max-w-full` lets a scrollable child (e.g. a wide tab strip)
+        // actually shrink on phones — without it the flex child's min-content
+        // width wins and drags the whole page into horizontal scroll.
+        <div className="flex min-w-0 max-w-full flex-wrap items-center gap-2">
+          {filters}
+        </div>
       ) : null}
 
       {children}
 
       {actions ? (
-        <div className="flex flex-wrap items-center gap-2 sm:ml-auto">
+        <div className="flex min-w-0 max-w-full flex-wrap items-center gap-2 sm:ml-auto">
           {actions}
         </div>
       ) : null}

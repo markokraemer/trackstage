@@ -345,8 +345,10 @@ function SpeakersPage() {
             <Tabs
               value={tab}
               onValueChange={(value) => setTab(value as FilterTab)}
+              className="min-w-0 max-w-full"
             >
-              <TabsList>
+              {/* Scrolls on phones — three labeled tabs + counts overflow 390px. */}
+              <TabsList className="max-w-full justify-start overflow-x-auto">
                 {(Object.keys(TAB_LABELS) as Array<FilterTab>).map((key) => (
                   <TabsTrigger key={key} value={key}>
                     {TAB_LABELS[key]}

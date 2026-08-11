@@ -71,8 +71,12 @@ export function KindTabs({ value, counts, search }: KindTabsProps) {
     ? appLink.submissions(eventRef)
     : legacyAppLink.submissions
   return (
-    <Tabs value={value}>
-      <TabsList aria-label="Filter by abstracts or sessions">
+    <Tabs value={value} className="min-w-0 max-w-full">
+      {/* Scrolls rather than overflowing the page on narrow phones. */}
+      <TabsList
+        aria-label="Filter by abstracts or sessions"
+        className="max-w-full justify-start overflow-x-auto"
+      >
         {SUBMISSION_KINDS.map((kind) => {
           return (
             <TabsTrigger
