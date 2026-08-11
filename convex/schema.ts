@@ -133,6 +133,12 @@ export default defineSchema({
     userId: v.string(), // Better Auth user id
     /** Set when the onboarding stepper was finished or skipped. */
     onboardingDoneAt: v.optional(v.number()),
+    /**
+     * Events whose sidebar "Getting started" checklist this user closed with
+     * its ✕ — gone forever for them, per event. Bounded by the number of
+     * events a person dismisses by hand.
+     */
+    checklistDismissedFor: v.optional(v.array(v.id("events"))),
   }).index("by_userId", ["userId"]),
 
   // ——— Core setup ———————————————————————————————————————————————————————

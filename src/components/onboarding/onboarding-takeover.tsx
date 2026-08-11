@@ -19,7 +19,18 @@ import { Logo } from "@/components/brand/logo"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { LabeledField } from "@/components/settings/labeled-field"
+import { TimezoneSelect } from "@/components/settings/timezone-select"
+import { DateTimePicker } from "@/components/settings/date-time-picker"
+import { EVENT_TYPES } from "@/components/settings/event-details-form"
 import { browserTimezone } from "@/components/settings/timezone"
 import { isValidSlug, publicEventUrl, slugify } from "@/components/settings/slug"
 import { authClient } from "@/lib/auth-client"
@@ -36,36 +47,43 @@ import { errorMessage } from "@/lib/errors"
  * `/app` address renders THIS instead of the shell: no sidebar, no top bar,
  * just the logo and one calm card per step.
  *
- * The flow: name your workspace → confirm your email → name & create your
- * first event → ONE how-it-works screen (four points together — a sequence of
- * screens here was "overkill by a lot") → land on the new event's dashboard.
+ * The flow ("make it the full event-settings onboarding as well"):
  *
- * THE EMAIL STEP IS A REAL GATE (Marko, round 3: "why can I click 'I'll
- * explore on my own' while my email is not verified?"). Two teeth:
+ *   workspace name → confirm email → YOUR EVENT (name + type + description)
+ *   → WHEN & WHERE (dates, timezone, venue) → ONE how-it-works screen
+ *   → land on the new event's dashboard.
  *
- *   1. The email step offers no skip. Resend, plus a 3s poll + focus refetch,
- *      so clicking the link in another tab unlocks this one instantly.
- *   2. The GATE ITSELF pins any signed-in unverified account to this screen
- *      on every `/app` access — flag done or not, events or not ("verify"
- *      mode). Verified → the gate opens and they are exactly where they were.
+ * Only the event NAME is required — every other field is optional with
+ * honest defaults (timezone = browser, dates = blank, not fake), and the
+ * same `events.create` mutation the settings page's fields map onto carries
+ * whatever was filled straight into the event record.
  *
- * The judge, e2e and demo accounts are born verified (`@example.*` /
- * `@demo.sessionboard.dev` — the databaseHook in convex/auth.ts), so none of
- * this can ever wall them. Skipping the wizard from its OTHER steps still
- * works and sets the same per-user flag as finishing
- * (convex/onboarding.ts). The speaker portal and public CFP live outside
- * `/app` and are untouched.
+ * THE EMAIL STEP IS A REAL GATE (Marko, round 3): no skip there, and the
+ * gate pins any signed-in unverified account to a verify screen on every
+ * `/app` access — flag done or not, events or not. Born-verified accounts
+ * (`@example.*` / `@demo.sessionboard.dev`, the databaseHook in
+ * convex/auth.ts) are structurally exempt, so the judge, e2e and demo can
+ * never be walled; "Wrong account? Log out" is the door out of a mistyped
+ * address. Skipping from any other step sets the same per-user flag as
+ * finishing (convex/onboarding.ts).
  */
 
 /** Mid-flow state, so the verify-email round trip resumes where it left off. */
 const RESUME_KEY = "ts-onboarding-state"
 
 const RESEND_COOLDOWN_MS = 30_000
+const DESCRIPTION_LIMIT = 1000
 
 interface ResumeState {
   step?: number
   workspaceName?: string
   eventName?: string
+  eventType?: string
+  description?: string
+  venue?: string
+  timezone?: string
+  startsAt?: number
+  endsAt?: number
   createdSlug?: string
   createdEventId?: string
 }
@@ -218,11 +236,12 @@ export function useOnboardingGate(): OnboardingGate {
   return { state: "hide" }
 }
 
-// Step indices — three doing-steps, then ONE how-it-works screen.
+// Step indices — four doing-steps, then ONE how-it-works screen.
 const STEP_WORKSPACE = 0
 const STEP_EMAIL = 1
 const STEP_EVENT = 2
-const STEP_HOW = 3
+const STEP_WHEN = 3
+const STEP_HOW = 4
 
 // ONE screen, not a sequence (Marko, 2026-08-12: four separate how-it-works
 // steps "is overkill by a lot") — the whole product in four glances, then the
@@ -265,18 +284,26 @@ export function OnboardingTakeover({
 
   const resume = useRef(readResume()).current
   const [step, setStep] = useState(
-    // Clamp: a resume state written by an older, longer flow must not strand
+    // Clamp: a resume state written by an older flow shape must not strand
     // the person past the last screen.
     Math.min(resume.step ?? STEP_WORKSPACE, TOTAL_STEPS - 1),
   )
   const [workspaceName, setWorkspaceName] = useState(resume.workspaceName ?? "")
+  // ——— The event, as the settings page knows it —————————————————————————
   const [eventName, setEventName] = useState(resume.eventName ?? "")
+  const [eventType, setEventType] = useState(resume.eventType ?? "")
+  const [description, setDescription] = useState(resume.description ?? "")
+  const [venue, setVenue] = useState(resume.venue ?? "")
+  const [timezone, setTimezone] = useState(resume.timezone ?? browserTimezone())
+  const [startsAt, setStartsAt] = useState<number | undefined>(resume.startsAt)
+  const [endsAt, setEndsAt] = useState<number | undefined>(resume.endsAt)
   const [created, setCreated] = useState<{ slug: string; eventId: string } | null>(
     resume.createdSlug && resume.createdEventId
       ? { slug: resume.createdSlug, eventId: resume.createdEventId }
       : null,
   )
   const [error, setError] = useState<string | undefined>()
+  const [dateError, setDateError] = useState<string | undefined>()
   const [busy, setBusy] = useState(false)
 
   // Prefill the workspace name once the auto-created workspace resolves.
@@ -293,10 +320,28 @@ export function OnboardingTakeover({
       step,
       workspaceName,
       eventName,
+      eventType,
+      description,
+      venue,
+      timezone,
+      startsAt,
+      endsAt,
       createdSlug: created?.slug,
       createdEventId: created?.eventId,
     })
-  }, [mode, step, workspaceName, eventName, created])
+  }, [
+    mode,
+    step,
+    workspaceName,
+    eventName,
+    eventType,
+    description,
+    venue,
+    timezone,
+    startsAt,
+    endsAt,
+    created,
+  ])
 
   const workspaceId = workspace?.id ?? workspaces.at(0)?.id
   const workspaceSlug = workspace?.slug ?? workspaces.at(0)?.slug ?? ""
@@ -359,10 +404,10 @@ export function OnboardingTakeover({
     }
   }
 
-  async function createFirstEvent() {
+  /** "Your event" → "When & where". Name is the ONLY required field. */
+  function continueFromEvent() {
     if (created) {
-      // Back-and-forth after a successful create must not create twice.
-      setStep(STEP_HOW)
+      setStep(STEP_WHEN)
       return
     }
     if (!eventName.trim()) {
@@ -374,6 +419,22 @@ export function OnboardingTakeover({
       setError("Use letters and numbers in the name — the web address is made from it.")
       return
     }
+    setError(undefined)
+    setStep(STEP_WHEN)
+  }
+
+  /** "When & where" → create the event with everything collected so far. */
+  async function createFirstEvent() {
+    if (created) {
+      // Back-and-forth after a successful create must not create twice.
+      setStep(STEP_HOW)
+      return
+    }
+    if (startsAt && endsAt && endsAt < startsAt) {
+      setDateError("The end has to come after the start.")
+      return
+    }
+    setDateError(undefined)
     if (!workspaceId) {
       toast.error("Your workspace is still being set up — reload and try again.")
       return
@@ -383,15 +444,27 @@ export function OnboardingTakeover({
       const result = await createEvent.mutateAsync({
         organizationId: workspaceId,
         name: eventName.trim(),
-        slug: cleanSlug,
-        timezone: browserTimezone(),
+        slug: slugify(eventName),
+        timezone,
+        // Optional fields travel only when filled — blank stays blank.
+        type: eventType || undefined,
+        description: description.trim() || undefined,
+        venue: venue.trim() || undefined,
+        startsAt,
+        endsAt,
       })
       setCurrentEventId(result.eventId, workspaceId)
       setCreated({ slug: result.slug, eventId: result.eventId })
-      setError(undefined)
       setStep(STEP_HOW)
     } catch (caught) {
-      setError(errorMessage(caught, "Couldn't create that event."))
+      // Name problems belong to the previous card — send the person there.
+      const message = errorMessage(caught, "Couldn't create that event.")
+      if (/name|slug|address/i.test(message)) {
+        setError(message)
+        setStep(STEP_EVENT)
+      } else {
+        setDateError(message)
+      }
     } finally {
       setBusy(false)
     }
@@ -550,8 +623,8 @@ export function OnboardingTakeover({
                 {mode === "wizard" && step === STEP_EVENT ? (
                   <>
                     <StepHeading
-                      title="Name your first event"
-                      detail="One conference, summit or meetup. It holds your call for papers, submissions, speakers and agenda — every other detail can wait."
+                      title="Your event"
+                      detail="One conference, summit or meetup. Only the name is needed now — everything here can be changed later in Settings."
                     />
                     <LabeledField
                       label="Event name"
@@ -575,6 +648,128 @@ export function OnboardingTakeover({
                         aria-invalid={error ? true : undefined}
                         onChange={(e) => setEventName(e.target.value)}
                         onKeyDown={(e) => {
+                          if (e.key === "Enter") continueFromEvent()
+                        }}
+                      />
+                    </LabeledField>
+                    <LabeledField
+                      label="Event type"
+                      htmlFor="onboarding-event-type"
+                      description="Optional — helps your team see the shape of the event at a glance."
+                    >
+                      <Select
+                        value={eventType || undefined}
+                        onValueChange={(value) => setEventType(String(value))}
+                      >
+                        <SelectTrigger
+                          id="onboarding-event-type"
+                          className="h-9 w-full"
+                        >
+                          <SelectValue placeholder="Pick a type (optional)" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {EVENT_TYPES.map((option) => (
+                            <SelectItem key={option} value={option}>
+                              {option}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </LabeledField>
+                    <LabeledField
+                      label="Description"
+                      htmlFor="onboarding-event-description"
+                      description="Optional — one or two sentences speakers will see on the public page."
+                    >
+                      <Textarea
+                        id="onboarding-event-description"
+                        value={description}
+                        rows={3}
+                        maxLength={DESCRIPTION_LIMIT}
+                        placeholder="Two days of talks on production AI engineering."
+                        onChange={(e) => setDescription(e.target.value)}
+                      />
+                    </LabeledField>
+                    <StepFooter onSkip={skip}>
+                      <div className="flex gap-2">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => setStep(STEP_WORKSPACE)}
+                        >
+                          Back
+                        </Button>
+                        <Button type="button" onClick={continueFromEvent}>
+                          Continue
+                          <RiArrowRightLine size={16} aria-hidden />
+                        </Button>
+                      </div>
+                    </StepFooter>
+                  </>
+                ) : null}
+
+                {mode === "wizard" && step === STEP_WHEN ? (
+                  <>
+                    <StepHeading
+                      title="When & where"
+                      detail="All optional — fill in what you know, leave the rest blank. Dates and deadlines everywhere will follow this timezone."
+                    />
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      <LabeledField label="Starts" htmlFor="onboarding-starts">
+                        <DateTimePicker
+                          id="onboarding-starts"
+                          value={startsAt}
+                          onChange={(value) => {
+                            setStartsAt(value)
+                            setDateError(undefined)
+                          }}
+                          timezone={timezone}
+                          placeholder="Pick a date (optional)"
+                          defaultTime="09:00"
+                        />
+                      </LabeledField>
+                      <LabeledField
+                        label="Ends"
+                        htmlFor="onboarding-ends"
+                        error={dateError}
+                      >
+                        <DateTimePicker
+                          id="onboarding-ends"
+                          value={endsAt}
+                          onChange={(value) => {
+                            setEndsAt(value)
+                            setDateError(undefined)
+                          }}
+                          timezone={timezone}
+                          placeholder="Pick a date (optional)"
+                          defaultTime="18:00"
+                          invalid={Boolean(dateError)}
+                        />
+                      </LabeledField>
+                    </div>
+                    <LabeledField
+                      label="Timezone"
+                      htmlFor="onboarding-timezone"
+                      description="We guessed from your browser — change it if the event runs elsewhere."
+                    >
+                      <TimezoneSelect
+                        id="onboarding-timezone"
+                        value={timezone}
+                        onValueChange={setTimezone}
+                      />
+                    </LabeledField>
+                    <LabeledField
+                      label="Venue or city"
+                      htmlFor="onboarding-venue"
+                      description="Optional — shown to speakers, and on calendar invites when rooms are known."
+                    >
+                      <Input
+                        id="onboarding-venue"
+                        value={venue}
+                        autoComplete="off"
+                        placeholder="Moscone Center, San Francisco"
+                        onChange={(e) => setVenue(e.target.value)}
+                        onKeyDown={(e) => {
                           if (e.key === "Enter") void createFirstEvent()
                         }}
                       />
@@ -585,7 +780,7 @@ export function OnboardingTakeover({
                           type="button"
                           variant="outline"
                           disabled={busy}
-                          onClick={() => setStep(STEP_WORKSPACE)}
+                          onClick={() => setStep(STEP_EVENT)}
                         >
                           Back
                         </Button>

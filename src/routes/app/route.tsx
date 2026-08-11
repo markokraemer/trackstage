@@ -52,6 +52,7 @@ import {
   OnboardingTakeoverPending,
   useOnboardingGate,
 } from "@/components/onboarding/onboarding-takeover"
+import { GettingStarted } from "@/components/shell/getting-started"
 import { ShellEventSwitcher } from "@/components/shell/event-switcher"
 import { VerifyEmailBanner } from "@/components/shell/verify-email-banner"
 import { RoutePrewarm } from "@/components/shell/route-prewarm"
@@ -506,6 +507,10 @@ function OrganizerLayout() {
               </div>
             ))}
           </nav>
+
+          {/* Quiet, data-derived checklist for a young event — disappears by
+              itself when everything is done, or forever via its ✕. */}
+          <GettingStarted />
         </aside>
 
         {/* Tier 3 — content */}
