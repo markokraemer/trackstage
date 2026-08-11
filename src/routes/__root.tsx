@@ -13,6 +13,7 @@ import type { ConvexQueryClient } from "@convex-dev/react-query"
 import type { ConvexReactClient } from "convex/react"
 import { Toaster } from "@/components/ui/sonner"
 import { authClient } from "@/lib/auth-client"
+import { readAuthMemo, writeAuthMemo } from "@/lib/auth-memo"
 import { getToken } from "@/lib/auth-server"
 
 import appCss from "../styles.css?url"
@@ -54,18 +55,24 @@ const getAuth = createServerFn({ method: "GET" }).handler(async () => {
  * the browser `getAuth` is an HTTP call, so that was a burst of round trips
  * asking the same question. Hold the answer briefly instead.
  *
- * Sign-out does a full `window.location.assign`, and an expiring session is
- * caught by the live `useSession()` subscription in the shell, so a one-minute
- * window cannot strand anybody on a page they should not see.
+ * The memo lives in src/lib/auth-memo.ts so the login/reset pages can
+ * `invalidateAuthMemo()` the moment a sign-in or sign-up succeeds — without
+ * that, the "no token" answer memoized by the login page's own route loads
+ * followed the user into `/app`, whose guard bounced them back to /login
+ * until the minute was up (the "signed up, then nothing happened for ages"
+ * dead gap). Sign-out does a full `window.location.assign` (fresh module
+ * state), and an expiring session is caught by the live `useSession()`
+ * subscription in the shell, so the window cannot strand anybody on a page
+ * they should not see.
  */
 const AUTH_MEMO_MS = 60_000
-let authMemo: { at: number; value: Awaited<ReturnType<typeof getAuth>> } | null = null
 
 async function resolveAuth() {
   if (typeof document === "undefined") return await getAuth()
-  if (authMemo && Date.now() - authMemo.at < AUTH_MEMO_MS) return authMemo.value
+  const memoized = readAuthMemo<Awaited<ReturnType<typeof getAuth>>>(AUTH_MEMO_MS)
+  if (memoized) return memoized.value
   const value = await getAuth()
-  authMemo = { at: Date.now(), value }
+  writeAuthMemo(value)
   return value
 }
 

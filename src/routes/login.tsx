@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/field"
 import { Logo } from "@/components/brand/logo"
 import { authClient } from "@/lib/auth-client"
+import { invalidateAuthMemo } from "@/lib/auth-memo"
 import { useSession } from "@/lib/session"
 import { errorMessage } from "@/lib/errors"
 
@@ -89,9 +90,12 @@ function LoginPage() {
     else navigate({ href: redirectTo })
   }
 
-  // Already signed in? Don't make them do it twice.
+  // Already signed in? Don't make them do it twice. The memo invalidation
+  // matters here too: this effect can fire on a session that arrived AFTER
+  // the route's own loads memoized "no token" (e.g. sign-in in another tab).
   useEffect(() => {
     if (!isAuthenticated) return
+    invalidateAuthMemo()
     if (!redirectTo) {
       navigate({ to: "/app" })
       return
@@ -118,6 +122,7 @@ function LoginPage() {
         if (resetError)
           throw new Error(resetError.message ?? "Could not send the reset link")
         setResetSentTo(address)
+        setPending(false)
         return
       }
       if (mode === "signup") {
@@ -125,6 +130,10 @@ function LoginPage() {
           name: name.trim() || email.split("@")[0],
           email: email.trim(),
           password,
+          // Rides along into the confirmation email: the verify link's
+          // callback drops the (already signed-in) user in the app, not on
+          // the marketing page.
+          callbackURL: "/app",
         })
         if (signUpError)
           throw new Error(signUpError.message ?? "Sign-up failed")
@@ -136,6 +145,12 @@ function LoginPage() {
         if (signInError)
           throw new Error(signInError.message ?? "Sign-in failed")
       }
+      // The route-level auth memo still holds the "no token" this very page
+      // resolved a moment ago; drop it or /app's guard bounces us back here.
+      invalidateAuthMemo()
+      // Deliberately NOT clearing `pending` on this path: the button keeps
+      // its "Creating your account…" state until navigation unmounts the
+      // page, so there is no flash of an idle sign-in card mid-transition.
       goToApp()
     } catch (err) {
       const message = errorMessage(err, "")
@@ -146,7 +161,6 @@ function LoginPage() {
             ? "An account with that email already exists — sign in instead."
             : message || "Something went wrong. Please try again."
       )
-    } finally {
       setPending(false)
     }
   }
@@ -175,6 +189,20 @@ function LoginPage() {
         replace: true,
       })
     }
+  }
+
+  // Signed in and not mid-submit (the submit path keeps its own button state
+  // until navigation): the effect above is already redirecting, so show a
+  // quiet hand-off instead of flashing a sign-in card nobody should fill in.
+  if (isAuthenticated && !pending) {
+    return (
+      <main className="flex min-h-svh flex-col items-center justify-center gap-4 bg-background py-12">
+        <Logo size="md" />
+        <p className="text-sm text-muted-foreground" role="status">
+          You're signed in — taking you to your dashboard…
+        </p>
+      </main>
+    )
   }
 
   const heading =
