@@ -1,19 +1,12 @@
-import { LogoMarquee } from "@/components/interactions"
-import type { LogoMarqueeItem } from "@/components/interactions"
 import { MarketingSection } from "@/components/marketing/section"
-import { PRODUCT_NAME } from "@/components/marketing/links"
 
 /**
  * Social proof, honestly. We have no customers to name yet, so instead of
- * borrowed logos this strip names the kinds of event the tool is shaped for —
- * one line of copy and the drift, nothing more (trim pass, 2026-08-11: the
- * apologetic paragraph about having no logos was itself the slop).
- *
- * `LogoMarquee` (interior.dev) does the drifting; it stops the moment a pointer
- * or keyboard focus lands on it, and falls back to a plain scroller under
- * `prefers-reduced-motion`.
+ * borrowed logos this strip names the kinds of event the tool is shaped for.
+ * One static single-pass row — the old marquee's seamless loop duplicated the
+ * list, which read as repeated content (deslopify pass, 2026-08-11).
  */
-const EVENT_TYPES: Array<LogoMarqueeItem> = [
+const EVENT_TYPES = [
   "Developer conferences",
   "Community meetups",
   "Company summits",
@@ -22,7 +15,7 @@ const EVENT_TYPES: Array<LogoMarqueeItem> = [
   "User groups",
   "Workshop series",
   "Unconferences",
-].map((label) => ({ id: label, label }))
+]
 
 export function ProofStrip() {
   return (
@@ -32,12 +25,16 @@ export function ProofStrip() {
           Built for the people who actually produce events
         </p>
 
-        <LogoMarquee
-          items={EVENT_TYPES}
-          label={`Kinds of event ${PRODUCT_NAME} is built for`}
-          speed={26}
-          className="border-0 [mask-image:linear-gradient(to_right,transparent,black_8%,black_92%,transparent)] shadow-none"
-        />
+        <ul className="flex flex-wrap items-center justify-center gap-x-2.5 gap-y-2">
+          {EVENT_TYPES.map((label) => (
+            <li
+              key={label}
+              className="rounded-full border border-border bg-card px-3.5 py-1.5 text-[13px] font-medium text-muted-foreground"
+            >
+              {label}
+            </li>
+          ))}
+        </ul>
       </div>
     </MarketingSection>
   )
