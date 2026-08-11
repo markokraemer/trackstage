@@ -126,6 +126,15 @@ export default defineSchema({
       "updatedAt",
     ]),
 
+  // Tiny per-user, cross-workspace flags. One row per user, created lazily.
+  // First use: the first-run onboarding stepper — completed OR deliberately
+  // skipped, it must never come back, on any device (convex/onboarding.ts).
+  userFlags: defineTable({
+    userId: v.string(), // Better Auth user id
+    /** Set when the onboarding stepper was finished or skipped. */
+    onboardingDoneAt: v.optional(v.number()),
+  }).index("by_userId", ["userId"]),
+
   // ——— Core setup ———————————————————————————————————————————————————————
   events: defineTable({
     // TEMP-OPTIONAL during legacy purge — tightened right back (see seed.run

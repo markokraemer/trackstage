@@ -144,6 +144,9 @@ export function EmptyEventState({ section }: { section: EventSection }) {
 export function FirstRunDashboard() {
   const { workspace } = useCurrentEvent()
 
+  // The guided first-run flow is the FULL-SCREEN takeover at the shell level
+  // (src/components/onboarding/onboarding-takeover.tsx); by the time this
+  // hero renders, the person has finished or skipped it.
   return (
     <div className="flex flex-col gap-6">
       <PageHeader

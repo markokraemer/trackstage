@@ -47,6 +47,11 @@ import {
   CopilotPanel,
   CopilotTriggerButton,
 } from "@/components/copilot/copilot-panel"
+import {
+  OnboardingTakeover,
+  OnboardingTakeoverPending,
+  useOnboardingGate,
+} from "@/components/onboarding/onboarding-takeover"
 import { ShellEventSwitcher } from "@/components/shell/event-switcher"
 import { VerifyEmailBanner } from "@/components/shell/verify-email-banner"
 import { RoutePrewarm } from "@/components/shell/route-prewarm"
@@ -208,6 +213,14 @@ function OrganizerLayout() {
   const { workspaceOptions, switchTo, switchToCreated, creating, setCreating } =
     useWorkspaceSwitcher()
 
+  // First-run onboarding OWNS the screen (Marko, 2026-08-12: "you should not
+  // show me anything else while I'm in that state"): a signed-in organizer
+  // who has never finished or skipped it and owns zero events gets the
+  // full-screen takeover at every /app address — no sidebar, no top bar —
+  // until they finish or skip. Seeded/demo accounts own events, so they can
+  // never meet it; the speaker portal and public CFP live outside /app.
+  const onboardingGate = useOnboardingGate()
+
   if (!authedOnServer && status !== "authenticated") {
     // Only reachable when the server could not answer either — a session that
     // expired in an open tab, or a client-side landing with no SSR context.
@@ -241,6 +254,13 @@ function OrganizerLayout() {
         <p className="sr-only">Loading…</p>
       </div>
     )
+  }
+
+  if (onboardingGate.state === "show") {
+    return <OnboardingTakeover onDone={onboardingGate.finish} />
+  }
+  if (onboardingGate.state === "pending") {
+    return <OnboardingTakeoverPending />
   }
 
   return (
