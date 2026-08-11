@@ -129,3 +129,6 @@ the narrative memory; RULES.md is the things circled as important along the way.
 43. **Copilot generative UI**: after first live use (listed + created a form) — every
     MCP tool call needs its own nice UX/UI using our actual components; panel draggable
     wider; research AI SDK generative-UI best practices; e2e in-chat experiences.
+44. **shadcn official chat components**: pointed at the June 2026 shadcn chat
+    changelog after seeing a bare composer — adopt the official chat set end-to-end
+    as the copilot's foundation (with AI Elements only for AI-specific parts).
