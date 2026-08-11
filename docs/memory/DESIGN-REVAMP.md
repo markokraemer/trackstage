@@ -180,3 +180,25 @@ whole reason the revamp is mechanical.
 5. `/design-system` refresh: the Color, Status and App-patterns sections
    document the new system; the Explorations section stays as the record of why.
 6. Reconciliation pass (RULES.md #19) audits every screen against it.
+
+## 5. One primary per surface — the button-hierarchy rule (2026-08-12)
+
+Marko, off a screenshot of the Agenda header showing four different button
+skins side by side: "why the fuck do we have four different styles of buttons?"
+The rule, now also in a comment atop `src/components/ui/button.tsx`:
+
+- **Per toolbar / page header / dialog footer: exactly ONE `default` (blue)
+  button** — the single most-likely action on that surface. Agenda → "Add
+  session"; Submissions → "Add submission"; dialog footers → the confirm.
+- **Everything else in a header/toolbar is `outline`** — navigation ("View
+  public agenda", "View speakers"), exports, and occasional state-changes
+  (Publish agenda, Close/Reopen plan). A published/closed state gets its
+  status shown separately (StatusPill), not a variant flip on the button.
+- **`ghost` is for tertiary actions inside content only** — table "..." row
+  actions, inline dismissals, toolbar chrome. Never in a page header, and
+  never mixed into a row of outline chips.
+- **`destructive`** for destructive confirms; triggers stay outline.
+- **Disabled = same variant at `disabled:opacity-50`** — never a separate
+  grey skin that reads as a fourth style (Auto-place was already correct:
+  outline + disabled).
+- Marketing pages' hero CTAs are a different context and keep their own rules.

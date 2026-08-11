@@ -1,3 +1,19 @@
+/**
+ * Button hierarchy — the rule (see docs/memory/DESIGN-REVAMP.md, "One primary
+ * per surface"):
+ *
+ * - `default` (blue): exactly ONE per toolbar/header/dialog-footer — the single
+ *   most-likely action on that surface (e.g. Agenda → "Add session",
+ *   Submissions → "Add submission", dialog footers → the confirm button).
+ * - `outline`: every other header/toolbar action — navigation, exports,
+ *   state-changes (Publish/Close), and dialog-footer Cancel. The bordered
+ *   white chip is the workhorse secondary.
+ * - `ghost`: tertiary actions INSIDE content only — inline dismissals, table
+ *   "..." row actions (icon sizes), toolbar chrome. Never in a page header.
+ * - `destructive`: destructive confirms only.
+ * - Disabled is the SAME variant at `disabled:opacity-50` — never a separate
+ *   grey skin that reads as a fourth style.
+ */
 import { Button as ButtonPrimitive } from "@base-ui/react/button"
 import { cva  } from "class-variance-authority"
 import type {VariantProps} from "class-variance-authority";
