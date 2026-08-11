@@ -1659,9 +1659,9 @@ if (SITE_URL) {
   // and restorable — mirror that lifecycle here.
   const statusWrite = await call("POST", `/event/${EV}/statuses/create`, { body: { name: "Custom" } })
   ok("custom session statuses are creatable via the API",
-    statusWrite.status === 201 && statusWrite.json.system === false && statusWrite.json.pipeline_status === "pending",
+    statusWrite.status === 201 && statusWrite.json.data?.system === false && statusWrite.json.data?.pipeline_status === "pending",
     JSON.stringify(statusWrite.json))
-  const createdStatusId = statusWrite.json.id
+  const createdStatusId = statusWrite.json.data?.id
   const statusDelete = await call("DELETE", `/event/${EV}/statuses/${createdStatusId}`)
   ok("custom status soft-deletes", statusDelete.status === 204)
   const statusRestore = await call("POST", `/event/${EV}/statuses/${createdStatusId}/restore`, { body: {} })
