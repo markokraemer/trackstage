@@ -84,7 +84,7 @@ export function EventBrandingCard({ eventId }: { eventId: Id<"events"> }) {
           <div className="grid gap-6 md:grid-cols-2">
             <BrandingSlot
               title="Event logo"
-              hint={`Square works best — 300 × 300 pixels or larger. PNG, JPG or WebP, up to ${formatBytes(MAX_IMAGE_BYTES)}.`}
+              hint="Square works best — 300 × 300 pixels or larger. PNG, JPG or WebP."
               preview={branding?.logo ?? null}
               previewClassName="size-24 rounded-lg object-contain"
               onUpload={(file, onProgress) => upload("logo", file, onProgress)}
@@ -175,10 +175,10 @@ function BrandingSlot({
         maxBytes={MAX_IMAGE_BYTES}
         label={
           preview?.url
-            ? `Drop a new ${title.toLowerCase()} here`
-            : `Drop your ${title.toLowerCase()} here, or click to choose one`
+            ? `Click to choose a new ${title.toLowerCase()}, or drop one here`
+            : `Click to choose your ${title.toLowerCase()}, or drop one here`
         }
-        hint={`PNG, JPG or WebP · up to ${formatBytes(MAX_IMAGE_BYTES)}`}
+        hint="PNG, JPG or WebP · large images are shrunk automatically"
         onUpload={onUpload}
         onError={(message) => toast.error(message)}
       />

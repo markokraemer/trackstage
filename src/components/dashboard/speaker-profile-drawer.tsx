@@ -83,6 +83,11 @@ export function SpeakerProfileDrawer({
   const setHeadshot = useConvexMutation(api.speakersAdmin.setHeadshot)
   const clearHeadshot = useConvexMutation(api.speakersAdmin.clearHeadshot)
   const [removingPhoto, setRemovingPhoto] = React.useState(false)
+  // Optimistic preview: the chosen photo shows in the avatar the moment it is
+  // picked, and stays until the reactive `extras` query echoes the stored one.
+  const [pendingPreview, setPendingPreview] = React.useState<string | null>(
+    null,
+  )
   const [firstName, setFirstName] = React.useState("")
   const [lastName, setLastName] = React.useState("")
   const [jobTitle, setJobTitle] = React.useState("")
@@ -106,6 +111,7 @@ export function SpeakerProfileDrawer({
     setCompany(draftSource.company ?? "")
     setBio(draftSource.bio ?? "")
     setHeadshotNote(draftSource.headshotNote ?? "")
+    setPendingPreview(null)
     // Keyed on `personId` alone on purpose: `draftSource` gets a new identity
     // on every reactive roster update, and re-seeding then would rewrite the
     // organizer's text under their cursor.
@@ -134,6 +140,7 @@ export function SpeakerProfileDrawer({
   }, [personId, open, extras])
 
   const headshotUrl = extras?.headshotUrl ?? speaker?.headshotUrl ?? null
+  const shownHeadshot = pendingPreview ?? headshotUrl
 
   // Optimistic echo for the eye toggle: the switch flips instantly, the
   // reactive `publicVisible` prop takes over the moment the server confirms.
@@ -177,13 +184,21 @@ export function SpeakerProfileDrawer({
    */
   async function uploadHeadshot(file: File, onProgress: (n: number) => void) {
     if (!speaker || !currentEvent) throw new Error("No speaker selected.")
-    const uploadUrl = await generateUploadUrl({ eventId: currentEvent._id })
-    const storageId = await uploadToStorage(uploadUrl, file, onProgress)
-    await setHeadshot({
-      personId: speaker.personId,
-      storageId: storageId as Id<"_storage">,
-      filename: file.name,
-    })
+    // Optimistic: the avatar shows the chosen photo immediately, and keeps it
+    // after success until the reactive query serves the stored copy.
+    setPendingPreview(URL.createObjectURL(file))
+    try {
+      const uploadUrl = await generateUploadUrl({ eventId: currentEvent._id })
+      const storageId = await uploadToStorage(uploadUrl, file, onProgress)
+      await setHeadshot({
+        personId: speaker.personId,
+        storageId: storageId as Id<"_storage">,
+        filename: file.name,
+      })
+    } catch (error) {
+      setPendingPreview(null)
+      throw error
+    }
     toast.success(`${speaker.name}'s photo was updated`, {
       description: "It's on the public speaker page and in their portal now.",
     })
@@ -194,6 +209,7 @@ export function SpeakerProfileDrawer({
     setRemovingPhoto(true)
     try {
       await clearHeadshot({ personId: speaker.personId })
+      setPendingPreview(null)
       toast.success("Photo removed", {
         description: `${speaker.name} shows as initials until a new one is uploaded.`,
       })
@@ -275,7 +291,9 @@ export function SpeakerProfileDrawer({
         <div className="flex flex-col gap-5">
           <div className="flex items-center gap-3">
             <Avatar className="size-12">
-              {headshotUrl ? <AvatarImage src={headshotUrl} alt="" /> : null}
+              {shownHeadshot ? (
+                <AvatarImage src={shownHeadshot} alt="" />
+              ) : null}
               <AvatarFallback>{initialsOf(speaker.name)}</AvatarFallback>
             </Avatar>
             <div className="min-w-0 flex-1">
@@ -335,39 +353,43 @@ export function SpeakerProfileDrawer({
 
           {/* Headshot (sbek CNT-10). The organizer usually has the photo in
               their inbox before the speaker ever opens their portal — so they
-              can put it in, through exactly the same storage path. */}
+              can put it in, through exactly the same storage path. Controls
+              are state-aware: with no photo there is just the upload zone;
+              with one, the zone reads "replace" and Remove sits by the photo
+              it removes — never a parked header button. */}
           <section className="flex flex-col gap-3">
-            <div className="flex items-center justify-between gap-2">
-              <h3 className="text-sm font-medium text-foreground">Headshot</h3>
-              {headshotUrl ? (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  disabled={removingPhoto}
-                  onClick={() => void removeHeadshot()}
-                >
-                  <RiDeleteBinLine aria-hidden />
-                  {removingPhoto ? "Removing…" : "Remove photo"}
-                </Button>
-              ) : null}
-            </div>
+            <h3 className="text-sm font-medium text-foreground">Headshot</h3>
             <div className="flex items-start gap-4">
-              <Avatar className="size-20 shrink-0 ring-1 ring-border">
-                {headshotUrl ? (
-                  <AvatarImage src={headshotUrl} alt={speaker.name} />
+              <div className="flex shrink-0 flex-col items-center gap-1.5">
+                <Avatar className="size-20 ring-1 ring-border">
+                  {shownHeadshot ? (
+                    <AvatarImage src={shownHeadshot} alt={speaker.name} />
+                  ) : null}
+                  <AvatarFallback className="text-lg">
+                    {initialsOf(speaker.name)}
+                  </AvatarFallback>
+                </Avatar>
+                {shownHeadshot ? (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-muted-foreground"
+                    disabled={removingPhoto}
+                    onClick={() => void removeHeadshot()}
+                  >
+                    <RiDeleteBinLine aria-hidden />
+                    {removingPhoto ? "Removing…" : "Remove"}
+                  </Button>
                 ) : null}
-                <AvatarFallback className="text-lg">
-                  {initialsOf(speaker.name)}
-                </AvatarFallback>
-              </Avatar>
+              </div>
               <FileDropZone
                 className="min-w-0 flex-1"
                 imagesOnly
                 size="sm"
                 label={
-                  headshotUrl
-                    ? "Drop a new photo here to replace it"
-                    : "Drop their photo here, or click to choose one"
+                  shownHeadshot
+                    ? "Click to choose a new photo, or drop one here"
+                    : "Click to choose their photo, or drop one here"
                 }
                 hint={`PNG, JPG or WebP · square works best${
                   extras?.headshotFilename ? ` · now: ${extras.headshotFilename}` : ""

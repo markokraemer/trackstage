@@ -11,8 +11,10 @@ import {
   MAX_IMAGE_BYTES,
   MAX_UPLOAD_BYTES,
   formatBytes,
+  isImage,
   validateFile,
 } from "@/lib/files"
+import { fitImageWithinLimit } from "@/lib/image"
 
 /**
  * The one way anything in Trackstage accepts a file.
@@ -62,27 +64,56 @@ export function FileDropZone({
   const [isOver, setIsOver] = useState(false)
   const [percent, setPercent] = useState<number | null>(null)
   const [current, setCurrent] = useState<string | null>(null)
+  const [shrinking, setShrinking] = useState(false)
 
   const busy = percent !== null
   const defaultLabel = imagesOnly
     ? "Drop an image here, or click to choose one"
     : "Drop a file here, or click to choose one"
   const defaultHint = imagesOnly
-    ? `PNG, JPG or WebP · up to ${formatBytes(maxBytes)}`
+    ? "PNG, JPG or WebP · large photos are shrunk automatically"
     : `PDF, slides, documents or images · up to ${formatBytes(maxBytes)}`
 
   async function handleFile(file: File | undefined) {
     if (!file || disabled || busy) return
-    const problem = validateFile(file, { maxBytes, imagesOnly })
+
+    // An over-the-limit image is not a mistake — shrink it in the browser
+    // instead of rejecting it. A 23 MB phone photo becomes a few hundred KB of
+    // JPEG in under a second; the only real reason to say no is a file the
+    // browser can't decode as an image at all (HEIC, mostly).
+    let candidate = file
+    if (
+      imagesOnly &&
+      file.size > maxBytes &&
+      isImage(file.type, file.name)
+    ) {
+      setCurrent(file.name)
+      setShrinking(true)
+      setPercent(0)
+      try {
+        candidate = await fitImageWithinLimit(file, maxBytes)
+      } catch (error) {
+        setPercent(null)
+        setCurrent(null)
+        setShrinking(false)
+        onError?.(errorMessage(error, "We couldn't read that image."))
+        return
+      }
+      setShrinking(false)
+    }
+
+    const problem = validateFile(candidate, { maxBytes, imagesOnly })
     if (problem) {
+      setPercent(null)
+      setCurrent(null)
       onError?.(problem)
       return
     }
-    setCurrent(file.name)
+    setCurrent(candidate.name)
     setPercent(0)
     try {
-      await onUpload(file, (value) => setPercent(value))
-      onSuccess?.(file)
+      await onUpload(candidate, (value) => setPercent(value))
+      onSuccess?.(candidate)
     } catch (error) {
       onError?.(
         errorMessage(error, "We couldn't upload that file. Please try again."),
@@ -162,7 +193,11 @@ export function FileDropZone({
         />
         <div className="flex flex-col gap-0.5">
           <span className="text-sm font-medium text-foreground">
-            {busy ? `Uploading ${current}…` : (label ?? defaultLabel)}
+            {busy
+              ? shrinking
+                ? `Shrinking ${current}…`
+                : `Uploading ${current}…`
+              : (label ?? defaultLabel)}
           </span>
           <span
             id={`${inputId}-hint`}

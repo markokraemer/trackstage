@@ -1,4 +1,4 @@
-import { useRef, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { toast } from "sonner"
 import { RiImageAddLine, RiUpload2Line } from "@remixicon/react"
 
@@ -6,7 +6,8 @@ import { cn } from "@/lib/utils"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
-import { IMAGE_ACCEPT, formatBytes, validateFile } from "@/lib/files"
+import { IMAGE_ACCEPT, isImage, validateFile } from "@/lib/files"
+import { fitImageWithinLimit } from "@/lib/image"
 import { usePortalUpload } from "./use-portal-upload"
 import { errorMessage } from "@/lib/errors"
 
@@ -17,6 +18,10 @@ const MAX_BYTES = 5 * 1024 * 1024
  * itself — a live preview, real upload progress, and the guidelines stated in
  * plain English. Organizers chase missing headshots more than anything else,
  * so this has to be the easiest thing on the page.
+ *
+ * Over-the-limit photos are shrunk in the browser (`@/lib/image`), never
+ * rejected: a 23 MB phone photo is normal, not a user error. The only refusal
+ * left is a file the browser can't decode as an image at all.
  *
  * Replacing the photo deletes the file it replaces (convex/lib/files.ts →
  * `replaceHeadshot`): a profile picture is a current value, not a version
@@ -32,21 +37,61 @@ export function HeadshotUploader({
   const inputRef = useRef<HTMLInputElement>(null)
   const { upload } = usePortalUpload()
   const [percent, setPercent] = useState<number | null>(null)
+  const [shrinking, setShrinking] = useState(false)
   const [isOver, setIsOver] = useState(false)
+  // Optimistic: the moment a photo is chosen it appears in the avatar, and it
+  // stays there while the reactive query catches up — no flash of the old
+  // photo after a successful upload.
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const isUploading = percent !== null
+  const shownUrl = previewUrl ?? headshotUrl
+
+  useEffect(
+    () => () => {
+      if (previewUrl) URL.revokeObjectURL(previewUrl)
+    },
+    [previewUrl],
+  )
 
   async function handleFile(file: File | undefined) {
     if (!file || isUploading) return
-    const problem = validateFile(file, { maxBytes: MAX_BYTES, imagesOnly: true })
+    if (file.size > 0 && !isImage(file.type, file.name)) {
+      toast.error("That needs to be an image — a PNG, JPG or WebP.")
+      return
+    }
+
+    setPercent(0)
+    let candidate = file
+    try {
+      setShrinking(file.size > MAX_BYTES)
+      candidate = await fitImageWithinLimit(file, MAX_BYTES)
+    } catch (error) {
+      setPercent(null)
+      setShrinking(false)
+      toast.error(errorMessage(error, "We couldn't read that photo."))
+      return
+    }
+    setShrinking(false)
+
+    // Backstop only — after shrinking, the remaining failures are empty or
+    // non-image files.
+    const problem = validateFile(candidate, {
+      maxBytes: MAX_BYTES,
+      imagesOnly: true,
+    })
     if (problem) {
+      setPercent(null)
       toast.error(problem)
       return
     }
-    setPercent(0)
+
+    const localUrl = URL.createObjectURL(candidate)
+    setPreviewUrl(localUrl)
     try {
-      await upload(file, { isHeadshot: true }, setPercent)
+      await upload(candidate, { isHeadshot: true }, setPercent)
       toast.success("Your headshot was updated.")
     } catch (error) {
+      setPreviewUrl(null)
       toast.error(errorMessage(error, "We couldn't upload that photo."))
     } finally {
       setPercent(null)
@@ -61,7 +106,7 @@ export function HeadshotUploader({
       <button
         type="button"
         disabled={isUploading}
-        aria-label={headshotUrl ? "Replace your headshot" : "Upload a headshot"}
+        aria-label={shownUrl ? "Replace your headshot" : "Upload a headshot"}
         onClick={() => inputRef.current?.click()}
         onDragOver={(event) => {
           event.preventDefault()
@@ -81,16 +126,14 @@ export function HeadshotUploader({
         )}
       >
         <Avatar className="size-24 ring-1 ring-border">
-          {headshotUrl ? (
-            <AvatarImage src={headshotUrl} alt="Your headshot" />
-          ) : null}
+          {shownUrl ? <AvatarImage src={shownUrl} alt="Your headshot" /> : null}
           <AvatarFallback className="text-xl">{initials}</AvatarFallback>
         </Avatar>
         <span
           aria-hidden
           className="pointer-events-none absolute inset-1 flex items-center justify-center rounded-full bg-foreground/55 text-xs font-medium text-background opacity-0 transition-opacity group-hover/headshot:opacity-100 group-focus-visible/headshot:opacity-100"
         >
-          {headshotUrl ? "Change" : "Add photo"}
+          {shownUrl ? "Change" : "Add photo"}
         </span>
       </button>
 
@@ -120,21 +163,23 @@ export function HeadshotUploader({
         disabled={isUploading}
         onClick={() => inputRef.current?.click()}
       >
-        {headshotUrl ? (
+        {shownUrl ? (
           <RiUpload2Line aria-hidden />
         ) : (
           <RiImageAddLine aria-hidden />
         )}
         {isUploading
-          ? `Uploading… ${percent}%`
-          : headshotUrl
+          ? shrinking
+            ? "Shrinking…"
+            : `Uploading… ${percent}%`
+          : shownUrl
             ? "Replace photo"
             : "Upload a photo"}
       </Button>
       <p className="text-xs leading-relaxed text-muted-foreground">
-        A square photo, at least 800 × 800 pixels. JPG or PNG, up to{" "}
-        {formatBytes(MAX_BYTES)}. Tap the photo, or drag one straight onto it.
-        It appears on the public programme next to your talk.
+        A square photo, at least 800 × 800 pixels — JPG or PNG. Big photos are
+        shrunk automatically. Tap the photo, or drag one straight onto it. It
+        appears on the public programme next to your talk.
       </p>
     </div>
   )
