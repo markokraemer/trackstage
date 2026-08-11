@@ -121,6 +121,13 @@ trail visible).
     used sparingly — but less playful, "boring business sauce". The exploration must
     star a "De-blued" candidate: identical structure, neutral gray chrome, blue
     reserved for primary actions/links/focus only.**
+    **REFERENCE DECISION (final): ATTIO is the gold standard to heavily inspire from
+    ("attio is the right company to take"), alongside Stripe; Juicebox is fine as a
+    secondary; Mercury is OUT. Caveat: Attio can be "too minuscule in a lot of
+    aspects" — take its calm neutral system and table craft, not its density. Unique
+    accent still wanted (turquoise-adjacent family). Mobbin MCP is connected
+    (mcp__mobbin__search_screens/flows/sections via ToolSearch) for pulling real
+    Attio/Juicebox screens.**
     (b) **adopt interior.dev components/animations end-to-end** (https://www.interior.dev/docs
     — press-depth etc., "top tier, making the web less boring and more interactive") —
     go through ALL offered components and take over the core ones + their animations

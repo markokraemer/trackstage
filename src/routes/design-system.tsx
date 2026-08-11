@@ -21,6 +21,7 @@ import type { RemixiconComponentType } from "@remixicon/react"
 import { cn } from "@/lib/utils"
 import { Logo, LogoMark, Wordmark } from "@/components/brand/logo"
 import { InteractionsCatalog } from "@/components/interactions/catalog"
+import { DesignExplorations } from "@/components/brand/explorations"
 import {
   BRAND_PRIMARY,
   brandSvg,
@@ -1455,6 +1456,15 @@ function DesignSystemPage() {
               description="The interior.dev micro-interaction library, adopted end to end and restyled onto our tokens — same motion, our design language. Every tile below is live; the caption says where it belongs in the product. Import from @/components/interactions; the full map lives in docs/memory/INTERACTIONS.md."
             >
               <InteractionsCatalog />
+            </Section>
+
+            {/* --------------------------------------------- EXPLORATIONS */}
+            <Section
+              id="explorations"
+              title="Explorations — candidate design languages"
+              description="Not shipped, not decided. The current language stays exactly as it is until Marko picks from these (docs/memory/RULES.md #20). Three independent axes — feel, accent, type — each rendered on the same mini organizer dashboard so the only thing that moves is the variable under test. Everything here is scoped to its panel; the app's tokens and font stack are untouched."
+            >
+              <DesignExplorations />
             </Section>
           </div>
         </div>

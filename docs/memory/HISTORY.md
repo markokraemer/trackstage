@@ -83,3 +83,13 @@ the narrative memory; RULES.md is the things circled as important along the way.
 32. **This document**: keep a full prompt history from A to Z (docs/memory/HISTORY.md);
     RULES.md stays but reframed — not hardcore rules, a distillation of what was
     circled as important.
+33. **Design language convergence**: shared Luma screenshots — likes its simplicity
+    but it's too playful; realized "maybe it's just too blue" about our current UI
+    (which he otherwise likes). Briefly floated Mercury and Juicebox ("rip the entire
+    feel in the deepest form") + a unique turquoise-adjacent accent. **FINAL: Attio is
+    the gold standard to heavily inspire from** (with Stripe); Juicebox fine as
+    secondary; Mercury out; Attio caveat — "too minuscule", take the system not the
+    density. Mobbin MCP connected for real screen references.
+34. **Full MCP server requirement**: complete MCP functionality for Sessionboard —
+    operate everything from Claude/Codex/anywhere, auth via Better Auth, "connect and
+    it will just work perfectly".

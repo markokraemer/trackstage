@@ -3,14 +3,17 @@
  *
  * Marko's brief (docs/memory/RULES.md #20): keep the current language shipping,
  * but put concrete candidates on the design-system page and choose from them.
- * Two independent axes, each shown on the SAME mini organizer dashboard:
+ * Three independent axes, each shown on the SAME mini organizer dashboard:
  *
- * 1. **Colour** — "De-blued" (the star) against what we ship today.
- * 2. **Type** — four pairings, from the Inter baseline to a distinctive one.
+ * 1. **Colour & feel** — De-blued (the star), Mercury, Juicebox-soft, against
+ *    what we ship today.
+ * 2. **Accent** — a teal-family alternative to Sessionboard blue, switchable on
+ *    every panel below.
+ * 3. **Type** — four pairings, from the Inter baseline to a distinctive one.
  *
  * Nothing here leaks into the app. The candidate fonts are loaded by this
- * module only, and applied through `[data-demo-panel]` scoped rules in
- * `explorations.css` — the global `--font-sans` stack is untouched.
+ * module only, palettes are scoped custom-property overrides on the panel
+ * element, and the global `--font-sans` stack is untouched.
  */
 
 import "@fontsource-variable/instrument-sans"
@@ -21,7 +24,8 @@ import "@fontsource-variable/public-sans"
 import "@fontsource-variable/sora"
 import "./explorations.css"
 
-import { RiAddLine, RiArrowRightUpLine } from "@remixicon/react"
+import { useState } from "react"
+import { RiAddLine, RiArrowRightUpLine, RiCheckLine } from "@remixicon/react"
 
 import { cn } from "@/lib/utils"
 import { Badge } from "@/components/ui/badge"
@@ -38,7 +42,7 @@ import {
 import { PageHeader } from "@/components/shared/page-header"
 import { StatusPill } from "@/components/shared/status-pill"
 
-/* ------------------------------------------------------------------- axes */
+/* ------------------------------------------------------------- axis: type */
 
 const INTER = "'Inter Variable', sans-serif"
 
@@ -85,7 +89,7 @@ const TYPE_CANDIDATES: Array<TypeCandidate> = [
     pairing: "Space Grotesk headings · Public Sans body",
     personality: "Technical and sharp — reads like well-made software.",
     changes:
-      "Headings pick up squared terminals and a wider stance. Body switches to Public Sans (the US design system's workhorse), which is a touch more formal than Inter.",
+      "Headings pick up squared terminals and a wider stance. Body switches to Public Sans (the US design system's workhorse), a touch more formal than Inter.",
     heading: "'Space Grotesk Variable', sans-serif",
     body: "'Public Sans Variable', sans-serif",
   },
@@ -106,27 +110,152 @@ const TYPE_CANDIDATES: Array<TypeCandidate> = [
 const CURRENT_TYPE = TYPE_CANDIDATES[0]
 const CHARACTER_TYPE = TYPE_CANDIDATES[3]
 
-type Palette = "current" | "neutral"
+/* ----------------------------------------------------------- axis: accent */
+
+interface Accent {
+  id: string
+  name: string
+  hex: string
+}
 
 /**
- * "De-blued": every tinted surface goes neutral, #2F5CE0 is reserved for
- * primary buttons, links, focus rings and the active nav item. Applied as
- * scoped custom-property overrides — the same tokens a rollout would edit in
- * `src/styles.css`, nothing more.
+ * Corporate-safe teal family — deep enough for white button text, none of them
+ * neon. `blue` is what ships today, kept first so a panel can always be put
+ * back.
  */
-const NEUTRAL_TOKENS: Record<string, string> = {
-  "--accent": "#f4f5f7",
-  "--accent-foreground": "#1b1e27",
-  "--secondary": "#f4f5f7",
-  "--secondary-foreground": "#1b1e27",
-  "--muted": "#f4f5f7",
-  "--sidebar": "#f7f8f9",
-  "--sidebar-accent": "#eceef1",
-  "--sidebar-accent-foreground": "#1b1e27",
-  "--sidebar-border": "#e6e8eb",
-  "--status-blue-bg": "#eceef1",
-  "--status-blue-fg": "#414753",
-  "--status-blue-dot": "#8a919e",
+const ACCENTS: Array<Accent> = [
+  { id: "blue", name: "Sessionboard blue", hex: "#2F5CE0" },
+  { id: "teal", name: "Deep teal", hex: "#0F766E" },
+  { id: "verdigris", name: "Verdigris", hex: "#0D9488" },
+  { id: "petrol", name: "Petrol", hex: "#155E63" },
+  { id: "jade", name: "Muted jade", hex: "#0E8A5F" },
+]
+
+/** An accent swap is literally these four tokens. */
+function accentTokens(hex: string): Record<string, string> {
+  return {
+    "--primary": hex,
+    "--ring": hex,
+    "--sidebar-primary": hex,
+    "--chart-1": hex,
+  }
+}
+
+/* ------------------------------------------------------------ axis: feel */
+
+interface PaletteCandidate {
+  id: string
+  tokens: Record<string, string>
+  /** Shape/density overrides that no token can express. */
+  panelClassName?: string
+  defaultAccent: string
+}
+
+/** What ships today: lavender banner, blue-tinted sidebar and pills. */
+const CURRENT_PALETTE: PaletteCandidate = {
+  id: "current",
+  tokens: {},
+  defaultAccent: "blue",
+}
+
+/**
+ * "De-blued": every tinted surface goes neutral and #2F5CE0 is reserved for
+ * primary buttons, links, focus rings and the active nav item.
+ */
+const DEBLUED_PALETTE: PaletteCandidate = {
+  id: "deblued",
+  defaultAccent: "blue",
+  tokens: {
+    "--accent": "#f4f5f7",
+    "--accent-foreground": "#1b1e27",
+    "--secondary": "#f4f5f7",
+    "--secondary-foreground": "#1b1e27",
+    "--muted": "#f4f5f7",
+    "--sidebar": "#f7f8f9",
+    "--sidebar-accent": "#eceef1",
+    "--sidebar-accent-foreground": "#1b1e27",
+    "--sidebar-border": "#e6e8eb",
+    "--status-blue-bg": "#eceef1",
+    "--status-blue-fg": "#414753",
+    "--status-blue-dot": "#8a919e",
+  },
+}
+
+/**
+ * "Mercury": warm neutral chrome, deep ink text, hairline-plus-shadow depth
+ * instead of tint, and a single distinctive accent. Our reading of
+ * mercury.com — restrained banking UI where the table is the product.
+ */
+const MERCURY_PALETTE: PaletteCandidate = {
+  id: "mercury",
+  defaultAccent: "teal",
+  panelClassName:
+    "[&_[data-slot=card]]:shadow-sm [&_[data-slot=page-header]]:border-border [&_[data-slot=page-header]]:shadow-xs",
+  tokens: {
+    "--background": "#faf9f7",
+    "--card": "#ffffff",
+    "--card-foreground": "#1b1a17",
+    "--foreground": "#1b1a17",
+    "--muted": "#f3f1ec",
+    "--muted-foreground": "#6f6a61",
+    "--accent": "#f1efe9",
+    "--accent-foreground": "#1b1a17",
+    "--secondary": "#f3f1ec",
+    "--secondary-foreground": "#1b1a17",
+    "--border": "#e7e2d9",
+    "--input": "#ddd7cc",
+    "--sidebar": "#f6f4ef",
+    "--sidebar-foreground": "#1b1a17",
+    "--sidebar-accent": "#eae6dd",
+    "--sidebar-accent-foreground": "#1b1a17",
+    "--sidebar-border": "#e7e2d9",
+    "--status-green-bg": "#e4efe3",
+    "--status-green-fg": "#2f5d33",
+    "--status-green-dot": "#4d8250",
+    "--status-amber-bg": "#f7eddb",
+    "--status-amber-fg": "#77521c",
+    "--status-amber-dot": "#b97e28",
+    "--status-gray-bg": "#efece6",
+    "--status-gray-fg": "#5c574f",
+    "--status-blue-bg": "#e9efee",
+    "--status-blue-fg": "#245049",
+    "--status-blue-dot": "#5c8a83",
+  },
+}
+
+/**
+ * "Juicebox-soft": the same information, softened — warmer greys, larger radii,
+ * more air per row. Friendly without being playful.
+ */
+const JUICEBOX_PALETTE: PaletteCandidate = {
+  id: "juicebox",
+  defaultAccent: "verdigris",
+  panelClassName:
+    "[&_[data-slot=card]]:rounded-2xl [&_[data-slot=page-header]]:rounded-2xl [&_button]:rounded-xl [&_th]:py-3 [&_td]:py-3.5",
+  tokens: {
+    "--background": "#fbf9f7",
+    "--card": "#ffffff",
+    "--card-foreground": "#26211d",
+    "--foreground": "#26211d",
+    "--muted": "#f6f2ee",
+    "--muted-foreground": "#7a7068",
+    "--accent": "#f7f0ea",
+    "--accent-foreground": "#3a2f28",
+    "--secondary": "#f6f2ee",
+    "--secondary-foreground": "#3a2f28",
+    "--border": "#ece5de",
+    "--input": "#e3dad1",
+    "--sidebar": "#f8f4f0",
+    "--sidebar-foreground": "#26211d",
+    "--sidebar-accent": "#f0e8e0",
+    "--sidebar-accent-foreground": "#3a2f28",
+    "--sidebar-border": "#ece5de",
+    "--status-gray-bg": "#f0eae4",
+    "--status-gray-fg": "#655c54",
+    "--status-blue-bg": "#e9f1ef",
+    "--status-blue-fg": "#2c5751",
+    "--status-blue-dot": "#6b9a93",
+  },
 }
 
 /* ------------------------------------------------------------ demo panel */
@@ -144,31 +273,38 @@ const DEMO_ROWS: Array<{ title: string; speaker: string; status: string }> = [
     speaker: "Jonas Lindqvist",
     status: "pending",
   },
-  { title: "The programme committee playbook", speaker: "Rio Tanaka", status: "active" },
+  {
+    title: "The programme committee playbook",
+    speaker: "Rio Tanaka",
+    status: "active",
+  },
 ]
 
 export interface DemoPanelProps {
   heading: string
   body: string
-  palette?: Palette
+  palette?: PaletteCandidate
+  accentHex?: string
   className?: string
 }
 
 /**
- * The constant in every comparison: one mini organizer dashboard, rendered
- * from the real shadcn primitives and the real shared components, so a
- * candidate is judged on the surfaces we actually ship.
+ * The constant in every comparison: one mini organizer dashboard, built from
+ * the real shadcn primitives and the real shared components, so a candidate is
+ * judged on the surfaces we actually ship.
  */
 export function DemoPanel({
   heading,
   body,
-  palette = "current",
+  palette = CURRENT_PALETTE,
+  accentHex,
   className,
 }: DemoPanelProps) {
   const style = {
     "--demo-heading": heading,
     "--demo-body": body,
-    ...(palette === "neutral" ? NEUTRAL_TOKENS : {}),
+    ...palette.tokens,
+    ...(accentHex ? accentTokens(accentHex) : {}),
   } as React.CSSProperties
 
   return (
@@ -177,6 +313,7 @@ export function DemoPanel({
       style={style}
       className={cn(
         "overflow-hidden rounded-xl border border-border bg-card",
+        palette.panelClassName,
         className,
       )}
     >
@@ -202,7 +339,7 @@ export function DemoPanel({
           </div>
         </div>
 
-        <div className="min-w-0 flex-1 space-y-4 p-4">
+        <div className="min-w-0 flex-1 space-y-4 bg-background p-4">
           <PageHeader
             title="Submissions"
             description="Everything submitted to Frontend Summit 2026, in one table."
@@ -275,23 +412,36 @@ export function DemoPanel({
 
 /* --------------------------------------------------------------- section */
 
-function Frame({
-  badge,
-  name,
-  pairing,
-  personality,
-  changes,
-  featured = false,
-  children,
-}: {
+interface CandidateProps {
   badge: string
   name: string
   pairing: string
   personality: string
   changes: string
   featured?: boolean
-  children: React.ReactNode
-}) {
+  palette?: PaletteCandidate
+  heading?: string
+  body?: string
+}
+
+/**
+ * One candidate: the demo panel, its own accent picker, and the three lines
+ * that say what it is, how it feels, and what would actually change.
+ */
+function Candidate({
+  badge,
+  name,
+  pairing,
+  personality,
+  changes,
+  featured = false,
+  palette = CURRENT_PALETTE,
+  heading = CURRENT_TYPE.heading,
+  body = CURRENT_TYPE.body,
+}: CandidateProps) {
+  const [accentId, setAccentId] = useState(palette.defaultAccent)
+  const accent = ACCENTS.find((item) => item.id === accentId) ?? ACCENTS[0]
+
   return (
     <section
       className={cn(
@@ -301,7 +451,13 @@ function Frame({
           : "bg-muted/60 ring-1 ring-border",
       )}
     >
-      {children}
+      <DemoPanel
+        palette={palette}
+        heading={heading}
+        body={body}
+        accentHex={accent.hex}
+      />
+
       <div className="mt-3.5 px-1">
         <div className="flex flex-wrap items-center gap-2">
           <Badge variant={featured ? "default" : "secondary"}>{badge}</Badge>
@@ -317,6 +473,34 @@ function Frame({
           <span className="font-medium text-foreground/70">What changes: </span>
           {changes}
         </p>
+
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <span className="text-xs font-medium text-muted-foreground">
+            Accent:
+          </span>
+          {ACCENTS.map((item) => (
+            <button
+              key={item.id}
+              type="button"
+              onClick={() => setAccentId(item.id)}
+              aria-pressed={item.id === accent.id}
+              title={`${item.name} · ${item.hex}`}
+              className={cn(
+                "flex size-6 items-center justify-center rounded-full ring-1 ring-foreground/10 transition-transform outline-none hover:scale-110 focus-visible:ring-3 focus-visible:ring-ring/50",
+                item.id === accent.id && "ring-2 ring-foreground/40",
+              )}
+              style={{ background: item.hex }}
+            >
+              {item.id === accent.id ? (
+                <RiCheckLine size={13} aria-hidden className="text-white" />
+              ) : null}
+              <span className="sr-only">{item.name}</span>
+            </button>
+          ))}
+          <code className="font-mono text-xs text-muted-foreground">
+            {accent.name} · {accent.hex}
+          </code>
+        </div>
       </div>
     </section>
   )
@@ -349,92 +533,150 @@ export function DesignExplorations() {
           Pick one — rollout is a one-line token change.
         </h3>
         <p className="container-reading text-sm text-foreground/80">
-          Two independent choices, both shown on the same mini organizer
-          dashboard so nothing but the variable moves. Colour is the{" "}
-          <code className="font-mono">--accent</code> /{" "}
+          Three independent choices — <strong>feel</strong>,{" "}
+          <strong>accent</strong>, <strong>type</strong> — all shown on the same
+          mini organizer dashboard so nothing but the variable moves. Feel is
+          the <code className="font-mono">--accent</code> /{" "}
           <code className="font-mono">--sidebar-*</code> /{" "}
-          <code className="font-mono">--status-blue-*</code> tokens in{" "}
-          <code className="font-mono">src/styles.css</code>; type is{" "}
+          <code className="font-mono">--status-*</code> tokens in{" "}
+          <code className="font-mono">src/styles.css</code>; accent is{" "}
+          <code className="font-mono">--primary</code>; type is{" "}
           <code className="font-mono">--font-sans</code> and{" "}
           <code className="font-mono">--font-heading</code> in the same file.
-          Until you choose, the shipping app is unchanged — these panels are
-          scoped previews, not a live theme.
+          Every panel below has its own accent picker — click a chip to see that
+          candidate in another colour. Until you choose, the shipping app is
+          unchanged: these are scoped previews, not a live theme.
         </p>
       </Card>
 
-      <Heading title="1 · Colour — the one to look at first">
-        Same structure, same fonts, less blue. Luma-neutral chrome with{" "}
-        <code className="font-mono">#2F5CE0</code> reserved for things you can
-        click.
+      <Heading title="1 · Feel — the one to look at first">
+        Same structure, same fonts, different chrome. The recommendation is the
+        smallest change that fixes what you flagged: too much blue.
       </Heading>
 
-      <Frame
+      <Candidate
         featured
         badge="E · Recommended"
         name="De-blued"
-        pairing="current type · neutral chrome"
+        pairing="today's structure · neutral chrome"
         personality="Corporate restraint: the interface goes quiet and the blue means something again."
-        changes="Page-header banners go #F4F5F7 instead of lavender, the sidebar and its active item go neutral gray, secondary surfaces lose their tint, and Active/Scheduled pills turn gray. #2F5CE0 stays on primary buttons, links, focus rings and the active nav state — and nowhere else."
-      >
-        <DemoPanel
-          palette="neutral"
-          heading={CURRENT_TYPE.heading}
-          body={CURRENT_TYPE.body}
-        />
-      </Frame>
+        changes="Page-header banners go #F4F5F7 instead of lavender, the sidebar and its active item go neutral grey, secondary surfaces lose their tint, and Active/Scheduled pills turn grey. The accent stays on primary buttons, links, focus rings and the active nav state — and nowhere else. Cheapest possible next step: keep this and swap one token for a teal accent."
+        palette={DEBLUED_PALETTE}
+      />
 
-      <Frame
+      <Candidate
         badge="Baseline"
         name="Current — blue chrome"
         pairing="what ships today"
         personality="Friendly and a little sassy: blue is doing decoration as well as direction."
         changes="Nothing. Shown here only so the difference above is measurable rather than remembered."
-      >
-        <DemoPanel
-          palette="current"
-          heading={CURRENT_TYPE.heading}
-          body={CURRENT_TYPE.body}
-        />
-      </Frame>
+        palette={CURRENT_PALETTE}
+      />
 
-      <Heading title="2 · Type — four pairings, same panel">
+      <Candidate
+        badge="F · Mercury"
+        name="Mercury"
+        pairing="warm neutrals · ink text · hairline depth"
+        personality="Calm, expensive and grown-up — the table is the product and nothing competes with it."
+        changes="Every grey turns warm (#FAF9F7 page, #F1EFE9 banner), text drops to a deep warm ink, cards get a real hairline plus a soft shadow instead of a tint, and status pills desaturate to match. Deepest change of the four: it replaces the whole neutral ramp, not just the tints."
+        palette={MERCURY_PALETTE}
+      />
+
+      <Candidate
+        badge="G · Juicebox-soft"
+        name="Juicebox-soft"
+        pairing="warm greys · larger radii · more air"
+        personality="Modern and welcoming — soft edges, roomier rows, still unmistakably business software."
+        changes="Cards and banners go to 16px radii, buttons to 12px, table rows gain ~4px of breathing room, and the neutral ramp warms up a shade past Mercury. Non-technical organizers read this as the least intimidating of the set; it costs the most vertical space."
+        palette={JUICEBOX_PALETTE}
+      />
+
+      <Heading title="2 · Accent — a colour that is ours">
+        Four corporate-safe alternatives to Sessionboard blue, all deep enough
+        for white button text and none of them neon. The chips under every panel
+        are live: the swap is one token (
+        <code className="font-mono">--primary</code>), which is why it can ride
+        along with any choice above.
+      </Heading>
+
+      <Card className="gap-3 p-5">
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {ACCENTS.map((accent) => (
+            <div key={accent.id} className="flex items-center gap-3">
+              <span
+                className="size-11 shrink-0 rounded-lg ring-1 ring-foreground/10"
+                style={{ background: accent.hex }}
+              />
+              <span className="min-w-0">
+                <span className="block truncate text-sm font-medium">
+                  {accent.name}
+                  {accent.id === "blue" ? (
+                    <span className="ml-1.5 text-xs font-normal text-muted-foreground">
+                      (current)
+                    </span>
+                  ) : null}
+                </span>
+                <span className="block truncate font-mono text-xs text-muted-foreground">
+                  --primary · {accent.hex}
+                </span>
+              </span>
+            </div>
+          ))}
+        </div>
+        <p className="container-reading mt-1 text-sm text-muted-foreground">
+          Deep teal is the safest of the four (closest in weight to today's
+          blue). Petrol is the most distinctive and the most "not a template".
+          Verdigris and muted jade read greener — good on the warm palettes,
+          slightly loud on the cool ones.
+        </p>
+      </Card>
+
+      <Heading title="3 · Type — four pairings, same panel">
         All four are corporate-standard faces in daily production use, not
         display experiments. Judge them on the table and the stat cards, not on
         the headline.
       </Heading>
 
       {TYPE_CANDIDATES.map((candidate) => (
-        <Frame
+        <Candidate
           key={candidate.id}
           badge={`${candidate.letter} · ${candidate.name}`}
           name={candidate.name}
           pairing={candidate.pairing}
           personality={candidate.personality}
           changes={candidate.changes}
-        >
-          <DemoPanel heading={candidate.heading} body={candidate.body} />
-        </Frame>
+          heading={candidate.heading}
+          body={candidate.body}
+        />
       ))}
 
-      <Heading title="3 · The two axes combine">
-        Colour and type are independent: any type candidate can sit on the
-        de-blued palette. Here is the pairing with the most character on the
-        quietest chrome.
+      <Heading title="4 · The axes combine">
+        Feel, accent and type are independent. Here is the pairing with the most
+        character on the quietest chrome — and one deep-teal Mercury for the
+        opposite end.
       </Heading>
 
-      <Frame
+      <Candidate
         badge="E + D"
         name="De-blued + Character"
         pairing="Bricolage Grotesque headings · Instrument Sans body · neutral chrome"
         personality="Distinctive where it is read, invisible where it is not — the most opinionated combination that still looks like business software."
-        changes="Both changes at once: neutral chrome from E, headline personality from D. If this reads right, the rollout is two token edits instead of one."
-      >
-        <DemoPanel
-          palette="neutral"
-          heading={CHARACTER_TYPE.heading}
-          body={CHARACTER_TYPE.body}
-        />
-      </Frame>
+        changes="Neutral chrome from E, headline personality from D. Two token edits instead of one."
+        palette={DEBLUED_PALETTE}
+        heading={CHARACTER_TYPE.heading}
+        body={CHARACTER_TYPE.body}
+      />
+
+      <Candidate
+        badge="F + C"
+        name="Mercury + Grotesk"
+        pairing="Space Grotesk headings · Public Sans body · warm neutrals · deep teal"
+        personality="The full re-brand: nothing about this screen says it started from a template."
+        changes="Everything — neutral ramp, accent and both families. Highest effort, highest distance from today; still one commit, since it is all tokens."
+        palette={MERCURY_PALETTE}
+        heading={TYPE_CANDIDATES[2].heading}
+        body={TYPE_CANDIDATES[2].body}
+      />
 
       <Card className="gap-2 p-5">
         <h3 className="font-heading text-base font-semibold tracking-tight">

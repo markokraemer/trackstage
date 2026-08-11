@@ -1,5 +1,5 @@
 import { betterAuth } from "better-auth/minimal"
-import { organization } from "better-auth/plugins"
+import { organization, mcp } from "better-auth/plugins"
 import { createClient  } from "@convex-dev/better-auth"
 import type {GenericCtx} from "@convex-dev/better-auth";
 import { convex } from "@convex-dev/better-auth/plugins"
@@ -24,6 +24,7 @@ export const createAuth = (ctx: GenericCtx<DataModel>) => {
       // Multi-tenancy: organizations own events; members carry roles
       // (owner | admin | member). See convex/lib/auth.ts for authorization.
       organization(),
+      mcp({ loginPage: "/login" }),
       convex({ authConfig }),
     ],
   })
