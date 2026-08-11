@@ -34,7 +34,11 @@ async function sendTransactionalEmail(args: {
   previewNote?: string
 }): Promise<{ sent: boolean }> {
   const apiKey = process.env.RESEND_API_KEY
-  const isDemoRecipient = /@example\.(com|org|net)$/i.test(args.to)
+  // @demo.sessionboard.dev is the seeded demo organizer's domain — no MX
+  // behind it, so it previews like the RFC-2606 addresses (mirrors
+  // DEMO_EMAIL_PATTERN in convex/auth.ts, which pre-verifies these accounts).
+  const isDemoRecipient =
+    /@example\.(com|org|net)$|@demo\.sessionboard\.dev$/i.test(args.to)
   if (!apiKey || isDemoRecipient) {
     console.log(
       `[email:preview] ${args.kind} → ${args.to} — "${args.subject}" ` +

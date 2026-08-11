@@ -1992,6 +1992,26 @@ export const attachDemoAssets = internalAction({
         size: pdf.length,
       })
       uploads++
+
+      // A real, visible PNG on the same session — the deck's cover image,
+      // "arrived by email" and attached by the organizer. It exists so the
+      // Files page and the preview dialog demonstrably render an image on
+      // seeded data, not just a PDF (2026-08-12: the previous stub fixtures
+      // previewed as a blank white square).
+      const cover = decodeBase64(DEMO_SLIDE_COVER_PNG_BASE64)
+      const coverId = await ctx.storage.store(
+        new Blob([cover], { type: "image/png" }),
+      )
+      await ctx.runMutation(internal.seed.applyDirectUpload, {
+        eventId: args.slides.eventId,
+        personId: args.slides.personId,
+        submissionId: args.slides.submissionId,
+        storageId: coverId,
+        filename: "opening-keynote-cover.png",
+        contentType: "image/png",
+        size: cover.length,
+      })
+      uploads++
     }
 
     return { headshots, uploads }
@@ -2073,6 +2093,74 @@ export const applyUpload = internalMutation({
     return null
   },
 })
+
+/**
+ * A file attached straight to a submission — no task, its own version slot.
+ * The organizer-attached-it story; leaner than `applyUpload` (no thread).
+ */
+export const applyDirectUpload = internalMutation({
+  args: {
+    eventId: v.id("events"),
+    personId: v.id("people"),
+    submissionId: v.id("submissions"),
+    storageId: v.id("_storage"),
+    filename: v.string(),
+    contentType: v.string(),
+    size: v.number(),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const person = await ctx.db.get("people", args.personId)
+    const submission = await ctx.db.get("submissions", args.submissionId)
+    if (!person || !submission) {
+      await ctx.storage.delete(args.storageId)
+      return null
+    }
+    await ctx.db.insert("uploads", {
+      eventId: args.eventId,
+      personId: args.personId,
+      submissionId: args.submissionId,
+      storageId: args.storageId,
+      filename: args.filename,
+      contentType: args.contentType,
+      size: args.size,
+      version: 1,
+      approvalStatus: "approved",
+    })
+    return null
+  },
+})
+
+/** Base64 → bytes without relying on `atob` existing in the runtime. */
+function decodeBase64(input: string): Uint8Array<ArrayBuffer> {
+  const alphabet =
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
+  const clean = input.replace(/=+$/, "")
+  const out = new Uint8Array(
+    new ArrayBuffer(Math.floor((clean.length * 3) / 4)),
+  )
+  let buffer = 0
+  let bits = 0
+  let index = 0
+  for (const char of clean) {
+    const value = alphabet.indexOf(char)
+    if (value === -1) continue
+    buffer = (buffer << 6) | value
+    bits += 6
+    if (bits >= 8) {
+      bits -= 8
+      out[index++] = (buffer >> bits) & 0xff
+    }
+  }
+  return out.subarray(0, index)
+}
+
+/**
+ * 800×450 slide-cover PNG (flat shapes: accent band, title block, bullet
+ * lines, a bar chart) generated offline — a deck's first slide, recognizable
+ * at a glance in the preview dialog. ~3.7 KB.
+ */
+const DEMO_SLIDE_COVER_PNG_BASE64 = "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DBADBAAwQGSAGCAGiAECABggBogBYoAYIACAASIDxAAxQAAAA0QGiAFigBggAIABIgPEADFAAAADRAaIAWKAGCAAgAFigBggBogBkkfshYtVh0aSsgYGiAwQA8QAMUAkyQDBAJEBYoAYIAaIASLJAAEDxAAxQAwQA8QAkSQDBANEBogBYoAYIAaIJAMEA0QGiAFigBggBogkGSAYIDJADBADxACRJAMEA0QGiAFigBggBogkAwQMEAPEADFADBADRJIMEAwQGSAGiAFigBggkgwQDBAZIAaIAWKAGCCSZIBggMgAMUAMEANEkgwQDBAZIAaIAWKAAAAGiAFigBggBggAYIDIADFADBAAwACRAWKAGCAGCABggMgAMUAMEADAAJEBYoAYIAYIAGCAGCAGiAFigAAABkgZrXbXrBkgBogBAgAYIAaIAWKAGCAGCABggBggBogBYoAAAAaIAWKAGCAGCACAAWKAGCAGiAECABggBogBYoAYIACAAWKAGCAGiAFigAAABogBYoAYIAYIAGCAGCAGiAFigAAAGCAGiAFigBggAIABYoAYIAaIAQIAGCAGiAFigBggBggAYIAYIAaIAWKAAAAGiAFigBggBogB8hB74WLVoZEkJQwDxAAxQAwQA8QAkSQZIAaIAWKAGCAGiAFigEiSAYIBYoAYIAaIAWKASJIMEAPEADFADBADxAAxQCTJADFAZIAYIAaIAWKASJIMEAPEADFADBADxAAxQCTJADFADBADxAAxQAwQA0SSDBAMEAPEADFADBADRJJkgBggBogBYoAYIAaIASJJBogBIgPEADFADBADRJJkgBggBogBYoAYIAaIASJJBogBYoAYIAaIAWKAAAAGiAFigBggBggAYIAYIAaIAWKAAAAGiAwQA8QAMUAAAAPEADFADBADBAAwQN5tu79lzQAxQAwQAwQAMEAMEAPEADFAAAADxAAxQAwQA8QAAQAMEAPEADFADBAAwAAxQAwQA8QAMUAAAAPEADFADBADBAAwQAwQA8QAMUAAAAPEADFADBADxAABAAwQA8QAMUAMEADAADFADBADxAAxQAAAA8QAMUAMEAMEADBADBADxAAxQAAADBADxAAxQAwQAMAAMUAMEAPEAAEADBADxAAxQAwQAwQAMEAMEAPEADFAAAADxAAxQAwQAwQAwAAxQAwQA8QAAQAMEAPEADFADBAAwAAxQAwQA8QAMUAAAAPEADFADBADBAAwQAwQA8QAMUAMEADAADFADBADxAABAAwQA8QAMUAMEADAADFADBADxAAxQAAAA8QAMUAMEAMEADBADBADxAAxQAwQAMAAMUAMEAPEAAEADBADxAAxQAwQAMAAMUAMEAPEADFAAAADxAAxQAwQAwQAMEAMEAPEADFADBAAwAAxQAwQA8QAAQAMEAPEADFADBAAwAAxQAwQA8QAMUAAAAPEADFADBADBAAwQAwQA8QAMUAMEADAADFADBADxAABAAwQA8QAMUAMEAAAA8QAMUAMEAMEADBADBADxAAxQAAAA8QAMUAMEAPEAAEADBADxAAxQAwQAMAAMUAMEAPEAAEAMEAMEAPEADFAAAADxAAxQAwQAwQAMEAMEAPEADFADBAAwAAxQAwQA8QAAQAMEAPEADFADBADBAAwQAwQA8QAMUAAAAPEADFADBADBAAwQAwQA8QAMUAMEADAADFADBADxAABAAwQA8QAMUAMEAMEAMg5QKQhZ4AAABggkgFigAAABohkgBggAIABIskAMUAAAANEMkAMEADAAJFkgBggAIABIhkgBggAYIBIBogBAgAYIJIMEAMEADBAJAPEAAEADBBJBogBAgAYIJIBYoAAAAaIZIAYIACAASLJADFAAAADRDJADBAAwACRZIAYIAAAgAECAAAYIAAAAAYIAABggAAAABggAACAAQIAABggAAAABggAAGCAAAAAGCAAAIABAgAAGCAAAAAGCAAAYIAAAAAYIAAAgAECAABggAAAAAYIAABggAAAABggAACAAQIAAGCAAAAABggAAGCAAAAAGCAAAIABAgAAYIAAAAAGCAAAYIAAAAAYIAAAgAECAABggLx2PJ4kSZKkZBkgBogkSZJkgBggAACAAQIAAGCAAAAABggAAIABAgAAGCAAAIABAgAAYIAAAAAGCAAAgAECAAAYILnUoZF6EwCAAWKASAYIAIABYoDIAAEAMEAMEMkAAQAMEANEMkAAAAwQA0QyQAAAA8QAkQwQAAADxACRAQIAYIAYIJIBAgAYIAaIZIAAABggAACAAQIAAGCAAAAABggAAGCAAAAAGCAAAIABAgAAYIAAAAAGCAAAYIAAAAAYIAAAgAECAABggAAAAAYIAABggAAAABggAACAAQIAAGCAAAAABggAAIABAgAAGCAAAIABAgAAYIAAAAAGCAAAgAECAAAYIAAAQM/dATq0vlieDKYSAAAAAElFTkSuQmCC"
 
 /** Circular avatar with initials — a real image, no external dependency. */
 function buildAvatarSvg(initials: string, color: string): string {
@@ -2179,6 +2267,15 @@ export const setup = internalAction({
       userId = res.user.id
     }
     if (!userId) throw new Error("Could not create or resolve the demo user")
+    // The demo organizer is born verified: there is no live inbox behind
+    // @demo.sessionboard.dev, so the confirm-email banner could never be
+    // cleared — and neither the judge nor a demo viewer should ever see it.
+    // New creations are handled by the databaseHooks auto-verify in
+    // convex/auth.ts; this covers deployments whose demo user predates it.
+    const authContext = await auth.$context
+    await authContext.internalAdapter.updateUser(userId, {
+      emailVerified: true,
+    })
     return await ctx.runMutation(internal.seed.run, {
       userId,
       email: DEMO_ORGANIZER_EMAIL,

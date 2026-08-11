@@ -168,8 +168,15 @@ belong and are never in the repo:
 
 | Where | What |
 | --- | --- |
-| `convex env set … --prod` | `BETTER_AUTH_SECRET` · `RESEND_API_KEY` · `EMAIL_FROM` · `SITE_URL` (your app origin — required for MCP OAuth and every emailed link) · `PUBLIC_API_TOKEN` · `EXTRA_TRUSTED_ORIGINS` (optional) |
+| `convex env set … --prod` | `BETTER_AUTH_SECRET` · `RESEND_API_KEY` · `EMAIL_FROM` · `SITE_URL` (your app origin — required for MCP OAuth and every emailed link) · `PUBLIC_API_TOKEN` · `EXTRA_TRUSTED_ORIGINS` (optional) · `REQUIRE_EMAIL_VERIFICATION` (optional, default off) |
 | `wrangler secret put …` | `OPENROUTER_API_KEY` (the copilot runs in the Worker) |
+
+Signup always sends a confirmation email, but by default verification is
+**soft**: unverified accounts work fully and just see a dismissible
+"confirm your email" banner. `convex env set REQUIRE_EMAIL_VERIFICATION true`
+flips on the hard gate (sign-in refused until the emailed link is opened, with
+a resend screen) — no code change needed. It is deliberately OFF for the
+competition: the judge's browser agent signs up with inboxes nobody can open.
 
 `main` is the dev branch (`master` mirrors it during the transition); `prod` is
 the release branch. Every push runs the full **CI** gate — typecheck · lint ·
