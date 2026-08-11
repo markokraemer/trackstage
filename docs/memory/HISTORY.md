@@ -132,3 +132,8 @@ the narrative memory; RULES.md is the things circled as important along the way.
 44. **shadcn official chat components**: pointed at the June 2026 shadcn chat
     changelog after seeing a bare composer — adopt the official chat set end-to-end
     as the copilot's foundation (with AI Elements only for AI-specific parts).
+45. **Convex-max file storage**: beautiful file handling utilizing everything Convex
+    file storage offers (upload/store/serve/delete/metadata) — seen via the empty
+    Files tab; top-notch on top of the Better Auth stack.
+46. **Instant everything**: hardcore real-time functionality — the whole latency
+    story must be perfect; everything feels instant.

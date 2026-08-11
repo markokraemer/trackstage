@@ -176,6 +176,14 @@ trail visible).
     Chromium browser MCP (drive the seeded app, record) and put them on the landing.
     Use the Mobbin MCP EXTENSIVELY for component references (look at screens visually,
     recreate as needed for the new design language). The AI chat surfaces there too.
+26. **Hardcore real-time, everything instant**: latency must be perfect across the
+    board. Convex reactive queries everywhere (no polling), OPTIMISTIC UPDATES on every
+    mutation a user watches (status pills, drag-drop scheduling, toggles, autosave —
+    UI echoes immediately, server confirms), route-loader preloading so navigation
+    never flashes (skeletons only on true cold loads), instant input echo with
+    debounced persistence. This is also the judged differentiator — swyx's #1
+    complaint about Sessionboard is slowness. Measured at reconciliation: no visible
+    wait on any common interaction.
 19. **Mandatory final reconciliation pass**: slice-per-agent parallelism will drift —
     different layouts, spacing, and interaction patterns per slice. Before ship, ONE
     agent reads and reworks the whole app end to end for coherent, standardized,
