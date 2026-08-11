@@ -48,8 +48,9 @@ import { errorMessage } from "@/lib/errors"
  *
  *   workspace name → confirm email → YOUR EVENT (name + type + description)
  *   → WHEN & WHERE (dates, timezone, venue) → finish INTO the app: the new
- *   event's settings page, confetti + welcome, and the guided driver.js tour
- *   (src/components/onboarding/dashboard-tour.tsx) — no docs screen.
+ *   event's settings page with confetti + one welcome card
+ *   (src/components/onboarding/dashboard-tour.tsx). The Getting-started
+ *   checklist in the sidebar carries the guidance from there.
  *
  * Only the event NAME is required — every other field is optional with
  * honest defaults (timezone = browser, dates = blank, not fake), and the

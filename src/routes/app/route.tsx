@@ -534,7 +534,7 @@ function OrganizerLayout() {
       {/* Mounted at the shell so the conversation survives navigation. */}
       <CopilotPanel />
 
-      {/* First-run guided tour — confetti welcome + driver.js spotlights.
+      {/* Post-wizard welcome moment — confetti + one card, nothing more.
           Armed ONLY by the onboarding takeover's finish; inert otherwise. */}
       <DashboardTour />
 
