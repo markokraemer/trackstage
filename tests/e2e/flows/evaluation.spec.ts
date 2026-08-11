@@ -144,6 +144,17 @@ test.describe("evaluation", () => {
         const criteria = reviewer.getByRole("button", { name: /: 4 of 5/i })
         const count = await criteria.count()
         for (let c = 0; c < count; c++) await criteria.nth(c).click()
+        // Select-type criteria (e.g. the default required Recommendation
+        // dropdown) block save until answered — pick the first option of each.
+        const selects = reviewer.getByRole("combobox")
+        const selectCount = await selects.count()
+        for (let s = 0; s < selectCount; s++) {
+          const box = selects.nth(s)
+          if ((await box.textContent())?.match(/choose|select/i)) {
+            await box.click()
+            await reviewer.getByRole("option").first().click()
+          }
+        }
         await fillStable(
           reviewer.locator("#review-comment"),
           `Reviewed by the e2e flow (${i + 1}).`,
