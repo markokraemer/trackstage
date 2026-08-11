@@ -197,6 +197,12 @@ export type LoadedMcpTools = {
   tools: ToolSet
   /** Tool names in server order — handy for the system prompt. */
   toolNames: Array<string>
+  /**
+   * Tools whose `annotations.readOnlyHint` is true — the ones that may run
+   * without a human approval. Everything else is a write and gets the
+   * approval card (src/routes/api/chat.ts `toolApproval`).
+   */
+  readOnlyTools: Set<string>
 }
 
 /**
@@ -237,8 +243,11 @@ export async function loadMcpTools(
   )
 
   const tools: ToolSet = {}
+  const readOnlyTools = new Set<string>()
   let callId = 100
   for (const descriptor of descriptors) {
+    const readOnly = descriptor.annotations?.readOnlyHint === true
+    if (readOnly) readOnlyTools.add(descriptor.name)
     tools[descriptor.name] = tool({
       description:
         descriptor.description ?? descriptor.title ?? descriptor.name,
@@ -246,10 +255,17 @@ export async function loadMcpTools(
         sanitizeSchema(descriptor.inputSchema) as never
       ),
       execute: async (input) => {
+        // The server refuses every write without `confirm: true`. In this
+        // client the human "yes" is the approval card: `execute` only ever
+        // runs after the organizer clicked Approve (chat.ts gates ALL
+        // writes), so the card IS the confirmation and we supply the
+        // argument on its behalf. Headless MCP clients have no card and
+        // must pass confirm themselves — same gate, different collector.
+        const args = readOnly ? input : { ...input, confirm: true }
         const result = (await rpc(
           connection,
           "tools/call",
-          { name: descriptor.name, arguments: input },
+          { name: descriptor.name, arguments: args },
           (callId += 1)
         )) as McpToolCallResult
         const payload = unwrapToolResult(result)
@@ -265,5 +281,9 @@ export async function loadMcpTools(
     })
   }
 
-  return { tools, toolNames: descriptors.map((entry) => entry.name) }
+  return {
+    tools,
+    toolNames: descriptors.map((entry) => entry.name),
+    readOnlyTools,
+  }
 }

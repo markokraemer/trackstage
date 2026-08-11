@@ -3,6 +3,7 @@ import { Link } from "@tanstack/react-router"
 import {
   RiAddLine,
   RiExpandDiagonalLine,
+  RiPlugLine,
   RiSparkling2Line,
 } from "@remixicon/react"
 
@@ -16,6 +17,8 @@ import {
 } from "@/components/ui/sheet"
 import { CopilotChat } from "@/components/copilot/copilot-chat"
 import { CopilotAppContext } from "@/components/copilot/copilot-app-context"
+import { CopilotThreadSync } from "@/components/copilot/copilot-thread-sync"
+import { McpConnectDialog } from "@/components/settings/mcp-connect-dialog"
 import {
   COPILOT_PANEL_MIN_WIDTH,
   clampCopilotPanelWidth,
@@ -74,6 +77,7 @@ export function CopilotPanel() {
   const { event } = useCurrentEvent()
   const { newChat } = useCopilotChat(event?._id)
   const width = useCopilotPanelWidth()
+  const [connectOpen, setConnectOpen] = useState(false)
 
   useEffect(() => {
     const onKeyDown = (keyEvent: KeyboardEvent) => {
@@ -99,6 +103,10 @@ export function CopilotPanel() {
       {/* Mounted whether or not the panel is open: the copilot must already
           know what screen the organizer came from the moment they open it. */}
       <CopilotAppContext />
+      {/* And the conversation must be written down whether it happened here or
+          on the full page — one instance, app-wide, or two of them would race
+          into two rows for one chat. */}
+      <CopilotThreadSync />
       {/*
         `ignoreDismissal` is the other half of `modal={false}`. A non-modal
         panel exists so the organizer can keep working in the table behind it —
@@ -114,7 +122,15 @@ export function CopilotPanel() {
           showOverlay={false}
           showCloseButton
           aria-label="Trackstage copilot"
-          style={{ width: `min(100vw, ${width}px)` }}
+          /*
+            `maxWidth` INLINE, not as a class: SheetContent ships
+            `data-[side=right]:sm:max-w-sm`, and an attribute-scoped variant
+            out-specifies the plain `sm:max-w-none` we set beside it — so the
+            panel silently capped at 384px and every drag past that did
+            nothing. That is the "resize range is too small" Marko hit
+            (2026-08-11). An inline style beats both, whatever the class order.
+          */
+          style={{ width: `min(100vw, ${width}px)`, maxWidth: "100vw" }}
           className="flex w-full flex-col gap-0 p-0 sm:max-w-none"
         >
           <ResizeHandle width={width} />
@@ -141,6 +157,17 @@ export function CopilotPanel() {
             >
               <RiAddLine size={16} aria-hidden />
             </Button>
+            {/* The same tools, from Claude/ChatGPT/Codex — the identical modal
+                the copilot page and Account settings open. */}
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              aria-label="Connect a client"
+              title="Connect a client"
+              onClick={() => setConnectOpen(true)}
+            >
+              <RiPlugLine size={16} aria-hidden />
+            </Button>
             <Link
               to={appLink.copilot}
               onClick={() => setOpen(false)}
@@ -157,6 +184,8 @@ export function CopilotPanel() {
           <CopilotChat variant="panel" className="min-h-0 flex-1" />
         </SheetContent>
       </Sheet>
+
+      <McpConnectDialog open={connectOpen} onOpenChange={setConnectOpen} />
     </>
   )
 }

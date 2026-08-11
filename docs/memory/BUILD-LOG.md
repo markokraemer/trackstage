@@ -2517,3 +2517,135 @@ program and `/docs/mcp` (twice) now say **Account settings → API & MCP**.
 images and files on disk are a perfect 1:1 (43 = 43, no orphans, nothing missing).
 `pnpm typecheck` + `pnpm lint` clean (the 6 pre-existing `no-shadow` warnings in
 `ui/calendar.tsx`).
+
+## 2026-08-11 · MCP = full proxy (81 tools) + universal write gating, e2e-proven
+
+Marko's directive: a COMPLETE pass on API/spec/MCP — the MCP server must be able to do
+**everything the organizer can do**, and **anything but a read must be gated behind an
+approval**. Shipped:
+
+**Full proxy (34 → 81 tools).** Built the ground-truth inventory (all 169 public
+organizer Convex functions), diffed it against the 34-tool surface, and closed the gaps
+with 47 new tools: `update_event` (details + portal toggles), workspace membership
+(list/invite/scope/remove), form content + `manage_form_question` (the custom-field
+model), submission edit/trash/restore + participants attach/detach,
+`set_agenda_published`, speaker CRUD + `bulk_add_speakers` (≤500-row CSV path),
+`list_tasks`/`update_task`/`delete_task_template`, the files review gate
+(`list_files`/`review_file`/`delete_file`), the bulk composer
+(`count_bulk_audience`/`send_bulk_email`), the ENTIRE evaluation surface (plans,
+criteria, evaluators, magic links, `distribute_evaluations`, `remind_evaluators`,
+scorecards incl. recusals), event setup (`list_field_options`, `manage_room/track/
+field_option/session_status`), webhooks (`list_webhooks`/`manage_webhook`), embeds, and
+`list_activity` (the audit feed's "agents" lens). Where a REST route existed the tool
+wraps the SAME `internal.apiV1.*` function (a `fromApi` helper turns the REST layer's
+null/notFound/conflict envelope into model-readable ConvexErrors), so REST and MCP
+cannot drift; the rest mirror the app mutations (with `resolveBulkRecipients` reused
+from comms, the round-robin/remind logic mirroring evaluationsAdmin). Deliberate
+exclusions documented with reasons in **docs/reference/mcp-proxy-matrix.md** (API-key
+management = privilege boundary, binary uploads = wrong transport, Airtable token =
+secret through a model's context, …).
+
+**Universal write gating, one coherent model.** Every non-read tool now requires
+`confirm: true`: injected into every write schema in ONE place, checked in the
+dispatcher BEFORE validation so the refusal is instructive ("tell the user, get their
+approval, call again with confirm: true — nothing has been changed") rather than a bare
+schema error. Destructive tier keeps double confirmation (`delete_event` + confirmName).
+Every tool truthfully annotated per the 2025-06-18 spec (`readOnlyHint`,
+`destructiveHint` false for purely-additive creates, `idempotentHint`,
+`openWorldHint: false`) — researched against the live spec + client docs: ChatGPT
+explicitly honors `readOnlyHint` (missing hint ⇒ treated as write), Claude.ai/Claude
+Code prompt per tool; **elicitation** was investigated and rejected as the gate
+(unsupported by Claude.ai connectors and ChatGPT; our stateless single-response server
+has no stream to carry a server-initiated request). The in-app copilot is the SAME
+model: chat.ts now gates every tool the server doesn't annotate read-only (from the
+live tools/list, no second list to drift), and the approval card's Approve click is
+what supplies `confirm: true` (copilot-mcp.ts injects it inside `execute`, which only
+runs post-approval); Cancel means the server never sees the call. The card hides the
+`confirm` flag (it IS the card), and `send_bulk_email`/`remind_evaluators`/
+`invite_workspace_member` joined the "this sends email" shout list.
+
+**Proven e2e** against dev: 74/74 assertions driving the real `/mcp` with a real key —
+tools/list shape (81 tools, annotations, every write schema requires confirm, no read
+carries it), eight representative writes refused without confirm (side-effect-free,
+verified), ten reads ungated, and every new tool family executed with confirm through
+full lifecycles (create→edit→delete for forms/questions/speakers/tasks/plans/evaluators/
+rooms/tracks/options/statuses/webhooks/embeds; trash→restore; distribute; publish
+toggle restored; workspace invite→scope→remove; activity feed showing this session's
+own MCP rows). Throwaways cleaned up, seeded tags/participants restored.
+verify-backend's MCP section extended to the same assertions (81-count, gating,
+annotations) and its pre-existing write calls now pass confirm. Docs regenerated
+(`generate-mcp-tools.mjs` now emits `destructive` and computes requiresConfirm =
+!readOnly; /docs/mcp legend is the three-tier read/create/destroy model);
+`generate-openapi.mjs --check` green (REST surface unchanged — MCP-only capabilities
+documented as such in api-parity.md).
+
+## 2026-08-11 · The copilot page becomes a real chat product (history, rail, Connect MCP)
+
+Marko, on a screenshot of `/app/copilot`: *"improve & optimise e2e — show all past
+sessions etc. to the left, make it a full Chat-ish experience, + show CONNECT MCP
+somewhere with a little modal."* Four refinements landed mid-build (below).
+
+**Conversations are now written down.** New table `copilotThreads` (userId, optional
+eventId, title, timestamps, `messages: v.any()[]` = serialized AI SDK `UIMessage`s) with
+`list` / `get` / `save` / `rename` / `remove` in **convex/copilotThreads.ts** — every one
+starting at `requireUser` and refusing anything the caller doesn't own with "Chat not
+found", the same sentence for deleted and someone-else's. `list` never ships transcripts
+(titles + timestamps only), so autosave can't turn the rail into a firehose. The array
+field is legitimate because `trimForStorage` runs on EVERY write: newest turns first up
+to a 600 KB budget, and a single oversized message loses its tool payloads rather than
+the document losing its integrity. Titles derive from the first user message (48 chars),
+client-side too (`copilotThreadTitle`) so a new thread arrives in the rail already named.
+
+**One conversation, three surfaces, zero races.** `src/lib/copilot-store.ts` grew a
+thread coordinate next to its event one: chats are keyed `event:thread` or
+`event:draft-N`, the active thread persists in localStorage (so F5 lands you back in the
+conversation you were in), and `adoptCopilotThread` re-files a live streaming `Chat`
+under its new id the moment the first autosave creates the row — nothing flickers.
+**A thread is born only when it has something in it**, so "New chat" writes nothing and
+the rail never fills with empty rows. **copilot-thread-sync.tsx** is the single bridge
+(autosave debounced 500 ms, only after a turn settles, flushed on chat switch;
+hydration from the react-query cache, prefetched on rail hover) and it is mounted
+EXACTLY ONCE app-wide next to the panel — two of them would race into two rows for one
+chat.
+
+**The rail** (`copilot-thread-rail.tsx`, 260px, collapsible, overlay under `lg`): New
+chat on top, then Today / Yesterday / Earlier, active row highlighted, hover reveals a
+quiet ⋯ with inline Rename and Delete — both optimistic (`withOptimisticUpdate`), delete
+also drops the store's copy so an open conversation can't outlive its row.
+
+**Chat polish**: Enter sends / Shift+Enter newlines (verified), composer autofocus on the
+page, Stop while streaming, a transcript skeleton instead of the empty state while a
+saved chat loads back, and a slimmer empty state once history exists.
+
+**Connect MCP, one modal, three doors.** `McpConnectPanel` (extracted, the ONLY copy of
+the Claude/ChatGPT/Codex/any-client snippets) + `McpConnectDialog` + `McpConnectButton`,
+opened from the copilot page header, the copilot panel header, and Account settings →
+API & MCP (whose inline card became a summary row). Mint-on-copy is untouched and
+verified minting a real key from the dialog. Scope copy fixed to the truth: the key is an
+ACCOUNT credential — "it can do everything your account can do, across your workspaces
+and events" — not the event-shaped thing the old sentence implied.
+
+**Marko's four mid-build corrections, all applied and re-verified:**
+1. *Header seam* — the copilot header's hairline didn't line up with the sidebar's
+   event-switcher divider. Border removed entirely; header and the rail's New chat block
+   are now `h-18`, the switcher block's exact height, so the three tops share one
+   invisible line. Native `title` tooltips dropped from the header (one was lingering).
+2. *Dialog clipping* — a 150-char `claude mcp add` command was widening its flex/grid
+   track past the dialog (`min-width: auto`), clipping the copy buttons and cutting the
+   description. Dialog widened to `sm:max-w-2xl` and `min-w-0` applied down the chain
+   (`CodeSnippet` included); snippets scroll inside their own block. Verified on all four
+   tabs at 1440 and 390.
+3. *Panel resize range* — raised to `min(900px, 55vw)`, and found the real culprit:
+   `SheetContent`'s `data-[side=right]:sm:max-w-sm` out-specified our `sm:max-w-none`, so
+   the panel had been silently capped at **384px** and every drag past it did nothing.
+   `maxWidth` now inline. Past 620px the panel centres a `max-w-2xl` reading column.
+4. *Trigger* — two overlapping marks (Claude + ChatGPT; Codex reads as a duplicate
+   OpenAI logo) labelled "Connect MCP".
+
+**Verified in the browser** at 1440 and 390: two chats sent (Enter), both listed with
+derived titles, switching restores transcripts, rename inline, delete optimistic with
+toast, reload keeps threads AND the active conversation, the side panel shows the same
+conversation, panel dragged to 792px, Connect modal opens from both places and Copy
+command minted `sb_live_2cc0718f…`. Zero console errors. `pnpm typecheck` + `eslint`
+clean; the three failing unit tests are a sibling wave's new task-library tools awaiting
+their tool views, untouched by this work.

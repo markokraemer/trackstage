@@ -23,6 +23,7 @@ import { WizardShell } from "@/components/shared/wizard-shell"
 import type { WizardStep } from "@/components/shared/wizard-shell"
 import { EmptyState } from "@/components/shared/empty-state"
 import { StatusPill } from "@/components/shared/status-pill"
+import { formWindow } from "@convex/lib/formWindow"
 import { Button, buttonVariants } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -175,7 +176,18 @@ function FormEditor({
         title={draft.internalName || "Untitled form"}
         description={
           <span className="flex flex-wrap items-center gap-2">
-            <StatusPill status={draft.status} size="sm" />
+            {/* A passed deadline closes a form just as surely as the toggle
+                does, so the badge answers the same question the rest of the
+                page does: is anything getting through right now? */}
+            <StatusPill
+              status={
+                formWindow({ status: draft.status, closeAt: draft.closeAt })
+                  .open
+                  ? "open"
+                  : "closed"
+              }
+              size="sm"
+            />
             <span className="text-muted-foreground">
               {publicFormPath(form.workspaceSlug, form.eventSlug, form.slug)}
             </span>

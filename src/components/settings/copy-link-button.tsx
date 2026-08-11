@@ -2,6 +2,8 @@ import { useState } from "react"
 import { RiCheckLine, RiFileCopyLine } from "@remixicon/react"
 import { toast } from "sonner"
 
+import { copyText } from "@/lib/clipboard"
+
 import { Button } from "@/components/ui/button"
 
 /**
@@ -28,13 +30,12 @@ export function CopyLinkButton({
   const [copied, setCopied] = useState(false)
 
   async function copy() {
-    try {
-      await navigator.clipboard.writeText(url)
+    if (await copyText(url)) {
       setCopied(true)
       toast.success(successMessage)
       window.setTimeout(() => setCopied(false), 2000)
-    } catch {
-      toast.error("Couldn't copy — select the link and copy it manually.")
+    } else {
+      toast.error("Couldn't copy automatically", { description: url })
     }
   }
 

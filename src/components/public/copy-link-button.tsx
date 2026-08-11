@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from "react"
 import { RiCheckLine, RiLinkM } from "@remixicon/react"
 import { toast } from "sonner"
 
+import { copyText } from "@/lib/clipboard"
+
 import { Button } from "@/components/ui/button"
 
 /**
@@ -57,11 +59,9 @@ export function CopyLinkButton({
     clickEvent.preventDefault()
     clickEvent.stopPropagation()
     const value = absolute(url)
-    try {
-      await navigator.clipboard.writeText(value)
-    } catch {
-      // Clipboard permission denied (or an insecure origin) — showing the URL
-      // is still better than a silent no-op: the visitor can copy it manually.
+    if (!(await copyText(value))) {
+      // Clipboard refused even the execCommand fallback — showing the URL is
+      // still better than a silent no-op: the visitor can copy it by hand.
       toast.error("We couldn't copy that automatically", { description: value })
       return
     }

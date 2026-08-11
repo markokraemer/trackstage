@@ -10,6 +10,7 @@ import {
   RiPencilLine,
 } from "@remixicon/react"
 
+import { formWindow } from "@convex/lib/formWindow"
 import { Badge } from "@/components/ui/badge"
 import { Button, buttonVariants } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
@@ -73,6 +74,12 @@ export function FormCard({
 }) {
   const [confirmOpen, setConfirmOpen] = useState(false)
   const kind = formKindMeta(form.kind)
+  // Same verdict as the builder header and the public form itself: a passed
+  // deadline closes a call, so the pill has to say so.
+  const accepting = formWindow({
+    status: form.status,
+    closeAt: form.closeAt,
+  }).open
   const closed = form.status === "closed"
   const editLink = appLink.form(
     { workspaceSlug: form.workspaceSlug, eventSlug: form.eventSlug },
@@ -105,7 +112,7 @@ export function FormCard({
             >
               {form.internalName}
             </Link>
-            <StatusPill status={form.status} size="sm" />
+            <StatusPill status={accepting ? "open" : "closed"} size="sm" />
             <Badge variant="outline" className="gap-1 text-[11px]">
               <kind.icon size={11} aria-hidden />
               {kind.label}

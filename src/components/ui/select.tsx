@@ -4,7 +4,21 @@ import { Select as SelectPrimitive } from "@base-ui/react/select"
 import { cn } from "@/lib/utils"
 import { RiArrowDownSLine, RiCheckLine, RiArrowUpSLine } from "@remixicon/react"
 
-const Select = SelectPrimitive.Root
+/**
+ * Base UI's Select is modal by default: while it is open it lays an invisible
+ * `position:fixed; inset:0` backdrop over the page with a hole punched out for
+ * the trigger. That is correct for a mouse — but a popup that is left open for
+ * any reason then swallows every click on the rest of the form, and the only
+ * way out is Escape. Non-modal keeps the list dismissible by clicking straight
+ * onto whatever you meant to click next, which is what people (and headless
+ * browsers) actually do.
+ */
+function Select<TValue, TMultiple extends boolean | undefined = false>({
+  modal = false,
+  ...props
+}: SelectPrimitive.Root.Props<TValue, TMultiple>) {
+  return <SelectPrimitive.Root modal={modal} {...props} />
+}
 
 function SelectGroup({ className, ...props }: SelectPrimitive.Group.Props) {
   return (
@@ -59,9 +73,17 @@ function SelectContent({
   children,
   side = "bottom",
   sideOffset = 4,
-  align = "center",
+  align = "start",
   alignOffset = 0,
-  alignItemWithTrigger = true,
+  /**
+   * macOS-style "put the chosen option on top of the trigger" positioning is
+   * off on purpose. It makes the list overlap the field it belongs to, so the
+   * options above the current one sit over — or clipped above — the rest of
+   * the form: picking "Round 1" when "Round 2" is selected meant clicking a
+   * spot the already-rendered "Round 2" was covering. A dropdown that simply
+   * hangs below its trigger can never obscure the option you are aiming at.
+   */
+  alignItemWithTrigger = false,
   ...props
 }: SelectPrimitive.Popup.Props &
   Pick<

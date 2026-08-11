@@ -5,6 +5,7 @@ import {
   RiImageLine,
 } from "@remixicon/react"
 
+import { copyText } from "@/lib/clipboard"
 import { cn } from "@/lib/utils"
 import {
   MARK_RECTS,
@@ -118,9 +119,7 @@ function BrandMenu({
         </ContextMenuItem>
         <ContextMenuItem
           onClick={() => {
-            void navigator.clipboard.writeText(
-              brandSvg(DOWNLOAD_VARIANT, "color", 96)
-            )
+            void copyText(brandSvg(DOWNLOAD_VARIANT, "color", 96))
           }}
         >
           <RiFileCopyLine aria-hidden />

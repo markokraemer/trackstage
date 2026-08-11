@@ -27,7 +27,10 @@ export function CodeSnippet({
   return (
     <div
       className={cn(
-        "overflow-hidden rounded-lg border border-border bg-muted/40",
+        // `w-full min-w-0` so a long one-line command scrolls INSIDE the
+        // block instead of widening whatever flex/grid box it sits in (a
+        // dialog, a card) and pushing its own copy button out of view.
+        "w-full min-w-0 overflow-hidden rounded-lg border border-border bg-muted/40",
         className,
       )}
     >

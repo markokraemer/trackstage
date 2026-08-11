@@ -2256,7 +2256,7 @@ if (SITE_URL) {
 
   const tools = await rpc("tools/list", {})
   const toolNames = (tools.body?.result?.tools ?? []).map((t) => t.name)
-  ok("tools/list returns the full 34-tool surface", toolNames.length === 34, `got ${toolNames.length}: ${toolNames.join(", ")}`)
+  ok("tools/list returns the full 81-tool surface", toolNames.length === 81, `got ${toolNames.length}: ${toolNames.join(", ")}`)
   ok("task-library tools present",
     ["list_task_library", "save_task_template", "assign_task_from_template"].every((n) => toolNames.includes(n)),
     toolNames.filter((n) => n.includes("task")).join(", "))
@@ -2268,6 +2268,47 @@ if (SITE_URL) {
   ok("deletion tools present", ["delete_event", "delete_form", "remove_task"].every((n) => toolNames.includes(n)), toolNames.filter((n) => /delete|remove/.test(n)).join(", "))
   ok("get_template present", toolNames.includes("get_template"))
   ok("get_event_overview kept as a deprecated alias", toolNames.includes("get_event_overview"))
+
+  // ——— Full-proxy surface + universal write gating (2026-08-11 pass) ———
+  const allTools = tools.body?.result?.tools ?? []
+  const readTools = allTools.filter((t) => t.annotations?.readOnlyHint === true)
+  const writeTools = allTools.filter((t) => t.annotations?.readOnlyHint !== true)
+  ok("every tool carries truthful annotations (readOnly/destructive/idempotent/openWorld)",
+    allTools.every((t) => t.annotations && typeof t.annotations.readOnlyHint === "boolean" &&
+      typeof t.annotations.destructiveHint === "boolean" && typeof t.annotations.idempotentHint === "boolean" &&
+      t.annotations.openWorldHint === false))
+  ok("every WRITE tool requires confirm in its schema",
+    writeTools.every((t) => t.inputSchema?.properties?.confirm && (t.inputSchema.required ?? []).includes("confirm")),
+    writeTools.filter((t) => !t.inputSchema?.properties?.confirm).map((t) => t.name).join(", "))
+  ok("no READ tool carries confirm", readTools.every((t) => !t.inputSchema?.properties?.confirm))
+  ok("pure creates annotated destructiveHint:false",
+    ["create_event", "create_form", "add_speaker", "assign_task"].every(
+      (n) => allTools.find((t) => t.name === n)?.annotations.destructiveHint === false))
+  ok("full-proxy tool families present",
+    ["update_event", "update_submission", "add_participant", "set_agenda_published", "add_speaker",
+     "bulk_add_speakers", "list_tasks", "update_task", "list_files", "review_file", "send_bulk_email",
+     "create_evaluation_plan", "add_evaluator", "distribute_evaluations", "remind_evaluators",
+     "list_field_options", "manage_room", "manage_session_status", "manage_webhook", "save_embed",
+     "list_workspace_members", "invite_workspace_member", "list_activity"].every((n) => toolNames.includes(n)),
+    "missing: " + ["update_event","update_submission","set_agenda_published","send_bulk_email"].filter((n) => !toolNames.includes(n)).join(", "))
+  // Representative writes refuse without confirm — instructively, not with a bare schema error.
+  for (const [gName, gArgs] of [
+    ["create_form", { event: "ai-summit-2026", name: "Gate Probe" }],
+    ["update_event", { event: "ai-summit-2026", venue: "Gate Hall" }],
+    ["add_speaker", { event: "ai-summit-2026", email: "gate-probe@example.com" }],
+    ["send_bulk_email", { event: "ai-summit-2026", audience: "all_speakers", subject: "x", body: "y" }],
+    ["set_agenda_published", { event: "ai-summit-2026", published: false }],
+  ]) {
+    const refusal = await toolCall(gName, gArgs)
+    ok(`${gName} refuses without confirm:true (instructive message)`,
+      refusal.isError && /confirm: true/.test(refusal.text ?? "") && /user/i.test(refusal.text ?? ""),
+      (refusal.text ?? "").slice(0, 120))
+  }
+  ok("the refused writes changed nothing",
+    !(await toolCall("list_forms", { event: "ai-summit-2026" })).json.forms.some((f) => f.name === "Gate Probe"))
+  // Reads still run with no confirm anywhere in sight.
+  const gateRead = await toolCall("list_field_options", { event: "ai-summit-2026", resource: "tracks" })
+  ok("reads run ungated (list_field_options)", !gateRead.isError && Array.isArray(gateRead.json?.data))
 
   const listEvents = await toolCall("list_events", {})
   ok("tools/call list_events returns my events", !listEvents.isError && listEvents.json?.events?.some((e) => e.slug === "ai-summit-2026"), listEvents.text?.slice(0, 120))
@@ -2365,7 +2406,7 @@ if (SITE_URL) {
   ok("the refused delete left the form alone", !(await toolCall("get_form", { form: "cfp" })).isError)
 
   const throwawayName = `MCP Verify Form ${Date.now().toString(36)}`
-  const throwaway = await toolCall("create_form", { event: "ai-summit-2026", name: throwawayName })
+  const throwaway = await toolCall("create_form", { event: "ai-summit-2026", name: throwawayName, confirm: true })
   ok("create_form echoes the created form's name back", throwaway.json?.name === throwawayName, throwaway.text?.slice(0, 120))
   const formNoConfirm = await rpc("tools/call", { name: "delete_form", arguments: { form: throwaway.json.slug } })
   const formNoConfirmMsg = formNoConfirm.body?.error?.message ?? formNoConfirm.body?.result?.content?.[0]?.text ?? ""
@@ -2380,18 +2421,18 @@ if (SITE_URL) {
   // remove_task is the inverse of assign_task — assign one, retract it.
   const chaseEmail = roster.speakers[0].email
   const taskTitle = `Verify throwaway task ${Date.now().toString(36)}`
-  const assigned = await toolCall("assign_task", { event: "ai-summit-2026", speakers: [chaseEmail], title: taskTitle })
+  const assigned = await toolCall("assign_task", { event: "ai-summit-2026", speakers: [chaseEmail], title: taskTitle, confirm: true })
   ok("assign_task created the throwaway task", !assigned.isError && assigned.json?.created === 1)
   const afterAssign = await toolCall("list_speakers", { event: "ai-summit-2026" })
   const throwawayTask = afterAssign.json.speakers
     .find((s) => s.email === chaseEmail)?.outstandingTasks.find((t) => t.title === taskTitle)
   ok("the new task shows on the roster", Boolean(throwawayTask))
-  const taskRemoved = await toolCall("remove_task", { taskId: throwawayTask.taskId })
+  const taskRemoved = await toolCall("remove_task", { taskId: throwawayTask.taskId, confirm: true })
   ok("remove_task retracts it", !taskRemoved.isError && taskRemoved.json?.removed === true, taskRemoved.text?.slice(0, 140))
   const afterRemove = await toolCall("list_speakers", { event: "ai-summit-2026" })
   ok("the retracted task is gone from the roster",
     !afterRemove.json.speakers.some((s) => s.outstandingTasks.some((t) => t.title === taskTitle)))
-  ok("removing it again fails cleanly", (await toolCall("remove_task", { taskId: throwawayTask.taskId })).isError)
+  ok("removing it again fails cleanly", (await toolCall("remove_task", { taskId: throwawayTask.taskId, confirm: true })).isError)
 
   // delete_event: double-confirmed, and neither half alone is enough.
   const eventNoName = await rpc("tools/call", { name: "delete_event", arguments: { event: "ai-summit-2026", confirm: true } })
@@ -2406,7 +2447,7 @@ if (SITE_URL) {
   ok("nothing was destroyed by the refused deletes", !(await toolCall("get_event_summary", { event: "ai-summit-2026" })).isError)
 
   const doomedName = `MCP Verify Event ${Date.now().toString(36)}`
-  const doomed = await toolCall("create_event", { name: doomedName, organizationId: main.organizationId, timezone: "Europe/Berlin" })
+  const doomed = await toolCall("create_event", { name: doomedName, organizationId: main.organizationId, timezone: "Europe/Berlin", confirm: true })
   ok("create_event made the throwaway event", !doomed.isError && typeof doomed.json?.slug === "string", doomed.text?.slice(0, 140))
   const doomedKilled = await toolCall("delete_event", { event: doomed.json.slug, confirmName: doomedName, confirm: true })
   ok("delete_event deletes with both confirmations",

@@ -1396,7 +1396,11 @@ export const run = internalMutation({
         allowDrafts: true,
         successMessage:
           "Thanks — your proposal is in. We'll email you when the programme committee has reviewed it.",
-        autoRedirectToPortal: true,
+        // Land on the thank-you and stay there. Submitting is the moment a
+        // speaker most wants a receipt — which proposal, which address it was
+        // confirmed to — and "Continue to portal" is right underneath for the
+        // ones who want to carry on.
+        autoRedirectToPortal: false,
         sendReminderEmail: true,
       },
       notifyEmails: [DEMO_ORGANIZER_EMAIL],

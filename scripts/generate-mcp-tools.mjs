@@ -30,9 +30,14 @@ const GROUPS = [
       "list_workspaces",
       "list_events",
       "create_event",
+      "update_event",
       "delete_event",
       "get_event_overview",
       "get_event_summary",
+      "list_workspace_members",
+      "invite_workspace_member",
+      "update_workspace_member",
+      "remove_workspace_member",
     ],
   },
   {
@@ -42,7 +47,9 @@ const GROUPS = [
       "list_forms",
       "get_form",
       "create_form",
+      "update_form",
       "update_form_settings",
+      "manage_form_question",
       "get_public_form_link",
       "delete_form",
     ],
@@ -53,29 +60,58 @@ const GROUPS = [
     tools: [
       "list_submissions",
       "get_submission",
+      "update_submission",
       "set_submission_status",
       "commit_decision_queue",
       "add_manual_session",
+      "delete_submission",
+      "restore_submission",
+      "add_participant",
+      "remove_participant",
     ],
   },
   {
     id: "agenda",
     label: "Agenda",
-    tools: ["get_agenda", "schedule_session", "unschedule_session", "auto_place_sessions"],
+    tools: [
+      "get_agenda",
+      "schedule_session",
+      "unschedule_session",
+      "auto_place_sessions",
+      "set_agenda_published",
+    ],
   },
   {
     id: "speakers",
-    label: "Speakers & tasks",
+    label: "Speakers",
     tools: [
       "list_speakers",
       "get_speaker_portal_link",
+      "add_speaker",
+      "update_speaker",
+      "remove_speaker",
+      "bulk_add_speakers",
+    ],
+  },
+  {
+    id: "tasks",
+    label: "Speaker tasks",
+    tools: [
+      "list_tasks",
       "assign_task",
+      "update_task",
       "remove_task",
       "list_task_library",
       "save_task_template",
       "assign_task_from_template",
+      "delete_task_template",
       "send_reminders",
     ],
+  },
+  {
+    id: "files",
+    label: "Files & review",
+    tools: ["list_files", "review_file", "delete_file"],
   },
   {
     id: "email",
@@ -86,7 +122,53 @@ const GROUPS = [
       "update_template",
       "list_outbox",
       "send_test_email",
+      "count_bulk_audience",
+      "send_bulk_email",
     ],
+  },
+  {
+    id: "evaluation",
+    label: "Evaluation",
+    tools: [
+      "list_evaluation_plans",
+      "get_evaluation_plan",
+      "create_evaluation_plan",
+      "update_evaluation_plan",
+      "delete_evaluation_plan",
+      "add_evaluator",
+      "update_evaluator",
+      "remove_evaluator",
+      "distribute_evaluations",
+      "remind_evaluators",
+      "list_evaluations",
+    ],
+  },
+  {
+    id: "setup",
+    label: "Event setup",
+    tools: [
+      "list_field_options",
+      "manage_room",
+      "manage_track",
+      "manage_field_option",
+      "manage_session_status",
+    ],
+  },
+  {
+    id: "integrations",
+    label: "Webhooks & embeds",
+    tools: [
+      "list_webhooks",
+      "manage_webhook",
+      "list_embeds",
+      "save_embed",
+      "delete_embed",
+    ],
+  },
+  {
+    id: "activity",
+    label: "Activity",
+    tools: ["list_activity"],
   },
 ]
 
@@ -190,16 +272,30 @@ function parseTools(source) {
     const name = readString(block, "name")
     const readOnlyMatch = /\breadOnly:\s*(true|false)/.exec(block)
     if (!readOnlyMatch) throw new Error(`Tool ${name}: missing readOnly`)
+    const readOnly = readOnlyMatch[1] === "true"
+    // Optional annotation flags; the server defaults destructive to true for
+    // writes (spec default) and idempotent to false.
+    const destructiveMatch = /\bdestructive:\s*(true|false)/.exec(block)
+    const destructive = readOnly
+      ? false
+      : destructiveMatch
+        ? destructiveMatch[1] === "true"
+        : true
     const { args, required } = readInputSchema(block, name)
     return {
       name,
       title: readString(block, "title", name),
       description: readString(block, "description", name),
-      readOnly: readOnlyMatch[1] === "true",
-      // `confirm: true` is the server-side guard on the irreversible actions.
-      requiresConfirm: args.includes("confirm"),
-      args,
-      required,
+      readOnly,
+      destructive,
+      // Every write requires `confirm: true` — the argument is injected by the
+      // server for any tool that doesn't declare its own (convex/mcp.ts).
+      requiresConfirm: !readOnly,
+      args: readOnly || args.includes("confirm") ? args : [...args, "confirm"],
+      required:
+        readOnly || required.includes("confirm")
+          ? required
+          : [...required, "confirm"],
     }
   })
 }
@@ -231,6 +327,7 @@ ${group.tools
         title: ${JSON.stringify(tool.title)},
         description: ${JSON.stringify(tool.description)},
         readOnly: ${tool.readOnly},
+        destructive: ${tool.destructive},
         requiresConfirm: ${tool.requiresConfirm},
         args: ${JSON.stringify(tool.args)},
         required: ${JSON.stringify(tool.required)},
@@ -255,7 +352,9 @@ export interface McpToolDoc {
   description: string
   /** \`readOnlyHint\` — true when the tool cannot change anything. */
   readOnly: boolean
-  /** Guarded by a required \`confirm: true\` argument. */
+  /** \`destructiveHint\` — changes or destroys existing data (vs purely additive). */
+  destructive: boolean
+  /** Guarded by a required \`confirm: true\` argument — true for EVERY write. */
   requiresConfirm: boolean
   args: Array<string>
   required: Array<string>

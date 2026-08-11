@@ -2,6 +2,8 @@ import { useState } from "react"
 import { RiCheckLine, RiLinkM } from "@remixicon/react"
 import { toast } from "sonner"
 
+import { copyText } from "@/lib/clipboard"
+
 import { Button } from "@/components/ui/button"
 import { publicFormUrl } from "./model"
 
@@ -30,12 +32,11 @@ export function CopyLinkButton({
 
   async function copy() {
     const url = publicFormUrl(workspaceSlug, eventSlug, slug)
-    try {
-      await navigator.clipboard.writeText(url)
+    if (await copyText(url)) {
       setCopied(true)
       toast.success("Public link copied", { description: url })
       setTimeout(() => setCopied(false), 2000)
-    } catch {
+    } else {
       toast.error("We couldn't copy the link", { description: url })
     }
   }

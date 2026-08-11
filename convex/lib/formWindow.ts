@@ -19,7 +19,20 @@ export type FormWindow =
   | { open: true; reason?: undefined }
   | { open: false; reason: string }
 
-export function isFormOpen(form: Doc<"forms">): FormWindow {
+/**
+ * The same verdict, from the two fields it actually depends on — so the form
+ * builder can ask the question about a draft that has not been saved yet.
+ *
+ * The organizer UI used to answer it three times over, and each copy looked at
+ * `status` alone: a form whose deadline had passed sat there wearing a green
+ * "Open" badge and an "This form is open" toggle that was still on, directly
+ * above a banner saying it had stopped accepting submissions. A deadline is a
+ * way of closing a form, so it has to count as one everywhere.
+ */
+export function formWindow(form: {
+  status: string
+  closeAt?: number | null
+}): FormWindow {
   if (form.status !== "open") {
     return { open: false, reason: "This call for speakers is closed." }
   }
@@ -30,6 +43,10 @@ export function isFormOpen(form: Doc<"forms">): FormWindow {
     }
   }
   return { open: true }
+}
+
+export function isFormOpen(form: Doc<"forms">): FormWindow {
+  return formWindow(form)
 }
 
 /** "Jul 22, 2026" in the event's own timezone (falls back to UTC). */

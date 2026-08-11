@@ -1,6 +1,8 @@
 import { RiCalendarCheckLine, RiDownload2Line, RiLinkM } from "@remixicon/react"
 import { toast } from "sonner"
 
+import { copyText } from "@/lib/clipboard"
+
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
@@ -70,18 +72,15 @@ export function SubscribeMenu({
           </DropdownMenuItem>
           <DropdownMenuItem
             onClick={() => {
-              void navigator.clipboard
-                .writeText(feed)
-                .then(() =>
-                  toast.success("Calendar feed URL copied", {
-                    description: feed,
-                  }),
-                )
-                .catch(() =>
-                  toast.error("We couldn't copy that automatically", {
-                    description: feed,
-                  }),
-                )
+              void copyText(feed).then((ok) =>
+                ok
+                  ? toast.success("Calendar feed URL copied", {
+                      description: feed,
+                    })
+                  : toast.error("We couldn't copy that automatically", {
+                      description: feed,
+                    }),
+              )
             }}
           >
             <RiLinkM aria-hidden />

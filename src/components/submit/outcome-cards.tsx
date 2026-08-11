@@ -30,8 +30,16 @@ export interface SuccessCardProps {
   onSubmitAnother?: () => void
 }
 
-/** Seconds the auto-redirect waits, so the confirmation is actually readable. */
-const AUTO_REDIRECT_SECONDS = 3
+/**
+ * Seconds the auto-redirect waits, so the confirmation is actually readable.
+ *
+ * It used to be three, which is not long enough to read a heading, check the
+ * address the receipt went to, and read the organizer's own success message —
+ * the page was gone before anyone finished the second line, so the flow felt
+ * like it had skipped the confirmation entirely. Twelve is enough to read the
+ * card and still hit "Stay here"; anyone who is done just clicks the button.
+ */
+const AUTO_REDIRECT_SECONDS = 12
 
 export function SuccessCard({
   form,

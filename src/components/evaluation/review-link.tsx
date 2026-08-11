@@ -2,6 +2,8 @@ import { useCallback, useState } from "react"
 import { RiCheckLine, RiExternalLinkLine, RiFileCopyLine } from "@remixicon/react"
 import { toast } from "sonner"
 
+import { copyText } from "@/lib/clipboard"
+
 import { cn } from "@/lib/utils"
 import { Button, buttonVariants } from "@/components/ui/button"
 
@@ -14,15 +16,6 @@ export function reviewLinkUrl(token: string): string {
   const path = reviewLinkPath(token)
   if (typeof window === "undefined") return path
   return `${window.location.origin}${path}`
-}
-
-async function copyText(value: string): Promise<boolean> {
-  try {
-    await navigator.clipboard.writeText(value)
-    return true
-  } catch {
-    return false
-  }
 }
 
 /**

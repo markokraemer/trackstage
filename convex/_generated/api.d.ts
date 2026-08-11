@@ -17,6 +17,7 @@ import type * as apiV1 from "../apiV1.js";
 import type * as audit from "../audit.js";
 import type * as auth from "../auth.js";
 import type * as comms from "../comms.js";
+import type * as copilotThreads from "../copilotThreads.js";
 import type * as crons from "../crons.js";
 import type * as dashboard from "../dashboard.js";
 import type * as embeds from "../embeds.js";
@@ -72,6 +73,7 @@ declare const fullApi: ApiFromModules<{
   audit: typeof audit;
   auth: typeof auth;
   comms: typeof comms;
+  copilotThreads: typeof copilotThreads;
   crons: typeof crons;
   dashboard: typeof dashboard;
   embeds: typeof embeds;

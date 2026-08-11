@@ -3,6 +3,8 @@ import { useQuery } from "@tanstack/react-query"
 import { convexQuery, useConvexMutation } from "@convex-dev/react-query"
 import { format } from "date-fns"
 import { toast } from "sonner"
+
+import { copyText } from "@/lib/clipboard"
 import {
   RiCalendarEventLine,
   RiCheckLine,
@@ -155,13 +157,13 @@ export function MessageDrawer({
 
   async function handleCopy() {
     if (!message) return
-    try {
-      await navigator.clipboard.writeText(
-        `Subject: ${message.subject}\n\n${message.body}`,
-      )
+    const ok = await copyText(
+      `Subject: ${message.subject}\n\n${message.body}`,
+    )
+    if (ok) {
       setCopied(true)
       setTimeout(() => setCopied(false), 2000)
-    } catch {
+    } else {
       toast.error("Could not copy the email text")
     }
   }

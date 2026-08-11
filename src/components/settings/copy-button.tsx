@@ -2,6 +2,8 @@ import { useState } from "react"
 import { RiCheckLine, RiFileCopyLine } from "@remixicon/react"
 import { toast } from "sonner"
 
+import { copyText } from "@/lib/clipboard"
+
 import { Button } from "@/components/ui/button"
 
 /**
@@ -45,13 +47,12 @@ export function CopyButton({
       }
       if (text === null) return
     }
-    try {
-      await navigator.clipboard.writeText(text)
+    if (await copyText(text)) {
       setCopied(true)
       toast.success(successMessage)
       window.setTimeout(() => setCopied(false), 2000)
-    } catch {
-      toast.error("Couldn't copy — select the text and copy it manually.")
+    } else {
+      toast.error("Couldn't copy automatically", { description: text })
     }
   }
 

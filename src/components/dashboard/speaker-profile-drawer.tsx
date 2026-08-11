@@ -28,6 +28,8 @@ import {
 } from "@remixicon/react"
 import { toast } from "sonner"
 
+import { copyText } from "@/lib/clipboard"
+
 import { portalLinkFor } from "@/components/dashboard/app-routes"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button, buttonVariants } from "@/components/ui/button"
@@ -505,14 +507,16 @@ export function SpeakerProfileDrawer({
               variant="outline"
               size="sm"
               onClick={() => {
-                void navigator.clipboard
-                  .writeText(portalLinkFor(speaker.portalToken))
-                  .then(() =>
-                    toast.success("Portal link copied", {
-                      description: `Send it to ${speaker.name} — it signs them straight in.`,
-                    }),
-                  )
-                  .catch(() => toast.error("Couldn't copy the link"))
+                const link = portalLinkFor(speaker.portalToken)
+                void copyText(link).then((ok) =>
+                  ok
+                    ? toast.success("Portal link copied", {
+                        description: `Send it to ${speaker.name} — it signs them straight in.`,
+                      })
+                    : toast.error("Couldn't copy the link", {
+                        description: link,
+                      }),
+                )
               }}
             >
               Copy portal link

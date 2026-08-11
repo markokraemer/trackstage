@@ -29,7 +29,11 @@ import type { PromptInputMessage } from "@/components/ai-elements/prompt-input"
 import { Suggestion, Suggestions } from "@/components/ai-elements/suggestion"
 import { CopilotToolPart } from "@/components/copilot/copilot-tool-part"
 import { COPILOT_SUGGESTIONS } from "@/lib/copilot"
-import { setCopilotEventContext, useCopilotChat } from "@/lib/copilot-store"
+import {
+  setCopilotEventContext,
+  useCopilotChat,
+  useCopilotPanelWidth,
+} from "@/lib/copilot-store"
 import { useCurrentEvent } from "@/lib/current-event"
 import { errorMessage } from "@/lib/errors"
 
@@ -58,21 +62,34 @@ import { errorMessage } from "@/lib/errors"
  * accept before anything happens.
  */
 
+/** Panel width past which the conversation gets a centred reading column. */
+const WIDE_PANEL_WIDTH = 620
+
 export type CopilotChatProps = {
   /** Full-page mode gets more air and a bigger empty state. */
   variant?: "panel" | "page"
   className?: string
   /** Rendered above the conversation on the empty state (page variant). */
   headline?: string
+  /**
+   * Trims the empty state down. Set once the organizer has a history rail
+   * beside them: the big "here's what I can do" pitch is for someone's first
+   * chat, not their eleventh.
+   */
+  slimEmptyState?: boolean
+  /** Page variant: put the caret in the composer on arrival. */
+  autoFocus?: boolean
 }
 
 export function CopilotChat({
   variant = "panel",
   className,
   headline,
+  slimEmptyState = false,
+  autoFocus = false,
 }: CopilotChatProps) {
   const { event } = useCurrentEvent()
-  const { chat } = useCopilotChat(event?._id)
+  const { chat, pending } = useCopilotChat(event?._id)
 
   // The transport reads this at send time, so the server always knows which
   // event the organizer is looking at (src/lib/copilot-store.ts).
@@ -142,6 +159,17 @@ export function CopilotChat({
   const isEmpty = messages.length === 0
   const isPage = variant === "page"
 
+  // A panel dragged out to 800px should not stretch a line of prose across all
+  // of it — past this width the conversation keeps a readable column and
+  // centres, exactly like the full page does (Marko, 2026-08-11).
+  const panelWidth = useCopilotPanelWidth()
+  const wideColumn = !isPage && panelWidth >= WIDE_PANEL_WIDTH
+  const columnClass = isPage
+    ? "mx-auto w-full max-w-3xl"
+    : wideColumn
+      ? "mx-auto w-full max-w-2xl"
+      : undefined
+
   return (
     <div className={cn("flex min-h-0 flex-1 flex-col", className)}>
       <MessageScrollerProvider
@@ -153,16 +181,21 @@ export function CopilotChat({
           <MessageScrollerViewport>
             <MessageScrollerContent
               aria-busy={status === "streaming"}
-              className={cn(
-                "gap-6",
-                isPage ? "mx-auto w-full max-w-3xl p-6" : "p-4"
-              )}
+              className={cn("gap-6", isPage ? "p-6" : "p-4", columnClass)}
             >
-              {isEmpty ? (
+              {isEmpty && pending ? (
+                // A saved conversation on its way back from Convex. Drawing
+                // the empty state here would flash "ask me anything" over a
+                // chat that already has fifty messages in it.
+                <CopilotTranscriptSkeleton />
+              ) : null}
+
+              {isEmpty && !pending ? (
                 <CopilotEmptyState
                   variant={variant}
                   headline={headline}
                   eventName={event?.name}
+                  slim={slimEmptyState}
                   onPick={ask}
                 />
               ) : null}
@@ -262,7 +295,7 @@ export function CopilotChat({
           isPage ? "px-6 pt-2 pb-5" : "border-t border-border bg-card p-3"
         )}
       >
-        <div className={cn("space-y-2", isPage && "mx-auto w-full max-w-3xl")}>
+        <div className={cn("space-y-2", columnClass)}>
           {!isEmpty ? (
             <Suggestions>
               {COPILOT_SUGGESTIONS.slice(0, 3).map((suggestion) => (
@@ -287,7 +320,11 @@ export function CopilotChat({
             textarea and the toolbar must be direct children of `PromptInput`.
           */}
           <PromptInput onSubmit={submit} className="rounded-xl">
+            {/* Enter sends, Shift+Enter starts a new line — handled inside
+                `PromptInputTextarea`; the form's requestSubmit is what runs
+                `submit` above. */}
             <PromptInputTextarea
+              autoFocus={autoFocus}
               placeholder={
                 event
                   ? `Ask about ${event.name}…`
@@ -320,15 +357,29 @@ export function CopilotChat({
   )
 }
 
+/** Three quiet bars — "your conversation is loading", without pretending. */
+function CopilotTranscriptSkeleton() {
+  return (
+    <div className="space-y-4 py-6" aria-hidden>
+      <div className="ml-auto h-9 w-2/5 animate-pulse rounded-xl bg-muted" />
+      <div className="h-4 w-11/12 animate-pulse rounded bg-muted" />
+      <div className="h-4 w-9/12 animate-pulse rounded bg-muted" />
+      <div className="h-20 w-full animate-pulse rounded-xl bg-muted" />
+    </div>
+  )
+}
+
 function CopilotEmptyState({
   variant,
   headline,
   eventName,
+  slim,
   onPick,
 }: {
   variant: "panel" | "page"
   headline?: string
   eventName?: string
+  slim?: boolean
   onPick: (text: string) => void
 }) {
   const isPage = variant === "page"
@@ -336,32 +387,39 @@ function CopilotEmptyState({
     <div
       className={cn(
         "flex flex-col items-center text-center",
-        isPage ? "gap-4 py-16" : "gap-3 py-10"
+        isPage ? "gap-4 py-16" : "gap-3 py-10",
+        slim && "gap-3 py-10"
       )}
     >
       <span
         aria-hidden
         className={cn(
           "flex items-center justify-center rounded-2xl bg-primary/10 text-primary",
-          isPage ? "size-14" : "size-11"
+          isPage ? "size-14" : "size-11",
+          slim && "size-11"
         )}
       >
-        <RiSparkling2Line size={isPage ? 26 : 20} />
+        <RiSparkling2Line size={isPage && !slim ? 26 : 20} />
       </span>
       <div className="space-y-1">
         <h2
           className={cn(
             "font-heading font-semibold text-foreground",
-            isPage ? "text-xl" : "text-base"
+            isPage ? "text-xl" : "text-base",
+            slim && "text-base"
           )}
         >
           {headline ?? "Ask your Trackstage copilot"}
         </h2>
-        <p className="mx-auto max-w-md text-sm text-muted-foreground">
-          {eventName
-            ? `It can read and change everything in ${eventName} — submissions, the agenda, speakers and their emails. Anything that emails people or decides someone's fate asks you first.`
-            : "It can read and change everything in your events. Anything that emails people or decides someone's fate asks you first."}
-        </p>
+        {/* The pitch is for a first chat. Once there's history beside them,
+            the organizer already knows what this thing does. */}
+        {slim ? null : (
+          <p className="mx-auto max-w-md text-sm text-muted-foreground">
+            {eventName
+              ? `It can read and change everything in ${eventName} — submissions, the agenda, speakers and their emails. Anything that emails people or decides someone's fate asks you first.`
+              : "It can read and change everything in your events. Anything that emails people or decides someone's fate asks you first."}
+          </p>
+        )}
       </div>
       <div className="flex flex-wrap justify-center gap-2 pt-1">
         {COPILOT_SUGGESTIONS.map((suggestion) => (

@@ -9,6 +9,8 @@ import {
   RiMoreLine,
 } from "@remixicon/react"
 import { toast } from "sonner"
+
+import { copyText } from "@/lib/clipboard"
 import type { Id } from "@convex/_generated/dataModel"
 
 import { cn } from "@/lib/utils"
@@ -126,10 +128,9 @@ export function SpeakersTable({
 
   async function copyPortalLink(row: SpeakerRosterRow) {
     const url = portalLinkFor(row.portalToken)
-    try {
-      await navigator.clipboard.writeText(url)
+    if (await copyText(url)) {
       toast.success(`Portal link for ${row.name} copied`, { description: url })
-    } catch {
+    } else {
       toast.error("Couldn't copy automatically", { description: url })
     }
   }
@@ -153,7 +154,10 @@ export function SpeakersTable({
                 }
               />
             </TableHead>
-            <TableHead>Speaker</TableHead>
+            {/* Takes the leftover width so the `sticky right-0` actions column
+                stays 40px wide instead of stretching across — and covering —
+                the Tasks and Still-needed columns. */}
+            <TableHead className="w-full">Speaker</TableHead>
             <TableHead>Status</TableHead>
             <TableHead>Company</TableHead>
             <TableHead>In the program</TableHead>
@@ -299,7 +303,10 @@ export function SpeakersTable({
                 </TableCell>
 
                 <TableCell>
-                  <MissingPills missing={row.missing} />
+                  <MissingPills
+                    missing={row.missing}
+                    openTasks={Math.max(0, row.tasks.total - row.tasks.done)}
+                  />
                 </TableCell>
 
                 <TableCell className="sticky right-0 z-[1] bg-card pr-4 text-right group-hover:bg-muted group-data-[state=selected]:bg-muted">

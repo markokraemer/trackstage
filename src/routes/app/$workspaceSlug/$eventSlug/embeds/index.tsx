@@ -5,6 +5,8 @@ import { convexQuery, useConvexMutation } from "@convex-dev/react-query"
 import { api } from "@convex/_generated/api"
 import type { Doc, Id } from "@convex/_generated/dataModel"
 import { toast } from "sonner"
+
+import { copyText } from "@/lib/clipboard"
 import {
   RiCheckLine,
   RiCodeSSlashLine,
@@ -842,14 +844,15 @@ function CopyButton({
       variant="outline"
       className={className}
       onClick={() => {
-        void navigator.clipboard
-          .writeText(value)
-          .then(() => {
-            setCopied(true)
-            toast.success("Copied to your clipboard")
-            setTimeout(() => setCopied(false), 2000)
-          })
-          .catch(() => toast.error("Couldn't copy — select the text instead"))
+        void copyText(value).then((ok) => {
+          if (!ok) {
+            toast.error("Couldn't copy — select the text instead")
+            return
+          }
+          setCopied(true)
+          toast.success("Copied to your clipboard")
+          setTimeout(() => setCopied(false), 2000)
+        })
       }}
     >
       {copied ? <RiCheckLine aria-hidden /> : <RiFileCopyLine aria-hidden />}

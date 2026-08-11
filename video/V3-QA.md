@@ -1,0 +1,100 @@
+# Trackstage Launch V3 — QA loop log
+
+The mandatory perfection loop: render → extract frames at every cut point +
+scene midpoints → read each frame with vision → critique against the checklist
+→ fix → re-render. Loop until a full pass yields ZERO findings, then one
+end-to-end 2fps watch-through for pacing.
+
+## Checklist (every frame pass)
+
+**Landing-token fidelity**
+- [ ] Grounds: hero scenes = white `#FFFFFF` + 72px graph-paper wash with
+      radial top mask (GridBackdrop); product scenes = page `#FAFAFA`.
+- [ ] Type = DISPLAY_HEADING: Inter semibold, −0.032em tracking, ~1.05
+      leading; two-tone second sentence in muted-foreground/55.
+- [ ] Eyebrow = SectionIntro language: hairline glyph box (rounded-lg,
+      border `#EAEAEC`) + muted medium label — sentence case, never
+      uppercase-tracked.
+- [ ] Chip = hero announcement pill: border, white bg, 8px primary dot,
+      muted label, arrow.
+- [ ] Browser frame = product-shot BrowserChrome: muted/60 bar, three
+      foreground/15 dots, white rounded-full URL pill with foreground/10
+      ring; figure = rounded-xl, foreground/10 ring, lg shadow.
+- [ ] `#2F5CE0` only where it means something (dot, $0 stat, domain,
+      primary CTA). Chrome stays neutral.
+
+**Composition & legibility**
+- [ ] Safe margins: nothing within ~40px of frame edges; browser frame's
+      bottom edge on screen at max push-in.
+- [ ] Headline never collides with the browser frame at max zoom.
+- [ ] UI in frame legible at 1080p (text ≥ ~11px rendered).
+- [ ] No fixture junk, no dev chrome (localhost URLs, devtools, scrollbars,
+      OS cursors outside the app, seeded-data embarrassments).
+- [ ] Hold durations long enough to read: headline ≥ ~2.5s on screen;
+      footage action followable (net speed calm, no speedrun feel).
+
+**Transition cleanliness**
+- [ ] At every hard cut N: frames N−1 / N / N+1 clean — no half-faded
+      ghosts, no layout jump of the persistent browser frame, headers
+      re-enter smoothly.
+- [ ] Crossfades (12/10fr) complete without double-exposure artifacts on
+      text.
+- [ ] Video segments never run past their source (no frozen/black tail).
+
+**Film-level**
+- [ ] 1920×1080, 30fps, H.264 + AAC.
+- [ ] Runtime 55–65s; music fades in/out cleanly; cuts feel intentional
+      against the bed.
+
+## Cut map (composition frames, fadeIn overlaps applied) — iteration 2
+
+| # | scene | start | dur | notes |
+|---|-------|-------|-----|-------|
+| 1 | cold-open | 0 | 96 | fade 0 |
+| 2 | reveal | 84 | 118 | fade 12; content exit-fades from 102 |
+| 3 | form-builder | 190 | 138 | fade 12 |
+| 4 | cfp | 328 | 216 | hard cut; internal jump at 412 |
+| 5 | triage | 544 | 134 | hard cut |
+| 6 | commit | 678 | 126 | hard cut |
+| 7 | portal | 804 | 126 | hard cut |
+| 8 | agenda | 930 | 152 | hard cut |
+| 9 | autoplace | 1082 | 108 | hard cut |
+| 10 | publish | 1190 | 144 | hard cut |
+| 11 | copilot | 1334 | 170 | hard cut; single segment |
+| 12 | capabilities | 1504 | 150 | hard cut; still cuts at 1554, 1604 |
+| 13 | stats | 1644 | 140 | fade 10 |
+| 14 | close | 1772 | 156 | fade 12 → total 1928 fr = 64.27s |
+
+## Iterations
+
+### Iteration 1 — render 1 (1936 fr / 64.58s), 78 frames read
+
+Verdict of the pass: layout, landing fidelity, footage legibility and the
+stat wall / close card are right on the first render. Six findings, all
+fixed before render 2:
+
+1. **Reveal ghosting over footage** (frames 0188/0193): the reveal's
+   wordmark/tagline crossfaded on top of the form-builder UI — text over
+   product. Fix: reveal content exit-fades to 0 in its last ~14 frames, so
+   the transition blends from a clean grid ground. Reveal 112 → 118 fr to
+   keep the sub readable.
+2. **Chip popped mid-crossfade** (0093): the announcement chip sprang in
+   while the cold open was still fading out, double-exposing with the
+   eyebrow. Fix: chip delay 4 → 14 (after the fade completes).
+3. **CFP chapter opened on a loading skeleton** (0322): clip frame 0 is a
+   page-load placeholder. Fix: segment trimBefore 0 → 10.
+4. **Copilot chapter: 2s of dead air** (1368–1423): segment 1 (source
+   30–108) showed only the empty copilot screen — the typing lives later
+   in the clip than the prep notes suggested. Fix: single segment from
+   source 88 (ask sent → tools → approval card → Approve & run → result).
+5. **Copilot → capabilities crossfade garbled two headlines + two screens**
+   (1528/1531). Fix: hard cut (fadeIn 0), consistent with every other
+   chapter boundary; stills 46 → 50 fr each with the freed time.
+6. **Pacing trim to stay inside 55–65s** after the reveal/stills additions:
+   triage/commit/portal/agenda/autoplace/publish/cfp-seg2 each −4…−6 fr.
+   New total 1928 fr = 64.27s.
+
+Accepted (noted, not defects): the MCP still shows the real demo MCP
+endpoint (convex.site) and demo account email at ~13px — authentic
+product footage, illegible at viewing size; the app's own dialog-backdrop
+blur in commit/auto-place is product behaviour, not an edit artifact.

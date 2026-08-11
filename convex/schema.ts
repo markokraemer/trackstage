@@ -99,6 +99,33 @@ export default defineSchema({
     .index("by_keyHash", ["keyHash"])
     .index("by_userId", ["userId"]),
 
+  // Saved AI-copilot conversations (docs/memory/RULES.md 24). One row per
+  // chat: the whole transcript lives in `messages` as serialized AI SDK
+  // `UIMessage`s, because that is exactly what both the renderer and the model
+  // want back — no reassembly, no per-part table, no join on read.
+  //
+  // The transcript IS bounded (convex/copilotThreads.ts trims to a byte budget
+  // before every write), which is what makes an array field legitimate here:
+  // the document can never grow past the budget however long the chat runs.
+  //
+  // Scoped to a user AND an event: "how many submissions do I have?" means
+  // something different on the other side of the event switcher, so the rail
+  // only ever lists the current event's conversations.
+  copilotThreads: defineTable({
+    userId: v.string(), // Better Auth user id — the only reader
+    eventId: v.optional(v.id("events")), // absent ⇒ chatted with no event selected
+    title: v.string(), // auto-derived from the first user message, renameable
+    createdAt: v.number(),
+    updatedAt: v.number(), // last autosave; the rail sorts on it
+    messages: v.array(v.any()), // serialized UIMessage[]
+  })
+    .index("by_userId_and_updatedAt", ["userId", "updatedAt"])
+    .index("by_userId_and_eventId_and_updatedAt", [
+      "userId",
+      "eventId",
+      "updatedAt",
+    ]),
+
   // ——— Core setup ———————————————————————————————————————————————————————
   events: defineTable({
     // TEMP-OPTIONAL during legacy purge — tightened right back (see seed.run

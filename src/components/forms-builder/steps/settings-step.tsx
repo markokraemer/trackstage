@@ -54,13 +54,20 @@ export function SettingsStep({
         description="Close the form the moment you want it to stop taking new entries."
       />
 
+      {/* The switch owns `status` and nothing else — flipping it on must not
+          quietly undo a deadline the organizer set. But it may not claim the
+          form is open while the close date below says otherwise, so when the
+          deadline has already passed the row says which of the two is winning
+          and what to do about it. */}
       <SettingRow
         id={`${id}-status`}
         title="This form is open"
         description={
           closed
             ? "The public link shows a friendly “submissions are closed” message."
-            : "Anyone with the link can submit right now."
+            : closesInPast
+              ? "Switched on — but the close date below has already passed, so the form is not accepting anything. Move or clear the deadline to reopen it."
+              : "Anyone with the link can submit right now."
         }
         checked={!closed}
         onCheckedChange={(value) => patch({ status: value ? "open" : "closed" })}

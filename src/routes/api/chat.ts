@@ -7,12 +7,7 @@ import { api } from "@convex/_generated/api"
 import { fetchAuthMutation, fetchAuthQuery } from "@/lib/auth-server"
 import { loadMcpTools } from "@/lib/copilot-mcp"
 import { errorMessage } from "@/lib/errors"
-import {
-  COPILOT_MCP_PATH,
-  COPILOT_MODEL,
-  copilotSystemPrompt,
-  isDestructiveTool,
-} from "@/lib/copilot"
+import { COPILOT_MCP_PATH, COPILOT_MODEL, copilotSystemPrompt } from "@/lib/copilot"
 
 // ————————————————————————————————————————————————————————————————————————
 // POST /api/chat — the AI copilot's brain (docs/memory/RULES.md #24).
@@ -33,11 +28,16 @@ import {
 //    signed-in organizer couldn't. It is a client of our public surface, not
 //    a back door — which is also what keeps that surface honest.
 //
-// 2. Destructive tools cannot run without a human "yes". That is enforced
-//    server-side via the AI SDK's `toolApproval`, not by asking the model
-//    nicely: the SDK suspends the tool call, streams an approval request to
-//    the client, and only executes once the client returns an approval.
-//    A compromised or creative model cannot route around it.
+// 2. NO write runs without a human "yes" — not just the destructive ones.
+//    Enforced twice, by construction: the AI SDK's `toolApproval` suspends
+//    every non-read-only tool call and streams an approval card to the
+//    client, executing only once the organizer clicks Approve; and the MCP
+//    server itself refuses every write without `confirm: true`, which this
+//    client supplies only inside `execute` — i.e. only after that click
+//    (src/lib/copilot-mcp.ts). A compromised or creative model cannot route
+//    around either layer. Which tools count as reads comes from the server's
+//    own `readOnlyHint` annotations, so a tool added tomorrow is gated by
+//    default rather than by memory.
 // ————————————————————————————————————————————————————————————————————————
 
 /** Generous enough to chain list → get → act, small enough to stay snappy. */
@@ -124,6 +124,7 @@ async function handlePost({
   )
   let tools: ToolSet = {}
   let toolNames: Array<string> = []
+  let readOnlyTools = new Set<string>()
   let toolsError: string | null = null
   if (!siteUrl) {
     toolsError = "VITE_CONVEX_SITE_URL is not set."
@@ -136,6 +137,7 @@ async function handlePost({
       })
       tools = loaded.tools
       toolNames = loaded.toolNames
+      readOnlyTools = loaded.readOnlyTools
     } catch (error) {
       // A dead MCP server must not take the chat down with it: the copilot
       // degrades to a plain assistant that says so, which is far more useful
@@ -186,12 +188,13 @@ async function handlePost({
     }),
     messages: modelMessages,
     tools,
-    // THE gate. A generic function rather than a per-tool map because the
-    // tool set is discovered at runtime — this way a tool added to the MCP
-    // server tomorrow is classified by the same rule, with no second list to
-    // keep in sync (see isDestructiveTool in src/lib/copilot.ts).
+    // THE gate: anything that is not a read needs the organizer's click.
+    // Classified from the MCP server's own readOnlyHint annotations, so the
+    // copilot's gating and the server's confirm-gating are ONE model — a
+    // tool the server marks as a write can never run here unattended, and an
+    // unknown tool (annotations missing) is treated as a write, never a read.
     toolApproval: ({ toolCall }) =>
-      isDestructiveTool(toolCall.toolName) ? "user-approval" : "not-applicable",
+      readOnlyTools.has(toolCall.toolName) ? "not-applicable" : "user-approval",
     stopWhen: stepCountIs(MAX_STEPS),
     onError: ({ error }) => {
       console.error("[copilot] stream error:", error)

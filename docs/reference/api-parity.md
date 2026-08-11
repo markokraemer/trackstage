@@ -275,7 +275,7 @@ Our event catalogue adds `submission.created/updated`, `session.scheduled/unsche
 | **Event addressing** | integer `eventId` | slug **or** id, everywhere | **OURS-BETTER** — `/v1/event/ai-summit-2026/sessions` is legible in a shell history. |
 | **`expand`** | `translated_fields`, `subsession_details`, `linked_sources`, `composition` | `files`, `deleted` | **PARTIAL.** Theirs expand features we do not have; ours expand things we do. |
 | **OpenAPI spec** | published, hand-maintained | **generated from the route manifest**, drift-checked in CI, every route probed live | **OURS-BETTER.** |
-| **MCP** | `read:insights` scope, MCP for Insights only | full MCP server over the whole product at `/mcp`, OAuth 2.1 + PKCE | **OURS-BETTER.** |
+| **MCP** | `read:insights` scope, MCP for Insights only | full MCP server over the whole product at `/mcp`, OAuth 2.1 + PKCE — **81 tools, a genuine full proxy of the organizer app** (see `docs/reference/mcp-proxy-matrix.md`), every write gated behind `confirm: true` and truthfully annotated (`readOnlyHint`/`destructiveHint`/`idempotentHint`). Where a REST route exists, the MCP tool wraps the same `internal.apiV1.*` function, so the two surfaces cannot drift; MCP-only capabilities (bulk email, evaluation distribute/remind, file review, embeds, workspace members, activity) mirror organizer-app functions with no Sessionboard counterpart. | **OURS-BETTER.** |
 
 ---
 

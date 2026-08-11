@@ -200,15 +200,16 @@ function McpPage() {
       <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
         <span className="flex items-center gap-1.5">
           <RiCheckLine size={13} aria-hidden className="text-[var(--status-green-dot)]" />
-          Read-only
+          Read-only — runs without approval
         </span>
         <span className="flex items-center gap-1.5">
           <RiAlarmWarningLine size={13} aria-hidden className="text-[var(--status-amber-dot)]" />
-          Changes data
+          Creates data — requires <code className="font-mono">confirm: true</code>
         </span>
         <span className="flex items-center gap-1.5">
           <RiLock2Line size={13} aria-hidden className="text-[var(--status-red-dot)]" />
-          Needs an explicit confirmation
+          Changes or destroys data — requires{" "}
+          <code className="font-mono">confirm: true</code>
         </span>
       </div>
 
@@ -223,7 +224,7 @@ function McpPage() {
                 <li key={tool.name} className="flex gap-3 px-4 py-3">
                   <ToolBadge
                     readOnly={tool.readOnly}
-                    requiresConfirm={tool.requiresConfirm}
+                    destructive={tool.destructive}
                   />
                   <div className="min-w-0 flex-1">
                     <code className="font-mono text-[0.8125rem] font-medium text-foreground">
@@ -253,16 +254,21 @@ function McpPage() {
 
       <div className="mt-8 space-y-3">
         <Callout tone="warning">
-          <code>commit_decision_queue</code> is the only tool that emails
-          speakers a decision, and it refuses to run without{" "}
-          <code>confirm: true</code>. Preview the queue with{" "}
-          <code>list_submissions</code> first.
+          Every tool that writes anything — creates included — refuses to run
+          without <code>confirm: true</code>, so an assistant has to ask you
+          before changing your event; reads never need it.{" "}
+          <code>delete_event</code> additionally demands the event&rsquo;s
+          exact name in <code>confirmName</code>. Tools are also annotated
+          with the MCP <code>readOnlyHint</code>/<code>destructiveHint</code>{" "}
+          hints, so clients that honor them (ChatGPT does) add their own
+          approval prompt on top.
         </Callout>
         <Callout tone="note">
           The in-app{" "}
           <DocLink to="/docs/guide/ai-copilot">AI copilot</DocLink> uses this
           exact server, and shows an approval card before every tool that
-          changes something.
+          changes something — approving the card is what supplies{" "}
+          <code>confirm: true</code>.
         </Callout>
       </div>
     </div>
@@ -277,22 +283,11 @@ function firstSentence(description: string): string {
 
 function ToolBadge({
   readOnly,
-  requiresConfirm,
+  destructive,
 }: {
   readOnly: boolean
-  requiresConfirm: boolean
+  destructive: boolean
 }) {
-  if (requiresConfirm) {
-    return (
-      <Badge
-        variant="outline"
-        aria-label="Needs an explicit confirmation"
-        className="mt-0.5 size-6 shrink-0 justify-center border-[var(--status-red-dot)]/30 bg-[var(--status-red-bg)] p-0 text-[var(--status-red-fg)]"
-      >
-        <RiLock2Line size={13} aria-hidden />
-      </Badge>
-    )
-  }
   if (readOnly) {
     return (
       <Badge
@@ -304,10 +299,21 @@ function ToolBadge({
       </Badge>
     )
   }
+  if (destructive) {
+    return (
+      <Badge
+        variant="outline"
+        aria-label="Changes or destroys data — requires confirm"
+        className="mt-0.5 size-6 shrink-0 justify-center border-[var(--status-red-dot)]/30 bg-[var(--status-red-bg)] p-0 text-[var(--status-red-fg)]"
+      >
+        <RiLock2Line size={13} aria-hidden />
+      </Badge>
+    )
+  }
   return (
     <Badge
       variant="outline"
-      aria-label="Changes data"
+      aria-label="Creates data — requires confirm"
       className="mt-0.5 size-6 shrink-0 justify-center border-[var(--status-amber-dot)]/30 bg-[var(--status-amber-bg)] p-0 text-[var(--status-amber-fg)]"
     >
       <RiAlarmWarningLine size={13} aria-hidden />

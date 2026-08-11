@@ -162,7 +162,13 @@ export function SubmissionsTable({
               />
             </TableHead>
             <TableHead className="w-[150px] text-xs">Status</TableHead>
-            <TableHead className="min-w-[240px] text-xs">
+            {/* The slack column. `table-layout: auto` hands leftover width to
+                whichever cell will take it, and the empty actions header at
+                the end was taking all of it — a 216px-wide `sticky right-0`
+                block floating over Score and Speakers, eating their clicks.
+                Claiming the spare width for Title pins the actions column back
+                to its own 48px. */}
+            <TableHead className="w-full min-w-[240px] text-xs">
               <SortButton
                 label="Title"
                 active={sort.key === "title"}
