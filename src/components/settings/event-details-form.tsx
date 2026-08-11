@@ -213,7 +213,11 @@ export function EventDetailsForm({ event }: { event: EventSummary }) {
             </CardDescription>
           </CardHeader>
           <CardContent className="gap-5">
-            <div className="grid gap-5 md:grid-cols-2">
+            {/* `*:min-w-0`: grid items default to min-width:auto, so the
+                datetime/timezone triggers' min-content width (~333px) would
+                force the single mobile column wider than a phone screen —
+                7px of page-level horizontal scroll at 390px. */}
+            <div className="grid gap-5 *:min-w-0 md:grid-cols-2">
               <LabeledField
                 label="Event name"
                 htmlFor="event-name"

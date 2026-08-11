@@ -78,8 +78,13 @@ function SettingsLayout() {
               : "Set up your event: its dates, its public web address, and the rooms and tracks it uses."
           }
         >
-          <Tabs value={active}>
-            <TabsList variant="line" className="h-auto flex-wrap">
+          <Tabs value={active} className="max-w-full min-w-0">
+            {/* Phones get ONE scrollable row (round-1 tab-strip convention);
+                wrapping seven tabs into three stacked rows buried the page. */}
+            <TabsList
+              variant="line"
+              className="h-auto flex-wrap max-md:w-full max-md:flex-nowrap max-md:justify-start max-md:overflow-x-auto max-md:whitespace-nowrap"
+            >
               {TABS.map((tab) => (
                 <TabsTrigger
                   key={tab.value}
