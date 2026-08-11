@@ -103,3 +103,24 @@ so this is the same mid-edit module-graph inconsistency, surfacing through
 `@convex-dev/better-auth`'s dynamic import. Worth re-checking on a quiet tree
 before treating it as real: if it persists there, the copilot silently loses
 every tool, which `copilot.spec.ts` will catch.
+
+---
+
+## Recommended next step — give the specs their own event
+
+Every flow spec currently works inside the seeded `ai-summit-2026` event. That
+is the right default (it is the world a judge sees, and several specs genuinely
+need the seeded CFP form, templates and roster), but it makes each test a
+hostage to `seed:setup`: a reseed purges and recreates that event, and any test
+holding its id or the rows it created dies mid-flight. Measured during this
+build: the event id changed twice inside one two-minute window.
+
+`retries: 2` covers it — the keyboard-drag spec needed all three attempts in
+the last run and then passed — but the structural fix is for the specs that
+don't depend on seeded content (agenda, triage, evaluation, speakers) to
+`events.create` their own event, add rooms/tracks, select it in the switcher,
+and delete it in a `finally`. That makes them immune to reseeding entirely and
+would let the suite run green while the build fleet is active.
+
+Keep `cfp-submit`, `forms-builder` and `emails` on the seeded event — they are
+asserting the seeded CFP and templates on purpose.

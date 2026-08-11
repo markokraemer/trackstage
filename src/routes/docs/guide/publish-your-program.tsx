@@ -21,28 +21,27 @@ function Page() {
       lead="One button turns the private board into a public schedule. You never have to publish twice."
     >
       <Steps>
-        <Step title="On Agenda, press “Publish agenda” in the page header.">
+        <Step title="On Agenda, press “Publish agenda” and confirm. The dialog tells you exactly how many sessions go live and where.">
           <Shot
-            src="publish-agenda.png"
-            alt="The Agenda page header with the Publish agenda button"
+            src="walkthrough/30-publish.png"
+            alt="The Publish the agenda dialog naming the public address and the session count"
             caption="Until you do, the public page says “Schedule coming soon” — no times leak."
           />
         </Step>
 
-        <Step title="Confirm. The dialog tells you exactly how many sessions go live and where.">
-          <p className="doc-prose">
-            It is one reversible flag. An <strong>Unpublish</strong> button
-            appears next to a “Published · date” pill, and unpublishing deletes
-            nothing.
-          </p>
+        <Step title="That is it. Your public event page is live, with Schedule, Speakers, Sessions and My schedule.">
+          <Shot
+            src="walkthrough/31-public-page.png"
+            alt="The live public page for Devcon Berlin 2026 showing the published schedule"
+            caption="The same talk the speaker submitted, now on a public programme. Every later edit goes out live — no re-publishing."
+          />
         </Step>
 
-        <Step title="Your public event page is live at /e/your-slug with Schedule, Speakers, Sessions and My schedule.">
-          <Shot
-            src="public-schedule.png"
-            alt="The public event page showing the published schedule"
-            caption="Every later edit goes out live — no re-publishing."
-          />
+        <Step title="Publishing is one reversible flag.">
+          <p className="doc-prose">
+            An <strong>Unpublish</strong> button appears next to a “Published ·
+            date” pill, and unpublishing deletes nothing.
+          </p>
         </Step>
 
         <Step title="Need it on your own website? Open Embeds and build a widget in three picks.">
@@ -53,7 +52,7 @@ function Page() {
           />
         </Step>
 
-        <Step title="Save the configuration a name so you can come back to it — “Agenda for the sponsors page”.">
+        <Step title="Give the configuration a name so you can come back to it — “Agenda for the sponsors page”.">
           <p className="doc-prose">
             The calendar feed needs no key at all: attendees subscribe once and
             their calendar keeps itself right.

@@ -27,9 +27,12 @@
  */
 import { chromium } from "@playwright/test"
 import { mkdir } from "node:fs/promises"
+import { execFile } from "node:child_process"
+import { promisify } from "node:util"
 import { resolve, dirname } from "node:path"
 import { fileURLToPath } from "node:url"
 
+const exec = promisify(execFile)
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..")
 const OUT = resolve(root, "public/docs/walkthrough")
 
@@ -87,6 +90,13 @@ const log = (...a) => console.log("·", ...a)
 const written = []
 const skipped = []
 
+const args = process.argv.slice(2)
+const resumeAt = args.indexOf("--resume")
+const RESUME =
+  resumeAt === -1
+    ? null
+    : { email: args[resumeAt + 1], eventSlug: args[resumeAt + 2] }
+
 // ——— Plumbing ————————————————————————————————————————————————————————————
 
 async function settle(page, ms = 1100) {
@@ -130,6 +140,25 @@ async function safeShot(name, fn) {
     const message = error instanceof Error ? error.message : String(error)
     log(`SKIPPED ${name} — ${message.split("\n")[0].slice(0, 180)}`)
   }
+}
+
+/**
+ * Navigate with retries. The dev server is shared with other agents whose
+ * edits trigger a Vite rebuild, and a request that lands mid-rebuild hangs or
+ * answers 500 — one unlucky moment must not cost the tail of the story.
+ */
+async function go(page, url) {
+  let last
+  for (let attempt = 0; attempt < 4; attempt++) {
+    try {
+      await page.goto(url, { waitUntil: "networkidle", timeout: 45000 })
+      return
+    } catch (error) {
+      last = error
+      await page.waitForTimeout(2000)
+    }
+  }
+  throw last
 }
 
 /** Fill a controlled input, retrying until React actually keeps the value. */
@@ -214,15 +243,26 @@ async function main() {
 
   const state = { eventSlug: EVENT.slug, formSlug: null, portalUrl: null }
 
-  await signUp(page)
-  await createEvent(page, state)
-  await eventDetails(page)
-  await roomsAndTracks(page)
-  await buildForm(page, state)
-  await submitATalk(context, state)
-  await reviewAndAccept(page)
-  await speakerFollowUp(page, state)
-  await scheduleAndPublish(page, state)
+  if (RESUME) {
+    // `--resume <email> <event-slug>` re-shoots only the agenda/publish tail on
+    // an account a previous run already built, so one flaky navigation at the
+    // end never costs a whole 6-minute run.
+    // Shots 27 and 28 show the agenda BEFORE anything is scheduled, so they
+    // can only ever come from the original run — resume picks up after them.
+    state.eventSlug = RESUME.eventSlug
+    await signIn(page, RESUME.email)
+    await scheduleAndPublish(page, state, { from: 29 })
+  } else {
+    await signUp(page)
+    await createEvent(page, state)
+    await eventDetails(page)
+    await roomsAndTracks(page)
+    await buildForm(page, state)
+    await submitATalk(context, state)
+    await reviewAndAccept(page)
+    await speakerFollowUp(page, state)
+    await scheduleAndPublish(page, state)
+  }
 
   await browser.close()
 
@@ -239,9 +279,29 @@ async function main() {
   if (state.portalUrl) console.log(`speaker portal: ${state.portalUrl}`)
 }
 
+/** `--resume` only: sign back in to an account a previous run created. */
+async function signIn(page, email) {
+  for (let attempt = 0; attempt < 4; attempt++) {
+    await go(page, `${BASE}/login`)
+    await settle(page, 800)
+    await fillSticky(page, "#email", email)
+    await fillSticky(page, "#password", ORGANIZER.password)
+    await page.getByRole("button", { name: /^sign in$/i }).first().click()
+    try {
+      await page.waitForURL(/\/app/, { timeout: 15000 })
+      await settle(page, 1500)
+      log(`signed back in as ${email}`)
+      return
+    } catch {
+      log("sign-in did not land on /app — retrying")
+    }
+  }
+  throw new Error(`could not sign in as ${email}`)
+}
+
 /** 01 — a brand-new account. */
 async function signUp(page) {
-  await page.goto(`${BASE}/login`, { waitUntil: "networkidle" })
+  await go(page, `${BASE}/login`)
   await settle(page, 800)
   await click(page, page.getByRole("tab", { name: /create account/i }), "opened the Create account tab")
 
@@ -263,9 +323,33 @@ async function signUp(page) {
   log(`signed up as ${ORGANIZER.email}`)
 }
 
+/**
+ * Event slugs are globally unique and this is a shared dev database that keeps
+ * every previous run's event, so settle on a free slug BEFORE opening the
+ * dialog. Then the slug in the screenshot is the slug that gets created, and
+ * there is no retry loop to get wrong.
+ */
+async function freeEventSlug() {
+  for (let n = 1; n <= 40; n++) {
+    const slug = n === 1 ? EVENT.slug : `${EVENT.slug}-${n}`
+    const { stdout } = await exec("pnpm", [
+      "exec",
+      "convex",
+      "run",
+      "events:getBySlug",
+      JSON.stringify({ slug }),
+    ]).catch(() => ({ stdout: "null" }))
+    if (stdout.trim() === "null") return slug
+  }
+  return `${EVENT.slug}-${RUN}`
+}
+
 /** 02–04 — the empty workspace, the create dialog, the empty dashboard. */
 async function createEvent(page, state) {
-  await page.goto(`${BASE}/app/events`, { waitUntil: "networkidle" })
+  state.eventSlug = await freeEventSlug()
+  log(`claiming /e/${state.eventSlug}`)
+
+  await go(page, `${BASE}/app/events`)
   await safeShot("02-empty-workspace", () => shot(page, "02-empty-workspace"))
 
   await click(
@@ -275,43 +359,23 @@ async function createEvent(page, state) {
   )
   await fillSticky(page, "#new-event-name", EVENT.name)
   await settle(page, 400)
+  if (state.eventSlug !== EVENT.slug) {
+    await fillSticky(page, "#new-event-slug", state.eventSlug)
+  }
 
   await safeShot("03-create-event", () =>
     cropShot(page, page.locator('[data-slot="dialog-content"]'), "03-create-event")
   )
 
-  // Event slugs are globally unique and this is a shared dev database, so fall
-  // back to a numbered slug rather than failing the whole run.
-  const dialog = page.locator('[data-slot="dialog-content"]')
-  for (let attempt = 1; attempt <= 6; attempt++) {
-    await page
-      .getByRole("button", { name: /^create event$/i })
-      .first()
-      .click({ timeout: 8000 })
-      .catch(() => {})
-    try {
-      await page.waitForURL(/\/app\/settings/, { timeout: 20000 })
-      log(`created "${EVENT.name}" at /e/${state.eventSlug}`)
-      return
-    } catch {
-      // The dialog closing without a slug error means it worked and only the
-      // navigation was slow.
-      if (!(await dialog.isVisible().catch(() => false))) {
-        await settle(page, 1500)
-        log(`created "${EVENT.name}" at /e/${state.eventSlug}`)
-        return
-      }
-      state.eventSlug = `${EVENT.slug}-${attempt + 1}`
-      log(`event slug taken — retrying as ${state.eventSlug}`)
-      await fillSticky(page, "#new-event-slug", state.eventSlug)
-    }
-  }
-  throw new Error("could not create the event")
+  await click(page, page.getByRole("button", { name: /^create event$/i }), "created the event")
+  await page.waitForURL(/\/app\/settings/, { timeout: 30000 })
+  await settle(page, 1200)
+  log(`created "${EVENT.name}" at /e/${state.eventSlug}`)
 }
 
 /** 04–05 — fill in the event, then look at the still-empty dashboard. */
 async function eventDetails(page) {
-  await page.goto(`${BASE}/app/settings`, { waitUntil: "networkidle" })
+  await go(page, `${BASE}/app/settings`)
   await settle(page)
   await fillSticky(page, "#event-venue", EVENT.venue)
   await pickDate(page, "event-starts", EVENT.starts)
@@ -322,13 +386,13 @@ async function eventDetails(page) {
   await click(page, page.getByRole("button", { name: /save changes/i }), "saved the event details")
   await settle(page, 1200)
 
-  await page.goto(`${BASE}/app`, { waitUntil: "networkidle" })
+  await go(page, `${BASE}/app`)
   await safeShot("05-empty-dashboard", () => shot(page, "05-empty-dashboard"))
 }
 
 /** 06 — the rooms and tracks every later screen depends on. */
 async function roomsAndTracks(page) {
-  await page.goto(`${BASE}/app/settings/rooms-and-tracks`, { waitUntil: "networkidle" })
+  await go(page, `${BASE}/app/settings/rooms-and-tracks`)
   await settle(page)
 
   for (const room of ROOMS) {
@@ -349,10 +413,10 @@ async function roomsAndTracks(page) {
 
 /** 07–11 — the CFP form, step by step, and the public link. */
 async function buildForm(page, state) {
-  await page.goto(`${BASE}/app/forms`, { waitUntil: "networkidle" })
+  await go(page, `${BASE}/app/forms`)
   await safeShot("07-no-forms-yet", () => shot(page, "07-no-forms-yet"))
 
-  await page.goto(`${BASE}/app/forms/new`, { waitUntil: "networkidle" })
+  await go(page, `${BASE}/app/forms/new`)
   await settle(page)
   await fillSticky(page, page.getByLabel(/form name/i), FORM_NAME)
   await safeShot("08-new-form", () => shot(page, "08-new-form"))
@@ -390,7 +454,7 @@ async function buildForm(page, state) {
   if (!state.formSlug) throw new Error("could not read the public form slug")
   log(`public form: /submit/${state.formSlug}`)
 
-  await page.goto(`${BASE}/app/forms`, { waitUntil: "networkidle" })
+  await go(page, `${BASE}/app/forms`)
   await settle(page)
   await safeShot("12-share-the-link", async () => {
     const copy = page.getByRole("button", { name: /copy (public )?link/i }).first()
@@ -443,7 +507,7 @@ async function submitATalk(context, state) {
     page.getByRole("button", { name: /^continue$/i }).first().click({ timeout: 6000 })
 
   try {
-    await page.goto(`${BASE}/submit/${state.formSlug}`, { waitUntil: "networkidle" })
+    await go(page, `${BASE}/submit/${state.formSlug}`)
     await settle(page, 1500)
 
     while (Date.now() < deadline) {
@@ -537,7 +601,7 @@ async function submitATalk(context, state) {
 
 /** 19–22 — it lands in the inbox, gets read, staged and committed. */
 async function reviewAndAccept(page) {
-  await page.goto(`${BASE}/app/submissions`, { waitUntil: "networkidle" })
+  await go(page, `${BASE}/app/submissions`)
   await settle(page, 1200)
   await safeShot("19-first-submission", () => shot(page, "19-first-submission"))
 
@@ -561,7 +625,7 @@ async function reviewAndAccept(page) {
     await tryClick(page, page.getByRole("button", { name: /^save$/i }), "saved the status")
     await settle(page, 1200)
     await page.keyboard.press("Escape").catch(() => {})
-    await page.goto(`${BASE}/app/submissions?status=accept_queue`, { waitUntil: "networkidle" })
+    await go(page, `${BASE}/app/submissions?status=accept_queue`)
     await shot(page, "21-accept-queue")
   })
 
@@ -584,7 +648,7 @@ async function reviewAndAccept(page) {
 
 /** 23–25 — the speaker's side: a task to do, and the portal they do it in. */
 async function speakerFollowUp(page, state) {
-  await page.goto(`${BASE}/app/speakers`, { waitUntil: "networkidle" })
+  await go(page, `${BASE}/app/speakers`)
   await settle(page, 1000)
   await safeShot("23-speakers", () => shot(page, "23-speakers"))
 
@@ -622,58 +686,60 @@ async function speakerFollowUp(page, state) {
   const speaker = await page.context().browser().newContext(CONTEXT_OPTS)
   const portal = await speaker.newPage()
   try {
-    await portal.goto(state.portalUrl, { waitUntil: "networkidle" })
+    await go(portal, state.portalUrl)
     await settle(portal, 1500)
     await safeShot("25-speaker-portal", () => shot(portal, "25-speaker-portal"))
-    await portal.goto(`${BASE}/portal/tasks`, { waitUntil: "networkidle" })
+    await go(portal, `${BASE}/portal/tasks`)
     await safeShot("26-speaker-tasks", () => shot(portal, "26-speaker-tasks"))
   } finally {
     await speaker.close()
   }
 }
 
-/** 27–30 — the accepted talk onto the agenda, then live to the world. */
-async function scheduleAndPublish(page, state) {
-  await page.goto(`${BASE}/app/agenda`, { waitUntil: "networkidle" })
-  await settle(page, 1400)
-  await safeShot("27-nothing-scheduled", () => shot(page, "27-nothing-scheduled"))
+/** 27–31 — the accepted talk onto the agenda, then live to the world. */
+async function scheduleAndPublish(page, state, { from = 27 } = {}) {
+  if (from <= 28) {
+    await go(page, `${BASE}/app/agenda`)
+    await settle(page, 1400)
+    await safeShot("27-nothing-scheduled", () => shot(page, "27-nothing-scheduled"))
 
-  await safeShot("28-schedule-a-session", async () => {
-    await click(
-      page,
-      page.getByRole("button", { name: /schedule this session/i }),
-      "opened the schedule popover"
-    )
-    const popover = page.locator('[data-slot="popover-content"]').first()
-    await popover.waitFor({ timeout: 6000 })
-    const id = await popover
-      .locator("[id^='room-']")
-      .first()
-      .getAttribute("id")
-      .then((value) => value?.replace("room-", "") ?? null)
-      .catch(() => null)
-    if (id) {
-      await pickOption(page, `#room-${id}`, ROOMS[0].name).catch(() => {})
-      await pickOption(page, `#start-${id}`, /9:00|09:00/).catch(() => {})
-    }
-    await cropShot(page, popover, "28-schedule-a-session")
-    await click(
-      page,
-      page.getByRole("button", { name: /^schedule session$/i }),
-      "scheduled the talk"
-    )
-    await settle(page, 1500)
-  })
+    await safeShot("28-schedule-a-session", async () => {
+      await click(
+        page,
+        page.getByRole("button", { name: /schedule this session/i }),
+        "opened the schedule popover"
+      )
+      const popover = page.locator('[data-slot="popover-content"]').first()
+      await popover.waitFor({ timeout: 6000 })
+      const id = await popover
+        .locator("[id^='room-']")
+        .first()
+        .getAttribute("id")
+        .then((value) => value?.replace("room-", "") ?? null)
+        .catch(() => null)
+      if (id) {
+        await pickOption(page, `#room-${id}`, ROOMS[0].name).catch(() => {})
+        await pickOption(page, `#start-${id}`, /9:00|09:00/).catch(() => {})
+      }
+      await cropShot(page, popover, "28-schedule-a-session")
+      await click(
+        page,
+        page.getByRole("button", { name: /^schedule session$/i }),
+        "scheduled the talk"
+      )
+      await settle(page, 1500)
+    })
+  }
 
   await safeShot("29-agenda", async () => {
-    await page.goto(`${BASE}/app/agenda?view=day`, { waitUntil: "networkidle" })
+    await go(page, `${BASE}/app/agenda?view=day`)
     await settle(page, 1200)
     await scrollGridToProgramme(page)
     await shot(page, "29-agenda")
   })
 
   await safeShot("30-publish", async () => {
-    await page.goto(`${BASE}/app/agenda`, { waitUntil: "networkidle" })
+    await go(page, `${BASE}/app/agenda`)
     await settle(page, 1000)
     await click(page, page.getByRole("button", { name: /^publish agenda$/i }), "opened Publish")
     await cropShot(page, page.locator('[data-slot="dialog-content"]'), "30-publish")
@@ -686,7 +752,7 @@ async function scheduleAndPublish(page, state) {
   })
 
   await safeShot("31-public-page", async () => {
-    await page.goto(`${BASE}/e/${state.eventSlug}`, { waitUntil: "networkidle" })
+    await go(page, `${BASE}/e/${state.eventSlug}`)
     await settle(page, 1200)
     await shot(page, "31-public-page")
   })

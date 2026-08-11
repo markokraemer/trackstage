@@ -18,36 +18,37 @@ function Page() {
   return (
     <DocArticle
       title="Build the agenda"
-      lead="Accepted sessions start in a tray. Drag them into a room and a time until the tray is empty."
+      lead="Accepted sessions start in a tray on the left. Move them into a room and a time until the tray is empty."
     >
       <Steps>
-        <Step title="Add your rooms first — Settings → Rooms & tracks. Without a room there is nowhere to drop anything.">
-          <p className="doc-prose">
-            Tracks live on the same page. They colour the cards and become the
-            columns in the track view.
-          </p>
-        </Step>
-
-        <Step title="Open Agenda. Six views share one board: List, Day, Week, Track, Rooms and Conflicts.">
+        <Step title="Open Agenda. Everything you accepted is waiting in the unscheduled tray — nothing is on the grid yet.">
           <Shot
-            src="agenda-list.png"
-            alt="The agenda in List view"
-            caption="List is the fastest way to see everything at once."
+            src="walkthrough/27-nothing-scheduled.png"
+            alt="The Devcon Berlin agenda with the accepted talk waiting in the unscheduled tray"
+            caption="Six views share one board: List, Day, Week, Track, Rooms and Conflicts."
           />
         </Step>
 
-        <Step title="Drag a card from the unscheduled tray onto the grid. It saves the moment you drop it.">
+        <Step title="Drag a card onto the grid — or click it and pick a day, a room and a start time. Both save the moment you finish.">
           <Shot
-            src="agenda-day.png"
-            alt="The agenda Day view with rooms as columns and sessions placed in time slots"
+            src="walkthrough/28-schedule-a-session.png"
+            alt="The schedule popover for the talk, with day, room and start-time selects"
+            caption="The click-to-schedule path exists so the agenda works on a laptop trackpad, a tablet, or by keyboard."
           />
         </Step>
 
-        <Step title="Check Conflicts. It flags a room booked twice and a speaker in two overlapping sessions.">
+        <Step title="It lands on the grid, in the right room, in your event’s timezone.">
+          <Shot
+            src="walkthrough/29-agenda.png"
+            alt="The Devcon Berlin day view with the talk placed in the Aula at 09:00"
+          />
+        </Step>
+
+        <Step title="Check Conflicts before you publish. It flags a room booked twice and a speaker in two overlapping sessions.">
           <Shot
             src="agenda-conflicts.png"
-            alt="The Conflicts view listing overlapping sessions"
-            caption="Conflicts never block a drop — you decide."
+            alt="The Conflicts view of a full programme, listing overlapping sessions"
+            caption="From a full event — one talk cannot clash with itself. Conflicts never block a drop; you decide."
           />
         </Step>
       </Steps>

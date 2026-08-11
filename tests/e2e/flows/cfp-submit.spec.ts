@@ -155,6 +155,15 @@ async function walkTo(
   let stalledSince: number | null = null
   const deadline = Date.now() + 90_000
   while (Date.now() < deadline) {
+    // A reseed purges every row belonging to the demo event — including a form
+    // this test created seconds ago — and the public page then says the call
+    // doesn't exist. Fail fast so the retry starts over instead of spending
+    // the whole budget clicking a Continue button that will never appear.
+    if (await present(heading(page, /couldn.t find that call for speakers/i), 250)) {
+      throw new Error(
+        "the form this test created was purged mid-run (deployment reseeded) — retrying is the fix",
+      )
+    }
     const step = await currentStep(page)
     if (ORDER.indexOf(step) >= targetIndex) return step
     switch (step) {
@@ -187,9 +196,25 @@ async function walkTo(
         if ((await input.inputValue().catch(() => "")) !== email) {
           await fillStable(input, email)
         }
-        await advance(page, /^continue$/i, heading(page, /your submission/i), {
-          timeout: 30_000,
-        }).catch(() => {})
+        // Click Continue ONCE and then wait. `advance()` is wrong here: it
+        // re-clicks every few seconds, and while `identify` is in flight the
+        // button is disabled, so every retry fails and the step never settles.
+        // Verified against the real page — this transition takes about a
+        // second when it is left alone.
+        await page
+          .getByRole("button", { name: /^continue$/i })
+          .first()
+          .click({ timeout: 10_000 })
+          .catch(() => {})
+        await Promise.race([
+          heading(page, /your submission/i)
+            .first()
+            .waitFor({ state: "visible", timeout: 30_000 }),
+          page
+            .getByText(/you have a saved draft/i)
+            .first()
+            .waitFor({ state: "visible", timeout: 30_000 }),
+        ]).catch(() => {})
         break
       }
       case "submission":
@@ -216,7 +241,21 @@ async function walkTo(
         return step
     }
   }
-  throw new Error(`the public form never reached the "${target}" step`)
+  // Say WHY, not just that it didn't happen: which step we're stuck on, what
+  // the footer offers, and anything the page is trying to tell the user.
+  const stuckOn = await currentStep(page)
+  const footer = await page
+    .getByRole("button")
+    .allTextContents()
+    .catch(() => [] as Array<string>)
+  const messages = await page
+    .locator("[data-sonner-toast], [role='alert'], [data-slot='field-error']")
+    .allTextContents()
+    .catch(() => [] as Array<string>)
+  throw new Error(
+    `the public form never reached the "${target}" step — stuck on "${stuckOn}" ` +
+      `at ${page.url()}; buttons: ${JSON.stringify(footer)}; messages: ${JSON.stringify(messages)}`,
+  )
 }
 
 async function goToAccountStep(page: Page, email: string) {
@@ -343,7 +382,7 @@ test.describe("public CFP submission", () => {
     watcher.assertClean("public CFP submit")
   })
 
-  test("draft saves and resumes on the same email", async ({ page }) => {
+  test("draft saves and resumes on the same email", async ({ page, browser }) => {
     const watcher = armed(page)
     const form = await publicForm("cfp")
     test.skip(!form.allowDrafts, "this form does not allow drafts")
@@ -356,24 +395,33 @@ test.describe("public CFP submission", () => {
     await page.getByRole("button", { name: /save as draft/i }).first().click()
     await expectToast(page, /draft saved/i, 30_000)
 
-    // Come back cold — new page load, same email.
-    await page.context().clearCookies()
-    await gotoStable(page, "/submit/cfp", "networkidle")
-    await goToAccountStep(page, email)
-    await advance(
-      page,
-      /^continue$/i,
-      page.getByText(/you have a saved draft/i),
-      { timeout: 60_000 },
-    )
-    await advance(
-      page,
-      /resume draft/i,
-      heading(page, /your submission/i),
-      { timeout: 60_000 },
-    )
-    await expect(field(page, "title")).toHaveValue(title, { timeout: 20_000 })
+    // Come back cold — a genuinely new browser, same email. The wizard keeps
+    // in-progress answers in sessionStorage (see src/routes/submit/$slug.tsx),
+    // so clearing cookies and reloading is NOT a cold return: the same context
+    // resumes straight back onto the Submission step. Only a fresh context
+    // exercises "I came back tomorrow on a different machine", which is the
+    // case the draft feature exists for.
+    const coldContext = await browser.newContext()
+    const cold = await coldContext.newPage()
+    const coldWatcher = armed(cold)
+    await gotoStable(cold, "/submit/cfp", "networkidle")
+    await goToAccountStep(cold, email)
+    // One click, then wait — see the note in `walkTo`: Continue is disabled
+    // while `identify` runs, so re-clicking guarantees the step never settles.
+    await cold
+      .getByRole("button", { name: /^continue$/i })
+      .first()
+      .click({ timeout: 10_000 })
+    await expect(cold.getByText(/you have a saved draft/i).first()).toBeVisible({
+      timeout: 45_000,
+    })
+    await advance(cold, /resume draft/i, heading(cold, /your submission/i), {
+      timeout: 60_000,
+    })
+    await expect(field(cold, "title")).toHaveValue(title, { timeout: 20_000 })
 
+    coldWatcher.assertClean("draft resume in a fresh browser")
+    await coldContext.close()
     watcher.assertClean("draft save + resume")
   })
 
@@ -420,9 +468,8 @@ test.describe("public CFP submission", () => {
   })
 
   test("hitting the per-user limit shows a friendly error, not a crash", async ({
-    page,
+    browser,
   }) => {
-    const watcher = armed(page)
     const organizer = await organizerConvexClient()
     const event = await mainEvent(organizer)
     const name = `Capped CFP ${unique("f")}`
@@ -442,38 +489,48 @@ test.describe("public CFP submission", () => {
       const email = testEmail("cfp-cap")
 
       for (const attempt of [1, 2]) {
-        await gotoStable(page, `/submit/${created.slug}`, "networkidle")
-        await walkTo(page, "review", {
-          email,
-          onSubmission: async () => {
-            await answerRequired(page, form.questions, {
-              values: { title: `Capped ${attempt} ${unique("t")}` },
-            })
-          },
-          onParticipants: async () => {
-            await fillStable(page.getByLabel(/first name/i).first(), "Cappy")
-            await fillStable(page.getByLabel(/last name/i).first(), "Limit")
-          },
-        })
-        await page.getByRole("button", { name: /^submit$/i }).first().click()
+        // A fresh context per attempt, for two reasons that both bit here:
+        // the success screen auto-redirects to the portal on a timer, and a
+        // pending redirect fights the next navigation ("waiting for navigation
+        // to finish" forever); and the wizard keeps answers in sessionStorage,
+        // so reusing the tab would resume mid-flow instead of starting over.
+        // It is also the truer scenario — the same person coming back later.
+        const context = await browser.newContext()
+        const page = await context.newPage()
+        const watcher = armed(page)
+        try {
+          await gotoStable(page, `/submit/${created.slug}`, "networkidle")
+          await walkTo(page, "review", {
+            email,
+            onSubmission: async () => {
+              await answerRequired(page, form.questions, {
+                values: { title: `Capped ${attempt} ${unique("t")}` },
+              })
+            },
+            onParticipants: async () => {
+              await fillStable(page.getByLabel(/first name/i).first(), "Cappy")
+              await fillStable(page.getByLabel(/last name/i).first(), "Limit")
+            },
+          })
+          await page.getByRole("button", { name: /^submit$/i }).first().click()
 
-        if (attempt === 1) {
-          await advance(
-            page,
-            /^submit$/i,
-            heading(page, /thank you for submitting/i),
-            { timeout: 60_000 },
-          )
-        } else {
-          // A sentence a human can act on — and still on the Review step, not
-          // an error page or a blank screen.
-          await expectToast(page, /reached the limit of 1 submission/i, 30_000)
-          await expect(
-            page.getByRole("heading", { name: /review and submit/i }).first(),
-          ).toBeVisible()
+          if (attempt === 1) {
+            await expect(
+              heading(page, /thank you for submitting/i).first(),
+            ).toBeVisible({ timeout: 60_000 })
+          } else {
+            // A sentence a human can act on — and still on the Review step,
+            // not an error page or a blank screen.
+            await expectToast(page, /reached the limit of 1 submission/i, 30_000)
+            await expect(
+              page.getByRole("heading", { name: /review and submit/i }).first(),
+            ).toBeVisible()
+          }
+          watcher.assertClean(`per-user limit attempt ${attempt}`)
+        } finally {
+          await context.close()
         }
       }
-      watcher.assertClean("per-user limit")
     } finally {
       await organizer.mutation(api.forms.remove, { formId }).catch(() => {})
     }

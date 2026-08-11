@@ -259,11 +259,17 @@ async function captureMarketingShots(page) {
 }
 
 /**
- * The docs user-guide shots — one per step of the /docs walkthrough.
+ * The AT-SCALE docs shots.
+ *
+ * The /docs user guide is narrated by `scripts/capture-walkthrough.mjs`, which
+ * builds a brand-new account and shoots one organizer's whole journey — that is
+ * what a new reader needs to see, empty states included. What a fresh account
+ * CANNOT show is a screen with a few hundred rows on it: a full dashboard, a
+ * deep submissions table, a conflicting agenda, a filled-in profile. Those come
+ * from the seeded demo event, and that is all this function still captures.
  *
  * Every shot is wrapped in `safeShot`: a missing control, a renamed label, or
- * an empty dataset skips that ONE file and logs it — the run always finishes
- * and always produces as many of the 30-odd PNGs as the live UI allows.
+ * an empty dataset skips that ONE file and logs it — the run always finishes.
  * Read-only navigation + opening dialogs only; every dialog is dismissed with
  * its own Cancel button (never the destructive confirm action).
  */
@@ -290,42 +296,6 @@ async function captureDocsShots(page) {
     await page.waitForTimeout(300)
   }
 
-  // ——— Getting started ——————————————————————————————————————————————————
-
-  // gs-signup: the sign-in card. The main `page` is already authenticated
-  // (signIn() ran before this function), and /login instantly redirects a
-  // signed-in visitor to /app — so this one shot gets its own clean,
-  // unauthenticated browser context.
-  await safeShot("gs-signup", async () => {
-    const browser = page.context().browser()
-    if (!browser) throw new Error("no browser handle available")
-    const loginContext = await browser.newContext(CONTEXT_OPTS)
-    try {
-      const loginPage = await loginContext.newPage()
-      await loginPage.goto(`${BASE}/login`, { waitUntil: "networkidle" })
-      await elementShot(loginPage, loginPage.locator('[data-slot="card"]').first(), "gs-signup")
-    } finally {
-      await loginContext.close()
-    }
-  })
-
-  // gs-first-event: events list, or the New event dialog if it opens.
-  await safeShot("gs-first-event", async () => {
-    await page.goto(`${BASE}/app/events`, { waitUntil: "networkidle" })
-    await settle(page)
-    const opened = await tryClick(
-      page,
-      page.getByRole("button", { name: /^new event$/i }),
-      "New event dialog"
-    )
-    if (opened) {
-      await elementShot(page, page.locator('[data-slot="dialog-content"]'), "gs-first-event")
-      await dismiss(page)
-    } else {
-      await shot(page, "gs-first-event", DOCS_OUT)
-    }
-  })
-
   // gs-dashboard: the organizer dashboard.
   await safeShot("gs-dashboard", async () => {
     await gotoOrganizer(page, "/app")
@@ -334,67 +304,14 @@ async function captureDocsShots(page) {
 
   // ——— Create your CFP form —————————————————————————————————————————————
 
-  await safeShot("form-list", async () => {
-    await gotoOrganizer(page, "/app/forms")
-    await shot(page, "form-list", DOCS_OUT)
-  })
 
-  await safeShot("form-new", async () => {
-    await gotoOrganizer(page, "/app/forms/new")
-    await shot(page, "form-new", DOCS_OUT)
-  })
 
-  await safeShot("form-questions", async () => {
-    await gotoOrganizer(page, "/app/forms")
-    const opened = await tryClick(
-      page,
-      page.getByRole("link", { name: /^edit$/i }),
-      "open form editor (questions)"
-    )
-    if (!opened) throw new Error("no existing form to edit")
-    await settle(page)
-    await tryClick(page, page.getByText(/submission questions/i), "form step: Submission questions")
-    await shot(page, "form-questions", DOCS_OUT)
-  })
 
-  await safeShot("form-settings", async () => {
-    await gotoOrganizer(page, "/app/forms")
-    const opened = await tryClick(
-      page,
-      page.getByRole("link", { name: /^edit$/i }),
-      "open form editor (settings)"
-    )
-    if (!opened) throw new Error("no existing form to edit")
-    await settle(page)
-    await tryClick(page, page.getByText(/^form settings$/i), "form step: Form settings")
-    await shot(page, "form-settings", DOCS_OUT)
-  })
 
   // ——— Share & collect ————————————————————————————————————————————————
 
-  await safeShot("share-link", async () => {
-    await gotoOrganizer(page, "/app/forms")
-    await settle(page)
-    const copyButton = page.getByRole("button", { name: /copy public link/i }).first()
-    await copyButton.waitFor({ timeout: 5000 })
-    const card = copyButton.locator('xpath=ancestor::*[@data-slot="card"][1]')
-    await elementShot(page, card, "share-link")
-  })
 
-  await safeShot("submit-welcome", async () => {
-    await page.goto(`${BASE}/submit/${CFP_FORM_SLUG}`, { waitUntil: "networkidle" })
-    await shot(page, "submit-welcome", DOCS_OUT)
-  })
 
-  await safeShot("submit-form", async () => {
-    await page.goto(`${BASE}/submit/${CFP_FORM_SLUG}`, { waitUntil: "networkidle" })
-    await settle(page, 800)
-    await tryClick(page, page.getByRole("button", { name: /^continue$/i }), "submit: welcome → account")
-    const email = page.locator("#submit-email")
-    await email.fill(SPEAKER_EMAIL).catch(() => {})
-    await tryClick(page, page.getByRole("button", { name: /^continue$/i }), "submit: account → submission")
-    await shot(page, "submit-form", DOCS_OUT)
-  })
 
   await safeShot("submissions-inbox", async () => {
     await gotoOrganizer(page, "/app/submissions")
@@ -403,49 +320,11 @@ async function captureDocsShots(page) {
 
   // ——— Review & decide ————————————————————————————————————————————————
 
-  await safeShot("review-detail", async () => {
-    await gotoOrganizer(page, "/app/submissions")
-    await settle(page)
-    const titleLink = page.locator('table a[href*="/app/submissions"]').first()
-    await tryClick(page, titleLink, "open submission detail drawer")
-    await elementShot(page, page.locator('[data-slot="drawer-shell"]'), "review-detail")
-    await dismiss(page)
-  })
 
-  await safeShot("review-queue", async () => {
-    await gotoOrganizer(page, "/app/submissions?status=accept_queue")
-    await shot(page, "review-queue", DOCS_OUT)
-  })
 
-  await safeShot("review-commit", async () => {
-    // Whichever decision queue is staged right now — a shared dev database
-    // means another agent may have already committed the accept queue.
-    const queues = [
-      { status: "accept_queue", label: /^send acceptances$/i },
-      { status: "decline_queue", label: /^send declines$/i },
-    ]
-    for (const queue of queues) {
-      await gotoOrganizer(page, `/app/submissions?status=${queue.status}`)
-      await settle(page)
-      const sendButton = page.getByRole("button", { name: queue.label }).first()
-      const opened = await tryClick(page, sendButton, `open commit-queue confirmation (${queue.status})`)
-      if (opened) {
-        await elementShot(page, page.locator('[data-slot="alert-dialog-content"]'), "review-commit")
-        // Never confirm — cancel the destructive action.
-        await dismiss(page)
-        return
-      }
-    }
-    throw new Error("both decision queues are empty — nothing to commit")
-  })
 
   // ——— Speaker portal —————————————————————————————————————————————————
 
-  await safeShot("portal-home", async () => {
-    await page.goto(`${BASE}/portal/t/${PORTAL_TOKEN}`, { waitUntil: "networkidle" })
-    await settle(page)
-    await shot(page, "portal-home", DOCS_OUT)
-  })
 
   await safeShot("portal-submissions", async () => {
     await page.goto(`${BASE}/portal/submissions`, { waitUntil: "networkidle" })
@@ -457,25 +336,10 @@ async function captureDocsShots(page) {
     await shot(page, "portal-profile", DOCS_OUT)
   })
 
-  await safeShot("portal-tasks", async () => {
-    await page.goto(`${BASE}/portal/tasks`, { waitUntil: "networkidle" })
-    await shot(page, "portal-tasks", DOCS_OUT)
-  })
 
   // ——— Build the agenda ——————————————————————————————————————————————
 
-  await safeShot("agenda-list", async () => {
-    await gotoOrganizer(page, "/app/agenda?view=list")
-    await settle(page)
-    await shot(page, "agenda-list", DOCS_OUT)
-  })
 
-  await safeShot("agenda-day", async () => {
-    await gotoOrganizer(page, "/app/agenda?view=day")
-    await settle(page)
-    await scrollGridToProgramme(page)
-    await shot(page, "agenda-day", DOCS_OUT)
-  })
 
   await safeShot("agenda-conflicts", async () => {
     await gotoOrganizer(page, "/app/agenda?view=conflicts")
@@ -485,23 +349,7 @@ async function captureDocsShots(page) {
 
   // ——— Chase speakers ————————————————————————————————————————————————
 
-  await safeShot("speakers-list", async () => {
-    await gotoOrganizer(page, "/app/speakers")
-    await shot(page, "speakers-list", DOCS_OUT)
-  })
 
-  await safeShot("speaker-tasks", async () => {
-    await gotoOrganizer(page, "/app/speakers")
-    await settle(page)
-    const opened = await tryClick(
-      page,
-      page.getByRole("button", { name: /^assign task$/i }),
-      "open Assign task dialog"
-    )
-    if (!opened) throw new Error("Assign task control not reachable")
-    await elementShot(page, page.locator('[data-slot="dialog-content"]'), "speaker-tasks")
-    await dismiss(page)
-  })
 
   await safeShot("communications", async () => {
     await gotoOrganizer(page, "/app/communications")
@@ -510,16 +358,7 @@ async function captureDocsShots(page) {
 
   // ——— Publish ———————————————————————————————————————————————————————
 
-  await safeShot("publish-agenda", async () => {
-    await gotoOrganizer(page, "/app/agenda")
-    await settle(page)
-    await elementShot(page, page.locator('[data-slot="page-header"]').first(), "publish-agenda")
-  })
 
-  await safeShot("public-schedule", async () => {
-    await gotoSafe(page, `${BASE}/e/${EVENT_SLUG}`)
-    await shot(page, "public-schedule", DOCS_OUT)
-  })
 
   await safeShot("embeds", async () => {
     await gotoOrganizer(page, "/app/embeds")

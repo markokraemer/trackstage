@@ -7,18 +7,23 @@ Playwright. Re-run the script after any visual change to the organizer app,
 speaker portal or public event pages; it overwrites in place, so the page picks
 the new shots up with no code change.
 
-The same script also produces the screenshots for the `/docs` user guide, in
-`public/docs/`. It's one file with three run modes — see
-[`--docs` mode](#--docs-mode-the-docs-user-guide-shots) below.
+The `/docs` user guide is narrated by a **different** script —
+[`capture-walkthrough.mjs`](#the-docs-user-guide-capture-walkthroughmjs), which
+builds a brand-new account and shoots one organizer's whole journey. This script
+still produces the handful of `public/docs/*.png` that a fresh account cannot
+show, because they only exist at scale — see
+[`--docs` mode](#--docs-mode-the-at-scale-docs-shots) below.
 
 ## Refresh in one command
 
 ```sh
 pnpm dev                                   # dev server on :3000 (leave running)
 pnpm exec convex run seed:setup            # only if the demo data is missing/stale
-node scripts/capture-screenshots.mjs             # marketing + docs shots (~90s)
+node scripts/capture-screenshots.mjs             # marketing + at-scale docs shots (~70s)
 node scripts/capture-screenshots.mjs --marketing # public/screenshots/* only (~40s)
-node scripts/capture-screenshots.mjs --docs      # public/docs/* only (~50s)
+node scripts/capture-screenshots.mjs --docs      # public/docs/*.png only (~25s)
+
+node scripts/capture-walkthrough.mjs             # public/docs/walkthrough/* (~6 min)
 ```
 
 Then eyeball the PNGs before committing.
@@ -64,25 +69,28 @@ holds each shot's alt text and the address shown in the mock browser chrome).
 6. Prints any console errors it saw. These come from the app, not the capture —
    worth a look, but they don't fail the run.
 
-## `--docs` mode: the /docs user-guide shots
+## `--docs` mode: the at-scale docs shots
 
-`node scripts/capture-screenshots.mjs --docs` drives the same seeded demo
-through every step of the `/docs` user guide and writes ~30 PNGs into
-`public/docs/`. It shares `signIn`, `settle`, `hideDevtools`, `tryClick` and
-`shot` with the marketing capture, and adds:
+`node scripts/capture-screenshots.mjs --docs` writes twelve PNGs into
+`public/docs/`. They are deliberately the *only* seeded-demo shots left in the
+user guide: a dashboard with real numbers on it, a submissions table hundreds of
+rows deep, a conflicting agenda, a filled-in speaker profile, the workspace and
+integration screens. Everything else in the guide comes from
+`capture-walkthrough.mjs` (below), because a new organizer needs to see their
+own empty screens, not somebody else's full ones.
+
+It shares `signIn`, `settle`, `hideDevtools`, `tryClick` and `shot` with the
+marketing capture, and adds:
 
 - `elementShot(page, locator, name)` — crops one element (a dialog, drawer, or
-  card) instead of the full viewport. Used for every modal/drawer shot so the
-  surrounding page chrome doesn't dilute the thing being documented.
-- `captureDocsShots(page)` — one `safeShot(name, fn)` call per file. Every
-  shot is independent and wrapped in try/catch: a renamed label, an emptied
-  queue, or a control that didn't render skips **that one file** and logs
-  `skipped: <name> — <reason>`, everything else still runs. The end of the run
-  prints a summary of exactly what was written and what was skipped.
-- Destructive dialogs (commit a decision queue, invite a teammate, assign a
-  task) are opened, screenshotted, then dismissed with their own **Cancel**
-  button — `review-commit.png` in particular opens the confirmation and
-  presses Cancel, never the real "Send acceptances"/"Send declines" action.
+  card) instead of the full viewport, so surrounding page chrome doesn't dilute
+  the thing being documented.
+- `captureDocsShots(page)` — one `safeShot(name, fn)` call per file. Every shot
+  is independent and wrapped in try/catch: a renamed label or a control that
+  didn't render skips **that one file** and logs `skipped: <name> — <reason>`,
+  everything else still runs. The run ends with a written/skipped summary.
+- Destructive dialogs (invite a teammate) are opened, screenshotted, then
+  dismissed with their own **Cancel** button — never the real action.
 
 Run it on its own, or let the plain `node scripts/capture-screenshots.mjs`
 (no flags) run it right after the marketing shots in the same signed-in
@@ -102,6 +110,48 @@ and, if it's showing a different event, re-opens `/app/events`, clicks that
 event's **Open event** button, and re-navigates — so a mid-run reseed heals
 itself on the very next shot instead of quietly producing an empty-state
 screenshot.
+
+
+## The /docs user guide: `capture-walkthrough.mjs`
+
+```sh
+pnpm dev                                  # dev server on :3000 (leave running)
+node scripts/capture-walkthrough.mjs      # writes public/docs/walkthrough/*.png (~6 min)
+```
+
+Where this script drives the *seeded* demo, `capture-walkthrough.mjs` **signs up
+a brand-new account on every run** and drives one organizer's whole journey
+through the real UI, shooting all 31 steps in order:
+
+> sign up → empty workspace → create "Devcon Berlin 2026" → event details →
+> rooms & tracks → build the CFP form → copy the public link → submit one talk
+> as a speaker → it lands in the inbox → open it → stage it to the Accept Queue
+> → commit the queue → speaker portal → assign a task → schedule the talk →
+> publish → the public page is live.
+
+That is what a first-time reader actually needs: the **empty states** a new
+organizer meets on day one, and one story they can follow from page to page
+instead of eleven disconnected screenshots of somebody else's finished
+conference. Files are numbered (`01-sign-up.png` … `31-public-page.png`) so the
+reading order is visible on disk.
+
+The account is disposable and additive — a unique email every run, and a free
+event slug chosen up front via `convex run events:getBySlug`, so re-running
+never collides with a previous run on the shared dev database.
+
+Two things worth knowing:
+
+- **The public CFP wizard is driven as a state machine**, not a straight line.
+  It is server-rendered, so a Continue click that lands before React hydrates
+  submits natively and the wizard silently resets to Welcome. The script looks
+  at which step is on screen, does the next right thing, and shoots each step
+  the first time it sees it — the same approach as
+  `tests/e2e/flows/cfp-submit.spec.ts`.
+- **`--resume <email> <event-slug>`** re-shoots only the agenda/publish tail
+  (shots 29–31) on an account a previous run already built, so one flaky
+  navigation at the end doesn't cost a whole six-minute run. Shots 27 and 28
+  show the agenda *before* anything is scheduled and can only come from the
+  original run, so resume deliberately skips them.
 
 ## Knobs
 

@@ -380,7 +380,11 @@ test.describe("agenda", () => {
   test("publishing the agenda flips the public page", async ({ page, context }) => {
     const watcher = armed(page)
     const organizer = await organizerConvexClient()
-    const event = await mainEvent(organizer)
+    // Resolve the event id immediately before each backend call, never once at
+    // the top: a reseed between resolving and using it makes the mutation fail
+    // with "Event not found", and the UI work in between takes ~13s — a wide
+    // enough window that this failed three attempts in a row.
+    const eventId = async () => (await mainEvent(organizer))._id
 
     await gotoApp(page, "/app/agenda")
     const publishButton = page.getByRole("button", { name: /^publish agenda$/i }).first()
@@ -396,7 +400,9 @@ test.describe("agenda", () => {
     const publicWatcher = armed(publicPage)
 
     // ——— Ensure unpublished, then check the public page says so ————————
-    await organizer.mutation(api.agenda.unpublishAgenda, { eventId: event._id })
+    await organizer.mutation(api.agenda.unpublishAgenda, {
+      eventId: await eventId(),
+    })
     await gotoStable(publicPage, `/e/${MAIN_EVENT_SLUG}`, "networkidle")
     await expect(
       publicPage.getByText(/schedule coming soon/i).first(),
@@ -413,7 +419,9 @@ test.describe("agenda", () => {
       .first()
     await expect(async () => {
       if (await present(publishTrigger, 2_000)) return
-      await organizer.mutation(api.agenda.unpublishAgenda, { eventId: event._id })
+      await organizer.mutation(api.agenda.unpublishAgenda, {
+        eventId: await eventId(),
+      })
       await page.reload({ waitUntil: "domcontentloaded" })
       await expect(publishTrigger).toBeVisible({ timeout: 5_000 })
     }).toPass({ timeout: 60_000 })
@@ -432,7 +440,7 @@ test.describe("agenda", () => {
     await expect(
       publicPage.getByText(/schedule coming soon/i),
     ).toHaveCount(0, { timeout: 30_000 })
-    const scheduled = (await board(organizer, event._id)).scheduled
+    const scheduled = (await board(organizer, await eventId())).scheduled
     if (scheduled.length > 0) {
       await expect(
         publicPage.getByText(scheduled[0].title).first(),
@@ -453,7 +461,9 @@ test.describe("agenda", () => {
     await publicPage.close()
 
     // Leave the demo world published — that's the state a judge should find.
-    await organizer.mutation(api.agenda.publishAgenda, { eventId: event._id })
+    await organizer.mutation(api.agenda.publishAgenda, {
+      eventId: await eventId(),
+    })
     watcher.assertClean("publish agenda")
   })
 })

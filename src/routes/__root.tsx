@@ -1,3 +1,4 @@
+import * as React from "react"
 import {
   HeadContent,
   Outlet,
@@ -95,6 +96,28 @@ export const Route = createRootRouteWithContext<RouterContext>()({
 
 function RootComponent() {
   const context = useRouteContext({ from: Route.id })
+
+  // The Convex client is built with `expectAuth: true` (src/router.tsx), which
+  // PAUSES its websocket until auth resolves one way or the other. Convex's
+  // `ConvexProviderWithAuth` only ever calls `clearAuth()` in the *cleanup* of
+  // an effect that runs when the visitor is authenticated — so a visitor who is
+  // never authenticated never unpauses it. Every anonymous surface (the public
+  // CFP form, the speaker portal, evaluator review links) then loads fine from
+  // SSR data but hangs forever on its first live query or mutation.
+  //
+  // A visitor with no token resolves auth to "none" here, once, which is what
+  // releases the socket — `clearAuth()` alone does NOT, only `setAuth()` runs
+  // the code path that resumes it. Authenticated visitors carry a token and are
+  // left to the provider, keeping the no-flash behaviour `expectAuth` is for.
+  // Mount only — deliberately not re-run: a later sign-in goes through the
+  // provider's own setAuth, which supersedes this.
+  const released = React.useRef(false)
+  React.useEffect(() => {
+    if (released.current) return
+    released.current = true
+    if (!context.token) context.convexClient.setAuth(async () => null)
+  }, [context.token, context.convexClient])
+
   return (
     <ConvexBetterAuthProvider
       client={context.convexClient}

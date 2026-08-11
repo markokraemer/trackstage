@@ -18,42 +18,53 @@ function Page() {
   return (
     <DocArticle
       title="Create your CFP form"
-      lead="The form speakers fill in. It starts pre-filled with the questions most events ask, so this is mostly deleting."
+      lead="The form speakers fill in. It arrives pre-filled with the questions most events ask, so this is mostly deleting."
     >
       <Steps>
-        <Step title="Go to Forms in the sidebar and press “New form”.">
-          <Shot src="form-list.png" alt="The Forms page listing existing CFP forms" />
+        <Step title="Devcon Berlin has no forms yet. Open Forms and press “New form”.">
+          <Shot
+            src="walkthrough/07-no-forms-yet.png"
+            alt="The Forms page for Devcon Berlin 2026 with no forms yet"
+          />
         </Step>
 
-        <Step title="Name it, then pick what it collects: talk proposals to review, or programme items that are already confirmed.">
+        <Step title="Name it, then pick what it collects: talk proposals you will review, or programme items that are already confirmed.">
           <Shot
-            src="form-new.png"
-            alt="The new-form screen with a name field and two choices"
+            src="walkthrough/08-new-form.png"
+            alt="The new-form screen named Devcon Berlin Call for Speakers, with two collection choices"
             caption="Proposals become Abstracts you decide on. Confirmed items go straight onto the programme."
           />
         </Step>
 
-        <Step title="Work down the six steps on the left: Setup, Welcome screen, Submission questions, Participants, Form settings, Notifications.">
+        <Step title="The builder opens on six steps: Setup, Welcome screen, Submission questions, Participants, Form settings, Notifications.">
           <Shot
-            src="form-questions.png"
-            alt="The Submission questions step of the form builder"
+            src="walkthrough/09-form-questions.png"
+            alt="The Submission questions step of the Devcon Berlin form builder"
             caption="Every question has an on/off switch and a required switch. Drag to reorder."
           />
         </Step>
 
-        <Step title="Open a single-select question and turn on “Route answers to tracks” — from then on, submissions land in the track the speaker picked.">
+        <Step title="The Track question already lists the tracks you created in Settings, so submissions route themselves the moment a speaker picks one.">
           <p className="doc-prose">
-            The same drawer can add a <strong>show-if</strong> rule, so a
-            question only appears when an earlier answer matches. That is how
-            one form covers workshops and talks without asking everyone
+            Open any single-select question to add a <strong>show-if</strong>{" "}
+            rule as well, so it only appears when an earlier answer matches. That
+            is how one form covers workshops and talks without asking everyone
             everything.
           </p>
         </Step>
 
-        <Step title="On Form settings, set the close date and how many submissions one person may send.">
+        <Step title="Participants decides who a submission is about: how many speakers are allowed, and which details you ask each of them for.">
           <Shot
-            src="form-settings.png"
-            alt="The Form settings step showing a close date and submission limits"
+            src="walkthrough/10-form-participants.png"
+            alt="The Participants step showing speaker limits and per-speaker fields"
+            caption="One speaker minimum by default — a co-speaker is optional, never forced."
+          />
+        </Step>
+
+        <Step title="On Form settings, set the close date and how many proposals one person may send.">
+          <Shot
+            src="walkthrough/11-form-settings.png"
+            alt="The Form settings step showing the close date, submission limits and thank-you page"
           />
         </Step>
       </Steps>

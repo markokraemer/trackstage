@@ -55,8 +55,18 @@ function Page() {
 
       <div className="mt-10 space-y-3">
         <Callout tone="warning">
-          One way only. Trackstage writes to Airtable and never reads back —
-          edits made in Airtable will be overwritten.
+          One way by default. Trackstage writes to Airtable and doesn’t read
+          back, so edits you make in Airtable are overwritten on the next sync.
+        </Callout>
+        <Callout tone="note">
+          <strong>Experimental: sync Status changes back.</strong> Switch it on
+          under the Airtable card and a submission’s <strong>Status</strong>{" "}
+          column becomes two-way — triage in Airtable, and the decisions land in
+          Trackstage on the next sync. Only that one column comes back. Draft
+          and Withdrawn can never be set from Airtable, a row has to be mirrored
+          once before it’s eligible, and if the same submission changed in both
+          places, <strong>Trackstage wins</strong> — the overruled Airtable edit
+          is written to Settings → Activity so you can see what was ignored.
         </Callout>
         <Callout tone="note">
           If a sync fails you get a “Last sync didn’t finish” message on the card

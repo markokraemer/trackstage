@@ -45,10 +45,12 @@ import { Route as AppFormsIndexRouteImport } from './routes/app/forms/index'
 import { Route as AppFormsFormIdRouteImport } from './routes/app/forms/$formId'
 import { Route as AppFormsNewRouteImport } from './routes/app/forms/new'
 import { Route as AppSettingsIndexRouteImport } from './routes/app/settings/index'
+import { Route as AppSettingsActivityRouteImport } from './routes/app/settings/activity'
 import { Route as AppSettingsApiMcpRouteImport } from './routes/app/settings/api-mcp'
 import { Route as AppSettingsFieldsAndOptionsRouteImport } from './routes/app/settings/fields-and-options'
 import { Route as AppSettingsIntegrationsRouteImport } from './routes/app/settings/integrations'
 import { Route as AppSettingsRoomsAndTracksRouteImport } from './routes/app/settings/rooms-and-tracks'
+import { Route as AppSettingsStatusesRouteImport } from './routes/app/settings/statuses'
 import { Route as AppSpeakersIndexRouteImport } from './routes/app/speakers/index'
 import { Route as AppSubmissionsIndexRouteImport } from './routes/app/submissions/index'
 import { Route as DocsGuideAiCopilotRouteImport } from './routes/docs/guide/ai-copilot'
@@ -251,6 +253,11 @@ const AppSettingsIndexRoute = AppSettingsIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AppSettingsRouteRoute,
 } as any)
+const AppSettingsActivityRoute = AppSettingsActivityRouteImport.update({
+  id: '/activity',
+  path: '/activity',
+  getParentRoute: () => AppSettingsRouteRoute,
+} as any)
 const AppSettingsApiMcpRoute = AppSettingsApiMcpRouteImport.update({
   id: '/api-mcp',
   path: '/api-mcp',
@@ -273,6 +280,11 @@ const AppSettingsRoomsAndTracksRoute =
     path: '/rooms-and-tracks',
     getParentRoute: () => AppSettingsRouteRoute,
   } as any)
+const AppSettingsStatusesRoute = AppSettingsStatusesRouteImport.update({
+  id: '/statuses',
+  path: '/statuses',
+  getParentRoute: () => AppSettingsRouteRoute,
+} as any)
 const AppSpeakersIndexRoute = AppSpeakersIndexRouteImport.update({
   id: '/speakers/',
   path: '/speakers/',
@@ -408,10 +420,12 @@ export interface FileRoutesByFullPath {
   '/app/evaluation/$planId': typeof AppEvaluationPlanIdRoute
   '/app/forms/$formId': typeof AppFormsFormIdRoute
   '/app/forms/new': typeof AppFormsNewRoute
+  '/app/settings/activity': typeof AppSettingsActivityRoute
   '/app/settings/api-mcp': typeof AppSettingsApiMcpRoute
   '/app/settings/fields-and-options': typeof AppSettingsFieldsAndOptionsRoute
   '/app/settings/integrations': typeof AppSettingsIntegrationsRoute
   '/app/settings/rooms-and-tracks': typeof AppSettingsRoomsAndTracksRoute
+  '/app/settings/statuses': typeof AppSettingsStatusesRoute
   '/docs/guide/ai-copilot': typeof DocsGuideAiCopilotRoute
   '/docs/guide/airtable-sync': typeof DocsGuideAirtableSyncRoute
   '/docs/guide/build-the-agenda': typeof DocsGuideBuildTheAgendaRoute
@@ -465,10 +479,12 @@ export interface FileRoutesByTo {
   '/app/evaluation/$planId': typeof AppEvaluationPlanIdRoute
   '/app/forms/$formId': typeof AppFormsFormIdRoute
   '/app/forms/new': typeof AppFormsNewRoute
+  '/app/settings/activity': typeof AppSettingsActivityRoute
   '/app/settings/api-mcp': typeof AppSettingsApiMcpRoute
   '/app/settings/fields-and-options': typeof AppSettingsFieldsAndOptionsRoute
   '/app/settings/integrations': typeof AppSettingsIntegrationsRoute
   '/app/settings/rooms-and-tracks': typeof AppSettingsRoomsAndTracksRoute
+  '/app/settings/statuses': typeof AppSettingsStatusesRoute
   '/docs/guide/ai-copilot': typeof DocsGuideAiCopilotRoute
   '/docs/guide/airtable-sync': typeof DocsGuideAirtableSyncRoute
   '/docs/guide/build-the-agenda': typeof DocsGuideBuildTheAgendaRoute
@@ -528,10 +544,12 @@ export interface FileRoutesById {
   '/app/evaluation/$planId': typeof AppEvaluationPlanIdRoute
   '/app/forms/$formId': typeof AppFormsFormIdRoute
   '/app/forms/new': typeof AppFormsNewRoute
+  '/app/settings/activity': typeof AppSettingsActivityRoute
   '/app/settings/api-mcp': typeof AppSettingsApiMcpRoute
   '/app/settings/fields-and-options': typeof AppSettingsFieldsAndOptionsRoute
   '/app/settings/integrations': typeof AppSettingsIntegrationsRoute
   '/app/settings/rooms-and-tracks': typeof AppSettingsRoomsAndTracksRoute
+  '/app/settings/statuses': typeof AppSettingsStatusesRoute
   '/docs/guide/ai-copilot': typeof DocsGuideAiCopilotRoute
   '/docs/guide/airtable-sync': typeof DocsGuideAirtableSyncRoute
   '/docs/guide/build-the-agenda': typeof DocsGuideBuildTheAgendaRoute
@@ -592,10 +610,12 @@ export interface FileRouteTypes {
     | '/app/evaluation/$planId'
     | '/app/forms/$formId'
     | '/app/forms/new'
+    | '/app/settings/activity'
     | '/app/settings/api-mcp'
     | '/app/settings/fields-and-options'
     | '/app/settings/integrations'
     | '/app/settings/rooms-and-tracks'
+    | '/app/settings/statuses'
     | '/docs/guide/ai-copilot'
     | '/docs/guide/airtable-sync'
     | '/docs/guide/build-the-agenda'
@@ -649,10 +669,12 @@ export interface FileRouteTypes {
     | '/app/evaluation/$planId'
     | '/app/forms/$formId'
     | '/app/forms/new'
+    | '/app/settings/activity'
     | '/app/settings/api-mcp'
     | '/app/settings/fields-and-options'
     | '/app/settings/integrations'
     | '/app/settings/rooms-and-tracks'
+    | '/app/settings/statuses'
     | '/docs/guide/ai-copilot'
     | '/docs/guide/airtable-sync'
     | '/docs/guide/build-the-agenda'
@@ -711,10 +733,12 @@ export interface FileRouteTypes {
     | '/app/evaluation/$planId'
     | '/app/forms/$formId'
     | '/app/forms/new'
+    | '/app/settings/activity'
     | '/app/settings/api-mcp'
     | '/app/settings/fields-and-options'
     | '/app/settings/integrations'
     | '/app/settings/rooms-and-tracks'
+    | '/app/settings/statuses'
     | '/docs/guide/ai-copilot'
     | '/docs/guide/airtable-sync'
     | '/docs/guide/build-the-agenda'
@@ -1015,6 +1039,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppSettingsIndexRouteImport
       parentRoute: typeof AppSettingsRouteRoute
     }
+    '/app/settings/activity': {
+      id: '/app/settings/activity'
+      path: '/activity'
+      fullPath: '/app/settings/activity'
+      preLoaderRoute: typeof AppSettingsActivityRouteImport
+      parentRoute: typeof AppSettingsRouteRoute
+    }
     '/app/settings/api-mcp': {
       id: '/app/settings/api-mcp'
       path: '/api-mcp'
@@ -1041,6 +1072,13 @@ declare module '@tanstack/react-router' {
       path: '/rooms-and-tracks'
       fullPath: '/app/settings/rooms-and-tracks'
       preLoaderRoute: typeof AppSettingsRoomsAndTracksRouteImport
+      parentRoute: typeof AppSettingsRouteRoute
+    }
+    '/app/settings/statuses': {
+      id: '/app/settings/statuses'
+      path: '/statuses'
+      fullPath: '/app/settings/statuses'
+      preLoaderRoute: typeof AppSettingsStatusesRouteImport
       parentRoute: typeof AppSettingsRouteRoute
     }
     '/app/speakers/': {
@@ -1187,18 +1225,22 @@ declare module '@tanstack/react-router' {
 }
 
 interface AppSettingsRouteRouteChildren {
+  AppSettingsActivityRoute: typeof AppSettingsActivityRoute
   AppSettingsApiMcpRoute: typeof AppSettingsApiMcpRoute
   AppSettingsFieldsAndOptionsRoute: typeof AppSettingsFieldsAndOptionsRoute
   AppSettingsIntegrationsRoute: typeof AppSettingsIntegrationsRoute
   AppSettingsRoomsAndTracksRoute: typeof AppSettingsRoomsAndTracksRoute
+  AppSettingsStatusesRoute: typeof AppSettingsStatusesRoute
   AppSettingsIndexRoute: typeof AppSettingsIndexRoute
 }
 
 const AppSettingsRouteRouteChildren: AppSettingsRouteRouteChildren = {
+  AppSettingsActivityRoute: AppSettingsActivityRoute,
   AppSettingsApiMcpRoute: AppSettingsApiMcpRoute,
   AppSettingsFieldsAndOptionsRoute: AppSettingsFieldsAndOptionsRoute,
   AppSettingsIntegrationsRoute: AppSettingsIntegrationsRoute,
   AppSettingsRoomsAndTracksRoute: AppSettingsRoomsAndTracksRoute,
+  AppSettingsStatusesRoute: AppSettingsStatusesRoute,
   AppSettingsIndexRoute: AppSettingsIndexRoute,
 }
 
