@@ -1056,6 +1056,14 @@ one `ActivityTimeline` component. Restore is deliberately NOT built: swyx's own 
 CNT-11 rubric row are marked "history covered, restore deferred by decision" rather than
 claimed as complete.
 
+**Verified:** `tests/unit/airtable-sync.test.ts` 18/18 · `scripts/verify-backend.mjs` grew an
+**Airtable two-way** block (16 new assertions inside the existing Airtable section, 30/30 in
+that section) and an **Audit log** section (16 assertions) — both 100% green in a full run
+that finished 508 passed / 9 failed, where all nine failures sit in other agents' in-flight
+surfaces (task library, files/approval, agenda conflict clear, embeds, blob sweep, portal
+gates) and carry the concurrent-reseed signature. `pnpm typecheck` and `pnpm lint` are clean
+for every file touched here.
+
 **Note for the next agent:** `AIRTABLE_DEMO_MODE=1` is now set on the dev deployment, which
 is what makes the Airtable section (and the new two-way assertions) run its full roundtrip
 instead of the "junk token → friendly error" branch. Both branches are correct; unset it if
