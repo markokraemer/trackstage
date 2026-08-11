@@ -13,19 +13,16 @@ import { ClosingCta } from "@/components/marketing/closing-cta"
 import { MarketingFooter } from "@/components/marketing/marketing-footer"
 import { PRODUCT_NAME } from "@/components/marketing/links"
 
-/** The $10,000 Stripe Checkout link (provided by Marko, 2026-08-11). */
-const STRIPE_CHECKOUT_URL = "https://pay.kortix.com/b/9B6cN597kaK38NH76nbo400"
-
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
       {
-        title: `${PRODUCT_NAME} OSS — open-source speaker & program management`,
+        title: `${PRODUCT_NAME} — open-source speaker & program management`,
       },
       {
         name: "description",
         content:
-          "Collect talks, review them, run the speaker portal, build the agenda and send every email — one fast, open-source tool. No enterprise sales call.",
+          "The open-source Sessionboard alternative. Collect talks, review them, run the speaker portal, build the agenda and send every email — one fast tool, MIT licensed. No enterprise sales call.",
       },
     ],
   }),
@@ -59,7 +56,7 @@ function LandingPage() {
         <FeatureSections />
         <PlatformSection />
         <Foundations />
-        <Pricing stripeCheckoutUrl={STRIPE_CHECKOUT_URL} />
+        <Pricing />
         <OpenSource />
         <ClosingCta />
       </main>

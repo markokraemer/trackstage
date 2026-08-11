@@ -9,53 +9,48 @@ import {
   MarketingSection,
   SectionIntro,
 } from "@/components/marketing/section"
-import { DeclareWinnerButton } from "@/components/marketing/declare-winner-button"
 import {
   EXTERNAL_LINK_PROPS,
   GITHUB_URL,
   SECTION_IDS,
 } from "@/components/marketing/links"
 
-export interface PricingProps {
-  /** Stripe Checkout link for the $10,000 joke. Empty string = not live yet. */
-  stripeCheckoutUrl: string
-}
-
-const OPEN_SOURCE_POINTS = [
+/**
+ * Pricing, the industry-standard shape — but every number on it is true.
+ * Two ways to run the product, both free: self-host the MIT-licensed repo, or
+ * use the hosted version while it's in beta. No invented paid tiers, no
+ * feature gates — a single generous free framing done properly beats a made-up
+ * plan table.
+ */
+const SELF_HOST_POINTS = [
   "Every feature. There are no tiers.",
-  "MIT licensed — fork it, rename it, sell it",
+  "MIT licensed — fork it, rebrand it, keep it",
   "Your servers, your data",
 ]
 
-const DEMO_POINTS = [
-  "Organizer app, speaker portal and CFP form",
-  "A pre-loaded event with real-looking data",
+const CLOUD_POINTS = [
+  "The same code as the repo, hosted for you",
+  "Unlimited events, submissions and speakers",
   "No credit card, no sales call",
 ]
 
-const WINNER_POINTS = [
-  "One time. Not a subscription.",
-  "Bragging rights (non-transferable)",
-  "About three months of what you pay today",
-]
-
-export function Pricing({ stripeCheckoutUrl }: PricingProps) {
+export function Pricing() {
   return (
     <MarketingSection id={SECTION_IDS.pricing} tone="muted">
       <SectionIntro
         align="center"
-        title="Free. Both kinds of free."
-        description="Exactly one card here has a price on it, and it's a joke — mostly."
+        title="Simple, honest pricing"
+        description="Every feature, both ways. No seats, no tiers, no quote-on-request."
       />
 
-      {/* Three flat cells in one bordered container — Attio's plan table. */}
-      <div className="mt-12 grid gap-px overflow-hidden rounded-2xl border border-border bg-border lg:grid-cols-3">
+      {/* Two flat cells in one bordered container — the house plan table. */}
+      <div className="mx-auto mt-12 grid max-w-3xl gap-px overflow-hidden rounded-2xl border border-border bg-border sm:grid-cols-2">
         <PlanCard
-          name="Open source"
+          name="Self-host"
           price="$0"
           cadence="forever"
-          summary="Clone the repo and run the whole thing yourself."
-          points={OPEN_SOURCE_POINTS}
+          summary="Clone the repo and run the whole thing on your own infrastructure."
+          points={SELF_HOST_POINTS}
           action={
             <a
               href={GITHUB_URL}
@@ -70,33 +65,17 @@ export function Pricing({ stripeCheckoutUrl }: PricingProps) {
 
         <PlanCard
           featured
-          badge="Start here"
-          name="Cloud demo"
+          badge="Free while in beta"
+          name="Cloud"
           price="$0"
-          cadence="try it now"
-          summary="The hosted demo, loaded with a full event. Click everything."
-          points={DEMO_POINTS}
+          cadence="while in beta"
+          summary="The hosted version. Sign up and run your event today."
+          points={CLOUD_POINTS}
           action={
             <Link to="/login" className={buttonVariants({ size: "lg", className: "w-full" })}>
-              Open the demo
+              Get started free
             </Link>
           }
-        />
-
-        <PlanCard
-          name="Declare the winner"
-          price="$10,000"
-          cadence="one time, voluntary"
-          summary="You know who you are. The prize has a Buy Now button — because of course it does."
-          points={WINNER_POINTS}
-          action={
-            <DeclareWinnerButton
-              variant="outline"
-              checkoutUrl={stripeCheckoutUrl}
-              className="w-full"
-            />
-          }
-          footnote="The Kill My SaaS prize, wired to a checkout link. Entirely voluntary."
         />
       </div>
     </MarketingSection>
@@ -112,7 +91,6 @@ interface PlanCardProps {
   action: React.ReactNode
   featured?: boolean
   badge?: string
-  footnote?: string
 }
 
 function PlanCard({
@@ -124,7 +102,6 @@ function PlanCard({
   action,
   featured = false,
   badge,
-  footnote,
 }: PlanCardProps) {
   return (
     <div
@@ -168,12 +145,6 @@ function PlanCard({
           </li>
         ))}
       </ul>
-
-      {footnote ? (
-        <p className="mt-5 text-xs leading-relaxed text-muted-foreground">
-          {footnote}
-        </p>
-      ) : null}
     </div>
   )
 }

@@ -50,8 +50,9 @@ export function Hero() {
           </h1>
 
           <p className="mt-6 max-w-xl text-base leading-relaxed text-pretty text-muted-foreground sm:text-lg">
-            Collect talks, review them, build the agenda and send every email —
-            one fast, open-source tool instead of a $40,000 invoice.
+            The open-source Sessionboard alternative. Collect talks, review
+            them, build the agenda and send every email — fast, simple, with an
+            AI copilot built in.
           </p>
 
           <div className="mt-9 flex w-full flex-col items-stretch justify-center gap-2.5 sm:w-auto sm:flex-row sm:items-center">

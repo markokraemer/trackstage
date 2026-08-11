@@ -11,11 +11,9 @@ import {
   GITHUB_LICENSE_URL,
   GITHUB_README_URL,
   GITHUB_URL,
-  KILL_MY_SAAS_POST_URL,
   MCP_ENDPOINT_PATH,
   PUBLIC_ICS_PATH,
   SECTION_IDS,
-  SESSIONBOARD_URL,
 } from "@/components/marketing/links"
 
 const LINK_CLASS =
@@ -70,21 +68,6 @@ const COLUMNS: Array<FooterColumn> = [
       { label: "MIT license", href: GITHUB_LICENSE_URL, external: true },
     ],
   },
-  {
-    title: "The competition",
-    links: [
-      {
-        label: "Kill My SaaS brief",
-        href: KILL_MY_SAAS_POST_URL,
-        external: true,
-      },
-      {
-        label: "Sessionboard — the tool we're replacing",
-        href: SESSIONBOARD_URL,
-        external: true,
-      },
-    ],
-  },
 ]
 
 /**
@@ -111,7 +94,7 @@ export function MarketingFooter() {
 
           <nav
             aria-label="Footer"
-            className="grid gap-x-8 gap-y-9 sm:grid-cols-2 lg:grid-cols-4"
+            className="grid gap-x-8 gap-y-9 sm:grid-cols-2 lg:grid-cols-3"
           >
             {COLUMNS.map((column) => (
               <div key={column.title} className="flex flex-col gap-3">
@@ -138,7 +121,7 @@ export function MarketingFooter() {
         </div>
 
         <div className="mt-12 flex flex-col gap-4 border-t border-background/10 pt-7 text-sm text-background/55 lg:flex-row lg:items-center lg:justify-between">
-          <p>MIT licensed. Built for swyx&rsquo;s Kill My SaaS.</p>
+          <p>&copy; {new Date().getFullYear()} Trackstage. MIT licensed.</p>
           <div className="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:gap-5">
             <p className="font-mono text-xs">
               {PUBLIC_ICS_PATH} · {MCP_ENDPOINT_PATH}

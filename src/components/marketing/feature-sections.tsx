@@ -127,7 +127,7 @@ export function FeatureSections() {
             </span>
           </>
         }
-        description="The same jobs the $40k-a-year tool does, in fewer clicks."
+        description="The whole call-for-speakers workflow, in fewer clicks."
       />
 
       <ShowcaseBlock />

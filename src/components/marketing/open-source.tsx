@@ -1,9 +1,5 @@
 import { Link } from "@tanstack/react-router"
-import {
-  RiArrowRightUpLine,
-  RiGithubFill,
-  RiPaletteLine,
-} from "@remixicon/react"
+import { RiGithubFill, RiPaletteLine } from "@remixicon/react"
 
 import { cn } from "@/lib/utils"
 import { buttonVariants } from "@/components/ui/button"
@@ -14,23 +10,23 @@ import {
 import {
   EXTERNAL_LINK_PROPS,
   GITHUB_URL,
-  KILL_MY_SAAS_POST_URL,
   SECTION_IDS,
   SESSIONBOARD_URL,
 } from "@/components/marketing/links"
 
 const STATS = [
-  { value: "$40k+/yr", label: "The tool we're replacing" },
-  { value: "MIT", label: "This one" },
+  { value: "MIT", label: "The whole product, no strings" },
   { value: "100%", label: "Of the source, in the open" },
+  { value: "$0", label: "Self-host or cloud beta" },
 ]
 
 const PROSE_LINK_CLASS =
   "rounded-sm font-medium text-foreground underline underline-offset-4 outline-none hover:text-primary focus-visible:ring-3 focus-visible:ring-ring/50"
 
 /**
- * The story band, in Attio's manifesto layout: an oversized headline holding the
+ * The story band, in the manifesto layout: an oversized headline holding the
  * left column on its own, and the prose set quietly beside it on the right.
+ * Positioning, plainly: the open-source alternative to Sessionboard.
  */
 export function OpenSource() {
   return (
@@ -47,21 +43,22 @@ export function OpenSource() {
 
         <div className="space-y-4 text-base leading-relaxed text-muted-foreground">
           <p>
-            swyx&rsquo;s team pays over $40,000 a year for{" "}
+            Speaker and program management has been an enterprise category:
+            tools like{" "}
             <a
               href={SESSIONBOARD_URL}
               {...EXTERNAL_LINK_PROPS}
               className={PROSE_LINK_CLASS}
             >
               Sessionboard
-            </a>
-            , which they use maybe a third of — so he put $10,000 on the table
-            and asked the internet to kill it.
+            </a>{" "}
+            are sold on a call, priced in five figures a year, and most teams
+            use a fraction of what they pay for.
           </p>
           <p>
-            This is our answer: the same jobs, rebuilt for the people who
-            actually produce events. Code, design system and build log are all
-            in the repo.
+            Trackstage is the open-source alternative: the same jobs, rebuilt
+            for the people who actually produce events — and fast. Code, design
+            system and build log are all in the repo.
           </p>
 
           <div className="flex flex-wrap gap-2.5 pt-2">
@@ -73,14 +70,6 @@ export function OpenSource() {
               <RiPaletteLine aria-hidden />
               Browse the design system
             </Link>
-            <a
-              href={KILL_MY_SAAS_POST_URL}
-              {...EXTERNAL_LINK_PROPS}
-              className={buttonVariants({ variant: "ghost" })}
-            >
-              The original brief
-              <RiArrowRightUpLine aria-hidden />
-            </a>
           </div>
         </div>
       </div>
