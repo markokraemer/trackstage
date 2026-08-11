@@ -201,12 +201,19 @@ export async function uiSignIn(page: Page, email: string, password: string) {
   throw new Error(`UI sign-in never reached /app for ${email}`)
 }
 
-/** Sign up a brand-new organizer through the real UI. */
+/** Sign up a brand-new organizer through the real UI.
+ *
+ * A brand-new account lands on the FULL-SCREEN onboarding takeover
+ * (src/components/onboarding/onboarding-takeover.tsx) — no shell until it is
+ * finished or skipped. Most specs want the app itself, so by default this
+ * helper skips it ("I'll explore on my own"; the skip persists server-side).
+ * Pass `{ skipOnboarding: false }` to stay on the takeover and assert it. */
 export async function uiSignUp(
   page: Page,
   name: string,
   email: string,
   password: string,
+  opts: { skipOnboarding?: boolean } = {},
 ) {
   await gotoStable(page, "/login", "networkidle")
   for (let attempt = 0; attempt < 6; attempt++) {
@@ -227,20 +234,61 @@ export async function uiSignUp(
         .first()
         .click()
       await page.waitForURL(/\/app/, { timeout: 15_000 })
+      if (opts.skipOnboarding !== false) await dismissOnboarding(page)
       return
     } catch {
-      if (page.url().includes("/app")) return
+      if (page.url().includes("/app")) {
+        if (opts.skipOnboarding !== false) await dismissOnboarding(page)
+        return
+      }
       await gotoStable(page, "/login", "networkidle")
     }
   }
   throw new Error(`UI sign-up never reached /app for ${email}`)
 }
 
+/** Click the takeover's escape hatch; tolerant if it never shows (already
+ *  skipped on a previous attempt, or the account somehow owns events). */
+async function dismissOnboarding(page: Page) {
+  const skip = page.getByRole("button", { name: /explore on my own/i }).first()
+  try {
+    await skip.click({ timeout: 15_000 })
+  } catch {
+    /* takeover not shown — nothing to skip */
+  }
+}
+
 /** Wait for the organizer shell to be interactive. */
+/**
+ * Account/Workspace settings are MODALS opened by `?settings=…` — legacy
+ * addresses (`/app/workspace`, `/app/account`) resolve to a real page with the
+ * right modal open. A modal on screen blocks the shell behind it, so helpers
+ * that drive the shell (the event switcher, the sidebar) close it first.
+ * Escape is the product's own close gesture; a no-op when nothing is open.
+ */
+export async function dismissSettingsDialog(page: Page) {
+  const settingsDialog = page
+    .getByRole("dialog")
+    .filter({
+      has: page.getByRole("heading", { name: /^(account|workspace) settings/i }),
+    })
+    .first()
+  if (await settingsDialog.isVisible().catch(() => false)) {
+    await page.keyboard.press("Escape")
+    await expect(settingsDialog).toBeHidden({ timeout: 10_000 })
+  }
+}
+
 export async function waitForShell(page: Page) {
-  await expect(
-    page.getByRole("button", { name: /switch event/i }).first(),
-  ).toBeVisible({ timeout: 30_000 })
+  const switcher = page.getByRole("button", { name: /switch event/i }).first()
+  // A settings modal opened by the URL (`?settings=…`) can hide the shell from
+  // the accessibility tree; close it before insisting on the switcher.
+  try {
+    await expect(switcher).toBeVisible({ timeout: 5_000 })
+  } catch {
+    await dismissSettingsDialog(page)
+  }
+  await expect(switcher).toBeVisible({ timeout: 30_000 })
 }
 
 /**
@@ -254,6 +302,9 @@ export async function waitForShell(page: Page) {
  * settle rather than assuming the URL never moved.
  */
 export async function selectEvent(page: Page, name = MAIN_EVENT_NAME) {
+  // A `?settings=…` modal (e.g. after a legacy /app/workspace redirect) sits
+  // over the shell — close it before driving the switcher.
+  await dismissSettingsDialog(page)
   const switcher = page.getByRole("button", { name: /switch event/i }).first()
   await expect(switcher).toBeVisible({ timeout: 30_000 })
   // The switcher hydrates asynchronously (skeleton first). Reading it too

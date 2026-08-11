@@ -46,6 +46,13 @@ export interface PreviewFile {
 
 type PreviewKind = "image" | "pdf" | "video" | "audio" | "text" | "none"
 
+// Extension fallbacks for when the stored content type is missing or generic
+// (`application/octet-stream` — common for email-forwarded files). The
+// browser's native loaders are the "library": img/iframe/video/audio cover
+// every common upload without shipping a renderer.
+const EXTRA_IMAGE_EXTENSIONS = ["svg", "bmp", "ico"]
+const VIDEO_EXTENSIONS = ["mp4", "webm", "mov", "m4v", "ogv"]
+const AUDIO_EXTENSIONS = ["mp3", "wav", "m4a", "ogg", "aac", "flac"]
 const TEXT_EXTENSIONS = ["txt", "md", "csv", "json", "log"]
 /** Text preview cap — enough for any speaker bio, small enough to render. */
 const TEXT_PREVIEW_CAP = 1024 * 1024
@@ -55,9 +62,10 @@ function previewKind(file: PreviewFile): PreviewKind {
   const type = file.contentType ?? ""
   const ext = extensionOf(file.filename)
   if (isImage(file.contentType, file.filename)) return "image"
+  if (EXTRA_IMAGE_EXTENSIONS.includes(ext)) return "image"
   if (type === "application/pdf" || ext === "pdf") return "pdf"
-  if (type.startsWith("video/")) return "video"
-  if (type.startsWith("audio/")) return "audio"
+  if (type.startsWith("video/") || VIDEO_EXTENSIONS.includes(ext)) return "video"
+  if (type.startsWith("audio/") || AUDIO_EXTENSIONS.includes(ext)) return "audio"
   if (type.startsWith("text/") || type === "application/json") return "text"
   if (TEXT_EXTENSIONS.includes(ext)) return "text"
   return "none"
@@ -209,14 +217,38 @@ export function FilePreviewDialog({
 function PreviewBody({ file }: { file: PreviewFile }) {
   const kind = previewKind(file)
   const url = file.url
+  // The asset itself failed to load (corrupt bytes, expired URL) — never a
+  // silent white void; fall through to the honest card instead.
+  const [loadFailed, setLoadFailed] = useState(false)
+
+  if (loadFailed) {
+    return (
+      <NoPreview
+        file={file}
+        message="The preview couldn't load — the file may be corrupt. Download it to have a look."
+      />
+    )
+  }
 
   if (url && kind === "image") {
     return (
-      <div className="flex h-full items-center justify-center overflow-hidden bg-muted/40 p-4">
+      // Checkerboard backdrop + a ring on the image itself, so a white or
+      // transparent image always reads as an image with edges — not a blank
+      // dialog (Marko hit exactly that with a solid-white fixture).
+      <div
+        className="flex h-full items-center justify-center overflow-hidden p-6"
+        style={{
+          backgroundColor: "var(--muted)",
+          backgroundImage:
+            "conic-gradient(rgba(0,0,0,0.06) 25%, transparent 0 50%, rgba(0,0,0,0.06) 0 75%, transparent 0)",
+          backgroundSize: "20px 20px",
+        }}
+      >
         <img
           src={url}
           alt={file.filename}
-          className="max-h-full max-w-full object-contain"
+          onError={() => setLoadFailed(true)}
+          className="max-h-full max-w-full rounded-sm object-contain shadow-md ring-1 ring-black/10"
         />
       </div>
     )
@@ -227,6 +259,7 @@ function PreviewBody({ file }: { file: PreviewFile }) {
       <iframe
         src={url}
         title={file.filename}
+        onError={() => setLoadFailed(true)}
         className="h-full w-full border-0 bg-muted/40"
       />
     )
@@ -235,7 +268,12 @@ function PreviewBody({ file }: { file: PreviewFile }) {
   if (url && kind === "video") {
     return (
       <div className="flex h-full items-center justify-center bg-black/90 p-4">
-        <video src={url} controls className="max-h-full max-w-full" />
+        <video
+          src={url}
+          controls
+          onError={() => setLoadFailed(true)}
+          className="max-h-full max-w-full"
+        />
       </div>
     )
   }
@@ -243,7 +281,12 @@ function PreviewBody({ file }: { file: PreviewFile }) {
   if (url && kind === "audio") {
     return (
       <div className="flex h-full items-center justify-center p-8">
-        <audio src={url} controls className="w-full max-w-lg" />
+        <audio
+          src={url}
+          controls
+          onError={() => setLoadFailed(true)}
+          className="w-full max-w-lg"
+        />
       </div>
     )
   }
@@ -309,7 +352,13 @@ function TextPreview({ url }: { url: string }) {
   )
 }
 
-function NoPreview({ file }: { file: PreviewFile }) {
+function NoPreview({
+  file,
+  message,
+}: {
+  file: PreviewFile
+  message?: string
+}) {
   const Icon = fileIcon(file.contentType, file.filename)
   const [downloading, setDownloading] = useState(false)
 
@@ -349,9 +398,10 @@ function NoPreview({ file }: { file: PreviewFile }) {
         </p>
       </div>
       <p className="max-w-sm text-sm text-muted-foreground">
-        {file.url
-          ? "This file type doesn't preview in the browser — download it to have a look."
-          : "The stored file is missing, so there is nothing to preview or download."}
+        {message ??
+          (file.url
+            ? "This file type doesn't preview in the browser — download it to have a look."
+            : "The stored file is missing, so there is nothing to preview or download.")}
       </p>
       {file.url ? (
         <Button size="sm" disabled={downloading} onClick={() => void handleDownload()}>

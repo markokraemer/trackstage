@@ -54,21 +54,28 @@ test.describe("multi-tenancy", () => {
     const fresh = await freshContext.newPage()
     const freshWatcher = armed(fresh)
 
-    await test.step("signs up and lands in an empty workspace", async () => {
-      await uiSignUp(fresh, freshName, freshEmail, PASSWORD)
+    await test.step("signs up and lands on the first-run onboarding", async () => {
+      await uiSignUp(fresh, freshName, freshEmail, PASSWORD, {
+        skipOnboarding: false,
+      })
+      // A brand-new account's /app is the FULL-SCREEN onboarding takeover —
+      // no shell, no bounce to workspace settings (regression fixed
+      // 2026-08-11; full-screen per Marko 2026-08-12). Skipping it reveals
+      // the shell with the create-event hero.
+      await expect(fresh).not.toHaveURL(/\/workspace/)
+      await expect(
+        fresh.getByText(/welcome to trackstage/i).first(),
+      ).toBeVisible({ timeout: 20_000 })
+      await fresh
+        .getByRole("button", { name: /explore on my own/i })
+        .first()
+        .click()
       await waitForShell(fresh)
       await expect(
         fresh.getByRole("button", { name: /switch event/i }).first(),
       ).toContainText(/no event yet/i, { timeout: 20_000 })
-      // An eventless user has no event-scoped dashboard, so `/app` lands them
-      // on the workspace hub — where creating the first event is the obvious
-      // next step (docs/memory/DECISIONS.md, "URL architecture is fully
-      // hierarchical").
-      await expect(fresh).toHaveURL(/\/app\/(?:[^/]+\/)?workspace/, {
-        timeout: 20_000,
-      })
       await expect(
-        fresh.getByText(/no events in this workspace yet/i).first(),
+        fresh.getByRole("button", { name: /create your first event/i }).first(),
       ).toBeVisible({ timeout: 20_000 })
       freshWatcher.assertClean("fresh user /app")
     })
@@ -432,37 +439,48 @@ test.describe("multi-tenancy", () => {
         await page.keyboard.press("Escape")
       })
 
-      await test.step("an empty workspace lands on the hub", async () => {
+      await test.step("an empty workspace lands on its first-run home", async () => {
         await openPicker()
         await menuItem(`Switch to ${emptyName}`).click()
 
-        // The workspace hub lives at `/app/:workspaceSlug/workspace`, not the
-        // bare legacy `/app/workspace` shape.
-        await expect(page).toHaveURL(/\/app\/(?:[^/]+\/)?workspace/, {
-          timeout: 20_000,
-        })
+        // An empty workspace lands on `/app/:workspaceSlug` — the first-run
+        // create-your-event experience, never Workspace settings (regression
+        // fixed 2026-08-11).
+        await expect(page).not.toHaveURL(/\/workspace/)
+        await expect(
+          page.getByText(new RegExp(`welcome to ${emptyName}`, "i")).first(),
+        ).toBeVisible({ timeout: 20_000 })
+        await expect(switcher).toContainText(/no event yet/i)
+      })
+
+      await test.step('the settings modal lists every workspace under "Your workspaces"', async () => {
+        // Workspace settings stays reachable at its own address (the bare
+        // legacy alias resolves to the workspace in context — the empty one)
+        // — it opens as a MODAL over the page now, same heading as ever.
+        await gotoStable(page, "/app/workspace")
         await expect(
           page.getByRole("heading", {
             name: new RegExp(`workspace settings — ${emptyName}`, "i"),
           }).first(),
         ).toBeVisible({ timeout: 20_000 })
-        await expect(switcher).toContainText(/no event yet/i)
-        await expect(
-          page.getByText(/no events in this workspace yet/i).first(),
-        ).toBeVisible()
-      })
-
-      await test.step('the hub lists every workspace under "Your workspaces"', async () => {
         for (const name of [own.name, betaName, emptyName]) {
           await expect(
             page.getByText(name, { exact: true }).first(),
           ).toBeVisible()
         }
-        // The one in context is marked, the others offer a switch.
+        // The one in context is marked, the others offer a switch — and
+        // switching INSIDE the modal keeps the modal open on the new one.
         await expect(page.getByText("Current", { exact: true }).first()).toBeVisible()
         await page
           .getByRole("button", { name: `Switch to ${betaName}` })
           .click()
+        await expect(
+          page.getByRole("heading", {
+            name: new RegExp(`workspace settings — ${betaName}`, "i"),
+          }).first(),
+        ).toBeVisible({ timeout: 20_000 })
+        // Close it; the app behind has already moved to the beta workspace.
+        await page.keyboard.press("Escape")
         await expect(switcher).toContainText(betaEventName, { timeout: 20_000 })
       })
 

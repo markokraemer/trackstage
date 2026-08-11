@@ -213,11 +213,13 @@ test.describe("hierarchy", () => {
       .getByRole("menuitem", { name: /account settings/i })
       .first()
       .click()
-    await expect(page).toHaveURL(/\/app\/account/)
+    // Account settings is a MODAL now — the menu item adds `?settings=account`
+    // in place instead of navigating away.
+    await expect(page).toHaveURL(/settings=account/)
     await expect(
       page.getByRole("heading", { name: /account settings/i }).first(),
     ).toBeVisible()
-    watcher.assertClean("/app/account via menu")
+    watcher.assertClean("account settings via menu")
   })
 
   test("account settings renders profile, security and API tabs", async ({
@@ -248,7 +250,10 @@ test.describe("hierarchy", () => {
   }) => {
     const watcher = watchConsole(page)
     await page.goto("/app/settings/api-mcp")
-    await expect(page).toHaveURL(/\/app\/account\?tab=api-mcp/)
+    // Lands back on the event's settings page with the account modal open on
+    // the API & MCP tab (`?settings=account&settingsTab=api-mcp`).
+    await expect(page).toHaveURL(/settings=account/)
+    await expect(page).toHaveURL(/settingsTab=api-mcp/)
     await expect(page.getByText(/api keys/i).first()).toBeVisible({
       timeout: 15_000,
     })
