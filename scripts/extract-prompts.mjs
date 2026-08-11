@@ -33,6 +33,9 @@ function textOf(content) {
 const SECRET_PATTERNS = [
   /re_[A-Za-z0-9_]{16,}/g, // Resend API keys
   /sk-or-v1-[A-Za-z0-9]{8,}/g, // OpenRouter keys
+  /sk-ant-[A-Za-z0-9_-]{20,}/g, // Anthropic keys
+  /sk-[A-Za-z0-9_-]{20,}/g, // any other sk- style key
+  /pat[A-Za-z0-9]{10,}\.[A-Za-z0-9]{20,}/g, // Airtable PATs
   /sb_live_[0-9a-f]{8,}/g, // our own API keys
   /\b[0-9a-f]{37}\b/g, // Cloudflare global API key format
   /(CLOUDFLARE_GLOBAL_API_KEY|CLOUDFLARE_API_KEY|RESEND_API_KEY|OPENROUTER_API_KEY|BETTER_AUTH_SECRET)\s*=\s*\S+/g,
