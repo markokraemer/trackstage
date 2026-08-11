@@ -1531,3 +1531,8 @@ parity wave. Everything below verified live in the browser on dev
   switcher — arguably useful for embedding another event, left alone.
 - Public CFP welcome shows "…— AI Engineer Summit 2026 · AI Engineer Summit
   2026" (form external title already contains the event name; seed artifact).
+
+## Gate4 GREEN — reconciliation verified (2026-08-11 ~12:30)
+Rule-19 pass integrated (7b7bce1) and verified: vb 516/0 (visibility checks →
+real /v1), flows 3× consecutive 49/49. Two spec syncs (v1 probe, link-role CTA).
+Task #3 complete. Remaining follow-ups → final polish agent.
