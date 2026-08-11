@@ -26,9 +26,14 @@ on:
     branches: [main, master]
   workflow_dispatch:
 
+# cancel-in-progress is OFF on purpose: commits land here every few minutes,
+# and cancelling the running gate on every push means the ~30-min e2e job can
+# never reach the finish line. Without it, GitHub still keeps only the NEWEST
+# pending run per group — so the worst case is one running + the latest queued,
+# and it is always the newest commit that gets the next full verdict.
 concurrency:
   group: ci-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 permissions:
   contents: read
