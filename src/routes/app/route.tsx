@@ -48,6 +48,7 @@ import {
   CopilotTriggerButton,
 } from "@/components/copilot/copilot-panel"
 import { ShellEventSwitcher } from "@/components/shell/event-switcher"
+import { VerifyEmailBanner } from "@/components/shell/verify-email-banner"
 import { RoutePrewarm } from "@/components/shell/route-prewarm"
 import {
   WorkspaceMenuItems,
@@ -410,6 +411,9 @@ function OrganizerLayout() {
           </DropdownMenu>
         </div>
       </header>
+
+      {/* Soft "confirm your email" nudge — informational only, never a gate. */}
+      <VerifyEmailBanner />
 
       <div className="flex">
         {/* Tier 2 — event-scoped left sidebar */}
