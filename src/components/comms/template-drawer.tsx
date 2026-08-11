@@ -64,6 +64,7 @@ export function TemplateDrawer({
 
   const subjectRef = useRef<HTMLInputElement>(null)
   const bodyRef = useRef<HTMLTextAreaElement>(null)
+  const previewRef = useRef<HTMLDivElement>(null)
   const [focusTarget, setFocusTarget] = useState<"subject" | "body">("body")
 
   const upsertTemplate = useConvexMutation(api.comms.upsertTemplate)
@@ -266,7 +267,17 @@ export function TemplateDrawer({
             type="button"
             variant="ghost"
             size="sm"
-            onClick={() => setShowPreview((value) => !value)}
+            onClick={() => {
+              setShowPreview((value) => !value)
+              // The card renders below the fold of the drawer's scroll area —
+              // without this, toggling it on looks like a no-op.
+              requestAnimationFrame(() =>
+                previewRef.current?.scrollIntoView({
+                  behavior: "smooth",
+                  block: "nearest",
+                })
+              )
+            }}
           >
             <RiEyeLine aria-hidden />
             {showPreview ? "Hide preview" : "Preview with sample details"}
@@ -285,7 +296,7 @@ export function TemplateDrawer({
         </div>
 
         {showPreview ? (
-          <Card className="gap-0 overflow-hidden p-0">
+          <Card ref={previewRef} className="gap-0 overflow-hidden p-0">
             <div className="flex items-center justify-between gap-2 border-b border-border bg-muted/50 px-4 py-2.5">
               <p className="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
                 Preview
