@@ -181,3 +181,9 @@ the narrative memory; RULES.md is the things circled as important along the way.
     bar; less yap ("it already looks quite nice, so it's not bad" — trim, don't
     rebuild). Docs are important: keep them clear, and add a SELF-HOST page as the
     final, smallest docs item — docs stay mostly product docs + one how-to-self-host.
+59. **Client-brand icons**: the Connect-your-client tabs (docs/mcp + settings) must
+    show proper brand icons (Claude, ChatGPT, Codex) — Google favicons API or
+    equivalent; research how other docs do it; make it look nice.
+60. **openapi.json completeness (escalated)**: the spec documented 4 endpoints while
+    the real surface is ~2400 lines of routes — must be 100% complete, live-verified,
+    and drift-proofed with a --check script (assigned to API-parity agent).
