@@ -1055,6 +1055,17 @@ export const deliverPending = internalAction({
       }
     }
 
+    // A full batch means there may be more waiting (a bulk send to 40 people
+    // arrives as 40 scheduled rows but one claim takes at most 25) — chain
+    // another run so the tail is delivered instead of stranded until the next
+    // unrelated send re-triggers delivery.
+    const claimCap = Math.min(Math.max(args.limit ?? DEFAULT_BATCH, 1), 100)
+    if (batch.length === claimCap) {
+      await ctx.scheduler.runAfter(0, internal.comms.deliverPending, {
+        limit: args.limit,
+      })
+    }
+
     return summary
   },
 })

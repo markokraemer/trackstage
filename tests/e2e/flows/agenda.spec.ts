@@ -40,7 +40,11 @@ type Board = {
     startsAt: number
   }>
   unscheduled: Array<{ id: string; title: string }>
-  conflicts: Array<{ kind: string }>
+  conflicts: Array<{
+    kind: string
+    a: { id: string; title: string }
+    b: { id: string; title: string }
+  }>
 }
 
 async function board(
@@ -364,8 +368,12 @@ test.describe("agenda", () => {
         (b) => ids.every((id) => b.scheduled.some((s) => s.id === id)),
         { timeout: 45_000, label: "auto-place placed every pending session" },
       )
+      // Scope the invariant to auto-place's own work: earlier drag tests (and
+      // their retries) can leave seeded sessions overlapping, and those
+      // pre-existing conflicts are not this feature's fault. What auto-place
+      // guarantees is that nothing IT placed conflicts with anything.
       expect(
-        after.conflicts,
+        after.conflicts.filter((c) => ids.includes(c.a.id) || ids.includes(c.b.id)),
         "auto-place must never create a conflict",
       ).toEqual([])
       await clearToasts(page)

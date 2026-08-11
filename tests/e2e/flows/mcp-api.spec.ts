@@ -180,6 +180,14 @@ test.describe("MCP server", () => {
 
   test.beforeAll(async () => {
     const organizer = await organizerConvexClient()
+    // Keys are workspace-scoped and outlive reseeds; leaked e2e/verify keys
+    // from interrupted runs pile up toward the 20-key cap and would make
+    // `create` below throw. Sweep anything test-named first.
+    for (const row of await organizer.query(api.apiKeys.list, {})) {
+      if (/^(e2e-|parity-|verify-|stranger|bad$)/.test(row.name)) {
+        await organizer.mutation(api.apiKeys.revoke, { keyId: row.keyId }).catch(() => {})
+      }
+    }
     const created = await organizer.mutation(api.apiKeys.create, {
       name: `e2e-mcp-${unique("k")}`,
     })

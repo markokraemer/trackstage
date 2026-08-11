@@ -1383,6 +1383,13 @@ section("API parity")
 if (SITE_URL) {
   const API = `${SITE_URL}/v1`
   const EV = "ai-summit-2026"
+  // API keys are workspace-scoped and outlive reseeds, so leftovers from prior
+  // verify runs accumulate toward the 20-key cap. Sweep ours before creating.
+  for (const row of await client.query(api.apiKeys.list, {})) {
+    if (["parity-suite", "parity-readonly", "verify-suite", "stranger", "bad"].includes(row.name)) {
+      await client.mutation(api.apiKeys.revoke, { keyId: row.keyId }).catch(() => {})
+    }
+  }
   const apiKey = (await client.mutation(api.apiKeys.create, { name: "parity-suite" })).key
 
   /** Every call goes through here so auth + JSON handling is uniform. */
