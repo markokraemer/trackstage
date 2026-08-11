@@ -114,6 +114,13 @@ Source of truth for everything Marko asked + build status. Update continuously.
 - ⏳ Docs-only leftover: README Authorization section should say a revoked API key surfaces
   in Claude Code as a "requires re-authorization" prompt (spec-correct, but surprising)
 
+## Post-deploy follow-ups
+- ⏳ jwks_uri 404: discovery docs advertise /api/auth/mcp/jwks which 404s (pre-existing);
+  strict MCP clients fetching jwks would fail — register the route or fix the URL (rule 21 owner)
+- ⏳ Raster brand assets show old wordmark: og-image.png, icon-192/512.png, favicon.ico —
+  regenerate from /design-system generators (with screenshot recapture wave)
+- ✅ www.trackstage.app → apex 301 redirect (DNS + redirect rule)
+
 ## Post-rename cleanup
 - ⏳ Re-run scripts/capture-screenshots.mjs + capture-walkthrough: form-builder.png shows
   an error state, in-shot sidebar still reads "Sessionboard" (pre-rename). Run after
