@@ -154,6 +154,30 @@ export const markDone = mutation({
   },
 })
 
+/**
+ * `?onboarding-redo` (src/components/onboarding/onboarding-takeover.tsx):
+ * explicit opt-in to run the whole experience again — both flags cleared, so
+ * the wizard/tour re-arm exactly as on a first run.
+ */
+export const reset = mutation({
+  args: {},
+  returns: v.null(),
+  handler: async (ctx) => {
+    const user = await requireUser(ctx)
+    const flags = await ctx.db
+      .query("userFlags")
+      .withIndex("by_userId", (q) => q.eq("userId", user.userId))
+      .unique()
+    if (flags) {
+      await ctx.db.patch(flags._id, {
+        onboardingDoneAt: undefined,
+        tourDoneAt: undefined,
+      })
+    }
+    return null
+  },
+})
+
 /** The spotlight tour ended (finished or "End tour") — never again. */
 export const markTourDone = mutation({
   args: {},

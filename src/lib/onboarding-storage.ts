@@ -31,6 +31,19 @@ export type TourPhase = "welcome" | "create" | "details"
 
 const TOUR_PHASE_KEY = "ts-tour-phase"
 
+/** Same-tab subscribers (sessionStorage fires no event in its own tab) —
+ *  lets `?onboarding-redo` re-arm the tour without a navigation. */
+const tourListeners = new Set<() => void>()
+
+function notifyTour(): void {
+  for (const listener of tourListeners) listener()
+}
+
+export function subscribeTourPhase(listener: () => void): () => void {
+  tourListeners.add(listener)
+  return () => tourListeners.delete(listener)
+}
+
 export function readTourPhase(): TourPhase | null {
   if (typeof window === "undefined") return null
   try {
@@ -49,12 +62,37 @@ export function writeTourPhase(phase: TourPhase): void {
   } catch {
     /* private mode — the tour simply won't run */
   }
+  notifyTour()
 }
 
 export function clearTourPhase(): void {
   try {
     sessionStorage.removeItem(TOUR_PHASE_KEY)
+    sessionStorage.removeItem(TOUR_INDEX_KEY)
   } catch {
     /* ignore */
+  }
+}
+
+/** Position within the guided journey ("details" phase) — the tour spans
+ *  several pages, and its own navigations must not reset it. */
+const TOUR_INDEX_KEY = "ts-tour-index"
+
+export function readTourIndex(): number {
+  if (typeof window === "undefined") return 0
+  try {
+    const raw = sessionStorage.getItem(TOUR_INDEX_KEY)
+    const value = raw === null ? 0 : Number.parseInt(raw, 10)
+    return Number.isFinite(value) && value >= 0 ? value : 0
+  } catch {
+    return 0
+  }
+}
+
+export function writeTourIndex(index: number): void {
+  try {
+    sessionStorage.setItem(TOUR_INDEX_KEY, String(index))
+  } catch {
+    /* private mode — the tour simply restarts its page segment */
   }
 }

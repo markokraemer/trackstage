@@ -35,10 +35,16 @@ export function SidebarNav({
   groups,
   onNavigate,
   itemClassName,
+  className,
+  ariaLabel = "Main",
 }: {
   groups: Array<NavGroup>
   onNavigate?: () => void
   itemClassName?: string
+  /** Overrides the nav's padding rhythm (the pinned footer nav is tighter). */
+  className?: string
+  /** Distinguishes multiple navs per shell for assistive tech. */
+  ariaLabel?: string
 }) {
   const itemClasses = cn(
     buttonVariants({ variant: "ghost" }),
@@ -48,7 +54,7 @@ export function SidebarNav({
   )
 
   return (
-    <nav aria-label="Main" className="px-3 pt-2 pb-6">
+    <nav aria-label={ariaLabel} className={cn("px-3 pt-2 pb-6", className)}>
       {groups.map((group, index) => (
         <div key={group.label ?? index} className="mb-1">
           {group.label ? (

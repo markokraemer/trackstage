@@ -168,13 +168,24 @@ function navGroupsFor(ref: EventRef | undefined): Array<NavGroup> {
         { label: "Embeds", to: to("embeds"), icon: RiCodeSSlashLine },
       ],
     },
+  ]
+}
+
+/**
+ * Event settings — pinned at the very bottom of the sidebar, OUTSIDE the
+ * scrolling group list (Marko, 2026-08-12: as the last unlabelled group it
+ * visually read as part of "Share"; "separate at the complete bottom of the
+ * left sidebar no matter what"). Labelled "Event settings", not "Settings":
+ * account + workspace settings live in the avatar menu, and this is the one
+ * sidebar entry where the bare word collides with them.
+ */
+function settingsNavFor(ref: EventRef | undefined): Array<NavGroup> {
+  const to = ref
+    ? appLink.section(ref, "settings")
+    : legacyAppLink.settings
+  return [
     {
-      // Event switching, "All events" and "New event" all live in the sidebar's
-      // event switcher; account + workspace settings live in the avatar menu.
-      // The sidebar itself stays a flat list of places inside the current event.
-      items: [
-        { label: "Settings", to: to("settings"), icon: RiSettings3Line },
-      ],
+      items: [{ label: "Event settings", to, icon: RiSettings3Line }],
     },
   ]
 }
@@ -218,9 +229,18 @@ function OrganizerLayout() {
     // Slugs, not the ref object — refs compare by value.
     [eventRef?.workspaceSlug, eventRef?.eventSlug],
   )
+  // Event settings is pinned separately at the sidebar's bottom, so it lives
+  // in its own one-item group list.
+  const settingsGroups = useMemo(
+    () => settingsNavFor(eventRef),
+    [eventRef?.workspaceSlug, eventRef?.eventSlug],
+  )
   const prewarmRoutes = useMemo(
-    () => navGroups.flatMap((group) => group.items.map((item) => item.to)),
-    [navGroups],
+    () =>
+      [...navGroups, ...settingsGroups].flatMap((group) =>
+        group.items.map((item) => item.to),
+      ),
+    [navGroups, settingsGroups],
   )
   // …and "which workspace?" switches from two places (sidebar picker + this
   // avatar menu) through one hook, so both stay in step.
@@ -304,7 +324,7 @@ function OrganizerLayout() {
       */}
       <header className="container-app sticky top-0 z-40 flex h-14 items-center gap-3 border-b border-border bg-card max-md:gap-2">
         {/* Phone shell: hamburger → full sidebar drawer (below md only). */}
-        <MobileNav groups={navGroups} />
+        <MobileNav groups={navGroups} footerGroups={settingsGroups} />
 
         <Link
           to="/app"
@@ -361,7 +381,9 @@ function OrganizerLayout() {
           ) : null}
 
           {/* AI copilot — the MCP's home (docs/memory/RULES.md #24). ⌘I. */}
-          <CopilotTriggerButton />
+          <span data-tour="copilot" className="inline-flex">
+            <CopilotTriggerButton />
+          </span>
 
           <span
             aria-hidden
@@ -481,7 +503,7 @@ function OrganizerLayout() {
         {/* Tier 2 — event-scoped left sidebar. md+ only: below md the same
             content lives in the hamburger drawer (MobileNav, top bar) — a
             64px icon rail on a phone was navigation by memory. */}
-        <aside className="sticky top-14 hidden h-[calc(100svh-3.5rem)] w-60 shrink-0 overflow-y-auto border-r border-sidebar-border bg-sidebar md:block">
+        <aside className="sticky top-14 hidden h-[calc(100svh-3.5rem)] w-60 shrink-0 flex-col overflow-y-auto border-r border-sidebar-border bg-sidebar md:flex">
           <div className="border-b border-sidebar-border p-3">
             <ShellEventSwitcher />
           </div>
@@ -491,6 +513,16 @@ function OrganizerLayout() {
           {/* Quiet, data-derived checklist for a young event — disappears by
               itself when everything is done, or forever via its ✕. */}
           <GettingStarted />
+
+          {/* Event settings — pinned at the very bottom, behind its own
+              separator, so it never reads as part of the last nav group. */}
+          <div className="mt-auto border-t border-sidebar-border">
+            <SidebarNav
+              ariaLabel="Event settings"
+              groups={settingsGroups}
+              className="py-2"
+            />
+          </div>
         </aside>
 
         {/* Tier 3 — content */}

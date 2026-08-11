@@ -1,28 +1,36 @@
 import { useCallback, useEffect, useRef, useState } from "react"
-import { useRouterState } from "@tanstack/react-router"
+import { useNavigate, useRouterState } from "@tanstack/react-router"
 import { useConvexMutation } from "@convex-dev/react-query"
 import { api } from "@convex/_generated/api"
 import type { Driver } from "driver.js"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
+import { appLink } from "@/lib/app-links"
+import type { EventRef } from "@/lib/app-links"
 import {
   clearTourPhase,
+  readTourIndex,
   readTourPhase,
+  subscribeTourPhase,
+  writeTourIndex,
   writeTourPhase,
 } from "@/lib/onboarding-storage"
-import { useCurrentEvent } from "@/lib/current-event"
 import type { TourPhase } from "@/lib/onboarding-storage"
+import { useCurrentEvent } from "@/lib/current-event"
 
 import "driver.js/dist/driver.css"
+import "./tour.css"
 
 /**
  * The guided first-run tour — IN the live app, not on wizard pages (Marko,
  * final shape): confetti + welcome, then driver.js spotlights that walk a
- * non-technical organizer through actually DOING the setup: create the
- * event → (the new-event dialog redirects to Event settings) → fill the
- * details that build the public page → where forms, evaluation and the
- * agenda live → the Getting-started checklist that tracks the rest.
+ * non-technical organizer across the REAL pages: event details and the
+ * public link, Rooms & tracks, the form builder, the submissions pipeline,
+ * evaluation, the agenda, the speaker roster, the copilot, and the
+ * Getting-started checklist that carries the rest. Ten steps, one plain
+ * sentence each, navigating between pages as it goes (Marko, tour v2:
+ * "multi-page, but don't overdo it").
  *
  * It can ONLY start via the sessionStorage phase the onboarding takeover
  * writes on finish (src/lib/onboarding-storage.ts) — existing accounts,
@@ -31,12 +39,15 @@ import "driver.js/dist/driver.css"
  * finishing — all end it forever (userFlags.tourDoneAt).
  *
  * Phases (survive the tour's own navigations):
- *   welcome → confetti + centered card on the dashboard
+ *   welcome → confetti + centered card
  *   create  → spotlight on the create-event button; the dialog advances
  *             the phase to "details" and redirects to Event settings
- *   details → one driver run over whatever anchors exist on this page:
- *             details form → public link → Forms → Evaluation → Agenda →
- *             Getting-started checklist
+ *   details → the ten-step journey below, position in sessionStorage so
+ *             each page change resumes exactly where it left off
+ *
+ * Re-run it any time: append `?onboarding-redo` to any /app URL — resets the
+ * flags and drops you back at the welcome moment (wizard first when the
+ * workspace has no events). Handled in useOnboardingGate.
  */
 
 const WAIT_FOR_ELEMENT_MS = 5_000
@@ -83,41 +94,91 @@ async function fireConfetti(): Promise<void> {
   )
 }
 
-/** The guided steps of the "details" phase, in Marko's order. Filtered to
- *  the anchors that actually exist on the current page, so the tour runs
- *  wherever the organizer is instead of erroring on a missing element. */
-const GUIDE_STEPS = [
+/** A page of the organizer app the journey can route to; `null` = wherever
+ *  the previous step left us (shell-level anchors exist on every page). */
+type JourneyPage =
+  | "settings"
+  | "forms"
+  | "submissions"
+  | "evaluation"
+  | "agenda"
+  | "speakers"
+  | null
+
+interface JourneyStep {
+  page: JourneyPage
+  selector: string
+  title: string
+  description: string
+}
+
+/** Ten tight steps across the real product, in Marko's order. */
+const JOURNEY: Array<JourneyStep> = [
   {
+    page: "settings",
     selector: "[data-tour='event-details']",
     title: "Add the important details",
     description:
-      "Dates, venue, a sentence about the event — this is what builds your public event page. Fill in what you know and hit Save.",
+      "Dates, venue, a sentence about the event — this is what builds your public event page.",
   },
   {
+    page: "settings",
     selector: "[data-tour='public-link']",
     title: "Your event's public page",
     description:
-      "This address is your event's home on the web — it updates itself as you add details and publish your program.",
+      "This address is your event's home on the web — share it anywhere.",
   },
   {
-    selector: "[data-tour='nav-forms']",
-    title: "Get submissions with a form",
+    page: "settings",
+    selector: "[data-tour='settings-tab-rooms']",
+    title: "Rooms & tracks",
     description:
-      "Your call for papers lives here. Build the form, share its link, and every proposal lands in Submissions.",
+      "Give your venue its rooms and your program its tracks — the agenda is built from them.",
   },
   {
-    selector: "[data-tour='nav-evaluation']",
+    page: "forms",
+    selector: "[data-tour='new-form']",
+    title: "Build your CFP form",
+    description:
+      "Your call for papers is a form — build it here, then share its link with speakers.",
+  },
+  {
+    page: "submissions",
+    selector: "[data-tour='page-submissions']",
+    title: "Proposals arrive here",
+    description:
+      "Every submission lands in this pipeline — statuses, queues, and decisions in batches.",
+  },
+  {
+    page: "evaluation",
+    selector: "[data-tour='page-evaluation']",
     title: "Decide together",
     description:
-      "Invite reviewers to score submissions, then accept or decline in batches — decision emails go out when you say so.",
+      "Invite reviewers to score submissions in rounds before you accept or decline.",
   },
   {
-    selector: "[data-tour='nav-agenda']",
+    page: "agenda",
+    selector: "[data-tour='page-agenda']",
     title: "Build your agenda",
     description:
       "Drag accepted talks into rooms and time slots — clashes get flagged as you go.",
   },
   {
+    page: "speakers",
+    selector: "[data-tour='page-speakers']",
+    title: "Your speakers",
+    description:
+      "The roster: every speaker's profile, sessions, and the tasks they still owe you.",
+  },
+  {
+    page: null,
+    selector: "[data-tour='copilot']",
+    title: "Or just ask",
+    description:
+      "The copilot can do all of this for you — it reads and changes your event, and asks first before anything big.",
+  },
+  {
+    page: null,
     selector: "[data-tour='getting-started']",
     title: "Your progress lives here",
     description:
@@ -125,9 +186,27 @@ const GUIDE_STEPS = [
   },
 ]
 
+function pagePath(page: Exclude<JourneyPage, null>, ref: EventRef): string {
+  switch (page) {
+    case "settings":
+      return appLink.settings(ref)
+    case "forms":
+      return appLink.forms(ref)
+    case "submissions":
+      return appLink.submissions(ref)
+    case "evaluation":
+      return appLink.evaluation(ref)
+    case "agenda":
+      return appLink.agenda(ref)
+    case "speakers":
+      return appLink.speakers(ref)
+  }
+}
+
 export function DashboardTour() {
+  const navigate = useNavigate()
   const pathname = useRouterState({ select: (s) => s.location.pathname })
-  const { events } = useCurrentEvent()
+  const { events, eventRef } = useCurrentEvent()
   const markTourDone = useConvexMutation(api.onboarding.markTourDone)
 
   const [phase, setPhase] = useState<TourPhase | null>(() => readTourPhase())
@@ -136,10 +215,16 @@ export function DashboardTour() {
   useEffect(() => {
     setPhase(readTourPhase())
   }, [pathname])
+  // …and `?onboarding-redo` re-arms the phase WITHOUT a navigation
+  // (sessionStorage fires no event in its own tab, so the writer notifies).
+  useEffect(
+    () => subscribeTourPhase(() => setPhase(readTourPhase())),
+    [],
+  )
 
   const driverRef = useRef<Driver | null>(null)
-  // True while WE destroy the driver (unmount, page change) — those must not
-  // count as the person ending the tour.
+  // True while WE destroy the driver (unmount, page hand-off) — those must
+  // not count as the person ending the tour.
   const programmaticDestroy = useRef(false)
 
   const endTour = useCallback(() => {
@@ -166,12 +251,13 @@ export function DashboardTour() {
       if (cancelled) return
       if (!el) {
         // Nothing to point at (they already have events some other way) —
-        // fall through to the guide phase rather than dead-ending.
+        // fall through to the journey rather than dead-ending.
         writeTourPhase("details")
         setPhase("details")
         return
       }
       const instance = driver({
+        popoverClass: "ts-tour",
         showProgress: false,
         allowClose: true,
         // The whole point of this step is CLICKING the highlighted button.
@@ -211,38 +297,96 @@ export function DashboardTour() {
     }
   }, [phase, endTour])
 
-  // ——— details: the guided walk over whatever anchors this page has ——————
+  // ——— details: the ten-step journey, one page segment at a time ——————————
   useEffect(() => {
-    if (phase !== "details") return
+    if (phase !== "details" || !eventRef) return
     let cancelled = false as boolean
+
+    const index = Math.min(readTourIndex(), JOURNEY.length - 1)
+    const step = JOURNEY[index]
+    const targetPath =
+      step.page === null ? null : pagePath(step.page, eventRef)
+
+    // Not on this step's page yet — go there; the pathname change re-runs
+    // this effect and the segment starts.
+    if (targetPath && !pathname.startsWith(targetPath)) {
+      void navigate({ href: targetPath })
+      return
+    }
+
+    // The segment: consecutive steps on this same page (page-less steps ride
+    // along with whatever page they follow).
+    let end = index
+    while (
+      end + 1 < JOURNEY.length &&
+      (JOURNEY[end + 1].page === null || JOURNEY[end + 1].page === step.page)
+    ) {
+      end += 1
+    }
+    const segment = JOURNEY.slice(index, end + 1)
+    const isFinalSegment = end === JOURNEY.length - 1
+
     void (async () => {
       const { driver } = await import("driver.js")
-      // The settings page needs a beat to render its form.
-      await waitForElement(GUIDE_STEPS[0].selector, 3_000)
+      await waitForElement(segment[0].selector, 3_000)
       if (cancelled) return
-      const present = GUIDE_STEPS.filter((step) =>
-        document.querySelector(step.selector),
+      const present = segment.filter((s) =>
+        document.querySelector(s.selector),
       )
       if (present.length === 0) {
-        endTour()
+        // Nothing on this page (odd viewport, dismissed checklist) — move on.
+        if (isFinalSegment) {
+          endTour()
+        } else {
+          writeTourIndex(end + 1)
+          const nextStep = JOURNEY[end + 1]
+          if (nextStep.page) {
+            void navigate({ href: pagePath(nextStep.page, eventRef) })
+          }
+        }
         return
       }
+
       const instance = driver({
-        showProgress: true,
-        progressText: "{{current}} of {{total}}",
+        popoverClass: "ts-tour",
+        // Segment-local progress lies about the journey; a quiet global
+        // "k of 10" is appended into each description instead.
+        showProgress: false,
         nextBtnText: "Next",
         prevBtnText: "Back",
-        doneBtnText: "Finish",
+        doneBtnText: isFinalSegment ? "Finish" : "Next",
         allowClose: true,
         disableActiveInteraction: true,
         overlayOpacity: 0.6,
-        steps: present.map((step) => ({
-          element: step.selector,
+        steps: present.map((s) => ({
+          element: s.selector,
           popover: {
-            title: step.title,
-            description: step.description,
+            title: s.title,
+            description: `${s.description}<span class="ts-tour-count">${
+              JOURNEY.indexOf(s) + 1
+            } of ${JOURNEY.length}</span>`,
           },
         })),
+        onNextClick: () => {
+          const active = driverRef.current
+          if (!active) return
+          if (!active.isLastStep()) {
+            active.moveNext()
+            return
+          }
+          // Segment boundary: hand off to the next page, or finish.
+          if (isFinalSegment) {
+            active.destroy() // non-programmatic ⇒ onDestroyed ends the tour
+            return
+          }
+          programmaticDestroy.current = true
+          active.destroy()
+          writeTourIndex(end + 1)
+          const nextStep = JOURNEY[end + 1]
+          if (nextStep.page) {
+            void navigate({ href: pagePath(nextStep.page, eventRef) })
+          }
+        },
         onDestroyed: () => {
           driverRef.current = null
           // Finished or closed — either way the tour is over (the checklist
@@ -254,6 +398,7 @@ export function DashboardTour() {
       driverRef.current = instance
       instance.drive()
     })()
+
     return () => {
       cancelled = true
       if (driverRef.current) {
@@ -262,9 +407,7 @@ export function DashboardTour() {
         driverRef.current = null
       }
     }
-    // Deliberately NOT keyed on pathname: navigating mid-guide would restart
-    // it; the overlay + disabled interactions make that near-impossible anyway.
-  }, [phase, endTour])
+  }, [phase, pathname, eventRef, navigate, endTour])
 
   if (phase !== "welcome") return null
 

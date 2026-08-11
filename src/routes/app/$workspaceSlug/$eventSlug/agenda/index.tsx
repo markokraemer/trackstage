@@ -204,7 +204,7 @@ function AgendaPage() {
   const loading = eventsPending || (Boolean(event) && boardPending)
 
   const header = (
-    <PageHeader
+    <PageHeader data-tour="page-agenda"
       title="Agenda"
       description="Build your programme: give every accepted session a room and a time, and catch clashes before your speakers do."
       actions={

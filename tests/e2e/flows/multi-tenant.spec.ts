@@ -67,7 +67,7 @@ test.describe("multi-tenancy", () => {
         fresh.getByText(/welcome to trackstage/i).first(),
       ).toBeVisible({ timeout: 20_000 })
       await fresh
-        .getByRole("button", { name: /explore on my own/i })
+        .getByRole("button", { name: /^skip( for now)?$/i })
         .first()
         .click()
       await waitForShell(fresh)

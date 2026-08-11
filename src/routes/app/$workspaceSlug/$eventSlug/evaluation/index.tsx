@@ -145,7 +145,7 @@ function EvaluationPage() {
   if (!event) {
     return (
       <div className="flex flex-col gap-6">
-        <PageHeader
+        <PageHeader data-tour="page-evaluation"
           title="Evaluation"
           description="Score submissions with a panel of reviewers, one round at a time."
         />
@@ -164,7 +164,7 @@ function EvaluationPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader
+      <PageHeader data-tour="page-evaluation"
         title="Evaluation"
         description="Score submissions with a panel of reviewers, one round at a time. Every reviewer gets a private link — no accounts to create."
         actions={

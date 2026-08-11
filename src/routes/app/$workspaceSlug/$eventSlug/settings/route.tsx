@@ -93,6 +93,9 @@ function SettingsLayout() {
                   render={
                     <Link
                       to={tabHref(tab.section)}
+                      data-tour={
+                        tab.value === "rooms" ? "settings-tab-rooms" : undefined
+                      }
                       activeOptions={{ exact: tab.section === undefined }}
                     />
                   }

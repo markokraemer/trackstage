@@ -79,6 +79,7 @@ function FormsListPage() {
   const newFormLink = (
     <Link
       to="."
+      data-tour="new-form"
       search={(prev) => ({ ...prev, new: true })}
       className={buttonVariants({ size: "sm" })}
     >

@@ -361,7 +361,7 @@ function SubmissionsPage() {
   if (hasNoEvent) {
     return (
       <div className="flex flex-col gap-6">
-        <PageHeader
+        <PageHeader data-tour="page-submissions"
           title="Submissions"
           description="Everything submitted to your event, in one place."
         />
@@ -391,7 +391,7 @@ function SubmissionsPage() {
 
   return (
     <div className="flex flex-col gap-5">
-      <PageHeader
+      <PageHeader data-tour="page-submissions"
         title="Submissions"
         description="Review what came in, stage your decisions, then send them when you're ready."
       />

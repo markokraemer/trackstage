@@ -206,7 +206,7 @@ export async function uiSignIn(page: Page, email: string, password: string) {
  * A brand-new account lands on the FULL-SCREEN onboarding takeover
  * (src/components/onboarding/onboarding-takeover.tsx) — no shell until it is
  * finished or skipped. Most specs want the app itself, so by default this
- * helper skips it ("I'll explore on my own"; the skip persists server-side).
+ * helper skips it (the wizard's "Skip" link; the skip persists server-side).
  * Pass `{ skipOnboarding: false }` to stay on the takeover and assert it. */
 export async function uiSignUp(
   page: Page,
@@ -250,7 +250,9 @@ export async function uiSignUp(
 /** Click the takeover's escape hatch; tolerant if it never shows (already
  *  skipped on a previous attempt, or the account somehow owns events). */
 async function dismissOnboarding(page: Page) {
-  const skip = page.getByRole("button", { name: /explore on my own/i }).first()
+  const skip = page
+    .getByRole("button", { name: /^skip( for now)?$|explore on my own/i })
+    .first()
   try {
     await skip.click({ timeout: 15_000 })
   } catch {

@@ -276,7 +276,7 @@ function SpeakersPage() {
   if (isEmpty) {
     return (
       <div className="flex flex-col gap-6">
-        <PageHeader
+        <PageHeader data-tour="page-speakers"
           title="Speakers"
           description="Everyone attached to your program — accepted or still in review — and what they still owe you."
         />
@@ -299,7 +299,7 @@ function SpeakersPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader
+      <PageHeader data-tour="page-speakers"
         title="Speakers"
         description="Everyone attached to your program — accepted or still in review — and what they still owe you."
         actions={

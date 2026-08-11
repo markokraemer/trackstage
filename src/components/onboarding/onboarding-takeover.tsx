@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react"
-import { Link, useNavigate } from "@tanstack/react-router"
+import { Link, useNavigate, useRouterState } from "@tanstack/react-router"
 import { useMutation, useQuery } from "@tanstack/react-query"
 import { convexQuery, useConvexMutation } from "@convex-dev/react-query"
 import { api } from "@convex/_generated/api"
@@ -26,7 +26,11 @@ import { EVENT_TYPES } from "@/components/settings/event-details-form"
 import { browserTimezone } from "@/components/settings/timezone"
 import { isValidSlug, publicEventUrl, slugify } from "@/components/settings/slug"
 import { authClient } from "@/lib/auth-client"
-import { FRESH_SIGNUP_KEY, writeTourPhase } from "@/lib/onboarding-storage"
+import {
+  FRESH_SIGNUP_KEY,
+  clearTourPhase,
+  writeTourPhase,
+} from "@/lib/onboarding-storage"
 import { useSession } from "@/lib/session"
 import { setCurrentEventId, useCurrentEvent } from "@/lib/current-event"
 import { appLink } from "@/lib/app-links"
@@ -61,6 +65,10 @@ import { errorMessage } from "@/lib/errors"
  * address. Skipping from any other step sets the same per-user flag as
  * finishing (convex/onboarding.ts).
  */
+
+/** `?onboarding-redo` is consumed at most once per page load — a module
+ *  flag, not a ref, so a remounting layout can never double-fire it. */
+let redoConsumed = false
 
 /** Mid-flow state, so the verify-email round trip resumes where it left off. */
 const RESUME_KEY = "ts-onboarding-state"
@@ -182,6 +190,7 @@ export function useOnboardingGate(): OnboardingGate {
     convexQuery(api.onboarding.status, status === "authenticated" ? {} : "skip"),
   )
   const emailState = useEmailVerification()
+  const resetOnboarding = useConvexMutation(api.onboarding.reset)
   const [active, setActive] = useState<boolean | null>(null)
   const [hint] = useState(
     () =>
@@ -197,6 +206,47 @@ export function useOnboardingGate(): OnboardingGate {
     setActive(needs)
     if (!needs) clearOnboardingStorage()
   }, [active, resolved, flag, events])
+
+  // `?onboarding-redo` on any /app URL — explicit opt-in to run the whole
+  // experience again (Marko, 2026-08-12), demo accounts included: both
+  // server flags reset, then straight into welcome+tour (has events) or the
+  // full wizard (zero events). Consumed once and stripped from the address,
+  // the same pattern as the portal's `?t=` token. Read from
+  // `window.location` — the routes' validateSearch re-stringifies the search
+  // and quietly drops keys it doesn't declare.
+  const routerLocation = useRouterState({ select: (s) => s.location.href })
+  const navigate = useNavigate()
+  useEffect(() => {
+    void routerLocation // re-check on every navigation
+    if (redoConsumed || typeof window === "undefined") return
+    if (!new URLSearchParams(window.location.search).has("onboarding-redo")) {
+      return
+    }
+    if (status !== "authenticated" || eventsLoading) return
+    redoConsumed = true
+    void resetOnboarding({}).catch(() => {})
+    clearOnboardingStorage()
+    clearTourPhase()
+    if (events.length > 0) {
+      setActive(false)
+      writeTourPhase("welcome")
+    } else {
+      try {
+        sessionStorage.setItem(FRESH_SIGNUP_KEY, "1")
+      } catch {
+        /* private mode */
+      }
+      setActive(true)
+    }
+    // Strip THROUGH the router (raw history.replaceState desyncs TanStack's
+    // patched history and the two fight over the address).
+    const url = new URL(window.location.href)
+    url.searchParams.delete("onboarding-redo")
+    void navigate({
+      href: url.pathname + url.search + url.hash,
+      replace: true,
+    })
+  }, [routerLocation, status, eventsLoading, events, resetOnboarding, navigate])
 
   const finish = useCallback(() => {
     clearOnboardingStorage()
@@ -838,7 +888,7 @@ function StepFooter({
         onClick={onSkip}
         className="text-sm text-muted-foreground underline-offset-4 transition-colors hover:text-foreground hover:underline"
       >
-        I'll explore on my own
+        Skip
       </button>
       {children}
     </div>
