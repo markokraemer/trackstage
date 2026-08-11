@@ -110,33 +110,138 @@ export function humanizeArgName(name: string): string {
 export type ArgSummaryEntry = { label: string; value: string }
 
 /**
+ * A bare machine identifier — a Convex document id, a token. 20+ unbroken
+ * alphanumerics is nothing a human typed or wants to read; slugs keep their
+ * dashes and emails their @, so both pass.
+ */
+function looksLikeId(value: string): boolean {
+  return /^[A-Za-z0-9]{20,}$/.test(value)
+}
+
+/**
+ * One value, said out loud — or null when there is no human way to say it
+ * (raw ids, opaque blobs). Objects flatten to their scalar fields, arrays of
+ * scalars to a comma list; nothing ever comes back as JSON.
+ */
+function humanizeArgValue(value: unknown): string | null {
+  if (value === null || value === undefined || value === "") return null
+  if (typeof value === "string") {
+    return looksLikeId(value) ? null : clip(value)
+  }
+  if (typeof value === "number" || typeof value === "boolean") {
+    return String(value)
+  }
+  if (Array.isArray(value)) {
+    const scalars = value
+      .filter(
+        (entry): entry is string | number =>
+          typeof entry === "string" || typeof entry === "number"
+      )
+      .map(String)
+      .filter((entry) => !looksLikeId(entry))
+    if (scalars.length > 0 && scalars.length === value.length) {
+      return clip(scalars.join(", "))
+    }
+    return `${value.length} ${value.length === 1 ? "entry" : "entries"}`
+  }
+  const parts = Object.entries(value as Record<string, unknown>)
+    .map(([key, entry]) => {
+      const said =
+        typeof entry === "string" && !looksLikeId(entry)
+          ? entry
+          : typeof entry === "number" || typeof entry === "boolean"
+            ? String(entry)
+            : null
+      return said === null ? null : `${humanizeArgName(key)}: ${said}`
+    })
+    .filter((part): part is string => part !== null)
+  if (parts.length > 0) return clip(parts.join(", "))
+  const keys = Object.keys(value)
+  return keys.length > 0 ? `${keys.length} fields` : null
+}
+
+/**
  * Flattens a tool's input into label/value pairs an organizer can read at a
- * glance on the approval card. Long strings are clipped, objects collapse to
- * compact JSON — the raw payload is always one click away under "Parameters".
+ * glance on the approval card. Strictly humanised: long strings are clipped,
+ * objects flatten to their readable fields, and anything with no human form —
+ * raw ids above all — is dropped rather than dumped (Marko, 2026-08-11: no
+ * JSON, no ids, anywhere in the chat).
  */
 export function summarizeToolArgs(input: unknown): Array<ArgSummaryEntry> {
   if (input === null || typeof input !== "object" || Array.isArray(input)) {
-    return input === undefined || input === null
-      ? []
-      : [{ label: "Input", value: clip(String(input)) }]
+    const value = humanizeArgValue(input)
+    return value === null ? [] : [{ label: "Input", value }]
   }
   return Object.entries(input as Record<string, unknown>)
-    .filter(
-      ([, value]) => value !== undefined && value !== null && value !== ""
-    )
     // `confirm` is the transport-level approval flag the card itself embodies
     // — showing "Confirm: true" next to the Approve button is just noise.
     .filter(([key]) => key !== "confirm")
-    .map(([key, value]) => ({
-      label: humanizeArgName(key),
-      value: clip(
-        typeof value === "string"
-          ? value
-          : typeof value === "number" || typeof value === "boolean"
-            ? String(value)
-            : JSON.stringify(value)
-      ),
-    }))
+    .map(([key, value]) => {
+      const said = humanizeArgValue(value)
+      return said === null
+        ? null
+        : { label: humanizeArgName(key), value: said }
+    })
+    .filter((entry): entry is ArgSummaryEntry => entry !== null)
+}
+
+/** Result keys worth quoting in a tool card's header, best first. */
+const RESULT_TITLE_KEYS = [
+  "title",
+  "name",
+  "full_name",
+  "fullName",
+  "headline",
+  "subject",
+  "filename",
+  "email",
+] as const
+
+/**
+ * The one-liner next to the tool name in the card header — `Get submission ·
+ * "Taming 40-Minute CI…"`. Derived from the RESULT, so it is a fact, not an
+ * echo of the model's arguments; never an id, and null when the payload has
+ * nothing a human would recognise (in which case the header shows nothing
+ * extra).
+ */
+export function summarizeToolResult(output: unknown): string | null {
+  if (output === null || typeof output !== "object" || Array.isArray(output)) {
+    return null
+  }
+  const record = output as Record<string, unknown>
+  // The apiV1-backed tools answer in a `{ data }` envelope; look inside it.
+  const data = record.data
+  const scopes: Array<Record<string, unknown>> = [record]
+  if (data !== null && typeof data === "object" && !Array.isArray(data)) {
+    scopes.push(data as Record<string, unknown>)
+  }
+  for (const scope of scopes) {
+    for (const key of RESULT_TITLE_KEYS) {
+      const value = scope[key]
+      if (
+        typeof value === "string" &&
+        value.length > 0 &&
+        !looksLikeId(value)
+      ) {
+        return clip(value, 60)
+      }
+    }
+  }
+  // Lists: say how many came back, in the payload's own words ("12
+  // submissions"), preferring the server's total over the page we got.
+  for (const scope of scopes.slice().reverse()) {
+    for (const [key, value] of Object.entries(scope)) {
+      if (!Array.isArray(value) || key === "results") continue
+      const total =
+        typeof record.total === "number" ? record.total : value.length
+      const base =
+        key === "data" ? "results" : humanizeArgName(key).toLowerCase()
+      const noun =
+        total === 1 && base.endsWith("s") ? base.slice(0, -1) : base
+      return `${total} ${noun}`
+    }
+  }
+  return null
 }
 
 function clip(value: string, max = 140): string {

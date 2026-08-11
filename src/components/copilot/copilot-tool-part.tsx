@@ -12,6 +12,7 @@ import {
   isDestructiveTool,
   sendsEmail,
   summarizeToolArgs,
+  summarizeToolResult,
 } from "@/lib/copilot"
 import { ToolFrame } from "@/components/copilot/tool-views/tool-frame"
 import {
@@ -34,8 +35,10 @@ import { FieldGrid, ToolAlert } from "@/components/copilot/tool-views/shared"
  *  - the RESULT, once the tool has run: a purpose-built rendering per tool
  *    (tool-views/registry.tsx) — a form card with a copyable public link, a
  *    submissions table, an agenda day summary — rather than JSON.
- *  - the RECEIPT above it: a collapsed frame naming the tool and its state,
- *    which expands to the exact arguments and the raw response.
+ *  - the RECEIPT around it: a frame whose header names the tool, quotes the
+ *    result in one humanised line, and shows its state; the chevron collapses
+ *    the rich view to just that line. No state ever shows raw JSON or ids —
+ *    that was a debug affordance, and Marko had it removed (2026-08-11).
  *
  * Tool parts arrive from `useChat` as `dynamic-tool` parts (our tools are
  * discovered from the MCP server at runtime), so everything keys off
@@ -126,51 +129,41 @@ export function CopilotToolPart({
     )
   }
 
-  const frame = (
+  // The body behind the chevron is the rich view itself — the friendly error
+  // sentence on failure, a quiet note on cancellation, the purpose-built
+  // rendering on success. While the tool is still running there is no body,
+  // and the frame is just its header row.
+  const body =
+    part.state === "output-denied" ? (
+      <p className="text-sm text-muted-foreground">
+        Cancelled — nothing was changed.
+      </p>
+    ) : part.state === "output-error" ? (
+      <ToolAlert title={`${label} failed`}>
+        {part.errorText || "The tool returned an error."}
+      </ToolAlert>
+    ) : part.state === "output-available" ? (
+      <CopilotToolOutput
+        toolName={toolName}
+        input={part.input}
+        output={part.output}
+      />
+    ) : null
+
+  return (
     <ToolFrame
       title={label}
       toolName={toolName}
       state={part.state}
       icon={Icon}
-      input={part.input}
-      output={part.state === "output-available" ? part.output : undefined}
-      errorText={part.state === "output-error" ? part.errorText : undefined}
+      summary={
+        part.state === "output-available"
+          ? summarizeToolResult(part.output)
+          : null
+      }
       emphasis={destructive}
-    />
-  )
-
-  if (part.state === "output-denied") {
-    return (
-      <div className="space-y-2">
-        {frame}
-        <p className="text-sm text-muted-foreground">
-          Cancelled — nothing was changed.
-        </p>
-      </div>
-    )
-  }
-
-  if (part.state === "output-error") {
-    return (
-      <div className="space-y-2">
-        {frame}
-        <ToolAlert title={`${label} failed`}>
-          {part.errorText || "The tool returned an error."}
-        </ToolAlert>
-      </div>
-    )
-  }
-
-  return (
-    <div className="space-y-2">
-      {frame}
-      {part.state === "output-available" ? (
-        <CopilotToolOutput
-          toolName={toolName}
-          input={part.input}
-          output={part.output}
-        />
-      ) : null}
-    </div>
+    >
+      {body}
+    </ToolFrame>
   )
 }
