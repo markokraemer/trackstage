@@ -386,3 +386,42 @@ co-speakers on one submission both survive.
 
 The library still *lists* every version, which is correct: a library is a history, a
 bundle is a handover.
+
+
+### ABS-13 — score export verified by opening the file · **pass**
+
+The judge could only see a toast ("Exported 6 submissions with their scores.") and wrote
+*"the file contents could not be verified"*. Downloaded it from prod and read it:
+`ai-engineer-summit-2026-scores-2026-08-12.csv`, 12,297 bytes, 20 columns —
+Title, Status, Type, Source form, Track, Format, Level, Language, Tags, Speakers,
+Speaker emails, **Average score**, **Reviews**, Room, Scheduled at, Duration, Submitted
+at, Decided at, Notified at, Description — one row per submission, UTF-8 BOM so Excel
+opens it cleanly. Meets the pass condition ("per-criterion **or** aggregate scores").
+Record as **pass** in `manual-results.json`.
+
+### The public `.ics` feed was emitting invalid lines · **product** · FIXED
+
+Same treatment applied to the calendar deliverable swyx singled out ("`.ics` is enough").
+Fetched the live feed and validated it against RFC 5545 rather than eyeballing it:
+correct `text/calendar` content type, `Content-Disposition`, VCALENDAR envelope, 6
+VEVENTs, all with UID/DTSTAMP/DTSTART/SUMMARY, unique UIDs, CRLF throughout, proper
+escaping. **But two lines were 76 octets, one over the §3.1 limit.**
+
+There are two ICS writers. `convex/lib/ics.ts::foldLine` (single-session invites on
+speaker emails) is octet-aware and unit-tested. `convex/lib/apiIcs.ts::icsFold` — the one
+serving the public feed — sliced by `line.length`, i.e. UTF-16 code units:
+
+- an em dash is one character and three octets → "74 characters" ships as 76
+- a run of emoji produced **140-octet** lines
+- when the boundary lands mid-surrogate-pair the chunk ends on a lone surrogate, which
+  becomes U+FFFD once encoded as UTF-8 — a genuinely corrupt calendar entry, reproduced
+
+`icsFold` now defers to `foldLine`. The modules stay separate for the reasons in the
+apiIcs header, but folding was never one of those differences. Four regression tests,
+including the mid-surrogate boundary.
+
+### Method note
+
+Three items in a row — CNT-14, ABS-13, the `.ics` feed — were "unverifiable by the
+agent". Two of the three were not merely unverified but **wrong**. Opening the artefact
+rather than trusting the toast is what found both.
