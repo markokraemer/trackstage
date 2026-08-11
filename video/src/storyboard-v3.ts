@@ -64,6 +64,24 @@ export type ChapterSceneV3 = {
   segments: SegmentV3[]
 }
 
+/**
+ * The MCP beat — Marko: the copilot + MCP story is THE flagship
+ * differentiator and gets its own proper beat, not a blink. A slow pan down
+ * the real connect surface (API keys → "Connect from your AI assistant" →
+ * Claude / ChatGPT / Codex tabs → the one-command connect).
+ */
+export type McpSceneV3 = {
+  kind: "mcp"
+  id: string
+  durationInFrames: number
+  step: string
+  label: string
+  headline: string
+  /** File under public/captures/. */
+  src: string
+  url: string
+}
+
 export type StillsSceneV3 = {
   kind: "stills"
   id: string
@@ -96,6 +114,7 @@ export type SceneV3 =
   | TitleSceneV3
   | RevealSceneV3
   | ChapterSceneV3
+  | McpSceneV3
   | StillsSceneV3
   | StatsSceneV3
   | CloseSceneV3
@@ -118,7 +137,7 @@ export const storyboardV3: Array<{ scene: SceneV3; fadeIn: number }> = [
     scene: {
       kind: "title",
       id: "cold-open",
-      durationInFrames: 96,
+      durationInFrames: 90,
       eyebrow: "Every conference runs on this",
       headline: ["Event teams pay $40,000 a year", "for slow speaker software."],
       mutedFrom: 1,
@@ -145,7 +164,7 @@ export const storyboardV3: Array<{ scene: SceneV3; fadeIn: number }> = [
       headline: "Build your CFP form in an afternoon",
       clip: "form-builder.mp4",
       url: "trackstage.app/app/forms",
-      segments: [{ trimBefore: 16, rate: 1.35, hold: 138 }],
+      segments: [{ trimBefore: 16, rate: 1.35, hold: 132 }],
     }),
   },
   {
@@ -158,7 +177,7 @@ export const storyboardV3: Array<{ scene: SceneV3; fadeIn: number }> = [
       clip: "cfp.mp4",
       url: "trackstage.app/submit/ai-summit-2026",
       segments: [
-        { trimBefore: 10, rate: 1.35, hold: 84 }, // welcome → email → continue
+        { trimBefore: 10, rate: 1.35, hold: 80 }, // welcome → email → continue
         { trimBefore: 166, rate: 1.35, hold: 132 }, // conditional → review → submitted
       ],
     }),
@@ -172,7 +191,7 @@ export const storyboardV3: Array<{ scene: SceneV3; fadeIn: number }> = [
       headline: "Stage decisions — nothing sends by accident",
       clip: "triage.mp4",
       url: "trackstage.app/app/submissions",
-      segments: [{ trimBefore: 30, rate: 1.25, hold: 134 }],
+      segments: [{ trimBefore: 30, rate: 1.25, hold: 130 }],
     }),
   },
   {
@@ -196,7 +215,7 @@ export const storyboardV3: Array<{ scene: SceneV3; fadeIn: number }> = [
       headline: "Every speaker gets a portal — tasks included",
       clip: "portal.mp4",
       url: "trackstage.app/portal",
-      segments: [{ trimBefore: 24, rate: 1.25, hold: 126 }],
+      segments: [{ trimBefore: 24, rate: 1.25, hold: 124 }],
     }),
   },
   {
@@ -208,7 +227,7 @@ export const storyboardV3: Array<{ scene: SceneV3; fadeIn: number }> = [
       headline: "Drag the agenda together — clashes flagged live",
       clip: "agenda.mp4",
       url: "trackstage.app/app/agenda",
-      segments: [{ trimBefore: 76, rate: 1.3, hold: 152 }],
+      segments: [{ trimBefore: 76, rate: 1.3, hold: 148 }],
     }),
   },
   {
@@ -232,7 +251,7 @@ export const storyboardV3: Array<{ scene: SceneV3; fadeIn: number }> = [
       headline: "One click to a public schedule — .ics included",
       clip: "publish.mp4",
       url: "trackstage.app/e/ai-summit-2026",
-      segments: [{ trimBefore: 52, rate: 1.3, hold: 144 }],
+      segments: [{ trimBefore: 52, rate: 1.3, hold: 140 }],
     }),
   },
   {
@@ -250,32 +269,41 @@ export const storyboardV3: Array<{ scene: SceneV3; fadeIn: number }> = [
     }),
   },
   {
+    // The flagship differentiator gets its own beat (Marko): the same brain
+    // from anywhere — a slow pan down the real MCP connect surface.
+    fadeIn: 0,
+    scene: {
+      kind: "mcp",
+      id: "mcp",
+      durationInFrames: 116,
+      step: "10",
+      label: "Connect",
+      headline: "Or drive it all from Claude, ChatGPT or Codex",
+      src: "captures/mcp.png",
+      url: "trackstage.app/app/account?tab=api",
+    },
+  },
+  {
     // Hard cut — the browser frame persists from the copilot chapter, so a
     // crossfade would double-expose two headlines over two screens.
     fadeIn: 0,
     scene: {
       kind: "stills",
       id: "capabilities",
-      durationInFrames: 150,
+      durationInFrames: 96,
       eyebrow: "Also inside",
       shots: [
-        {
-          src: "captures/mcp.png",
-          label: "Operate it from Claude — MCP built in",
-          url: "trackstage.app/app/account?tab=api",
-          framesEach: 50,
-        },
         {
           src: "captures/embeds.png",
           label: "Embed your program anywhere",
           url: "trackstage.app/app/embeds",
-          framesEach: 50,
+          framesEach: 48,
         },
         {
           src: "captures/dashboard.png",
           label: "Everything live on one dashboard",
           url: "trackstage.app/app",
-          framesEach: 50,
+          framesEach: 48,
         },
       ],
     },
@@ -302,7 +330,7 @@ export const storyboardV3: Array<{ scene: SceneV3; fadeIn: number }> = [
     scene: {
       kind: "close",
       id: "close",
-      durationInFrames: 156,
+      durationInFrames: 152,
       chip: "Open source, MIT licensed",
       domain: "trackstage.app",
       sub: "Open source. Launch-ready. Free.",

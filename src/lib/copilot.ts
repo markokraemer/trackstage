@@ -19,20 +19,28 @@ export const COPILOT_MODEL = "google/gemini-3.5-flash"
 /** Where the AI SDK talks to us: our MCP server's Streamable HTTP endpoint. */
 export const COPILOT_MCP_PATH = "/mcp"
 
-// ——— Destructive tools ——————————————————————————————————————————————————
-// docs/memory/RULES.md #24: "PROPER APPROVAL FLOWS for every destructive MCP
-// action". Destructive here means: it emails real people, it decides
-// somebody's fate, it rewrites many rows at once, or it takes something away.
-// Everything else runs unattended — an approval prompt on `list_submissions`
-// would just train organizers to click through the ones that matter.
+// ——— Write tools ————————————————————————————————————————————————————————
+// docs/memory/RULES.md #24, extended by Marko's full-proxy pass: EVERY write
+// — anything that is not a read — needs a human approval, not just the
+// destructive tier. The gate itself no longer lives here: the server route
+// (src/routes/api/chat.ts) suspends every tool the MCP server does NOT
+// annotate `readOnlyHint: true`, and the MCP server refuses every write
+// without `confirm: true` besides. What this file keeps is the CARD COPY
+// vocabulary: which tools deserve the louder "destroys data" / "sends email"
+// framing on their approval card.
 
-/** Tools that must never run without an explicit human approval. */
+/**
+ * Tools whose approval card should read as destruction, not mere change.
+ * Kept as emphasis only — the approval requirement itself covers all writes.
+ */
 export const DESTRUCTIVE_TOOLS: ReadonlySet<string> = new Set([
   "commit_decision_queue", // emails every speaker in the queue
   "set_submission_status", // stages an accept/decline decision
   "auto_place_sessions", // bulk-rewrites the agenda
   "send_reminders", // emails every speaker with an open task
   "send_test_email", // outbound mail, however harmless
+  "send_bulk_email", // one email per recipient in the audience
+  "remind_evaluators", // emails evaluators with open reviews
   "update_form_settings", // can close a live CFP
   "unschedule_session", // takes a session off the agenda
 ])
@@ -42,13 +50,15 @@ export const EMAIL_TOOLS: ReadonlySet<string> = new Set([
   "commit_decision_queue",
   "send_reminders",
   "send_test_email",
+  "send_bulk_email",
+  "remind_evaluators",
+  "invite_workspace_member",
 ])
 
 /**
- * True when a tool needs a human "yes" first. The explicit set above is the
- * source of truth; the pattern is a safety net so a tool added to the MCP
- * server later — `delete_event`, `bulk_decline` — is dangerous by default
- * rather than dangerous by omission.
+ * True when a tool's approval card should use the destructive framing. The
+ * explicit set is the source of truth; the pattern catches names that speak
+ * for themselves so a future `delete_*` reads as dangerous by default.
  */
 export function isDestructiveTool(toolName: string): boolean {
   if (DESTRUCTIVE_TOOLS.has(toolName)) return true
@@ -114,6 +124,9 @@ export function summarizeToolArgs(input: unknown): Array<ArgSummaryEntry> {
     .filter(
       ([, value]) => value !== undefined && value !== null && value !== ""
     )
+    // `confirm` is the transport-level approval flag the card itself embodies
+    // — showing "Confirm: true" next to the Approve button is just noise.
+    .filter(([key]) => key !== "confirm")
     .map(([key, value]) => ({
       label: humanizeArgName(key),
       value: clip(
@@ -128,6 +141,35 @@ export function summarizeToolArgs(input: unknown): Array<ArgSummaryEntry> {
 
 function clip(value: string, max = 140): string {
   return value.length <= max ? value : `${value.slice(0, max - 1)}…`
+}
+
+// ——— Saved conversations ————————————————————————————————————————————————
+
+/** Longest auto-derived chat title. Mirrors convex/copilotThreads.ts. */
+const THREAD_TITLE_MAX = 48
+
+/**
+ * A conversation's name, taken from the first thing the organizer said —
+ * "Which talks are still pending?" reads better in the rail than "Chat 3",
+ * and nobody wants to name a chat before having it.
+ *
+ * The server derives the same title from the same messages; this copy exists
+ * so a brand-new thread arrives in the rail already labelled, without waiting
+ * for the round trip (rule 26).
+ */
+export function copilotThreadTitle(
+  messages: Array<{ role: string; parts?: Array<{ type: string; text?: string }> }>
+): string {
+  const firstUser = messages.find((message) => message.role === "user")
+  const text = (firstUser?.parts ?? [])
+    .map((part) => (part.type === "text" ? (part.text ?? "") : ""))
+    .join(" ")
+    .replace(/\s+/g, " ")
+    .trim()
+  if (!text) return "New chat"
+  return text.length > THREAD_TITLE_MAX
+    ? `${text.slice(0, THREAD_TITLE_MAX - 1)}…`
+    : text
 }
 
 // ——— Prompt starters ————————————————————————————————————————————————————
@@ -175,7 +217,7 @@ export function copilotSystemPrompt(context: {
     "- Chain tools freely to answer a question fully; the organizer sees each call, so you do not need to narrate them.",
     "- Never invent ids. Resolve events, submissions and people through the list/get tools first.",
     "- Decisions are two-step by design: set_submission_status stages them, commit_decision_queue is what actually emails speakers. Say which step you are proposing.",
-    "- Destructive actions (committing queues, staging decisions, sending email, closing forms, bulk agenda edits) are automatically gated: the app shows the organizer an approval card with the arguments and runs the tool only if they accept. So when they ask for one, CALL THE TOOL — do not ask 'shall I?' in prose first, and never claim you did something you only proposed. Gather what you need to get the arguments right, then call it and say in one line what accepting would do (how many people, which emails go out).",
+    "- EVERY action that changes anything (creating, editing, deleting, scheduling, emailing) is automatically gated: the app shows the organizer an approval card with the arguments and runs the tool only if they accept. So when they ask for one, CALL THE TOOL — do not ask 'shall I?' in prose first, never pass a `confirm` argument yourself, and never claim you did something you only proposed. Gather what you need to get the arguments right, then call it and say in one line what accepting would do (how many people, which emails go out).",
     "- If the organizer declines an approval, accept it and stop; do not re-issue the same call.",
     "- If a tool fails, read the error, correct the arguments and retry once; otherwise say plainly what went wrong.",
     "- If something is outside Trackstage, say so instead of improvising.",

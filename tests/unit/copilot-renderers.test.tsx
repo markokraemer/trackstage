@@ -56,7 +56,13 @@ const { CopilotToolOutput, TOOL_VIEWS, hasToolView } =
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "../..")
 
-/** The full MCP surface (convex/mcp.ts). Coverage is measured against it. */
+/**
+ * The tools with PURPOSE-BUILT views (src/components/copilot/tool-views).
+ * No longer the full MCP surface: the 2026-08-11 full-proxy pass grew the
+ * server to 81 tools, and everything outside this list renders through the
+ * JSON fallback view by design (asserted below). Add a tool here when it
+ * gains a bespoke view, not when it is added to the server.
+ */
 const ALL_TOOLS = [
   "list_workspaces",
   "list_events",
@@ -859,7 +865,7 @@ function renderTool(toolName: string, payload: Payload) {
 afterEach(cleanup)
 
 describe("copilot tool-view registry", () => {
-  it("has a purpose-built view for all 31 MCP tools", () => {
+  it("has a purpose-built view for every tool in the curated list", () => {
     const missing = ALL_TOOLS.filter((name) => !hasToolView(name))
     expect(missing).toEqual([])
     expect(ALL_TOOLS.length).toBe(34)

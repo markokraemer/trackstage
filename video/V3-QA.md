@@ -46,24 +46,25 @@ end-to-end 2fps watch-through for pacing.
 - [ ] Runtime 55–65s; music fades in/out cleanly; cuts feel intentional
       against the bed.
 
-## Cut map (composition frames, fadeIn overlaps applied) — iteration 2
+## Cut map (composition frames, fadeIn overlaps applied) — iteration 3
 
 | # | scene | start | dur | notes |
 |---|-------|-------|-----|-------|
-| 1 | cold-open | 0 | 96 | fade 0 |
-| 2 | reveal | 84 | 118 | fade 12; content exit-fades from 102 |
-| 3 | form-builder | 190 | 138 | fade 12 |
-| 4 | cfp | 328 | 216 | hard cut; internal jump at 412 |
-| 5 | triage | 544 | 134 | hard cut |
-| 6 | commit | 678 | 126 | hard cut |
-| 7 | portal | 804 | 126 | hard cut |
-| 8 | agenda | 930 | 152 | hard cut |
-| 9 | autoplace | 1082 | 108 | hard cut |
-| 10 | publish | 1190 | 144 | hard cut |
-| 11 | copilot | 1334 | 170 | hard cut; single segment |
-| 12 | capabilities | 1504 | 150 | hard cut; still cuts at 1554, 1604 |
-| 13 | stats | 1644 | 140 | fade 10 |
-| 14 | close | 1772 | 156 | fade 12 → total 1928 fr = 64.27s |
+| 1 | cold-open | 0 | 90 | fade 0 |
+| 2 | reveal | 78 | 118 | fade 12; content exit-fades from ~102 |
+| 3 | form-builder | 184 | 132 | fade 12 |
+| 4 | cfp | 316 | 212 | hard cut; internal jump at 396 |
+| 5 | triage | 528 | 130 | hard cut |
+| 6 | commit | 658 | 126 | hard cut |
+| 7 | portal | 784 | 124 | hard cut |
+| 8 | agenda | 908 | 148 | hard cut |
+| 9 | autoplace | 1056 | 108 | hard cut |
+| 10 | publish | 1164 | 140 | hard cut |
+| 11 | copilot | 1304 | 170 | hard cut; single segment |
+| 12 | mcp | 1474 | 116 | hard cut; slow pan down connect surface |
+| 13 | capabilities | 1590 | 96 | hard cut; still cut at 1638 |
+| 14 | stats | 1676 | 140 | fade 10 |
+| 15 | close | 1804 | 152 | fade 12 → total 1956 fr = 65.2s |
 
 ## Iterations
 
@@ -98,3 +99,20 @@ Accepted (noted, not defects): the MCP still shows the real demo MCP
 endpoint (convex.site) and demo account email at ~13px — authentic
 product footage, illegible at viewing size; the app's own dialog-backdrop
 blur in commit/auto-place is product behaviour, not an edit artifact.
+
+### Iteration 2 — render 2 (1928 fr / 64.27s), superseded before frame pass
+
+All six iteration-1 fixes rendered, but Marko's mid-task directive landed:
+the copilot + MCP story is THE flagship differentiator and must be a real
+beat, not a 50-frame blink. Restructured before reading frames:
+
+- NEW scene 12 "10 · Connect" (116 fr): a calm pan down the real MCP
+  connect surface in `captures/mcp.png` — personal API keys → "Connect
+  from your AI assistant" → Claude / ChatGPT / Codex tabs → the
+  one-command connect (Claude Code CLI block). Image at 1.3× inside the
+  landing browser frame, ease-in-out pan, nothing else moves.
+- Copilot chapter (approval-card beat) unchanged at 170 fr — together the
+  two beats run ~9.5s, the longest act in the film.
+- `mcp.png` dropped from the capabilities stills (now embeds + dashboard,
+  48 fr each); cold open / form-builder / cfp / triage / portal / agenda /
+  publish / close trimmed 2–6 fr each to land at 1956 fr = 65.2s.

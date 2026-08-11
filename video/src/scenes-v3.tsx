@@ -33,6 +33,7 @@ import { EASE_OUT, FONT, body, color, heading } from "./theme"
 import type {
   ChapterSceneV3,
   CloseSceneV3,
+  McpSceneV3,
   RevealSceneV3,
   StatsSceneV3,
   StillsSceneV3,
@@ -234,6 +235,74 @@ export const Chapter: React.FC<{ scene: ChapterSceneV3 }> = ({ scene }) => {
                   </Sequence>
                 )
               })}
+            </div>
+          </BrowserFrameV3>
+        </div>
+      </AbsoluteFill>
+    </AbsoluteFill>
+  )
+}
+
+// ——— MCP (the flagship beat: drive it from Claude / ChatGPT / Codex) —————————
+
+/**
+ * A calm pan down the real connect surface: personal API keys → "Connect from
+ * your AI assistant" → the client tabs and the one-command connect. The image
+ * is shown slightly over-scale inside the frame so the pan has room; nothing
+ * else moves.
+ */
+export const Mcp: React.FC<{ scene: McpSceneV3 }> = ({ scene }) => {
+  const frame = useCurrentFrame()
+  const { durationInFrames } = useVideoConfig()
+  const headlineIn = interpolate(frame, [2, 16], [0, 1], {
+    extrapolateLeft: "clamp",
+    extrapolateRight: "clamp",
+    easing: easeOut,
+  })
+  const viewportH = Math.round(FRAME_W * CLIP_RATIO)
+  const imgW = Math.round(FRAME_W * 1.3)
+  const imgH = Math.round(imgW * CLIP_RATIO)
+  const panY = interpolate(frame, [8, durationInFrames - 10], [0, imgH - viewportH], {
+    extrapolateLeft: "clamp",
+    extrapolateRight: "clamp",
+    easing: Easing.inOut(Easing.ease),
+  })
+  return (
+    <AbsoluteFill style={{ background: color.background }}>
+      <div style={{ position: "absolute", top: HEADER_TOP, left: FRAME_X }}>
+        <EyebrowRow glyph={scene.step} label={scene.label} />
+        <div
+          style={{
+            ...heading(40),
+            marginTop: 16,
+            opacity: headlineIn,
+            translate: `0 ${interpolate(headlineIn, [0, 1], [8, 0])}px`,
+          }}
+        >
+          {scene.headline}
+        </div>
+      </div>
+      <AbsoluteFill style={{ alignItems: "center", justifyContent: "flex-start" }}>
+        <div style={{ marginTop: FRAME_TOP }}>
+          <BrowserFrameV3 width={FRAME_W} url={scene.url}>
+            <div
+              style={{
+                position: "relative",
+                width: FRAME_W,
+                height: viewportH,
+                overflow: "hidden",
+              }}
+            >
+              <Img
+                src={staticFile(scene.src)}
+                style={{
+                  position: "absolute",
+                  width: imgW,
+                  left: -(imgW - FRAME_W) / 2,
+                  top: -panY,
+                  display: "block",
+                }}
+              />
             </div>
           </BrowserFrameV3>
         </div>

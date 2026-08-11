@@ -23,7 +23,13 @@ import { autoPlaceCore, computeConflicts } from "./agenda"
 import { deleteEventCascade } from "./events"
 import { ensureOnboardingTasks, withJoins } from "./submissions"
 import { TASK_KINDS } from "./tasksAdmin"
-import { queueMessage, queueTaskReminders } from "./comms"
+import {
+  queueMessage,
+  queueTaskReminders,
+  resolveBulkRecipients,
+} from "./comms"
+import { deleteUploadRow } from "./lib/files"
+import { EMBED_FORMATS, EMBED_WIDGETS } from "./embeds"
 import { humanMessage } from "./lib/errors"
 import {
   DEFAULT_TEMPLATES,
@@ -904,6 +910,8 @@ export const getSubmission = internalQuery({
     const allScores = completed.flatMap((e) => Object.values(e.scores))
     return {
       ...submissionRow(joined),
+      /** Carried so edit tools can route to the owning event in one hop. */
+      eventId: submission.eventId,
       description: joined.description ?? null,
       answers: joined.answers,
       formName: joined.formName ?? null,
@@ -2239,6 +2247,895 @@ async function eventSummaryPayload(ctx: QueryCtx, event: Doc<"events">) {
 }
 
 // ══════════════════════════════════════════════════════════════════════════
+// Full-proxy surfaces the REST data layer doesn't carry
+//
+// Everything below exists because the organizer app can do it and the MCP
+// must too (Marko's full-proxy directive): workspace membership, the files
+// review gate, the bulk composer, evaluation distribution/reminders, embeds,
+// and the activity feed. Where convex/apiV1.ts already has an internal
+// function for a capability, the tool wraps THAT instead — these are only the
+// leftovers.
+// ══════════════════════════════════════════════════════════════════════════
+
+/** Resolve a workspace the caller belongs to, by id, slug, or uniqueness. */
+async function resolveWorkspace(
+  ctx: QueryCtx | MutationCtx,
+  userId: string,
+  ref: string | undefined,
+  minRole: "member" | "admin" | "owner" = "member",
+): Promise<{ member: Doc<"members">; org: Doc<"organizations"> }> {
+  const memberships = await ctx.db
+    .query("members")
+    .withIndex("by_userId", (q) => q.eq("userId", userId))
+    .collect()
+  const rows: Array<{ member: Doc<"members">; org: Doc<"organizations"> }> = []
+  for (const member of memberships) {
+    const org = await ctx.db.get(member.organizationId)
+    if (org) rows.push({ member, org })
+  }
+  let picked: { member: Doc<"members">; org: Doc<"organizations"> } | undefined
+  if (ref) {
+    const needle = ref.trim().toLowerCase()
+    picked = rows.find(
+      (row) => row.org._id === ref.trim() || row.org.slug === needle,
+    )
+    if (!picked) {
+      throw new ConvexError(
+        `No workspace matches "${ref}". Call list_workspaces to see yours.`,
+      )
+    }
+  } else {
+    if (rows.length === 0) throw new ConvexError("You don't belong to a workspace yet.")
+    if (rows.length > 1) {
+      throw new ConvexError(
+        "You belong to several workspaces — pass `workspace` (id or slug, see list_workspaces).",
+      )
+    }
+    picked = rows[0]
+  }
+  const order: Record<string, number> = { member: 0, admin: 1, owner: 2 }
+  const has = order[picked.member.role] ?? 0
+  if (has < order[minRole]) {
+    throw new ConvexError(
+      `This needs the ${minRole} role in "${picked.org.name}"; you are a ${picked.member.role}.`,
+    )
+  }
+  return picked
+}
+
+export const listWorkspaceMembers = internalQuery({
+  args: { userId: v.string(), workspace: v.optional(v.string()) },
+  returns: v.any(),
+  handler: async (ctx, args) => {
+    const { org } = await resolveWorkspace(ctx, args.userId, args.workspace)
+    const members = await ctx.db
+      .query("members")
+      .withIndex("by_organizationId", (q) => q.eq("organizationId", org._id))
+      .collect()
+    const rows = []
+    for (const member of members) {
+      let eventScope: Array<string> | null = null
+      if (member.eventIds !== undefined) {
+        eventScope = []
+        for (const eventId of member.eventIds) {
+          const event = await ctx.db.get(eventId)
+          if (event) eventScope.push(event.name)
+        }
+      }
+      rows.push({
+        memberId: member._id,
+        email: member.email,
+        role: member.role,
+        accepted: member.userId !== "",
+        /** null ⇒ every event in the workspace, now and in future. */
+        eventScope,
+      })
+    }
+    rows.sort((a, b) => a.email.localeCompare(b.email))
+    return {
+      workspace: { organizationId: org._id, name: org.name, slug: org.slug },
+      memberCount: rows.length,
+      members: rows,
+    }
+  },
+})
+
+/** Turn caller-supplied event refs (ids or slugs) into checked event ids. */
+async function eventScopeIds(
+  ctx: MutationCtx,
+  org: Doc<"organizations">,
+  refs: Array<string>,
+): Promise<Array<Id<"events">>> {
+  const ids: Array<Id<"events">> = []
+  for (const ref of refs) {
+    const asId = ctx.db.normalizeId("events", ref.trim())
+    let event = asId ? await ctx.db.get(asId) : null
+    if (!event) {
+      const candidates = await ctx.db
+        .query("events")
+        .withIndex("by_slug", (q) => q.eq("slug", ref.trim().toLowerCase()))
+        .take(20)
+      event = candidates.find((row) => row.organizationId === org._id) ?? null
+    }
+    if (!event || event.organizationId !== org._id) {
+      throw new ConvexError(`"${ref}" isn't an event of the "${org.name}" workspace.`)
+    }
+    if (!ids.includes(event._id)) ids.push(event._id)
+  }
+  return ids
+}
+
+export const inviteWorkspaceMember = internalMutation({
+  args: {
+    userId: v.string(),
+    workspace: v.optional(v.string()),
+    email: v.string(),
+    role: v.string(),
+    eventRefs: v.optional(v.array(v.string())),
+  },
+  returns: v.any(),
+  handler: async (ctx, args) => {
+    const { member: inviter, org } = await resolveWorkspace(
+      ctx,
+      args.userId,
+      args.workspace,
+      "admin",
+    )
+    if (!["admin", "member"].includes(args.role)) {
+      throw new ConvexError("role must be 'admin' or 'member'.")
+    }
+    const email = args.email.toLowerCase().trim()
+    if (!email.includes("@")) throw new ConvexError("Pass a real email address.")
+    const existing = await ctx.db
+      .query("members")
+      .withIndex("by_organizationId", (q) => q.eq("organizationId", org._id))
+      .collect()
+    if (existing.some((m) => m.email === email)) {
+      throw new ConvexError(`${email} is already a member of "${org.name}".`)
+    }
+    // Same rule as the workspace screen: only plain members can be scoped.
+    const scoped =
+      args.role === "member" && args.eventRefs !== undefined
+        ? await eventScopeIds(ctx, org, args.eventRefs)
+        : undefined
+    if (scoped !== undefined && scoped.length === 0) {
+      throw new ConvexError("Pick at least one event, or omit eventRefs for all events.")
+    }
+    await ctx.db.insert("members", {
+      organizationId: org._id,
+      userId: "",
+      email,
+      role: args.role,
+      ...(scoped !== undefined ? { eventIds: scoped } : {}),
+    })
+    let eventScope: string | undefined
+    if (scoped !== undefined) {
+      eventScope =
+        scoped.length === 1
+          ? ((await ctx.db.get(scoped[0]))?.name ?? "1 event")
+          : `${scoped.length} events`
+    }
+    await ctx.scheduler.runAfter(0, internal.platformEmails.sendWorkspaceInvite, {
+      toEmail: email,
+      workspaceName: org.name,
+      inviterName: inviter.email,
+      role: args.role,
+      ...(eventScope ? { eventScope } : {}),
+    })
+    return {
+      invited: email,
+      role: args.role,
+      workspace: org.name,
+      eventScope: eventScope ?? "all events",
+      note: "An invite email is on its way. Their access starts the moment they sign up with this address.",
+    }
+  },
+})
+
+export const updateWorkspaceMember = internalMutation({
+  args: {
+    userId: v.string(),
+    memberId: v.string(),
+    role: v.optional(v.string()),
+    /** Event ids/slugs to limit them to; empty array clears the limit. */
+    eventRefs: v.optional(v.array(v.string())),
+  },
+  returns: v.any(),
+  handler: async (ctx, args) => {
+    const id = ctx.db.normalizeId("members", args.memberId.trim())
+    const target = id ? await ctx.db.get(id) : null
+    if (!target) throw new ConvexError("Member not found — see list_workspace_members.")
+    const org = await ctx.db.get(target.organizationId)
+    if (!org) throw new ConvexError("Workspace not found.")
+
+    if (args.role !== undefined) {
+      // Role changes are the owner's call, exactly like the workspace screen.
+      await resolveWorkspace(ctx, args.userId, org._id, "owner")
+      if (!["admin", "member"].includes(args.role)) {
+        throw new ConvexError("role must be 'admin' or 'member'.")
+      }
+      if (target.role === "owner") throw new ConvexError("Owners keep the owner role.")
+      await ctx.db.patch(target._id, {
+        role: args.role,
+        // Admins are never event-scoped.
+        ...(args.role === "admin" ? { eventIds: undefined } : {}),
+      })
+    }
+    if (args.eventRefs !== undefined) {
+      await resolveWorkspace(ctx, args.userId, org._id, "admin")
+      const fresh = await ctx.db.get(target._id)
+      if (args.eventRefs.length === 0) {
+        await ctx.db.patch(target._id, { eventIds: undefined })
+      } else {
+        if (fresh && (fresh.role === "owner" || fresh.role === "admin")) {
+          throw new ConvexError(
+            "Owners and admins always see every event. Change their role to member first.",
+          )
+        }
+        const scoped = await eventScopeIds(ctx, org, args.eventRefs)
+        await ctx.db.patch(target._id, { eventIds: scoped })
+      }
+    }
+    if (args.role === undefined && args.eventRefs === undefined) {
+      throw new ConvexError("Nothing to change — pass role and/or eventRefs.")
+    }
+    const updated = await ctx.db.get(target._id)
+    return {
+      memberId: target._id,
+      email: target.email,
+      role: updated?.role,
+      eventScope:
+        updated?.eventIds === undefined ? "all events" : `${updated.eventIds.length} event(s)`,
+    }
+  },
+})
+
+export const removeWorkspaceMember = internalMutation({
+  args: { userId: v.string(), memberId: v.string() },
+  returns: v.any(),
+  handler: async (ctx, args) => {
+    const id = ctx.db.normalizeId("members", args.memberId.trim())
+    const target = id ? await ctx.db.get(id) : null
+    if (!target) throw new ConvexError("Member not found — see list_workspace_members.")
+    const { member } = await resolveWorkspace(
+      ctx,
+      args.userId,
+      target.organizationId,
+      "admin",
+    )
+    if (target._id === member._id) throw new ConvexError("You can't remove yourself.")
+    if (target.role === "owner") throw new ConvexError("Owners can't be removed.")
+    await ctx.db.delete(target._id)
+    return {
+      removed: true,
+      email: target.email,
+      note: "Their access ended immediately. Invite them again with invite_workspace_member if needed.",
+    }
+  },
+})
+
+// ——— Files review (mirrors tasksAdmin.listUploads / reviewUpload) ————————
+
+const APPROVAL_STATUSES = ["pending", "approved", "changes_requested"]
+
+export const listFiles = internalQuery({
+  args: {
+    userId: v.string(),
+    event: v.string(),
+    approvalStatus: v.optional(v.string()),
+    speaker: v.optional(v.string()),
+    limit: v.optional(v.number()),
+  },
+  returns: v.any(),
+  handler: async (ctx, args) => {
+    const event = await resolveEvent(ctx, args.userId, args.event)
+    if (
+      args.approvalStatus !== undefined &&
+      !APPROVAL_STATUSES.includes(args.approvalStatus)
+    ) {
+      throw new ConvexError(
+        `Invalid approvalStatus. One of: ${APPROVAL_STATUSES.join(", ")}.`,
+      )
+    }
+    let uploads = await ctx.db
+      .query("uploads")
+      .withIndex("by_eventId", (q) => q.eq("eventId", event._id))
+      .take(MAX_ROWS)
+    if (args.speaker) {
+      const person = await findPerson(ctx, event._id, args.speaker)
+      uploads = uploads.filter((u) => u.personId === person._id)
+    }
+    if (args.approvalStatus) {
+      uploads = uploads.filter((u) => u.approvalStatus === args.approvalStatus)
+    }
+    uploads.sort((a, b) => b._creationTime - a._creationTime)
+    const limit = Math.min(Math.max(args.limit ?? 50, 1), 200)
+    const counts: Record<string, number> = {}
+    for (const u of uploads) counts[u.approvalStatus] = (counts[u.approvalStatus] ?? 0) + 1
+    const rows = []
+    for (const upload of uploads.slice(0, limit)) {
+      const person = await ctx.db.get(upload.personId)
+      const task = upload.taskId ? await ctx.db.get(upload.taskId) : null
+      const submissionId = upload.submissionId ?? task?.submissionId
+      const submission = submissionId ? await ctx.db.get(submissionId) : null
+      rows.push({
+        fileId: upload._id,
+        filename: upload.filename,
+        version: upload.version,
+        approvalStatus: upload.approvalStatus,
+        reviewNote: upload.reviewNote ?? null,
+        speaker: person ? `${personName(person)} <${person.email}>` : null,
+        session: submission?.title ?? null,
+        task: task?.title ?? null,
+        uploadedAt: iso(upload._creationTime),
+      })
+    }
+    return {
+      total: uploads.length,
+      returned: rows.length,
+      countsByApprovalStatus: counts,
+      files: rows,
+      note: "Approve or reject one with review_file. Approved files are what public session pages may expose.",
+    }
+  },
+})
+
+export const reviewFile = internalMutation({
+  args: {
+    userId: v.string(),
+    fileId: v.string(),
+    approvalStatus: v.string(),
+    reviewNote: v.optional(v.string()),
+  },
+  returns: v.any(),
+  handler: async (ctx, args) => {
+    if (!APPROVAL_STATUSES.includes(args.approvalStatus)) {
+      throw new ConvexError(
+        `Invalid approvalStatus. One of: ${APPROVAL_STATUSES.join(", ")}.`,
+      )
+    }
+    const id = ctx.db.normalizeId("uploads", args.fileId.trim())
+    const upload = id ? await ctx.db.get(id) : null
+    if (!upload) throw new ConvexError("File not found — see list_files.")
+    await eventAccessFor(ctx, args.userId, upload.eventId)
+    await ctx.db.patch(upload._id, {
+      approvalStatus: args.approvalStatus,
+      reviewNote: args.reviewNote,
+    })
+    // Requesting changes reopens the task so the speaker sees it again —
+    // identical to the organizer UI's review action.
+    if (args.approvalStatus === "changes_requested" && upload.taskId) {
+      await ctx.db.patch(upload.taskId, { completedAt: undefined })
+    }
+    const person = await ctx.db.get(upload.personId)
+    return {
+      fileId: upload._id,
+      filename: upload.filename,
+      approvalStatus: args.approvalStatus,
+      reviewNote: args.reviewNote ?? null,
+      speaker: person?.email ?? null,
+      taskReopened: args.approvalStatus === "changes_requested" && Boolean(upload.taskId),
+    }
+  },
+})
+
+export const deleteFile = internalMutation({
+  args: { userId: v.string(), fileId: v.string() },
+  returns: v.any(),
+  handler: async (ctx, args) => {
+    const id = ctx.db.normalizeId("uploads", args.fileId.trim())
+    const upload = id ? await ctx.db.get(id) : null
+    if (!upload) throw new ConvexError("File not found — it may already be deleted.")
+    await eventAccessFor(ctx, args.userId, upload.eventId, "admin")
+    await deleteUploadRow(ctx, upload)
+    return {
+      deleted: true,
+      fileId: id,
+      filename: upload.filename,
+      note: "The file row and its stored bytes are gone. This cannot be undone.",
+    }
+  },
+})
+
+// ——— Bulk composer (mirrors comms.recipientCount / composeBulk) ——————————
+
+const BULK_FILTER_NAMES = ["all_speakers", "accepted", "incomplete_tasks", "manual"]
+
+type BulkFilter = "all_speakers" | "accepted" | "incomplete_tasks" | "manual"
+
+async function bulkAudience(
+  ctx: QueryCtx | MutationCtx,
+  event: Doc<"events">,
+  filter: string,
+  personRefs: Array<string> | undefined,
+): Promise<Array<Id<"people">>> {
+  if (!BULK_FILTER_NAMES.includes(filter)) {
+    throw new ConvexError(
+      `Invalid audience "${filter}". One of: ${BULK_FILTER_NAMES.join(", ")}.`,
+    )
+  }
+  let personIds: Array<Id<"people">> | undefined
+  if (filter === "manual") {
+    if (!personRefs || personRefs.length === 0) {
+      throw new ConvexError(
+        "audience 'manual' needs `speakers` — emails or person ids from list_speakers.",
+      )
+    }
+    personIds = []
+    for (const ref of personRefs) {
+      personIds.push((await findPerson(ctx, event._id, ref))._id)
+    }
+  }
+  return await resolveBulkRecipients(
+    ctx,
+    event._id,
+    filter as BulkFilter,
+    personIds,
+  )
+}
+
+export const countBulkAudience = internalQuery({
+  args: {
+    userId: v.string(),
+    event: v.string(),
+    audience: v.string(),
+    speakers: v.optional(v.array(v.string())),
+  },
+  returns: v.any(),
+  handler: async (ctx, args) => {
+    const event = await resolveEvent(ctx, args.userId, args.event)
+    const ids = await bulkAudience(ctx, event, args.audience, args.speakers)
+    const sample: Array<string> = []
+    for (const personId of ids.slice(0, 10)) {
+      const person = await ctx.db.get(personId)
+      if (person) sample.push(person.email)
+    }
+    return {
+      audience: args.audience,
+      recipients: ids.length,
+      sampleEmails: sample,
+      note: "This is exactly who send_bulk_email would email with the same arguments.",
+    }
+  },
+})
+
+export const sendBulkEmail = internalMutation({
+  args: {
+    userId: v.string(),
+    event: v.string(),
+    audience: v.string(),
+    subject: v.string(),
+    body: v.string(),
+    speakers: v.optional(v.array(v.string())),
+  },
+  returns: v.any(),
+  handler: async (ctx, args) => {
+    const event = await resolveEvent(ctx, args.userId, args.event)
+    const subject = args.subject.trim()
+    const body = args.body.trim()
+    if (!subject) throw new ConvexError("Add a subject line.")
+    if (!body) throw new ConvexError("Write a message body before sending.")
+    const recipients = await bulkAudience(ctx, event, args.audience, args.speakers)
+    if (recipients.length === 0) {
+      throw new ConvexError("Nobody matches that audience — pick a different one.")
+    }
+    let queued = 0
+    for (const personId of recipients) {
+      await queueMessage(ctx, {
+        eventId: event._id,
+        personId,
+        templateKey: "custom-bulk",
+        override: { subject, body },
+      })
+      queued++
+    }
+    await ctx.scheduler.runAfter(0, internal.comms.deliverPending, {})
+    return {
+      queued,
+      recipients: recipients.length,
+      subject,
+      note: "Each recipient gets their own copy with {{firstName}} etc. resolved. Track delivery with list_outbox.",
+    }
+  },
+})
+
+// ——— Evaluation: distribute + remind (mirror evaluationsAdmin) ———————————
+
+async function planFor(
+  ctx: QueryCtx | MutationCtx,
+  userId: string,
+  planRef: string,
+): Promise<Doc<"evaluationPlans">> {
+  const id = ctx.db.normalizeId("evaluationPlans", planRef.trim())
+  const plan = id ? await ctx.db.get(id) : null
+  if (!plan) {
+    throw new ConvexError("No such evaluation plan — see list_evaluation_plans.")
+  }
+  await eventAccessFor(ctx, userId, plan.eventId)
+  return plan
+}
+
+export const distributeEvaluations = internalMutation({
+  args: {
+    userId: v.string(),
+    planId: v.string(),
+    perReviewerCap: v.optional(v.number()),
+  },
+  returns: v.any(),
+  handler: async (ctx, args) => {
+    const plan = await planFor(ctx, args.userId, args.planId)
+    const cap = args.perReviewerCap
+    if (cap !== undefined && (!Number.isInteger(cap) || cap < 1)) {
+      throw new ConvexError("perReviewerCap must be a whole number, 1 or more.")
+    }
+    const evaluators = await ctx.db
+      .query("evaluators")
+      .withIndex("by_planId", (q) => q.eq("planId", plan._id))
+      .take(MAX_ROWS)
+    if (evaluators.length === 0) {
+      throw new ConvexError("Add at least one evaluator (add_evaluator) before distributing.")
+    }
+    // Stable order so re-running the same distribution gives the same result —
+    // identical to the Evaluation screen's own auto-distribute.
+    evaluators.sort((a, b) => a.email.localeCompare(b.email))
+    const buckets = new Map<string, Array<Id<"submissions">>>(
+      evaluators.map((evaluator) => [evaluator._id, []]),
+    )
+    let cursor = 0
+    let assigned = 0
+    for (const submissionId of plan.submissionIds) {
+      let placed = false
+      for (let step = 0; step < evaluators.length; step++) {
+        const evaluator = evaluators[(cursor + step) % evaluators.length]
+        const bucket = buckets.get(evaluator._id)
+        if (bucket === undefined) continue
+        if (cap !== undefined && bucket.length >= cap) continue
+        bucket.push(submissionId)
+        cursor = (cursor + step + 1) % evaluators.length
+        placed = true
+        assigned += 1
+        break
+      }
+      if (!placed) break
+    }
+    for (const evaluator of evaluators) {
+      await ctx.db.patch(evaluator._id, {
+        assignedSubmissionIds: buckets.get(evaluator._id) ?? [],
+      })
+    }
+    return {
+      plan: plan.name,
+      assigned,
+      unassigned: plan.submissionIds.length - assigned,
+      evaluatorCount: evaluators.length,
+      note:
+        assigned < plan.submissionIds.length
+          ? "Some submissions stayed unassigned — add evaluators or raise perReviewerCap, then run again."
+          : "Every submission in the pool now has exactly one reviewer.",
+    }
+  },
+})
+
+export const remindEvaluators = internalMutation({
+  args: { userId: v.string(), planId: v.string() },
+  returns: v.any(),
+  handler: async (ctx, args) => {
+    const plan = await planFor(ctx, args.userId, args.planId)
+    const event = await ctx.db.get(plan.eventId)
+    const evaluators = await ctx.db
+      .query("evaluators")
+      .withIndex("by_planId", (q) => q.eq("planId", plan._id))
+      .take(MAX_ROWS)
+    const evaluations = await ctx.db
+      .query("evaluations")
+      .withIndex("by_planId", (q) => q.eq("planId", plan._id))
+      .take(MAX_ROWS)
+    const now = Date.now()
+    const recipients: Array<string> = []
+    let skipped = 0
+    for (const evaluator of evaluators) {
+      const assigned = new Set<string>(
+        evaluator.assignedSubmissionIds ?? plan.submissionIds,
+      )
+      const done = evaluations.filter(
+        (row) =>
+          row.evaluatorId === evaluator._id &&
+          row.completedAt !== undefined &&
+          assigned.has(row.submissionId),
+      ).length
+      const outstanding = assigned.size - done
+      if (outstanding <= 0) {
+        skipped += 1
+        continue
+      }
+      await ctx.scheduler.runAfter(
+        0,
+        internal.platformEmails.sendEvaluatorReminder,
+        {
+          toEmail: evaluator.email,
+          evaluatorName: evaluator.name,
+          eventName: event?.name ?? "your event",
+          planName: plan.name,
+          outstanding,
+          reviewToken: evaluator.token,
+          dueAt: plan.dueAt,
+        },
+      )
+      await ctx.db.patch(evaluator._id, { lastRemindedAt: now })
+      recipients.push(evaluator.email)
+    }
+    return {
+      plan: plan.name,
+      reminded: recipients.length,
+      skipped,
+      recipients,
+      note: "Each email carries that evaluator's own review link and their own outstanding count. Evaluators with nothing left were skipped.",
+    }
+  },
+})
+
+// ——— Task template deletion (completes the library CRUD) ————————————————
+
+export const deleteTaskTemplate = internalMutation({
+  args: { userId: v.string(), template: v.string() },
+  returns: v.any(),
+  handler: async (ctx, args) => {
+    const id = ctx.db.normalizeId("taskTemplates", args.template.trim())
+    const template = id ? await ctx.db.get(id) : null
+    if (!template) {
+      throw new ConvexError(
+        `No task template "${args.template}". Call list_task_library for the ids.`,
+      )
+    }
+    await eventAccessFor(ctx, args.userId, template.eventId, "admin")
+    await ctx.db.delete(template._id)
+    return {
+      deleted: true,
+      templateId: id,
+      title: template.title,
+      note: "Removed from the library. Tasks already assigned from it keep their wording.",
+    }
+  },
+})
+
+// ——— Embeds (mirrors convex/embeds.ts) ——————————————————————————————————
+
+export const listEmbedsQ = internalQuery({
+  args: { userId: v.string(), event: v.string() },
+  returns: v.any(),
+  handler: async (ctx, args) => {
+    const event = await resolveEvent(ctx, args.userId, args.event)
+    const rows = await ctx.db
+      .query("embeds")
+      .withIndex("by_eventId", (q) => q.eq("eventId", event._id))
+      .take(200)
+    return {
+      embedCount: rows.length,
+      embeds: rows
+        .sort((a, b) => a.name.localeCompare(b.name))
+        .map((row) => ({
+          embedId: row._id,
+          name: row.name,
+          widget: row.widget,
+          options: row.options,
+        })),
+      widgets: [...EMBED_WIDGETS],
+      formats: [...EMBED_FORMATS],
+      note: "Saved embed configurations for the event's public widgets. The Embeds page turns one into a copy-paste snippet.",
+    }
+  },
+})
+
+export const saveEmbedM = internalMutation({
+  args: {
+    userId: v.string(),
+    event: v.string(),
+    embedId: v.optional(v.string()),
+    name: v.string(),
+    widget: v.string(),
+    format: v.optional(v.string()),
+    track: v.optional(v.string()),
+    hideDescriptions: v.optional(v.boolean()),
+    hideSpeakers: v.optional(v.boolean()),
+    hideImages: v.optional(v.boolean()),
+    hideSearch: v.optional(v.boolean()),
+    height: v.optional(v.number()),
+  },
+  returns: v.any(),
+  handler: async (ctx, args) => {
+    const event = await resolveEvent(ctx, args.userId, args.event)
+    const name = args.name.trim()
+    if (!name) throw new ConvexError("Give this embed a name.")
+    if (!(EMBED_WIDGETS as ReadonlyArray<string>).includes(args.widget)) {
+      throw new ConvexError(
+        `Unknown widget "${args.widget}". One of: ${EMBED_WIDGETS.join(", ")}.`,
+      )
+    }
+    if (
+      args.format !== undefined &&
+      !(EMBED_FORMATS as ReadonlyArray<string>).includes(args.format)
+    ) {
+      throw new ConvexError(
+        `Unknown format "${args.format}". One of: ${EMBED_FORMATS.join(", ")}.`,
+      )
+    }
+    const options = {
+      format: args.format,
+      track: args.track,
+      hideDescriptions: args.hideDescriptions,
+      hideSpeakers: args.hideSpeakers,
+      hideImages: args.hideImages,
+      hideSearch: args.hideSearch,
+      height: args.height,
+    }
+    if (args.embedId) {
+      const id = ctx.db.normalizeId("embeds", args.embedId.trim())
+      const existing = id ? await ctx.db.get(id) : null
+      if (!existing || existing.eventId !== event._id) {
+        throw new ConvexError("That saved embed belongs to a different event.")
+      }
+      await ctx.db.patch(existing._id, { name, widget: args.widget, options })
+      return { embedId: existing._id, name, widget: args.widget, updated: true }
+    }
+    const embedId = await ctx.db.insert("embeds", {
+      eventId: event._id,
+      name,
+      widget: args.widget,
+      options,
+    })
+    return { embedId, name, widget: args.widget, updated: false }
+  },
+})
+
+export const deleteEmbedM = internalMutation({
+  args: { userId: v.string(), embedId: v.string() },
+  returns: v.any(),
+  handler: async (ctx, args) => {
+    const id = ctx.db.normalizeId("embeds", args.embedId.trim())
+    const embed = id ? await ctx.db.get(id) : null
+    if (!embed) throw new ConvexError("Saved embed not found — see list_embeds.")
+    await eventAccessFor(ctx, args.userId, embed.eventId)
+    await ctx.db.delete(embed._id)
+    return { deleted: true, embedId: id, name: embed.name }
+  },
+})
+
+// ——— Activity feed (mirrors audit.feed, compact) ————————————————————————
+
+export const listActivity = internalQuery({
+  args: {
+    userId: v.string(),
+    event: v.string(),
+    filter: v.optional(v.string()),
+    limit: v.optional(v.number()),
+  },
+  returns: v.any(),
+  handler: async (ctx, args) => {
+    const event = await resolveEvent(ctx, args.userId, args.event)
+    const limit = Math.min(Math.max(args.limit ?? 25, 1), 100)
+    const fetch = Math.min(limit * 4, 400)
+    let rows = await ctx.db
+      .query("auditLog")
+      .withIndex("by_eventId", (q) => q.eq("eventId", event._id))
+      .order("desc")
+      .take(fetch)
+    if (args.filter === "agents") {
+      rows = rows.filter(
+        (row) => row.actorType === "mcp" || row.actorType === "api",
+      )
+    } else if (args.filter) {
+      rows = rows.filter((row) => row.entity === args.filter)
+    }
+    return {
+      returned: Math.min(rows.length, limit),
+      activity: rows.slice(0, limit).map((row) => ({
+        at: iso(row._creationTime),
+        actor: row.actorLabel,
+        actorType: row.actorType,
+        entity: row.entity,
+        action: row.action,
+        summary: row.summary,
+      })),
+      note: 'filter: "agents" shows only MCP/API writes — including this session\'s own. Other filter values match an entity kind (submission, form, speaker, session, agenda, settings).',
+    }
+  },
+})
+
+// ——— Bulk speaker import (mirrors speakersAdmin.bulkAdd, compact) ————————
+
+export const bulkAddSpeakers = internalMutation({
+  args: {
+    userId: v.string(),
+    event: v.string(),
+    rows: v.array(
+      v.object({
+        email: v.string(),
+        firstName: v.optional(v.string()),
+        lastName: v.optional(v.string()),
+        company: v.optional(v.string()),
+        jobTitle: v.optional(v.string()),
+        bio: v.optional(v.string()),
+      }),
+    ),
+    workflowStatus: v.optional(v.string()),
+  },
+  returns: v.any(),
+  handler: async (ctx, args) => {
+    const event = await resolveEvent(ctx, args.userId, args.event)
+    if (args.rows.length === 0) throw new ConvexError("Pass at least one row.")
+    if (args.rows.length > 500) {
+      throw new ConvexError("At most 500 rows per call — send the rest in another batch.")
+    }
+    if (
+      args.workflowStatus !== undefined &&
+      !["invited", "confirmed", "dropped"].includes(args.workflowStatus)
+    ) {
+      throw new ConvexError("workflowStatus must be invited, confirmed or dropped.")
+    }
+    let added = 0
+    let updated = 0
+    let skipped = 0
+    const results: Array<{ email: string; outcome: string }> = []
+    for (const row of args.rows) {
+      const email = row.email.trim().toLowerCase()
+      if (!email.includes("@")) {
+        skipped++
+        results.push({ email: row.email, outcome: "skipped (not an email)" })
+        continue
+      }
+      const existing = await ctx.db
+        .query("people")
+        .withIndex("by_eventId_and_email", (q) =>
+          q.eq("eventId", event._id).eq("email", email),
+        )
+        .unique()
+      if (existing) {
+        // Fill blanks only — an import must never overwrite curated data.
+        const patch: Record<string, unknown> = {}
+        if (!existing.firstName && row.firstName) patch.firstName = row.firstName
+        if (!existing.lastName && row.lastName) patch.lastName = row.lastName
+        if (!existing.company && row.company) patch.company = row.company
+        if (!existing.jobTitle && row.jobTitle) patch.jobTitle = row.jobTitle
+        if (!existing.bio?.trim() && row.bio) patch.bio = row.bio
+        if (args.workflowStatus !== undefined) patch.workflowStatus = args.workflowStatus
+        if (Object.keys(patch).length > 0) {
+          await ctx.db.patch(existing._id, patch)
+          updated++
+          results.push({ email, outcome: "updated (blanks filled)" })
+        } else {
+          skipped++
+          results.push({ email, outcome: "skipped (already complete)" })
+        }
+        continue
+      }
+      await ctx.db.insert("people", {
+        eventId: event._id,
+        email,
+        firstName: row.firstName ?? email.split("@")[0],
+        lastName: row.lastName ?? "",
+        company: row.company,
+        jobTitle: row.jobTitle,
+        bio: row.bio,
+        portalToken: randomToken(),
+        ...(args.workflowStatus !== undefined
+          ? { workflowStatus: args.workflowStatus }
+          : {}),
+      })
+      added++
+      results.push({ email, outcome: "added" })
+    }
+    return {
+      added,
+      updated,
+      skipped,
+      total: args.rows.length,
+      results: results.slice(0, 50),
+      ...(results.length > 50 ? { resultsTruncated: `…${results.length - 50} more` } : {}),
+    }
+  },
+})
+
+// ══════════════════════════════════════════════════════════════════════════
 // Tool registry
 //
 // Descriptions are written for an LLM operator: what the tool does, when to
@@ -2259,6 +3156,15 @@ type ToolDef = {
   description: string
   inputSchema: JsonSchema
   readOnly: boolean
+  /**
+   * True when the write destroys or irreversibly changes something: deletes,
+   * decision emails, bulk rewrites. Maps straight onto the spec's
+   * `destructiveHint`; false means the write is additive (a create).
+   * Meaningless (and omitted) on read-only tools.
+   */
+  destructive?: boolean
+  /** True when repeating the call with the same arguments changes nothing more. */
+  idempotent?: boolean
   run: (
     ctx: ActionCtx,
     userId: string,
@@ -2344,6 +3250,29 @@ function toolErrorMessage(error: unknown): string {
   return humanMessage(error, "Something went wrong.")
 }
 
+/**
+ * The REST data layer (convex/apiV1.ts) answers "no such event" with `null`
+ * and "no such record" with `{notFound: true}` because HTTP turns those into
+ * status codes. A tool result is read by a model, so both become sentences.
+ */
+function fromApi<T>(result: T, what = "That record"): T {
+  if (result === null || result === undefined) {
+    throw new ConvexError(
+      "No event matches that reference. Call list_events to see the available ids and slugs.",
+    )
+  }
+  const row = result as Record<string, unknown>
+  if (row.notFound === true || row.participantNotFound === true) {
+    throw new ConvexError(`${what} was not found — check the id and try again.`)
+  }
+  if (row.conflict === true) {
+    throw new ConvexError(
+      "Someone else changed this record since you read it — re-read it and apply your change again.",
+    )
+  }
+  return result
+}
+
 export const TOOLS: Array<ToolDef> = [
   // ——— Workspaces & events ———————————————————————————————————————————————
   {
@@ -2385,6 +3314,7 @@ export const TOOLS: Array<ToolDef> = [
       ["name"],
     ),
     readOnly: false,
+    destructive: false,
     run: (ctx, userId, args) =>
       ctx.runMutation(internal.mcp.createEvent, {
         userId,
@@ -2453,6 +3383,7 @@ export const TOOLS: Array<ToolDef> = [
       ["event", "name"],
     ),
     readOnly: false,
+    destructive: false,
     run: (ctx, userId, args) =>
       ctx.runMutation(internal.mcp.createForm, {
         userId,
@@ -2483,6 +3414,7 @@ export const TOOLS: Array<ToolDef> = [
       ["form"],
     ),
     readOnly: false,
+    idempotent: true,
     run: (ctx, userId, args) =>
       ctx.runMutation(internal.mcp.updateFormSettings, {
         userId,
@@ -2573,6 +3505,7 @@ export const TOOLS: Array<ToolDef> = [
       ["submissionId", "status"],
     ),
     readOnly: false,
+    idempotent: true,
     run: (ctx, userId, args) =>
       ctx.runMutation(internal.mcp.setSubmissionStatus, {
         userId,
@@ -2646,6 +3579,7 @@ export const TOOLS: Array<ToolDef> = [
       ["event", "title"],
     ),
     readOnly: false,
+    destructive: false,
     run: (ctx, userId, args) =>
       ctx.runMutation(internal.mcp.addManualSession, {
         userId,
@@ -2689,6 +3623,7 @@ export const TOOLS: Array<ToolDef> = [
       ["submissionId", "room", "startsAt"],
     ),
     readOnly: false,
+    idempotent: true,
     run: (ctx, userId, args) =>
       ctx.runMutation(internal.mcp.scheduleSession, {
         userId,
@@ -2705,6 +3640,7 @@ export const TOOLS: Array<ToolDef> = [
       "Removes a session from its agenda slot and returns it to the unscheduled tray. The session stays accepted.",
     inputSchema: schema({ submissionId: { type: "string" } }, ["submissionId"]),
     readOnly: false,
+    idempotent: true,
     run: (ctx, userId, args) =>
       ctx.runMutation(internal.mcp.unscheduleSession, {
         userId,
@@ -2727,6 +3663,7 @@ export const TOOLS: Array<ToolDef> = [
       ["event"],
     ),
     readOnly: false,
+    idempotent: true,
     run: (ctx, userId, args) =>
       ctx.runMutation(internal.mcp.autoPlaceSessions, {
         userId,
@@ -2817,6 +3754,7 @@ export const TOOLS: Array<ToolDef> = [
       ["event", "speakers", "title"],
     ),
     readOnly: false,
+    destructive: false,
     run: (ctx, userId, args) =>
       ctx.runMutation(internal.mcp.assignTask, {
         userId,
@@ -2867,6 +3805,8 @@ export const TOOLS: Array<ToolDef> = [
       ["event", "title"],
     ),
     readOnly: false,
+    destructive: false,
+    idempotent: true,
     run: (ctx, userId, args) =>
       ctx.runMutation(internal.mcp.saveTaskTemplate, {
         userId,
@@ -2899,6 +3839,7 @@ export const TOOLS: Array<ToolDef> = [
       ["template", "speakers"],
     ),
     readOnly: false,
+    destructive: false,
     run: (ctx, userId, args) =>
       ctx.runMutation(internal.mcp.assignTaskFromTemplate, {
         userId,
@@ -2987,6 +3928,7 @@ export const TOOLS: Array<ToolDef> = [
       ["event", "key"],
     ),
     readOnly: false,
+    idempotent: true,
     run: (ctx, userId, args) =>
       ctx.runMutation(internal.mcp.updateTemplate, {
         userId,
@@ -3075,6 +4017,7 @@ export const TOOLS: Array<ToolDef> = [
       ["event", "confirmName", "confirm"],
     ),
     readOnly: false,
+    idempotent: true,
     run: (ctx, userId, args) => {
       if (args.confirm !== true) {
         throw new ConvexError(
@@ -3104,6 +4047,7 @@ export const TOOLS: Array<ToolDef> = [
       ["form", "confirm"],
     ),
     readOnly: false,
+    idempotent: true,
     run: (ctx, userId, args) => {
       if (args.confirm !== true) {
         throw new ConvexError(
@@ -3131,6 +4075,7 @@ export const TOOLS: Array<ToolDef> = [
       ["taskId"],
     ),
     readOnly: false,
+    idempotent: true,
     run: (ctx, userId, args) =>
       ctx.runMutation(internal.mcp.removeTask, {
         userId,
@@ -3149,9 +4094,1562 @@ export const TOOLS: Array<ToolDef> = [
     run: (ctx, userId, args) =>
       ctx.runQuery(internal.mcp.eventSummary, { userId, event: args.event }),
   },
+
+  // ——— Events: update ————————————————————————————————————————————————————
+  {
+    name: "update_event",
+    title: "Update event details & portal toggles",
+    description:
+      "Updates an event's details (name, dates, venue, timezone, type, description, website) and its speaker-portal toggles: alwaysShowTasks (tasks tab visible even when empty), allowSubmissionEdits (speakers may edit submitted talks), extendTaskDeadlines (overdue tasks stay completable). Only the fields you pass change. Admin or owner role.",
+    inputSchema: schema(
+      {
+        event: EVENT_ARG,
+        name: { type: "string" },
+        timezone: { type: "string", description: "IANA timezone." },
+        type: { type: "string" },
+        venue: { type: "string" },
+        description: { type: "string" },
+        websiteUrl: { type: "string" },
+        startsAt: { type: "string", description: "ISO-8601 start date/time." },
+        endsAt: { type: "string", description: "ISO-8601 end date/time." },
+        alwaysShowTasks: { type: "boolean" },
+        allowSubmissionEdits: { type: "boolean" },
+        extendTaskDeadlines: { type: "boolean" },
+      },
+      ["event"],
+    ),
+    readOnly: false,
+    idempotent: true,
+    run: async (ctx, userId, args) =>
+      fromApi(
+        await ctx.runMutation(internal.apiV1.writeEvent, {
+          userId,
+          action: "update",
+          eventRef: args.event,
+          input: {
+            name: args.name,
+            timezone: args.timezone,
+            type: args.type,
+            venue: args.venue,
+            description: args.description,
+            website_url: args.websiteUrl,
+            starts_at: parseWhen(args.startsAt),
+            ends_at: parseWhen(args.endsAt),
+            always_show_tasks: args.alwaysShowTasks,
+            allow_submission_edits: args.allowSubmissionEdits,
+            extend_task_deadlines: args.extendTaskDeadlines,
+          },
+        }),
+        "That event",
+      ),
+  },
+
+  // ——— Workspace membership ——————————————————————————————————————————————
+  {
+    name: "list_workspace_members",
+    title: "List workspace members",
+    description:
+      "Lists everyone in a workspace: email, role (owner/admin/member), whether they've accepted their invite, and their event scope (null means every event). Omit `workspace` when you belong to exactly one.",
+    inputSchema: schema({
+      workspace: { type: "string", description: "Workspace id or slug (see list_workspaces)." },
+    }),
+    readOnly: true,
+    run: (ctx, userId, args) =>
+      ctx.runQuery(internal.mcp.listWorkspaceMembers, {
+        userId,
+        workspace: args.workspace,
+      }),
+  },
+  {
+    name: "invite_workspace_member",
+    title: "Invite a teammate (SENDS EMAIL)",
+    description:
+      "Invites a teammate to the workspace by email — they get an invite email and their access starts the moment they sign up with that address. role \"member\" can optionally be scoped to specific events with eventRefs; admins always see the whole workspace. Requires the admin or owner role.",
+    inputSchema: schema(
+      {
+        workspace: { type: "string", description: "Workspace id or slug. Optional when you have one." },
+        email: { type: "string" },
+        role: { type: "string", enum: ["admin", "member"] },
+        eventRefs: {
+          type: "array",
+          items: { type: "string" },
+          description: "Event ids/slugs to limit a member to. Omit for all events.",
+        },
+      },
+      ["email", "role"],
+    ),
+    readOnly: false,
+    destructive: false,
+    run: (ctx, userId, args) =>
+      ctx.runMutation(internal.mcp.inviteWorkspaceMember, {
+        userId,
+        workspace: args.workspace,
+        email: args.email,
+        role: args.role,
+        eventRefs: args.eventRefs,
+      }),
+  },
+  {
+    name: "update_workspace_member",
+    title: "Change a member's role or event scope",
+    description:
+      "Changes a workspace member's role (owner only) and/or their event scope (admin+; pass an empty eventRefs array to give them every event again). Owners can't be changed, and admins are never event-scoped.",
+    inputSchema: schema(
+      {
+        memberId: { type: "string", description: "From list_workspace_members." },
+        role: { type: "string", enum: ["admin", "member"] },
+        eventRefs: {
+          type: "array",
+          items: { type: "string" },
+          description: "Event ids/slugs to limit them to; [] clears the limit.",
+        },
+      },
+      ["memberId"],
+    ),
+    readOnly: false,
+    idempotent: true,
+    run: (ctx, userId, args) =>
+      ctx.runMutation(internal.mcp.updateWorkspaceMember, {
+        userId,
+        memberId: args.memberId,
+        role: args.role,
+        eventRefs: args.eventRefs,
+      }),
+  },
+  {
+    name: "remove_workspace_member",
+    title: "Remove a workspace member",
+    description:
+      "Removes a member from the workspace — their access ends immediately. Owners can't be removed and you can't remove yourself. Admin or owner role.",
+    inputSchema: schema(
+      { memberId: { type: "string", description: "From list_workspace_members." } },
+      ["memberId"],
+    ),
+    readOnly: false,
+    idempotent: true,
+    run: (ctx, userId, args) =>
+      ctx.runMutation(internal.mcp.removeWorkspaceMember, {
+        userId,
+        memberId: args.memberId,
+      }),
+  },
+
+  // ——— Forms: content + questions ————————————————————————————————————————
+  {
+    name: "update_form",
+    title: "Edit a form's content & participant rules",
+    description:
+      "Edits the parts of a CFP form that update_form_settings doesn't: the public title, page heading and welcome message, the addresses notified on each submission, and the participant rules (speaker min/max, chairperson/moderator roles, confirmation email). For open/closed status, deadlines and submission limits use update_form_settings; for the questions themselves use manage_form_question.",
+    inputSchema: schema(
+      {
+        form: { type: "string", description: "Form id or slug." },
+        externalTitle: { type: "string", description: "Title submitters see." },
+        pageHeading: { type: "string" },
+        welcomeMessage: { type: "string", description: "HTML shown on the welcome step." },
+        showWelcomeMessage: { type: "boolean" },
+        notifyEmails: {
+          type: "array",
+          items: { type: "string" },
+          description: "Organizer addresses emailed on every new submission.",
+        },
+        speakerMin: { type: "number" },
+        speakerMax: { type: "number" },
+        chairpersonEnabled: { type: "boolean" },
+        moderatorEnabled: { type: "boolean" },
+        sendConfirmationEmail: { type: "boolean" },
+      },
+      ["form"],
+    ),
+    readOnly: false,
+    idempotent: true,
+    run: async (ctx, userId, args) => {
+      const hasParticipantChange =
+        args.speakerMin !== undefined ||
+        args.speakerMax !== undefined ||
+        args.chairpersonEnabled !== undefined ||
+        args.moderatorEnabled !== undefined ||
+        args.sendConfirmationEmail !== undefined
+      // The form's event is resolved inside apiV1 via the form itself.
+      const form = await ctx.runQuery(internal.mcp.getForm, {
+        userId,
+        form: args.form,
+      })
+      return fromApi(
+        await ctx.runMutation(internal.apiV1.writeForm, {
+          userId,
+          action: "update",
+          eventRef: (form as { eventId: string }).eventId,
+          formRef: (form as { formId: string }).formId,
+          input: {
+            external_title: args.externalTitle,
+            page_heading: args.pageHeading,
+            welcome_message: args.welcomeMessage,
+            show_welcome_message: args.showWelcomeMessage,
+            notify_emails: args.notifyEmails,
+            ...(hasParticipantChange
+              ? {
+                  participant_config: {
+                    speaker_min: args.speakerMin,
+                    speaker_max: args.speakerMax,
+                    chairperson_enabled: args.chairpersonEnabled,
+                    moderator_enabled: args.moderatorEnabled,
+                    send_confirmation_email: args.sendConfirmationEmail,
+                  },
+                }
+              : {}),
+          },
+        }),
+        "That form",
+      )
+    },
+  },
+  {
+    name: "manage_form_question",
+    title: "Add, edit or remove a form question",
+    description:
+      "Edits the questions on the event's CFP forms — the same custom-field model the form builder uses. action \"create\" appends a question (to the form you name, or the event's first form); \"update\"/\"delete\" find the question by its id across every form. Locked system questions (title, description, first/last name, email) refuse edits. Question types: short_text, long_text, rich_text, dropdown, multi_select, checkbox, date, url, email, number, file.",
+    inputSchema: schema(
+      {
+        event: EVENT_ARG,
+        action: { type: "string", enum: ["create", "update", "delete"] },
+        questionId: { type: "string", description: "Required for update/delete — from get_form." },
+        form: { type: "string", description: "Form id to add to (create only; defaults to the first form)." },
+        label: { type: "string" },
+        type: { type: "string" },
+        required: { type: "boolean" },
+        enabled: { type: "boolean" },
+        help: { type: "string" },
+        options: { type: "array", items: { type: "string" } },
+      },
+      ["event", "action"],
+    ),
+    readOnly: false,
+    run: async (ctx, userId, args) =>
+      fromApi(
+        await ctx.runMutation(internal.apiV1.writeField, {
+          userId,
+          eventRef: args.event,
+          action: args.action,
+          fieldId: args.questionId,
+          formId: args.form,
+          label: args.label,
+          type: args.type,
+          required: args.required,
+          enabled: args.enabled,
+          help: args.help,
+          options: args.options,
+        }),
+        "That question",
+      ),
+  },
+
+  // ——— Submissions: edit, trash, participants ———————————————————————————
+  {
+    name: "update_submission",
+    title: "Edit a submission",
+    description:
+      "Edits a submission's content and classification: title, description, format, level, language, tags, duration, its answers to custom form questions (answers merge — only the keys you pass change), track (pass a track id from list_field_options resource \"tracks\", or \"\" to clear), and publicVisible (false embargoes it from the public programme without touching its status). For the status itself use set_submission_status.",
+    inputSchema: schema(
+      {
+        submissionId: { type: "string" },
+        title: { type: "string" },
+        description: { type: "string" },
+        format: { type: "string" },
+        level: { type: "string" },
+        language: { type: "string" },
+        tags: { type: "array", items: { type: "string" } },
+        durationMinutes: { type: "number" },
+        track: { type: "string", description: "Track id (list_field_options resource \"tracks\"), or \"\" to clear." },
+        publicVisible: { type: "boolean" },
+        answers: {
+          type: "object",
+          description: "Custom-question answers to merge in, keyed by question id (see get_form).",
+        },
+      },
+      ["submissionId"],
+    ),
+    readOnly: false,
+    idempotent: true,
+    run: async (ctx, userId, args) => {
+      const existing = await ctx.runQuery(internal.mcp.getSubmission, {
+        userId,
+        submissionId: args.submissionId,
+      })
+      return fromApi(
+        await ctx.runMutation(internal.apiV1.updateSession, {
+          userId,
+          eventRef: (existing as { eventId?: string }).eventId ?? "",
+          sessionId: args.submissionId,
+          input: {
+            title: args.title,
+            description: args.description,
+            format: args.format,
+            level: args.level,
+            language: args.language,
+            tags: args.tags,
+            duration_minutes: args.durationMinutes,
+            track_id: args.track,
+            is_public: args.publicVisible,
+            custom_fields: args.answers,
+          },
+        }),
+        "That submission",
+      )
+    },
+  },
+  {
+    name: "delete_submission",
+    title: "Trash a submission (recoverable)",
+    description:
+      "Soft-deletes a submission: it leaves every list, board and public page but sits in the trash and can be brought back with restore_submission. Admin or owner role. This is the right call for spam or duplicates; a talk you merely don't want should be declined instead.",
+    inputSchema: schema({ submissionId: { type: "string" } }, ["submissionId"]),
+    readOnly: false,
+    idempotent: true,
+    run: async (ctx, userId, args) => {
+      const existing = await ctx.runQuery(internal.mcp.getSubmission, {
+        userId,
+        submissionId: args.submissionId,
+      })
+      return fromApi(
+        await ctx.runMutation(internal.apiV1.deleteSession, {
+          userId,
+          eventRef: (existing as { eventId?: string }).eventId ?? "",
+          sessionId: args.submissionId,
+          restore: false,
+        }),
+        "That submission",
+      )
+    },
+  },
+  {
+    name: "restore_submission",
+    title: "Restore a trashed submission",
+    description:
+      "Brings a soft-deleted submission back from the trash with its status, participants and files intact. Admin or owner role.",
+    inputSchema: schema(
+      {
+        event: EVENT_ARG,
+        submissionId: { type: "string" },
+      },
+      ["event", "submissionId"],
+    ),
+    readOnly: false,
+    destructive: false,
+    idempotent: true,
+    run: async (ctx, userId, args) =>
+      fromApi(
+        await ctx.runMutation(internal.apiV1.deleteSession, {
+          userId,
+          eventRef: args.event,
+          sessionId: args.submissionId,
+          restore: true,
+        }),
+        "That submission",
+      ),
+  },
+  {
+    name: "add_participant",
+    title: "Add a speaker to a session",
+    description:
+      "Attaches a person to a submission with a role (speaker, chairperson or moderator). Name them by person id or by email — an email new to the event creates the person. Re-attaching someone who is already on the session moves them to the new role instead of duplicating them.",
+    inputSchema: schema(
+      {
+        submissionId: { type: "string" },
+        speaker: { type: "string", description: "Person id or email address." },
+        role: { type: "string", enum: ["speaker", "chairperson", "moderator"], description: "Default \"speaker\"." },
+        firstName: { type: "string", description: "Used only when the email creates a new person." },
+        lastName: { type: "string" },
+      },
+      ["submissionId", "speaker"],
+    ),
+    readOnly: false,
+    destructive: false,
+    idempotent: true,
+    run: async (ctx, userId, args) => {
+      const existing = await ctx.runQuery(internal.mcp.getSubmission, {
+        userId,
+        submissionId: args.submissionId,
+      })
+      const speaker = String(args.speaker)
+      const isEmail = speaker.includes("@")
+      return fromApi(
+        await ctx.runMutation(internal.apiV1.writeSessionParticipant, {
+          userId,
+          eventRef: (existing as { eventId?: string }).eventId ?? "",
+          sessionId: args.submissionId,
+          action: "add",
+          ...(isEmail ? { email: speaker } : { speakerId: speaker }),
+          firstName: args.firstName,
+          lastName: args.lastName,
+          role: args.role,
+        }),
+        "That session or speaker",
+      )
+    },
+  },
+  {
+    name: "remove_participant",
+    title: "Remove a speaker from a session",
+    description:
+      "Detaches a person from a submission's line-up. The person themselves stays in the event (their profile, tasks and files are untouched) — remove_speaker is the one that deletes a person outright.",
+    inputSchema: schema(
+      {
+        submissionId: { type: "string" },
+        speaker: { type: "string", description: "Person id or email address." },
+      },
+      ["submissionId", "speaker"],
+    ),
+    readOnly: false,
+    idempotent: true,
+    run: async (ctx, userId, args) => {
+      const existing = await ctx.runQuery(internal.mcp.getSubmission, {
+        userId,
+        submissionId: args.submissionId,
+      })
+      const eventRef = (existing as { eventId?: string }).eventId ?? ""
+      // The remove path takes a person id only — resolve an email to one.
+      let speaker = String(args.speaker)
+      if (speaker.includes("@")) {
+        const link = await ctx.runQuery(internal.mcp.speakerPortalLink, {
+          userId,
+          event: eventRef,
+          speaker,
+        })
+        speaker = (link as { personId: string }).personId
+      }
+      return fromApi(
+        await ctx.runMutation(internal.apiV1.writeSessionParticipant, {
+          userId,
+          eventRef,
+          sessionId: args.submissionId,
+          action: "remove",
+          speakerId: speaker,
+        }),
+        "That session or participant",
+      )
+    },
+  },
+
+  // ——— Agenda: publish ————————————————————————————————————————————————————
+  {
+    name: "set_agenda_published",
+    title: "Publish or unpublish the public agenda",
+    description:
+      "The public go-live gate: published: true puts the accepted, scheduled programme on the event's public page (and its .ics feed and embeds); false takes it back down to \"Schedule coming soon\". Nothing else changes — sessions and their times stay exactly as they are. Admin or owner role.",
+    inputSchema: schema(
+      {
+        event: EVENT_ARG,
+        published: { type: "boolean", description: "true = live, false = hidden." },
+      },
+      ["event", "published"],
+    ),
+    readOnly: false,
+    idempotent: true,
+    run: async (ctx, userId, args) =>
+      fromApi(
+        await ctx.runMutation(internal.apiV1.setAgendaPublished, {
+          userId,
+          eventRef: args.event,
+          published: args.published,
+        }),
+        "That event",
+      ),
+  },
+
+  // ——— Speakers: CRUD + bulk ——————————————————————————————————————————————
+  {
+    name: "add_speaker",
+    title: "Add a speaker",
+    description:
+      "Adds a person to the event by hand — a keynote you invited, a panelist someone emailed you about. Matched by email: if they already exist in this event the call is idempotent and returns them. They get a portal identity immediately; attach them to a session with add_participant.",
+    inputSchema: schema(
+      {
+        event: EVENT_ARG,
+        email: { type: "string" },
+        firstName: { type: "string" },
+        lastName: { type: "string" },
+        jobTitle: { type: "string" },
+        company: { type: "string" },
+        bio: { type: "string" },
+        pronouns: { type: "string" },
+        workflowStatus: { type: "string", enum: ["invited", "confirmed", "dropped"] },
+      },
+      ["event", "email"],
+    ),
+    readOnly: false,
+    destructive: false,
+    idempotent: true,
+    run: async (ctx, userId, args) =>
+      fromApi(
+        await ctx.runMutation(internal.apiV1.writeSpeaker, {
+          userId,
+          eventRef: args.event,
+          input: {
+            email: args.email,
+            first_name: args.firstName,
+            last_name: args.lastName,
+            title: args.jobTitle,
+            company_name: args.company,
+            about: args.bio,
+            pronouns: args.pronouns,
+            workflow_status: args.workflowStatus,
+          },
+        }),
+        "That event",
+      ),
+  },
+  {
+    name: "update_speaker",
+    title: "Update a speaker's profile",
+    description:
+      "Edits a speaker's profile from the organizer side: name, job title, company, bio, pronouns, links, workflow status (invited/confirmed/dropped) and publicVisible (false hides them from every public surface — the embargo toggle). Only the fields you pass change.",
+    inputSchema: schema(
+      {
+        event: EVENT_ARG,
+        speaker: { type: "string", description: "Person id or email (see list_speakers)." },
+        firstName: { type: "string" },
+        lastName: { type: "string" },
+        jobTitle: { type: "string" },
+        company: { type: "string" },
+        bio: { type: "string" },
+        pronouns: { type: "string" },
+        websiteUrl: { type: "string" },
+        linkedinUrl: { type: "string" },
+        twitterUrl: { type: "string" },
+        workflowStatus: { type: "string", enum: ["invited", "confirmed", "dropped"] },
+        publicVisible: { type: "boolean" },
+      },
+      ["event", "speaker"],
+    ),
+    readOnly: false,
+    idempotent: true,
+    run: async (ctx, userId, args) => {
+      // Resolve email → person id the way every speaker tool does.
+      const event = String(args.event)
+      const link = await ctx.runQuery(internal.mcp.speakerPortalLink, {
+        userId,
+        event,
+        speaker: args.speaker,
+      })
+      return fromApi(
+        await ctx.runMutation(internal.apiV1.writeSpeaker, {
+          userId,
+          eventRef: event,
+          personId: (link as { personId: string }).personId,
+          input: {
+            first_name: args.firstName,
+            last_name: args.lastName,
+            title: args.jobTitle,
+            company_name: args.company,
+            about: args.bio,
+            pronouns: args.pronouns,
+            website_url: args.websiteUrl,
+            linkedin_url: args.linkedinUrl,
+            twitter_url: args.twitterUrl,
+            workflow_status: args.workflowStatus,
+            is_public: args.publicVisible,
+          },
+        }),
+        "That speaker",
+      )
+    },
+  },
+  {
+    name: "remove_speaker",
+    title: "Remove a speaker from the event",
+    description:
+      "Deletes a person from the event along with their tasks, uploads and headshot. Refused while they are still on a live session — detach them with remove_participant first, so a delete can never orphan a talk. Their already-sent emails stay in the outbox for the record.",
+    inputSchema: schema(
+      {
+        event: EVENT_ARG,
+        speaker: { type: "string", description: "Person id or email address." },
+      },
+      ["event", "speaker"],
+    ),
+    readOnly: false,
+    idempotent: true,
+    run: async (ctx, userId, args) => {
+      const event = String(args.event)
+      const link = await ctx.runQuery(internal.mcp.speakerPortalLink, {
+        userId,
+        event,
+        speaker: args.speaker,
+      })
+      return fromApi(
+        await ctx.runMutation(internal.apiV1.deleteSpeaker, {
+          userId,
+          eventRef: event,
+          personId: (link as { personId: string }).personId,
+        }),
+        "That speaker",
+      )
+    },
+  },
+  {
+    name: "bulk_add_speakers",
+    title: "Bulk-import speakers",
+    description:
+      "Imports up to 500 speakers in one call — the CSV-import path. Each row is matched by email; existing people get their BLANK fields filled (an import never overwrites curated data), new people are created. Optionally stamp every row with a workflowStatus. Reports added/updated/skipped per row.",
+    inputSchema: schema(
+      {
+        event: EVENT_ARG,
+        rows: {
+          type: "array",
+          description: "The people to import.",
+          items: {
+            type: "object",
+            properties: {
+              email: { type: "string" },
+              firstName: { type: "string" },
+              lastName: { type: "string" },
+              company: { type: "string" },
+              jobTitle: { type: "string" },
+              bio: { type: "string" },
+            },
+            required: ["email"],
+          },
+        },
+        workflowStatus: { type: "string", enum: ["invited", "confirmed", "dropped"] },
+      },
+      ["event", "rows"],
+    ),
+    readOnly: false,
+    destructive: false,
+    idempotent: true,
+    run: (ctx, userId, args) =>
+      ctx.runMutation(internal.mcp.bulkAddSpeakers, {
+        userId,
+        event: args.event,
+        rows: args.rows,
+        workflowStatus: args.workflowStatus,
+      }),
+  },
+
+  // ——— Tasks: dashboard + edit + template removal —————————————————————————
+  {
+    name: "list_tasks",
+    title: "List speaker tasks",
+    description:
+      "The outstanding-tasks dashboard as a call: every task on the event with its speaker, kind, due date and completion state. Filter by status (open, completed, overdue), by one speaker, or by free text. list_speakers groups the same data per speaker; this is the flat task-first view.",
+    inputSchema: schema(
+      {
+        event: EVENT_ARG,
+        status: { type: "string", enum: ["open", "completed", "overdue"] },
+        speaker: { type: "string", description: "Person id or email to filter by." },
+        search: { type: "string" },
+      },
+      ["event"],
+    ),
+    readOnly: true,
+    run: async (ctx, userId, args) => {
+      let speakerId: string | undefined
+      if (args.speaker) {
+        const link = await ctx.runQuery(internal.mcp.speakerPortalLink, {
+          userId,
+          event: args.event,
+          speaker: args.speaker,
+        })
+        speakerId = (link as { personId: string }).personId
+      }
+      return fromApi(
+        await ctx.runQuery(internal.apiV1.listTasks, {
+          userId,
+          eventRef: args.event,
+          status: args.status,
+          speakerId,
+          search: args.search,
+          page: 1,
+          pageSize: 100,
+        }),
+        "That event",
+      )
+    },
+  },
+  {
+    name: "update_task",
+    title: "Edit or complete a task",
+    description:
+      "Edits one task: retitle it, rewrite its instructions, move its due date, or set completed: true/false to mark it done or reopen it (marking done is normally the speaker's job in the portal — do it here when they confirmed out-of-band). Task ids come from list_tasks or list_speakers.",
+    inputSchema: schema(
+      {
+        event: EVENT_ARG,
+        taskId: { type: "string" },
+        title: { type: "string" },
+        instructions: { type: "string" },
+        dueAt: { type: "string", description: "ISO-8601 due date." },
+        completed: { type: "boolean" },
+      },
+      ["event", "taskId"],
+    ),
+    readOnly: false,
+    idempotent: true,
+    run: async (ctx, userId, args) =>
+      fromApi(
+        await ctx.runMutation(internal.apiV1.writeTask, {
+          userId,
+          eventRef: args.event,
+          action: "update",
+          taskId: args.taskId,
+          input: {
+            title: args.title,
+            instructions: args.instructions,
+            due_at: parseWhen(args.dueAt),
+            completed: args.completed,
+          },
+        }),
+        "That task",
+      ),
+  },
+  {
+    name: "delete_task_template",
+    title: "Delete a task from the library",
+    description:
+      "Removes a saved task from the event's reusable library. Tasks already assigned from it keep the wording they were sent with. Admin or owner role. Template ids come from list_task_library.",
+    inputSchema: schema(
+      { template: { type: "string", description: "Template id from list_task_library." } },
+      ["template"],
+    ),
+    readOnly: false,
+    idempotent: true,
+    run: (ctx, userId, args) =>
+      ctx.runMutation(internal.mcp.deleteTaskTemplate, {
+        userId,
+        template: args.template,
+      }),
+  },
+
+  // ——— Files: review gate —————————————————————————————————————————————————
+  {
+    name: "list_files",
+    title: "List uploaded files",
+    description:
+      "The event's files library: everything speakers uploaded (and organizers filed for them), with version, approval status (pending / approved / changes_requested), review note, the speaker, and the session or task it belongs to. Filter by approval status or by one speaker. Approval controls public exposure — review with review_file.",
+    inputSchema: schema(
+      {
+        event: EVENT_ARG,
+        approvalStatus: { type: "string", enum: ["pending", "approved", "changes_requested"] },
+        speaker: { type: "string", description: "Person id or email to filter by." },
+        limit: { type: "number", description: "Max rows (default 50, max 200)." },
+      },
+      ["event"],
+    ),
+    readOnly: true,
+    run: (ctx, userId, args) =>
+      ctx.runQuery(internal.mcp.listFiles, {
+        userId,
+        event: args.event,
+        approvalStatus: args.approvalStatus,
+        speaker: args.speaker,
+        limit: args.limit,
+      }),
+  },
+  {
+    name: "review_file",
+    title: "Approve or reject an uploaded file",
+    description:
+      "The file review gate: sets a file to approved (public surfaces may expose it), changes_requested (the speaker's upload task reopens so they see it needs another pass — add a reviewNote saying what to fix), or back to pending. File ids come from list_files or get_submission.",
+    inputSchema: schema(
+      {
+        fileId: { type: "string", description: "From list_files." },
+        approvalStatus: { type: "string", enum: ["approved", "changes_requested", "pending"] },
+        reviewNote: { type: "string", description: "What to fix — shown to the speaker." },
+      },
+      ["fileId", "approvalStatus"],
+    ),
+    readOnly: false,
+    idempotent: true,
+    run: (ctx, userId, args) =>
+      ctx.runMutation(internal.mcp.reviewFile, {
+        userId,
+        fileId: args.fileId,
+        approvalStatus: args.approvalStatus,
+        reviewNote: args.reviewNote,
+      }),
+  },
+  {
+    name: "delete_file",
+    title: "Delete an uploaded file (IRREVERSIBLE)",
+    description:
+      "Permanently deletes one uploaded file — the row and the stored bytes. The escape hatch for a rejected upload nobody should keep. Admin or owner role; there is no undo.",
+    inputSchema: schema(
+      { fileId: { type: "string", description: "From list_files." } },
+      ["fileId"],
+    ),
+    readOnly: false,
+    idempotent: true,
+    run: (ctx, userId, args) =>
+      ctx.runMutation(internal.mcp.deleteFile, {
+        userId,
+        fileId: args.fileId,
+      }),
+  },
+
+  // ——— Comms: bulk composer ———————————————————————————————————————————————
+  {
+    name: "count_bulk_audience",
+    title: "Preview a bulk email's audience",
+    description:
+      "Counts exactly who a bulk email would reach before anything is sent: audiences are all_speakers, accepted (everyone on an accepted session), incomplete_tasks (speakers with open tasks), or manual (the speakers you name). Returns the count and a sample of addresses — quote these to the user before send_bulk_email.",
+    inputSchema: schema(
+      {
+        event: EVENT_ARG,
+        audience: { type: "string", enum: ["all_speakers", "accepted", "incomplete_tasks", "manual"] },
+        speakers: {
+          type: "array",
+          items: { type: "string" },
+          description: "For audience \"manual\": emails or person ids.",
+        },
+      },
+      ["event", "audience"],
+    ),
+    readOnly: true,
+    run: (ctx, userId, args) =>
+      ctx.runQuery(internal.mcp.countBulkAudience, {
+        userId,
+        event: args.event,
+        audience: args.audience,
+        speakers: args.speakers,
+      }),
+  },
+  {
+    name: "send_bulk_email",
+    title: "Send a bulk email (SENDS EMAIL)",
+    description:
+      "Sends a one-off email to an audience — \"the venue changed\", \"here's your green-room time\". One message per recipient, each rendered with their own {{firstName}} / {{speakerName}} / {{sessionTitle}} / {{portalLink}}, dropped into the same outbox as every other email. ALWAYS run count_bulk_audience first and tell the user how many people this reaches.",
+    inputSchema: schema(
+      {
+        event: EVENT_ARG,
+        audience: { type: "string", enum: ["all_speakers", "accepted", "incomplete_tasks", "manual"] },
+        subject: { type: "string" },
+        body: { type: "string", description: "Plain text or HTML. Placeholders resolve per recipient." },
+        speakers: {
+          type: "array",
+          items: { type: "string" },
+          description: "For audience \"manual\": emails or person ids.",
+        },
+      },
+      ["event", "audience", "subject", "body"],
+    ),
+    readOnly: false,
+    run: (ctx, userId, args) =>
+      ctx.runMutation(internal.mcp.sendBulkEmail, {
+        userId,
+        event: args.event,
+        audience: args.audience,
+        subject: args.subject,
+        body: args.body,
+        speakers: args.speakers,
+      }),
+  },
+
+  // ——— Evaluation ————————————————————————————————————————————————————————
+  {
+    name: "list_evaluation_plans",
+    title: "List evaluation plans",
+    description:
+      "Lists the event's evaluation plans (review rounds): name, round number, status, blind flag, window, submission pool size, evaluator count and completion progress. Plans are how scoring works here — a plan bundles criteria, a submission pool and evaluators.",
+    inputSchema: schema(
+      {
+        event: EVENT_ARG,
+        status: { type: "string", enum: ["open", "closed"] },
+      },
+      ["event"],
+    ),
+    readOnly: true,
+    run: async (ctx, userId, args) =>
+      fromApi(
+        await ctx.runQuery(internal.apiV1.listEvaluationPlans, {
+          userId,
+          eventRef: args.event,
+          status: args.status,
+          page: 1,
+          pageSize: 100,
+        }),
+        "That event",
+      ),
+  },
+  {
+    name: "get_evaluation_plan",
+    title: "Get an evaluation plan",
+    description:
+      "One plan in full: its criteria (numeric with weights, select, text), the submission pool, every evaluator with their private review link and progress, and per-submission score tallies.",
+    inputSchema: schema(
+      {
+        event: EVENT_ARG,
+        planId: { type: "string", description: "From list_evaluation_plans." },
+      },
+      ["event", "planId"],
+    ),
+    readOnly: true,
+    run: async (ctx, userId, args) =>
+      fromApi(
+        await ctx.runQuery(internal.apiV1.getEvaluationPlan, {
+          userId,
+          eventRef: args.event,
+          planId: args.planId,
+        }),
+        "That plan",
+      ),
+  },
+  {
+    name: "create_evaluation_plan",
+    title: "Create an evaluation plan",
+    description:
+      "Creates a review round: a name, a round number, scoring criteria (numeric 1–5 with optional weights, select with options, or free text — default is one unweighted 1–5 \"Overall\" score), the submission pool (omit submissionIds for every pending submission), an optional opens/due window, and blind: true to hide speaker identities from evaluators. Add reviewers afterwards with add_evaluator.",
+    inputSchema: schema(
+      {
+        event: EVENT_ARG,
+        name: { type: "string", description: "e.g. \"Round 1 — technical review\"." },
+        round: { type: "number" },
+        blind: { type: "boolean" },
+        opensAt: { type: "string", description: "ISO-8601." },
+        dueAt: { type: "string", description: "ISO-8601." },
+        submissionIds: {
+          type: "array",
+          items: { type: "string" },
+          description: "The pool. Omit for all pending submissions.",
+        },
+        criteria: {
+          type: "array",
+          description: "Scoring criteria. Omit for a single 1–5 overall score.",
+          items: {
+            type: "object",
+            properties: {
+              label: { type: "string" },
+              type: { type: "string", enum: ["numeric", "select", "text"] },
+              options: { type: "array", items: { type: "string" } },
+              weight: { type: "number" },
+            },
+            required: ["label"],
+          },
+        },
+      },
+      ["event", "name"],
+    ),
+    readOnly: false,
+    destructive: false,
+    run: async (ctx, userId, args) =>
+      fromApi(
+        await ctx.runMutation(internal.apiV1.writeEvaluationPlan, {
+          userId,
+          eventRef: args.event,
+          action: "create",
+          input: {
+            name: args.name,
+            round: args.round,
+            blind: args.blind,
+            opens_at: parseWhen(args.opensAt),
+            due_at: parseWhen(args.dueAt),
+            submission_ids: args.submissionIds,
+            // The promised default: one unweighted 1–5 overall score.
+            criteria: args.criteria ?? [{ label: "Overall" }],
+          },
+        }),
+        "That event",
+      ),
+  },
+  {
+    name: "update_evaluation_plan",
+    title: "Update or close an evaluation plan",
+    description:
+      "Edits a plan: rename it, change the round number or window, replace the criteria or the submission pool, toggle blind, or set status \"closed\" / \"open\" to end or reopen the round. Replacing criteria on a round that already collected scores changes what future scorecards ask — existing scores keep their criterion ids.",
+    inputSchema: schema(
+      {
+        event: EVENT_ARG,
+        planId: { type: "string" },
+        name: { type: "string" },
+        round: { type: "number" },
+        status: { type: "string", enum: ["open", "closed"] },
+        blind: { type: "boolean" },
+        opensAt: { type: "string", description: "ISO-8601." },
+        dueAt: { type: "string", description: "ISO-8601." },
+        submissionIds: { type: "array", items: { type: "string" } },
+        criteria: {
+          type: "array",
+          items: {
+            type: "object",
+            properties: {
+              id: { type: "string" },
+              label: { type: "string" },
+              type: { type: "string", enum: ["numeric", "select", "text"] },
+              options: { type: "array", items: { type: "string" } },
+              weight: { type: "number" },
+            },
+            required: ["label"],
+          },
+        },
+      },
+      ["event", "planId"],
+    ),
+    readOnly: false,
+    idempotent: true,
+    run: async (ctx, userId, args) =>
+      fromApi(
+        await ctx.runMutation(internal.apiV1.writeEvaluationPlan, {
+          userId,
+          eventRef: args.event,
+          action: "update",
+          planId: args.planId,
+          input: {
+            name: args.name,
+            round: args.round,
+            status: args.status,
+            blind: args.blind,
+            opens_at: parseWhen(args.opensAt),
+            due_at: parseWhen(args.dueAt),
+            submission_ids: args.submissionIds,
+            criteria: args.criteria,
+          },
+        }),
+        "That plan",
+      ),
+  },
+  {
+    name: "delete_evaluation_plan",
+    title: "Delete an evaluation plan (IRREVERSIBLE)",
+    description:
+      "Permanently deletes a plan together with its evaluators and every score they entered. Admin or owner role; there is no undo. Closing the plan (update_evaluation_plan status \"closed\") is what you almost always want instead, because it keeps the scores.",
+    inputSchema: schema(
+      {
+        event: EVENT_ARG,
+        planId: { type: "string" },
+      },
+      ["event", "planId"],
+    ),
+    readOnly: false,
+    idempotent: true,
+    run: async (ctx, userId, args) =>
+      fromApi(
+        await ctx.runMutation(internal.apiV1.writeEvaluationPlan, {
+          userId,
+          eventRef: args.event,
+          action: "delete",
+          planId: args.planId,
+          input: {},
+        }),
+        "That plan",
+      ),
+  },
+  {
+    name: "add_evaluator",
+    title: "Add an evaluator to a plan",
+    description:
+      "Adds a reviewer to a plan by email. They review through a private magic link (returned as review_path — share it only with them); no account needed. By default they see the plan's whole pool; narrow it with update_evaluator or spread the pool with distribute_evaluations.",
+    inputSchema: schema(
+      {
+        event: EVENT_ARG,
+        planId: { type: "string" },
+        email: { type: "string" },
+        name: { type: "string" },
+      },
+      ["event", "planId", "email"],
+    ),
+    readOnly: false,
+    destructive: false,
+    run: async (ctx, userId, args) =>
+      fromApi(
+        await ctx.runMutation(internal.apiV1.writeEvaluator, {
+          userId,
+          eventRef: args.event,
+          action: "create",
+          input: {
+            plan_id: args.planId,
+            email: args.email,
+            name: args.name,
+          },
+        }),
+        "That plan",
+      ),
+  },
+  {
+    name: "update_evaluator",
+    title: "Set an evaluator's assignments",
+    description:
+      "Hand-picks which submissions one evaluator reviews (they must be in the plan's pool). Pass an empty array to put them back on the whole pool. Evaluator ids come from get_evaluation_plan.",
+    inputSchema: schema(
+      {
+        event: EVENT_ARG,
+        evaluatorId: { type: "string" },
+        assignedSubmissionIds: {
+          type: "array",
+          items: { type: "string" },
+          description: "[] restores the whole-pool default.",
+        },
+        name: { type: "string" },
+      },
+      ["event", "evaluatorId"],
+    ),
+    readOnly: false,
+    idempotent: true,
+    run: async (ctx, userId, args) =>
+      fromApi(
+        await ctx.runMutation(internal.apiV1.writeEvaluator, {
+          userId,
+          eventRef: args.event,
+          action: "update",
+          evaluatorId: args.evaluatorId,
+          input: {
+            assigned_submission_ids: args.assignedSubmissionIds,
+            name: args.name,
+          },
+        }),
+        "That evaluator",
+      ),
+  },
+  {
+    name: "remove_evaluator",
+    title: "Remove an evaluator",
+    description:
+      "Removes an evaluator from their plan together with the scores they entered. Their magic link stops working immediately. Admin or owner role.",
+    inputSchema: schema(
+      {
+        event: EVENT_ARG,
+        evaluatorId: { type: "string" },
+      },
+      ["event", "evaluatorId"],
+    ),
+    readOnly: false,
+    idempotent: true,
+    run: async (ctx, userId, args) =>
+      fromApi(
+        await ctx.runMutation(internal.apiV1.writeEvaluator, {
+          userId,
+          eventRef: args.event,
+          action: "delete",
+          evaluatorId: args.evaluatorId,
+          input: {},
+        }),
+        "That evaluator",
+      ),
+  },
+  {
+    name: "list_evaluations",
+    title: "List scorecards",
+    description:
+      "The raw scorecard data behind every average: each evaluator × submission row with its per-criterion scores, comment, completion time — and recusals (declared conflicts of interest), which are excluded from averages. Filter by plan, submission or evaluator.",
+    inputSchema: schema(
+      {
+        event: EVENT_ARG,
+        planId: { type: "string" },
+        submissionId: { type: "string" },
+        evaluatorId: { type: "string" },
+      },
+      ["event"],
+    ),
+    readOnly: true,
+    run: async (ctx, userId, args) =>
+      fromApi(
+        await ctx.runQuery(internal.apiV1.listEvaluations, {
+          userId,
+          eventRef: args.event,
+          planId: args.planId,
+          sessionId: args.submissionId,
+          evaluatorId: args.evaluatorId,
+          page: 1,
+          pageSize: 100,
+        }),
+        "That event",
+      ),
+  },
+  {
+    name: "distribute_evaluations",
+    title: "Distribute the pool across evaluators",
+    description:
+      "Splits a plan's submission pool evenly across its evaluators, round-robin, so each submission lands with exactly one reviewer. perReviewerCap stops anyone getting more than they agreed to; whatever doesn't fit stays unassigned and is reported back. Re-running with the same inputs gives the same result — but it REPLACES all existing assignments, including hand-picked ones.",
+    inputSchema: schema(
+      {
+        planId: { type: "string", description: "From list_evaluation_plans." },
+        perReviewerCap: { type: "number", description: "Most submissions any one evaluator gets." },
+      },
+      ["planId"],
+    ),
+    readOnly: false,
+    idempotent: true,
+    run: (ctx, userId, args) =>
+      ctx.runMutation(internal.mcp.distributeEvaluations, {
+        userId,
+        planId: args.planId,
+        perReviewerCap: args.perReviewerCap,
+      }),
+  },
+  {
+    name: "remind_evaluators",
+    title: "Remind evaluators with open reviews (SENDS EMAIL)",
+    description:
+      "Emails every evaluator on a plan who still has outstanding reviews — each gets their own review link and their own outstanding count. Evaluators who finished are skipped, never nagged. Check progress first with get_evaluation_plan.",
+    inputSchema: schema(
+      { planId: { type: "string", description: "From list_evaluation_plans." } },
+      ["planId"],
+    ),
+    readOnly: false,
+    run: (ctx, userId, args) =>
+      ctx.runMutation(internal.mcp.remindEvaluators, {
+        userId,
+        planId: args.planId,
+      }),
+  },
+
+  // ——— Event setup: rooms, tracks, option lists, statuses —————————————————
+  {
+    name: "list_field_options",
+    title: "List rooms, tracks, or option lists",
+    description:
+      "Reads the event's setup lists in one call: resource \"rooms\" or \"tracks\" (real records with ids), \"tags\", \"formats\", \"levels\" or \"languages\" (the option sets on the CFP form's questions, unioned with any value actually in use), or \"statuses\" (the submission pipeline, built-ins plus custom labels). This is where the ids for update_submission's track argument and manage_* tools come from.",
+    inputSchema: schema(
+      {
+        event: EVENT_ARG,
+        resource: {
+          type: "string",
+          enum: ["rooms", "tracks", "tags", "formats", "levels", "languages", "statuses"],
+        },
+      },
+      ["event", "resource"],
+    ),
+    readOnly: true,
+    run: async (ctx, userId, args) =>
+      fromApi(
+        await ctx.runQuery(internal.apiV1.listSettings, {
+          userId,
+          eventRef: args.event,
+          resource: args.resource,
+          page: 1,
+          pageSize: 100,
+        }),
+        "That event",
+      ),
+  },
+  {
+    name: "manage_room",
+    title: "Add, rename or delete a room",
+    description:
+      "Manages the event's rooms: create (name + optional capacity), update (rename, change capacity or order), delete (refused while sessions are scheduled in it). Room ids come from get_agenda or list_field_options.",
+    inputSchema: schema(
+      {
+        event: EVENT_ARG,
+        action: { type: "string", enum: ["create", "update", "delete"] },
+        roomId: { type: "string", description: "Required for update/delete." },
+        name: { type: "string" },
+        capacity: { type: "number" },
+        order: { type: "number" },
+      },
+      ["event", "action"],
+    ),
+    readOnly: false,
+    run: async (ctx, userId, args) =>
+      fromApi(
+        await ctx.runMutation(internal.apiV1.writeMetadata, {
+          userId,
+          eventRef: args.event,
+          resource: "rooms",
+          action: args.action,
+          id: args.roomId,
+          name: args.name,
+          capacity: args.capacity,
+          order: args.order,
+        }),
+        "That room",
+      ),
+  },
+  {
+    name: "manage_track",
+    title: "Add, rename or delete a track",
+    description:
+      "Manages the event's tracks — the colored single-select that drives routing and agenda columns. create (name + optional color), update, delete. Track ids come from list_field_options resource \"tracks\".",
+    inputSchema: schema(
+      {
+        event: EVENT_ARG,
+        action: { type: "string", enum: ["create", "update", "delete"] },
+        trackId: { type: "string", description: "Required for update/delete." },
+        name: { type: "string" },
+        color: { type: "string", description: "A hex color like \"#0F6E70\"." },
+        order: { type: "number" },
+      },
+      ["event", "action"],
+    ),
+    readOnly: false,
+    run: async (ctx, userId, args) =>
+      fromApi(
+        await ctx.runMutation(internal.apiV1.writeMetadata, {
+          userId,
+          eventRef: args.event,
+          resource: "tracks",
+          action: args.action,
+          id: args.trackId,
+          name: args.name,
+          color: args.color,
+          order: args.order,
+        }),
+        "That track",
+      ),
+  },
+  {
+    name: "manage_field_option",
+    title: "Add, rename or remove a dropdown option",
+    description:
+      "Edits the option sets behind the CFP form's dropdowns: tags, formats, levels, languages. create adds an option, update renames it (cascading onto every session that used the old value), delete stops offering it (existing sessions keep their value, flagged as no longer offered). The option's id IS its value.",
+    inputSchema: schema(
+      {
+        event: EVENT_ARG,
+        resource: { type: "string", enum: ["tags", "formats", "levels", "languages"] },
+        action: { type: "string", enum: ["create", "update", "delete"] },
+        value: { type: "string", description: "The existing option (update/delete)." },
+        name: { type: "string", description: "The option to add, or the new name on update." },
+      },
+      ["event", "resource", "action"],
+    ),
+    readOnly: false,
+    run: async (ctx, userId, args) =>
+      fromApi(
+        await ctx.runMutation(internal.apiV1.writeMetadata, {
+          userId,
+          eventRef: args.event,
+          resource: args.resource,
+          action: args.action,
+          id: args.value,
+          name: args.name,
+        }),
+        "That option",
+      ),
+  },
+  {
+    name: "manage_session_status",
+    title: "Add, edit, archive or restore a status label",
+    description:
+      "Manages the event's status labels. A custom status is a LABEL bound to one of the pipeline categories (draft, pending, accepted, declined, withdrawn) — \"Waitlist\" in category pending keeps every queue, email and portal rule working while the organizer sees their own word. create takes name + category + a color token (green, amber, red, gray, blue); delete archives (submissions still carrying the label must be reassigned via reassignTo); restore un-archives. The seven built-ins can be renamed and recoloured but never deleted or re-categorised.",
+    inputSchema: schema(
+      {
+        event: EVENT_ARG,
+        action: { type: "string", enum: ["create", "update", "delete", "restore"] },
+        statusId: { type: "string", description: "From list_field_options resource \"statuses\" (update/delete/restore)." },
+        name: { type: "string" },
+        category: { type: "string", enum: ["draft", "pending", "accepted", "declined", "withdrawn"] },
+        color: { type: "string", enum: ["green", "amber", "red", "gray", "blue"] },
+        reassignTo: { type: "string", description: "Where submissions carrying a deleted label land." },
+      },
+      ["event", "action"],
+    ),
+    readOnly: false,
+    run: async (ctx, userId, args) =>
+      fromApi(
+        await ctx.runMutation(internal.apiV1.writeMetadata, {
+          userId,
+          eventRef: args.event,
+          resource: "statuses",
+          action: args.action,
+          id: args.statusId,
+          name: args.name,
+          category: args.category,
+          color: args.color,
+          reassignTo: args.reassignTo,
+        }),
+        "That status",
+      ),
+  },
+
+  // ——— Integrations: webhooks + embeds ————————————————————————————————————
+  {
+    name: "list_webhooks",
+    title: "List webhooks (and their deliveries)",
+    description:
+      "Lists the workspace's webhook endpoints — URL, subscribed events, enabled state, delivery stats. Pass webhookId to read ONE endpoint with its recent delivery log (status, attempts, response codes, errors). Signing secrets are never returned after creation.",
+    inputSchema: schema({
+      event: { type: "string", description: "Optional: only endpoints scoped to this event." },
+      webhookId: { type: "string", description: "Optional: one endpoint, with recent deliveries." },
+    }),
+    readOnly: true,
+    run: async (ctx, userId, args) => {
+      if (args.webhookId) {
+        return fromApi(
+          await ctx.runQuery(internal.apiV1.getWebhook, {
+            userId,
+            webhookId: args.webhookId,
+          }),
+          "That webhook",
+        )
+      }
+      return fromApi(
+        await ctx.runQuery(internal.apiV1.listWebhooks, {
+          userId,
+          eventRef: args.event,
+        }),
+        "That event",
+      )
+    },
+  },
+  {
+    name: "manage_webhook",
+    title: "Create, edit, test, rotate or delete a webhook",
+    description:
+      "Manages webhook endpoints: create (returns the whsec_… signing secret ONCE — relay it to the user immediately, it cannot be read again), update (URL, subscribed events, enabled), test (queues a signed webhook.test delivery), rotate (new secret, shown once), delete. Deliveries are HMAC-SHA256 signed (Trackstage-Signature) and retried five times.",
+    inputSchema: schema(
+      {
+        action: { type: "string", enum: ["create", "update", "delete", "rotate", "test"] },
+        webhookId: { type: "string", description: "Required for everything but create." },
+        event: { type: "string", description: "create only: scope the endpoint to this event (omit for workspace-wide)." },
+        url: { type: "string" },
+        events: {
+          type: "array",
+          items: { type: "string" },
+          description: "Event types to subscribe to, e.g. [\"submission.created\", \"decision.committed\"].",
+        },
+        description: { type: "string" },
+        enabled: { type: "boolean" },
+      },
+      ["action"],
+    ),
+    readOnly: false,
+    run: async (ctx, userId, args) =>
+      fromApi(
+        await ctx.runMutation(internal.apiV1.writeWebhook, {
+          userId,
+          action: args.action,
+          webhookId: args.webhookId,
+          eventRef: args.event,
+          url: args.url,
+          events: args.events,
+          description: args.description,
+          enabled: args.enabled,
+        }),
+        "That webhook",
+      ),
+  },
+  {
+    name: "list_embeds",
+    title: "List saved embeds",
+    description:
+      "Lists the event's saved embed configurations — named widget setups (agenda, itinerary, sessions, speaker-gallery, speaker-list) an organizer reuses across their website. The Embeds page in the app turns any of them into a copy-paste snippet.",
+    inputSchema: schema({ event: EVENT_ARG }, ["event"]),
+    readOnly: true,
+    run: (ctx, userId, args) =>
+      ctx.runQuery(internal.mcp.listEmbedsQ, { userId, event: args.event }),
+  },
+  {
+    name: "save_embed",
+    title: "Save an embed configuration",
+    description:
+      "Creates a named embed configuration (or overwrites one by embedId): which widget, its delivery format (iframe, html, link, json, ics) and display options. Widgets render the PUBLISHED programme — publish the agenda first or the embed shows \"coming soon\".",
+    inputSchema: schema(
+      {
+        event: EVENT_ARG,
+        embedId: { type: "string", description: "Present ⇒ overwrite that saved embed." },
+        name: { type: "string" },
+        widget: { type: "string", enum: ["agenda", "itinerary", "sessions", "speaker-gallery", "speaker-list"] },
+        format: { type: "string", enum: ["iframe", "html", "link", "json", "ics"] },
+        track: { type: "string", description: "Limit the widget to one track." },
+        hideDescriptions: { type: "boolean" },
+        hideSpeakers: { type: "boolean" },
+        hideImages: { type: "boolean" },
+        hideSearch: { type: "boolean" },
+        height: { type: "number", description: "iframe height in px." },
+      },
+      ["event", "name", "widget"],
+    ),
+    readOnly: false,
+    destructive: false,
+    idempotent: true,
+    run: (ctx, userId, args) =>
+      ctx.runMutation(internal.mcp.saveEmbedM, {
+        userId,
+        event: args.event,
+        embedId: args.embedId,
+        name: args.name,
+        widget: args.widget,
+        format: args.format,
+        track: args.track,
+        hideDescriptions: args.hideDescriptions,
+        hideSpeakers: args.hideSpeakers,
+        hideImages: args.hideImages,
+        hideSearch: args.hideSearch,
+        height: args.height,
+      }),
+  },
+  {
+    name: "delete_embed",
+    title: "Delete a saved embed",
+    description:
+      "Deletes a saved embed configuration. Snippets already pasted into websites keep working — this only removes the saved preset.",
+    inputSchema: schema(
+      { embedId: { type: "string", description: "From list_embeds." } },
+      ["embedId"],
+    ),
+    readOnly: false,
+    idempotent: true,
+    run: (ctx, userId, args) =>
+      ctx.runMutation(internal.mcp.deleteEmbedM, {
+        userId,
+        embedId: args.embedId,
+      }),
+  },
+
+  // ——— Activity ———————————————————————————————————————————————————————————
+  {
+    name: "list_activity",
+    title: "Event activity feed",
+    description:
+      "The event's audit trail, newest first: who changed what, when, with a one-line receipt. filter: \"agents\" narrows it to MCP/API writes (including your own earlier calls this session); other values match an entity kind (submission, form, speaker, session, agenda, settings). This is how an organizer verifies what an agent actually did.",
+    inputSchema: schema(
+      {
+        event: EVENT_ARG,
+        filter: { type: "string", description: "\"agents\", or an entity kind." },
+        limit: { type: "number", description: "Max rows (default 25, max 100)." },
+      },
+      ["event"],
+    ),
+    readOnly: true,
+    run: (ctx, userId, args) =>
+      ctx.runQuery(internal.mcp.listActivity, {
+        userId,
+        event: args.event,
+        filter: args.filter,
+        limit: args.limit,
+      }),
+  },
 ]
 
 const TOOLS_BY_NAME = new Map(TOOLS.map((tool) => [tool.name, tool]))
+
+// ══════════════════════════════════════════════════════════════════════════
+// Universal write gating (Marko's directive: anything but a READ is gated)
+//
+// Every non-read-only tool requires `confirm: true`. Without it the call is
+// refused with an instruction to ask the user first — so a model driving this
+// server can never write anything a human didn't just approve, whatever its
+// client does about annotations. The `confirm` argument is injected here, in
+// one place, so a tool added tomorrow is gated by construction; the three
+// destructive tools that already declared their own `confirm` (with sharper
+// wording) keep it. Clients with native approval UIs (the in-app copilot,
+// ChatGPT's write-action confirmation) collect the human "yes" themselves and
+// then supply confirm: true — the two layers are the same gate, not two gates.
+// ══════════════════════════════════════════════════════════════════════════
+
+const CONFIRM_ARG = {
+  type: "boolean",
+  description:
+    "Must be true. This tool changes data — tell the user exactly what you are about to do and set this only after they approve.",
+}
+
+for (const tool of TOOLS) {
+  if (tool.readOnly) continue
+  const properties = tool.inputSchema.properties
+  if (!("confirm" in properties)) properties.confirm = CONFIRM_ARG
+  const required = tool.inputSchema.required ?? []
+  if (!required.includes("confirm")) {
+    tool.inputSchema.required = [...required, "confirm"]
+  }
+}
+
+/** The refusal a write tool answers when `confirm: true` is missing. */
+function confirmRefusal(tool: ToolDef): string {
+  const tier =
+    (tool.destructive ?? true)
+      ? "changes or destroys existing data"
+      : "creates new data"
+  return (
+    `${tool.name} ${tier}, so it will not run without confirm: true. ` +
+    `Tell the user precisely what this call will do (${tool.title.replace(/ \(.*\)$/, "").toLowerCase()}), wait for their approval, then call it again with confirm: true. ` +
+    `Read-only tools never need confirm. Nothing has been changed.`
+  )
+}
 
 // ══════════════════════════════════════════════════════════════════════════
 // JSON-RPC 2.0 / Streamable HTTP transport
@@ -3270,7 +5768,7 @@ function initializeResult(requested: unknown) {
       version: SERVER_VERSION,
     },
     instructions:
-      "Trackstage runs conferences: call-for-papers forms, submissions and accept/decline decisions, the agenda, the speaker roster and their tasks, and the emails that go out. Start with list_events, then get_event_summary for the state of play (it is the whole dashboard — get_agenda is for the timetable itself). Every `event` argument takes an id or a slug. Decisions are two-step on purpose: set_submission_status stages them, commit_decision_queue is what actually emails the speakers. The same care applies to deletion: delete_event and delete_form need confirm: true, and delete_event also needs the event's exact name in confirmName — never infer a deletion the user did not explicitly ask for.",
+      "Trackstage runs conferences: call-for-papers forms, submissions and accept/decline decisions, evaluation rounds, the agenda, the speaker roster and their tasks, files, emails, webhooks and workspace membership. Start with list_events, then get_event_summary for the state of play (it is the whole dashboard — get_agenda is for the timetable itself). Every `event` argument takes an id or a slug. APPROVALS: every tool that writes anything requires confirm: true and refuses without it — tell the user exactly what you are about to do, get their approval, then call again with confirm: true; reads never need it. Decisions are two-step on purpose: set_submission_status stages them, commit_decision_queue is what actually emails the speakers. delete_event additionally needs the event's exact name in confirmName — never infer a deletion the user did not explicitly ask for.",
   }
 }
 
@@ -3316,6 +5814,42 @@ const TOOL_SUBJECTS: Record<
   send_reminders: { entity: "speaker" },
   update_template: { entity: "settings" },
   send_test_email: { entity: "settings" },
+  update_event: { entity: "settings" },
+  update_form: { entity: "form", table: "forms", arg: "form" },
+  manage_form_question: { entity: "form" },
+  update_submission: { entity: "submission", table: "submissions", arg: "submissionId" },
+  delete_submission: { entity: "submission", table: "submissions", arg: "submissionId" },
+  restore_submission: { entity: "submission", table: "submissions", arg: "submissionId" },
+  add_participant: { entity: "submission", table: "submissions", arg: "submissionId" },
+  remove_participant: { entity: "submission", table: "submissions", arg: "submissionId" },
+  set_agenda_published: { entity: "agenda" },
+  add_speaker: { entity: "speaker" },
+  update_speaker: { entity: "speaker" },
+  remove_speaker: { entity: "speaker" },
+  bulk_add_speakers: { entity: "speaker" },
+  update_task: { entity: "speaker", table: "tasks", arg: "taskId" },
+  delete_task_template: { entity: "settings" },
+  review_file: { entity: "speaker" },
+  delete_file: { entity: "speaker" },
+  send_bulk_email: { entity: "speaker" },
+  create_evaluation_plan: { entity: "settings" },
+  update_evaluation_plan: { entity: "settings" },
+  delete_evaluation_plan: { entity: "settings" },
+  add_evaluator: { entity: "settings" },
+  update_evaluator: { entity: "settings" },
+  remove_evaluator: { entity: "settings" },
+  distribute_evaluations: { entity: "settings" },
+  remind_evaluators: { entity: "settings" },
+  manage_room: { entity: "settings" },
+  manage_track: { entity: "settings" },
+  manage_field_option: { entity: "settings" },
+  manage_session_status: { entity: "settings" },
+  manage_webhook: { entity: "settings" },
+  save_embed: { entity: "settings" },
+  delete_embed: { entity: "settings" },
+  invite_workspace_member: { entity: "settings" },
+  update_workspace_member: { entity: "settings" },
+  remove_workspace_member: { entity: "settings" },
 }
 
 /** Receipt keys worth putting in the sentence an organizer reads. */
@@ -3420,10 +5954,15 @@ async function handleRpc(
           title: tool.title,
           description: tool.description,
           inputSchema: tool.inputSchema,
+          // Truthful, per the 2025-06-18 spec: readOnlyHint is what
+          // well-behaved clients (ChatGPT honors it explicitly) use to skip
+          // approval on reads; destructiveHint false marks purely additive
+          // creates; idempotentHint true marks safe-to-repeat writes.
           annotations: {
             title: tool.title,
             readOnlyHint: tool.readOnly,
-            destructiveHint: !tool.readOnly,
+            destructiveHint: tool.readOnly ? false : (tool.destructive ?? true),
+            idempotentHint: tool.readOnly ? true : (tool.idempotent ?? false),
             openWorldHint: false,
           },
         })),
@@ -3451,6 +5990,19 @@ async function handleRpc(
       const args = message.params?.arguments ?? {}
       if (typeof args !== "object" || args === null || Array.isArray(args)) {
         return rpcError(id, INVALID_PARAMS, "`arguments` must be an object.")
+      }
+      // THE write gate — checked before schema validation so the model reads
+      // this instruction rather than a bare "missing required argument".
+      // A tool RESULT with isError (not a protocol error), because that is
+      // the channel models actually read and correct from.
+      if (
+        !tool.readOnly &&
+        (args as Record<string, unknown>).confirm !== true
+      ) {
+        return rpcResult(id, {
+          content: [{ type: "text", text: confirmRefusal(tool) }],
+          isError: true,
+        })
       }
       const invalid = validateArgs(tool, args as Record<string, unknown>)
       if (invalid) return rpcError(id, INVALID_PARAMS, invalid)

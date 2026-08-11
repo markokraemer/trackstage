@@ -79,8 +79,10 @@ import {
  * this registry must degrade gracefully, because a tool added to the MCP
  * server tomorrow will show up here with no entry at all.
  *
- * So: every one of the 34 tools has a view, and anything unknown falls back to
- * a syntax-highlighted JSON block that is still honest about what happened.
+ * So: the original 34-tool surface has purpose-built views, and everything
+ * else — including the 47 tools the 2026-08-11 full-proxy pass added — falls
+ * back to a syntax-highlighted JSON block that is still honest about what
+ * happened. Promote a tool to a bespoke view when its payload earns one.
  */
 
 export type CopilotToolPart = ToolUIPart | DynamicToolUIPart

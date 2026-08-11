@@ -64,10 +64,15 @@ function SchedulePage() {
     .filter((day) => day.sessions.length > 0)
   const unscheduled = data.unscheduled.filter(matchesTrack)
 
-  const activeIndex = Math.max(
-    0,
-    days.findIndex((day) => day.date === search.day),
-  )
+  // A `?day=` that names no day in the program — a date outside it, or one the
+  // current `?track=` filter emptied — used to be coerced silently to day one,
+  // so a shared deep link could show something other than what it promised
+  // without ever saying so. Fall back, but say we did.
+  const requestedDay = search.day
+    ? days.find((day) => day.date === search.day)
+    : undefined
+  const dayNotFound = Boolean(search.day) && requestedDay === undefined
+  const activeIndex = requestedDay ? days.indexOf(requestedDay) : 0
   const activeDay = days.at(activeIndex)
   const view = search.view === "rooms" ? "rooms" : "time"
 
@@ -301,6 +306,13 @@ function SchedulePage() {
                   {search.track ? ` on the ${search.track} track` : ""}
                   {zoneLabel ? ` · all times ${zoneLabel}` : ""}
                 </p>
+                {dayNotFound ? (
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    Nothing scheduled on {search.day}
+                    {search.track ? ` for the ${search.track} track` : ""} —
+                    showing {activeDay.label} instead.
+                  </p>
+                ) : null}
               </div>
               <div className="flex flex-wrap items-center gap-2">
                 <AddToCalendarButton

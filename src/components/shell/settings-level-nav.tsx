@@ -27,7 +27,7 @@ export type SettingsLevel = "account" | "workspace" | "event"
  */
 export function SettingsLevelNav({ level }: { level: SettingsLevel }) {
   const { session } = useSession()
-  const { event, eventRef, workspace } = useCurrentEvent()
+  const { event, eventRef, workspace, isLoading } = useCurrentEvent()
 
   const items = [
     {
@@ -49,7 +49,9 @@ export function SettingsLevelNav({ level }: { level: SettingsLevel }) {
     {
       value: "event" as const,
       label: "Event",
-      detail: event?.name ?? "No event yet",
+      // "No event yet" is a claim about the account, not a loading
+      // state — don't make it while the events list is still in flight.
+      detail: event?.name ?? (isLoading ? "Loading…" : "No event yet"),
       icon: RiCalendarEventLine,
       to: eventRef ? appLink.settings(eventRef) : legacyAppLink.settings,
     },

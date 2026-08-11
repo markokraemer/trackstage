@@ -9,7 +9,7 @@ import { TransitionSeries, linearTiming } from "@remotion/transitions"
 import { fade } from "@remotion/transitions/fade"
 import { storyboardV3, totalDurationInFramesV3 } from "./storyboard-v3"
 import type { SceneV3 } from "./storyboard-v3"
-import { Chapter, Close, Reveal, Stats, Stills, Title } from "./scenes-v3"
+import { Chapter, Close, Mcp, Reveal, Stats, Stills, Title } from "./scenes-v3"
 import { color } from "./theme"
 
 const render = (scene: SceneV3) => {
@@ -20,6 +20,8 @@ const render = (scene: SceneV3) => {
       return <Reveal scene={scene} />
     case "chapter":
       return <Chapter scene={scene} />
+    case "mcp":
+      return <Mcp scene={scene} />
     case "stills":
       return <Stills scene={scene} />
     case "stats":

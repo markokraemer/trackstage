@@ -9,7 +9,7 @@ mkdir -p "$OUT"
 rm -f "$OUT"/*.png
 
 # scene: start dur
-scenes="cold-open:0:96 reveal:84:118 form-builder:190:138 cfp:328:216 triage:544:134 commit:678:126 portal:804:126 agenda:930:152 autoplace:1082:108 publish:1190:144 copilot:1334:170 capabilities:1504:150 stats:1644:140 close:1772:156"
+scenes="cold-open:0:90 reveal:78:118 form-builder:184:132 cfp:316:212 triage:528:130 commit:658:126 portal:784:124 agenda:908:148 autoplace:1056:108 publish:1164:140 copilot:1304:170 mcp:1474:116 capabilities:1590:96 stats:1676:140 close:1804:152"
 
 frames=""
 for s in $scenes; do
@@ -19,7 +19,7 @@ for s in $scenes; do
 done
 
 # hard cuts (chapter boundaries + internal segment jumps + still swaps)
-for c in 328 412 544 678 804 930 1082 1190 1334 1504 1554 1604; do
+for c in 316 396 528 658 784 908 1056 1164 1304 1474 1590 1638; do
   frames="$frames cut$c-m1:$((c - 1)) cut$c-0:$c cut$c-p1:$((c + 1))"
 done
 

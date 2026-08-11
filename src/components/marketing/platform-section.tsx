@@ -47,7 +47,7 @@ const SURFACES: Array<Surface> = [
   {
     icon: RiRobot2Line,
     title: "MCP server",
-    description: `${MCP_TOOL_COUNT} tools over OAuth. Anything destructive asks first.`,
+    description: `${MCP_TOOL_COUNT} tools over OAuth. Anything that changes data asks first.`,
     meta: `POST ${MCP_ENDPOINT_PATH}`,
   },
 ]
