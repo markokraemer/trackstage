@@ -321,3 +321,19 @@ but separate" — Marko) · Settings terminal, Dashboard/Copilot label-less on
 top. Top-bar public-page icon stays (quick affordance; hover copy now "Open
 public event page"). Implemented in navGroupsFor (src/routes/app/route.tsx) +
 src/components/shell/sidebar-nav.tsx (external-item support).
+
+## Event settings pinned to the sidebar's true bottom, renamed (2026-08-12)
+Marko: the settings entry "under Share … is a bit confusing … maybe just
+separate at the complete bottom of the left sidebar no matter what / and also
+do we specifically want to call it event settings?" The old shape had
+Settings as a trailing UNLABELLED group directly below the labelled SHARE
+group — group labels read as section headers, so Settings looked like a Share
+item. Now it is pinned at the physical bottom of the sidebar (desktop aside
+AND the phone drawer), behind its own top border, outside the scrolling group
+list — the Linear/Notion pattern for workspace settings. Label is "Event
+settings", not "Settings": account + workspace settings live in the avatar
+menu, and this is the one sidebar entry where the bare word collides with
+them (copilot surfaces already said "Event settings"). Implemented as
+settingsNavFor + a pinned footer SidebarNav (mt-auto) in
+src/routes/app/route.tsx and src/components/shell/mobile-nav.tsx;
+SidebarNav grew className/ariaLabel props for the tighter footer rhythm.

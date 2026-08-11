@@ -25,7 +25,14 @@ import type { NavGroup } from "@/components/shell/sidebar-nav"
  * switching events (the pathname effect catches the navigation), tapping the
  * backdrop, or Esc. Desktop (md+) never renders any of this.
  */
-export function MobileNav({ groups }: { groups: Array<NavGroup> }) {
+export function MobileNav({
+  groups,
+  footerGroups,
+}: {
+  groups: Array<NavGroup>
+  /** Pinned at the drawer's bottom behind a separator (Event settings). */
+  footerGroups?: Array<NavGroup>
+}) {
   const [open, setOpen] = useState(false)
 
   // Any navigation — nav link, event switcher, checklist row — closes the
@@ -51,7 +58,7 @@ export function MobileNav({ groups }: { groups: Array<NavGroup> }) {
       </SheetTrigger>
       <SheetContent
         side="left"
-        className="w-[min(19rem,86vw)] gap-0 overflow-y-auto bg-sidebar p-0 md:hidden"
+        className="flex w-[min(19rem,86vw)] flex-col gap-0 overflow-y-auto bg-sidebar p-0 md:hidden"
       >
         <SheetTitle className="sr-only">Navigation</SheetTitle>
         {/* pr-12 keeps the switcher clear of the sheet's ✕ button. */}
@@ -64,6 +71,18 @@ export function MobileNav({ groups }: { groups: Array<NavGroup> }) {
           itemClassName="min-h-11"
         />
         <GettingStarted />
+        {footerGroups ? (
+          // Same pinned Event settings as the desktop aside.
+          <div className="mt-auto border-t border-sidebar-border">
+            <SidebarNav
+              ariaLabel="Event settings"
+              groups={footerGroups}
+              onNavigate={() => setOpen(false)}
+              itemClassName="min-h-11"
+              className="py-2"
+            />
+          </div>
+        ) : null}
       </SheetContent>
     </Sheet>
   )
