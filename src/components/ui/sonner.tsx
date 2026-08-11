@@ -52,16 +52,22 @@ const Toaster = ({ ...props }: ToasterProps) => {
         classNames: {
           // Sonner's own rules are attribute-scoped and out-specify a bare
           // utility class, hence the `!` on the properties we own outright.
+          // A receipt must never be a wall. Sonner's toasts take pointer
+          // events, so one sitting bottom-right over a drawer's Save button
+          // (or a table's row menu) silently swallows the next click until it
+          // times out — reproduced against prod, where a success toast blocked
+          // the very action it was confirming. The toast reads; only its own
+          // buttons click.
           toast:
-            "cn-toast items-start! gap-3! rounded-lg! border! border-border! bg-popover! px-4! py-3.5! text-popover-foreground! shadow-lg! shadow-black/5!",
+            "cn-toast pointer-events-none! items-start! gap-3! rounded-lg! border! border-border! bg-popover! px-4! py-3.5! text-popover-foreground! shadow-lg! shadow-black/5!",
           title: "text-sm! leading-5! font-medium! text-foreground!",
           description: "mt-0.5! text-sm! leading-5! text-muted-foreground!",
           icon: "mt-0.5! shrink-0!",
           actionButton:
-            "h-(--control-h-sm)! rounded-md! bg-primary! px-3! text-sm! font-medium! text-primary-foreground!",
+            "pointer-events-auto! h-(--control-h-sm)! rounded-md! bg-primary! px-3! text-sm! font-medium! text-primary-foreground!",
           cancelButton:
-            "h-(--control-h-sm)! rounded-md! bg-secondary! px-3! text-sm! font-medium! text-secondary-foreground!",
-          closeButton: "border-border! bg-popover! text-muted-foreground!",
+            "pointer-events-auto! h-(--control-h-sm)! rounded-md! bg-secondary! px-3! text-sm! font-medium! text-secondary-foreground!",
+          closeButton: "pointer-events-auto! border-border! bg-popover! text-muted-foreground!",
           success: "[&_[data-icon]]:text-status-green-dot",
           error: "[&_[data-icon]]:text-status-red-dot",
           warning: "[&_[data-icon]]:text-status-amber-dot",
