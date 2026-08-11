@@ -23,10 +23,13 @@ export const Route = createFileRoute("/app/$workspaceSlug/$eventSlug/settings")(
 
 const TABS = [
   { value: "details", label: "Event details", section: undefined },
+  // Rooms & tracks sits RIGHT NEXT to Event details (Marko, 2026-08-12:
+  // "quite important") — it is the event's physical/program shape, the first
+  // thing set up after the basics.
+  { value: "rooms", label: "Rooms & tracks", section: "rooms-and-tracks" },
   // Who can open this event — the same member table as Workspace settings,
   // scoped (Marko, 2026-08-12: "just have a Team tab instead").
   { value: "team", label: "Team", section: "team" },
-  { value: "rooms", label: "Rooms & tracks", section: "rooms-and-tracks" },
   {
     value: "fields",
     label: "Fields & options",
