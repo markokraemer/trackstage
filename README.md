@@ -79,6 +79,26 @@ every new submission.
 
 </details>
 
+## Where it beats the original
+
+Measured against Sessionboard's own product, not just matched to it:
+
+1. **Live conflict detection.** Drag a talk onto the agenda and room clashes *and*
+   double-booked speakers flag in red the moment they exist — Sessionboard makes you
+   refresh to find out.
+2. **Status-change emails from the pipeline itself.** Committing an accept/decline
+   queue sends the decision email, creates the speaker's onboarding tasks, and flips
+   every surface at once — one action, no separate mail-merge step.
+3. **A real API for form fields and webhooks.** Custom fields are creatable via the
+   REST API, and webhooks are API-managed with HMAC signatures, one-time secrets,
+   rotation, and a delivery log — Sessionboard's API reads but barely writes.
+4. **An MCP server and an in-app copilot.** Operate the whole event from Claude,
+   ChatGPT, or Codex — or press ⌘I and hand the work to the built-in copilot with
+   approval gates. Sessionboard has nothing in this category.
+5. **Speed, and you can read the code.** Every interaction is optimistic and instant —
+   the complaint that started this project was sluggishness — and the entire product
+   is MIT-licensed source you can self-host in four commands.
+
 ## AI copilot
 
 Press <kbd>⌘I</kbd> anywhere in the app. The copilot talks to Trackstage through its own
