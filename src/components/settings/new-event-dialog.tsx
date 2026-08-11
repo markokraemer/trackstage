@@ -245,7 +245,14 @@ export function NewEventDialog({
                   onValueChange={(value) => setOrganizationId(String(value))}
                 >
                   <SelectTrigger id="new-event-workspace" className="h-9 w-full">
-                    <SelectValue />
+                    {/* Base UI's SelectValue prints the raw value when items
+                        aren't registered yet — resolve the label ourselves. */}
+                    <SelectValue>
+                      {() =>
+                        workspaces.find((w) => w.id === workspaceId)?.name ??
+                        "Choose a workspace"
+                      }
+                    </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
                     {workspaces.map((workspace) => (
