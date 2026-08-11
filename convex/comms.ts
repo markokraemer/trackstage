@@ -555,6 +555,7 @@ const outboxRowValidator = v.object({
   body: v.string(),
   submissionId: v.optional(v.id("submissions")),
   icsAttached: v.boolean(),
+  isHtml: v.optional(v.boolean()),
   scheduledAt: v.optional(v.number()),
   sentAt: v.optional(v.number()),
   status: v.string(),
