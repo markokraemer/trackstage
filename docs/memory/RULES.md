@@ -206,6 +206,11 @@ trail visible).
     endpoint-by-endpoint against ours and close every gap — full capabilities,
     scopes, custom fields, everything core. "In no form or shape should be degraded;
     we should improve on things." Their docs also inspire our Fumadocs API docs.
+    EXTENDED (re-emphasized): the API reference doubles as a FEATURE CENSUS — every
+    endpoint implies product functionality; the UI/UX must match those implied
+    capabilities in depth too (e.g. if their API manages session files/custom
+    fields/webhooks, our product UI surfaces the same power, organizer-friendly).
+    api-parity.md must carry a "UI implications" section; gaps become fix-wave work.
 19. **Mandatory final reconciliation pass**: slice-per-agent parallelism will drift —
     different layouts, spacing, and interaction patterns per slice. Before ship, ONE
     agent reads and reworks the whole app end to end for coherent, standardized,

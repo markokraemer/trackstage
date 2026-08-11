@@ -161,3 +161,6 @@ the narrative memory; RULES.md is the things circled as important along the way.
 54. **API parity mandate**: dedicated agent to map Sessionboard's full API reference
     in depth and reach 100% parity on the program-side core (incl. custom fields,
     scopes); never degraded, improve where possible; feed structure into Fumadocs.
+55. **API-implied UI parity**: re-emphasized end-to-end API parity AND full UI/UX
+    implementation matching everything Sessionboard does in depth — the API reference
+    treated as a feature census driving UI coverage, not just endpoint coverage.
