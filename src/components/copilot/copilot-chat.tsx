@@ -255,8 +255,11 @@ export function CopilotChat({
 
       <div
         className={cn(
-          "shrink-0 border-t border-border bg-card",
-          isPage ? "px-6 py-4" : "p-3"
+          "shrink-0",
+          // Page: the composer floats in the SAME centered column as the
+          // conversation — no full-width tinted bar disconnecting the two
+          // (Marko, 2026-08-11). Panel keeps its compact docked strip.
+          isPage ? "px-6 pt-2 pb-5" : "border-t border-border bg-card p-3"
         )}
       >
         <div className={cn("space-y-2", isPage && "mx-auto w-full max-w-3xl")}>

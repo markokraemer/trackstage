@@ -25,7 +25,8 @@ function CopilotPage() {
     // conversation owns the whole height and the composer sits on the shell's
     // bottom edge — a workspace, not a card floating in one (Marko, 2026-08-11).
     <div className="-my-6 flex h-[calc(100svh-3.5rem)] min-h-0 flex-col">
-      <header className="flex shrink-0 items-center justify-between gap-3 border-b border-border py-3">
+      <header className="shrink-0 border-b border-border">
+        <div className="mx-auto flex w-full max-w-3xl items-center justify-between gap-3 px-6 py-3">
         <div className="min-w-0">
           <h1 className="font-heading truncate text-sm font-semibold text-foreground">
             Copilot
@@ -50,6 +51,7 @@ function CopilotPage() {
             <RiSideBarLine aria-hidden />
             <span className="max-sm:sr-only">Open as panel</span>
           </Button>
+        </div>
         </div>
       </header>
 
