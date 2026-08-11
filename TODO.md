@@ -74,6 +74,16 @@ Source of truth for everything Marko asked + build status. Update continuously.
 - ⏳ Move /app/settings/api-mcp → /app/account/api-mcp (account-level by nature)
 - ⏳ Dev deployment has stray "MCP Test Event" from live-fire suite — reseed before demos
 
+## MCP ergonomic fixes (from live-fire test — docs/reference/mcp-live-test.md)
+- ⏳ Add deletion tools: delete_event / delete_form / remove_task (the one asterisk on
+  "do everything via MCP")
+- ⏳ Fix list_speakers onlyWithOutstandingWork semantics (returned 11, model said 8)
+- ⏳ Merge/rename get_event_overview (loses tool-selection to get_event_summary/get_agenda)
+- ⏳ Cap verbose payloads (get_form/get_agenda/list_templates multi-KB) + normalize field
+  names (closeAt vs closesAt)
+- ✅ (fixed in test) arg validation + userId leak · error hygiene · template key guard
+- NOTE: loopback portal/public URLs resolve at prod SITE_URL
+
 ## Quality / hill-climb
 - ⏳ First full pass review vs screenshots + video (UX 1:1 check), then vs SPEC acceptance
   criteria

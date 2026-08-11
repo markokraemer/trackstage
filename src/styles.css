@@ -95,7 +95,8 @@
 :root {
     /*
      * ------------------------------------------------------------- COLOUR
-     * Attio revamp (docs/memory/RULES.md #22, docs/memory/DESIGN-REVAMP.md).
+     * Candidate E — "De-blued" (SHIPPED, Marko's pick 2026-08-11), built on
+     * the Attio revamp's neutral system (RULES.md #22, DESIGN-REVAMP.md).
      * Two rules govern everything below:
      *   1. CHROME IS NEUTRAL — every derived neutral is chroma ≤ 2. The old
      *      slate ramp leaked the accent hue into backgrounds, borders, muted
@@ -104,6 +105,9 @@
      *      places: primary buttons, links, the active sidebar item, the
      *      selected-row/filter indicator, and `--chart-1`. Status and tag
      *      tokens carry meaning; nothing else is allowed to be coloured.
+     * The accent itself STAYS Sessionboard blue #2F5CE0 — the teal/petrol
+     * exploration was reviewed and rejected. The fix was never the hue, it
+     * was how much of everything else was wearing it.
      */
 
     /* Surfaces & text */
@@ -114,16 +118,16 @@
     --popover: #ffffff;
     --popover-foreground: #17171a;
 
-    /* Brand — Petrol. White text on it measures 6.03:1 (AA, docs/reference/
-     * design-references.md §10). This is the ONLY line where the brand hue is
-     * decided; `--ring`, `--sidebar-primary` and `--chart-1` follow it. */
-    --primary: #0f6e70;
+    /* Brand — Sessionboard blue. White text on it measures 5.31:1 (AA). This
+     * is the ONLY line where the brand hue is decided; `--ring`,
+     * `--sidebar-primary` and `--chart-1` follow it. */
+    --primary: #2f5ce0;
     --primary-foreground: #ffffff;
-    --primary-hover: #0d5f60;
-    --primary-active: #0b5153;
-    --primary-surface: #eef5f5;
-    --primary-surface-hover: #e0ecec;
-    --primary-border: #b7d4d4;
+    --primary-hover: #2950c0;
+    --primary-active: #2244a4;
+    --primary-surface: #eef2fc;
+    --primary-surface-hover: #dfe7fa;
+    --primary-border: #c1cef4;
 
     --secondary: #f4f4f5;
     --secondary-foreground: #17171a;
@@ -141,7 +145,7 @@
 
     /* Charts — one accent ramp, then the semantic three. */
     --chart-1: var(--primary);
-    --chart-2: #5fa3a4;
+    --chart-2: #7d9bf2;
     --chart-3: #16a34a;
     --chart-4: #d97706;
     --chart-5: #a1a1aa;
@@ -159,12 +163,12 @@
     /*
      * Status. The dot is what tables render (StatusPill `variant="dot"`); the
      * bg/fg pairs stay for staged emphasis (queue banners, drawer headers).
-     * Green is TRUE green, not emerald: emerald sits 33° from Petrol in LAB
-     * and would read as one family with the accent.
+     * Green stays emerald — the true-green move was only a prerequisite for a
+     * teal accent, and the accent stayed blue.
      */
-    --status-green-bg: #dcfce7;
-    --status-green-fg: #166534;
-    --status-green-dot: #16a34a;
+    --status-green-bg: #d1fae5;
+    --status-green-fg: #065f46;
+    --status-green-dot: #059669;
     --status-amber-bg: #fef3c7;
     --status-amber-fg: #92400e;
     --status-amber-dot: #d97706;

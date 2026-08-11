@@ -6,7 +6,7 @@
  * PNGs, the social avatar, the OG banner, and the favicon.
  */
 
-export const BRAND_PRIMARY = "#0F6E70"
+export const BRAND_PRIMARY = "#2F5CE0"
 export const BRAND_NAVY = "#17171A"
 export const BRAND_MUTED = "#6E6E76"
 export const BRAND_SURFACE = "#FAFAFA"
@@ -42,7 +42,7 @@ export type BrandVariant =
   | "lockup"
   | "wordmark"
 
-/** `color` = brand petrol on transparent; `inverse` = white, for dark surfaces. */
+/** `color` = brand blue on transparent; `inverse` = white, for dark surfaces. */
 export type BrandTone = "color" | "inverse"
 
 const FONT_STACK = `'Inter Variable', Inter, system-ui, -apple-system, 'Segoe UI', sans-serif`
@@ -145,7 +145,7 @@ export function lockupSvg(markSize: number, tone: BrandTone = "color"): string {
   )
 }
 
-/** 1:1 social profile picture — mark centred on brand petrol. */
+/** 1:1 social profile picture — mark centred on brand blue. */
 export function socialAvatarSvg(size: number): string {
   const glyph = size * 0.52
   const scale = glyph / MARK_VIEWBOX
