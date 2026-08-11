@@ -152,7 +152,7 @@ test.describe("hierarchy", () => {
       page.getByRole("heading", { name: /workspace settings/i }).first(),
     ).toBeVisible({ timeout: 15_000 })
     await expect(page.getByLabel(/workspace name/i).first()).toBeVisible()
-    await expect(page.getByText(/^members$/i).first()).toBeVisible()
+    await expect(page.getByText(/members/i).first()).toBeVisible()
     await expect(
       page.getByRole("button", { name: /invite teammate/i }).first(),
     ).toBeVisible()

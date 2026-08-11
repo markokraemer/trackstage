@@ -2,6 +2,7 @@ import { v } from "convex/values"
 import type { Doc, Id } from "./_generated/dataModel"
 import type { MutationCtx } from "./_generated/server"
 import { mutation, query } from "./_generated/server"
+import { scheduleAirtableSync } from "./airtable"
 import { randomToken } from "./lib/auth"
 
 // ————————————————————————————————————————————————————————————————————————
@@ -411,6 +412,8 @@ export const submit = mutation({
       })
     }
     await upsertParticipants(ctx, form, submissionId, args.participants)
+    // Mirror to Airtable within seconds (no-op unless connected).
+    await scheduleAirtableSync(ctx, form.eventId)
 
     return {
       submissionId,

@@ -118,3 +118,11 @@ the narrative memory; RULES.md is the things circled as important along the way.
     idempotent mirror per swyx's clarification). And: sidebar hierarchy critique —
     "Setup > Events + Event settings" is entangled; refactor smooth and clean (event
     switching lives in the switcher; one clean Settings entry).
+41. **Name: Trackstage (trackstage.app)** — Marko leaned trackstage ("that's the main
+    point of it right?"), delegated final call; decided. Buy on Cloudflare, roll out
+    everywhere (brand, Resend domain, OAuth issuer, README). Resend stays for outbound
+    (Cloudflare has no sending service); CF handles DNS; infra config as scripts, no
+    terraform (low demand is fine).
+42. **Press-depth 3D button: optional, not forced** — "not really necessary… looks a
+    bit odd" but "gives the whole thing a bit of depth on the landing". Keep on landing
+    hero only where it works; don't force elsewhere.

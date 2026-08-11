@@ -28,6 +28,11 @@ const TABS = [
     label: "Rooms & tracks",
     to: "/app/settings/rooms-and-tracks",
   },
+  {
+    value: "integrations",
+    label: "Integrations",
+    to: "/app/settings/integrations",
+  },
   { value: "api-mcp", label: "API & MCP", to: "/app/settings/api-mcp" },
 ] as const
 

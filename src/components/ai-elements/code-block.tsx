@@ -4,15 +4,17 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { CheckIcon, CopyIcon } from "lucide-react";
 import {
-  type ComponentProps,
+  
   createContext,
-  type HTMLAttributes,
+  
   useContext,
   useEffect,
   useRef,
-  useState,
+  useState
 } from "react";
-import { type BundledLanguage, codeToHtml, type ShikiTransformer } from "shiki";
+import type {ComponentProps, HTMLAttributes} from "react";
+import {  codeToHtml  } from "shiki";
+import type {BundledLanguage, ShikiTransformer} from "shiki";
 
 type CodeBlockProps = HTMLAttributes<HTMLDivElement> & {
   code: string;

@@ -24,6 +24,18 @@ export default [
     },
   },
   {
+    // AI Elements (registry.ai-sdk.dev) — vendored the same way as
+    // src/components/interior/**: upstream style, re-pulled by
+    // `shadcn add`, so we don't hand-edit it into our house rules.
+    files: ["src/components/ai-elements/**"],
+    rules: {
+      "@typescript-eslint/no-unnecessary-condition": "off",
+      "@typescript-eslint/method-signature-style": "off",
+      "import/consistent-type-specifier-style": "off",
+      "react-hooks/exhaustive-deps": "off",
+    },
+  },
+  {
     ignores: [
       "eslint.config.js",
       ".prettierrc",

@@ -10,7 +10,6 @@ import { api } from "@convex/_generated/api"
 import {
   RiArrowDownSLine,
   RiBuilding2Line,
-  RiCalendarEventLine,
   RiCalendarScheduleLine,
   RiCheckLine,
   RiDashboardLine,
@@ -48,6 +47,10 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Logo } from "@/components/brand/logo"
+import {
+  CopilotPanel,
+  CopilotTriggerButton,
+} from "@/components/copilot/copilot-panel"
 import { ShellEventSwitcher } from "@/components/shell/event-switcher"
 import { requireAuthed, useSession } from "@/lib/session"
 import { useCurrentEvent } from "@/lib/current-event"
@@ -181,6 +184,9 @@ function OrganizerLayout() {
             </Button>
           ) : null}
 
+          {/* AI copilot — the MCP's home (docs/memory/RULES.md #24). ⌘I. */}
+          <CopilotTriggerButton />
+
           <DropdownMenu>
             <DropdownMenuTrigger
               render={
@@ -207,7 +213,10 @@ function OrganizerLayout() {
                     {session?.email}
                   </span>
                 </DropdownMenuLabel>
-                <DropdownMenuItem render={<Link to="/app/account" />}>
+                <DropdownMenuItem
+                  nativeButton={false}
+                  render={<Link to="/app/account" />}
+                >
                   <RiUserSettingsLine aria-hidden />
                   Account settings
                 </DropdownMenuItem>
@@ -219,7 +228,10 @@ function OrganizerLayout() {
                 <DropdownMenuLabel className="text-muted-foreground">
                   {workspace?.name ?? "Workspace"}
                 </DropdownMenuLabel>
-                <DropdownMenuItem render={<Link to="/app/workspace" />}>
+                <DropdownMenuItem
+                  nativeButton={false}
+                  render={<Link to="/app/workspace" />}
+                >
                   <RiBuilding2Line aria-hidden />
                   Workspace settings
                 </DropdownMenuItem>
@@ -312,6 +324,9 @@ function OrganizerLayout() {
           <Outlet />
         </main>
       </div>
+
+      {/* Mounted at the shell so the conversation survives navigation. */}
+      <CopilotPanel />
     </div>
   )
 }

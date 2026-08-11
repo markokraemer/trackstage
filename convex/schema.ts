@@ -317,4 +317,37 @@ export default defineSchema({
     .index("by_eventId", ["eventId"])
     .index("by_personId", ["personId"])
     .index("by_status", ["status"]),
+
+  // ——— Integrations —————————————————————————————————————————————————————
+  // One-way Airtable mirror (docs/memory/RULES.md 15, convex/airtable.ts).
+  // At most one connection per event: the organizer's own base, mirrored
+  // into by us and never read back.
+  airtableConnections: defineTable({
+    eventId: v.id("events"),
+    // The organizer's Airtable personal access token, stored as-is.
+    // DELIBERATE: encrypting it here would only move the problem — the key
+    // would live in the same deployment as the ciphertext, so it buys
+    // obfuscation, not secrecy. What actually protects it is that NOTHING
+    // returns this field: `airtable.status` exposes `maskToken(token)` only,
+    // and every read goes through requireEventAccess. If this ever holds
+    // customer money-grade secrets, move it to a real KMS/vault first.
+    token: v.string(),
+    baseId: v.string(), // app…
+    status: v.string(), // connected | error
+    // Set when AIRTABLE_DEMO_MODE=1 created the connection: no live Airtable
+    // account is involved, sync counts rows and writes nothing.
+    demo: v.optional(v.boolean()),
+    lastSyncAt: v.optional(v.number()),
+    lastError: v.optional(v.string()),
+    recordCounts: v.optional(
+      v.object({
+        submissions: v.number(),
+        speakers: v.number(),
+        sessions: v.number(),
+      }),
+    ),
+    // Debounce latch for the on-write hook (scheduleAirtableSync): one
+    // pending sync at a time, cleared when that sync starts.
+    syncScheduled: v.optional(v.boolean()),
+  }).index("by_eventId", ["eventId"]),
 })

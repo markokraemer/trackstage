@@ -4,8 +4,11 @@ import { RiCheckLine, RiGithubFill } from "@remixicon/react"
 import { cn } from "@/lib/utils"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Card } from "@/components/ui/card"
-import { MarketingSection, SectionIntro } from "@/components/marketing/section"
+import {
+  DISPLAY_HEADING,
+  MarketingSection,
+  SectionIntro,
+} from "@/components/marketing/section"
 import { DeclareWinnerButton } from "@/components/marketing/declare-winner-button"
 import {
   EXTERNAL_LINK_PROPS,
@@ -41,15 +44,15 @@ const WINNER_POINTS = [
 
 export function Pricing({ stripeCheckoutUrl }: PricingProps) {
   return (
-    <MarketingSection id={SECTION_IDS.pricing}>
+    <MarketingSection id={SECTION_IDS.pricing} tone="muted">
       <SectionIntro
         align="center"
-        eyebrow="Pricing"
         title="Free. Both kinds of free."
         description="Free as in you keep the source, and free as in there is no invoice. Exactly one card here has a price on it, and it's a joke — mostly."
       />
 
-      <div className="mt-12 grid items-start gap-5 lg:grid-cols-3">
+      {/* Three flat cells in one bordered container — Attio's plan table. */}
+      <div className="mt-14 grid gap-px overflow-hidden rounded-2xl border border-border bg-border lg:grid-cols-3">
         <PlanCard
           name="Open source"
           price="$0"
@@ -98,6 +101,7 @@ export function Pricing({ stripeCheckoutUrl }: PricingProps) {
           points={WINNER_POINTS}
           action={
             <DeclareWinnerButton
+              variant="outline"
               checkoutUrl={stripeCheckoutUrl}
               className="w-full"
             />
@@ -133,39 +137,42 @@ function PlanCard({
   footnote,
 }: PlanCardProps) {
   return (
-    <Card
+    <div
+      data-featured={featured ? "" : undefined}
       className={cn(
-        "h-full gap-0 px-6 py-6",
-        featured && "ring-2 ring-primary lg:-mt-3 lg:pb-8"
+        "flex h-full flex-col bg-card px-6 py-7",
+        featured && "bg-card ring-1 ring-primary ring-inset"
       )}
     >
       <div className="flex items-center justify-between gap-2">
         <h3 className="font-heading text-base font-medium text-foreground">
           {name}
         </h3>
-        {badge ? <Badge className="h-6 px-2.5">{badge}</Badge> : null}
+        {badge ? (
+          <Badge className="h-6 rounded-full px-2.5">{badge}</Badge>
+        ) : null}
       </div>
 
-      <p className="mt-4 flex items-baseline gap-2">
-        <span className="font-heading text-4xl font-semibold tracking-tight text-foreground">
+      <p className="mt-5 flex items-baseline gap-2">
+        <span className={cn(DISPLAY_HEADING, "text-4xl leading-none")}>
           {price}
         </span>
         <span className="text-sm text-muted-foreground">{cadence}</span>
       </p>
 
-      <p className="mt-3.5 text-sm leading-relaxed text-muted-foreground">
+      <p className="mt-4 text-sm leading-relaxed text-muted-foreground">
         {summary}
       </p>
 
-      <div className="mt-6">{action}</div>
+      <div className="mt-7">{action}</div>
 
-      <ul className="mt-6 space-y-2.5 border-t border-border/70 pt-6">
+      <ul className="mt-7 space-y-2.5 border-t border-border pt-6">
         {points.map((point) => (
           <li key={point} className="flex gap-2.5 text-sm">
             <RiCheckLine
               size={17}
               aria-hidden
-              className="mt-0.5 shrink-0 text-primary"
+              className="mt-0.5 shrink-0 text-muted-foreground"
             />
             <span className="leading-relaxed text-foreground">{point}</span>
           </li>
@@ -177,6 +184,6 @@ function PlanCard({
           {footnote}
         </p>
       ) : null}
-    </Card>
+    </div>
   )
 }

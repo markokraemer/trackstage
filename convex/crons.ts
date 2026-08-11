@@ -51,4 +51,16 @@ crons.cron(
   {},
 )
 
+// Airtable mirror (convex/airtable.ts). The on-write hook covers new
+// submissions within seconds; this sweep covers everything else — decisions,
+// agenda moves, speaker-profile edits — for every connected event. Idempotent
+// upserts make a run with no changes a no-op on Airtable's side, and a
+// deployment with no connections does one indexed read and stops.
+crons.interval(
+  "airtable-sync",
+  { minutes: 5 },
+  internal.airtable.syncAllConnected,
+  {},
+)
+
 export default crons

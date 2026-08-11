@@ -346,6 +346,54 @@ await throws("stranger cannot read submissions", () =>
 await throws("stranger cannot commit queues", () =>
   strangerClient.mutation(api.submissions.commitQueue, { eventId: main._id, queue: "accept_queue" }), "access")
 
+// ————— Airtable one-way mirror —————
+section("Airtable")
+ok("no connection → status null", (await client.query(api.airtable.status, { eventId: main._id })) === null)
+await throws("stranger cannot read the connection", () =>
+  strangerClient.query(api.airtable.status, { eventId: main._id }), "access")
+await throws("stranger cannot connect", () =>
+  strangerClient.action(api.airtable.connect, { eventId: main._id, token: "patStranger", baseId: "appStranger00000" }), "access")
+await throws("sync without a connection is refused", () =>
+  client.mutation(api.airtable.syncNow, { eventId: main._id }), "isn't connected")
+
+// Two correct worlds: with AIRTABLE_DEMO_MODE=1 on the deployment `connect`
+// skips live validation (so the whole roundtrip is exercisable with no
+// Airtable account), without it a junk token must fail with a sentence an
+// organizer can act on. Detect which and assert accordingly.
+let airtableDemoMode = false
+try {
+  await client.action(api.airtable.connect, { eventId: main._id, token: "not-a-real-token", baseId: "wrong" })
+  airtableDemoMode = true
+} catch (e) {
+  const msg = String(e.message ?? e).toLowerCase()
+  ok("bad credentials → friendly, actionable error",
+    msg.includes("personal access token") || msg.includes("base id") || msg.includes("rejected"),
+    String(e.message ?? e).slice(0, 140))
+  ok("a failed connect stores nothing", (await client.query(api.airtable.status, { eventId: main._id })) === null)
+}
+
+if (airtableDemoMode) {
+  const connected = await client.query(api.airtable.status, { eventId: main._id })
+  ok("demo connect → connected", connected?.status === "connected" && connected?.mode === "demo")
+  ok("token is masked, never returned", !!connected && !connected.tokenMasked.includes("not-a-real-token"))
+  ok("base link is built for the UI", connected?.baseUrl === `https://airtable.com/${connected?.baseId}`)
+  ok("mirrors three tables", connected?.tables?.length === 3)
+  await client.mutation(api.airtable.syncNow, { eventId: main._id })
+  await new Promise((r) => setTimeout(r, 3000))
+  const synced = await client.query(api.airtable.status, { eventId: main._id })
+  ok("sync records per-table row counts", (synced?.recordCounts?.submissions ?? 0) > 0, JSON.stringify(synced?.recordCounts))
+  ok("sync stamps lastSyncAt", typeof synced?.lastSyncAt === "number")
+  ok("sync left no error", synced?.lastError === null)
+  ok("connect is idempotent (one row per event)",
+    (await client.action(api.airtable.connect, { eventId: main._id, token: "not-a-real-token", baseId: "wrong" })).mode === "demo")
+  await throws("stranger cannot disconnect", () =>
+    strangerClient.mutation(api.airtable.disconnect, { eventId: main._id }), "access")
+  await client.mutation(api.airtable.disconnect, { eventId: main._id })
+  ok("disconnect forgets the connection", (await client.query(api.airtable.status, { eventId: main._id })) === null)
+} else {
+  ok("AIRTABLE_DEMO_MODE unset — connected roundtrip skipped (set it to 1 to exercise it)", true)
+}
+
 // ————— HTTP API —————
 section("HTTP API")
 if (SITE_URL) {

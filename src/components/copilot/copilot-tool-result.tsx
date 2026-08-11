@@ -198,9 +198,9 @@ function SubmissionsResult({ data }: { data: Record<string, unknown> }) {
 function EventStatsResult({ data }: { data: Record<string, unknown> }) {
   const event = isRecord(data.event) ? data.event : null
   const counts = isRecord(data.submissions)
-    ? (data.submissions as Record<string, unknown>)
+    ? (data.submissions)
     : isRecord(data.statusCounts)
-      ? (data.statusCounts as Record<string, unknown>)
+      ? (data.statusCounts)
       : null
   const agenda = isRecord(data.agenda) ? data.agenda : null
 
@@ -469,7 +469,7 @@ function OutboxResult({ data }: { data: Record<string, unknown> }) {
 
 type Renderer = (data: Record<string, unknown>) => ReactNode
 
-const RENDERERS: Record<string, Renderer> = {
+const RENDERERS: Record<string, Renderer | undefined> = {
   list_submissions: (data) => <SubmissionsResult data={data} />,
   get_event_summary: (data) => <EventStatsResult data={data} />,
   get_event_overview: (data) => <EventStatsResult data={data} />,

@@ -20,7 +20,11 @@ Source of truth for everything Marko asked + build status. Update continuously.
   evaluation · communications · public widgets (schedule/speakers/sessions/itinerary/gallery)
 - ⏳ Content management depth: file versions + approval flow UI (sbek area, 15%) —
   backend done (uploads versioning + tasksAdmin.reviewUpload); needs organizer UI surface
-- ⏳ Multi-event support surfaced in UI (event switcher; scoping proven) — sbek judged
+- ✅ Hierarchy + three-level settings IA (rule 23): sidebar event block IS the event
+  switcher (grouped by workspace, All events, + New event); avatar menu = Account
+  settings (/app/account) + Workspace settings (/app/workspace) + workspace switcher;
+  /app/settings retitled "Event settings — {event}"; Team moved out of event settings;
+  every screen resolves the event through `src/lib/current-event.ts`
 - ⏳ AI agenda: auto-place scheduler (backend done: agenda.autoPlace) + UI button
 - ⏳ sbek gap follow-ups (from docs/reference/sbek-rubric.md GAPS): embed generator page
   (/app/embeds, EMB-15) ✅in slice · itinerary widget ✅in slice · blind review (schema

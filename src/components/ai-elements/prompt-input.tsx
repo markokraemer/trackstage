@@ -48,27 +48,28 @@ import {
 } from "lucide-react";
 import { nanoid } from "nanoid";
 import {
-  type ChangeEvent,
-  type ChangeEventHandler,
+  
+  
   Children,
-  type ClipboardEventHandler,
-  type ComponentProps,
+  
+  
   createContext,
-  type FormEvent,
-  type FormEventHandler,
+  
+  
   Fragment,
-  type HTMLAttributes,
-  type KeyboardEventHandler,
-  type PropsWithChildren,
-  type ReactNode,
-  type RefObject,
+  
+  
+  
+  
+  
   useCallback,
   useContext,
   useEffect,
   useMemo,
   useRef,
-  useState,
+  useState
 } from "react";
+import type {ChangeEvent, ChangeEventHandler, ClipboardEventHandler, ComponentProps, FormEvent, FormEventHandler, HTMLAttributes, KeyboardEventHandler, PropsWithChildren, ReactNode, RefObject} from "react";
 
 // ============================================================================
 // Provider Context & Types
@@ -1044,8 +1045,8 @@ interface SpeechRecognition extends EventTarget {
   continuous: boolean;
   interimResults: boolean;
   lang: string;
-  start(): void;
-  stop(): void;
+  start: () => void;
+  stop: () => void;
   onstart: ((this: SpeechRecognition, ev: Event) => any) | null;
   onend: ((this: SpeechRecognition, ev: Event) => any) | null;
   onresult:
@@ -1063,13 +1064,13 @@ interface SpeechRecognitionEvent extends Event {
 
 type SpeechRecognitionResultList = {
   readonly length: number;
-  item(index: number): SpeechRecognitionResult;
+  item: (index: number) => SpeechRecognitionResult;
   [index: number]: SpeechRecognitionResult;
 };
 
 type SpeechRecognitionResult = {
   readonly length: number;
-  item(index: number): SpeechRecognitionAlternative;
+  item: (index: number) => SpeechRecognitionAlternative;
   [index: number]: SpeechRecognitionAlternative;
   isFinal: boolean;
 };
@@ -1255,12 +1256,12 @@ export const PromptInputSelectValue = ({
 
 export type PromptInputHoverCardProps = ComponentProps<typeof HoverCard>;
 
-export const PromptInputHoverCard = ({
-  openDelay = 0,
-  closeDelay = 0,
-  ...props
-}: PromptInputHoverCardProps) => (
-  <HoverCard closeDelay={closeDelay} openDelay={openDelay} {...props} />
+// Our HoverCard is Base UI's PreviewCard (docs/memory/RULES.md #1), which
+// takes `delay`/`closeDelay` on the trigger rather than open/close delays on
+// the root — so this stays a thin pass-through instead of the upstream
+// Radix-shaped wrapper.
+export const PromptInputHoverCard = (props: PromptInputHoverCardProps) => (
+  <HoverCard {...props} />
 );
 
 export type PromptInputHoverCardTriggerProps = ComponentProps<

@@ -3,6 +3,7 @@ import { internal } from "./_generated/api"
 import type { Doc, Id } from "./_generated/dataModel"
 import type { MutationCtx, QueryCtx } from "./_generated/server"
 import { mutation, query } from "./_generated/server"
+import { scheduleAirtableSync } from "./airtable"
 import { randomToken, requireEventAccess } from "./lib/auth"
 
 export const STATUSES = [
@@ -219,6 +220,8 @@ export const commitQueue = mutation({
         }
       }
     }
+    // Decisions change every mirrored row's Status — one debounced sync.
+    await scheduleAirtableSync(ctx, args.eventId)
     return { committed: staged.length, notified }
   },
 })
@@ -366,6 +369,7 @@ export const addManual = mutation({
         })
       }
     }
+    await scheduleAirtableSync(ctx, args.eventId)
     return submissionId
   },
 })

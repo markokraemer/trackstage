@@ -9,8 +9,10 @@ import {
 import type { RemixiconComponentType } from "@remixicon/react"
 
 import { cn } from "@/lib/utils"
-import { MarketingSection } from "@/components/marketing/section"
-import { DISPLAY_HEADING } from "@/components/marketing/section"
+import {
+  DISPLAY_HEADING,
+  MarketingSection,
+} from "@/components/marketing/section"
 import {
   DEMO_CFP_URL,
   DEMO_PORTAL_URL,

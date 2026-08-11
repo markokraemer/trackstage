@@ -1,10 +1,9 @@
-import { Link, useNavigate } from "@tanstack/react-router"
+import { useNavigate } from "@tanstack/react-router"
 import { RiArrowRightLine, RiGithubFill } from "@remixicon/react"
 
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
-import { PepButton } from "@/components/interactions"
-import { TextReveal } from "@/components/interactions"
+import { PepButton, TextReveal } from "@/components/interactions"
 import { ProductShot } from "@/components/marketing/product-shot"
 import { DISPLAY_HEADING, GridBackdrop } from "@/components/marketing/section"
 import { EXTERNAL_LINK_PROPS, GITHUB_URL } from "@/components/marketing/links"

@@ -136,10 +136,12 @@ function parseBody(
 
   for (const candidate of candidates.reverse()) {
     try {
-      const parsed = JSON.parse(candidate) as JsonRpcResponse | Array<unknown>
+      const parsed: unknown = JSON.parse(candidate)
       // Batch responses: our server only batches when the client does.
       if (Array.isArray(parsed)) continue
-      if (parsed && typeof parsed === "object") return parsed
+      if (parsed !== null && typeof parsed === "object") {
+        return parsed as JsonRpcResponse
+      }
     } catch {
       // Not a JSON frame (SSE comments, keep-alives) — keep looking.
     }
@@ -214,15 +216,21 @@ export async function loadMcpTools(
   // Stateless server, but the lifecycle notification is part of the contract.
   await rpc(connection, "notifications/initialized", {}, null).catch(() => {})
 
-  const listed = (await rpc(connection, "tools/list", {}, 2)) as {
-    tools?: Array<McpToolDescriptor>
-  }
-  const descriptors = Array.isArray(listed?.tools) ? listed.tools : []
+  const listed: unknown = await rpc(connection, "tools/list", {}, 2)
+  const rawTools =
+    listed !== null && typeof listed === "object"
+      ? (listed as { tools?: unknown }).tools
+      : undefined
+  const descriptors = (Array.isArray(rawTools) ? rawTools : []).filter(
+    (entry: unknown): entry is McpToolDescriptor =>
+      entry !== null &&
+      typeof entry === "object" &&
+      typeof (entry as { name?: unknown }).name === "string",
+  )
 
   const tools: ToolSet = {}
   let callId = 100
   for (const descriptor of descriptors) {
-    if (!descriptor?.name) continue
     tools[descriptor.name] = tool({
       description: descriptor.description ?? descriptor.title ?? descriptor.name,
       inputSchema: jsonSchema<Record<string, unknown>>(
@@ -232,11 +240,11 @@ export async function loadMcpTools(
         const result = (await rpc(
           connection,
           "tools/call",
-          { name: descriptor.name, arguments: input ?? {} },
+          { name: descriptor.name, arguments: input },
           (callId += 1),
         )) as McpToolCallResult
         const payload = unwrapToolResult(result)
-        if (result?.isError) {
+        if (result.isError === true) {
           // Surface it as a tool error so the model can read it and retry —
           // the AI SDK renders this as `output-error` in the UI.
           throw new Error(

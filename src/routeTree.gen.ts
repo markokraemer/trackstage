@@ -18,6 +18,7 @@ import { Route as DotwellKnownOauthAuthorizationServerRouteImport } from './rout
 import { Route as ApiChatRouteImport } from './routes/api/chat'
 import { Route as AppIndexRouteImport } from './routes/app/index'
 import { Route as AppAccountRouteImport } from './routes/app/account'
+import { Route as AppCopilotRouteImport } from './routes/app/copilot'
 import { Route as AppSettingsRouteRouteImport } from './routes/app/settings/route'
 import { Route as AppWorkspaceRouteImport } from './routes/app/workspace'
 import { Route as ESlugRouteRouteImport } from './routes/e/$slug/route'
@@ -39,6 +40,7 @@ import { Route as AppFormsFormIdRouteImport } from './routes/app/forms/$formId'
 import { Route as AppFormsNewRouteImport } from './routes/app/forms/new'
 import { Route as AppSettingsIndexRouteImport } from './routes/app/settings/index'
 import { Route as AppSettingsApiMcpRouteImport } from './routes/app/settings/api-mcp'
+import { Route as AppSettingsIntegrationsRouteImport } from './routes/app/settings/integrations'
 import { Route as AppSettingsRoomsAndTracksRouteImport } from './routes/app/settings/rooms-and-tracks'
 import { Route as AppSpeakersIndexRouteImport } from './routes/app/speakers/index'
 import { Route as AppSubmissionsIndexRouteImport } from './routes/app/submissions/index'
@@ -94,6 +96,11 @@ const AppIndexRoute = AppIndexRouteImport.update({
 const AppAccountRoute = AppAccountRouteImport.update({
   id: '/account',
   path: '/account',
+  getParentRoute: () => AppRouteRoute,
+} as any)
+const AppCopilotRoute = AppCopilotRouteImport.update({
+  id: '/copilot',
+  path: '/copilot',
   getParentRoute: () => AppRouteRoute,
 } as any)
 const AppSettingsRouteRoute = AppSettingsRouteRouteImport.update({
@@ -201,6 +208,11 @@ const AppSettingsApiMcpRoute = AppSettingsApiMcpRouteImport.update({
   path: '/api-mcp',
   getParentRoute: () => AppSettingsRouteRoute,
 } as any)
+const AppSettingsIntegrationsRoute = AppSettingsIntegrationsRouteImport.update({
+  id: '/integrations',
+  path: '/integrations',
+  getParentRoute: () => AppSettingsRouteRoute,
+} as any)
 const AppSettingsRoomsAndTracksRoute =
   AppSettingsRoomsAndTracksRouteImport.update({
     id: '/rooms-and-tracks',
@@ -264,6 +276,7 @@ export interface FileRoutesByFullPath {
   '/.well-known/oauth-authorization-server': typeof DotwellKnownOauthAuthorizationServerRoute
   '/api/chat': typeof ApiChatRoute
   '/app/account': typeof AppAccountRoute
+  '/app/copilot': typeof AppCopilotRoute
   '/app/workspace': typeof AppWorkspaceRoute
   '/portal/profile': typeof PortalProfileRoute
   '/portal/submissions': typeof PortalSubmissionsRoute
@@ -277,6 +290,7 @@ export interface FileRoutesByFullPath {
   '/app/forms/$formId': typeof AppFormsFormIdRoute
   '/app/forms/new': typeof AppFormsNewRoute
   '/app/settings/api-mcp': typeof AppSettingsApiMcpRoute
+  '/app/settings/integrations': typeof AppSettingsIntegrationsRoute
   '/app/settings/rooms-and-tracks': typeof AppSettingsRoomsAndTracksRoute
   '/e/$slug/my-schedule': typeof ESlugMyScheduleRoute
   '/e/$slug/speakers': typeof ESlugSpeakersRoute
@@ -302,6 +316,7 @@ export interface FileRoutesByTo {
   '/.well-known/oauth-authorization-server': typeof DotwellKnownOauthAuthorizationServerRoute
   '/api/chat': typeof ApiChatRoute
   '/app/account': typeof AppAccountRoute
+  '/app/copilot': typeof AppCopilotRoute
   '/app/workspace': typeof AppWorkspaceRoute
   '/portal/profile': typeof PortalProfileRoute
   '/portal/submissions': typeof PortalSubmissionsRoute
@@ -315,6 +330,7 @@ export interface FileRoutesByTo {
   '/app/forms/$formId': typeof AppFormsFormIdRoute
   '/app/forms/new': typeof AppFormsNewRoute
   '/app/settings/api-mcp': typeof AppSettingsApiMcpRoute
+  '/app/settings/integrations': typeof AppSettingsIntegrationsRoute
   '/app/settings/rooms-and-tracks': typeof AppSettingsRoomsAndTracksRoute
   '/e/$slug/my-schedule': typeof ESlugMyScheduleRoute
   '/e/$slug/speakers': typeof ESlugSpeakersRoute
@@ -345,6 +361,7 @@ export interface FileRoutesById {
   '/.well-known/oauth-authorization-server': typeof DotwellKnownOauthAuthorizationServerRoute
   '/api/chat': typeof ApiChatRoute
   '/app/account': typeof AppAccountRoute
+  '/app/copilot': typeof AppCopilotRoute
   '/app/workspace': typeof AppWorkspaceRoute
   '/portal/profile': typeof PortalProfileRoute
   '/portal/submissions': typeof PortalSubmissionsRoute
@@ -358,6 +375,7 @@ export interface FileRoutesById {
   '/app/forms/$formId': typeof AppFormsFormIdRoute
   '/app/forms/new': typeof AppFormsNewRoute
   '/app/settings/api-mcp': typeof AppSettingsApiMcpRoute
+  '/app/settings/integrations': typeof AppSettingsIntegrationsRoute
   '/app/settings/rooms-and-tracks': typeof AppSettingsRoomsAndTracksRoute
   '/e/$slug/my-schedule': typeof ESlugMyScheduleRoute
   '/e/$slug/speakers': typeof ESlugSpeakersRoute
@@ -389,6 +407,7 @@ export interface FileRouteTypes {
     | '/.well-known/oauth-authorization-server'
     | '/api/chat'
     | '/app/account'
+    | '/app/copilot'
     | '/app/workspace'
     | '/portal/profile'
     | '/portal/submissions'
@@ -402,6 +421,7 @@ export interface FileRouteTypes {
     | '/app/forms/$formId'
     | '/app/forms/new'
     | '/app/settings/api-mcp'
+    | '/app/settings/integrations'
     | '/app/settings/rooms-and-tracks'
     | '/e/$slug/my-schedule'
     | '/e/$slug/speakers'
@@ -427,6 +447,7 @@ export interface FileRouteTypes {
     | '/.well-known/oauth-authorization-server'
     | '/api/chat'
     | '/app/account'
+    | '/app/copilot'
     | '/app/workspace'
     | '/portal/profile'
     | '/portal/submissions'
@@ -440,6 +461,7 @@ export interface FileRouteTypes {
     | '/app/forms/$formId'
     | '/app/forms/new'
     | '/app/settings/api-mcp'
+    | '/app/settings/integrations'
     | '/app/settings/rooms-and-tracks'
     | '/e/$slug/my-schedule'
     | '/e/$slug/speakers'
@@ -469,6 +491,7 @@ export interface FileRouteTypes {
     | '/.well-known/oauth-authorization-server'
     | '/api/chat'
     | '/app/account'
+    | '/app/copilot'
     | '/app/workspace'
     | '/portal/profile'
     | '/portal/submissions'
@@ -482,6 +505,7 @@ export interface FileRouteTypes {
     | '/app/forms/$formId'
     | '/app/forms/new'
     | '/app/settings/api-mcp'
+    | '/app/settings/integrations'
     | '/app/settings/rooms-and-tracks'
     | '/e/$slug/my-schedule'
     | '/e/$slug/speakers'
@@ -578,6 +602,13 @@ declare module '@tanstack/react-router' {
       path: '/account'
       fullPath: '/app/account'
       preLoaderRoute: typeof AppAccountRouteImport
+      parentRoute: typeof AppRouteRoute
+    }
+    '/app/copilot': {
+      id: '/app/copilot'
+      path: '/copilot'
+      fullPath: '/app/copilot'
+      preLoaderRoute: typeof AppCopilotRouteImport
       parentRoute: typeof AppRouteRoute
     }
     '/app/settings': {
@@ -727,6 +758,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppSettingsApiMcpRouteImport
       parentRoute: typeof AppSettingsRouteRoute
     }
+    '/app/settings/integrations': {
+      id: '/app/settings/integrations'
+      path: '/integrations'
+      fullPath: '/app/settings/integrations'
+      preLoaderRoute: typeof AppSettingsIntegrationsRouteImport
+      parentRoute: typeof AppSettingsRouteRoute
+    }
     '/app/settings/rooms-and-tracks': {
       id: '/app/settings/rooms-and-tracks'
       path: '/rooms-and-tracks'
@@ -802,12 +840,14 @@ declare module '@tanstack/react-router' {
 
 interface AppSettingsRouteRouteChildren {
   AppSettingsApiMcpRoute: typeof AppSettingsApiMcpRoute
+  AppSettingsIntegrationsRoute: typeof AppSettingsIntegrationsRoute
   AppSettingsRoomsAndTracksRoute: typeof AppSettingsRoomsAndTracksRoute
   AppSettingsIndexRoute: typeof AppSettingsIndexRoute
 }
 
 const AppSettingsRouteRouteChildren: AppSettingsRouteRouteChildren = {
   AppSettingsApiMcpRoute: AppSettingsApiMcpRoute,
+  AppSettingsIntegrationsRoute: AppSettingsIntegrationsRoute,
   AppSettingsRoomsAndTracksRoute: AppSettingsRoomsAndTracksRoute,
   AppSettingsIndexRoute: AppSettingsIndexRoute,
 }
@@ -818,6 +858,7 @@ const AppSettingsRouteRouteWithChildren =
 interface AppRouteRouteChildren {
   AppSettingsRouteRoute: typeof AppSettingsRouteRouteWithChildren
   AppAccountRoute: typeof AppAccountRoute
+  AppCopilotRoute: typeof AppCopilotRoute
   AppWorkspaceRoute: typeof AppWorkspaceRoute
   AppIndexRoute: typeof AppIndexRoute
   AppEvaluationPlanIdRoute: typeof AppEvaluationPlanIdRoute
@@ -836,6 +877,7 @@ interface AppRouteRouteChildren {
 const AppRouteRouteChildren: AppRouteRouteChildren = {
   AppSettingsRouteRoute: AppSettingsRouteRouteWithChildren,
   AppAccountRoute: AppAccountRoute,
+  AppCopilotRoute: AppCopilotRoute,
   AppWorkspaceRoute: AppWorkspaceRoute,
   AppIndexRoute: AppIndexRoute,
   AppEvaluationPlanIdRoute: AppEvaluationPlanIdRoute,

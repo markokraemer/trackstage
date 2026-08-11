@@ -20,7 +20,13 @@ export const DEMO_CFP_URL = "/submit/cfp"
 export const DEMO_PORTAL_URL = "/portal"
 export const DEMO_EVENT_SLUG = "ai-summit-2026"
 export const DEMO_PROGRAM_URL = `/e/${DEMO_EVENT_SLUG}`
-export const PUBLIC_API_PREFIX = "/api/v1"
+/**
+ * The public REST surface, served by the Convex HTTP router (`convex/http.ts`)
+ * on the deployment's `.convex.site` domain. Sessions/speakers/submissions take
+ * a Bearer API key; the `.ics` feed is open.
+ */
+export const PUBLIC_API_PREFIX = "/v1/event/{slug}"
+export const PUBLIC_ICS_PATH = `${PUBLIC_API_PREFIX}/schedule.ics`
 /** The MCP endpoint agents connect to (Convex HTTP router, `convex/mcp.ts`). */
 export const MCP_ENDPOINT_PATH = "/mcp"
 /** Tool count exposed by our MCP server — keep in step with `convex/mcp.ts`. */

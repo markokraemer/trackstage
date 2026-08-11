@@ -56,7 +56,7 @@ type ChatRequestBody = {
  */
 function readEnv(name: string): string | undefined {
   const fromProcess =
-    typeof process !== "undefined" ? process.env?.[name] : undefined
+    typeof process === "undefined" ? undefined : process.env[name]
   if (fromProcess) return fromProcess
   const fromVite = (import.meta.env as Record<string, string | undefined>)[name]
   return fromVite || undefined

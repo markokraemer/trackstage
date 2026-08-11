@@ -1,13 +1,13 @@
 import {
-  RiCodeSSlashLine,
+  RiCheckboxCircleLine,
   RiFlashlightLine,
   RiServerLine,
   RiShieldKeyholeLine,
   RiTeamLine,
+  RiTranslate2,
 } from "@remixicon/react"
 import type { RemixiconComponentType } from "@remixicon/react"
 
-import { Card } from "@/components/ui/card"
 import { MarketingSection, SectionIntro } from "@/components/marketing/section"
 
 interface Foundation {
@@ -21,7 +21,7 @@ const FOUNDATIONS: Array<Foundation> = [
   {
     title: "Workspaces & roles",
     description:
-      "Your team and your events in one workspace. Invite people, set who can do what, switch workspaces in a click.",
+      "Your team and all your events in one workspace. Invite people, set who can do what, switch workspaces in a click.",
     icon: RiTeamLine,
   },
   {
@@ -31,47 +31,54 @@ const FOUNDATIONS: Array<Foundation> = [
     icon: RiShieldKeyholeLine,
   },
   {
-    title: "An open API",
+    title: "Many events, one place",
     description:
-      "Sessions and speakers as JSON, plus an .ics feed. Wire it into your site, your app, your Airtable.",
-    icon: RiCodeSSlashLine,
+      "Run this year's summit and next year's while last year's programme stays published. Events never bleed into each other.",
+    icon: RiCheckboxCircleLine,
   },
   {
     title: "Host it yourself",
     description:
-      "MIT licensed. Run it on your own infrastructure and change whatever you want. Nobody can take it away.",
+      "MIT licensed. Run it on your own infrastructure and change whatever you want. Nobody can take it away or reprice it.",
     icon: RiServerLine,
   },
   {
     title: "Fast, everywhere",
     description:
-      "Edge-deployed with a realtime database behind it, so the app keeps up with you — not the other way round.",
+      "Edge-deployed with a realtime database behind it. Decisions, drags and edits land for everyone else immediately.",
     icon: RiFlashlightLine,
+  },
+  {
+    title: "Plain words",
+    description:
+      "Written for event producers, not procurement. Every screen says what it does, and the destructive ones ask first.",
+    icon: RiTranslate2,
   },
 ]
 
 export function Foundations() {
   return (
-    <MarketingSection tone="muted">
+    <MarketingSection>
       <SectionIntro
-        eyebrow="Solid foundations"
+        eyebrow="Foundations"
         title="The unglamorous parts, taken seriously"
-        description="Nobody buys software for its auth stack. You do notice when it's missing."
+        description="Nobody picks software for its auth stack. Everybody notices when it's missing."
       />
 
-      <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+      <div className="mt-12 grid gap-x-10 gap-y-10 sm:grid-cols-2 lg:grid-cols-3">
         {FOUNDATIONS.map((item) => (
-          <Card key={item.title} className="h-full gap-2.5 px-5 py-5">
-            <span className="flex size-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
-              <item.icon size={18} aria-hidden />
-            </span>
-            <h3 className="font-heading text-base font-medium text-foreground">
+          <div
+            key={item.title}
+            className="border-t border-border pt-5 pl-0.5 first:border-t"
+          >
+            <item.icon size={18} aria-hidden className="text-muted-foreground" />
+            <h3 className="mt-3 font-heading text-base font-medium text-foreground">
               {item.title}
             </h3>
-            <p className="text-sm leading-relaxed text-muted-foreground">
+            <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
               {item.description}
             </p>
-          </Card>
+          </div>
         ))}
       </div>
     </MarketingSection>

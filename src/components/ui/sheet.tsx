@@ -39,14 +39,21 @@ function SheetContent({
   children,
   side = "right",
   showCloseButton = true,
+  showOverlay = true,
   ...props
 }: SheetPrimitive.Popup.Props & {
   side?: "top" | "right" | "bottom" | "left"
   showCloseButton?: boolean
+  /**
+   * Dims the page behind the sheet. Turn it OFF for non-modal side panels
+   * (e.g. the AI copilot) that sit *beside* the work rather than on top of it
+   * — a scrim there reads as "the app is blocked", which it isn't.
+   */
+  showOverlay?: boolean
 }) {
   return (
     <SheetPortal>
-      <SheetOverlay />
+      {showOverlay ? <SheetOverlay /> : null}
       <SheetPrimitive.Popup
         data-slot="sheet-content"
         data-side={side}

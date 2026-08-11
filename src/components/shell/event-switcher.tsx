@@ -146,7 +146,10 @@ export function ShellEventSwitcher() {
           )}
 
           <DropdownMenuSeparator />
-          <DropdownMenuItem render={<Link to="/app/events" />}>
+          <DropdownMenuItem
+            nativeButton={false}
+            render={<Link to="/app/events" />}
+          >
             <RiCalendarEventLine size={15} aria-hidden />
             All events
           </DropdownMenuItem>
