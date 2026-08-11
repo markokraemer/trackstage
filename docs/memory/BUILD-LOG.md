@@ -2795,3 +2795,27 @@ between-tool silences, not just pre-stream. Plus: /app/copilot rail closed by
 default, ONE New chat (rail's duplicate removed), real tooltips both headers,
 "open side panel" button dropped (top-bar Copilot does that). 299/299 renderer
 tests green untouched. Screenshots in .playwright-mcp/copilot-revamp-*.png.
+
+## 2026-08-12 — Embeds is a builder, not a wizard
+
+Marko: *"I should directly see the WIDGET when I'm on the page but I see all
+this other shit."* The four numbered steps (choose a widget → choose a format →
+choose what shows → copy the code) were two full screens of option cards before
+the live preview, so the one thing worth looking at started below the fold.
+Rebuilt as the standard embed-builder shape (Stripe/Cal.com): a 320px left rail
+holding EVERY control — saved embeds, widget, format, what-shows switches,
+tracks, appearance, save/off switch — sticky with its own scroll, and the entire
+right side is the widget rendering live, with a Preview | Code segmented switch
+at its top. The five widget types and six formats became two grouped selects
+(the option-card grid, and `components/embeds/option-card.tsx`, are gone);
+Code shows the snippet as a mono block with ONE primary Copy button (toast +
+in-place "Copied") and URL formats get the compact copilot-style LinkRow instead
+of an input + 44px button. Static HTML now previews its own generated markup in
+a sandboxed `srcDoc` frame; data feeds (JSON/ICS/XML) have no visual preview, so
+the pane opens on Code and the Preview half is disabled rather than lying.
+Zero capability lost — every widget, format, toggle, track filter, accent,
+height, saved-embed load/rename/off/delete and public feed URL still there.
+Verified in-browser: land → widget visible immediately, toggle → iframe URL
+gains `hideSearch=true` live, Code → snippet + copy receipt, saved row → whole
+config restored, 390px stacks with no horizontal scroll. crawl (both embeds
+routes) and the `?embed=1` public-page spec green.
