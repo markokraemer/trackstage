@@ -321,3 +321,51 @@
     @apply text-destructive;
     }
 }
+
+/*
+ * Copilot transcript markdown — chat-scoped typography (Marko, 2026-08-11).
+ *
+ * Streamdown paints markdown with its own utility classes (document-scale
+ * headings, chunky grey inline-code chips). These rules are deliberately
+ * UNLAYERED so they outrank the utility layer, and scoped to `.copilot-prose`
+ * + `data-streamdown` markers so nothing leaks beyond the chat. The goal is a
+ * 14px conversation column: headings one step above body, inline code a
+ * whisper (faint fill, small radius, near-body size), lists compact, links
+ * standard primary blue (Streamdown's default already is).
+ */
+.copilot-prose {
+    @apply text-sm leading-6 text-foreground;
+}
+/* Streamdown's root is `space-y-4`; block rhythm in chat is tighter. */
+.copilot-prose > * {
+    margin-block: 0;
+}
+.copilot-prose > * + * {
+    margin-block-start: 0.625rem;
+}
+.copilot-prose [data-streamdown="heading-1"],
+.copilot-prose [data-streamdown="heading-2"] {
+    @apply mt-4 mb-1 text-base leading-snug font-semibold;
+}
+.copilot-prose [data-streamdown="heading-3"],
+.copilot-prose [data-streamdown="heading-4"] {
+    @apply mt-3.5 mb-1 text-[0.9375rem] leading-snug font-semibold;
+}
+.copilot-prose [data-streamdown="heading-5"],
+.copilot-prose [data-streamdown="heading-6"] {
+    @apply mt-3 mb-1 text-sm leading-snug font-semibold;
+}
+.copilot-prose [data-streamdown="inline-code"] {
+    @apply rounded-[0.25rem] bg-muted/60 px-1 py-0 font-mono text-[0.875em] text-foreground;
+}
+.copilot-prose [data-streamdown="unordered-list"],
+.copilot-prose [data-streamdown="ordered-list"] {
+    @apply my-0.5;
+}
+.copilot-prose [data-streamdown="list-item"] {
+    @apply py-0.5;
+}
+.copilot-prose [data-streamdown="table-cell"],
+.copilot-prose [data-streamdown="table-header-cell"] {
+    @apply px-3 py-1.5 text-xs;
+}

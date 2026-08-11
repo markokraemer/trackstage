@@ -2770,3 +2770,28 @@ So: no cutover. Deleted the duplicate deployment + its deploy key
 ~/.convex/config.json token). Old prod untouched throughout; CONVEX_DEPLOY_KEY
 secret unchanged. Shipped instead: Smart Placement on the prod Worker + region
 notes in .env.production. Promoted master→prod (carries hill-climb batch 4).
+
+## 2026-08-12 — Copilot chat UX revamp: the scroll void autopsied, cards de-loudened
+
+Marko's five-screenshot teardown ("what the fuck is this?") — voids, unreachable
+tails, green wash panels, chip-heavy markdown, giant Copy buttons — root-caused
+and rebuilt. (1) SCROLL: shadcn MessageScroller's `last-anchor` mode pinned each
+question to the viewport TOP by growing a phantom spacer div under the reply and
+re-anchored on every resize; scrollbar drags never registered as user intent, so
+the tail below the fold was literally unreachable. Replaced wholesale with AI
+Elements `Conversation` (use-stick-to-bottom, per Marko's pointer): top-down
+flow, follow-only-at-live-edge, any scroll escapes, ↓ lands at the true end,
+`initial="instant"` on thread restore. (2) CLIPPING: tool cards truncating
+mid-list was Streamdown's `size-full` — a percentage-HEIGHT child inside the
+message flex column made Chrome resolve the column at a bogus definite height,
+and the `overflow-hidden` tool frames absorbed the entire shortfall. `w-full` +
+`*:shrink-0` on transcript rows; verified in-browser (card 473px→732px, zero
+clip). (3) COLOURS: Banner/Tile/StatCard washes → neutral card + status dot
+(amber fill reserved for genuine warnings); approval card blue wash → calm
+amber; LinkRow → one compact mono row with icon copy/open. (4) MARKDOWN:
+chat-scoped `.copilot-prose` (unlayered, beats Streamdown's utility classes) —
+quiet inline code, one-step headings, compact lists. (5) "Thinking…" now covers
+between-tool silences, not just pre-stream. Plus: /app/copilot rail closed by
+default, ONE New chat (rail's duplicate removed), real tooltips both headers,
+"open side panel" button dropped (top-bar Copilot does that). 299/299 renderer
+tests green untouched. Screenshots in .playwright-mcp/copilot-revamp-*.png.

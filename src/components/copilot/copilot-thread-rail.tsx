@@ -3,12 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { convexQuery, useConvexMutation } from "@convex-dev/react-query"
 import type { OptimisticLocalStore } from "convex/browser"
 import { format, isToday, isYesterday } from "date-fns"
-import {
-  RiAddLine,
-  RiDeleteBinLine,
-  RiMoreLine,
-  RiPencilLine,
-} from "@remixicon/react"
+import { RiDeleteBinLine, RiMoreLine, RiPencilLine } from "@remixicon/react"
 import { toast } from "sonner"
 
 import { api } from "../../../convex/_generated/api"
@@ -50,7 +45,7 @@ export function CopilotThreadRail({
   const { event } = useCurrentEvent()
   const eventId = event?._id
   const queryClient = useQueryClient()
-  const { threadId, newChat, selectThread } = useCopilotChat(eventId)
+  const { threadId, selectThread } = useCopilotChat(eventId)
   const [renaming, setRenaming] = useState<string | null>(null)
 
   // One object identity for both the query and its optimistic patches —
@@ -87,7 +82,6 @@ export function CopilotThreadRail({
   })
 
   const groups = useMemo(() => groupThreads(threads ?? []), [threads])
-  const isDraft = threadId === null
 
   return (
     <div
@@ -97,23 +91,13 @@ export function CopilotThreadRail({
       )}
     >
       {/* Same height as the shell's event-switcher block and the copilot
-          header, so the three tops line up across both seams. */}
-      <div className="flex h-18 shrink-0 items-center px-3">
-        <Button
-          variant="outline"
-          size="sm"
-          className={cn(
-            "w-full justify-start bg-background",
-            isDraft && "border-primary/40 text-primary"
-          )}
-          onClick={() => {
-            newChat()
-            onPick?.()
-          }}
-        >
-          <RiAddLine aria-hidden />
-          New chat
-        </Button>
+          header, so the tops line up across both seams. No "New chat" here —
+          the page header already has one, and two of them was the first thing
+          Marko flagged (2026-08-12). The rail is history, nothing else. */}
+      <div className="flex h-18 shrink-0 items-end px-4 pb-2">
+        <h2 className="text-[11px] font-medium tracking-wide text-muted-foreground uppercase">
+          Chat history
+        </h2>
       </div>
 
       <nav

@@ -7,10 +7,16 @@ import { RiAddLine, RiSideBarLine } from "@remixicon/react"
 import { api } from "../../../convex/_generated/api"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 import { CopilotChat } from "@/components/copilot/copilot-chat"
 import { CopilotThreadRail } from "@/components/copilot/copilot-thread-rail"
 import { McpConnectButton } from "@/components/settings/mcp-connect-dialog"
-import { useCopilotChat, useCopilotPanel } from "@/lib/copilot-store"
+import { useCopilotChat } from "@/lib/copilot-store"
 import { useCurrentEvent } from "@/lib/current-event"
 
 export const Route = createFileRoute("/app/copilot")({
@@ -30,14 +36,11 @@ export const Route = createFileRoute("/app/copilot")({
 function CopilotPage() {
   const { event } = useCurrentEvent()
   const { newChat } = useCopilotChat(event?._id)
-  const { setOpen } = useCopilotPanel()
-  // Open on a desktop, out of the way on a phone — the rail is context, and
-  // on a narrow screen the conversation has to win.
-  const [railOpen, setRailOpen] = useState(
-    () =>
-      typeof window === "undefined" ||
-      window.matchMedia("(min-width: 1024px)").matches
-  )
+  // CLOSED by default, every screen size (Marko, 2026-08-12): the rail is
+  // history, not a co-star — arriving at the copilot should read "talk to me",
+  // not "here are all your old sessions". One click on the sidebar toggle
+  // brings it back.
+  const [railOpen, setRailOpen] = useState(false)
 
   // Only used to decide how loud the empty state should be, and it is already
   // in cache from the rail — so this costs nothing.
@@ -82,23 +85,33 @@ function CopilotPage() {
           the header separates by space alone and its controls sit on the same
           invisible line as the switcher and the rail's "New chat".
         */}
-        <header className="flex h-18 shrink-0 items-center justify-between gap-3 px-4 sm:px-6">
+        <TooltipProvider>
+          <header className="flex h-18 shrink-0 items-center justify-between gap-3 px-4 sm:px-6">
             <div className="flex min-w-0 items-center gap-2">
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                aria-label={
-                  railOpen
-                    ? "Hide conversation history"
-                    : "Show conversation history"
-                }
-                aria-expanded={railOpen}
-                onClick={() => setRailOpen((open) => !open)}
-              >
-                <RiSideBarLine size={16} aria-hidden />
-              </Button>
+              <Tooltip>
+                <TooltipTrigger
+                  render={
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      aria-label={
+                        railOpen
+                          ? "Hide conversation history"
+                          : "Show conversation history"
+                      }
+                      aria-expanded={railOpen}
+                      onClick={() => setRailOpen((open) => !open)}
+                    />
+                  }
+                >
+                  <RiSideBarLine size={16} aria-hidden />
+                </TooltipTrigger>
+                <TooltipContent side="bottom">
+                  {railOpen ? "Hide chat history" : "Chat history"}
+                </TooltipContent>
+              </Tooltip>
               <div className="min-w-0">
-                <h1 className="font-heading truncate text-sm font-semibold text-foreground">
+                <h1 className="truncate font-heading text-sm font-semibold text-foreground">
                   Copilot
                 </h1>
                 <p className="truncate text-xs text-muted-foreground">
@@ -108,24 +121,29 @@ function CopilotPage() {
                 </p>
               </div>
             </div>
+            {/* ONE "New chat" for the whole page (Marko, 2026-08-12: it lived
+                here AND atop the rail) — and no "open the side panel" button:
+                the Copilot control in the top bar already does that. */}
             <div className="flex shrink-0 items-center gap-2">
               {/* The same tools this chat runs on, in whatever client the
                   organizer already lives in (rule 21). */}
               <McpConnectButton variant="ghost" />
-              <Button variant="outline" size="sm" onClick={newChat}>
-                <RiAddLine aria-hidden />
-                <span className="max-sm:sr-only">New chat</span>
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                aria-label="Continue in the side panel"
-                onClick={() => setOpen(true)}
-              >
-                <RiSideBarLine size={16} aria-hidden className="rotate-180" />
-              </Button>
+              <Tooltip>
+                <TooltipTrigger
+                  render={
+                    <Button variant="outline" size="sm" onClick={newChat} />
+                  }
+                >
+                  <RiAddLine aria-hidden />
+                  <span className="max-sm:sr-only">New chat</span>
+                </TooltipTrigger>
+                <TooltipContent side="bottom">
+                  Start a new conversation
+                </TooltipContent>
+              </Tooltip>
             </div>
-        </header>
+          </header>
+        </TooltipProvider>
 
         <CopilotChat
           variant="page"

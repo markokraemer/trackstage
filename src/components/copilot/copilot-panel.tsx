@@ -15,6 +15,12 @@ import {
   SheetDescription,
   SheetTitle,
 } from "@/components/ui/sheet"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 import { CopilotChat } from "@/components/copilot/copilot-chat"
 import { CopilotAppContext } from "@/components/copilot/copilot-app-context"
 import { CopilotThreadSync } from "@/components/copilot/copilot-thread-sync"
@@ -65,7 +71,10 @@ const KEYBOARD_STEP = 24
  */
 function ignoreDismissal(setOpen: (open: boolean) => void) {
   return (open: boolean, details: { reason?: string }) => {
-    if (!open && (details.reason === "outside-press" || details.reason === "focus-out")) {
+    if (
+      !open &&
+      (details.reason === "outside-press" || details.reason === "focus-out")
+    ) {
       return
     }
     setOpen(open)
@@ -148,35 +157,64 @@ export function CopilotPanel() {
                 {event?.name ?? "No event selected"}
               </SheetDescription>
             </div>
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              aria-label="New chat"
-              title="New chat"
-              onClick={newChat}
-            >
-              <RiAddLine size={16} aria-hidden />
-            </Button>
-            {/* The same tools, from Claude/ChatGPT/Codex — the identical modal
-                the copilot page and Account settings open. */}
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              aria-label="Connect a client"
-              title="Connect a client"
-              onClick={() => setConnectOpen(true)}
-            >
-              <RiPlugLine size={16} aria-hidden />
-            </Button>
-            <Link
-              to={appLink.copilot}
-              onClick={() => setOpen(false)}
-              aria-label="Open full page"
-              title="Open full page"
-              className={buttonVariants({ variant: "ghost", size: "icon-sm" })}
-            >
-              <RiExpandDiagonalLine size={16} aria-hidden />
-            </Link>
+            {/* Real tooltips, not `title` attrs — icon buttons must say what
+                they do without a hover lottery (Marko, 2026-08-12). */}
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger
+                  render={
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      aria-label="New chat"
+                      onClick={newChat}
+                    />
+                  }
+                >
+                  <RiAddLine size={16} aria-hidden />
+                </TooltipTrigger>
+                <TooltipContent side="bottom">New chat</TooltipContent>
+              </Tooltip>
+              {/* The same tools, from Claude/ChatGPT/Codex — the identical
+                  modal the copilot page and Account settings open. */}
+              <Tooltip>
+                <TooltipTrigger
+                  render={
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      aria-label="Connect a client"
+                      onClick={() => setConnectOpen(true)}
+                    />
+                  }
+                >
+                  <RiPlugLine size={16} aria-hidden />
+                </TooltipTrigger>
+                <TooltipContent side="bottom">
+                  Connect Claude, ChatGPT or another client
+                </TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger
+                  render={
+                    <Link
+                      to={appLink.copilot}
+                      onClick={() => setOpen(false)}
+                      aria-label="Open full page"
+                      className={buttonVariants({
+                        variant: "ghost",
+                        size: "icon-sm",
+                      })}
+                    />
+                  }
+                >
+                  <RiExpandDiagonalLine size={16} aria-hidden />
+                </TooltipTrigger>
+                <TooltipContent side="bottom">
+                  Open as a full page
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
             {/* Leaves room for SheetContent's built-in close button. */}
             <span aria-hidden className="w-7" />
           </header>
