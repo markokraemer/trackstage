@@ -211,6 +211,12 @@ trail visible).
     capabilities in depth too (e.g. if their API manages session files/custom
     fields/webhooks, our product UI surfaces the same power, organizer-friendly).
     api-parity.md must carry a "UI implications" section; gaps become fix-wave work.
+29. **learn.sessionboard.com is a required source**: the official product-education
+    site (walkthrough videos, organizer + participant onboarding docs) must be fully
+    ingested — videos via the Gemini 3.6 Flash/OpenRouter pipeline, docs crawled —
+    into an in-depth product map (docs/reference/sessionboard-product-map.md) whose
+    deltas feed the parity loop. Full understanding of the actual software, not just
+    its API.
 19. **Mandatory final reconciliation pass**: slice-per-agent parallelism will drift —
     different layouts, spacing, and interaction patterns per slice. Before ship, ONE
     agent reads and reworks the whole app end to end for coherent, standardized,

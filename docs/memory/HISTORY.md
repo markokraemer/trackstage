@@ -164,3 +164,10 @@ the narrative memory; RULES.md is the things circled as important along the way.
 55. **API-implied UI parity**: re-emphasized end-to-end API parity AND full UI/UX
     implementation matching everything Sessionboard does in depth — the API reference
     treated as a feature census driving UI coverage, not just endpoint coverage.
+56. **learn.sessionboard.com ingestion**: swyx posted more product walkthroughs
+    (learn.sessionboard.com/videos/overview) + participant POV (/participants/overview)
+    + organizer POV (/get-started/overview). Directive: run ALL walkthrough videos
+    through the usual Gemini 3.6 Flash/OpenRouter analysis path (full transcripts +
+    UX analysis), deep-crawl the product onboarding docs, and build an in-depth
+    map of the actual software being cloned — full UX/UI understanding beyond the
+    API reference. Feeds the parity loop.
