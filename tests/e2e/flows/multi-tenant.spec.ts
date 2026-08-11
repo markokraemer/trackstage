@@ -141,6 +141,9 @@ test.describe("multi-tenancy", () => {
         ).toBeVisible({ timeout: 20_000 })
       }
 
+      // Team is a first-class tab in the modal — the member table is its
+      // whole content, with the invite CTA in the header.
+      await org.getByRole("tab", { name: /^team$/i }).first().click()
       await org.getByRole("button", { name: /invite teammate/i }).first().click()
       await expect(
         org.getByRole("heading", { name: /invite a teammate/i }).first(),
@@ -295,6 +298,7 @@ test.describe("multi-tenancy", () => {
         page.getByRole("heading", { name: /workspace settings/i }).first(),
       ).toBeVisible({ timeout: 30_000 })
 
+      await page.getByRole("tab", { name: /^team$/i }).first().click()
       await expect(
         page.getByRole("button", { name: /invite teammate/i }).first(),
       ).toBeDisabled()
@@ -567,20 +571,27 @@ test.describe("multi-tenancy", () => {
         page.getByRole("button", { name: /switch event/i }).first(),
       ).toContainText(eventName, { timeout: 30_000 })
 
-      await test.step("the Team card names who can open this event", async () => {
+      await test.step("the Team tab names who can open this event", async () => {
+        // Team is a real tab among the event-settings tabs now — the same
+        // member table as Workspace settings, scoped to this event.
+        await page.getByRole("tab", { name: /^team$/i }).first().click()
+        await expect(page).toHaveURL(/\/settings\/team/, { timeout: 20_000 })
         await expect(page.getByText(email).first()).toBeVisible({
           timeout: 20_000,
         })
         await expect(
           page.getByText(/who can open/i).first(),
         ).toBeVisible()
+        await expect(
+          page.getByRole("columnheader", { name: /event access/i }).first(),
+        ).toBeVisible()
       })
 
-      await test.step("Invite to this event opens the invite pre-scoped", async () => {
+      await test.step("Invite teammate from the Team tab is pre-scoped", async () => {
         await page
-          .getByRole("link", { name: /invite to this event/i })
+          .getByRole("button", { name: /invite teammate/i })
+          .first()
           .click()
-        await expect(page).toHaveURL(/invite=/, { timeout: 20_000 })
         await expect(
           page.getByRole("heading", { name: /invite a teammate/i }).first(),
         ).toBeVisible({ timeout: 20_000 })
@@ -607,7 +618,7 @@ test.describe("multi-tenancy", () => {
         expect(row?.eventIds?.length).toBe(1)
       })
 
-      watcher.assertClean("event team card")
+      watcher.assertClean("event settings team tab")
     } finally {
       await context.close()
     }

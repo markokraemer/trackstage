@@ -1,8 +1,12 @@
 import { useState } from "react"
+import type { ReactNode } from "react"
 import { Link, useNavigate, useSearch } from "@tanstack/react-router"
 import {
+  RiBuilding2Line,
+  RiCalendarEventLine,
   RiKey2Line,
   RiShieldKeyholeLine,
+  RiTeamLine,
   RiUserSettingsLine,
 } from "@remixicon/react"
 
@@ -51,15 +55,17 @@ import { useSession } from "@/lib/session"
 
 export type SettingsModalKind = "account" | "workspace"
 export type AccountSettingsTab = "profile" | "security" | "api-mcp"
+export type WorkspaceSettingsTab = "general" | "team" | "events"
+export type SettingsTab = AccountSettingsTab | WorkspaceSettingsTab
 
 export interface SettingsModalSearch {
   /** Which settings modal is open. Absent ⇒ none. */
   settings?: SettingsModalKind
-  /** Account modal section. Absent ⇒ Profile. */
-  settingsTab?: AccountSettingsTab
+  /** Section within the open modal. Absent ⇒ Profile / General. */
+  settingsTab?: SettingsTab
   /** Open the workspace modal's invite dialog straight away. */
   invite?: boolean
-  /** Pre-select that invite's event scope (Event settings → Team card). */
+  /** Pre-select that invite's event scope (Event settings → Team). */
   inviteEvent?: string
 }
 
@@ -68,6 +74,12 @@ const ACCOUNT_TABS: ReadonlyArray<AccountSettingsTab> = [
   "security",
   "api-mcp",
 ]
+const WORKSPACE_TABS: ReadonlyArray<WorkspaceSettingsTab> = [
+  "general",
+  "team",
+  "events",
+]
+const ALL_TABS: ReadonlyArray<SettingsTab> = [...ACCOUNT_TABS, ...WORKSPACE_TABS]
 
 /**
  * `validateSearch` for the `/app` layout route. Conditional keys (never
@@ -83,9 +95,9 @@ export function settingsModalSearch(
   }
   if (
     typeof search.settingsTab === "string" &&
-    (ACCOUNT_TABS as ReadonlyArray<string>).includes(search.settingsTab)
+    (ALL_TABS as ReadonlyArray<string>).includes(search.settingsTab)
   ) {
-    out.settingsTab = search.settingsTab as AccountSettingsTab
+    out.settingsTab = search.settingsTab as SettingsTab
   }
   if (search.invite === true || search.invite === "1" || search.invite === 1) {
     out.invite = true
@@ -123,20 +135,78 @@ export function SettingsDialogsHost() {
     } as never)
   }
 
+  // Each modal coerces the shared `settingsTab` key to its own sections, so
+  // a stray value can never render a blank pane.
+  const accountTab: AccountSettingsTab = (
+    ACCOUNT_TABS as ReadonlyArray<string>
+  ).includes(search.settingsTab ?? "")
+    ? (search.settingsTab as AccountSettingsTab)
+    : "profile"
+  const workspaceTab: WorkspaceSettingsTab = (
+    WORKSPACE_TABS as ReadonlyArray<string>
+  ).includes(search.settingsTab ?? "")
+    ? (search.settingsTab as WorkspaceSettingsTab)
+    : search.invite === true
+      ? // An invite deep link IS a team errand — land on the Team tab.
+        "team"
+      : "general"
+
   return (
     <>
       <AccountSettingsDialog
         open={search.settings === "account"}
-        tab={search.settingsTab ?? "profile"}
+        tab={accountTab}
         onClose={close}
       />
       <WorkspaceSettingsDialog
         open={search.settings === "workspace"}
+        tab={workspaceTab}
         invite={search.settings === "workspace" && search.invite === true}
         inviteEvent={search.inviteEvent}
         onClose={close}
       />
     </>
+  )
+}
+
+/**
+ * One workspace-modal tab = one real link (`?settingsTab=…`), so tabs deep-link
+ * and back-button like everything else. General is the clean URL; it also
+ * drops any lingering invite keys so the coercion to Team can't fight it.
+ */
+function WorkspaceTabTrigger({
+  value,
+  label,
+  children,
+}: {
+  value: WorkspaceSettingsTab
+  label: string
+  children: ReactNode
+}) {
+  return (
+    <TabsTrigger
+      value={value}
+      nativeButton={false}
+      className="gap-1.5"
+      render={
+        <Link
+          to="."
+          search={(prev: Record<string, unknown>) =>
+            ({
+              ...prev,
+              settingsTab: value === "general" ? undefined : value,
+              ...(value === "general"
+                ? { invite: undefined, inviteEvent: undefined }
+                : {}),
+            })
+          }
+          replace
+        />
+      }
+    >
+      {children}
+      {label}
+    </TabsTrigger>
   )
 }
 
@@ -289,17 +359,22 @@ function ApiMcpPanel() {
  * Workspace settings — the level above your events (docs/memory/RULES.md 23c):
  * the workspace itself, every event it owns, and the people who run them.
  * Always manages the workspace the app is IN, so this dialog and the sidebar
- * can never name two different workspaces. Content order = the hierarchy:
- * which workspaces you belong to → THIS workspace → what it owns (events) →
- * who runs them (team; its access column refers to the events listed above).
+ * can never name two different workspaces.
+ *
+ * TABBED, with Team a first-class tab right after General (Marko, 2026-08-12:
+ * "just have a Team tab instead — it's so bad UX … you have to scroll to the
+ * bottom of workspace settings to get the team thing"). The member table is
+ * the Team tab's WHOLE content, nothing above it.
  */
 function WorkspaceSettingsDialog({
   open,
+  tab,
   invite,
   inviteEvent,
   onClose,
 }: {
   open: boolean
+  tab: WorkspaceSettingsTab
   invite: boolean
   inviteEvent: string | undefined
   onClose: () => void
@@ -366,53 +441,82 @@ function WorkspaceSettingsDialog({
         </DialogHeader>
 
         <TooltipProvider>
+          <Tabs value={tab}>
+            <TabsList variant="line" className="h-auto flex-wrap">
+              <WorkspaceTabTrigger value="general" label="General">
+                <RiBuilding2Line size={15} aria-hidden />
+              </WorkspaceTabTrigger>
+              <WorkspaceTabTrigger value="team" label="Team">
+                <RiTeamLine size={15} aria-hidden />
+              </WorkspaceTabTrigger>
+              <WorkspaceTabTrigger value="events" label="Events">
+                <RiCalendarEventLine size={15} aria-hidden />
+              </WorkspaceTabTrigger>
+            </TabsList>
+          </Tabs>
+
           {isLoading || !workspace ? (
             <div className="flex flex-col gap-4">
               <Skeleton className="h-24 w-full" />
               <Skeleton className="h-32 w-full" />
             </div>
           ) : (
-            <div className="flex min-w-0 flex-col gap-5">
-              <WorkspacesCard
-                workspaces={workspaceOptions}
-                onSwitch={switchKeepingDialog}
-                onCreated={switchToCreated}
-              />
-              <WorkspaceNameCard
-                key={`name-${workspace.id}`}
-                organizationId={workspace.id}
-                name={workspace.name}
-                slug={workspace.slug}
-                myRole={workspace.role}
-              />
-              <WorkspaceEventsCard
-                key={`events-${workspace.id}`}
-                events={workspaceEvents}
-                onOpen={selectEvent}
-              />
-              <MembersCard
-                key={`members-${workspace.id}`}
-                organizationId={workspace.id}
-                workspaceName={workspace.name}
-                myRole={workspace.role}
-                myEmail={session?.email ?? ""}
-                events={workspaceEvents}
-                inviteOpen={invite}
-                inviteEventIds={inviteEventIds}
-                onInviteClosed={() => {
-                  if (invite || inviteEvent) {
-                    void navigate({
-                      search: (prev: Record<string, unknown>) => ({
-                        ...prev,
-                        invite: undefined,
-                        inviteEvent: undefined,
-                      }),
-                      replace: true,
-                    } as never)
-                  }
-                }}
-              />
-            </div>
+            <Tabs value={tab}>
+              <TabsContent value="general" className="flex min-w-0 flex-col gap-5">
+                <WorkspaceNameCard
+                  key={`name-${workspace.id}`}
+                  organizationId={workspace.id}
+                  name={workspace.name}
+                  slug={workspace.slug}
+                  myRole={workspace.role}
+                />
+                <WorkspacesCard
+                  workspaces={workspaceOptions}
+                  onSwitch={switchKeepingDialog}
+                  onCreated={switchToCreated}
+                />
+              </TabsContent>
+
+              {/* Team is the WHOLE tab — the member table with the invite CTA
+                  in its header, never something you scroll to find. */}
+              <TabsContent value="team" className="min-w-0">
+                <MembersCard
+                  key={`members-${workspace.id}`}
+                  organizationId={workspace.id}
+                  workspaceName={workspace.name}
+                  myRole={workspace.role}
+                  myEmail={session?.email ?? ""}
+                  events={workspaceEvents}
+                  inviteOpen={invite}
+                  inviteEventIds={inviteEventIds}
+                  onInviteClosed={() => {
+                    if (invite || inviteEvent) {
+                      // Drop the invite keys (a reload must not reopen the
+                      // dialog) but PIN the Team tab — the invite was what
+                      // selected it, and closing it must not yank the
+                      // organizer over to General.
+                      void navigate({
+                        search: (prev: Record<string, unknown>) => ({
+                          ...prev,
+                          settingsTab: "team",
+                          invite: undefined,
+                          inviteEvent: undefined,
+                        }),
+                        replace: true,
+                      } as never)
+                    }
+                  }}
+                />
+              </TabsContent>
+
+              <TabsContent value="events" className="min-w-0">
+                <WorkspaceEventsCard
+                  key={`events-${workspace.id}`}
+                  events={workspaceEvents}
+                  onOpen={selectEvent}
+                />
+              </TabsContent>
+            </Tabs>
           )}
         </TooltipProvider>
       </DialogContent>

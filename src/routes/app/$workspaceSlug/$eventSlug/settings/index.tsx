@@ -3,7 +3,6 @@ import { createFileRoute } from "@tanstack/react-router"
 import { EventDetailsForm } from "@/components/settings/event-details-form"
 import { EventBrandingCard } from "@/components/settings/event-branding-card"
 import { PortalBehaviorCard } from "@/components/settings/portal-behavior-card"
-import { EventTeamCard } from "@/components/settings/event-team-card"
 import { DeleteEventCard } from "@/components/settings/delete-event-card"
 import { useCurrentEvent } from "@/lib/current-event"
 
@@ -21,8 +20,7 @@ function EventDetailsPage() {
       <EventDetailsForm key={event._id} event={event} />
       <EventBrandingCard key={`branding-${event._id}`} eventId={event._id} />
       <PortalBehaviorCard key={`portal-${event._id}`} event={event} />
-      {/* Who can open THIS event — one level down from the workspace team. */}
-      <EventTeamCard key={`team-${event._id}`} event={event} />
+      {/* Who can open this event lives on its own Team tab now. */}
       <DeleteEventCard key={`danger-${event._id}`} event={event} />
     </div>
   )

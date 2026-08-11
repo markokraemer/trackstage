@@ -50,6 +50,12 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
+import { cn } from "@/lib/utils"
 import { StatusPill } from "@/components/shared/status-pill"
 import { LabeledField } from "@/components/settings/labeled-field"
 import { ConfirmDeleteButton } from "@/components/settings/confirm-delete-button"
@@ -83,6 +89,7 @@ export function MembersCard({
   inviteOpen,
   onInviteClosed,
   inviteEventIds,
+  scopeEvent,
 }: {
   organizationId: string
   workspaceName: string
@@ -91,8 +98,8 @@ export function MembersCard({
   /** Every event in THIS workspace — the choices in the access picker. */
   events: Array<AccessEvent>
   /**
-   * Drives the invite dialog from outside — the Event settings Team card
-   * deep-links here (`/app/:workspaceSlug/workspace?invite=1&event=…`) so
+   * Drives the invite dialog from outside — deep links
+   * (`?settings=workspace&invite=1&inviteEvent=…`) open it pre-scoped, so
    * "give this person access to just this event" is two clicks from the
    * event they're on.
    */
@@ -100,6 +107,14 @@ export function MembersCard({
   onInviteClosed?: () => void
   /** Pre-selects the event scope of that invite (role stays Member). */
   inviteEventIds?: Array<string>
+  /**
+   * Event settings → Team: the SAME table, viewed from one event. Rows are
+   * the people who can open that event (owners and admins by definition,
+   * members whose access includes it — mirroring
+   * `convex/lib/auth.ts memberCanSeeEvent`), and the invite CTA pre-selects
+   * it so inviting someone into just this event never visits a picker.
+   */
+  scopeEvent?: { id: string; name: string }
 }) {
   const { data: members, isPending } = useQuery(
     convexQuery(api.workspaces.members, {
@@ -136,14 +151,24 @@ export function MembersCard({
   const canInvite = canManageTeam(myRole)
   const mayChangeRoles = canChangeRoles(myRole)
 
+  const scopeEventId = scopeEvent?.id
   const rows = useMemo(
     () =>
-      [...(members ?? [])].sort((a, b) => {
-        const order = { owner: 0, admin: 1, member: 2 } as Record<string, number>
-        const diff = (order[a.role] ?? 3) - (order[b.role] ?? 3)
-        return diff !== 0 ? diff : a.email.localeCompare(b.email)
-      }),
-    [members],
+      [...(members ?? [])]
+        .filter((row) => {
+          if (!scopeEventId) return true
+          if (row.role === "owner" || row.role === "admin") return true
+          return (
+            row.eventIds === undefined ||
+            (row.eventIds as Array<string>).includes(scopeEventId)
+          )
+        })
+        .sort((a, b) => {
+          const order = { owner: 0, admin: 1, member: 2 } as Record<string, number>
+          const diff = (order[a.role] ?? 3) - (order[b.role] ?? 3)
+          return diff !== 0 ? diff : a.email.localeCompare(b.email)
+        }),
+    [members, scopeEventId],
   )
 
   const pending = rows.filter((row) => !row.userId).length
@@ -160,9 +185,21 @@ export function MembersCard({
           <Badge variant="secondary">{rows.length}</Badge>
         </CardTitle>
         <CardDescription>
-          Everyone who can work in{" "}
-          <strong className="font-medium">{workspaceName}</strong>. Owners and
-          admins run every event; members can be limited to the events you pick.
+          {scopeEvent ? (
+            <>
+              Who can open{" "}
+              <strong className="font-medium">{scopeEvent.name}</strong>. Owners
+              and admins of {workspaceName} reach every event; members appear
+              here when their access includes this one.
+            </>
+          ) : (
+            <>
+              Everyone who can work in{" "}
+              <strong className="font-medium">{workspaceName}</strong>. Owners
+              and admins run every event; members can be limited to the events
+              you pick.
+            </>
+          )}
           {pending > 0
             ? ` ${pending} invite${pending === 1 ? "" : "s"} sent and waiting to be accepted.`
             : ""}
@@ -178,7 +215,9 @@ export function MembersCard({
             disabled={!canInvite}
             requestOpen={inviteOpen}
             onClosed={onInviteClosed}
-            presetEventIds={inviteEventIds}
+            presetEventIds={
+              inviteEventIds ?? (scopeEvent ? [scopeEvent.id] : undefined)
+            }
           />
         </CardAction>
       </CardHeader>
@@ -219,6 +258,12 @@ export function MembersCard({
                           <span className="truncate font-medium">
                             {member.email}
                           </span>
+                          <EmailVerifiedDot
+                            verified={
+                              (member as { emailVerified?: boolean })
+                                .emailVerified
+                            }
+                          />
                           {isMe ? (
                             <Badge variant="secondary" className="shrink-0">
                               You
@@ -334,6 +379,35 @@ export function MembersCard({
         ) : null}
       </CardContent>
     </Card>
+  )
+}
+
+/**
+ * Email-verification state, as a quiet dot beside the address (Marko,
+ * 2026-08-12) — the table is tight, so no extra column; the tooltip carries
+ * the words. Consumed OPTIONALLY: `workspaces.members` grows an
+ * `emailVerified` field (auth work, landing separately); until a row carries
+ * a boolean — invited-but-never-signed-in rows never will — nothing renders.
+ */
+function EmailVerifiedDot({ verified }: { verified: boolean | undefined }) {
+  if (typeof verified !== "boolean") return null
+  const label = verified ? "Email verified" : "Email not verified yet"
+  return (
+    <Tooltip>
+      <TooltipTrigger
+        render={
+          <span
+            role="img"
+            aria-label={label}
+            className={cn(
+              "inline-block size-2 shrink-0 rounded-full",
+              verified ? "bg-emerald-500" : "bg-amber-400",
+            )}
+          />
+        }
+      />
+      <TooltipContent>{label}</TooltipContent>
+    </Tooltip>
   )
 }
 

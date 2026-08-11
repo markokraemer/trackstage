@@ -94,6 +94,7 @@ import { Route as AppWorkspaceSlugEventSlugSettingsFieldsAndOptionsRouteImport }
 import { Route as AppWorkspaceSlugEventSlugSettingsIntegrationsRouteImport } from './routes/app/$workspaceSlug/$eventSlug/settings/integrations'
 import { Route as AppWorkspaceSlugEventSlugSettingsRoomsAndTracksRouteImport } from './routes/app/$workspaceSlug/$eventSlug/settings/rooms-and-tracks'
 import { Route as AppWorkspaceSlugEventSlugSettingsStatusesRouteImport } from './routes/app/$workspaceSlug/$eventSlug/settings/statuses'
+import { Route as AppWorkspaceSlugEventSlugSettingsTeamRouteImport } from './routes/app/$workspaceSlug/$eventSlug/settings/team'
 import { Route as AppWorkspaceSlugEventSlugSpeakersIndexRouteImport } from './routes/app/$workspaceSlug/$eventSlug/speakers/index'
 import { Route as AppWorkspaceSlugEventSlugSubmissionsIndexRouteImport } from './routes/app/$workspaceSlug/$eventSlug/submissions/index'
 import { Route as EWorkspaceSlugEventSlugItineraryPersonIdRouteImport } from './routes/e/$workspaceSlug/$eventSlug/itinerary/$personId'
@@ -560,6 +561,12 @@ const AppWorkspaceSlugEventSlugSettingsStatusesRoute =
     path: '/statuses',
     getParentRoute: () => AppWorkspaceSlugEventSlugSettingsRouteRoute,
   } as any)
+const AppWorkspaceSlugEventSlugSettingsTeamRoute =
+  AppWorkspaceSlugEventSlugSettingsTeamRouteImport.update({
+    id: '/team',
+    path: '/team',
+    getParentRoute: () => AppWorkspaceSlugEventSlugSettingsRouteRoute,
+  } as any)
 const AppWorkspaceSlugEventSlugSpeakersIndexRoute =
   AppWorkspaceSlugEventSlugSpeakersIndexRouteImport.update({
     id: '/speakers/',
@@ -670,6 +677,7 @@ export interface FileRoutesByFullPath {
   '/app/$workspaceSlug/$eventSlug/settings/integrations': typeof AppWorkspaceSlugEventSlugSettingsIntegrationsRoute
   '/app/$workspaceSlug/$eventSlug/settings/rooms-and-tracks': typeof AppWorkspaceSlugEventSlugSettingsRoomsAndTracksRoute
   '/app/$workspaceSlug/$eventSlug/settings/statuses': typeof AppWorkspaceSlugEventSlugSettingsStatusesRoute
+  '/app/$workspaceSlug/$eventSlug/settings/team': typeof AppWorkspaceSlugEventSlugSettingsTeamRoute
   '/e/$workspaceSlug/$eventSlug/itinerary/$personId': typeof EWorkspaceSlugEventSlugItineraryPersonIdRoute
   '/e/$workspaceSlug/$eventSlug/sessions/$sessionId': typeof EWorkspaceSlugEventSlugSessionsSessionIdRoute
   '/app/$workspaceSlug/$eventSlug/agenda/': typeof AppWorkspaceSlugEventSlugAgendaIndexRoute
@@ -756,6 +764,7 @@ export interface FileRoutesByTo {
   '/app/$workspaceSlug/$eventSlug/settings/integrations': typeof AppWorkspaceSlugEventSlugSettingsIntegrationsRoute
   '/app/$workspaceSlug/$eventSlug/settings/rooms-and-tracks': typeof AppWorkspaceSlugEventSlugSettingsRoomsAndTracksRoute
   '/app/$workspaceSlug/$eventSlug/settings/statuses': typeof AppWorkspaceSlugEventSlugSettingsStatusesRoute
+  '/app/$workspaceSlug/$eventSlug/settings/team': typeof AppWorkspaceSlugEventSlugSettingsTeamRoute
   '/e/$workspaceSlug/$eventSlug/itinerary/$personId': typeof EWorkspaceSlugEventSlugItineraryPersonIdRoute
   '/e/$workspaceSlug/$eventSlug/sessions/$sessionId': typeof EWorkspaceSlugEventSlugSessionsSessionIdRoute
   '/app/$workspaceSlug/$eventSlug/agenda': typeof AppWorkspaceSlugEventSlugAgendaIndexRoute
@@ -849,6 +858,7 @@ export interface FileRoutesById {
   '/app/$workspaceSlug/$eventSlug/settings/integrations': typeof AppWorkspaceSlugEventSlugSettingsIntegrationsRoute
   '/app/$workspaceSlug/$eventSlug/settings/rooms-and-tracks': typeof AppWorkspaceSlugEventSlugSettingsRoomsAndTracksRoute
   '/app/$workspaceSlug/$eventSlug/settings/statuses': typeof AppWorkspaceSlugEventSlugSettingsStatusesRoute
+  '/app/$workspaceSlug/$eventSlug/settings/team': typeof AppWorkspaceSlugEventSlugSettingsTeamRoute
   '/e/$workspaceSlug/$eventSlug/itinerary/$personId': typeof EWorkspaceSlugEventSlugItineraryPersonIdRoute
   '/e/$workspaceSlug/$eventSlug/sessions/$sessionId': typeof EWorkspaceSlugEventSlugSessionsSessionIdRoute
   '/app/$workspaceSlug/$eventSlug/agenda/': typeof AppWorkspaceSlugEventSlugAgendaIndexRoute
@@ -943,6 +953,7 @@ export interface FileRouteTypes {
     | '/app/$workspaceSlug/$eventSlug/settings/integrations'
     | '/app/$workspaceSlug/$eventSlug/settings/rooms-and-tracks'
     | '/app/$workspaceSlug/$eventSlug/settings/statuses'
+    | '/app/$workspaceSlug/$eventSlug/settings/team'
     | '/e/$workspaceSlug/$eventSlug/itinerary/$personId'
     | '/e/$workspaceSlug/$eventSlug/sessions/$sessionId'
     | '/app/$workspaceSlug/$eventSlug/agenda/'
@@ -1029,6 +1040,7 @@ export interface FileRouteTypes {
     | '/app/$workspaceSlug/$eventSlug/settings/integrations'
     | '/app/$workspaceSlug/$eventSlug/settings/rooms-and-tracks'
     | '/app/$workspaceSlug/$eventSlug/settings/statuses'
+    | '/app/$workspaceSlug/$eventSlug/settings/team'
     | '/e/$workspaceSlug/$eventSlug/itinerary/$personId'
     | '/e/$workspaceSlug/$eventSlug/sessions/$sessionId'
     | '/app/$workspaceSlug/$eventSlug/agenda'
@@ -1121,6 +1133,7 @@ export interface FileRouteTypes {
     | '/app/$workspaceSlug/$eventSlug/settings/integrations'
     | '/app/$workspaceSlug/$eventSlug/settings/rooms-and-tracks'
     | '/app/$workspaceSlug/$eventSlug/settings/statuses'
+    | '/app/$workspaceSlug/$eventSlug/settings/team'
     | '/e/$workspaceSlug/$eventSlug/itinerary/$personId'
     | '/e/$workspaceSlug/$eventSlug/sessions/$sessionId'
     | '/app/$workspaceSlug/$eventSlug/agenda/'
@@ -1753,6 +1766,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppWorkspaceSlugEventSlugSettingsStatusesRouteImport
       parentRoute: typeof AppWorkspaceSlugEventSlugSettingsRouteRoute
     }
+    '/app/$workspaceSlug/$eventSlug/settings/team': {
+      id: '/app/$workspaceSlug/$eventSlug/settings/team'
+      path: '/team'
+      fullPath: '/app/$workspaceSlug/$eventSlug/settings/team'
+      preLoaderRoute: typeof AppWorkspaceSlugEventSlugSettingsTeamRouteImport
+      parentRoute: typeof AppWorkspaceSlugEventSlugSettingsRouteRoute
+    }
     '/app/$workspaceSlug/$eventSlug/speakers/': {
       id: '/app/$workspaceSlug/$eventSlug/speakers/'
       path: '/speakers'
@@ -1798,6 +1818,7 @@ interface AppWorkspaceSlugEventSlugSettingsRouteRouteChildren {
   AppWorkspaceSlugEventSlugSettingsIntegrationsRoute: typeof AppWorkspaceSlugEventSlugSettingsIntegrationsRoute
   AppWorkspaceSlugEventSlugSettingsRoomsAndTracksRoute: typeof AppWorkspaceSlugEventSlugSettingsRoomsAndTracksRoute
   AppWorkspaceSlugEventSlugSettingsStatusesRoute: typeof AppWorkspaceSlugEventSlugSettingsStatusesRoute
+  AppWorkspaceSlugEventSlugSettingsTeamRoute: typeof AppWorkspaceSlugEventSlugSettingsTeamRoute
   AppWorkspaceSlugEventSlugSettingsIndexRoute: typeof AppWorkspaceSlugEventSlugSettingsIndexRoute
 }
 
@@ -1815,6 +1836,8 @@ const AppWorkspaceSlugEventSlugSettingsRouteRouteChildren: AppWorkspaceSlugEvent
       AppWorkspaceSlugEventSlugSettingsRoomsAndTracksRoute,
     AppWorkspaceSlugEventSlugSettingsStatusesRoute:
       AppWorkspaceSlugEventSlugSettingsStatusesRoute,
+    AppWorkspaceSlugEventSlugSettingsTeamRoute:
+      AppWorkspaceSlugEventSlugSettingsTeamRoute,
     AppWorkspaceSlugEventSlugSettingsIndexRoute:
       AppWorkspaceSlugEventSlugSettingsIndexRoute,
   }

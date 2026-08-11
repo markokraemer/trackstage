@@ -260,36 +260,50 @@ test.describe("hierarchy", () => {
     watcher.assertClean("/app/settings/api-mcp redirect")
   })
 
-  test("workspace hub renders name, events and team", async ({ page }) => {
+  test("workspace settings modal renders general, team and events tabs", async ({
+    page,
+  }) => {
     const watcher = watchConsole(page)
+    // The legacy hub address resolves to a real page with the workspace
+    // MODAL open — General / Team / Events tabs (docs/memory/RULES.md 23).
     await page.goto("/app/workspace")
     await expect(
       page.getByRole("heading", { name: /workspace settings/i }).first(),
     ).toBeVisible({ timeout: 15_000 })
     await expect(page.getByLabel(/workspace name/i).first()).toBeVisible()
-    // The hub lists the events this workspace owns, then the people who run
-    // them, with each member's event access (docs/memory/RULES.md 23).
-    await expect(page.getByText(/^Events$/).first()).toBeVisible()
-    await expect(page.getByText(/^Team$/).first()).toBeVisible()
+
+    // Team is a first-class tab: the member table with per-member event
+    // access and the invite CTA is its whole content.
+    await page.getByRole("tab", { name: /^team$/i }).first().click()
     await expect(
       page.getByRole("columnheader", { name: /event access/i }).first(),
     ).toBeVisible()
     await expect(
       page.getByRole("button", { name: /invite teammate/i }).first(),
     ).toBeVisible()
+
+    await page.getByRole("tab", { name: /^events$/i }).first().click()
+    await expect(
+      page.getByText(/each event keeps its own dates/i).first(),
+    ).toBeVisible()
     await assertNoErrorBoundary(page, "/app/workspace")
     watcher.assertClean("/app/workspace")
   })
 
-  test("event settings names the event it is editing", async ({ page }) => {
+  test("event settings names the event it is editing and has a Team tab", async ({
+    page,
+  }) => {
     const watcher = watchConsole(page)
     await page.goto("/app/settings")
     await expect(
       page.getByRole("heading", { name: /event settings —/i }).first(),
     ).toBeVisible({ timeout: 15_000 })
-    await expect(
-      page.getByRole("link", { name: /workspace settings/i }).first(),
-    ).toBeVisible()
+    // Team sits among the event's own tabs — the same member table as
+    // Workspace settings, scoped to who can open this event.
+    await page.getByRole("tab", { name: /^team$/i }).first().click()
+    await expect(page.getByText(/who can open/i).first()).toBeVisible({
+      timeout: 15_000,
+    })
     watcher.assertClean("/app/settings")
   })
 })

@@ -4,7 +4,7 @@ import {
   createFileRoute,
   useRouterState,
 } from "@tanstack/react-router"
-import { RiBuilding2Line, RiCalendarEventLine } from "@remixicon/react"
+import { RiCalendarEventLine } from "@remixicon/react"
 
 import { PageHeader } from "@/components/shared/page-header"
 import { EmptyState } from "@/components/shared/empty-state"
@@ -23,6 +23,9 @@ export const Route = createFileRoute("/app/$workspaceSlug/$eventSlug/settings")(
 
 const TABS = [
   { value: "details", label: "Event details", section: undefined },
+  // Who can open this event — the same member table as Workspace settings,
+  // scoped (Marko, 2026-08-12: "just have a Team tab instead").
+  { value: "team", label: "Team", section: "team" },
   { value: "rooms", label: "Rooms & tracks", section: "rooms-and-tracks" },
   {
     value: "fields",
@@ -92,50 +95,6 @@ function SettingsLayout() {
             </TabsList>
           </Tabs>
 
-          {/*
-            The one line that keeps the three levels straight from the deepest
-            one (docs/memory/RULES.md 23): everything on these tabs belongs to
-            this event alone, and the two things that DON'T are named with a
-            link to where they actually live.
-          */}
-          {/* Plain text flow, not a flex row: a flex gap would strand the
-              sentence's punctuation a space away from the word before it. */}
-          {/* The two things that DON'T belong to this event are named with
-              links that OPEN their modals in place (`?settings=…`) — the old
-              Account | Workspace | Event sibling-tab row is gone for good. */}
-          <p className="text-xs text-foreground/70">
-            <RiBuilding2Line
-              size={14}
-              aria-hidden
-              className="mr-1.5 inline-block align-text-bottom"
-            />
-            These tabs change this event only. Teammates and roles live in{" "}
-            <Link
-              to="."
-              search={(prev: Record<string, unknown>) =>
-                ({ ...prev, settings: "workspace" }) as never
-              }
-              className="font-medium text-primary underline-offset-4 hover:underline"
-            >
-              Workspace settings
-            </Link>
-            {event?.organizationName ? ` (${event.organizationName})` : ""}; your
-            API keys and MCP connection live in{" "}
-            <Link
-              to="."
-              search={(prev: Record<string, unknown>) =>
-                ({
-                  ...prev,
-                  settings: "account",
-                  settingsTab: "api-mcp",
-                }) as never
-              }
-              className="font-medium text-primary underline-offset-4 hover:underline"
-            >
-              Account settings
-            </Link>
-            .
-          </p>
         </PageHeader>
 
         {isLoading ? (

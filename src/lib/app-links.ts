@@ -92,6 +92,7 @@ export const appLink = {
   settingsSection: (
     ref: EventRef,
     section:
+      | "team"
       | "rooms-and-tracks"
       | "statuses"
       | "fields-and-options"
