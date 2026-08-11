@@ -72,7 +72,7 @@ function Swatch({ color, name }: { color: string | null; name: string }) {
     <span
       aria-hidden
       data-slot="track-dot"
-      className="size-2 shrink-0 rounded-full ring-1 ring-inset ring-black/10"
+      className="size-2 shrink-0 rounded-full ring-1 ring-black/10 ring-inset"
       style={{ backgroundColor: color }}
     />
   )
@@ -92,7 +92,9 @@ const RESOURCE_LABELS: Record<string, string> = {
 
 export function FieldOptionsView({ output, input }: ToolOutputProps) {
   const settingsLink = useSectionLink("settings")
-  const resource = isRecord(input) ? (str(input.resource) ?? "options") : "options"
+  const resource = isRecord(input)
+    ? (str(input.resource) ?? "options")
+    : "options"
   const rows = rowsOf(output, "options")
   const label = RESOURCE_LABELS[resource] ?? "Options"
 
@@ -151,9 +153,7 @@ export function FieldOptionsView({ output, input }: ToolOutputProps) {
                 </span>
               ) : null}
               {row.system === true ? <Chip tone="muted">Built-in</Chip> : null}
-              {pipeline ? (
-                <StatusPill status={pipeline} size="sm" />
-              ) : null}
+              {pipeline ? <StatusPill status={pipeline} size="sm" /> : null}
             </Row>
           )
         })}
@@ -177,7 +177,11 @@ const MANAGED_LABEL: Record<string, string> = {
  * different tables, and the organizer should not have to learn four card
  * layouts for "created / renamed / deleted".
  */
-export function ManagedSettingView({ output, input, toolName }: ToolOutputProps) {
+export function ManagedSettingView({
+  output,
+  input,
+  toolName,
+}: ToolOutputProps) {
   const settingsLink = useSectionLink("settings")
   const what = MANAGED_LABEL[toolName] ?? "Setting"
   const action = isRecord(input) ? (str(input.action) ?? "update") : "update"
@@ -388,9 +392,8 @@ export function EmbedsView({ output }: ToolOutputProps) {
   if (rows.length === 0) {
     return (
       <EmptyRow>
-        No saved embeds —{" "}
-        <GoLink to={embedsLink}>build one in Embeds</GoLink> to drop the agenda
-        or speaker list onto your own site.
+        No saved embeds — <GoLink to={embedsLink}>build one in Embeds</GoLink>{" "}
+        to drop the agenda or speaker list onto your own site.
       </EmptyRow>
     )
   }
@@ -399,16 +402,33 @@ export function EmbedsView({ output }: ToolOutputProps) {
       <Rows>
         {rows.map((row, index) => {
           const options = isRecord(row.options) ? row.options : {}
+          // ABSENT ⇒ ON, the same rule the schema and the public page use.
+          const off = row.enabled === false
+          const accent = str(options.accent)
           return (
             <Row key={str(row.embedId) ?? index} className="items-center">
               <RiCodeSSlashLine
                 size={15}
                 aria-hidden
-                className="mt-0.5 shrink-0 text-muted-foreground"
+                className={
+                  off
+                    ? "mt-0.5 shrink-0 text-muted-foreground/50"
+                    : "mt-0.5 shrink-0 text-muted-foreground"
+                }
               />
-              <span className="min-w-0 flex-1 truncate text-sm text-foreground">
+              <span
+                className={
+                  off
+                    ? "min-w-0 flex-1 truncate text-sm text-muted-foreground"
+                    : "min-w-0 flex-1 truncate text-sm text-foreground"
+                }
+              >
                 {str(row.name) ?? "Untitled embed"}
               </span>
+              {accent ? <Swatch color={accent} name={accent} /> : null}
+              {/* An embed that is switched off answers "turned off" on every
+                    page it was pasted into — the loudest fact about the row. */}
+              {off ? <Chip tone="warn">Off</Chip> : null}
               <Chip tone="muted">{str(row.widget) ?? "agenda"}</Chip>
               <Chip tone="muted">{str(options.format) ?? "iframe"}</Chip>
             </Row>
@@ -604,7 +624,9 @@ export function WorkspaceUpdatedView({ output }: ToolOutputProps) {
         entries={[
           {
             label: "Address",
-            value: <code className="font-mono">/{str(output.slug) ?? "—"}</code>,
+            value: (
+              <code className="font-mono">/{str(output.slug) ?? "—"}</code>
+            ),
           },
         ]}
       />
@@ -621,9 +643,7 @@ export function ActivityView({ output }: ToolOutputProps) {
   const rows = asArray(output.activity) ?? []
   if (rows.length === 0) {
     return (
-      <EmptyRow>
-        Nothing in the activity feed for that filter yet.
-      </EmptyRow>
+      <EmptyRow>Nothing in the activity feed for that filter yet.</EmptyRow>
     )
   }
   return (

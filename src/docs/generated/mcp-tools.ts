@@ -903,11 +903,11 @@ export const MCP_TOOL_GROUPS: Array<McpToolGroup> = [
       {
         name: "save_embed",
         title: "Save an embed configuration",
-        description: "Creates a named embed configuration (or overwrites one by embedId): which widget, its delivery format (iframe, html, link, json, ics) and display options. Widgets render the PUBLISHED programme — publish the agenda first or the embed shows \"coming soon\".",
+        description: "Creates a named embed configuration (or overwrites one by embedId): which widget, its delivery format (iframe, html, link, json, xml, ics), its branding and display options, and whether it is switched on. On an overwrite, options you don't pass keep the value they already had — renaming an embed never drops the accent colour or the track pin. `enabled: false` turns the widget off EVERYWHERE its snippet was pasted: those pages answer \"this embed is turned off\" instead of the programme. Widgets render the PUBLISHED programme — publish the agenda first or the embed shows \"coming soon\".",
         readOnly: false,
         destructive: false,
         requiresConfirm: true,
-        args: ["event","embedId","name","widget","format","track","hideDescriptions","hideSpeakers","hideImages","hideSearch","height","confirm"],
+        args: ["event","embedId","name","widget","format","track","hideDescriptions","hideSpeakers","hideImages","hideSearch","height","accent","showHeader","enabled","confirm"],
         required: ["event","name","widget","confirm"],
       },
       {

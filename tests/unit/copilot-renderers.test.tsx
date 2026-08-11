@@ -1421,13 +1421,21 @@ const SHAPES: Record<string, Payload> = {
   list_embeds: {
     input: { event: "ai-summit-2026" },
     output: {
-      embedCount: 1,
+      embedCount: 2,
       embeds: [
         {
           embedId: "emb1",
           name: "Agenda for the homepage",
           widget: "agenda",
-          options: { format: "iframe", height: 900 },
+          enabled: true,
+          options: { format: "iframe", height: 900, accent: "#0F6E70" },
+        },
+        {
+          embedId: "emb2",
+          name: "Sponsor gallery",
+          widget: "speaker-gallery",
+          enabled: false,
+          options: { format: "html" },
         },
       ],
       widgets: ["agenda", "speakers"],
@@ -1876,6 +1884,16 @@ describe("what each view actually says", () => {
     expect(container.querySelector("code")?.textContent).toContain(
       "/e/ai-engineer/ai-summit-2026"
     )
+  })
+
+  it("list_embeds flags an embed that is switched off", () => {
+    const { container } = renderTool("list_embeds", SHAPES.list_embeds)
+    expect(container.textContent).toContain("Sponsor gallery")
+    // A disabled embed answers "turned off" on every page it was pasted into,
+    // so the row has to say so — it is the loudest fact about it.
+    expect(container.textContent).toContain("Off")
+    const swatch = container.querySelector("[data-slot=track-dot]")
+    expect(swatch?.getAttribute("style")).toContain("rgb(15, 110, 112)")
   })
 
   it("manage_track renders the real colour the organizer picked", () => {

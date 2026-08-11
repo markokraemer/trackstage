@@ -29,7 +29,7 @@ import {
   resolveBulkRecipients,
 } from "./comms"
 import { deleteUploadRow } from "./lib/files"
-import { EMBED_FORMATS, EMBED_WIDGETS } from "./embeds"
+import { EMBED_FORMATS, EMBED_WIDGETS, validAccent } from "./embeds"
 import { humanMessage } from "./lib/errors"
 import {
   DEFAULT_TEMPLATES,
@@ -3065,6 +3065,10 @@ export const listEmbedsQ = internalQuery({
           embedId: row._id,
           name: row.name,
           widget: row.widget,
+          // ABSENT ⇒ ON (convex/schema.ts): an embed saved before the off
+          // switch existed is live, and an agent must not read the missing
+          // field as "off" and tell the organizer their site is broken.
+          enabled: row.enabled !== false,
           options: row.options,
         })),
       widgets: [...EMBED_WIDGETS],
@@ -3088,6 +3092,9 @@ export const saveEmbedM = internalMutation({
     hideImages: v.optional(v.boolean()),
     hideSearch: v.optional(v.boolean()),
     height: v.optional(v.number()),
+    accent: v.optional(v.string()),
+    showHeader: v.optional(v.boolean()),
+    enabled: v.optional(v.boolean()),
   },
   returns: v.any(),
   handler: async (ctx, args) => {
@@ -3107,31 +3114,61 @@ export const saveEmbedM = internalMutation({
         `Unknown format "${args.format}". One of: ${EMBED_FORMATS.join(", ")}.`,
       )
     }
-    const options = {
-      format: args.format,
-      track: args.track,
-      hideDescriptions: args.hideDescriptions,
-      hideSpeakers: args.hideSpeakers,
-      hideImages: args.hideImages,
-      hideSearch: args.hideSearch,
-      height: args.height,
+    // Only the keys the caller actually passed. Merged over the saved options
+    // on an update, because a model renaming an embed must not silently drop
+    // the accent colour or the track pin the organizer set in the UI — every
+    // argument here is optional, so a wholesale replace is a data-loss bug.
+    const patch: Record<string, unknown> = {}
+    for (const [key, value] of [
+      ["format", args.format],
+      ["track", args.track],
+      ["hideDescriptions", args.hideDescriptions],
+      ["hideSpeakers", args.hideSpeakers],
+      ["hideImages", args.hideImages],
+      ["hideSearch", args.hideSearch],
+      ["height", args.height],
+      ["showHeader", args.showHeader],
+    ] as const) {
+      if (value !== undefined) patch[key] = value
     }
+    // Accent is the one field with a third state. Absent means "leave it"; an
+    // EMPTY STRING means "remove the brand colour" — `validAccent` turns that
+    // into undefined, and an undefined value in the merged object is how a
+    // Convex document field gets dropped. Without this an accent set once
+    // could never be cleared over MCP.
+    if (args.accent !== undefined) patch.accent = validAccent(args.accent)
+
     if (args.embedId) {
       const id = ctx.db.normalizeId("embeds", args.embedId.trim())
       const existing = id ? await ctx.db.get(id) : null
       if (!existing || existing.eventId !== event._id) {
         throw new ConvexError("That saved embed belongs to a different event.")
       }
-      await ctx.db.patch(existing._id, { name, widget: args.widget, options })
-      return { embedId: existing._id, name, widget: args.widget, updated: true }
+      const merged = { ...existing.options, ...patch }
+      await ctx.db.patch(existing._id, {
+        name,
+        widget: args.widget,
+        options: merged,
+        // Saving never silently flips the switch (mirrors embeds.save).
+        enabled: args.enabled ?? existing.enabled ?? true,
+      })
+      return {
+        embedId: existing._id,
+        name,
+        widget: args.widget,
+        enabled: args.enabled ?? existing.enabled ?? true,
+        updated: true,
+      }
     }
+    const enabled = args.enabled ?? true
     const embedId = await ctx.db.insert("embeds", {
       eventId: event._id,
       name,
       widget: args.widget,
-      options,
+      options: patch,
+      enabled,
     })
-    return { embedId, name, widget: args.widget, updated: false }
+    return { embedId, name, widget: args.widget, enabled, updated: false }
   },
 })
 
@@ -5732,20 +5769,23 @@ export const TOOLS: Array<ToolDef> = [
     name: "save_embed",
     title: "Save an embed configuration",
     description:
-      "Creates a named embed configuration (or overwrites one by embedId): which widget, its delivery format (iframe, html, link, json, ics) and display options. Widgets render the PUBLISHED programme — publish the agenda first or the embed shows \"coming soon\".",
+      "Creates a named embed configuration (or overwrites one by embedId): which widget, its delivery format (iframe, html, link, json, xml, ics), its branding and display options, and whether it is switched on. On an overwrite, options you don't pass keep the value they already had — renaming an embed never drops the accent colour or the track pin. `enabled: false` turns the widget off EVERYWHERE its snippet was pasted: those pages answer \"this embed is turned off\" instead of the programme. Widgets render the PUBLISHED programme — publish the agenda first or the embed shows \"coming soon\".",
     inputSchema: schema(
       {
         event: EVENT_ARG,
         embedId: { type: "string", description: "Present ⇒ overwrite that saved embed." },
         name: { type: "string" },
         widget: { type: "string", enum: ["agenda", "itinerary", "sessions", "speaker-gallery", "speaker-list"] },
-        format: { type: "string", enum: ["iframe", "html", "link", "json", "ics"] },
-        track: { type: "string", description: "Limit the widget to one track." },
+        format: { type: "string", enum: ["iframe", "html", "link", "json", "xml", "ics"] },
+        track: { type: "string", description: "Limit the widget to one track, or several as a comma-separated list of track NAMES." },
         hideDescriptions: { type: "boolean" },
         hideSpeakers: { type: "boolean" },
         hideImages: { type: "boolean" },
         hideSearch: { type: "boolean" },
         height: { type: "number", description: "iframe height in px." },
+        accent: { type: "string", description: "Brand colour as a hex code, e.g. \"#0F6E70\". Pass an empty string to remove it." },
+        showHeader: { type: "boolean", description: "Show the event logo and name above the widget." },
+        enabled: { type: "boolean", description: "false switches the embed off wherever it is pasted." },
       },
       ["event", "name", "widget"],
     ),
@@ -5766,6 +5806,9 @@ export const TOOLS: Array<ToolDef> = [
         hideImages: args.hideImages,
         hideSearch: args.hideSearch,
         height: args.height,
+        accent: args.accent,
+        showHeader: args.showHeader,
+        enabled: args.enabled,
       }),
   },
   {

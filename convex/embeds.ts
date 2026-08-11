@@ -81,7 +81,7 @@ function validFormat(format: string | undefined): string | undefined {
  * six-digit hex is ever stored — nothing that could carry a second declaration
  * with it.
  */
-function validAccent(accent: string | undefined): string | undefined {
+export function validAccent(accent: string | undefined): string | undefined {
   if (accent === undefined) return undefined
   const trimmed = accent.trim()
   if (trimmed === "") return undefined
