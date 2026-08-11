@@ -660,3 +660,106 @@ load; typecheck and lint clean on the marketing files. Verification ran against 
 `vite dev --port 3100` — the long-running shared dev server was throwing SSR
 "invalid hook call" errors on untouched routes (LoginPage, OrganizerLayout) from stale
 dep-optimization, and a clean server has none.
+
+## Session — API parity with Sessionboard's public API (rule 28)
+
+Crawled their whole reference (`apidocs.sessionboard.com/api-reference/openapi.yaml`, 131
+paths / 177 operations) and mapped it endpoint-by-endpoint against ours. 61 of their 177
+are program-side; the rest is CRM, sponsors, exhibitors, Insights/SbQL, dashboards and
+GDPR, all explicitly struck. Full matrix with verdicts:
+[`docs/reference/api-parity.md`](../reference/api-parity.md).
+
+**We went from 4 read-only endpoints to 80.** New modules: `convex/apiRoutes.ts` (the
+route manifest — pure data, the single source of truth), `convex/apiHttp.ts` (routing,
+auth, scopes, rate limiting, serialization), `convex/apiV1.ts` (the data layer),
+`convex/webhooks.ts` (outbound deliveries), `convex/lib/apiIcs.ts` (the calendar writer,
+lifted verbatim out of `http.ts` so the feed stayed byte-identical). `http.ts` is now just
+a route table.
+
+**Nothing was degraded.** The four pre-parity endpoints keep their auth, their envelope
+keys and their field names; every parity field is additive, so a session now carries both
+`starts_at` (ISO) and `startTime` (epoch ms), both `track{}` and `trackColor`. Paginated
+responses carry `data` AND `results` — the same array under both names — and every
+pagination key in camelCase and snake_case, so a client written against either of
+Sessionboard's two conventions works without checking which endpoint it is on. Error
+bodies carry `error` (the message, where ours has always put it), `code` (the name, where
+theirs puts it) and `message`, so neither contract breaks.
+
+**Custom fields are real, not a shim.** A custom field IS a CFP form question:
+`forms.questions[]` are the definitions, `submissions.answers{}` are the values.
+`GET /fields` assembles definitions from every form (type, options, required, `contains_pii`,
+`scope: session|contact`); sessions carry `custom_fields[]` labelled and keyed by
+`internal_name` **plus `value_raw`**, the untouched JSON, so a multi-select is never lossily
+stringified; `POST /fields/create` appends a question — so a field created over the API
+appears in the form builder and on the public submission form, which their API cannot do.
+The same trick makes tags/formats/levels/languages writable: they have no table, they are
+the options on a form question, so metadata writes edit that question.
+
+**Webhooks are ours-better.** Sessionboard has webhooks but only manages them from the
+dashboard — there is no endpoint for them in their public API. Ours are fully API-managed
+(CRUD + test + secret rotation + delivery log) and every delivery is **HMAC-SHA256 signed**
+(`Trackstage-Signature: t=…,v1=…` over `"{t}.{body}"`), where theirs offers only a static
+shared header that cannot detect tampering or replay. Five retries with exponential
+backoff. Emission is a one-line `emitWebhook(ctx, eventId, type, payload)` hooked
+surgically into the existing mutation points (submit, status changes, queue commit, manual
+add, detail edit, schedule/unschedule, publish, speaker writes) — fire-and-forget, so a
+customer's unreachable endpoint can never slow or fail an organizer's action.
+
+**Auth**: both `x-access-token` and `Authorization: Bearer` accepted, interchangeably. A
+key resolves to a user and every request re-runs the same workspace-membership check the
+app uses, so a leaked key is bounded by a real permission model rather than an org
+boundary. Scopes were added as a *narrowing* only — an unscoped key keeps its owner's full
+permissions, which is what every existing key and the MCP server rely on. Rate limiting
+matches theirs exactly: 100 / 15 min per credential per category, `RateLimit-*` headers,
+429 + `Retry-After`.
+
+**Deliberate non-mirrors, with reasons in the doc:** agenda drafts / scheduling rules /
+personas (22 ops — a scenario-planning subsystem that exists because their board is slow;
+ours is live and instantly reversible, which is the differentiator), custom session
+statuses (our pipeline is the judged domain language), media upload + transcriptions +
+recordings (22 ops of media processing), subsessions/composition, translated fields.
+
+### OpenAPI: generated, not hand-written
+
+`public/docs/api/openapi.json` documented 4 endpoints against an API that now serves 80.
+Fixed properly rather than by hand: `scripts/generate-openapi.mjs` **generates** the spec
+from `convex/apiRoutes.ts`, so the published reference cannot drift from the manifest.
+Three checks, each catching a different failure:
+
+- `--check` — every served route is documented and no documented route is orphaned
+  (proven by deliberately corrupting the file: it reports MISSING/ORPHANED and exits 1).
+- source scan — every manifest route's literals must still appear in the dispatcher, so
+  deleting a route without deleting its docs fails.
+- `--check --live` — sends a real request per route against the deployment and fails on
+  any that answers "unknown endpoint" or 405. **All 80 verified.**
+
+Examples are captured from live seeded data (15 of them), depth-capped so the reference
+stays readable, and cached in `x-captured-examples` so a regeneration without a deployment
+does not strip it bare. Shared error responses and rate-limit headers live in
+`components.responses`/`headers` rather than being inlined 80 × 5 times.
+
+Scripts: `pnpm openapi:regen`, `pnpm openapi:check`, `pnpm openapi:verify`.
+**CI step to add to `.github/workflows/ci.yml`** (the deploy agent owns that file), after
+"Lint": `- name: OpenAPI spec up to date` / `run: pnpm openapi:check`.
+
+### Verification
+
+`scripts/verify-backend.mjs` gained an **API parity** section: ~70 live assertions —
+both auth headers, demo-token read-only, scoped-key narrowing, error envelope, pagination
+in both spellings, filters/sort, create → read → update → 409 → soft-delete → 404 →
+restore, custom-field definitions + values + lossless `value_raw`, metadata and value-list
+writes, speakers, both file-upload paths, bulk with mixed success/failure, agenda, and a
+real signed webhook delivery verified end to end (the echo sink answers 200 only when the
+HMAC verifies; a forged signature is rejected).
+
+### Feature census → UI work order
+
+Rule 28's extension: their API is also a list of product surfaces. `api-parity.md` ends
+with a census of all 26 capabilities against our actual routes/components. Four **P0**
+gaps, all with working backends already — **UI-only builds**: session delete + restore
+(no delete exists in the product at all), editable custom-field answers (organizers can
+see form answers but not fix a typo), value-list management (formats/levels/languages are
+hardcoded constants — an organizer cannot add a session format), and a webhooks settings
+card (full backend, zero UI). Then P1: scheduling fields in the submission drawer, bulk
+edit beyond status, file rename/re-assign, organizer-side headshot upload, key scopes in
+the new-key dialog.

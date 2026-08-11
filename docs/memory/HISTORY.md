@@ -187,3 +187,9 @@ the narrative memory; RULES.md is the things circled as important along the way.
 60. **openapi.json completeness (escalated)**: the spec documented 4 endpoints while
     the real surface is ~2400 lines of routes — must be 100% complete, live-verified,
     and drift-proofed with a --check script (assigned to API-parity agent).
+61. **Two-way Airtable (experimental) + audit log**: asked if two-way sync is
+    possible — yes, scoped: inbound sync of safe fields (status first) behind an
+    experimental toggle, loop-guarded (timestamp + echo comparison, our DB wins
+    conflicts, logged). Race conditions acknowledged as the main risk. Version
+    history: full restore judged overkill for v1 (his instinct), but a lightweight
+    audit log ships — it's also rubric item CNT-11.
