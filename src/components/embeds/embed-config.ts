@@ -9,9 +9,11 @@
  */
 
 import {
+  RiBracesLine,
   RiCalendarLine,
+  RiCodeBoxLine,
   RiCodeSSlashLine,
-  RiFileCodeLine,
+  RiFileTextLine,
   RiGalleryLine,
   RiLayoutGridLine,
   RiLinkM,
@@ -40,9 +42,8 @@ export interface WidgetType {
 export const WIDGET_TYPES: Array<WidgetType> = [
   {
     id: "agenda",
-    name: "Agenda",
-    description:
-      "The wall-planner grid: rooms across the top, time down the side, one day at a time.",
+    name: "Agenda grid",
+    description: "Rooms across the top, time down the side, one day at a time.",
     icon: RiLayoutGridLine,
     path: "",
     params: { view: "rooms" },
@@ -52,8 +53,7 @@ export const WIDGET_TYPES: Array<WidgetType> = [
   {
     id: "itinerary",
     name: "Schedule itinerary",
-    description:
-      "The chronological day-by-day agenda with day tabs and full session cards.",
+    description: "Day-by-day running order with day tabs and session cards.",
     icon: RiListCheck2,
     path: "",
     params: { view: "time" },
@@ -63,8 +63,7 @@ export const WIDGET_TYPES: Array<WidgetType> = [
   {
     id: "sessions",
     name: "Sessions list",
-    description:
-      "A searchable catalog of every session, with track, format and room filters.",
+    description: "Searchable catalog with track, format and room filters.",
     icon: RiListUnordered,
     path: "/sessions",
     params: {},
@@ -74,8 +73,7 @@ export const WIDGET_TYPES: Array<WidgetType> = [
   {
     id: "speaker-gallery",
     name: "Speaker gallery",
-    description:
-      "A photo grid of your speakers. Clicking a face opens their bio and sessions.",
+    description: "Photo grid — clicking a face opens the bio and sessions.",
     icon: RiGalleryLine,
     path: "/speakers",
     params: { view: "gallery" },
@@ -85,14 +83,26 @@ export const WIDGET_TYPES: Array<WidgetType> = [
   {
     id: "speaker-list",
     name: "Speakers list",
-    description:
-      "A directory that pairs each speaker with the sessions they're presenting.",
+    description: "Directory pairing each speaker with the sessions they give.",
     icon: RiListUnordered,
     path: "/speakers",
     params: { view: "list" },
     height: 900,
     dataset: "speakers",
   },
+]
+
+/**
+ * The two families of widget, in the order they are offered. Grouping is what
+ * turns five look-alike cards into two short, obvious lists — an organizer
+ * scanning for "the speaker one" reads a heading, not five descriptions.
+ */
+export const WIDGET_GROUPS: Array<{
+  dataset: WidgetType["dataset"]
+  label: string
+}> = [
+  { dataset: "schedule", label: "Your programme" },
+  { dataset: "speakers", label: "Your speakers" },
 ]
 
 export function widgetById(id: string): WidgetType {
@@ -104,55 +114,85 @@ export interface EmbedFormat {
   name: string
   description: string
   icon: RemixiconComponentType
+  /** Which shelf it sits on — see `FORMAT_GROUPS`. */
+  group: "site" | "developer"
+  /** The one an organizer should take unless they know better. */
+  recommended?: boolean
+  /** True when the output is a point-in-time copy rather than a live view. */
+  snapshot?: boolean
 }
 
 /**
- * How the organizer wants to take the widget away with them. The first two are
- * live (they re-read the program on every page view); Static HTML is a
- * snapshot, and says so.
+ * How the organizer wants to take the widget away with them.
+ *
+ * Every format used to sit in one flat six-up grid, so "JSON feed" had exactly
+ * the same weight as "Embedded widget" for a non-technical organizer. They are
+ * shelved instead: the three that belong on a website first, the three that
+ * belong to a developer or a calendar app second, with one card marked as the
+ * recommended default. Everything is live except Static HTML, which is tagged
+ * a snapshot rather than explaining itself in a paragraph.
  */
 export const EMBED_FORMATS: Array<EmbedFormat> = [
   {
     id: "iframe",
     name: "Embedded widget",
-    description:
-      "An <iframe> you paste into any site builder. Always shows live data.",
+    description: "Paste a snippet into your site. Always shows live data.",
     icon: RiCodeSSlashLine,
+    group: "site",
+    recommended: true,
   },
   {
     id: "link",
     name: "Direct link",
-    description:
-      "The same widget as its own page — for emails, Slack and QR codes.",
+    description: "The widget as its own page — emails, Slack, QR codes.",
     icon: RiLinkM,
+    group: "site",
   },
   {
     id: "html",
     name: "Static HTML",
-    description:
-      "Plain, unstyled markup of the current program. A snapshot: re-copy it after you change the schedule.",
-    icon: RiFileCodeLine,
+    description: "Plain markup you can restyle to match your site.",
+    icon: RiFileTextLine,
+    group: "site",
+    snapshot: true,
   },
   {
     id: "json",
     name: "JSON feed",
-    description:
-      "Our REST endpoint, for a developer wiring the program into your own site.",
-    icon: RiFileCodeLine,
+    description: "REST endpoint for a developer building your own layout.",
+    icon: RiBracesLine,
+    group: "developer",
   },
   {
     id: "xml",
     name: "XML feed",
-    description:
-      "A live XML feed of the programme — for a CMS or site builder whose import box speaks XML.",
-    icon: RiFileCodeLine,
+    description: "For a CMS or site builder whose import box speaks XML.",
+    icon: RiCodeBoxLine,
+    group: "developer",
   },
   {
     id: "ics",
     name: "Calendar feed",
-    description:
-      "A subscribe-able .ics of the whole program, for people who live in their calendar.",
+    description: "Subscribe-able .ics for Google, Outlook or Apple Calendar.",
     icon: RiCalendarLine,
+    group: "developer",
+  },
+]
+
+export const FORMAT_GROUPS: Array<{
+  group: EmbedFormat["group"]
+  label: string
+  hint: string
+}> = [
+  {
+    group: "site",
+    label: "Put it on your website",
+    hint: "No developer needed.",
+  },
+  {
+    group: "developer",
+    label: "Feeds for developers and calendar apps",
+    hint: "Hand these to whoever builds your site.",
   },
 ]
 
