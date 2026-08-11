@@ -28,6 +28,11 @@ setup("organizer signs in via the UI", async ({ page }) => {
     }
   }
   expect(signedIn, "organizer should reach /app").toBe(true)
-  await expect(page.getByRole("navigation").first()).toBeVisible()
+  // The shell can sit on "Loading…" for a while when the dev server is
+  // rebuilding — the default 5s assertion turned that into a suite-wide abort,
+  // because every project depends on this one.
+  await expect(page.getByRole("navigation").first()).toBeVisible({
+    timeout: 45_000,
+  })
   await page.context().storageState({ path: ORGANIZER_STATE })
 })

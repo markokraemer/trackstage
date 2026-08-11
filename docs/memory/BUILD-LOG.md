@@ -887,3 +887,40 @@ assert both directions, including "hidden → absent from the .ics feed" and
 "un-hiding brings it straight back". NOTE for whoever owns `speakers-table.tsx`: an eye
 column in the roster row is the one piece of their UI we did not copy — it needs
 `publicVisible` on `dashboard.speakersRoster`, which was outside this pass's ownership.
+
+## 2026-08-11 — Per-recipient email review + delivery receipts (delta #7 / sbek SPK-14)
+
+The bulk composer is now Compose → **Review** → Send. `comms.composeBulk` gained a
+`preview: true` mode that renders every recipient's copy and writes nothing; both it and
+the real send go through one new helper, `renderMessageFor`, so what an organizer approves
+in the review pane is byte-for-byte what gets queued. Removing someone in the review list
+genuinely removes them — the send is always addressed to the surviving `personIds`, never
+by re-running the audience filter. Preview renders at most 100 recipients, matching
+Sessionboard's own 100-per-send cap, and the pane says so when the audience is bigger.
+Delivery is no longer a guess: `messages` carries `resendId` (captured from Resend's POST
+response), `providerStatus` (its `last_event`) and `deliveredAt`; `comms.refreshDeliveryStatus`
+polls `GET /emails/{id}` **on demand** — a "Check delivery (N)" button in the outbox
+toolbar and a Refresh on the message drawer — rather than a cron that burns API calls on a
+mailbox nobody is looking at. The status pill upgrades itself from Sent to Delivered /
+Opened / Clicked / Bounced / Marked as spam, with the bounce reason in the tooltip and on
+the drawer. The `@example.com` preview rule is untouched, so demo rows never claim delivery
+and never appear in the "awaiting a receipt" count. The drawer's rendered-email card moved
+into `src/components/comms/email-preview.tsx` and is now shared with the review pane.
+`scripts/verify-backend.mjs` grew a "Per-recipient email review & delivery status" section
+(13 assertions) plus two authz cases.
+
+**Note for whoever runs the suite next:** several agents were running `verify-backend.mjs`
+and `seed:setup` concurrently today; a run that dies with "Event not found" or a portal
+setting that is unexpectedly off is that collision, not a regression. Re-seed and re-run.
+
+**Custom session statuses (product-map delta #1) — 2026-08-11.** `Settings → Statuses` now
+exists: a `sessionStatuses` table + `convex/sessionStatuses.ts` CRUD (rename/recolour/reorder,
+add, delete-with-reassignment, admin-only delete, live per-status submission counts), the seven
+built-ins seeded per event plus a demo "Waitlist", and a Statuses tab whose picker/tabs/row-menu
+all read the catalogue. The deliberate design choice, documented in the schema and in
+`src/lib/status-catalog.ts`: `submissions.status` stays the pipeline enum and a status row is a
+LABEL bound to a pipeline value (`submissions.statusId`), resolved back to the built-in wording
+whenever the two disagree — so a rename or a new status can never break queues, decision emails
+or the agenda. 26 new assertions in `scripts/verify-backend.mjs` (verified 27/27 as a standalone
+slice; the full suite kept being torn down mid-run by concurrent `seed:setup` calls from other
+agents — the known collision, not a regression).

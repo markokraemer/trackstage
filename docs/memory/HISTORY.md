@@ -203,3 +203,5 @@ the narrative memory; RULES.md is the things circled as important along the way.
     Verification") polluting the switcher — demo-data hygiene.
 64. **Repo renamed**: github.com/markokraemer/sessionboard → github.com/markokraemer/trackstage
     (GitHub redirects the old URL); all in-repo references + package name updated.
+65. **OOM warning**: be aware of memory while developing — persisted as rule 30
+    (browser hygiene, sequential heavy tooling, orphan cleanup, memory watchdog).

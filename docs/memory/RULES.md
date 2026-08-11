@@ -217,6 +217,12 @@ trail visible).
     into an in-depth product map (docs/reference/sessionboard-product-map.md) whose
     deltas feed the parity loop. Full understanding of the actual software, not just
     its API.
+30. **OOM awareness (Marko: "could be we OOM — be aware while developing")**: memory
+    is a shared budget. Every agent: close browser pages/contexts when done (never
+    leak headless Chromium), one typecheck/lint at a time (don't run repo-wide tsc
+    while another runs), prefer sequential heavy verification over parallel, kill
+    your own background processes on exit. Orchestrator: stagger heavy waves, watch
+    free memory, clean orphans between waves.
 19. **Mandatory final reconciliation pass**: slice-per-agent parallelism will drift —
     different layouts, spacing, and interaction patterns per slice. Before ship, ONE
     agent reads and reworks the whole app end to end for coherent, standardized,
