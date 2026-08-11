@@ -193,3 +193,6 @@ the narrative memory; RULES.md is the things circled as important along the way.
     conflicts, logged). Race conditions acknowledged as the main risk. Version
     history: full restore judged overkill for v1 (his instinct), but a lightweight
     audit log ships — it's also rubric item CNT-11.
+62. **Audit log covers agents**: MCP tool calls, /v1 API writes, and API-key
+    lifecycle (create/revoke) are first-class audit events with actor labels
+    (tool name + key prefix); Activity feed filterable to "Agents & API".
