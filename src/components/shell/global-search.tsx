@@ -229,7 +229,9 @@ export function GlobalSearchTrigger({
         "transition-colors outline-none hover:text-foreground",
         "focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50",
         compact
-          ? "size-(--control-h-sm) shrink-0 justify-center hover:bg-muted"
+          ? // The compact trigger only exists below `sm` — phone thumbs get
+            // the full 44px target.
+            "size-11 shrink-0 justify-center hover:bg-muted"
           : "w-full gap-2 border border-border bg-muted/40 pr-1.5 pl-2.5 hover:bg-muted",
         className
       )}

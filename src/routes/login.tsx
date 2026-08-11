@@ -485,8 +485,11 @@ function LoginPage() {
               <p className="text-sm font-medium text-foreground">
                 Demo credentials
               </p>
-              <FieldDescription className="mt-1 font-mono text-xs break-all">
-                {DEMO_EMAIL}
+              {/* `<wbr>` after the @: on a narrow phone the address wraps at
+                  the one sensible seam instead of mid-word (`break-all`). */}
+              <FieldDescription className="mt-1 font-mono text-xs">
+                {DEMO_EMAIL.split("@")[0]}@<wbr />
+                {DEMO_EMAIL.split("@").slice(1).join("@")}
                 <br />
                 {DEMO_PASSWORD}
               </FieldDescription>

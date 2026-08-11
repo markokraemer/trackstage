@@ -71,7 +71,6 @@ export function ShellEventSwitcher() {
                 "transition-colors outline-none hover:bg-sidebar-accent",
                 "aria-expanded:bg-sidebar-accent",
                 "focus-visible:ring-3 focus-visible:ring-ring/50",
-                "max-md:justify-center max-md:px-1",
               )}
             />
           }
@@ -81,7 +80,7 @@ export function ShellEventSwitcher() {
             logoUrl={event?.logoUrl ?? undefined}
             size={26}
           />
-          <span className="min-w-0 flex-1 max-md:sr-only">
+          <span className="min-w-0 flex-1">
             {/* While the event list is in flight this is a shape, not words:
                 "Loading… / Create your first event" told an organizer with six
                 events that they had none. Two lines of exactly this height, so
@@ -106,7 +105,7 @@ export function ShellEventSwitcher() {
           <RiExpandUpDownLine
             size={15}
             aria-hidden
-            className="shrink-0 text-muted-foreground max-md:hidden"
+            className="shrink-0 text-muted-foreground"
           />
         </DropdownMenuTrigger>
 

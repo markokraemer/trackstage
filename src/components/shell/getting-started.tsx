@@ -76,7 +76,7 @@ export function GettingStarted() {
   return (
     <section
       aria-label="Getting started"
-      className="animate-in fade-in-0 mx-3 mb-6 rounded-lg border border-border bg-card p-3 duration-200 max-md:hidden"
+      className="animate-in fade-in-0 mx-3 mb-6 rounded-lg border border-border bg-card p-3 duration-200"
     >
       <div className="mb-2 flex items-center justify-between gap-2">
         <p className="text-xs font-semibold text-foreground">

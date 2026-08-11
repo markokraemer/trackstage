@@ -22,9 +22,7 @@ import {
   RiUserSettingsLine,
   RiUserVoiceLine,
 } from "@remixicon/react"
-import type { RemixiconComponentType } from "@remixicon/react"
 
-import { cn } from "@/lib/utils"
 import { Button, buttonVariants } from "@/components/ui/button"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import {
@@ -54,6 +52,9 @@ import {
 } from "@/components/onboarding/onboarding-takeover"
 import { GettingStarted } from "@/components/shell/getting-started"
 import { ShellEventSwitcher } from "@/components/shell/event-switcher"
+import { MobileNav } from "@/components/shell/mobile-nav"
+import { SidebarNav } from "@/components/shell/sidebar-nav"
+import type { NavGroup } from "@/components/shell/sidebar-nav"
 import { VerifyEmailBanner } from "@/components/shell/verify-email-banner"
 import { RoutePrewarm } from "@/components/shell/route-prewarm"
 import {
@@ -83,18 +84,6 @@ export const Route = createFileRoute("/app")({
   validateSearch: settingsModalSearch,
   component: OrganizerLayout,
 })
-
-interface NavItem {
-  label: string
-  to: string
-  icon: RemixiconComponentType
-  exact?: boolean
-}
-
-interface NavGroup {
-  label?: string
-  items: Array<NavItem>
-}
 
 /**
  * Organizer navigation — docs/SPEC.md §3: Sessionboard's three-level nesting
@@ -236,7 +225,7 @@ function OrganizerLayout() {
           <Skeleton className="ml-auto size-8 rounded-full" />
         </div>
         <div className="flex">
-          <div className="h-[calc(100svh-3.5rem)] w-16 shrink-0 border-r border-sidebar-border bg-sidebar p-3 md:w-60">
+          <div className="hidden h-[calc(100svh-3.5rem)] w-60 shrink-0 border-r border-sidebar-border bg-sidebar p-3 md:block">
             <Skeleton className="mb-6 h-12 w-full" />
             {Array.from({ length: 8 }, (_, i) => (
               <Skeleton key={i} className="mb-2 h-8 w-full" />
@@ -289,11 +278,14 @@ function OrganizerLayout() {
         a quiet ghost icon; the copilot keeps a soft primary tint because it is
         a product feature, not a utility.
       */}
-      <header className="container-app sticky top-0 z-40 flex h-14 items-center gap-3 border-b border-border bg-card">
+      <header className="container-app sticky top-0 z-40 flex h-14 items-center gap-3 border-b border-border bg-card max-md:gap-2">
+        {/* Phone shell: hamburger → full sidebar drawer (below md only). */}
+        <MobileNav groups={navGroups} />
+
         <Link
           to="/app"
           aria-label="Trackstage home"
-          className="shrink-0 rounded-md outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+          className="flex shrink-0 items-center rounded-md outline-none focus-visible:ring-3 focus-visible:ring-ring/50 max-md:min-h-11 max-md:min-w-11 max-md:justify-center"
         >
           <Logo size="sm" className="max-md:[&>span:last-child]:sr-only" />
         </Link>
@@ -330,6 +322,8 @@ function OrganizerLayout() {
                     className={buttonVariants({
                       variant: "ghost",
                       size: "icon-sm",
+                      // Fingertip-sized on phones; unchanged on desktop.
+                      className: "max-md:size-11",
                     })}
                   />
                 }
@@ -355,7 +349,7 @@ function OrganizerLayout() {
                   variant="ghost"
                   size="sm"
                   aria-label="Account menu"
-                  className="gap-1 px-1.5"
+                  className="gap-1 px-1.5 max-md:min-h-11"
                 />
               }
             >
@@ -458,48 +452,15 @@ function OrganizerLayout() {
       </header>
 
       <div className="flex">
-        {/* Tier 2 — event-scoped left sidebar */}
-        <aside className="sticky top-14 h-[calc(100svh-3.5rem)] w-16 shrink-0 overflow-y-auto border-r border-sidebar-border bg-sidebar md:w-60">
-          <div className="border-b border-sidebar-border p-3 max-md:px-2">
+        {/* Tier 2 — event-scoped left sidebar. md+ only: below md the same
+            content lives in the hamburger drawer (MobileNav, top bar) — a
+            64px icon rail on a phone was navigation by memory. */}
+        <aside className="sticky top-14 hidden h-[calc(100svh-3.5rem)] w-60 shrink-0 overflow-y-auto border-r border-sidebar-border bg-sidebar md:block">
+          <div className="border-b border-sidebar-border p-3">
             <ShellEventSwitcher />
           </div>
 
-          <nav aria-label="Main" className="px-3 pt-2 pb-6 max-md:px-2">
-            {navGroups.map((group, index) => (
-              <div key={group.label ?? index} className="mb-1">
-                {group.label ? (
-                  <p className="mt-4 mb-1 px-2 text-[11px] font-semibold tracking-wider text-muted-foreground uppercase max-md:sr-only">
-                    {group.label}
-                  </p>
-                ) : null}
-                <ul className="flex flex-col gap-0.5">
-                  {group.items.map((item) => (
-                    <li key={item.to}>
-                      <Link
-                        to={item.to}
-                        title={item.label}
-                        activeOptions={{ exact: item.exact ?? false }}
-                        className={cn(
-                          buttonVariants({ variant: "ghost" }),
-                          "w-full justify-start gap-2.5 px-2.5 font-medium text-foreground/80",
-                          "hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
-                          "max-md:justify-center max-md:px-0"
-                        )}
-                        activeProps={{
-                          className:
-                            "bg-sidebar-accent text-sidebar-accent-foreground font-semibold",
-                          "aria-current": "page",
-                        }}
-                      >
-                        <item.icon size={17} aria-hidden className="shrink-0" />
-                        <span className="max-md:sr-only">{item.label}</span>
-                      </Link>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            ))}
-          </nav>
+          <SidebarNav groups={navGroups} />
 
           {/* Quiet, data-derived checklist for a young event — disappears by
               itself when everything is done, or forever via its ✕. */}
