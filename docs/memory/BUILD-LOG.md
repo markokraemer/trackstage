@@ -2732,3 +2732,20 @@ five progress bars, no horizontal overflow, **zero console errors**. `pnpm typec
 Event-Settings list bodies; the audit-log `summary` strings store raw ISO timestamps, so the
 activity feed reads "Scheduled to Main Stage, 2026-10-12T16:00:00.000Z (45 min)" in both the
 copilot card and the Settings → Activity page.
+
+**Follow-up (`ed45cba`), found while wiring the embeds tool view:** the EMB-15 work added
+`enabled`/`accent`/`showHeader` through the UI only, which left `save_embed` rebuilding
+`options` from its own seven arguments and patching the whole object — so a model asked to
+RENAME an embed silently dropped the accent and track pin an organizer had set by hand.
+It now merges only the keys the caller passed, never flips `enabled` on a save that didn't
+mention it, and treats an empty `accent` as "remove it" (anything that isn't a plain hex is
+refused — that value lands in a stylesheet on a public page). `list_embeds` now returns
+`enabled` (ABSENT ⇒ ON) so an agent can actually tell an organizer their widget is switched
+off; the copilot view dims the row with an "Off" chip and shows the real swatch.
+
+**Environment note:** `pnpm dev` rewrote `.env.local` onto a LOCAL anonymous Convex backend
+mid-session (`CONVEX_DEPLOYMENT=local:local-…`, `127.0.0.1` URLs), which is why
+`convex dev --once` started failing with "Failed to load deployment config". Restored to
+`dev:neat-sparrow-926` with the OPENROUTER key preserved. Worth watching — it can silently
+point a dev session at an empty database.
+
