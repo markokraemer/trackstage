@@ -161,6 +161,10 @@ trail visible).
     between workspaces you belong to);
     (d) EVENT settings one level beneath (details, rooms & tracks) — clearly labeled
     as event-scoped. Never mix the levels; optimize how you manage everything.
+    REFINEMENT (Marko): ACCOUNT settings render as a little MODAL (user-settings
+    profile modal from the avatar menu — tabs: Profile / Security / API & MCP, which
+    also resolves the api-mcp relocation); WORKSPACE and EVENT settings stay separate
+    regular pages — more visual separation between the personal and org/event levels.
 24. **AI copilot chat — the MCP's home** ("do whatever the fuck you want" surface):
     full AI chat built with the Vercel AI SDK + shadcn AI Elements chat components
     (state of the art), using OUR MCP server as its tool source — new session per

@@ -137,3 +137,9 @@ the narrative memory; RULES.md is the things circled as important along the way.
     Files tab; top-notch on top of the Better Auth stack.
 46. **Instant everything**: hardcore real-time functionality — the whole latency
     story must be perfect; everything feels instant.
+47. **Agenda drag-and-drop, as good as it gets**: works now — make it exceptional.
+    Snapping into the grid in the best-designable way, visible snap targets, the lot.
+48. **Account settings as modal**: user/profile settings become a small modal;
+    workspace + event settings remain full pages — visual separation between levels.
+49. **Copilot SOTA maxing**: research pure-play copilot libraries (assistant-ui,
+    CopilotKit) and max/use them — sent down to the copilot agent.
