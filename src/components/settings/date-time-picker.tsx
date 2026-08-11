@@ -171,7 +171,10 @@ export function DateTimePicker({
                   {(current) => formatTimeValue(String(current ?? timeValue))}
                 </SelectValue>
               </SelectTrigger>
-              <SelectContent className="max-h-64">
+              {/* 96 fifteen-minute options: item-with-trigger alignment would
+                  stretch the popup across the viewport and visually detach it
+                  from the field — behave as a plain dropdown instead. */}
+              <SelectContent className="max-h-64" alignItemWithTrigger={false}>
                 {OPTIONS.map((option) => (
                   <SelectItem key={option.value} value={option.value}>
                     {option.label}

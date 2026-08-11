@@ -9,12 +9,16 @@ import { cn } from "@/lib/utils"
  */
 export function CodeSnippet({
   value,
+  getCopyValue,
   title,
   copyLabel = "Copy",
   successMessage,
   className,
 }: {
   value: string
+  /** Resolve the copied text at click time (see CopyButton.getValue) — the
+   * block still DISPLAYS `value`, so secrets can stay masked on screen. */
+  getCopyValue?: () => Promise<string | null>
   title?: string
   copyLabel?: string
   successMessage?: string
@@ -33,6 +37,7 @@ export function CodeSnippet({
         </span>
         <CopyButton
           value={value}
+          getValue={getCopyValue}
           label={copyLabel}
           successMessage={successMessage}
           size="sm"
