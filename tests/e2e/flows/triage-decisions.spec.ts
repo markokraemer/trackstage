@@ -211,18 +211,12 @@ test.describe("triage and decisions", () => {
     const marker = unique("bulk")
     const titles = [`Bulk A ${marker}`, `Bulk B ${marker}`]
     const ids: Array<Id<"submissions">> = []
+    const speakerEmails: Array<string> = []
     for (const title of titles) {
-      ids.push(
-        await seedPending(organizer, event._id, title, testEmail("bulk-decline")),
-      )
+      const speakerEmail = testEmail("bulk-decline")
+      speakerEmails.push(speakerEmail)
+      ids.push(await seedPending(organizer, event._id, title, speakerEmail))
     }
-
-    const before = (
-      (await organizer.query(api.comms.listMessages, {
-        eventId: event._id,
-        limit: 500,
-      })) as Array<unknown>
-    ).length
 
     await gotoApp(page, "/app/submissions")
     await fillStable(page.getByRole("searchbox").first(), marker)
@@ -246,14 +240,22 @@ test.describe("triage and decisions", () => {
       )
     }
 
-    // Staging must be silent — this is the whole point of the two-phase model.
-    const after = (
-      (await organizer.query(api.comms.listMessages, {
-        eventId: event._id,
-        limit: 500,
-      })) as Array<unknown>
-    ).length
-    expect(after, "staging a queue must not email anyone").toBe(before)
+    // Staging must be silent — the whole point of the two-phase model. Assert
+    // on OUR recipients, not on the outbox total: this event's outbox is
+    // shared, and a decision committed by an earlier test is still draining
+    // asynchronously (`queueForPerson` schedules delivery), so a raw count
+    // grows for reasons that have nothing to do with staging.
+    const outbox = (await organizer.query(api.comms.listMessages, {
+      eventId: event._id,
+      limit: 500,
+    })) as Array<{ toEmail: string; subject: string }>
+    const toOurSpeakers = outbox.filter((m) =>
+      speakerEmails.includes(m.toEmail),
+    )
+    expect(
+      toOurSpeakers.map((m) => `${m.toEmail}: ${m.subject}`),
+      "staging a decline queue must not email the speakers in it",
+    ).toEqual([])
 
     await expect(page.getByText(/staged — ready to decline/i).first()).toBeVisible({
       timeout: 20_000,

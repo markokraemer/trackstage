@@ -275,10 +275,27 @@ ok("the seeded custom status exists and is pending-flavoured",
   !!seededWaitlist && seededWaitlist.category === "pending" && seededWaitlist.pipelineStatus === "pending")
 ok("the seeded custom status names who added it and when",
   !!seededWaitlist.createdBy && typeof seededWaitlist.createdAt === "number")
-const totalSubmissions = (await client.query(api.submissions.counts, { eventId: main._id })).all
-ok("per-status counts add up to every submission",
-  statusList.statuses.reduce((sum, s) => sum + s.count, 0) === totalSubmissions,
-  `${statusList.statuses.reduce((sum, s) => sum + s.count, 0)} vs ${totalSubmissions}`)
+/**
+ * Every live submission is counted exactly once across the status list — the
+ * invariant that proves a label shadows its built-in rather than double-
+ * counting. The list and the total are two queries, so a submission created
+ * between them reads as a phantom mismatch; a genuine accounting bug never
+ * agrees, so retry a couple of times before calling it a failure.
+ */
+async function statusCountsBalance() {
+  let detail = ""
+  for (let attempt = 0; attempt < 4; attempt++) {
+    const list = await client.query(api.sessionStatuses.list, { eventId: main._id })
+    const total = (await client.query(api.submissions.counts, { eventId: main._id })).all
+    const sum = list.statuses.reduce((n, s) => n + s.count, 0)
+    if (sum === total) return { balanced: true, detail: "" }
+    detail = `${sum} vs ${total}`
+    await new Promise((r) => setTimeout(r, 400))
+  }
+  return { balanced: false, detail }
+}
+const balance0 = await statusCountsBalance()
+ok("per-status counts add up to every submission", balance0.balanced, balance0.detail)
 
 const holdName = `Verify Hold ${Date.now().toString(36)}`
 const holdId = await client.mutation(api.sessionStatuses.create, {
@@ -327,8 +344,10 @@ ok("submission remembers the custom label", labelled.statusId === holdId)
 const countedList = await client.query(api.sessionStatuses.list, { eventId: main._id })
 ok("the custom status counts the submission",
   countedList.statuses.find((s) => s._id === holdId).count >= 1)
-ok("the built-in it shadows no longer counts it",
-  countedList.statuses.reduce((sum, s) => sum + s.count, 0) === totalSubmissions)
+// Now that a submission wears a custom label, the same invariant must still
+// hold: it is counted by the label, NOT also by the built-in it shadows.
+const balance1 = await statusCountsBalance()
+ok("the built-in it shadows no longer counts it", balance1.balanced, balance1.detail)
 await throws("a label that disagrees with the status is refused", () =>
   client.mutation(api.submissions.setStatus, {
     submissionId: submitted.submissionId, status: "pending", statusId: holdId,

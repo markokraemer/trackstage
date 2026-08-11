@@ -143,9 +143,14 @@ test.describe("copilot", () => {
 
     try {
       await gotoApp(page, "/app/copilot")
+      // Name the tool. Left to its own judgement the model sometimes inspects
+      // the queue, decides there is nothing worth doing and answers in prose —
+      // reasonable behaviour, but then no approval card ever appears and the
+      // guard is untestable. Naming the tool makes the request unambiguous
+      // while still going through the real approval path.
       await ask(
         page,
-        "Commit the accept queue for this event and send the acceptance emails.",
+        "Call the commit_decision_queue tool for this event's accept_queue to send the acceptance emails.",
       )
       await skipUnlessCopilotResponds(page)
 
