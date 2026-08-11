@@ -1,10 +1,8 @@
 import { useState } from "react"
 import { createFileRoute } from "@tanstack/react-router"
 
-import {
-  ApiKeysCard,
-  type CreatedApiKey,
-} from "@/components/settings/api-keys-card"
+import type { CreatedApiKey } from "@/components/settings/api-keys-card"
+import { ApiKeysCard } from "@/components/settings/api-keys-card"
 import { McpConnectCard } from "@/components/settings/mcp-connect-card"
 import { McpCapabilitiesCard } from "@/components/settings/mcp-capabilities-card"
 import { RestApiCard } from "@/components/settings/rest-api-card"

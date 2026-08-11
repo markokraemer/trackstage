@@ -1,6 +1,11 @@
 import { Link, createFileRoute } from "@tanstack/react-router"
-import { RiBuilding2Line, RiCalendarEventLine } from "@remixicon/react"
+import {
+  RiBuilding2Line,
+  RiCalendarEventLine,
+  RiKey2Line,
+} from "@remixicon/react"
 
+import { Button } from "@/components/ui/button"
 import {
   Card,
   CardContent,
@@ -59,11 +64,46 @@ function AccountSettingsPage() {
               email={session.email}
             />
             <PasswordCard />
+            <ApiKeysCard />
             <WhereThingsLiveCard />
           </>
         )}
       </div>
     </TooltipProvider>
+  )
+}
+
+/**
+ * Personal API keys and the MCP connection live with the account, not with a
+ * workspace or an event — the page itself is owned by the API slice
+ * (docs/memory/RULES.md 21), so we point at it rather than duplicating it.
+ */
+function ApiKeysCard() {
+  return (
+    <Card>
+      <CardHeader className="border-b">
+        <CardTitle className="flex items-center gap-2">
+          <RiKey2Line size={18} aria-hidden className="text-primary" />
+          API keys & MCP
+        </CardTitle>
+        <CardDescription>
+          Keys are personal to you and act with your access. Use them to connect
+          Claude, ChatGPT or Codex to Sessionboard, or to call the REST API.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="pt-2">
+        <div>
+          <Button
+            variant="outline"
+            nativeButton={false}
+            render={<Link to="/app/settings/api-mcp" />}
+          >
+            <RiKey2Line size={16} aria-hidden />
+            Manage API keys & MCP
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
   )
 }
 

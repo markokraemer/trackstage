@@ -9,8 +9,8 @@ import {
 import type { RemixiconComponentType } from "@remixicon/react"
 
 import { cn } from "@/lib/utils"
-import { Card } from "@/components/ui/card"
 import { MarketingSection } from "@/components/marketing/section"
+import { DISPLAY_HEADING } from "@/components/marketing/section"
 import {
   DEMO_CFP_URL,
   DEMO_PORTAL_URL,
@@ -55,10 +55,15 @@ const DEMO_ENTRIES: Array<DemoEntry> = [
   },
 ]
 
-const CARD_CLASS =
-  "h-full gap-2.5 px-5 py-5 text-left transition-all duration-150 group-hover:-translate-y-0.5 group-hover:ring-primary/40 group-hover:shadow-md"
-const LINK_CLASS =
-  "group block rounded-xl outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+/**
+ * Three flat panes sharing one bordered container — Attio's grouped-card
+ * pattern: hairlines between the cells, no shadows, no rounded islands.
+ */
+const CELL_CLASS = cn(
+  "group flex h-full flex-col gap-2.5 p-6 outline-none transition-colors",
+  "border-t border-border first:border-t-0 sm:border-t-0 sm:border-l sm:first:border-l-0",
+  "hover:bg-background focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:ring-inset"
+)
 
 /**
  * The live-demo entry points. These sit directly under the hero on purpose
@@ -69,35 +74,36 @@ export function DemoEntries() {
   return (
     <MarketingSection id={SECTION_IDS.demos} tone="muted">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-        <div className="max-w-(--container-narrow)">
-          <p className="text-xs font-semibold tracking-[0.12em] text-primary uppercase">
-            Try it right now
-          </p>
-          <h2 className="mt-2.5 font-heading text-2xl font-semibold tracking-tight text-balance text-foreground sm:text-3xl">
-            Three ways in. Pick a seat.
-          </h2>
-        </div>
-        <p className="text-sm text-muted-foreground sm:text-right">
-          Everything runs on a pre-loaded demo event.
-          <br className="hidden sm:block" /> Nothing to install, nothing to
-          configure.
+        <h2
+          className={cn(
+            DISPLAY_HEADING,
+            "max-w-md text-3xl leading-[1.05] text-balance sm:text-4xl"
+          )}
+        >
+          Three ways in. Pick a seat.
+        </h2>
+        <p className="max-w-sm text-sm leading-relaxed text-muted-foreground sm:text-right">
+          Everything below runs on a pre-loaded demo event. Nothing to install,
+          nothing to configure, nothing you can break.
         </p>
       </div>
 
-      <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="mt-9 grid overflow-hidden rounded-xl border border-border bg-card sm:grid-cols-3">
         {DEMO_ENTRIES.map((entry) => {
           const content = (
-            <Card className={CARD_CLASS}>
-              <span className="flex size-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                <entry.icon size={20} aria-hidden />
-              </span>
-              <span className="block font-heading text-base font-medium text-foreground">
+            <>
+              <entry.icon
+                size={20}
+                aria-hidden
+                className="text-muted-foreground"
+              />
+              <span className="mt-1 block font-heading text-base font-medium text-foreground">
                 {entry.title}
               </span>
               <span className="block text-sm leading-relaxed text-muted-foreground">
                 {entry.description}
               </span>
-              <span className="mt-auto flex items-center gap-1.5 pt-3 text-sm font-medium text-primary">
+              <span className="mt-auto flex items-center gap-1.5 pt-4 text-sm font-medium text-primary">
                 {entry.cta}
                 <RiArrowRightLine
                   size={15}
@@ -105,15 +111,15 @@ export function DemoEntries() {
                   className="transition-transform group-hover:translate-x-0.5"
                 />
               </span>
-            </Card>
+            </>
           )
 
           return entry.to ? (
-            <Link key={entry.title} to={entry.to} className={LINK_CLASS}>
+            <Link key={entry.title} to={entry.to} className={CELL_CLASS}>
               {content}
             </Link>
           ) : (
-            <a key={entry.title} href={entry.href} className={LINK_CLASS}>
+            <a key={entry.title} href={entry.href} className={CELL_CLASS}>
               {content}
             </a>
           )
@@ -124,10 +130,7 @@ export function DemoEntries() {
         Curious what attendees see?{" "}
         <a
           href={DEMO_PROGRAM_URL}
-          className={cn(
-            "inline-flex items-center gap-1 font-medium text-foreground underline underline-offset-4",
-            "rounded-sm outline-none hover:text-primary focus-visible:ring-3 focus-visible:ring-ring/50"
-          )}
+          className="inline-flex items-center gap-1 rounded-sm font-medium text-foreground underline underline-offset-4 outline-none hover:text-primary focus-visible:ring-3 focus-visible:ring-ring/50"
         >
           Browse the published program
           <RiExternalLinkLine size={13} aria-hidden />

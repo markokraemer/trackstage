@@ -102,15 +102,10 @@ const NAV_GROUPS: Array<NavGroup> = [
     ],
   },
   {
-    label: "Setup",
-    items: [
-      { label: "Events", to: "/app/events", icon: RiCalendarEventLine },
-      {
-        label: "Event settings",
-        to: "/app/settings",
-        icon: RiSettings3Line,
-      },
-    ],
+    // Event switching, "All events" and "New event" all live in the sidebar's
+    // event switcher; account + workspace settings live in the avatar menu.
+    // The sidebar itself stays a flat list of places inside the current event.
+    items: [{ label: "Settings", to: "/app/settings", icon: RiSettings3Line }],
   },
 ]
 

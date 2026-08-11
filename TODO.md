@@ -30,6 +30,10 @@ Source of truth for everything Marko asked + build status. Update continuously.
   content edits (CNT-11 — decide: cheap audit-log table or accept the gap) · Speaker CRM
   optional area (19pts extra credit, needs cross-event speaker reuse — decide after v1)
 - ⏳ Public API (/v1) + README docs (bonus)
+- ✅ MCP server (rule 21): 27 tools over MCP Streamable HTTP at `{CONVEX_SITE_URL}/mcp`,
+  personal API keys (`sb_live_…`, hashed) + Better Auth OAuth 2.1 (DCR + PKCE) so Claude/
+  ChatGPT "add connector by URL" just works; Settings → API & MCP tab with per-client
+  setup snippets; verify-backend MCP section green (122/122)
 - ⏳ Seed: rich demo world, judge-friendly demo-mode links
 - 💤 Airtable one-click one-way sync (submissions/speakers/sessions rows; idempotent;
   swyx: read-only mirror is enough — their automations fire on new rows)

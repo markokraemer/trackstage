@@ -38,6 +38,8 @@ const APP_LIVE = [
   "/app/communications",
   "/app/settings",
   "/app/events",
+  "/app/account",
+  "/app/workspace",
   "/app/embeds",
 ]
 const APP_PENDING: string[] = []

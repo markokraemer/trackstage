@@ -110,3 +110,11 @@ the narrative memory; RULES.md is the things circled as important along the way.
     flawlessly. Use Gemini 3.6 Flash as the evaluator — specifically via an opencode
     CLI agent configured with OpenRouter — comparing the video/spec against the actual
     live platform. Base requirements met perfectly.
+39. **100% parity loop**: run in a loop until COMPLETE parity with the video + all
+    criteria is verified — fully scalable, ready-to-launch Sessionboard competitor.
+    Visually: remove clutter but don't overdo it — "things are already looking pretty
+    good, stick to a lot of the things", keep pushing.
+40. **Airtable sync promoted from stretch to build** (one-click connect, one-way
+    idempotent mirror per swyx's clarification). And: sidebar hierarchy critique —
+    "Setup > Events + Event settings" is entangled; refactor smooth and clean (event
+    switching lives in the switcher; one clean Settings entry).

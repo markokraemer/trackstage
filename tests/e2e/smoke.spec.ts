@@ -70,3 +70,105 @@ test.describe("organizer shell", () => {
     watcher.assertClean("/app shell")
   })
 })
+
+/**
+ * Hierarchy: user → workspace → events (docs/memory/RULES.md 23). The sidebar
+ * event block is the switcher, and the account menu carries the two settings
+ * levels above the event.
+ */
+test.describe("hierarchy", () => {
+  test.use({ storageState: ORGANIZER_STATE })
+
+  test("event switcher lists every event and switching moves the shell", async ({
+    page,
+  }) => {
+    const watcher = watchConsole(page)
+    await page.goto("/app")
+
+    const switcher = page.getByRole("button", { name: /switch event/i }).first()
+    await expect(switcher).toBeVisible({ timeout: 15_000 })
+    await expect(switcher).toContainText(/AI Engineer Summit 2026/i)
+
+    await switcher.click()
+    const summit = page
+      .getByRole("menuitem", { name: /AI Engineer Summit 2026/i })
+      .first()
+    const designDay = page
+      .getByRole("menuitem", { name: /Design Systems Day/i })
+      .first()
+    await expect(summit).toBeVisible()
+    await expect(designDay).toBeVisible()
+
+    await designDay.click()
+    await expect(switcher).toContainText(/Design Systems Day/i, {
+      timeout: 10_000,
+    })
+
+    // Put the shell back so the rest of the suite sees the seeded summit.
+    await switcher.click()
+    await page
+      .getByRole("menuitem", { name: /AI Engineer Summit 2026/i })
+      .first()
+      .click()
+    await expect(switcher).toContainText(/AI Engineer Summit 2026/i)
+
+    watcher.assertClean("event switcher")
+  })
+
+  test("account menu reaches account and workspace settings", async ({
+    page,
+  }) => {
+    const watcher = watchConsole(page)
+    await page.goto("/app")
+    await page.getByText(DEMO_ORGANIZER.email).first().click()
+    await page
+      .getByRole("menuitem", { name: /account settings/i })
+      .first()
+      .click()
+    await expect(page).toHaveURL(/\/app\/account/)
+    await expect(
+      page.getByRole("heading", { name: /account settings/i }).first(),
+    ).toBeVisible()
+    watcher.assertClean("/app/account via menu")
+  })
+
+  test("account settings renders profile and password", async ({ page }) => {
+    const watcher = watchConsole(page)
+    await page.goto("/app/account")
+    await expect(
+      page.getByRole("heading", { name: /account settings/i }).first(),
+    ).toBeVisible({ timeout: 15_000 })
+    await expect(page.getByText(/your profile/i).first()).toBeVisible()
+    await expect(page.getByLabel(/full name/i).first()).toBeVisible()
+    await expect(page.getByLabel(/current password/i).first()).toBeVisible()
+    await assertNoErrorBoundary(page, "/app/account")
+    watcher.assertClean("/app/account")
+  })
+
+  test("workspace settings renders name and members", async ({ page }) => {
+    const watcher = watchConsole(page)
+    await page.goto("/app/workspace")
+    await expect(
+      page.getByRole("heading", { name: /workspace settings/i }).first(),
+    ).toBeVisible({ timeout: 15_000 })
+    await expect(page.getByLabel(/workspace name/i).first()).toBeVisible()
+    await expect(page.getByText(/^members$/i).first()).toBeVisible()
+    await expect(
+      page.getByRole("button", { name: /invite teammate/i }).first(),
+    ).toBeVisible()
+    await assertNoErrorBoundary(page, "/app/workspace")
+    watcher.assertClean("/app/workspace")
+  })
+
+  test("event settings names the event it is editing", async ({ page }) => {
+    const watcher = watchConsole(page)
+    await page.goto("/app/settings")
+    await expect(
+      page.getByRole("heading", { name: /event settings —/i }).first(),
+    ).toBeVisible({ timeout: 15_000 })
+    await expect(
+      page.getByRole("link", { name: /workspace settings/i }).first(),
+    ).toBeVisible()
+    watcher.assertClean("/app/settings")
+  })
+})

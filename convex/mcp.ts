@@ -359,7 +359,7 @@ async function eventStats(ctx: QueryCtx, event: Doc<"events">) {
   const scheduled = submissions.filter(
     (s) => s.status === "accepted" && s.startsAt !== undefined,
   )
-  const acceptedCount = statusCounts.accepted ?? 0
+  const acceptedCount = statusCounts.accepted
   return {
     submissions,
     statusCounts,
@@ -1578,9 +1578,9 @@ export const eventSummary = internalQuery({
     const conflicts = await computeConflicts(ctx, event._id)
     const now = Date.now()
 
-    const pending = stats.statusCounts.pending ?? 0
-    const acceptQueue = stats.statusCounts.accept_queue ?? 0
-    const declineQueue = stats.statusCounts.decline_queue ?? 0
+    const pending = stats.statusCounts.pending
+    const acceptQueue = stats.statusCounts.accept_queue
+    const declineQueue = stats.statusCounts.decline_queue
 
     const needsAttention: Array<string> = []
     if (pending > 0) needsAttention.push(`${pending} submission(s) still pending review`)
@@ -1634,8 +1634,8 @@ export const eventSummary = internalQuery({
 
     const headline =
       `${event.name} — ${stats.submissions.length} submission(s): ` +
-      `${stats.statusCounts.accepted ?? 0} accepted, ${pending} pending, ` +
-      `${stats.statusCounts.declined ?? 0} declined. ` +
+      `${stats.statusCounts.accepted} accepted, ${pending} pending, ` +
+      `${stats.statusCounts.declined} declined. ` +
       `${stats.scheduledCount} session(s) scheduled across ${stats.forms.length} form(s).`
 
     return {
