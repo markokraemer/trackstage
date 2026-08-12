@@ -162,10 +162,10 @@ always points at the production Convex deployment. Secrets live outside the repo
 | `convex env set … --prod` | `BETTER_AUTH_SECRET` · `RESEND_API_KEY` · `EMAIL_FROM` · `SITE_URL` (your app origin — required for MCP OAuth and every emailed link) · `PUBLIC_API_TOKEN` · optional `EXTRA_TRUSTED_ORIGINS`, `REQUIRE_EMAIL_VERIFICATION` |
 | `wrangler secret put …` | `OPENROUTER_API_KEY` (the copilot runs in the Worker) |
 
-Signup always sends a confirmation email, but verification is **soft** by default:
-unverified accounts work fully and see a dismissible banner.
-`convex env set REQUIRE_EMAIL_VERIFICATION true` turns on the hard gate (sign-in refused
-until the link is opened) with no code change.
+Signup always sends a confirmation email. `REQUIRE_EMAIL_VERIFICATION` controls how hard
+that requirement is: unset (the default) nothing gates on it at the auth layer; set it to
+`true` and password sign-in is refused until the emailed link is opened. Either way it is
+one env var, no code change. Seeded demo accounts are born verified.
 
 Check any deploy:
 
