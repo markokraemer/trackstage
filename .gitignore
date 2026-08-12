@@ -29,3 +29,17 @@ todos.json
 tests/e2e/.auth/
 tests/e2e/.results/
 playwright-report/
+
+# Local screenshot scratch — capture runs from design/debug sessions. The
+# shots that matter are committed under public/screenshots and public/docs.
+.btn-audit-shots/
+.cfp-shots/
+.copilot-prose-shots/
+.copy-shots/
+.dark-shots/
+.mobile-shots/
+.playwright-mcp/
+.screens/
+.status-picker-shots/
+.scratch-*.png
+.sidebar-shot.png
