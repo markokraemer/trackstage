@@ -89,7 +89,7 @@ export function EventBrandingCard({ eventId }: { eventId: Id<"events"> }) {
               title="Event logo"
               hint="Square works best — 300 × 300 pixels or larger. PNG, JPG or WebP."
               preview={branding?.logo ?? null}
-              previewClassName="size-24 rounded-lg object-contain"
+              previewClassName="size-16 rounded-md object-contain"
               onUpload={(file, onProgress) => upload("logo", file, onProgress)}
               onClear={() => clear("logo")}
             />
@@ -97,7 +97,7 @@ export function EventBrandingCard({ eventId }: { eventId: Id<"events"> }) {
               title="Header background"
               hint="A wide image behind your public page header — 1600 × 400 pixels or larger. Optional."
               preview={branding?.background ?? null}
-              previewClassName="h-24 w-full rounded-lg object-cover"
+              previewClassName="h-16 w-28 rounded-md object-cover"
               onUpload={(file, onProgress) =>
                 upload("background", file, onProgress)
               }
@@ -108,6 +108,15 @@ export function EventBrandingCard({ eventId }: { eventId: Id<"events"> }) {
       </CardContent>
     </Card>
   )
+}
+
+/** "image/jpeg" is a MIME type; an event producer knows it as a JPG. */
+function fileKindLabel(contentType?: string): string {
+  const subtype = (contentType ?? "").split("/")[1]?.toLowerCase()
+  if (!subtype) return "Image"
+  if (subtype === "jpeg" || subtype === "jpg") return "JPG image"
+  if (subtype === "svg+xml") return "SVG image"
+  return `${subtype.toUpperCase()} image`
 }
 
 interface BrandingPreview {
@@ -142,33 +151,38 @@ function BrandingSlot({
       </div>
 
       {preview?.url ? (
-        <div className="flex flex-col gap-2">
-          <div className="flex items-center gap-3 rounded-lg border border-border bg-muted/30 p-3">
-            <img
-              src={preview.url}
-              alt={`${title} preview`}
-              className={cn("bg-background", previewClassName)}
-            />
-            <div className="min-w-0 flex-1">
-              <p className="text-xs text-muted-foreground">
-                {formatBytes(preview.size)}
-                {preview.contentType ? ` · ${preview.contentType}` : ""}
-              </p>
-            </div>
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              aria-label={`Remove ${title.toLowerCase()}`}
-              disabled={clearing}
-              onClick={async () => {
-                setClearing(true)
-                await onClear()
-                setClearing(false)
-              }}
-            >
-              <RiDeleteBin6Line aria-hidden />
-            </Button>
+        // One line, always: the thumbnail and the delete button hold their
+        // size and the detail line truncates between them. A `w-full` preview
+        // used to eat the row, wrapping "1.7 MB · image/jpeg" over four lines
+        // with the bin wedged into the middle of it (Marko, 2026-08-13).
+        <div className="flex items-center gap-3 rounded-lg border border-border bg-muted/30 p-3">
+          <img
+            src={preview.url}
+            alt={`${title} preview`}
+            className={cn("shrink-0 bg-background", previewClassName)}
+          />
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-sm font-medium text-foreground">
+              {fileKindLabel(preview.contentType)}
+            </p>
+            <p className="truncate text-xs text-muted-foreground">
+              {formatBytes(preview.size)}
+            </p>
           </div>
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            className="shrink-0"
+            aria-label={`Remove ${title.toLowerCase()}`}
+            disabled={clearing}
+            onClick={async () => {
+              setClearing(true)
+              await onClear()
+              setClearing(false)
+            }}
+          >
+            <RiDeleteBin6Line aria-hidden />
+          </Button>
         </div>
       ) : null}
 
