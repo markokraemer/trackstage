@@ -1,17 +1,23 @@
 name: CI
 
-# The full gate. Nothing deploys anywhere until this workflow is green:
-#   · verify — fast, hermetic checks: typecheck, lint, OpenAPI drift, unit tests
+# The gate, in two tiers (simplified per Marko, 2026-08-12):
+#   · verify — every push and PR: typecheck, lint, OpenAPI drift, unit tests.
+#              Fast (~4 min); green verify is what deploys staging.
 #   · e2e    — the complete Playwright flows suite (tests/e2e/flows) against a
-#              LOCAL anonymous Convex backend booted inside the runner, so the
-#              run is hermetic: no cloud deployment, no shared seed data, no
-#              secrets required. Every user journey (CFP submit, triage,
-#              evaluation, agenda, portal, emails, MCP/REST, password reset,
-#              multi-tenancy) is driven through the real UI.
+#              LOCAL anonymous Convex backend booted inside the runner —
+#              hermetic: no cloud deployment, no shared seed data, no secrets.
+#              Runs ONLY on a promote (push to `prod`) and on manual
+#              workflow_dispatch, NOT on every dev commit — the suite takes
+#              ~35 min and was gating every push.
 #
 # Deploy workflows (deploy.yml → trackstage.app, deploy-dev.yml →
-# dev.trackstage.app) trigger via workflow_run on THIS workflow's success, so
-# a red e2e job blocks every deploy — that is the point.
+# dev.trackstage.app) trigger via workflow_run on THIS workflow's success. A
+# skipped e2e job counts as success; a red one still blocks the deploy.
+#
+# BYPASS: put `[skip-gate]` in the head commit message of a promote to skip
+# e2e there too — verify still runs, and prod deploys minutes after the push.
+# For copy tweaks and other low-risk releases; the next unflagged promote
+# runs the full suite again.
 #
 # `pnpm test:backend` (scripts/verify-backend.mjs) still runs only by hand: it
 # drives a live cloud deployment and mutates its seed data.
@@ -75,6 +81,14 @@ jobs:
     name: e2e flows (Playwright · local Convex)
     runs-on: ubuntu-latest
     needs: verify
+    # Promote-only (plus manual runs): the flows suite fires on a push to
+    # `prod` — unless its head commit message carries `[skip-gate]` — and on
+    # workflow_dispatch. Ordinary main/master pushes and PRs skip it, which
+    # counts as success, so the staging deploy chain still fires off verify.
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.ref == 'refs/heads/prod' &&
+       !contains(github.event.head_commit.message || '', '[skip-gate]'))
     timeout-minutes: 40
     env:
       # Makes `convex dev` run a local anonymous backend (127.0.0.1:3210/3211)

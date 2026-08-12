@@ -1,16 +1,18 @@
 name: Deploy
 
-# RELEASE MODEL (Marko, 2026-08-11): `main` is the dev branch (`master`
-# mirrors it during the transition). Every push runs the FULL CI gate —
-# typecheck, lint, unit tests AND the complete Playwright e2e flows suite —
-# and a green run auto-deploys staging (deploy-dev.yml → dev.trackstage.app).
+# RELEASE MODEL (Marko, 2026-08-11; simplified 2026-08-12): `main` is the dev
+# branch (`master` mirrors it during the transition). Every push runs CI
+# verify — typecheck, lint, OpenAPI drift, unit tests — and a green run
+# auto-deploys staging (deploy-dev.yml → dev.trackstage.app).
 # Releasing to production is a deliberate act, either:
 #   · promote:  git push origin main:prod      (master:prod works too)
 #   · or the Actions tab → Deploy → "Run workflow" (releases the chosen ref)
-# A push to `prod` re-runs the same full CI gate, and this workflow deploys
-# once that CI is green — so NOTHING reaches production without the whole
-# test suite passing. The manual "Run workflow" dispatch is the documented
-# escape hatch if the e2e gate ever wrongly blocks an urgent release.
+# A push to `prod` runs verify PLUS the full Playwright e2e flows suite, and
+# this workflow deploys once that CI is green. Two ways around the e2e wait:
+#   · `[skip-gate]` in the promote's head commit message skips e2e for that
+#     push (verify still gates) — for copy tweaks and low-risk releases
+#   · the manual "Run workflow" dispatch skips CI entirely — the escape hatch
+#     if the gate ever wrongly blocks an urgent release.
 #
 # Production deploy: Convex backend first (schema + functions), then the
 # Cloudflare Worker that serves the app. Runs only after the CI workflow has

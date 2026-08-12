@@ -1,8 +1,9 @@
 name: Deploy Dev
 
-# Staging: every commit that passes the FULL CI gate (typecheck · lint · unit
-# tests · complete e2e flows suite) on `main` (or its `master` mirror) is
-# deployed to https://dev.trackstage.app automatically.
+# Staging: every commit that passes CI verify (typecheck · lint · OpenAPI
+# drift · unit tests) on `main` (or its `master` mirror) is deployed to
+# https://dev.trackstage.app automatically — minutes after the push. The e2e
+# flows suite runs on promotes to `prod` and on demand, not here (ci.yml).
 #
 # What it deploys: the Worker `trackstage-dev` (env.dev in wrangler.jsonc),
 # built with `pnpm build:staging` → .env.staging, which points the bundle at

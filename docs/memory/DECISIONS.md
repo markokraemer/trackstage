@@ -611,3 +611,16 @@ Same day, `/get` copy: dropped "goes public automatically on {date} — this
 page becomes a straight redirect", because flipping the repo public is a
 manual act, not a scheduled one. The countdown stays; the live GitHub check
 that redirects once the repo *is* public also stays (that part is true).
+
+## The e2e gate moved to the promote (2026-08-12)
+
+Running the ~35-minute Playwright flows suite on every dev commit gated every
+push and every staging deploy behind it. Per Marko: dev velocity wins. Now
+`verify` (typecheck · lint · OpenAPI drift · unit tests, ~4 min) is the gate
+for `main`/`master`/PRs and is what auto-deploys dev.trackstage.app; the full
+e2e suite runs on promotes to `prod` and on manual workflow_dispatch. A
+promote can additionally carry `[skip-gate]` in its head commit message to
+skip e2e for that release (verify still gates it) — for copy tweaks and other
+low-risk changes. Manual dispatch on Deploy remains the skip-everything
+emergency hatch. Docs card fix rode along: the "4 endpoints"/"N tools" counts
+on /docs were wrong and are now plain CTA labels.

@@ -159,17 +159,20 @@ prove the Worker boots; check both. Every flow must work via ordinary links/form
 - **`main` is the canonical dev branch; `master` mirrors it for now** (local sessions
   may keep pushing `master` — CI triggers on both; push both when convenient:
   `git push origin master master:main`). `prod` is the release branch.
-- **CI (`.github/workflows/ci.yml`) is the full gate on every push/PR:** typecheck ·
-  lint · OpenAPI drift · unit tests, then the complete Playwright **e2e flows suite**
-  run hermetically in the runner (anonymous local Convex backend on 127.0.0.1:3210,
-  seeded via `seed:setup`, no cloud data touched, no mail ever sent — no RESEND key).
-- **Green CI on `main`/`master` auto-deploys staging → https://dev.trackstage.app**
+- **CI (`.github/workflows/ci.yml`) on every push/PR runs `verify`:** typecheck ·
+  lint · OpenAPI drift · unit tests (~4 min). The complete Playwright **e2e flows
+  suite** (hermetic: anonymous local Convex backend on 127.0.0.1:3210, seeded via
+  `seed:setup`, no cloud data touched, no mail ever sent — no RESEND key) runs only
+  on promotes to `prod` and on manual `workflow_dispatch` — not on every commit.
+- **Green verify on `main`/`master` auto-deploys staging → https://dev.trackstage.app**
   (`deploy-dev.yml`, Worker `trackstage-dev`, built from `.env.staging` against the
-  dev Convex deployment).
+  dev Convex deployment — a separate environment from prod's Convex; the backend
+  itself is pushed by local `convex dev` sessions, staging deploys the Worker).
 - **Promote to production:** `git push origin main:prod` (or `master:prod`). The push
-  re-runs the full CI gate — e2e included — and only then `deploy.yml` ships
-  Convex prod → build → Worker → smoke. Nothing reaches prod without the whole suite
-  passing; manual `workflow_dispatch` on Deploy is the documented escape hatch.
+  runs verify + the full e2e suite, and only then `deploy.yml` ships Convex prod →
+  build → Worker → smoke. To release without the ~35-min e2e wait, put
+  `[skip-gate]` in the promote's head commit message (verify still gates); manual
+  `workflow_dispatch` on Deploy skips CI entirely and is the emergency escape hatch.
 
 ## Stack facts
 
