@@ -76,7 +76,7 @@ for the whole program too.
 **Embeds.** Build a schedule or speaker widget for your event website in a visual editor
 and copy the snippet.
 
-**Dark mode**, light mode, or follow the system — set it in account settings.
+**Dark mode** for organizers who want it — light by default, dark or follow-the-system in account settings.
 
 Also in the box: multi-tenant workspaces with roles and email invites, one-click Airtable
 sync, a REST API, an MCP server, and an in-app AI copilot — see

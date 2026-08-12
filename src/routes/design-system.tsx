@@ -467,8 +467,9 @@ function DesignSystemPage() {
                 Trackstage design system
               </h1>
               <p className="container-reading mt-2 text-sm text-muted-foreground">
-                Every token, primitive, and app pattern in one place. Light mode
-                only. The chrome is neutral — every grey is chroma ≤ 2, so
+                Every token, primitive, and app pattern in one place. Authored
+                light-first — light is the default everywhere, dark is an
+                organizer opt-in scoped to the app. The chrome is neutral — every grey is chroma ≤ 2, so
                 nothing but the data carries colour — and Trackstage blue{" "}
                 <code className="font-mono">#2F5CE0</code> is permitted in
                 exactly five places: primary buttons, links, focus rings, the
@@ -775,7 +776,8 @@ function DesignSystemPage() {
               <SubTitle>Dark mode</SubTitle>
               <p className="mb-3 text-sm text-muted-foreground">
                 Organizers choose Light / Dark / System in{" "}
-                <code className="font-mono">/app/account</code>. Dark is scoped
+                <code className="font-mono">/app/account</code> — light unless
+                they choose otherwise. Dark is scoped
                 to the organizer app — every public and marketing surface stays
                 light for everyone. The rules mirror the light palette: chrome
                 stays neutral, elevation still reads upward (the page is the

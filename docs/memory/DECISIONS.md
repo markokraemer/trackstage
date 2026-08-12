@@ -624,3 +624,15 @@ skip e2e for that release (verify still gates it) — for copy tweaks and other
 low-risk changes. Manual dispatch on Deploy remains the skip-everything
 emergency hatch. Docs card fix rode along: the "4 endpoints"/"N tools" counts
 on /docs were wrong and are now plain CTA labels.
+
+## Light is the default; dark is a choice, never an inference (2026-08-12)
+
+Amendment to "Dark mode ships, and it stops at the organizer app's door": the
+unset fallback moved `system` → `light`. A dark-OS organizer with no stored
+preference used to land in a dark /app straight off the light-only marketing
+pages — a jarring flip they never asked for, reading as a glitch. Now nobody
+gets dark (or OS-following) without picking it in Account settings →
+Appearance; only a STORED "system" subscribes to `prefers-color-scheme`.
+Enforced in all three layers with matching fallbacks — `readStoredTheme`, the
+inline boot script, and the root route's server cookie read — and pinned by
+`tests/unit/theme-default.test.ts`. The /app-only scoping is unchanged.

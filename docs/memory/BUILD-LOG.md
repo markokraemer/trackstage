@@ -3440,3 +3440,16 @@ at the stretched tails shows no freezes. NOTE: free-tier ElevenLabs key —
 attribution + non-commercial terms; regenerate on a paid plan if the film ever
 fronts a commercial offering (CREDITS.md has the exact path). Marko's API key
 lives only in the chat/shell — rotate it.
+
+## 2026-08-12 ~22:40 — Light by default, dark strictly opt-in
+
+Marko: default must be light everywhere; dark only by explicit opt-in (the
+system-following default made the light marketing → dark app transition feel
+broken). Subagent pass changed the fallback in src/lib/theme.ts (browser read
++ boot script) and __root.tsx (server cookie read); audit subagent swept the
+repo and its findings were applied: sonner comment no longer claims the app
+is light-only, design-system intro/dark-mode prose updated, the System tile
+now says "Follows your device — currently …" (the old hint was dead code),
+README + theme-provider comment reworded, DECISIONS amended, and
+tests/unit/theme-default.test.ts pins the fallback in every layer. Known
+leftover: public/docs/account-settings.png still shows System pre-selected.

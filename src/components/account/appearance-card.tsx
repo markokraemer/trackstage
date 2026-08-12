@@ -58,8 +58,10 @@ export function AppearanceCard() {
               option={option}
               selected={preference === option.value}
               hint={
+                // System is an opt-in, so its tile must say what it DOES,
+                // not just what it currently resolves to.
                 option.value === "system"
-                  ? `Currently ${systemResolved}`
+                  ? `Follows your device — currently ${systemResolved}`
                   : option.hint
               }
             />

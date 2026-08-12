@@ -11,12 +11,13 @@ import {
 /**
  * Toasts.
  *
- * `theme` is pinned to `"light"`, NOT the system theme. Trackstage is light
- * mode only (docs/memory/RULES.md #3), and Sonner's dark theme paints the
+ * `theme` is pinned to `"light"`, NOT the system theme — so Sonner's own
+ * dark stylesheet can never fight our tokens. Its dark theme paints the
  * description line `hsl(0 0% 91%)` — near-white on our white popover surface,
  * which is exactly how the "Public link copied" URL went invisible for anyone
- * whose OS was in dark mode. Nothing else in the app follows the system theme,
- * so neither does this.
+ * whose OS was in dark mode. The app's own dark mode (opt-in, /app only —
+ * docs/memory/RULES.md #3) still reaches the toasts: every colour below is a
+ * token-bound override, and the tokens flip with `.dark` on <html>.
  *
  * Every colour below comes from a token, and the two text lines are set
  * explicitly (title = ink, description = muted) so no upstream stylesheet gets

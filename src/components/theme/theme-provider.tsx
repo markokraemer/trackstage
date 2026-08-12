@@ -105,8 +105,11 @@ export function useTheme(): ThemeContextValue {
 const DARK_QUERY = "(prefers-color-scheme: dark)"
 
 /**
- * A LIVE subscription, not a read: "System" means the app follows the OS as it
- * changes (macOS auto-appearance at sunset, Windows night light), in place.
+ * A LIVE subscription, not a read — for the organizer who OPTED INTO "System"
+ * (light is the default; nobody follows the OS without choosing to): their app
+ * flips with the OS as it changes (macOS auto-appearance at sunset, Windows
+ * night light), in place. Everyone else still needs the subscription for the
+ * "currently light/dark" hint on the System tile in Appearance settings.
  * The server snapshot is `false` — the server cannot know, and the boot script
  * has already corrected the document by the time this matters.
  */

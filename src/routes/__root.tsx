@@ -107,7 +107,8 @@ const getThemeCookie = createServerFn({ method: "GET" }).handler(async () => {
 
 async function resolveThemePreference(): Promise<ThemePreference> {
   if (typeof document !== "undefined") return readStoredTheme()
-  return (await getThemeCookie()) ?? "system"
+  // No cookie means LIGHT — dark/system are explicit opt-ins (src/lib/theme.ts).
+  return (await getThemeCookie()) ?? "light"
 }
 
 export const Route = createRootRouteWithContext<RouterContext>()({

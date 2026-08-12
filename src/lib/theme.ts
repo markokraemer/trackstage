@@ -3,15 +3,19 @@
  *
  * Three facts govern everything in this module:
  *
- * 1. **The preference is a THREE-way choice, not a boolean.** "System" is a
- *    live subscription to `prefers-color-scheme`, not a one-time read: a
- *    visitor whose OS flips at sunset flips with it, in place, without a
- *    reload.
+ * 1. **The preference is a THREE-way choice, not a boolean — and LIGHT is the
+ *    default.** A visitor who never chose gets light, full stop: the app never
+ *    consults `prefers-color-scheme` on their behalf, because a dark-OS
+ *    organizer landing in a dark app they never asked for — straight off the
+ *    light-only marketing pages — reads as a glitch, not a feature. Dark and
+ *    "System" are explicit opt-ins from account settings; only a stored
+ *    "system" is a live subscription to the OS (a visitor whose OS flips at
+ *    sunset flips with it, in place, without a reload).
  *
  * 2. **It is stored twice, on purpose.** `localStorage` is the source the boot
  *    script prefers to read; the cookie is what a SERVER render can see, which
  *    is how the settings control renders pre-selected on the very first paint
- *    instead of snapping from "System" a frame later. Both are written on every
+ *    instead of snapping into place a frame later. Both are written on every
  *    change so they can never disagree.
  *
  * 3. **Dark is scoped to the organizer app.** See `isThemeableRoute`.
@@ -65,16 +69,17 @@ export function readThemeCookie(cookieHeader: string): ThemePreference | null {
 
 /** Browser-side read: cookie first (it is what SSR saw), then localStorage. */
 export function readStoredTheme(): ThemePreference {
-  if (typeof document === "undefined") return "system"
+  if (typeof document === "undefined") return "light"
   const fromCookie = readThemeCookie(document.cookie)
   if (fromCookie) return fromCookie
   try {
     const stored = localStorage.getItem(THEME_STORAGE_KEY)
     if (isThemePreference(stored)) return stored
   } catch {
-    /* private mode — "system" is a fine answer */
+    /* private mode — "light" is the default anyway */
   }
-  return "system"
+  // No stored choice means LIGHT — dark and "system" are opt-in only.
+  return "light"
 }
 
 /** One year: long enough that the choice feels permanent, short enough to lapse. */
@@ -139,7 +144,7 @@ var t=null;
 var m=document.cookie.match(/(?:^|;\\s*)${THEME_COOKIE}=([^;]*)/);
 if(m)t=decodeURIComponent(m[1]);
 if(t!=="light"&&t!=="dark"&&t!=="system"){try{t=localStorage.getItem("${THEME_STORAGE_KEY}")}catch(e){t=null}}
-if(t!=="light"&&t!=="dark"&&t!=="system")t="system";
+if(t!=="light"&&t!=="dark"&&t!=="system")t="light";
 var d=t==="dark"||(t==="system"&&window.matchMedia&&window.matchMedia("(prefers-color-scheme: dark)").matches);
 var r=document.documentElement;
 if(d)r.classList.add("dark");
