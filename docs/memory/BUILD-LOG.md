@@ -3322,3 +3322,7 @@ the tests: CI had prestarted Vite on `localhost`, while Playwright probes
 `127.0.0.1`; the hosted runner's address-family split made Playwright miss the
 healthy prestarted server and time out trying to start another. CI now binds
 and probes Vite on the exact `127.0.0.1` address in `playwright.config.ts`.
+That exposed the corresponding auth configuration mismatch: Better Auth
+correctly rejected the browser's `127.0.0.1` origin because hermetic `SITE_URL`
+still named `localhost`. The CI-only `SITE_URL` and `VITE_SITE_URL` now use the
+same canonical IPv4 origin as Vite and Playwright.

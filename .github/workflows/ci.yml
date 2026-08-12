@@ -124,7 +124,7 @@ jobs:
       - name: Configure deployment env vars
         run: |
           pnpm exec convex env set BETTER_AUTH_SECRET "$(openssl rand -base64 32)"
-          pnpm exec convex env set SITE_URL http://localhost:3000
+          pnpm exec convex env set SITE_URL http://127.0.0.1:3000
           pnpm exec convex env set AIRTABLE_DEMO_MODE 1
           # The whole flows suite signs in from this one runner IP; the auth
           # rate limiter (convex/auth.ts) would stack retries into 429s.
@@ -158,7 +158,7 @@ jobs:
           touch .env.local
           grep -q '^VITE_CONVEX_URL='      .env.local || echo 'VITE_CONVEX_URL=http://127.0.0.1:3210'       >> .env.local
           grep -q '^VITE_CONVEX_SITE_URL=' .env.local || echo 'VITE_CONVEX_SITE_URL=http://127.0.0.1:3211'  >> .env.local
-          grep -q '^VITE_SITE_URL='        .env.local || echo 'VITE_SITE_URL=http://localhost:3000'         >> .env.local
+          grep -q '^VITE_SITE_URL='        .env.local || echo 'VITE_SITE_URL=http://127.0.0.1:3000'         >> .env.local
           # Optional: lets copilot.spec exercise the real model; when the
           # secret is absent the spec detects "not configured" and skips.
           if [ -n "$OPENROUTER_API_KEY" ]; then
