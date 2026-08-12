@@ -3383,3 +3383,11 @@ have background activity (including copilot/model traffic), so network silence
 is not a user-visible readiness contract. The lifecycle now navigates on DOM
 readiness and uses the existing page heading, off-curtain, switch state and
 session-card assertions as its real completion signals.
+
+The next exact-head run (`31601481344`) then isolated the complementary cold
+render case: DOM readiness returned in 0.5 seconds, while the first uncached
+organizer route was still on its legitimate loading skeleton when Playwright's
+default 5-second assertion timeout expired. The retained snapshot showed no
+error boundary or wrong route. The semantic readiness assertions now have 30
+seconds of cold-start headroom; they still fail a stuck skeleton, but no longer
+confuse a cold route chunk/query with a product failure.

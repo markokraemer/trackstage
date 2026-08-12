@@ -34,7 +34,7 @@ test.describe("saved embeds", () => {
       )
       await expect(
         page.getByRole("heading", { name: "Embeds", exact: true }),
-      ).toBeVisible()
+      ).toBeVisible({ timeout: 30_000 })
 
       await page.getByLabel("Accent colour").fill("#0F6E70")
       await page
@@ -110,7 +110,7 @@ test.describe("saved embeds", () => {
       )
       await expect(
         page.getByText("This embed is turned off", { exact: true }),
-      ).toBeVisible()
+      ).toBeVisible({ timeout: 30_000 })
       await expect(page.locator("[data-slot=session-card]")).toHaveCount(0)
 
       await gotoStable(
@@ -119,7 +119,7 @@ test.describe("saved embeds", () => {
       )
       await expect(
         page.getByRole("heading", { name: "Embeds", exact: true }),
-      ).toBeVisible()
+      ).toBeVisible({ timeout: 30_000 })
       await page
         .getByRole("switch", { name: `Turn on ${name}` })
         .click()
@@ -131,8 +131,12 @@ test.describe("saved embeds", () => {
         page,
         `/e/${DEMO_WORKSPACE_SLUG}/${MAIN_EVENT_SLUG}/sessions?embed=true&e=${embedId}`,
       )
-      await expect(page.getByRole("heading", { name: "Sessions" })).toBeVisible()
-      await expect(page.locator("[data-slot=session-card]").first()).toBeVisible()
+      await expect(page.getByRole("heading", { name: "Sessions" })).toBeVisible({
+        timeout: 30_000,
+      })
+      await expect(page.locator("[data-slot=session-card]").first()).toBeVisible({
+        timeout: 30_000,
+      })
       watcher.assertClean("saved embed lifecycle")
     } finally {
       if (embedId) {
