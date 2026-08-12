@@ -28,8 +28,9 @@ export const WELCOME_CALLBACK_URL = `/app?${WELCOME_PARAM}=1`
  *
  * `sessionStorage` is per-tab, and the single most important first-run arrival
  * happens in a tab that never saw the signup: the confirmation email's link
- * opens `/api/auth/verify-email?…&callbackURL=/app` in a NEW tab. The hint was
- * therefore always missing exactly where it mattered, so the gate fell through
+ * opens a NEW tab (which is what `WELCOME_CALLBACK_URL` above now covers, and
+ * this backs up). The hint was always missing exactly where it mattered, so
+ * before both of these existed the gate fell through
  * to "hide" and painted the ORGANIZER SHELL — sidebar, event switcher, dashboard
  * skeletons — at a brand-new account, until (or if) the queries that prove it is
  * first-run came back. `localStorage` crosses tabs, so the arrival paints the
