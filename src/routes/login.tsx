@@ -146,21 +146,34 @@ function LoginPage() {
           setPending(false)
           return
         }
-        const { error: signUpError } = await authClient.signUp.email({
-          name: name.trim() || email.split("@")[0],
-          email: email.trim(),
-          password,
-          // Rides along into the confirmation email: the verify link's
-          // callback drops the (already signed-in) user in the app, not on
-          // the marketing page.
-          callbackURL: "/app",
-        })
+        const { data: signUpData, error: signUpError } =
+          await authClient.signUp.email({
+            name: name.trim() || email.split("@")[0],
+            email: email.trim(),
+            password,
+            // Rides along into the confirmation email: the verify link's
+            // callback drops the (verified, signed-in) user in the app.
+            callbackURL: "/app",
+          })
         if (signUpError)
           throw new Error(signUpError.message ?? "Sign-up failed")
         // The very first paint of /app must be the onboarding takeover, not a
         // flash of the shell — this hint is what lets it win the race with
         // the queries that would prove it (src/components/onboarding).
         markFreshSignup()
+        // Verification is an AUTH concern (Marko, definitive boundary): a
+        // non-exempt address is born unverified, and it stays on the auth
+        // surface — /confirm-email — until the link is clicked. Only then
+        // does /app (and the onboarding wizard) exist for it. Exempt
+        // addresses are born verified and go straight through.
+        if (!signUpData.user.emailVerified) {
+          invalidateAuthMemo()
+          navigate({
+            to: "/confirm-email",
+            search: { email: email.trim() },
+          })
+          return
+        }
       } else {
         const { error: signInError } = await authClient.signIn.email({
           email: email.trim(),

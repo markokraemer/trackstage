@@ -299,14 +299,7 @@ function OrganizerLayout() {
   }
 
   if (onboardingGate.state === "show") {
-    return (
-      <OnboardingTakeover
-        mode={onboardingGate.mode}
-        email={onboardingGate.email}
-        emailVerified={onboardingGate.emailVerified}
-        onDone={onboardingGate.finish}
-      />
-    )
+    return <OnboardingTakeover onDone={onboardingGate.finish} />
   }
   if (onboardingGate.state === "pending") {
     return <OnboardingTakeoverPending />

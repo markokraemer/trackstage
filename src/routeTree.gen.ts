@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AppRouteRouteImport } from './routes/app/route'
+import { Route as ConfirmEmailRouteImport } from './routes/confirm-email'
 import { Route as DesignSystemRouteImport } from './routes/design-system'
 import { Route as DocsRouteRouteImport } from './routes/docs/route'
 import { Route as LoginRouteImport } from './routes/login'
@@ -109,6 +110,11 @@ const IndexRoute = IndexRouteImport.update({
 const AppRouteRoute = AppRouteRouteImport.update({
   id: '/app',
   path: '/app',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ConfirmEmailRoute = ConfirmEmailRouteImport.update({
+  id: '/confirm-email',
+  path: '/confirm-email',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DesignSystemRoute = DesignSystemRouteImport.update({
@@ -603,6 +609,7 @@ export interface FileRoutesByFullPath {
   '/app': typeof AppRouteRouteWithChildren
   '/docs': typeof DocsRouteRouteWithChildren
   '/portal': typeof PortalRouteRouteWithChildren
+  '/confirm-email': typeof ConfirmEmailRoute
   '/design-system': typeof DesignSystemRoute
   '/login': typeof LoginRoute
   '/logout': typeof LogoutRoute
@@ -693,6 +700,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/confirm-email': typeof ConfirmEmailRoute
   '/design-system': typeof DesignSystemRoute
   '/login': typeof LoginRoute
   '/logout': typeof LogoutRoute
@@ -784,6 +792,7 @@ export interface FileRoutesById {
   '/app': typeof AppRouteRouteWithChildren
   '/docs': typeof DocsRouteRouteWithChildren
   '/portal': typeof PortalRouteRouteWithChildren
+  '/confirm-email': typeof ConfirmEmailRoute
   '/design-system': typeof DesignSystemRoute
   '/login': typeof LoginRoute
   '/logout': typeof LogoutRoute
@@ -879,6 +888,7 @@ export interface FileRouteTypes {
     | '/app'
     | '/docs'
     | '/portal'
+    | '/confirm-email'
     | '/design-system'
     | '/login'
     | '/logout'
@@ -969,6 +979,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/confirm-email'
     | '/design-system'
     | '/login'
     | '/logout'
@@ -1059,6 +1070,7 @@ export interface FileRouteTypes {
     | '/app'
     | '/docs'
     | '/portal'
+    | '/confirm-email'
     | '/design-system'
     | '/login'
     | '/logout'
@@ -1153,6 +1165,7 @@ export interface RootRouteChildren {
   AppRouteRoute: typeof AppRouteRouteWithChildren
   DocsRouteRoute: typeof DocsRouteRouteWithChildren
   PortalRouteRoute: typeof PortalRouteRouteWithChildren
+  ConfirmEmailRoute: typeof ConfirmEmailRoute
   DesignSystemRoute: typeof DesignSystemRoute
   LoginRoute: typeof LoginRoute
   LogoutRoute: typeof LogoutRoute
@@ -1183,6 +1196,13 @@ declare module '@tanstack/react-router' {
       path: '/app'
       fullPath: '/app'
       preLoaderRoute: typeof AppRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/confirm-email': {
+      id: '/confirm-email'
+      path: '/confirm-email'
+      fullPath: '/confirm-email'
+      preLoaderRoute: typeof ConfirmEmailRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/design-system': {
@@ -2053,6 +2073,7 @@ const rootRouteChildren: RootRouteChildren = {
   AppRouteRoute: AppRouteRouteWithChildren,
   DocsRouteRoute: DocsRouteRouteWithChildren,
   PortalRouteRoute: PortalRouteRouteWithChildren,
+  ConfirmEmailRoute: ConfirmEmailRoute,
   DesignSystemRoute: DesignSystemRoute,
   LoginRoute: LoginRoute,
   LogoutRoute: LogoutRoute,

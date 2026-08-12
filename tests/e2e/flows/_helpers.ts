@@ -247,17 +247,28 @@ export async function uiSignUp(
   throw new Error(`UI sign-up never reached /app for ${email}`)
 }
 
-/** Click the takeover's escape hatch; tolerant if it never shows (already
- *  skipped on a previous attempt, or the account somehow owns events). */
+/** Skip through the whole wizard (Skip advances ONE step at a time — there
+ *  is no exit affordance) and dismiss the welcome card; tolerant if none of
+ *  it shows (already done, or the account somehow owns events). */
 async function dismissOnboarding(page: Page) {
-  const skip = page
-    .getByRole("button", { name: /^skip( for now)?$|explore on my own/i })
-    .first()
+  const skip = page.getByRole("button", { name: /^skip( for now)?$/i }).first()
   try {
     await skip.click({ timeout: 15_000 })
+    // Two more steps at most; stop as soon as the wizard is gone.
+    for (let i = 0; i < 4; i++) {
+      await page.waitForTimeout(350)
+      if (!(await skip.isVisible().catch(() => false))) break
+      await skip.click().catch(() => {})
+    }
   } catch {
     /* takeover not shown — nothing to skip */
   }
+  // The finish arms the welcome card — clear it too.
+  await page
+    .getByRole("button", { name: /let's go/i })
+    .first()
+    .click({ timeout: 10_000 })
+    .catch(() => {})
 }
 
 /** Wait for the organizer shell to be interactive. */

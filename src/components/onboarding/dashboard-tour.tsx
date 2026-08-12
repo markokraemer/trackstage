@@ -5,6 +5,7 @@ import { api } from "@convex/_generated/api"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
+import { useCurrentEvent } from "@/lib/current-event"
 import {
   clearTourPhase,
   readTourPhase,
@@ -55,6 +56,7 @@ async function fireConfetti(): Promise<void> {
 
 export function DashboardTour() {
   const pathname = useRouterState({ select: (s) => s.location.pathname })
+  const { events } = useCurrentEvent()
   const markTourDone = useConvexMutation(api.onboarding.markTourDone)
 
   const [phase, setPhase] = useState<TourPhase | null>(() => readTourPhase())
@@ -93,9 +95,9 @@ export function DashboardTour() {
             Welcome to Trackstage 🎉
           </h2>
           <p className="text-sm leading-relaxed text-muted-foreground">
-            Your event is ready. The Getting-started list in the sidebar will
-            walk you through the rest — build your form, share the link, and
-            the submissions start rolling in.
+            {events.length > 0
+              ? "Your event is ready. The Getting-started list in the sidebar will walk you through the rest — build your form, share the link, and the submissions start rolling in."
+              : "You're all set. Create your first event whenever you're ready — everything else follows from there."}
           </p>
           <Button type="button" size="lg" onClick={dismiss}>
             Let's go

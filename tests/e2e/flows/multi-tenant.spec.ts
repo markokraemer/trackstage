@@ -66,10 +66,19 @@ test.describe("multi-tenancy", () => {
       await expect(
         fresh.getByText(/welcome to trackstage/i).first(),
       ).toBeVisible({ timeout: 20_000 })
+      // Skip advances ONE step at a time (no exit affordance): three skips
+      // through the wizard, then the welcome card's "Let's go".
+      const skip = fresh.getByRole("button", { name: /^skip( for now)?$/i }).first()
+      for (let i = 0; i < 4; i++) {
+        if (!(await skip.isVisible().catch(() => false))) break
+        await skip.click().catch(() => {})
+        await fresh.waitForTimeout(400)
+      }
       await fresh
-        .getByRole("button", { name: /^skip( for now)?$/i })
+        .getByRole("button", { name: /let's go/i })
         .first()
-        .click()
+        .click({ timeout: 10_000 })
+        .catch(() => {})
       await waitForShell(fresh)
       await expect(
         fresh.getByRole("button", { name: /switch event/i }).first(),

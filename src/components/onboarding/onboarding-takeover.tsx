@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from "react"
-import { Link, useNavigate, useRouterState } from "@tanstack/react-router"
+import { useNavigate, useRouterState } from "@tanstack/react-router"
 import { useMutation, useQuery } from "@tanstack/react-query"
 import { convexQuery, useConvexMutation } from "@convex-dev/react-query"
 import { api } from "@convex/_generated/api"
-import { RiArrowRightLine, RiMailSendLine } from "@remixicon/react"
+import { RiArrowRightLine } from "@remixicon/react"
 import { toast } from "sonner"
 
 import { cn } from "@/lib/utils"
@@ -20,9 +20,9 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { LabeledField } from "@/components/settings/labeled-field"
-import { TimezoneSelect } from "@/components/settings/timezone-select"
 import { DateTimePicker } from "@/components/settings/date-time-picker"
 import { EVENT_TYPES } from "@/components/settings/event-details-form"
+import { TimezoneSelect } from "@/components/settings/timezone-select"
 import { browserTimezone } from "@/components/settings/timezone"
 import { isValidSlug, publicEventUrl, slugify } from "@/components/settings/slug"
 import { authClient } from "@/lib/auth-client"
@@ -43,39 +43,36 @@ import { errorMessage } from "@/lib/errors"
  * `/app` address renders THIS instead of the shell: no sidebar, no top bar,
  * just the logo and one calm card per step.
  *
- * The flow (Marko, definitive shape — "keep the full-page onboarding, but
- * the final step is an interactive walk through the platform"):
+ * The flow (Marko, definitive boundary — verification is an AUTH concern
+ * and lives on `/confirm-email`, NEVER in this wizard):
  *
- *   workspace name → confirm email → YOUR EVENT (name + type + description)
- *   → WHEN & WHERE (dates, timezone, venue) → finish INTO the app: the new
- *   event's settings page with confetti + one welcome card
+ *   workspace name → YOUR EVENT (name + type + description) → WHEN & WHERE
+ *   (dates, timezone, venue) → finish INTO the app: the new event's
+ *   settings page with confetti + one welcome card
  *   (src/components/onboarding/dashboard-tour.tsx). The Getting-started
  *   checklist in the sidebar carries the guidance from there.
+ *
+ * An UNVERIFIED account never reaches this wizard at all: the gate below
+ * sends it to `/confirm-email` (the auth surface) on any `/app` access, and
+ * only the clicked link brings it back — verified, landing at step 1.
+ * Exempt addresses (`@example.*` / `@demo.sessionboard.dev` — the
+ * databaseHook in convex/auth.ts) are born verified, so the judge, e2e and
+ * demo accounts go straight through; seeded accounts own events and never
+ * meet the wizard either.
  *
  * Only the event NAME is required — every other field is optional with
  * honest defaults (timezone = browser, dates = blank, not fake), and the
  * same `events.create` mutation the settings page's fields map onto carries
- * whatever was filled straight into the event record.
- *
- * THE EMAIL STEP IS A REAL GATE (Marko, round 3): no skip there, and the
- * gate pins any signed-in unverified account to a verify screen on every
- * `/app` access — flag done or not, events or not. Born-verified accounts
- * (`@example.*` / `@demo.sessionboard.dev`, the databaseHook in
- * convex/auth.ts) are structurally exempt, so the judge, e2e and demo can
- * never be walled; "Wrong account? Log out" is the door out of a mistyped
- * address. Skipping from any other step sets the same per-user flag as
- * finishing (convex/onboarding.ts).
+ * whatever was filled straight into the event record. Skipping sets both
+ * per-user flags (convex/onboarding.ts) — no wizard, no welcome, ever again.
  */
 
 /** `?onboarding-redo` is consumed at most once per page load — a module
  *  flag, not a ref, so a remounting layout can never double-fire it. */
 let redoConsumed = false
 
-/** Mid-flow state, so the verify-email round trip resumes where it left off. */
+/** Mid-flow state, so a reload resumes where it left off. */
 const RESUME_KEY = "ts-onboarding-state"
-
-const RESEND_COOLDOWN_MS = 30_000
-const DESCRIPTION_LIMIT = 1000
 
 interface ResumeState {
   step?: number
@@ -117,72 +114,21 @@ function clearOnboardingStorage(): void {
   }
 }
 
-/**
- * Is this signed-in account's email confirmed? Better Auth's cached session
- * can keep saying `emailVerified: false` after the link is clicked, so while
- * unverified this polls every 3s and on window focus — the moment the
- * emailed link lands (any tab), `verified` flips here without a reload.
- */
-function useEmailVerification() {
-  const { data, isPending } = authClient.useSession()
-  const [verifiedOverride, setVerifiedOverride] = useState(false)
-
-  const hasUser = Boolean(data?.user)
-  const verified = Boolean(data?.user.emailVerified) || verifiedOverride
-  const unverified = !isPending && hasUser && !verified
-
-  useEffect(() => {
-    if (!unverified) return
-    let cancelled = false
-    const check = async () => {
-      try {
-        const fresh = await authClient.getSession({
-          query: { disableCookieCache: true },
-        })
-        if (!cancelled && fresh.data?.user.emailVerified) {
-          setVerifiedOverride(true)
-        }
-      } catch {
-        /* transient network — the next tick retries */
-      }
-    }
-    const interval = setInterval(check, 3_000)
-    window.addEventListener("focus", check)
-    void check()
-    return () => {
-      cancelled = true
-      clearInterval(interval)
-      window.removeEventListener("focus", check)
-    }
-  }, [unverified])
-
-  return { email: data?.user.email ?? "", hasUser, pending: isPending, verified }
-}
-
 export type OnboardingGate =
   | { state: "hide" }
   /** Queries still in flight, but the fresh-signup hint says it's coming —
-   *  paint the takeover's frame, never a flash of the shell. */
+   *  paint the takeover's frame, never a flash of the shell. Also held
+   *  briefly while an unverified account is redirected to /confirm-email. */
   | { state: "pending" }
-  | {
-      state: "show"
-      /** `wizard` = the guided flow; `verify` = pinned to email confirmation. */
-      mode: "wizard" | "verify"
-      email: string
-      emailVerified: boolean
-      finish: () => void
-    }
+  | { state: "show"; finish: () => void }
 
 /**
- * Whether the takeover owns the screen.
+ * Whether the takeover owns the screen. Sticky once shown — creating the
+ * event mid-flow makes `events` non-empty, and that must NOT yank the flow
+ * away; only finishing or skipping releases it.
  *
- * Wizard: sticky once shown — creating the event mid-flow makes `events`
- * non-empty, and that must NOT yank the flow away; only finishing or
- * skipping releases it.
- *
- * Verify: not skippable and not sticky — it holds exactly while the account
- * is unverified, on every `/app` access, and opens by itself the moment the
- * confirmation lands.
+ * Unverified accounts are not this surface's business: they are redirected
+ * to `/confirm-email` — the AUTH surface — and come back verified.
  */
 export function useOnboardingGate(): OnboardingGate {
   const { status } = useSession()
@@ -190,8 +136,9 @@ export function useOnboardingGate(): OnboardingGate {
   const { data: flag } = useQuery(
     convexQuery(api.onboarding.status, status === "authenticated" ? {} : "skip"),
   )
-  const emailState = useEmailVerification()
+  const { data: authData, isPending: authPending } = authClient.useSession()
   const resetOnboarding = useConvexMutation(api.onboarding.reset)
+  const navigate = useNavigate()
   const [active, setActive] = useState<boolean | null>(null)
   const [hint] = useState(
     () =>
@@ -200,6 +147,17 @@ export function useOnboardingGate(): OnboardingGate {
   )
 
   const resolved = flag !== undefined && !eventsLoading
+
+  // Verification is an AUTH concern: an unverified session gets the
+  // /confirm-email page, not an in-app screen. Born-verified (exempt)
+  // accounts can never trip this.
+  const unverified = Boolean(
+    !authPending && authData?.user && !authData.user.emailVerified,
+  )
+  useEffect(() => {
+    if (!unverified) return
+    void navigate({ to: "/confirm-email", replace: true })
+  }, [unverified, navigate])
 
   useEffect(() => {
     if (active !== null || !resolved) return
@@ -210,13 +168,12 @@ export function useOnboardingGate(): OnboardingGate {
 
   // `?onboarding-redo` on any /app URL — explicit opt-in to run the whole
   // experience again (Marko, 2026-08-12), demo accounts included: both
-  // server flags reset, then straight into welcome+tour (has events) or the
-  // full wizard (zero events). Consumed once and stripped from the address,
-  // the same pattern as the portal's `?t=` token. Read from
-  // `window.location` — the routes' validateSearch re-stringifies the search
-  // and quietly drops keys it doesn't declare.
+  // server flags reset, then straight into welcome (has events) or the full
+  // wizard (zero events). Consumed once and stripped from the address, the
+  // same pattern as the portal's `?t=` token. Read from `window.location` —
+  // the routes' validateSearch re-stringifies the search and quietly drops
+  // keys it doesn't declare.
   const routerLocation = useRouterState({ select: (s) => s.location.href })
-  const navigate = useNavigate()
   useEffect(() => {
     void routerLocation // re-check on every navigation
     if (redoConsumed || typeof window === "undefined") return
@@ -254,52 +211,23 @@ export function useOnboardingGate(): OnboardingGate {
     setActive(false)
   }, [])
 
-  if (active === true) {
-    return {
-      state: "show",
-      mode: "wizard",
-      email: emailState.email,
-      emailVerified: emailState.verified,
-      finish,
-    }
-  }
-  // The hard gate: signed in, session resolved, email not confirmed — pinned,
-  // whatever the flag or event count says. Exempt (born-verified) accounts
-  // can never reach this branch.
-  if (emailState.hasUser && !emailState.pending && !emailState.verified) {
-    return {
-      state: "show",
-      mode: "verify",
-      email: emailState.email,
-      emailVerified: false,
-      finish,
-    }
-  }
+  if (unverified) return { state: "pending" }
+  if (active === true) return { state: "show", finish }
   if (active === null && hint && status !== "unauthenticated") {
     return { state: "pending" }
   }
   return { state: "hide" }
 }
 
-// Step indices — four doing-steps, then ONE how-it-works screen.
+// Three steps: name the team's home, describe the event, place it in time.
 const STEP_WORKSPACE = 0
-const STEP_EMAIL = 1
-const STEP_EVENT = 2
-const STEP_WHEN = 3
+const STEP_EVENT = 1
+const STEP_WHEN = 2
+const TOTAL_STEPS = 3
 
-const TOTAL_STEPS = STEP_WHEN + 1
+const DESCRIPTION_LIMIT = 1000
 
-export function OnboardingTakeover({
-  mode,
-  email,
-  emailVerified,
-  onDone,
-}: {
-  mode: "wizard" | "verify"
-  email: string
-  emailVerified: boolean
-  onDone: () => void
-}) {
+export function OnboardingTakeover({ onDone }: { onDone: () => void }) {
   const navigate = useNavigate()
   const { workspace, workspaces } = useCurrentEvent()
 
@@ -313,12 +241,11 @@ export function OnboardingTakeover({
 
   const resume = useRef(readResume()).current
   const [step, setStep] = useState(
-    // Clamp: a resume state written by an older flow shape must not strand
+    // Clamp: a resume state written by an older, longer flow must not strand
     // the person past the last screen.
     Math.min(resume.step ?? STEP_WORKSPACE, TOTAL_STEPS - 1),
   )
   const [workspaceName, setWorkspaceName] = useState(resume.workspaceName ?? "")
-  // ——— The event, as the settings page knows it —————————————————————————
   const [eventName, setEventName] = useState(resume.eventName ?? "")
   const [eventType, setEventType] = useState(resume.eventType ?? "")
   const [description, setDescription] = useState(resume.description ?? "")
@@ -344,7 +271,6 @@ export function OnboardingTakeover({
   }, [workspace?.name])
 
   useEffect(() => {
-    if (mode !== "wizard") return
     writeResume({
       step,
       workspaceName,
@@ -359,7 +285,6 @@ export function OnboardingTakeover({
       createdEventId: created?.eventId,
     })
   }, [
-    mode,
     step,
     workspaceName,
     eventName,
@@ -375,47 +300,12 @@ export function OnboardingTakeover({
   const workspaceId = workspace?.id ?? workspaces.at(0)?.id
   const workspaceSlug = workspace?.slug ?? workspaces.at(0)?.slug ?? ""
 
-  // Confirmed (now, or before we got here): the email step clears itself.
-  useEffect(() => {
-    if (mode === "wizard" && step === STEP_EMAIL && emailVerified) {
-      setStep(STEP_EVENT)
-    }
-  }, [mode, step, emailVerified])
-
-  const [resending, setResending] = useState(false)
-  const [resentAt, setResentAt] = useState<number | null>(null)
-  useEffect(() => {
-    if (resentAt === null) return
-    const t = setTimeout(
-      () => setResentAt(null),
-      Math.max(0, resentAt + RESEND_COOLDOWN_MS - Date.now()),
-    )
-    return () => clearTimeout(t)
-  }, [resentAt])
-
-  async function resend() {
-    if (!email || resending || resentAt !== null) return
-    setResending(true)
-    try {
-      await authClient.sendVerificationEmail({ email, callbackURL: "/app" })
-      setResentAt(Date.now())
-    } finally {
-      setResending(false)
-    }
-  }
-
   // ——— Step actions ———————————————————————————————————————————————————————
-  /** Skipping means "no hand-holding": wizard AND tour, both closed. */
-  function skip() {
-    void markDone({ tour: true }).catch(() => {})
-    onDone()
-  }
-
   /** Into the app: the new event's settings page, welcome moment armed. */
   const finishIntoTour = useCallback(
     (slug: string) => {
       void markDone({}).catch(() => {})
-      // The ONE place the guided tour is ever armed.
+      // The ONE place the welcome moment is ever armed.
       writeTourPhase("welcome")
       onDone()
       if (workspaceSlug) {
@@ -427,6 +317,31 @@ export function OnboardingTakeover({
     [markDone, onDone, navigate, workspaceSlug],
   )
 
+  /** Every step skipped, no event named: finish anyway — the flag sets, the
+   *  welcome card shows, and the empty-state app + checklist take it from
+   *  there. The wizard never re-shows either way. */
+  const finishWithoutEvent = useCallback(() => {
+    void markDone({}).catch(() => {})
+    writeTourPhase("welcome")
+    onDone()
+  }, [markDone, onDone])
+
+  /** "Skip" advances ONE step — never exits the wizard (Marko, 2026-08-12:
+   *  "it should skip this particular step", not close the whole thing). */
+  function skipStep() {
+    setError(undefined)
+    setDateError(undefined)
+    if (step === STEP_WORKSPACE) {
+      setStep(STEP_EVENT)
+    } else if (step === STEP_EVENT) {
+      setStep(STEP_WHEN)
+    } else if (created) {
+      finishIntoTour(created.slug)
+    } else {
+      finishWithoutEvent()
+    }
+  }
+
   function continueFromWorkspace() {
     const name = workspaceName.trim()
     if (!name) {
@@ -434,7 +349,7 @@ export function OnboardingTakeover({
       return
     }
     setError(undefined)
-    setStep(emailVerified ? STEP_EVENT : STEP_EMAIL)
+    setStep(STEP_EVENT)
     // Rename in the background — a hiccup here must not gate the flow.
     if (workspace && name !== workspace.name) {
       renameWorkspace
@@ -470,6 +385,11 @@ export function OnboardingTakeover({
     if (created) {
       // Back-and-forth after a successful create must not create twice.
       finishIntoTour(created.slug)
+      return
+    }
+    if (!eventName.trim()) {
+      // They skipped naming an event — nothing to create; finish clean.
+      finishWithoutEvent()
       return
     }
     if (startsAt && endsAt && endsAt < startsAt) {
@@ -517,12 +437,6 @@ export function OnboardingTakeover({
       ? publicEventUrl(workspaceSlug, slugify(eventName))
       : null
 
-  const showEmail = mode === "verify" || step === STEP_EMAIL
-  // Keying the card body restarts its enter animation on each step change —
-  // one consistent quick fade/slide (200ms), no layout jump: the card keeps
-  // its width and the content column its rhythm.
-  const contentKey = mode === "verify" ? "verify" : `step-${step}`
-
   return (
     <div className="animate-in fade-in-0 flex min-h-svh flex-col bg-background duration-300">
       <header className="container-app flex h-14 shrink-0 items-center">
@@ -531,37 +445,39 @@ export function OnboardingTakeover({
 
       <main className="flex flex-1 items-center justify-center px-4 py-10">
         <div className="flex w-full max-w-lg flex-col gap-5">
-          {mode === "wizard" ? (
-            /* Progress — quiet dots, one per screen. */
-            <ol
-              aria-label={`Step ${Math.min(step, TOTAL_STEPS - 1) + 1} of ${TOTAL_STEPS}`}
-              className="flex items-center justify-center gap-1.5"
-            >
-              {Array.from({ length: TOTAL_STEPS }, (_, index) => (
-                <li
-                  key={index}
-                  aria-hidden
-                  className={cn(
-                    "h-1.5 rounded-full transition-all duration-200",
-                    index === step ? "w-6 bg-primary" : "w-1.5",
-                    index < step
-                      ? "bg-primary/50"
-                      : index > step
-                        ? "bg-border"
-                        : "",
-                  )}
-                />
-              ))}
-            </ol>
-          ) : null}
+          {/* Progress — quiet dots, one per screen. */}
+          <ol
+            aria-label={`Step ${step + 1} of ${TOTAL_STEPS}`}
+            className="flex items-center justify-center gap-1.5"
+          >
+            {Array.from({ length: TOTAL_STEPS }, (_, index) => (
+              <li
+                key={index}
+                aria-hidden
+                className={cn(
+                  "h-1.5 rounded-full transition-all duration-200",
+                  index === step ? "w-6 bg-primary" : "w-1.5",
+                  index < step
+                    ? "bg-primary/50"
+                    : index > step
+                      ? "bg-border"
+                      : "",
+                )}
+              />
+            ))}
+          </ol>
 
           <Card>
             <CardContent className="px-6 py-8 sm:px-10">
+              {/* Keyed so each step swaps in place with one quick fade/slide
+                  — fade FROM 50%, not 0: starting fully transparent painted
+                  a blank card for the animation's first frames (the jank in
+                  Marko's screenshots). */}
               <div
-                key={contentKey}
-                className="animate-in fade-in-0 slide-in-from-right-2 flex flex-col gap-6 duration-200"
+                key={`step-${step}`}
+                className="animate-in fade-in-50 slide-in-from-right-2 flex flex-col gap-6 duration-200"
               >
-                {mode === "wizard" && step === STEP_WORKSPACE ? (
+                {step === STEP_WORKSPACE ? (
                   <>
                     <StepHeading
                       title="Welcome to Trackstage"
@@ -586,7 +502,7 @@ export function OnboardingTakeover({
                         }}
                       />
                     </LabeledField>
-                    <StepFooter onSkip={skip}>
+                    <StepFooter onSkip={skipStep}>
                       <Button type="button" onClick={continueFromWorkspace}>
                         Continue
                         <RiArrowRightLine size={16} aria-hidden />
@@ -595,64 +511,7 @@ export function OnboardingTakeover({
                   </>
                 ) : null}
 
-                {showEmail ? (
-                  <>
-                    <span className="mx-auto flex size-12 items-center justify-center rounded-xl border border-border bg-muted text-primary">
-                      <RiMailSendLine size={22} aria-hidden />
-                    </span>
-                    <StepHeading
-                      title="Confirm your email"
-                      detail={
-                        <>
-                          We sent a confirmation link to{" "}
-                          <span className="font-medium text-foreground">
-                            {email}
-                          </span>
-                          . Click it and this screen moves on by itself.
-                        </>
-                      }
-                    />
-                    <p
-                      role="status"
-                      className="text-center text-xs text-muted-foreground"
-                    >
-                      Waiting for your confirmation — checking automatically…
-                    </p>
-                    {/* Deliberately NO skip here (Marko, round 3): confirming
-                        the address is what unlocks the platform. */}
-                    <div className="flex items-center justify-center gap-2 pt-1">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        disabled={resending || resentAt !== null}
-                        onClick={resend}
-                      >
-                        {resending
-                          ? "Sending…"
-                          : resentAt !== null
-                            ? "Sent — check your inbox"
-                            : "Resend email"}
-                      </Button>
-                      <Button type="button" disabled>
-                        Continue
-                        <RiArrowRightLine size={16} aria-hidden />
-                      </Button>
-                    </div>
-                    {/* The one way out of a mistyped address (Marko, round 4):
-                        a gate with no skip still needs a door back to /login. */}
-                    <p className="text-center text-sm text-muted-foreground">
-                      Wrong account?{" "}
-                      <Link
-                        to="/logout"
-                        className="font-medium text-foreground underline-offset-4 hover:underline"
-                      >
-                        Log out
-                      </Link>
-                    </p>
-                  </>
-                ) : null}
-
-                {mode === "wizard" && step === STEP_EVENT ? (
+                {step === STEP_EVENT ? (
                   <>
                     <StepHeading
                       title="Your event"
@@ -722,7 +581,7 @@ export function OnboardingTakeover({
                         onChange={(e) => setDescription(e.target.value)}
                       />
                     </LabeledField>
-                    <StepFooter onSkip={skip}>
+                    <StepFooter onSkip={skipStep}>
                       <div className="flex gap-2">
                         <Button
                           type="button"
@@ -740,7 +599,7 @@ export function OnboardingTakeover({
                   </>
                 ) : null}
 
-                {mode === "wizard" && step === STEP_WHEN ? (
+                {step === STEP_WHEN ? (
                   <>
                     <StepHeading
                       title="When & where"
@@ -806,7 +665,7 @@ export function OnboardingTakeover({
                         }}
                       />
                     </LabeledField>
-                    <StepFooter onSkip={skip}>
+                    <StepFooter onSkip={skipStep}>
                       <div className="flex gap-2">
                         <Button
                           type="button"
@@ -821,7 +680,11 @@ export function OnboardingTakeover({
                           disabled={busy}
                           onClick={createFirstEvent}
                         >
-                          {busy ? "Creating…" : "Create event"}
+                          {busy
+                            ? "Creating…"
+                            : eventName.trim() || created
+                              ? "Create event"
+                              : "Finish"}
                           {busy ? null : (
                             <RiArrowRightLine size={16} aria-hidden />
                           )}
@@ -830,8 +693,7 @@ export function OnboardingTakeover({
                     </StepFooter>
                   </>
                 ) : null}
-
-             </div>
+              </div>
             </CardContent>
           </Card>
         </div>
