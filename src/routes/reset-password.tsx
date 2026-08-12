@@ -154,7 +154,13 @@ function ResetPasswordPage() {
               </Link>
             </div>
           ) : (
-            <form onSubmit={onSubmit} noValidate>
+            <form
+              // POST so a pre-hydration native submit can never put the new
+              // password in the URL.
+              method="post"
+              onSubmit={onSubmit}
+              noValidate
+            >
               <FieldGroup className="gap-5">
                 <Field>
                   <FieldLabel htmlFor="new-password">New password</FieldLabel>

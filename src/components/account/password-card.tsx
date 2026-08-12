@@ -90,7 +90,13 @@ export function PasswordCard() {
       </CardHeader>
 
       <CardContent>
-        <form onSubmit={submit} noValidate className="flex flex-col gap-5">
+        {/* POST so a native submit can never put these passwords in the URL. */}
+        <form
+          method="post"
+          onSubmit={submit}
+          noValidate
+          className="flex flex-col gap-5"
+        >
           {/* Stacked on purpose: three-across put the middle field's helper
               text between label and input and broke every baseline. Changing
               a password is sequential — one focused column reads best. */}

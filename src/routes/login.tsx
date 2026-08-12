@@ -50,11 +50,26 @@ export interface LoginSearch {
  * once they're in we hand them straight back to the authorize endpoint with
  * the original request intact and the flow continues to the redirect_uri.
  */
+/**
+ * Field names that must never travel in a URL. A GET submit of this form —
+ * which is what a native submit does before hydration, and what an autofilling
+ * password manager can trigger on a slow first paint — would otherwise put a
+ * live password in the address bar, the browser's history, the Referer header
+ * of the next request and every proxy log in between. The form is POST so that
+ * cannot happen; these are stripped on arrival so an old link, a bookmark or a
+ * shared URL from before this fix stops carrying working credentials.
+ */
+const CREDENTIAL_PARAMS = ["email", "password", "name"] as const
+
 function oauthReturnTo(search: Record<string, unknown>): string | undefined {
   if (typeof search.client_id !== "string" || !search.client_id) return undefined
   if (search.response_type !== "code") return undefined
   const params = new URLSearchParams()
   for (const [key, value] of Object.entries(search)) {
+    // Never forward credentials into the authorize URL either.
+    if (CREDENTIAL_PARAMS.includes(key as (typeof CREDENTIAL_PARAMS)[number])) {
+      continue
+    }
     if (typeof value === "string") params.set(key, value)
   }
   return `/api/auth/mcp/authorize?${params.toString()}`
@@ -105,6 +120,25 @@ function LoginPage() {
     if (redirectTo.startsWith("/api/")) window.location.href = redirectTo
     else navigate({ href: redirectTo })
   }
+
+  // Anything that already landed in the URL goes, without a history entry —
+  // replaceState overwrites the poisoned URL rather than stacking a clean one
+  // on top of it, so Back doesn't walk into the password again.
+  useEffect(() => {
+    const url = new URL(window.location.href)
+    let stripped = false
+    for (const key of CREDENTIAL_PARAMS) {
+      if (!url.searchParams.has(key)) continue
+      url.searchParams.delete(key)
+      stripped = true
+    }
+    if (!stripped) return
+    window.history.replaceState(
+      window.history.state,
+      "",
+      `${url.pathname}${url.search}${url.hash}`,
+    )
+  }, [])
 
   // Already signed in? Don't make them do it twice. The memo invalidation
   // matters here too: this effect can fire on a session that arrived AFTER
@@ -379,7 +413,14 @@ function LoginPage() {
               </Button>
             </div>
           ) : (
-          <form onSubmit={onSubmit} noValidate>
+          <form
+            // POST, though nothing ever reaches a server action: a native
+            // submit before React hydrates would otherwise GET, putting the
+            // email and password in the URL. See CREDENTIAL_PARAMS.
+            method="post"
+            onSubmit={onSubmit}
+            noValidate
+          >
             <FieldGroup className="gap-5">
               {mode === "signup" ? (
                 <Field>
