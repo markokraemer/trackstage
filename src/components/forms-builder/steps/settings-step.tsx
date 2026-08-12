@@ -8,9 +8,11 @@ import {
   SectionHeading,
   SettingRow,
   StepIntro,
+  WarningNote,
 } from "../builder-controls"
 import { DateTimePicker } from "../date-time-picker"
 import { RichTextField } from "../rich-text-field"
+import { releaseBlockers } from "../model"
 import type { FormDraft } from "../use-form-draft"
 
 /**
@@ -22,14 +24,22 @@ export function SettingsStep({
   patch,
   update,
   timezone,
+  trackNames,
 }: {
   draft: FormDraft
   patch: (values: Partial<FormDraft>) => void
   update: (updater: (draft: FormDraft) => FormDraft) => void
   timezone?: string
+  /** The event's tracks — a track question's answers, and a release condition. */
+  trackNames: Array<string>
 }) {
   const id = useId()
   const settings = draft.settings
+  // A form may not be opened while a required question has nothing to offer:
+  // that is a public link nobody can submit through. `convex/forms.ts` refuses
+  // it too — this is so the organizer never gets that far (docs/memory/
+  // DECISIONS.md, "A required dropdown with no options is not shippable").
+  const blockers = releaseBlockers(draft.questions, trackNames)
 
   function patchSettings(values: Partial<FormDraft["settings"]>) {
     update((current) => ({
@@ -59,17 +69,37 @@ export function SettingsStep({
           form is open while the close date below says otherwise, so when the
           deadline has already passed the row says which of the two is winning
           and what to do about it. */}
+      {blockers.length > 0 ? (
+        <WarningNote>
+          <span className="font-medium">
+            This form can&rsquo;t be opened yet.
+          </span>
+          <ul className="mt-1 list-disc space-y-1 pl-4">
+            {blockers.map((blocker) => (
+              <li key={blocker.questionId}>{blocker.message}</li>
+            ))}
+          </ul>
+          <span className="mt-1 block text-muted-foreground">
+            Fix it under <span className="font-medium">Questions</span> — nobody
+            can submit through a required question with nothing to pick from.
+          </span>
+        </WarningNote>
+      ) : null}
+
       <SettingRow
         id={`${id}-status`}
         title="This form is open"
         description={
-          closed
-            ? "The public link shows a friendly “submissions are closed” message."
-            : closesInPast
-              ? "Switched on — but the close date below has already passed, so the form is not accepting anything. Move or clear the deadline to reopen it."
-              : "Anyone with the link can submit right now."
+          blockers.length > 0 && closed
+            ? "Switched off until the questions above have answers to offer."
+            : closed
+              ? "The public link shows a friendly “submissions are closed” message."
+              : closesInPast
+                ? "Switched on — but the close date below has already passed, so the form is not accepting anything. Move or clear the deadline to reopen it."
+                : "Anyone with the link can submit right now."
         }
         checked={!closed}
+        disabled={closed && blockers.length > 0}
         onCheckedChange={(value) => patch({ status: value ? "open" : "closed" })}
       />
 

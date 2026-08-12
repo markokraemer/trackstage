@@ -3,6 +3,11 @@ import { mutation, query } from "./_generated/server"
 import { requireEventAccess } from "./lib/auth"
 import { record as recordAudit } from "./lib/audit"
 import {
+  assertReleasable,
+  eventTrackNames,
+  syncTrackOptions,
+} from "./lib/formQuestions"
+import {
   formSlugIsFree,
   isValidSlug,
   slugify,
@@ -131,10 +136,14 @@ export const get = query({
     const form = await ctx.db.get(args.formId)
     if (!form) throw new ConvexError("Form not found")
     const { event } = await requireEventAccess(ctx, form.eventId)
+    // The track question always shows the event's CURRENT tracks, even on a
+    // form built before those tracks existed (convex/lib/formQuestions.ts).
+    const trackNames = await eventTrackNames(ctx, form.eventId)
     // Both parent slugs ride along so the builder can render the canonical
     // public URL without a second round trip (docs/memory/DECISIONS.md).
     return {
       ...form,
+      questions: syncTrackOptions(form.questions, trackNames),
       eventSlug: event.slug,
       workspaceSlug: await workspaceSlugForEvent(ctx, event),
     }
@@ -153,14 +162,19 @@ export const create = mutation({
       throw new ConvexError("kind must be abstract or session")
     }
 
-    // Track question options default to the event's tracks.
-    const tracks = await ctx.db
-      .query("tracks")
-      .withIndex("by_eventId", (q) => q.eq("eventId", args.eventId))
-      .collect()
+    // The track question is sourced from the event's tracks, always. On an
+    // event that has none yet it is created OPTIONAL — a new form is born open,
+    // and a required question with nothing to pick from is a wall the submitter
+    // cannot climb (it is also hidden on the public form until tracks exist).
+    // Add tracks, then switch Required back on.
+    const trackNames = await eventTrackNames(ctx, args.eventId)
     const questions = defaultQuestions().map((question) =>
       question.isTrackQuestion
-        ? { ...question, options: tracks.sort((a, b) => a.order - b.order).map((t) => t.name) }
+        ? {
+            ...question,
+            options: [...trackNames],
+            required: question.required && trackNames.length > 0,
+          }
         : question,
     )
 
@@ -263,17 +277,25 @@ export const update = mutation({
         nextSlug = cleaned
       }
     }
-    if (questions) {
+    // The track question's answer list is not the organizer's to type — it is
+    // the event's track list, resolved here so a stale copy from an old builder
+    // session can never be written back over the live one.
+    const trackNames = await eventTrackNames(ctx, form.eventId)
+    const nextQuestions = questions
+      ? syncTrackOptions(questions, trackNames)
+      : undefined
+
+    if (nextQuestions) {
       // Locked questions can be edited but never removed or disabled.
       for (const locked of form.questions.filter((q) => q.locked)) {
-        const still = questions.find((q) => q.id === locked.id)
+        const still = nextQuestions.find((q) => q.id === locked.id)
         if (!still || !still.enabled) {
           throw new ConvexError(`The "${locked.label}" question is required and cannot be removed.`)
         }
       }
       // showIf must reference an existing, earlier question.
-      const ids = questions.map((q) => q.id)
-      for (const q of questions) {
+      const ids = nextQuestions.map((q) => q.id)
+      for (const q of nextQuestions) {
         if (q.showIf) {
           const refIndex = ids.indexOf(q.showIf.questionId)
           if (refIndex === -1) throw new ConvexError(`"${q.label}" has a condition referencing a deleted question.`)
@@ -284,11 +306,25 @@ export const update = mutation({
       }
     }
 
+    // ——— A form may not go live asking a question nobody can answer ————————
+    // (docs/memory/DECISIONS.md, "A required dropdown with no options is not
+    // shippable"). Closed forms are exempt — that is what a closed form is for.
+    // On a form that is ALREADY open we only refuse blockers this patch would
+    // ADD, so an organizer who inherited a broken form can still edit their way
+    // out of it instead of being locked out by their own save.
+    assertReleasable({
+      wasOpen: form.status === "open",
+      willBeOpen: (status ?? form.status) === "open",
+      before: form.questions,
+      after: nextQuestions ?? form.questions,
+      trackNames,
+    })
+
     await ctx.db.patch(args.formId, {
       ...rest,
       ...(nextSlug ? { slug: nextSlug } : {}),
       ...(status ? { status } : {}),
-      ...(questions ? { questions } : {}),
+      ...(nextQuestions ? { questions: nextQuestions } : {}),
       ...(closeAt !== undefined ? { closeAt: closeAt ?? undefined } : {}),
     })
 
@@ -332,8 +368,10 @@ export const duplicate = mutation({
     const { _id, _creationTime, slug, internalName, ...rest } = form
     // Per-event namespace, same as create.
     const copySlug = await uniqueFormSlug(ctx, form.eventId, `${slug}-copy`)
+    const trackNames = await eventTrackNames(ctx, form.eventId)
     const copyId = await ctx.db.insert("forms", {
       ...rest,
+      questions: syncTrackOptions(rest.questions, trackNames),
       slug: copySlug,
       internalName: `${internalName} (copy)`,
     })

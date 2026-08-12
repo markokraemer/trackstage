@@ -1,5 +1,6 @@
 import { useSortable } from "@dnd-kit/sortable"
 import {
+  RiAlertLine,
   RiArrowDownLine,
   RiArrowUpLine,
   RiDeleteBinLine,
@@ -25,7 +26,12 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { RequiredMark } from "./builder-controls"
-import { conditionSummary, questionSublabel, questionTypeMeta } from "./model"
+import {
+  conditionSummary,
+  questionSublabel,
+  questionTypeMeta,
+  releaseBlockers,
+} from "./model"
 import type { FormQuestion } from "./model"
 
 /**
@@ -41,6 +47,8 @@ export interface QuestionRowProps {
   question: FormQuestion
   /** All questions, in order — used to describe conditions in plain English. */
   questions: Array<FormQuestion>
+  /** The event's tracks: what a track question offers, live. */
+  trackNames: Array<string>
   onChange: (patch: Partial<FormQuestion>) => void
   onEdit: () => void
   onDuplicate: () => void
@@ -53,6 +61,7 @@ export interface QuestionRowProps {
 export function QuestionRow({
   question,
   questions,
+  trackNames,
   onChange,
   onEdit,
   onDuplicate,
@@ -73,6 +82,11 @@ export function QuestionRow({
 
   const meta = questionTypeMeta(question.type)
   const Icon = meta.icon
+  // A question that is switched on and required while its answer list is empty
+  // is a wall the submitter cannot climb — so the form cannot be opened until
+  // it's fixed, and the row says so where the fix is (`releaseBlockers`).
+  const blocker = releaseBlockers([question], trackNames).at(0)
+  const trackless = question.isTrackQuestion === true && trackNames.length === 0
 
   return (
     <li
@@ -135,7 +149,7 @@ export function QuestionRow({
           </div>
 
           <p className="mt-0.5 text-xs text-muted-foreground">
-            {questionSublabel(question)}
+            {questionSublabel(question, trackNames)}
           </p>
 
           {question.help ? (
@@ -158,6 +172,23 @@ export function QuestionRow({
               </span>
             ) : null}
           </div>
+
+          {blocker ? (
+            <p className="mt-2 flex items-start gap-1.5 rounded-md border border-status-amber-dot/40 bg-status-amber-bg/50 px-2 py-1.5 text-[11px] leading-relaxed text-foreground">
+              <RiAlertLine
+                size={12}
+                aria-hidden
+                className="mt-0.5 shrink-0 text-status-amber-fg"
+              />
+              {blocker.message} The form can&rsquo;t be opened until then.
+            </p>
+          ) : trackless && question.enabled ? (
+            <p className="mt-2 flex items-start gap-1.5 rounded-md border border-border bg-muted/60 px-2 py-1.5 text-[11px] leading-relaxed text-muted-foreground">
+              <RiAlertLine size={12} aria-hidden className="mt-0.5 shrink-0" />
+              No tracks configured yet — add them in Settings → Rooms &amp;
+              tracks. Until then this question is hidden on the public form.
+            </p>
+          ) : null}
         </div>
 
         <div className="flex shrink-0 flex-wrap items-center justify-end gap-x-3 gap-y-2">

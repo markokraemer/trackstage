@@ -2901,3 +2901,43 @@ flip live, and the public event page staying light with `ts-theme=dark` set.
 25/25 e2e flow tests green across public-pages, forms-builder, agenda and
 speakers-portal. Known cosmetic: the outbox/compose email preview iframe is
 deliberately still white — it is a fidelity rendering of the actual email.
+
+## 2026-08-12 — The Track question syncs to the event's tracks, and a form nobody can fill in cannot be released
+
+Marko, from a screenshot of a fresh event's LIVE public CFP: the required
+"Track" dropdown offered nothing — "if no track is configured it doesn't show
+anything, fix that. You can also sync properly to the tracks by default & make
+that the default?" Then, on seeing it still reachable: "you shouldn't even be
+able to create and SAVE/RELEASE the form if you have no track."
+
+Root cause was one line: `convex/forms.ts::defaultQuestions` shipped the track
+question with `options: []`, and `create` filled it from a **snapshot** of the
+event's tracks. Fresh event ⇒ zero tracks ⇒ a required dropdown with no items on
+a form that is born `status: "open"`. Tracks added afterwards never reached the
+form either — the "Use my event tracks" button in the question drawer was the
+only way to re-sync, and nothing said so.
+
+Three layers, all deciding with one module (`convex/lib/formQuestions.ts`):
+sync-on-read-and-write (`syncTrackOptions` + write-through from `roomsTracks`,
+plus a rename cascade into stored answers), hide-when-empty on the public form
+(`publicQuestions` / `formAsSubmitted`, so validation only asks for what was
+rendered), and the release gate (`assertReleasable` — opening refuses on any
+blocker; an already-open form refuses only blockers the write would add, so
+nobody is locked out of the screen that fixes it). The builder mirrors the
+verdict in `forms-builder/model.ts::releaseBlockers`: per-question warning, a
+Questions-step banner, and a disabled "This form is open" switch. New forms on a
+trackless event now create the Track question OPTIONAL. Full reasoning in
+DECISIONS.md.
+
+Verified on a real fresh event (created and deleted via the trackstage MCP
+against the dev deployment): public `submit.getForm` returned six questions with
+no Track at all; adding two tracks made it reappear instantly with both names,
+in order, with no builder round trip; a real `submit.submit` went through with
+no track answer (the old hard block); reopening the form with Track required and
+zero tracks was refused with "The “Track” question is required but this event
+has no tracks yet — add tracks in Settings → Rooms & tracks, or make the
+question optional."; making it optional let it open; deleting the last track
+from a LIVE form hid the question instead of breaking the link. Builder UI
+checked in-browser (warnings render, switch disables). Seeded ai-summit-2026
+unchanged. typecheck + lint + 353 unit tests + openapi:check green; cfp-submit
+and forms-builder flows 9 passed / 1 flaky-then-passed.

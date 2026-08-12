@@ -1,4 +1,4 @@
-import { RiInformationLine } from "@remixicon/react"
+import { RiAlertLine, RiInformationLine } from "@remixicon/react"
 
 import { cn } from "@/lib/utils"
 import {
@@ -168,6 +168,34 @@ export function InfoNote({
         className="mt-0.5 shrink-0 text-primary"
       />
       <p className="leading-relaxed">{children}</p>
+    </div>
+  )
+}
+
+/**
+ * Amber warning banner — for a form that is not wrong yet but WILL be wrong for
+ * the person filling it in (a required question with nothing to pick from).
+ */
+export function WarningNote({
+  children,
+  className,
+}: {
+  children: React.ReactNode
+  className?: string
+}) {
+  return (
+    <div
+      className={cn(
+        "flex items-start gap-2.5 rounded-lg border border-status-amber-dot/40 bg-status-amber-bg/50 px-3.5 py-3 text-sm text-foreground",
+        className,
+      )}
+    >
+      <RiAlertLine
+        size={16}
+        aria-hidden
+        className="mt-0.5 shrink-0 text-status-amber-fg"
+      />
+      <div className="leading-relaxed">{children}</div>
     </div>
   )
 }

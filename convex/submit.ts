@@ -8,6 +8,7 @@ import { emitWebhook } from "./webhooks"
 import { queueMessage } from "./comms"
 import { randomToken } from "./lib/auth"
 import { siteUrl } from "./lib/email"
+import { formAsSubmitted, eventTrackNames, publicQuestions } from "./lib/formQuestions"
 import { isFormOpen } from "./lib/formWindow"
 import {
   formPath,
@@ -114,6 +115,11 @@ export const getForm = query({
     const resolved = await resolvePublicForm(ctx, args)
     if (resolved.status !== "ok") return null
     const { form, event } = resolved
+    // Track answers come from the event's tracks, live — and if the organizer
+    // hasn't made any yet the question is not shown at all, rather than as a
+    // required dropdown with nothing in it (convex/lib/formQuestions.ts). The
+    // submission simply arrives without a track; the organizer sets one later.
+    const trackNames = await eventTrackNames(ctx, form.eventId)
     const openState = isFormOpen(form)
     return {
       formId: form._id,
@@ -144,7 +150,10 @@ export const getForm = query({
       allowDrafts: form.settings.allowDrafts,
       successMessage: form.settings.successMessage,
       autoRedirectToPortal: form.settings.autoRedirectToPortal,
-      questions: form.questions.filter((q) => q.enabled),
+      questions: publicQuestions(
+        form.questions.filter((q) => q.enabled),
+        trackNames,
+      ),
       participantConfig: {
         speakerMin: form.participantConfig.speakerMin,
         speakerMax: form.participantConfig.speakerMax,
@@ -641,7 +650,9 @@ export const saveDraft = mutation({
     participants: v.array(participantArg),
   },
   handler: async (ctx, args) => {
-    const form = await requirePublicForm(ctx, args)
+    // As the speaker saw it: track options live, and no track question at all
+    // when the event has no tracks (convex/lib/formQuestions.ts).
+    const form = await formAsSubmitted(ctx, await requirePublicForm(ctx, args))
     if (!form.settings.allowDrafts) throw new ConvexError("Drafts are not allowed on this form.")
     const openState = isFormOpen(form)
     if (!openState.open) throw new ConvexError(openState.reason)
@@ -699,7 +710,9 @@ export const submit = mutation({
     participants: v.array(participantArg),
   },
   handler: async (ctx, args) => {
-    const form = await requirePublicForm(ctx, args)
+    // As the speaker saw it — validation must never demand an answer to a
+    // question the public form did not render (convex/lib/formQuestions.ts).
+    const form = await formAsSubmitted(ctx, await requirePublicForm(ctx, args))
     const openState = isFormOpen(form)
     if (!openState.open) throw new ConvexError(openState.reason)
 

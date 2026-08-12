@@ -209,21 +209,83 @@ export function questionTypeMeta(type: string): QuestionTypeMeta {
 }
 
 /** "Dropdown · 5 answer options" / "Short text · Max 200 characters". */
-export function questionSublabel(question: FormQuestion): string {
+export function questionSublabel(
+  question: FormQuestion,
+  /** The event's tracks — what a track question actually offers. */
+  trackNames?: Array<string>,
+): string {
   const meta = questionTypeMeta(question.type)
   const parts: Array<string> = [meta.label]
   if (meta.hasOptions) {
-    const count = question.options?.length ?? 0
-    parts.push(
-      count === 0
-        ? "No answer options yet"
-        : `${count} answer option${count === 1 ? "" : "s"}`,
-    )
+    const count = (
+      trackNames ? availableOptions(question, trackNames) : (question.options ?? [])
+    ).length
+    if (question.isTrackQuestion) {
+      parts.push(
+        count === 0
+          ? "Your event tracks — none yet"
+          : `Your event tracks (${count})`,
+      )
+    } else {
+      parts.push(
+        count === 0
+          ? "No answer options yet"
+          : `${count} answer option${count === 1 ? "" : "s"}`,
+      )
+    }
   }
   if (meta.hasMaxChars && question.maxChars) {
     parts.push(`Max ${question.maxChars.toLocaleString()} characters`)
   }
   return parts.join(" · ")
+}
+
+/* ------------------------------------------------- tracks & releasability */
+
+/**
+ * What a question can actually offer today.
+ *
+ * A dropdown flagged `isTrackQuestion` does not own its answers: they ARE the
+ * event's tracks (Settings → Rooms & tracks), synced on every read and write in
+ * `convex/lib/formQuestions.ts`. This mirrors that module, deliberately — the
+ * builder has to reach the same verdict the server will, before the organizer
+ * clicks anything.
+ */
+export function availableOptions(
+  question: FormQuestion,
+  trackNames: Array<string>,
+): Array<string> {
+  return question.isTrackQuestion ? trackNames : (question.options ?? [])
+}
+
+export interface ReleaseBlocker {
+  questionId: string
+  message: string
+}
+
+/**
+ * Why this form must not go live yet — a required question that asks for an
+ * answer it cannot offer. `convex/forms.ts` refuses the same list, so this is a
+ * courtesy, not the enforcement.
+ */
+export function releaseBlockers(
+  questions: Array<FormQuestion>,
+  trackNames: Array<string>,
+): Array<ReleaseBlocker> {
+  return questions
+    .filter(
+      (question) =>
+        question.enabled &&
+        question.required &&
+        questionTypeMeta(question.type).hasOptions &&
+        availableOptions(question, trackNames).length === 0,
+    )
+    .map((question) => ({
+      questionId: question.id,
+      message: question.isTrackQuestion
+        ? `The “${question.label}” question is required but this event has no tracks yet — add tracks in Settings → Rooms & tracks, or make the question optional.`
+        : `The “${question.label}” question is required but has no answer options — add options in the form builder, or make the question optional.`,
+    }))
 }
 
 /** Values a condition can test against (checkbox answers are Yes / No). */

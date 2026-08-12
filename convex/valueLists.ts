@@ -4,6 +4,7 @@ import type { Doc, Id } from "./_generated/dataModel"
 import type { MutationCtx, QueryCtx } from "./_generated/server"
 import { requireEventAccess } from "./lib/auth"
 import { record as recordAudit } from "./lib/audit"
+import { assertReleasable, eventTrackNames } from "./lib/formQuestions"
 
 // ————————————————————————————————————————————————————————————————————————
 // Shared value lists — Format, Level, Language, Tags.
@@ -148,6 +149,16 @@ async function editOptions(
     if (next === null) continue
     const questions = [...form.questions]
     questions[index] = { ...question, options: next }
+    // Removing the last option from a required question on a LIVE form leaves
+    // an unanswerable dropdown on the public link — the same wall publishing a
+    // broken form would put there (convex/lib/formQuestions.ts).
+    assertReleasable({
+      wasOpen: form.status === "open",
+      willBeOpen: form.status === "open",
+      before: form.questions,
+      after: questions,
+      trackNames: await eventTrackNames(ctx, eventId),
+    })
     await ctx.db.patch(form._id, { questions })
     touched++
   }

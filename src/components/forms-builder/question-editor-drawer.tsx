@@ -24,6 +24,7 @@ import {
   InfoNote,
   SectionHeading,
   SettingRow,
+  WarningNote,
 } from "./builder-controls"
 import {
   QUESTION_TYPES,
@@ -221,22 +222,44 @@ export function QuestionEditorDrawer({
           </BuilderField>
         ) : null}
 
-        {meta.hasOptions ? (
+        {meta.hasOptions && question.isTrackQuestion ? (
+          // Track answers are not typed here: they ARE the event's tracks, kept
+          // in step automatically (convex/lib/formQuestions.ts). Editing them
+          // by hand is what let a form offer a track that didn't exist — and an
+          // empty list is what put a required, unanswerable dropdown on the
+          // public form. Switch "Route answers to tracks" off below to go back
+          // to an ordinary dropdown with your own options.
+          <div className="flex flex-col gap-3">
+            <SectionHeading
+              title="Answer options"
+              description="Taken from your event tracks, and updated automatically when you add or rename one."
+            />
+            {trackNames.length > 0 ? (
+              <div className="flex flex-wrap gap-1.5">
+                {trackNames.map((name) => (
+                  <Badge key={name} variant="secondary" className="font-normal">
+                    {name}
+                  </Badge>
+                ))}
+              </div>
+            ) : (
+              <WarningNote>
+                You haven&rsquo;t created any tracks yet, so this question has
+                nothing to offer. Add them in{" "}
+                <span className="font-medium">Settings → Rooms &amp; tracks</span>{" "}
+                — until then it is hidden on the public form
+                {question.required && question.enabled
+                  ? ", and the form can't be opened while it is required"
+                  : ""}
+                .
+              </WarningNote>
+            )}
+          </div>
+        ) : meta.hasOptions ? (
           <div className="flex flex-col gap-3">
             <SectionHeading
               title="Answer options"
               description="One per line. Submitters pick from exactly these."
-              actions={
-                trackNames.length > 0 ? (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setOptions([...trackNames])}
-                  >
-                    Use my event tracks
-                  </Button>
-                ) : null
-              }
             />
             <ul className="flex flex-col gap-2">
               {options.map((option, index) => (
@@ -293,7 +316,7 @@ export function QuestionEditorDrawer({
                 Route answers to tracks
               </span>
             }
-            description="Each answer must match one of your event's track names. Submissions land in the matching track automatically — no manual sorting."
+            description="The answers become your event's tracks, and stay in step with them. Submissions land in the matching track automatically — no manual sorting."
             checked={Boolean(question.isTrackQuestion)}
             onCheckedChange={(value) =>
               onChange({ isTrackQuestion: value || undefined })
@@ -315,9 +338,9 @@ export function QuestionEditorDrawer({
                 </>
               ) : (
                 <>
-                  You haven't created any tracks yet. Add them in Settings →
-                  Rooms &amp; tracks, then come back and use “Use my event
-                  tracks”.
+                  You haven&rsquo;t created any tracks yet. Add them in Settings
+                  → Rooms &amp; tracks and they appear here — and on your public
+                  form — straight away.
                 </>
               )}
             </p>

@@ -263,6 +263,7 @@ function FormEditor({
             patch={patch}
             update={update}
             timezone={timezone}
+            trackNames={trackNames}
           />
         ) : null}
         {stepId === "notifications" ? (

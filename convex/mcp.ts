@@ -29,6 +29,11 @@ import {
   resolveBulkRecipients,
 } from "./comms"
 import { deleteUploadRow } from "./lib/files"
+import {
+  assertReleasable,
+  eventTrackNames,
+  syncTrackOptions,
+} from "./lib/formQuestions"
 import { EMBED_FORMATS, EMBED_WIDGETS, validAccent } from "./embeds"
 import { humanMessage } from "./lib/errors"
 import {
@@ -592,7 +597,11 @@ export const getForm = internalQuery({
       status: form.status,
       closeAt: iso(form.closeAt),
       publicUrl: await formPublicUrl(ctx, form),
-      questions: form.questions.map((question) => {
+      // Track options are the event's tracks, live (lib/formQuestions.ts).
+      questions: syncTrackOptions(
+        form.questions,
+        await eventTrackNames(ctx, form.eventId),
+      ).map((question) => {
         // A tag or country dropdown can carry hundreds of options; the whole
         // payload then gets lossily compressed by the model before the user
         // ever sees it. Ten is enough to characterise the question — the count
@@ -652,7 +661,9 @@ export const createForm = internalMutation({
       { id: "title", label: "Title", type: "short_text", required: true, enabled: true, locked: true, maxChars: 200 },
       { id: "description", label: "Description", type: "rich_text", required: true, enabled: true, locked: true, maxChars: 5000 },
       { id: "format", label: "Format", type: "dropdown", required: true, enabled: true, locked: false, options: ["Talk", "Workshop", "Lightning Talk"] },
-      { id: "track", label: "Track", type: "dropdown", required: true, enabled: true, locked: false, options: tracks.map((t) => t.name), isTrackQuestion: true },
+      // Required only once the event has tracks — a required dropdown with no
+      // options is a wall on the public form (convex/lib/formQuestions.ts).
+      { id: "track", label: "Track", type: "dropdown", required: tracks.length > 0, enabled: true, locked: false, options: tracks.map((t) => t.name), isTrackQuestion: true },
       { id: "level", label: "Level", type: "dropdown", required: false, enabled: true, locked: false, options: ["Introductory", "Intermediate", "Advanced"] },
       { id: "language", label: "Language", type: "dropdown", required: false, enabled: true, locked: false, options: ["English"] },
       { id: "tags", label: "Tags", type: "multi_select", required: false, enabled: true, locked: false, options: ["AI", "Infrastructure", "Product", "Open Source"] },
@@ -732,6 +743,15 @@ export const updateFormSettings = internalMutation({
       if (args.status !== "open" && args.status !== "closed") {
         throw new ConvexError("status must be 'open' or 'closed'.")
       }
+      // Opening a form nobody can submit through is refused here exactly as it
+      // is in the builder (convex/lib/formQuestions.ts).
+      assertReleasable({
+        wasOpen: form.status === "open",
+        willBeOpen: args.status === "open",
+        before: form.questions,
+        after: form.questions,
+        trackNames: await eventTrackNames(ctx, form.eventId),
+      })
       patch.status = args.status
     }
     if (args.closeAt !== undefined) patch.closeAt = args.closeAt ?? undefined

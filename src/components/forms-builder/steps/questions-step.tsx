@@ -19,7 +19,12 @@ import { RiSignpostLine } from "@remixicon/react"
 import { toast } from "sonner"
 
 import { AddQuestionMenu } from "../add-question-menu"
-import { InfoNote, SectionHeading, StepIntro } from "../builder-controls"
+import {
+  InfoNote,
+  SectionHeading,
+  StepIntro,
+  WarningNote,
+} from "../builder-controls"
 import { QuestionEditorDrawer } from "../question-editor-drawer"
 import { QuestionRow } from "../question-row"
 import { makeQuestion, makeQuestionId } from "../model"
@@ -189,7 +194,21 @@ export function QuestionsStep({
         actions={<AddQuestionMenu onAdd={addQuestion} />}
       />
 
-      {trackQuestion ? (
+      {trackQuestion && trackNames.length === 0 ? (
+        // Marko's bug, at the place it is fixable: a Track question on an event
+        // with no tracks used to render as a required dropdown with nothing in
+        // it on the live public form.
+        <WarningNote>
+          <span className="font-medium">“{trackQuestion.label}”</span> offers
+          your event tracks — and you haven&rsquo;t created any yet. Add them in{" "}
+          <span className="font-medium">Settings → Rooms &amp; tracks</span>;
+          until then this question is hidden on the public form
+          {trackQuestion.required && trackQuestion.enabled
+            ? ", and the form can't be opened while it is switched on and required"
+            : ""}
+          .
+        </WarningNote>
+      ) : trackQuestion ? (
         <div className="flex items-start gap-2.5 rounded-lg border border-border bg-accent px-3.5 py-3 text-sm text-foreground/80">
           <RiSignpostLine
             size={16}
@@ -201,7 +220,8 @@ export function QuestionsStep({
               “{trackQuestion.label}”
             </span>{" "}
             routes submissions: whatever a submitter picks puts their session in
-            the matching track, ready for the agenda.
+            the matching track, ready for the agenda. Its answers stay in step
+            with Settings → Rooms &amp; tracks automatically.
           </p>
         </div>
       ) : (
@@ -228,6 +248,7 @@ export function QuestionsStep({
                 key={question.id}
                 question={question}
                 questions={questions}
+                trackNames={trackNames}
                 isFirst={index === 0}
                 isLast={index === questions.length - 1}
                 onChange={(patch) => patchQuestion(question.id, patch)}

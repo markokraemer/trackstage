@@ -9,6 +9,12 @@ import { recordWorkspace } from "./lib/audit"
 import { computeConflicts } from "./agenda"
 import { deleteEventCascade } from "./events"
 import { deleteUploadRow } from "./lib/files"
+import {
+  assertReleasable,
+  eventTrackNames,
+  releaseBlockers,
+  syncTrackOptions,
+} from "./lib/formQuestions"
 import { personProfileComplete, syncProfileTasks } from "./lib/profileTasks"
 import {
   eventPath,
@@ -1969,6 +1975,15 @@ export const writeMetadata = internalMutation({
       }
       const questions = [...form.questions]
       questions[index] = { ...question, options }
+      // Emptying the list behind a required question on a LIVE form is the
+      // same wall as publishing one — refuse it (lib/formQuestions.ts).
+      assertReleasable({
+        wasOpen: form.status === "open",
+        willBeOpen: form.status === "open",
+        before: form.questions,
+        after: questions,
+        trackNames: await eventTrackNames(ctx, event._id),
+      })
       await ctx.db.patch(form._id, { questions })
       touched++
     }
@@ -2039,7 +2054,15 @@ export const writeField = internalMutation({
         help: args.help,
         options: args.options,
       }
-      await ctx.db.patch(form._id, { questions: [...form.questions, question] })
+      const withNew = [...form.questions, question]
+      assertReleasable({
+        wasOpen: form.status === "open",
+        willBeOpen: form.status === "open",
+        before: form.questions,
+        after: withNew,
+        trackNames: await eventTrackNames(ctx, event._id),
+      })
+      await ctx.db.patch(form._id, { questions: withNew })
       return {
         data: {
           id: slug,
@@ -2088,6 +2111,15 @@ export const writeField = internalMutation({
           form_id: form._id,
         }
       }
+      // Making a question required, or switching it on, must not leave a live
+      // form asking for an answer it cannot offer (lib/formQuestions.ts).
+      assertReleasable({
+        wasOpen: form.status === "open",
+        willBeOpen: form.status === "open",
+        before: form.questions,
+        after: questions,
+        trackNames: await eventTrackNames(ctx, event._id),
+      })
       await ctx.db.patch(form._id, { questions })
       touched++
     }
@@ -2929,6 +2961,11 @@ async function formShape(
     .withIndex("by_formId", (q) => q.eq("formId", form._id))
     .take(MAX_ROWS)
   const live = submissions.filter((row) => row.deletedAt === undefined)
+  // The track question reports the event's tracks, not a snapshot of them.
+  const questions = syncTrackOptions(
+    form.questions,
+    await eventTrackNames(ctx, form.eventId),
+  )
   return {
     id: form._id,
     slug: form.slug,
@@ -2944,7 +2981,7 @@ async function formShape(
     notify_emails: form.notifyEmails,
     // The canonical public address — the link an organizer actually shares.
     public_url: formPath(await workspaceSlugForEvent(ctx, event), event.slug, form.slug),
-    questions: form.questions.map((question, index) => ({
+    questions: questions.map((question, index) => ({
       id: question.id,
       // Same vocabulary as GET /fields, so one object has one name here.
       internal_name: question.id,
@@ -3160,14 +3197,24 @@ export const writeForm = internalMutation({
       const trackNames = tracks
         .sort((a, b) => a.order - b.order)
         .map((track) => track.name)
-      const questions: Array<IncomingQuestion> =
-        input.questions ?? defaultFormQuestions(trackNames)
+      // Track options are the event's tracks, never the caller's copy of them
+      // (convex/lib/formQuestions.ts), and a form may not be created open while
+      // a required choice question has nothing to offer.
+      const questions = syncTrackOptions(
+        input.questions ?? defaultFormQuestions(trackNames),
+        trackNames,
+      )
+      const status = input.status === "closed" ? "closed" : "open"
+      if (status === "open") {
+        const blockers = releaseBlockers(questions, trackNames)
+        if (blockers.length > 0) throw new ConvexError(blockers[0].message)
+      }
       const slug = await uniqueFormSlug(ctx, event._id, input.slug ?? internalName)
       const formId = await ctx.db.insert("forms", {
         eventId: event._id,
         slug,
         kind,
-        status: input.status === "closed" ? "closed" : "open",
+        status,
         closeAt: input.close_at,
         internalName,
         externalTitle: input.external_title ?? internalName,
@@ -3210,6 +3257,7 @@ export const writeForm = internalMutation({
     }
 
     await authorizeEvent(ctx, event, args.userId)
+    const formTrackNames = await eventTrackNames(ctx, event._id)
     const patch: Record<string, unknown> = {}
     if (input.internal_name !== undefined) {
       const name = input.internal_name.trim()
@@ -3251,7 +3299,7 @@ export const writeForm = internalMutation({
           throw new ConvexError(
             `"${locked.label}" is a system question and has to stay on the form.`,
           )
-      patch.questions = input.questions
+      patch.questions = syncTrackOptions(input.questions, formTrackNames)
     }
     if (input.participant_config !== undefined)
       patch.participantConfig = mergeParticipantConfig(
@@ -3260,6 +3308,17 @@ export const writeForm = internalMutation({
       )
     if (input.settings !== undefined)
       patch.settings = mergeFormSettings(form.settings, input.settings)
+
+    // Same gate as the builder — see convex/lib/formQuestions.ts.
+    assertReleasable({
+      wasOpen: form.status === "open",
+      willBeOpen: ((patch.status as string | undefined) ?? form.status) === "open",
+      before: form.questions,
+      after:
+        (patch.questions as Array<IncomingQuestion> | undefined) ?? form.questions,
+      trackNames: formTrackNames,
+    })
+
     await ctx.db.patch(form._id, patch)
     const fresh = await ctx.db.get(form._id)
     return { data: await formShape(ctx, fresh as Doc<"forms">, event) }
@@ -3272,7 +3331,8 @@ function defaultFormQuestions(trackNames: Array<string>): Array<IncomingQuestion
     { id: "title", label: "Title", type: "short_text", required: true, enabled: true, locked: true, maxChars: 200 },
     { id: "description", label: "Description", type: "rich_text", required: true, enabled: true, locked: true, maxChars: 5000 },
     { id: "format", label: "Format", type: "dropdown", required: true, enabled: true, locked: false, options: ["Talk", "Workshop", "Lightning Talk"] },
-    { id: "track", label: "Track", type: "dropdown", required: true, enabled: true, locked: false, options: trackNames, isTrackQuestion: true },
+    // Required only once the event actually has tracks — see convex/forms.ts.
+    { id: "track", label: "Track", type: "dropdown", required: trackNames.length > 0, enabled: true, locked: false, options: trackNames, isTrackQuestion: true },
     { id: "level", label: "Level", type: "dropdown", required: false, enabled: true, locked: false, options: ["Introductory", "Intermediate", "Advanced"] },
     { id: "language", label: "Language", type: "dropdown", required: false, enabled: true, locked: false, options: ["English"] },
     { id: "tags", label: "Tags", type: "multi_select", required: false, enabled: true, locked: false, options: ["AI", "Infrastructure", "Product", "Open Source"] },

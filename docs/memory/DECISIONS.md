@@ -446,3 +446,49 @@ screen-reader equivalent. One rule now: `label .required-asterisk` pulls back
 0.375rem, scoped to labels so running prose ("fields marked with * are
 required") keeps its space; the raw spans became `.required-asterisk` +
 `aria-hidden` + an `(required)` sr-only, matching the CFP wizard.
+
+## The Track question is sourced from the event's tracks, and a required dropdown with no options is not shippable (2026-08-12)
+Marko, on a screenshot of a FRESH event's live public form: the required "Track"
+dropdown rendered "Select an option…" with nothing in it — a required field
+nobody could satisfy, so the CFP was a dead end from the first minute. Then:
+"you shouldn't even be able to create and SAVE/RELEASE the form if you have no
+track."
+
+Root cause: `forms.create` **snapshotted** track names into the question's
+`options` array. On an event with no tracks that snapshot was `[]`, and tracks
+added later never reached the form either.
+
+Three layers, all in `convex/lib/formQuestions.ts`:
+
+1. **Sync, not snapshot.** A question with `isTrackQuestion` does not own its
+   answers — they ARE `tracks` for that event. `syncTrackOptions` re-derives
+   them on every read (`forms.get`, `submit.getForm`, the REST `formShape`, MCP
+   `get_form`) and every write (`forms.create/update/duplicate`, the REST form
+   + field endpoints), and `roomsTracks` writes through to the stored copy so
+   the API and MCP see the truth too. A track rename carries into the answers
+   already given, exactly as `valueLists.rename` does for Format/Level/Language.
+   The per-form override is unchanged and is where it always was: switch "Route
+   answers to tracks" off and it becomes an ordinary dropdown with its own
+   options. Format/Level/Language/Tags keep the value-list model (they ship with
+   defaults, so they cannot be empty by accident).
+2. **Never render an unanswerable field.** With zero tracks the question is
+   dropped from the public form entirely (`publicQuestions`) rather than shown
+   empty or silently relaxed — the submission simply arrives trackless and the
+   organizer assigns one later. `saveDraft`/`submit` validate against that same
+   set (`formAsSubmitted`), so the server can't demand an answer the speaker was
+   never asked for. This is the fallback that keeps ALREADY-live forms working
+   when the last track is deleted.
+3. **You cannot release a form nobody can fill in.** `assertReleasable` refuses
+   to open a form while any enabled + required choice question has nothing to
+   offer, in `forms.update`, the REST form/field writes, MCP
+   `update_form_settings` and `valueLists` — with one deliberate asymmetry:
+   opening refuses on ANY blocker, but a form that is already open refuses only
+   blockers the write would ADD, or an organizer who inherited a broken form
+   would be locked out of the screen where the fix lives. The builder mirrors
+   the same verdict (`releaseBlockers` in `forms-builder/model.ts`): a warning
+   on the offending question row, a banner in the Questions step, and the
+   "This form is open" switch disabled while it's closed and blocked.
+
+Because a new form is born open, `forms.create` (and the REST/MCP equivalents)
+now create the Track question **optional** when the event has no tracks yet —
+required is a choice the organizer makes once there is something to choose from.
