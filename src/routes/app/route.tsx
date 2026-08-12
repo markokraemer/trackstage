@@ -516,20 +516,28 @@ function OrganizerLayout() {
         {/* Tier 2 — event-scoped left sidebar. md+ only: below md the same
             content lives in the hamburger drawer (MobileNav, top bar) — a
             64px icon rail on a phone was navigation by memory. */}
-        <aside className="sticky top-14 hidden h-[calc(100svh-3.5rem)] w-60 shrink-0 flex-col overflow-y-auto border-r border-sidebar-border bg-sidebar md:flex">
+        <aside className="sticky top-14 hidden h-[calc(100svh-3.5rem)] w-60 shrink-0 flex-col border-r border-sidebar-border bg-sidebar md:flex">
           <div className="border-b border-sidebar-border p-3">
             <ShellEventSwitcher />
           </div>
 
-          <SidebarNav groups={navGroups} />
+          {/* Only the nav scrolls. The checklist and Event settings below are
+              fixed — the checklist floats over the scroll area's tail with a
+              blurred backdrop so passing nav items fade under it instead of
+              pushing the whole sidebar into one long scroll. */}
+          <div className="min-h-0 flex-1 overflow-y-auto">
+            <SidebarNav groups={navGroups} />
+          </div>
 
           {/* Quiet, data-derived checklist for a young event — disappears by
               itself when everything is done, or forever via its ✕. */}
-          <GettingStarted />
+          <div className="bg-sidebar/85 backdrop-blur-sm">
+            <GettingStarted />
+          </div>
 
           {/* Event settings — pinned at the very bottom, behind its own
               separator, so it never reads as part of the last nav group. */}
-          <div className="mt-auto border-t border-sidebar-border">
+          <div className="border-t border-sidebar-border bg-sidebar">
             <SidebarNav
               ariaLabel="Event settings"
               groups={settingsGroups}
