@@ -15,10 +15,17 @@ export const PRODUCT_NAME = "Trackstage"
 export const PRODUCT_APP_HOST = "trackstage.app"
 export const PRODUCT_SITE_HOST = "trackstage.app"
 
-export const GITHUB_URL = "https://github.com/markokraemer/trackstage"
-export const GITHUB_LICENSE_URL = `${GITHUB_URL}/blob/main/LICENSE`
-export const GITHUB_README_URL = `${GITHUB_URL}#readme`
-export const GITHUB_ISSUES_URL = `${GITHUB_URL}/issues`
+/**
+ * All public GitHub links go through /get: it live-checks whether the repo is
+ * public and either forwards straight to GitHub or explains that the code
+ * opens when the Kill My SaaS contest concludes (repo private until then so
+ * the work can't be lifted mid-competition). Once the repo is flipped public,
+ * /get becomes a pure redirect — no code change needed.
+ */
+export const GITHUB_URL = "/get"
+export const GITHUB_LICENSE_URL = GITHUB_URL
+export const GITHUB_README_URL = GITHUB_URL
+export const GITHUB_ISSUES_URL = GITHUB_URL
 export const SESSIONBOARD_URL = "https://www.sessionboard.com"
 
 /**
