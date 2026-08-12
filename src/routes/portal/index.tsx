@@ -14,6 +14,7 @@ import { DueChip } from "@/components/portal/due-chip"
 import { PanelCard } from "@/components/portal/panel-card"
 import { ProfileMeter } from "@/components/portal/profile-meter"
 import { SubmissionCard } from "@/components/portal/submission-card"
+import { SessionCalendarButton } from "@/components/portal/session-calendar-button"
 import { usePortal } from "@/components/portal/portal-context"
 import {
   fullName,
@@ -75,16 +76,27 @@ function PortalHomePage() {
                     code={submissionCode(index, total)}
                     bare
                     action={
-                      <Link
-                        to="/portal/submissions"
-                        search={{ open: submission.id }}
-                        className={cn(
-                          buttonVariants({ variant: "outline", size: "sm" }),
-                        )}
-                      >
-                        View details
-                        <RiArrowRightLine aria-hidden />
-                      </Link>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Link
+                          to="/portal/submissions"
+                          search={{ open: submission.id }}
+                          className={cn(
+                            buttonVariants({ variant: "outline", size: "sm" }),
+                          )}
+                        >
+                          View details
+                          <RiArrowRightLine aria-hidden />
+                        </Link>
+                        {/* The home card is deliberately `bare` (no scheduled
+                            line), but a speaker who is already on the program
+                            should not have to open a drawer to save it. */}
+                        <SessionCalendarButton
+                          submission={submission}
+                          event={home.event}
+                          variant="ghost"
+                          size="sm"
+                        />
+                      </div>
                     }
                   />
                 </li>

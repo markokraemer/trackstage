@@ -10,6 +10,7 @@ import { StatusPill } from "@/components/shared/status-pill"
 import { usePortal } from "./portal-context"
 import type { PortalSubmission } from "./portal-context"
 import { formatEventDateTime } from "./portal-utils"
+import { SessionCalendarButton } from "./session-calendar-button"
 
 /** Small colored dot + name for the submission's track. */
 export function TrackDot({
@@ -125,6 +126,15 @@ export function SubmissionCard({
               {submission.scheduled.room}
             </span>
           ) : null}
+          {/* Right where the speaker reads their slot — the shortest possible
+              path from "when am I on" to "it's in my calendar". */}
+          <SessionCalendarButton
+            submission={submission}
+            event={home.event}
+            variant="ghost"
+            size="xs"
+            className="-my-1 text-muted-foreground"
+          />
         </p>
       ) : null}
 

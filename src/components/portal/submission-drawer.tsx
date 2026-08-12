@@ -36,6 +36,7 @@ import { StatusPill } from "@/components/shared/status-pill"
 import { usePortal } from "./portal-context"
 import type { PortalSubmission } from "./portal-context"
 import { TrackDot } from "./submission-card"
+import { SessionCalendarButton } from "./session-calendar-button"
 import { errorMessage } from "@/lib/errors"
 import {
   canEdit,
@@ -274,6 +275,12 @@ export function SubmissionDrawer({
                     </span>
                   ) : null}
                 </span>
+                <SessionCalendarButton
+                  submission={submission}
+                  event={home.event}
+                  size="sm"
+                  className="mt-3"
+                />
               </AlertDescription>
             </Alert>
           ) : null}
