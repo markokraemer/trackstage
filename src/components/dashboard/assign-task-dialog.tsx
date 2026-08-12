@@ -52,12 +52,12 @@ export const TASK_KINDS = [
   {
     value: "upload",
     label: "Upload a file",
-    help: "They attach a file in their portal and you review it — slides, a signed form, a rider.",
+    help: "They attach a file in their portal — slides, a form, a rider.",
   },
   {
     value: "answer",
     label: "Collect an answer",
-    help: "They type a reply; their answer is the proof. Ask the question below and read what they wrote on their profile.",
+    help: "They type a reply to the question you write below.",
   },
   {
     value: "profile",
@@ -300,8 +300,10 @@ export function AssignTaskDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       {/* Bounded height with the fields scrolling inside: the header and the
-          Assign button stay put however many speakers the event has. */}
-      <DialogContent className="max-h-[85svh] grid-rows-[auto_minmax(0,1fr)] gap-4 sm:max-w-lg">
+          Assign button stay put however many speakers the event has. 90svh
+          rather than 85 — this is a long form, and every extra pixel of the
+          scroll region is a control someone doesn't have to go looking for. */}
+      <DialogContent className="max-h-[90svh] grid-rows-[auto_minmax(0,1fr)] gap-4 sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>Assign a task</DialogTitle>
           <DialogDescription>
@@ -314,14 +316,10 @@ export function AssignTaskDialog({
           onSubmit={(event) => void submit(event)}
           className="flex min-h-0 flex-col gap-4"
         >
-          <FieldGroup className="-mr-2 min-h-0 flex-1 gap-5 overflow-y-auto pr-2">
+          <FieldGroup className="-mr-2 min-h-0 flex-1 gap-4 overflow-y-auto pr-2">
             {templateOptions.length > 1 ? (
               <Field>
                 <FieldLabel htmlFor="task-template">From your library</FieldLabel>
-                <FieldDescription>
-                  Reuse a task you've written before. You can still edit it here
-                  — the saved version stays as it is.
-                </FieldDescription>
                 <Select
                   items={templateOptions}
                   value={templateId}
@@ -353,29 +351,22 @@ export function AssignTaskDialog({
               </Field>
             ) : null}
 
-            <Field>
-              <FieldLabel htmlFor="task-title">
-                Task title<span className="required-asterisk">*</span>
-              </FieldLabel>
-              <FieldDescription>
-                What the speaker sees at the top of the task.
-              </FieldDescription>
-              <Input
-                id="task-title"
-                name="title"
-                value={title}
-                onChange={(event) => setTitle(event.target.value)}
-                placeholder="Upload your slides"
-                aria-invalid={showErrors && titleMissing ? true : undefined}
-                required
-              />
-            </Field>
+            {/* The kind comes BEFORE the title on purpose, and its options are
+                deliberately one line tall.
 
+                Two reasons, one of them a bug we shipped. Logically the kind
+                decides the shape of everything under it — it is what turns
+                "Instructions" into "Your question" — so picking it first reads
+                better than naming a task before deciding what it is. And
+                practically: five two-line cards further down the form pushed the
+                last two options past the bottom of this scroll region, where
+                they still had layout boxes but were clipped out of view. A click
+                aimed at their coordinates hit the form (or, past the panel edge,
+                the dialog backdrop) and did nothing, so the choice was only
+                reachable by scrolling or by keyboard. Kept short and kept high,
+                every option is on screen the moment the dialog opens. */}
             <Field>
               <FieldLabel>What should the speaker do?</FieldLabel>
-              <FieldDescription>
-                This decides how the task gets ticked off.
-              </FieldDescription>
               <RadioGroup
                 value={kind}
                 onValueChange={(value) => setKind(String(value))}
@@ -388,7 +379,7 @@ export function AssignTaskDialog({
                     <label
                       key={option.value}
                       className={cn(
-                        "flex cursor-pointer items-start gap-3 rounded-lg border px-3 py-2.5 transition-colors",
+                        "flex cursor-pointer items-start gap-3 rounded-lg border px-3 py-2 transition-colors",
                         checked
                           ? "border-primary bg-accent/60 ring-1 ring-primary"
                           : "border-border hover:bg-accent/40",
@@ -403,7 +394,7 @@ export function AssignTaskDialog({
                         <span className="block text-sm font-medium text-foreground">
                           {option.label}
                         </span>
-                        <span className="block text-xs leading-relaxed text-muted-foreground">
+                        <span className="block text-xs leading-snug text-muted-foreground">
                           {option.help}
                         </span>
                       </span>
@@ -411,6 +402,21 @@ export function AssignTaskDialog({
                   )
                 })}
               </RadioGroup>
+            </Field>
+
+            <Field>
+              <FieldLabel htmlFor="task-title">
+                Task title<span className="required-asterisk">*</span>
+              </FieldLabel>
+              <Input
+                id="task-title"
+                name="title"
+                value={title}
+                onChange={(event) => setTitle(event.target.value)}
+                placeholder="Upload your slides"
+                aria-invalid={showErrors && titleMissing ? true : undefined}
+                required
+              />
             </Field>
 
             {/* For an "answer" task this field IS the question, so it stops

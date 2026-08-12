@@ -129,7 +129,12 @@ export function AddSpeakerDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg">
+      {/* Bounded, with the fields scrolling inside — same containment as the
+          assign-task dialog. Unbounded, this form was taller than a 800px-high
+          window: the panel hung off both edges of the screen and the Add button
+          went with it, unreachable and unscrollable because the panel is fixed
+          positioned. */}
+      <DialogContent className="max-h-[90svh] grid-rows-[auto_minmax(0,1fr)] gap-4 sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>Add a speaker</DialogTitle>
           <DialogDescription>
@@ -139,8 +144,11 @@ export function AddSpeakerDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={(event) => void submit(event)}>
-          <FieldGroup className="gap-5">
+        <form
+          onSubmit={(event) => void submit(event)}
+          className="flex min-h-0 flex-col"
+        >
+          <FieldGroup className="-mr-2 min-h-0 flex-1 gap-5 overflow-y-auto pr-2">
             <div className="grid gap-4 sm:grid-cols-2">
               <Field>
                 <FieldLabel htmlFor="speaker-first">
@@ -255,7 +263,7 @@ export function AddSpeakerDialog({
             </Field>
           </FieldGroup>
 
-          <DialogFooter className="mt-6">
+          <DialogFooter className="mt-6 shrink-0">
             <Button
               type="button"
               variant="outline"
