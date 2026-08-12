@@ -1,7 +1,7 @@
 # Trackstage — "Kill My SaaS" submission
 
 **Live:** https://trackstage.app · **Repo:** https://github.com/markokraemer/trackstage (MIT)
-· **Film:** https://trackstage.app/launch.mp4 (90 s)
+· **Film:** https://trackstage.app/launch.mp4 (82 s) · **Tour GIF:** [public/screenshots/platform-tour.gif](../../public/screenshots/platform-tour.gif) (15 s, the whole platform)
 
 Trackstage is an open-source replacement for Sessionboard: call for speakers → review →
 speaker portal → agenda → published program, in one fast tool. Built for the

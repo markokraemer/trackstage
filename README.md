@@ -37,7 +37,14 @@ Nothing to install — the live demo is seeded and open.
 | **Read the docs** | [trackstage.app/docs](https://trackstage.app/docs) |
 | **Watch the 90-second film** | [trackstage.app/launch.mp4](https://trackstage.app/launch.mp4) |
 
+![A fifteen-second tour of the whole platform — dashboard, submissions, agenda drag-and-drop with clash detection, speaker portal, public CFP, AI copilot, embeds builder and the published schedule](public/screenshots/platform-tour.gif)
+
+<details>
+<summary><b>The dashboard, still</b></summary>
+
 ![The organizer dashboard — live submission counts, the decision pipeline, and which speakers to chase first](public/screenshots/dashboard.png)
+
+</details>
 
 ## What it does
 
