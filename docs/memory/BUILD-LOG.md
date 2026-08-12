@@ -3312,3 +3312,13 @@ profile. Claude Code Max authentication does not authenticate that SDK. Two
 subscription-based Claude review attempts produced no usable report and count
 as zero evidence. The historical 94.4% composite is stale and is not presented
 as this branch's score.
+
+### PR-head CI follow-up
+
+After squashing the audit into one commit to remove inherited public demo/test
+password fixtures from GitGuardian's commit-range scan, GitGuardian passed and
+the deterministic CI job passed. The first hermetic browser job never entered
+the tests: CI had prestarted Vite on `localhost`, while Playwright probes
+`127.0.0.1`; the hosted runner's address-family split made Playwright miss the
+healthy prestarted server and time out trying to start another. CI now binds
+and probes Vite on the exact `127.0.0.1` address in `playwright.config.ts`.
