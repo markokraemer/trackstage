@@ -65,7 +65,7 @@ const SHOTS: Record<ProductShotVariant, ShotMeta> = {
   agenda: {
     src: "/screenshots/agenda.png",
     url: `${APP}/app/agenda`,
-    alt: "The agenda day view: rooms as columns, sessions placed on a time grid, and a tray of accepted sessions still waiting for a slot.",
+    alt: "The agenda day view: rooms as columns, sessions placed on a time grid, and a side tray that reports every accepted session already has a slot.",
   },
   form: {
     src: "/screenshots/form-builder.png",
