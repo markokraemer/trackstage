@@ -324,7 +324,20 @@ export async function selectEvent(page: Page, name = MAIN_EVENT_NAME) {
   // early sees no event name, so we'd open the menu — and the data-arrival
   // re-render then closes it under our click. Wait for real text first.
   await expect(switcher).toContainText(/[A-Za-z]/, { timeout: 30_000 })
-  if ((await switcher.textContent())?.includes(name)) return
+  const closeOpenMenu = async () => {
+    const menu = page.getByRole("menu", { name: /switch event/i }).first()
+    if (await menu.isVisible().catch(() => false)) {
+      await page.keyboard.press("Escape")
+      await expect(menu).toBeHidden({ timeout: 10_000 })
+    }
+  }
+  if ((await switcher.textContent())?.includes(name)) {
+    // A previous reactive switch can leave Base UI's menu mounted even after
+    // the trigger already names the right event. Never hand an inert backdrop
+    // to the caller: it intercepts every subsequent pointer action.
+    await closeOpenMenu()
+    return
+  }
   const before = page.url()
   // Open + pick as one retried unit: if a reactive re-render closes the
   // popover between the two steps, try the whole gesture again.
@@ -340,6 +353,7 @@ export async function selectEvent(page: Page, name = MAIN_EVENT_NAME) {
   if (page.url() !== before) {
     await page.waitForLoadState("networkidle").catch(() => {})
   }
+  await closeOpenMenu()
 }
 
 /**

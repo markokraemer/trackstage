@@ -2,6 +2,7 @@ import { expect, test } from "@playwright/test"
 import { api } from "../../../convex/_generated/api.js"
 import {
   DEMO_WORKSPACE_NAME,
+  DEMO_WORKSPACE_SLUG,
   MAIN_EVENT_NAME,
   ORGANIZER_STATE,
   armed,
@@ -142,36 +143,20 @@ test.describe("multi-tenancy", () => {
     const orgWatcher = armed(org)
 
     await test.step("organizer invites the fresh email", async () => {
-      await gotoStable(org, "/app/workspace")
+      await gotoStable(
+        org,
+        `/app/${DEMO_WORKSPACE_SLUG}/workspace?tab=team`,
+        "networkidle",
+      )
       await expect(
         org.getByRole("heading", { name: /workspace settings/i }).first()
       ).toBeVisible({ timeout: 30_000 })
 
-      // The organizer may belong to several workspaces after earlier runs —
-      // the hub's "Your workspaces" card switches to the demo one if needed.
-      const switchToDemo = org.getByRole("button", {
-        name: `Switch to ${DEMO_WORKSPACE_NAME}`,
-      })
-      if ((await switchToDemo.count()) > 0) {
-        await switchToDemo.first().click()
-        await expect(
-          org
-            .getByRole("heading", {
-              name: new RegExp(
-                `workspace settings — ${DEMO_WORKSPACE_NAME}`,
-                "i"
-              ),
-            })
-            .first()
-        ).toBeVisible({ timeout: 20_000 })
-      }
-
-      // Team is a first-class tab in the modal — the member table is its
-      // whole content, with the invite CTA in the header.
-      await org
-        .getByRole("tab", { name: /^team$/i })
-        .first()
-        .click()
+      // The canonical slug already selects the demo workspace. Team is a
+      // first-class page tab, with the invite CTA in the header.
+      await expect(
+        org.getByRole("tab", { name: /^team$/i }).first(),
+      ).toHaveAttribute("aria-selected", "true")
       await org
         .getByRole("button", { name: /invite teammate/i })
         .first()

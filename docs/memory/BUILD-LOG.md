@@ -3332,3 +3332,42 @@ the CI deployment is isolated and seeded once, the older shared-deployment
 justification for retries does not apply there. Playwright retries are now zero
 globally and for the flows project; a cold-start or state-leak failure must be
 fixed, never converted into a green check.
+
+### Zero-retry CI repair
+
+The first no-retry PR run (`31593023681`) correctly exposed ten failures. The
+artifacts reduced them to four independent races, not ten product regressions:
+the agenda lifecycle unpublished the shared demo event and restored it only on
+its happy path (cascading into embeds and five public-page failures), the event
+switcher could return with Base UI's modal menu backdrop still mounted, the
+multi-tenant flow took a cold legacy workspace redirect instead of its
+canonical route, and a submission link click coupled the assertion to router
+navigation bookkeeping.
+
+The repair makes state ownership explicit. Agenda publication is restored in a
+`finally`; public pages and embeds establish publication as their own
+precondition; `selectEvent` never returns with the switcher menu open; workspace
+E2E addresses the canonical workspace page; and the drawer test asserts the
+real `?id=` destination while letting its dialog/URL assertions signal
+completion. Dropdown menus now default to non-modal like the house Select, so
+an open ordinary action menu cannot inert the whole app, with a regression test
+that clicks directly from the open event menu into the copilot composer.
+Playwright output/report paths are ignored by Vite's watcher after the failed
+CI log showed hundreds of full-reload broadcasts for trace resources.
+
+Independent Claude Code read-only review agreed with the artifact diagnosis
+and identified the menu default plus Vite watch-root churn; every recommendation
+used here was independently reproduced before implementation. A fresh anonymous
+local Convex backend first revealed a stale encrypted JWKS key from an earlier
+local run after the test secret changed; preserving that state and recreating
+the backend cleanly reproduced CI's fresh-run order and removed the unrelated
+token-mint failure.
+
+First-attempt local evidence after the repair, with Playwright retries still
+zero: affected six-file selection **25 passed / 3 expected local copilot skips**
+apart from one incorrect boolean-attribute assertion caught and fixed; focused
+multi-tenancy **6/6**; full flows **63 passed / 4 expected credential skips / 0
+failed** in 4.4 minutes; and the explicit non-modal menu regression **2 passed /
+3 model-key skips**. The four full-suite skips were three OpenRouter-backed
+copilot behaviours on the disposable keyless backend plus the existing real
+Resend receipt check. Exact-head PR CI remains the next authority.

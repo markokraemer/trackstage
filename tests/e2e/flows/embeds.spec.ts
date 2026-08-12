@@ -25,6 +25,9 @@ test.describe("saved embeds", () => {
     let embedId: Id<"embeds"> | null = null
 
     try {
+      // Saved embeds expose the public programme, so publication is an
+      // explicit precondition rather than an assumption about test order.
+      await client.mutation(api.agenda.publishAgenda, { eventId: event._id })
       await gotoStable(
         page,
         `/app/${DEMO_WORKSPACE_SLUG}/${MAIN_EVENT_SLUG}/embeds`,

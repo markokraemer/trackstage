@@ -4,8 +4,21 @@ import { Menu as MenuPrimitive } from "@base-ui/react/menu"
 import { cn } from "@/lib/utils"
 import { RiArrowRightSLine, RiCheckLine } from "@remixicon/react"
 
-function DropdownMenu({ ...props }: MenuPrimitive.Root.Props) {
-  return <MenuPrimitive.Root data-slot="dropdown-menu" {...props} />
+/**
+ * Keep ordinary action menus non-modal. Base UI's modal default mounts a
+ * full-viewport inert backdrop; if a reactive navigation leaves the popup
+ * mounted for even one render, that invisible layer intercepts every click in
+ * the app. Clicking the intended next control should dismiss the menu and
+ * perform that action, matching the house Select component's behaviour.
+ */
+function DropdownMenu({ modal = false, ...props }: MenuPrimitive.Root.Props) {
+  return (
+    <MenuPrimitive.Root
+      data-slot="dropdown-menu"
+      modal={modal}
+      {...props}
+    />
+  )
 }
 
 function DropdownMenuPortal({ ...props }: MenuPrimitive.Portal.Props) {

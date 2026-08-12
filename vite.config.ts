@@ -16,6 +16,18 @@ const config = defineConfig(({ mode }) => {
 
   return {
     resolve: { tsconfigPaths: true },
+    server: {
+      watch: {
+        // Playwright writes retained traces while Vite is serving the app.
+        // They are test output, not source: watching them produced hundreds
+        // of full-reload broadcasts after a failure and could restart a cold
+        // shell while the remaining serial flow suite was still running.
+        ignored: [
+          "**/tests/e2e/.results/**",
+          "**/playwright-report/**",
+        ],
+      },
+    },
     plugins: [
       ...(wantsDevtools ? [devtools()] : []),
       cloudflare({ viteEnvironment: { name: "ssr" } }),
