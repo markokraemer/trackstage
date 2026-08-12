@@ -1,11 +1,12 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "trackstage",
-  // Custom entry wrapping @tanstack/react-start/server-entry: Cloudflare's
-  // static-asset layer answers Range requests with a 200 + full body, so the
-  // launch film couldn't be scrubbed. src/server.ts slices /launch.mp4 into
-  // real 206 responses and delegates everything else to TanStack Start.
-  "main": "src/server.ts",
+  // HOTFIX 2026-08-12: back on the stock entry. The custom src/server.ts
+  // wrapper (206 Range support for /launch.mp4) broke server-route dispatch in
+  // the deployed Worker — POST /api/auth/* 404'd and production sign-in went
+  // down. Video seeking is degraded until the Range fix returns with a
+  // staging-verified approach.
+  "main": "@tanstack/react-start/server-entry",
   "compatibility_date": "2026-08-01",
   "compatibility_flags": ["nodejs_compat"],
   "observability": {
@@ -25,13 +26,11 @@
   // Declaring `routes` would otherwise turn the workers.dev URL off; keep it
   // on so https://trackstage.kortix.workers.dev remains a working fallback.
   "workers_dev": true,
-  // Static assets normally answer before the Worker runs — which is what we
-  // want, except the asset layer can't do HTTP 206 partial content. Route the
-  // launch film through the Worker (src/server.ts) so video seeking works;
-  // the vite plugin fills in the assets directory at build time.
+  // Static assets answer before the Worker runs. (run_worker_first for
+  // /launch.mp4 removed with the custom-entry hotfix above — with the stock
+  // entry the Worker would SSR-404 the film.)
   "assets": {
-    "binding": "ASSETS",
-    "run_worker_first": ["/launch.mp4"]
+    "binding": "ASSETS"
   },
   // Staging Worker: dev.trackstage.app, deployed by deploy-dev.yml on every
   // green CI run of main/master. Built with `CLOUDFLARE_ENV=dev vite build

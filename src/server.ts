@@ -27,9 +27,15 @@ interface WorkerEnv {
 // The default entry forwards (request, env, ctx) straight through; its
 // published type only admits (request, opts?) — keep runtime behavior
 // identical and loosen the type at this one seam.
-const delegate = startEntry.fetch as unknown as (
-  ...args: Array<unknown>
-) => Promise<Response> | Response
+// IMPORTANT: keep the method BOUND to startEntry — a detached `startEntry.fetch`
+// loses `this` and the entry's server-route dispatch (POST /api/auth/…) 404s
+// while SSR pages still render, which is exactly the failure mode that broke
+// production sign-in on 2026-08-12.
+const delegate = ((...args: Array<unknown>) =>
+  (startEntry.fetch as unknown as (...a: Array<unknown>) => Promise<Response> | Response).apply(
+    startEntry,
+    args,
+  )) as (...args: Array<unknown>) => Promise<Response> | Response
 
 export default {
   async fetch(
