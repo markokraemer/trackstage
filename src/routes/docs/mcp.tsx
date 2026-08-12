@@ -62,6 +62,11 @@ function McpPage() {
         want. Create keys under Account settings → API &amp; MCP (avatar menu →
         Account settings), where they live — keys are personal, not per-event.
       </p>
+      <p className="doc-prose mt-3">
+        The app hands you the same thing without leaving it:{" "}
+        <strong>Connect MCP</strong> in the copilot header (or on the Copilot
+        page) opens the endpoint and the per-client instructions in a dialog.
+      </p>
 
       <div className="mt-3">
         <Callout tone="note">

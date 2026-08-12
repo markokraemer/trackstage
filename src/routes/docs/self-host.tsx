@@ -47,6 +47,10 @@ const ENV = [
     name: "OPENROUTER_API_KEY",
     what: "Turns the AI copilot on.",
   },
+  {
+    name: "REQUIRE_EMAIL_VERIFICATION",
+    what: "Set it to block password sign-in until an address is confirmed. Off by default.",
+  },
 ] as const
 
 function Page() {
@@ -92,7 +96,17 @@ function Page() {
         ))}
       </ul>
 
-      <div className="mt-6">
+      <div className="mt-6 space-y-3">
+        <Callout tone="note">
+          <strong>Your first account, before you configure email.</strong>{" "}
+          Signing up sends a confirmation link, and without{" "}
+          <code>RESEND_API_KEY</code> that link is only written to the outbox
+          — which you need to be signed in to read. Two ways round it: set{" "}
+          <code>RESEND_API_KEY</code> first, or sign up with an{" "}
+          <code>@example.com</code> address, which is born confirmed (it is a
+          reserved domain that can never receive mail, so it is never walled
+          behind it). Seeding does the same for its demo organizer.
+        </Callout>
         <Callout tone="tip">
           Your own deployment gets the same{" "}
           <DocLink to="/docs/api">API</DocLink> and{" "}
