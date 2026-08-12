@@ -39,7 +39,6 @@ const CLOUD_POINTS = [
 const WINNER_POINTS = [
   "One time. Not a subscription.",
   "Bragging rights (non-transferable)",
-  "About three months of what you pay today",
 ]
 
 /** Stripe Checkout link for the $10,000 card. */
