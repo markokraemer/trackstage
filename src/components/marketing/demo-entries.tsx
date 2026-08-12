@@ -10,6 +10,7 @@ import {
 } from "@remixicon/react"
 import type { RemixiconComponentType } from "@remixicon/react"
 
+import { DEMO_MODE } from "@/lib/demo-mode"
 import { cn } from "@/lib/utils"
 import {
   DISPLAY_HEADING,
@@ -119,8 +120,11 @@ const CTA_CLASS =
 /**
  * The live-demo entry points, directly under the hero: anyone landing here is
  * one click from a working product on a pre-loaded event, no signup in the way.
+ * Rendered only in DEMO_MODE — a self-hosted instance has no seeded demo
+ * world, so there is nothing here to enter.
  */
 export function DemoEntries() {
+  if (!DEMO_MODE) return null
   return (
     <MarketingSection id={SECTION_IDS.demos} tone="muted">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">

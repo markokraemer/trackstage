@@ -3391,3 +3391,15 @@ default 5-second assertion timeout expired. The retained snapshot showed no
 error boundary or wrong route. The semantic readiness assertions now have 30
 seconds of cold-start headroom; they still fail a stuck skeleton, but no longer
 confuse a cold route chunk/query with a product failure.
+
+## 2026-08-12 ~21:40 — Demo-mode gate + honest /get copy
+
+Marko asked whether the demo credentials on the login page were env-gated for
+self-deploys. They weren't: seeding was manual, but the UI hardcoded the
+credentials everywhere. Added `VITE_DEMO_MODE` (default off in production
+builds, on in dev and in our committed env files) gating the login card, the
+homepage demo entries, the portal demo-speaker card and the feature-tour demo
+links; gave `seed:setup` an optional `password` arg; documented both in the
+README self-host section. Also removed the false "goes public automatically /
+straight redirect" claim from `/get` — kept the countdown and the live
+repo-visibility check. typecheck · lint · build · 388 unit tests green.

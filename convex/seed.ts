@@ -2241,30 +2241,45 @@ export const reseed = mutation({
 
 // ——— Bootstrap: create the Better Auth demo user, then seed ———————————————
 // Entry point: `npx convex run seed:setup`
+//
+// The default password is public (it's printed on the demo login card), which
+// is fine for our hosted demo but not for a self-hosted deployment. Pass your
+// own to keep the sample data without the well-known credential:
+//
+//   npx convex run seed:setup '{"password": "something-of-yours"}'
 export const setup = internalAction({
-  args: {},
+  args: { password: v.optional(v.string()) },
   returns: seedSummaryValidator,
-  handler: async (ctx): Promise<SeedSummary> => {
+  handler: async (ctx, args): Promise<SeedSummary> => {
+    const password = args.password ?? DEMO_ORGANIZER_PASSWORD
     const auth = createAuth(ctx)
     let userId: string | null = null
     try {
       const res = await auth.api.signUpEmail({
         body: {
           email: DEMO_ORGANIZER_EMAIL,
-          password: DEMO_ORGANIZER_PASSWORD,
+          password,
           name: DEMO_ORGANIZER_NAME,
         },
       })
       userId = res.user.id
     } catch {
       // Already exists — sign in to resolve the user id.
-      const res = await auth.api.signInEmail({
-        body: {
-          email: DEMO_ORGANIZER_EMAIL,
-          password: DEMO_ORGANIZER_PASSWORD,
-        },
-      })
-      userId = res.user.id
+      try {
+        const res = await auth.api.signInEmail({
+          body: {
+            email: DEMO_ORGANIZER_EMAIL,
+            password,
+          },
+        })
+        userId = res.user.id
+      } catch {
+        throw new Error(
+          `The demo organizer (${DEMO_ORGANIZER_EMAIL}) already exists with a ` +
+            "different password — rerun seed:setup with the password it was " +
+            "originally seeded with."
+        )
+      }
     }
     if (!userId) throw new Error("Could not create or resolve the demo user")
     // The demo organizer is born verified: there is no live inbox behind

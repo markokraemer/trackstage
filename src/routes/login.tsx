@@ -25,6 +25,7 @@ import {
 } from "@/components/marketing/links"
 import { authClient } from "@/lib/auth-client"
 import { invalidateAuthMemo } from "@/lib/auth-memo"
+import { DEMO_MODE } from "@/lib/demo-mode"
 import {
   WELCOME_CALLBACK_URL,
   markFreshSignup,
@@ -32,7 +33,11 @@ import {
 import { useSession } from "@/lib/session"
 import { errorMessage } from "@/lib/errors"
 
-/** Seeded demo organizer — shown on the sign-in card so nobody has to guess. */
+/**
+ * Seeded demo organizer — shown on the sign-in card so nobody has to guess.
+ * Only when DEMO_MODE is on: a self-hosted build has no seeded account, so
+ * advertising these credentials there would be a lie (and a public password).
+ */
 const DEMO_EMAIL = DEMO_ORGANIZER_EMAIL
 const DEMO_PASSWORD = DEMO_ORGANIZER_PASSWORD
 
@@ -241,7 +246,9 @@ function LoginPage() {
       }
       setError(
         /invalid|incorrect|credential/i.test(message)
-          ? "That email and password don't match. Try the demo credentials below."
+          ? DEMO_MODE
+            ? "That email and password don't match. Try the demo credentials below."
+            : "That email and password don't match."
           : /exist/i.test(message)
             ? "An account with that email already exists — sign in instead."
             : /too many|rate limit/i.test(message)
@@ -538,7 +545,7 @@ function LoginPage() {
           )}
         </Card>
 
-        {mode === "forgot" || verifySentTo ? null : (
+        {!DEMO_MODE || mode === "forgot" || verifySentTo ? null : (
         <Card className="mt-4 gap-0 bg-accent px-4 py-4 ring-primary/15">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">

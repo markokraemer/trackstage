@@ -12,6 +12,7 @@ import {
 } from "@remixicon/react"
 import type { RemixiconComponentType } from "@remixicon/react"
 
+import { DEMO_MODE } from "@/lib/demo-mode"
 import { cn } from "@/lib/utils"
 import {
   DISPLAY_HEADING,
@@ -224,19 +225,23 @@ function FeatureRowBlock({
           {feature.description}
         </p>
 
-        <div className="mt-6">
-          {feature.link.to ? (
+        {/* href links point into the seeded demo world — demo builds only.
+            The /login link works on any deployment and always renders. */}
+        {feature.link.to ? (
+          <div className="mt-6">
             <Link to={feature.link.to} className={LINK_CLASS}>
               {feature.link.label}
               <RiArrowRightLine size={15} aria-hidden />
             </Link>
-          ) : (
+          </div>
+        ) : DEMO_MODE ? (
+          <div className="mt-6">
             <a href={feature.link.href} className={LINK_CLASS}>
               {feature.link.label}
               <RiArrowRightLine size={15} aria-hidden />
             </a>
-          )}
-        </div>
+          </div>
+        ) : null}
       </div>
 
       <div className={cn(flipped && "lg:order-1")}>
