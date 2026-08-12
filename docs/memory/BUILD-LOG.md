@@ -3119,3 +3119,27 @@ engines) to save ~100 ms at the far end.
 Not mine, seen in the tree: seven `smoke.spec.ts` failures (landing copy,
 login card, shell) reproduce with my changes stashed — another agent's
 in-flight landing/login rework, not this fix.
+
+### Follow-up the same night: the loader is for when we don't know, and `?welcome=1` means we do
+
+Measured on the deployed Workers, the fix converged but spent ~1.6s of that on
+the loader: from Europe the Convex socket handshake to the production
+deployment is transatlantic, so the 2s bounded-convergence timer — not the
+queries — was what put the wizard on screen (prod: link→wizard 2504ms webkit /
+2790ms chromium, first paint 888/1124ms).
+
+That wait bought nothing. `?welcome=1` is minted by exactly one thing, the
+signup confirmation link, and the wizard's first card needs no data at all —
+so the URL hint now shows the wizard immediately, **server-rendered**. Verified
+on the SSR HTML: `/app?welcome=1` contains the wizard's own form ("name your
+workspace") with no loader and no shell chrome; plain `/app` still contains the
+shell. The storage-only hint is weaker (it survives a skipped wizard) and still
+waits for proof, with the same 2s bound. The param is stripped through the
+router as soon as the queries answer, so a re-clicked stale link can show the
+wizard at most once before the shell takes over.
+
+`first-run.spec.ts` caught the cost of that immediately: a server-rendered form
+is on screen a beat before it is hydrated, so the spec's bare `.fill()` was
+wiped by hydration and Continue refused with "Give your workspace a name."
+Switched to the suite's `fillStable`/`advance` — the same property, and the
+same helpers, every SSR'd form in this app already lives with.

@@ -220,6 +220,21 @@ export function useOnboardingGate(): OnboardingGate {
     if (!needs) clearOnboardingStorage()
   }, [active, resolved, flag, events])
 
+  // `?welcome=1` is spent the moment the queries have answered: it exists to
+  // carry one fact across one navigation, and an address that keeps saying
+  // "brand-new account" would re-show the wizard on every reload of that URL.
+  // Stripped THROUGH the router, the same way `?onboarding-redo` is — raw
+  // history.replaceState desyncs TanStack's patched history.
+  useEffect(() => {
+    if (!urlHint || !resolved || typeof window === "undefined") return
+    const url = new URL(window.location.href)
+    url.searchParams.delete(WELCOME_PARAM)
+    void navigate({
+      href: url.pathname + url.search + url.hash,
+      replace: true,
+    })
+  }, [urlHint, resolved, navigate])
+
   // `?onboarding-redo` on any /app URL — explicit opt-in to run the whole
   // experience again (Marko, 2026-08-12), demo accounts included: both
   // server flags reset, then straight into welcome (has events) or the full
@@ -263,8 +278,21 @@ export function useOnboardingGate(): OnboardingGate {
 
   if (unverified) return { state: "pending" }
   if (active === true) return { state: "show", finish }
-  if (active === null && hint && status !== "unauthenticated") {
-    return waitedOut ? { state: "show", finish } : { state: "pending" }
+  if (active === null && status !== "unauthenticated") {
+    // THE URL IS PROOF, so there is nothing to wait for: `?welcome=1` is
+    // minted by exactly one thing, the signup confirmation link, and the
+    // wizard's first card needs no data at all. Show it — on the SERVER, so
+    // the first painted frame IS the wizard. Measured on production from
+    // Europe, waiting for the queries instead cost 2.5s of loader (the
+    // Convex socket handshake is transatlantic) to be told what the address
+    // already said. If they come back saying this account is past onboarding
+    // — a re-clicked stale link — `active` flips to false and the shell takes
+    // over; the param is stripped as soon as it is spent, so that can happen
+    // at most once.
+    if (urlHint) return { state: "show", finish }
+    // A storage-only hint is weaker (it survives a skipped wizard), so it
+    // still waits for proof — but never forever.
+    if (hint) return waitedOut ? { state: "show", finish } : { state: "pending" }
   }
   return { state: "hide" }
 }

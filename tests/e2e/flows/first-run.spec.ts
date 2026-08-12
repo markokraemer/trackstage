@@ -1,5 +1,13 @@
 import { expect, test } from "@playwright/test"
-import { armed, gotoStable, testEmail, uiSignUp, unique } from "./_helpers"
+import {
+  advance,
+  armed,
+  fillStable,
+  gotoStable,
+  testEmail,
+  uiSignUp,
+  unique,
+} from "./_helpers"
 
 /**
  * FIRST RUN, ARRIVING COLD — the journey that broke on production Safari
@@ -80,13 +88,18 @@ test.describe("first run", () => {
     ).toBeLessThan(ARRIVAL_BUDGET_MS)
 
     // ——— And the wizard still works from that tab ————————————————————————
+    // `fillStable` + `advance`, not a bare fill/click: `?welcome=1` means this
+    // card is SERVER-rendered, so it is on screen a beat before it is
+    // hydrated — the same property every SSR'd form in this app has, and the
+    // reason those helpers exist.
     const workspaceField = mailTab.getByLabel(/workspace name/i)
     await expect(workspaceField).toBeVisible({ timeout: 10_000 })
-    await workspaceField.fill(`Cold Arrival ${unique("w").slice(-5)}`)
-    await mailTab.getByRole("button", { name: /^continue$/i }).click()
-    await expect(
+    await fillStable(workspaceField, `Cold Arrival ${unique("w").slice(-5)}`)
+    await advance(
+      mailTab,
+      /^continue$/i,
       mailTab.getByRole("heading", { name: /your event/i }),
-    ).toBeVisible({ timeout: 15_000 })
+    )
 
     await context.close()
   })
