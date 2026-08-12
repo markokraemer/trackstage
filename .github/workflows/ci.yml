@@ -168,10 +168,14 @@ jobs:
 
       - name: Start app dev server
         run: |
-          nohup pnpm dev > vite-dev.log 2>&1 &
-          echo "waiting for http://localhost:3000 …"
+          # Bind the same IPv4 address Playwright's webServer probe uses.
+          # `localhost` may resolve to IPv6 on hosted runners; in that case
+          # the app is healthy there but Playwright misses it on 127.0.0.1,
+          # starts a second Vite process, and waits for its full timeout.
+          nohup pnpm exec vite dev --host 127.0.0.1 --port 3000 > vite-dev.log 2>&1 &
+          echo "waiting for http://127.0.0.1:3000 …"
           for i in $(seq 1 60); do
-            if curl -sf -o /dev/null http://localhost:3000/login; then
+            if curl -sf -o /dev/null http://127.0.0.1:3000/login; then
               echo "app is up"
               exit 0
             fi
