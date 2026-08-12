@@ -10,7 +10,6 @@ import type {RemixiconComponentType} from "@remixicon/react";
 import type { LinkProps } from "@tanstack/react-router"
 
 import { DOCS_NAV } from "@/docs/nav"
-import { MCP_TOOL_COUNT } from "@/docs/generated/mcp-tools"
 import { cn } from "@/lib/utils"
 
 export const Route = createFileRoute("/docs/")({
@@ -42,7 +41,7 @@ const SURFACES = [
     title: "API",
     description:
       "Read your sessions, speakers and submissions over plain HTTP, plus a calendar feed that needs no key. Full-screen interactive reference.",
-    meta: "4 endpoints",
+    meta: "Open the reference",
   },
   {
     to: "/docs/mcp",
@@ -50,7 +49,7 @@ const SURFACES = [
     title: "MCP",
     description:
       "Connect Claude, ChatGPT or Codex to your event and run it by chat — read and write.",
-    meta: `${MCP_TOOL_COUNT} tools`,
+    meta: "Connect a client",
   },
 ] satisfies ReadonlyArray<{
   to: NonNullable<LinkProps["to"]>
