@@ -233,7 +233,12 @@ export function QuestionEditorDrawer({
           <div className="flex flex-col gap-3">
             <SectionHeading
               title="Answer options"
-              description="Taken from your event tracks, and updated automatically when you add or rename one."
+              description={
+                <>
+                  Taken from your event tracks, and updated automatically when
+                  you add or rename one in <RoomsTracksLink />.
+                </>
+              }
             />
             {trackNames.length > 0 ? (
               <div className="flex flex-wrap gap-1.5">
@@ -335,6 +340,7 @@ export function QuestionEditorDrawer({
                       {name}
                     </Badge>
                   ))}
+                  — edit them in <RoomsTracksLink />.
                 </>
               ) : (
                 <>

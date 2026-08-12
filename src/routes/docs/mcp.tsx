@@ -41,7 +41,7 @@ function McpPage() {
 
       {/* ——— Connect from the app ——————————————————————————————————— */}
       <h2 className="mt-10 font-heading text-lg font-semibold tracking-[-0.02em] text-foreground">
-        Connect your assistant
+        Connect your AI assistant
       </h2>
       <p className="doc-prose mt-3">
         Do it from inside the app: open the <strong>Copilot</strong> screen
