@@ -3391,3 +3391,20 @@ default 5-second assertion timeout expired. The retained snapshot showed no
 error boundary or wrong route. The semantic readiness assertions now have 30
 seconds of cold-start headroom; they still fail a stuck skeleton, but no longer
 confuse a cold route chunk/query with a product failure.
+
+### Live Airtable provider verification and reconnect repair
+
+Against the organizer-owned base `appcLLu7HlngMfKLW`, a real PAT proved metadata
+access, safe adoption of the existing Submissions/Speakers/Sessions schemas,
+masked-token UI, disconnect-without-provider-deletion, initial 18/14/6 mirror,
+and two explicit idempotent syncs. A disposable organizer-UI submission then
+proved the five-second outbound row and speaker mirror, outbound status update,
+one-row uniqueness by Trackstage ID, and Status-only inbound write-back with no
+browser console/page errors. The exact disposable Trackstage and Airtable rows
+were deleted afterward; unrelated provider rows were preserved.
+
+The first reconnect exercise exposed stale two-way state surviving a reconnect,
+which could make a new base read inbound without a fresh opt-in and reject its
+first edit as a conflict. `airtable.saveConnection` now resets the switch,
+cursor/results/counts, and event-scoped baseline rows on reconnect. The complete
+live outbound/inbound flow passed after the repair.
