@@ -3469,3 +3469,18 @@ convex.site endpoints under our domain, VITE_PUBLIC_API_URL now overrides
 the ADVERTISED MCP/REST origin only (auth plumbing stays on
 VITE_CONVEX_SITE_URL); flip it on in .env.production after attaching
 api.trackstage.app as a Convex custom domain in the dashboard.
+
+## 2026-08-12 ~23:05 — Branded API domains, end to end
+
+Convex Pro upgrade unlocked custom domains. Registered api.trackstage.app
+(prod) and dev-api.trackstage.app (dev) via the Convex platform API, created
+both CNAME (→ convex.domains) + TXT (→ deployment name) record pairs in
+Cloudflare programmatically, waited out verification. Verified on DEV first,
+as Marko asked: branded MCP 401 challenge points at dev-api, the
+protected-resource document names dev-api as the resource, favicon 200s,
+REST 401s correctly, the .ics feed serves, and the raw convex.site host still
+behaves. Then flipped VITE_PUBLIC_API_URL on in both env files. Docs got the
+manual connect instructions back (paste the address into Claude/ChatGPT
+connectors and sign in; API key from Account settings for terminal
+assistants) — the address comes from the env var, never hardcoded.
+Screenshots recaptured for the light-default Appearance card.

@@ -636,3 +636,29 @@ Appearance; only a STORED "system" subscribes to `prefers-color-scheme`.
 Enforced in all three layers with matching fallbacks — `readStoredTheme`, the
 inline boot script, and the root route's server cookie read — and pinned by
 `tests/unit/theme-default.test.ts`. The /app-only scoping is unchanged.
+
+## The public endpoints are ours, the auth plumbing stays put (2026-08-12)
+
+`api.trackstage.app` (prod, keen-eagle-41) and `dev-api.trackstage.app`
+(dev, neat-sparrow-926) are Convex custom domains on the HTTP-action surface.
+One env var — `VITE_PUBLIC_API_URL` — drives every ADVERTISED URL through
+`apiBaseUrl()`/`mcpEndpoint()`: the MCP address in the docs and Connect
+dialog, the REST base, embed URLs, and the `.ics` subscription feeds. Nothing
+hardcodes a hostname; the two places that string-replaced `.convex.cloud` →
+`.convex.site` (public/ics.ts, the embeds route) now route through the helper
+as well.
+
+Deliberately NOT moved: `VITE_CONVEX_SITE_URL`. The auth proxy, SSR session
+resolution and the copilot's tool calls are wired to the raw deployment host,
+and branding is not a reason to move a working auth origin.
+
+Discovery follows the host the caller actually used — the MCP 401 challenge
+and the protected-resource document both name the requested origin rather
+than `CONVEX_SITE_URL`. A client that added the branded domain compares the
+resource it asked for against the one we name; a mismatch reads as somebody
+else's resource and the connection is refused. The raw `*.convex.site` host
+keeps working identically for anyone already connected there.
+
+Also: the deployment serves the Trackstage favicon at `/favicon.ico|png|svg`
+(convex/lib/favicon.ts). MCP clients brand a connector with the favicon of
+the ENDPOINT's origin, which 404'd and fell back to Convex's own mark.
