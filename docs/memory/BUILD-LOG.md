@@ -3326,3 +3326,9 @@ That exposed the corresponding auth configuration mismatch: Better Auth
 correctly rejected the browser's `127.0.0.1` origin because hermetic `SITE_URL`
 still named `localhost`. The CI-only `SITE_URL` and `VITE_SITE_URL` now use the
 same canonical IPv4 origin as Vite and Playwright.
+
+The first all-green PR run still reported five retry-recovered flows. Because
+the CI deployment is isolated and seeded once, the older shared-deployment
+justification for retries does not apply there. Playwright retries are now zero
+globally and for the flows project; a cold-start or state-leak failure must be
+fixed, never converted into a green check.
