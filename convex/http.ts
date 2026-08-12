@@ -9,6 +9,7 @@ import {
   handleMcpPost,
 } from "./mcp"
 import { handleApiOptions, handleApiRequest } from "./apiHttp"
+import { FAVICON_PNG_BASE64, FAVICON_SVG } from "./lib/favicon"
 
 // ————————————————————————————————————————————————————————————————————————
 // Route table. The API itself lives in convex/apiHttp.ts (routing + auth +
@@ -86,5 +87,35 @@ http.route({
   method: "OPTIONS",
   handler: handleMcpOptions,
 })
+
+// ——— Brand mark ——————————————————————————————————————————————————————————
+// MCP clients label a connector with the favicon of the endpoint's ORIGIN.
+// Without these routes that fetch 404s and Claude/ChatGPT fall back to a
+// generic (or Convex) mark — so the Trackstage icon is served right from the
+// deployment, on *.convex.site and the custom domain alike (convex/lib/
+// favicon.ts). Long cache: the mark changes never, the bytes are embedded.
+const faviconPng = httpAction(async () => {
+  const bytes = Uint8Array.from(atob(FAVICON_PNG_BASE64), (c) =>
+    c.charCodeAt(0)
+  )
+  return new Response(bytes, {
+    headers: {
+      "Content-Type": "image/png",
+      "Cache-Control": "public, max-age=86400",
+    },
+  })
+})
+const faviconSvg = httpAction(async () => {
+  return new Response(FAVICON_SVG, {
+    headers: {
+      "Content-Type": "image/svg+xml",
+      "Cache-Control": "public, max-age=86400",
+    },
+  })
+})
+http.route({ path: "/favicon.ico", method: "GET", handler: faviconPng })
+http.route({ path: "/favicon.png", method: "GET", handler: faviconPng })
+http.route({ path: "/favicon.svg", method: "GET", handler: faviconSvg })
+http.route({ path: "/apple-touch-icon.png", method: "GET", handler: faviconPng })
 
 export default http
