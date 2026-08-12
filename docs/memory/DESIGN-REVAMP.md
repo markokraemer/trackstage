@@ -165,7 +165,11 @@ whole reason the revamp is mechanical.
   scale, no 32px controls. Attio's density is explicitly rejected (#22).
 - **The width system.** `--container-*` and the `.container-*` utilities landed
   separately (RULES.md #20e) and are orthogonal to this.
-- **Light mode only.** The `dark` variant stays neutered (RULES.md #3).
+- ~~**Light mode only.** The `dark` variant stays neutered (RULES.md #3).~~
+  **SUPERSEDED 2026-08-12:** the `dark` variant is live and `.dark` re-declares
+  every token below, so this table remains the LIGHT half of a two-theme system —
+  nothing in it moved. Dark is scoped to `/app/*`; see DECISIONS.md, "Dark mode
+  ships, and it stops at the organizer app's door".
 - **The logomark.** Brand geometry is unaffected; only `--primary` moves, and
   the mark paints in `currentColor`, so it follows for free.
 

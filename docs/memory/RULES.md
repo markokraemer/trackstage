@@ -14,6 +14,13 @@ trail visible).
 3. **UX/UI is the top priority**: non-technical, organizer-friendly, very simple,
    understandable, clear user flows. "Less is more." Match Sessionboard's structure,
    indentation, style from the 42 screenshots ~1:1. **Light mode by default.**
+   ~~Light mode ONLY.~~ **AMENDED 2026-08-12 (Marko: "end-to-end add a dark/light
+   mode switcher as part of the account settings"): light is still the DEFAULT and
+   the design language is authored light-first, but a `.dark` token block exists
+   and organizers pick Light / Dark / System in `/app/account`. Dark applies to
+   `/app/*` ONLY — every public and marketing surface stays light for everyone
+   (see DECISIONS.md, "Dark mode ships, and it stops at the organizer app's
+   door"; the predicate is `isThemeableRoute` in `src/lib/theme.ts`).**
    Proper component pickers everywhere (real calendar/date pickers, selects, etc.).
 4. **Functionality completeness**: "we can't miss a single thing" — cover the full spec;
    form builder matched "in great capacity".

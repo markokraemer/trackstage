@@ -2852,3 +2852,52 @@ geometry over the same message). 299/299 renderer tests green. Known follow-up:
 other Streamdown utilities (code blocks, `not-prose`, some washes) are still a
 lottery for the same node_modules reason — `@source "…/streamdown/dist"` would
 settle it wholesale.
+
+## 2026-08-12 — Dark mode, end to end
+
+Marko: "end-to-end add a dark/light mode switcher as part of the account
+settings." Shipped as `feat(theme)`: Light / Dark / System in `/app/account`
+(Profile tab) with a three-up picker that draws a real MINIATURE of each theme
+— a conference organizer is not scanning for a moon glyph — plus a one-click
+flip in the avatar menu.
+
+The design system was authored light-only, so the dark palette is new work, not
+a toggle. `.dark` re-declares every `:root` token, which is why the app came up
+almost clean on the first pass: after the Attio revamp practically everything
+speaks in tokens (the audit found 4 `bg-white`, zero Tailwind palette colours,
+and 51 hexes that were all data — track colours, design-system swatch labels,
+email/embed previews). Four rules governed the palette: chrome stays neutral (a
+barely-cool near-black, chroma still tiny — "de-blued" survives the inversion);
+elevation reads upward exactly as in light, so the page is the darkest surface
+and cards step up; colour still carries data (status/tag tints become deep
+fills with light ink at 8–10:1); and the accent lifts #2F5CE0 → #3D6BE5, same
+hue one step brighter — white on it is 4.74:1 (AA) so primary buttons keep
+white text, and it reads 4.1:1 on the page for links and the ring.
+
+Four things needed hand work beyond tokens. (1) Agenda blocks: the track colour
+is an arbitrary organizer hex, so the block is a `color-mix` — both ends of
+every mix became `--track-*` tokens and dark raises the mix amounts, because 9%
+of any hue over a near-black card is invisible. (2) Dialog/sheet/alert overlays
+were `bg-black/10`, which is nothing on a dark page; they get `dark:bg-black/55`.
+(3) The wizard rail's active step is an inverted ink chip in light — inverting
+again in dark painted a near-white slab down the rail, so it becomes a raised
+neutral with a primary step badge. (4) No-flash is owned by an inline boot
+script in the document head, not React: `<html>` carries
+`suppressHydrationWarning` and no `className` prop so React never fights the
+script for the attribute, and the choice is stored in localStorage AND a cookie
+so the server can render the Appearance control pre-selected.
+
+SCOPE CALL (recorded in DECISIONS.md): dark applies to `/app/*` only. sbek
+judges the public surfaces and they are composed against white; because the
+class is never on the document outside `/app`, no `dark:` utility in the tree
+can leak there — structural, not a sweep.
+
+Verified: typecheck + lint + `pnpm build` green; drove the organizer app in
+dark via CDP (dashboard, submissions, agenda day view, copilot, forms builder,
+communications + template drawer, evaluation, speakers, event settings, a
+dialog and a sheet — shots in `.dark-shots/`); confirmed instant apply, dark
+surviving a full reload, System following an emulated `prefers-color-scheme`
+flip live, and the public event page staying light with `ts-theme=dark` set.
+25/25 e2e flow tests green across public-pages, forms-builder, agenda and
+speakers-portal. Known cosmetic: the outbox/compose email preview iframe is
+deliberately still white — it is a fidelity rendering of the actual email.

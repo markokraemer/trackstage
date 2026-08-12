@@ -362,3 +362,49 @@ Note this deliberately diverges from Sessionboard's own picker
 their extra step is the sluggishness swyx complained about.
 tests/e2e/flows/triage-decisions.spec.ts follows the new interaction (no Save
 click; asserts the popover closes and the toast repeats the caveat).
+
+## Dark mode ships, and it stops at the organizer app's door (2026-08-12)
+Marko: "end-to-end add a dark/light mode switcher as part of the account
+settings." This REVERSES the "light mode only" half of RULES.md #3 (and
+DESIGN-REVAMP.md §3's "the `dark` variant stays neutered") — light stays the
+DEFAULT and the design language is still authored light-first, but a `.dark`
+token block now exists and organizers can choose Light / Dark / System in
+`/app/account` (Profile tab, `AppearanceCard`) or flip it from the avatar menu.
+
+**Scope: `/app/*` only** (`isThemeableRoute`, src/lib/theme.ts). Marketing, the
+public event page, the CFP wizard, the speaker portal, /docs, /login and
+/design-system stay light for every visitor, always. Two reasons, in order of
+weight: (1) sbek's browser agent judges the public surfaces, and those pages
+carry organizer cover images, embed previews and email previews composed
+against white — a half-dark public page is a worse outcome than a light one,
+and the absence of a leak cannot be proven in one night; (2) the preference is
+an ACCOUNT setting, and a speaker opening a portal link has no account, so the
+public surfaces would need their own switcher to be coherent. Because the class
+is simply never on the document outside `/app`, no `dark:` utility anywhere in
+the tree can fire there — the guarantee is structural, not a sweep.
+
+**Palette rules** (`.dark` in src/styles.css): chrome stays neutral (a
+barely-cool near-black, chroma still tiny — the "de-blued" rule survives the
+inversion); elevation reads upward exactly as in light, so the page is the
+DARKEST surface and cards/popovers step up; colour still carries data, with
+status and tag tints becoming deep fills with light ink at 8–10:1; and the
+accent is LIFTED, not changed — #2F5CE0 → #3D6BE5, same hue one step brighter.
+That last number is a deliberate trade: white on #3D6BE5 is 4.74:1 (AA) so
+primary buttons keep white text, and it reads 4.1:1 against the page so links
+and the focus ring are legible. Brightening further would win link contrast
+and lose the button's white text — buttons win.
+
+Agenda blocks were the one recipe that could not be a palette: a track colour
+is an arbitrary organizer-chosen hex, so the block is a `color-mix`. Both ends
+of every mix are now `--track-*` tokens (`trackTint`, agenda-model.ts), and
+dark raises the mix amounts because 9% of any hue over a near-black card is
+invisible.
+
+**No flash** is owned by an inline boot script in the document head
+(`THEME_BOOT_SCRIPT`), not by React — React is too late to be the one that
+decides, so it only ever confirms. The choice is stored twice on purpose:
+localStorage plus a cookie, the cookie being what the server can read so the
+Appearance control renders pre-selected in the SSR HTML. `<html>` carries
+`suppressHydrationWarning` and no `className` prop, so React never fights the
+script for the attribute. "System" is a live `matchMedia` subscription, not a
+one-time read.
