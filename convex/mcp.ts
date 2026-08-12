@@ -6014,12 +6014,28 @@ function siteBase(): string {
 }
 
 /**
+ * The origin THIS request arrived on, so a client that connected through the
+ * branded custom domain (api.trackstage.app) is pointed back at that same
+ * host for discovery instead of being bounced to the raw *.convex.site one —
+ * a mismatch some clients treat as a different resource and refuse. Falls
+ * back to CONVEX_SITE_URL when the URL is unparseable.
+ */
+function requestBase(request: Request): string {
+  try {
+    return new URL(request.url).origin
+  } catch {
+    return siteBase()
+  }
+}
+
+/**
  * 401 in the shape MCP clients expect: RFC 9728's `WWW-Authenticate` pointer
  * at our protected-resource metadata, which is what makes "add connector by
  * URL" kick off the OAuth dance in Claude and ChatGPT instead of giving up.
  */
-function unauthorized(message: string) {
-  const resourceMetadata = `${siteBase()}/.well-known/oauth-protected-resource`
+function unauthorized(message: string, request?: Request) {
+  const base = request ? requestBase(request) : siteBase()
+  const resourceMetadata = `${base}/.well-known/oauth-protected-resource`
   return json(
     rpcError(null, INVALID_REQUEST, message),
     401,
@@ -6375,6 +6391,7 @@ export const handleMcpPost = httpAction(async (ctx, request) => {
   if (!userId) {
     return unauthorized(
       "Missing or invalid credentials. Send `Authorization: Bearer <your Trackstage API key>` (create one in Settings → API & MCP), or connect via OAuth.",
+      request,
     )
   }
   // Which credential is acting, for the audit trail. Read straight off the

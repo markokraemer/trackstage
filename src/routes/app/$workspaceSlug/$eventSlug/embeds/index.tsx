@@ -56,6 +56,7 @@ import type { EmbedOptions } from "@/components/embeds/embed-config"
 import { TRACK_COLORS } from "@/components/settings/track-color-picker"
 import { useCurrentEvent } from "@/lib/current-event"
 import { eventPath } from "@/lib/public-links"
+import { apiBaseUrl } from "@/lib/deployment-urls"
 import { errorMessage } from "@/lib/errors"
 
 /**
@@ -279,9 +280,8 @@ function EmbedsPage() {
   ])
 
   const apiBase = useMemo(() => {
-    const convexUrl = import.meta.env.VITE_CONVEX_URL as string | undefined
-    if (!convexUrl || !activeSlug) return null
-    return `${convexUrl.replace(".convex.cloud", ".convex.site")}/v1/event/${activeSlug}`
+    if (!activeSlug) return null
+    return `${apiBaseUrl()}/v1/event/${activeSlug}`
   }, [activeSlug])
 
   const jsonUrl = apiBase

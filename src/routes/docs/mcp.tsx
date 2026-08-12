@@ -59,23 +59,34 @@ function McpPage() {
         />
       </div>
 
-      {/* ——— The link, for assistants that ask for one ————————————— */}
+      {/* ——— Doing it by hand ——————————————————————————————————————— */}
       <h2 className="mt-10 font-heading text-lg font-semibold tracking-[-0.02em] text-foreground">
-        If your assistant asks for a link
+        Or add it yourself
       </h2>
+      <p className="doc-prose mt-3">
+        Every assistant asks for the same thing — one address. This is it:
+      </p>
       <div className="mt-3">
         <CodeSnippet
           value={endpoint}
-          title="MCP endpoint"
-          copyLabel="Copy endpoint"
-          successMessage="MCP endpoint copied to your clipboard"
+          title="Your MCP address"
+          copyLabel="Copy address"
+          successMessage="MCP address copied to your clipboard"
         />
       </div>
       <p className="doc-prose mt-3">
-        Some assistants just want this link. Paste it where they ask, then sign
-        in with your Trackstage account when your browser opens — no key to
-        copy. The Connect MCP dialog covers the rest, including the assistants
-        that want an API key instead.
+        In <strong>Claude</strong> or <strong>ChatGPT</strong>: Settings →
+        Connectors → add a custom connector, paste the address, and sign in
+        with your Trackstage account when your browser opens. Nothing else to
+        fill in — no key, no config file.
+      </p>
+      <p className="doc-prose mt-3">
+        Assistants that run in a terminal (Claude Code, Codex, Cursor) want the
+        same address plus an API key instead of the browser sign-in. Create one
+        under <strong>Account settings → API &amp; MCP</strong>, then use{" "}
+        <strong>Connect MCP</strong> on the Copilot screen — it prints the
+        exact command or config for the assistant you pick, with your address
+        already filled in.
       </p>
 
       <div className="mt-3">

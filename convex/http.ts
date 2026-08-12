@@ -58,6 +58,15 @@ const protectedResourceMetadata = httpAction(async (ctx, request) => {
   try {
     const body = await response.json()
     body.jwks_uri = `${process.env.CONVEX_SITE_URL}/api/auth/convex/jwks`
+    // Name the resource by the origin the client actually reached us on: a
+    // caller that added the branded custom domain must not be told its
+    // resource lives on the raw *.convex.site host — clients compare the two
+    // and treat a mismatch as someone else's resource.
+    try {
+      body.resource = `${new URL(request.url).origin}/mcp`
+    } catch {
+      /* unparseable URL — better-auth's own value stands */
+    }
     return new Response(JSON.stringify(body), {
       status: response.status,
       headers: response.headers,
