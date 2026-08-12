@@ -6,6 +6,9 @@ dist
 # Ignore the output video from Git but not videos you import into src/.
 out
 
+# Raw ElevenLabs TTS output (the trimmed/normalized takes live in public/audio/vo)
+vo/raw/
+
 # Capture workspace artifacts (recordings are reproducible via capture/*.mjs)
 capture/raw/
 capture/.auth.json
