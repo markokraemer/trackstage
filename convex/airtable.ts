@@ -382,7 +382,22 @@ export const saveConnection = internalMutation({
       syncScheduled: false,
     }
     if (existing) {
-      await ctx.db.patch(existing._id, fields)
+      await ctx.db.patch(existing._id, {
+        ...fields,
+        // Reconnecting starts a fresh mirror authority. A previous
+        // connection's inbound switch/cursor must never silently carry over:
+        // the new base first receives a clean outbound baseline, then the
+        // organizer can explicitly opt back into Status write-back.
+        twoWaySync: false,
+        inbound: undefined,
+        lastSyncAt: undefined,
+        recordCounts: undefined,
+      })
+      const oldState = await ctx.db
+        .query("airtableRecordSync")
+        .withIndex("by_eventId", (q) => q.eq("eventId", args.eventId))
+        .collect()
+      for (const row of oldState) await ctx.db.delete(row._id)
     } else {
       await ctx.db.insert("airtableConnections", {
         eventId: args.eventId,

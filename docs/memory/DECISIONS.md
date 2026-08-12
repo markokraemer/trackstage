@@ -579,6 +579,17 @@ guaranteed to be a new tab. Signup mints its confirmation link with
 `callbackURL=/app?welcome=1`, and the server renders the onboarding frame
 directly for that address. Storage remains a backup, never the only signal.
 
+## Reconnecting Airtable starts a new mirror authority (2026-08-12)
+
+Disconnect preserves the user's Airtable tables and rows but deletes the saved
+credential. A later connect may point at the same base or a different one, so
+the new connection must not inherit the previous connection's opt-in write-back
+flag, sync cursor, counts, inbound result, or per-submission status baselines.
+`airtable.saveConnection` therefore resets two-way sync to off, clears those
+connection fields, and deletes the event's `airtableRecordSync` rows before the
+first outbound mirror establishes a fresh baseline. Status can come back only
+after the organizer explicitly opts in again.
+
 ## Demo surfaces are a build flag, not a birthright (2026-08-12)
 
 The demo credentials card on `/login`, the demo entry points on the homepage,
