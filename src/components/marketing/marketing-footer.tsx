@@ -11,8 +11,6 @@ import {
   GITHUB_LICENSE_URL,
   GITHUB_README_URL,
   GITHUB_URL,
-  MCP_ENDPOINT_PATH,
-  PUBLIC_ICS_PATH,
   SECTION_IDS,
 } from "@/components/marketing/links"
 
@@ -124,9 +122,6 @@ export function MarketingFooter() {
         <div className="mt-12 flex flex-col gap-4 border-t border-background/10 pt-7 text-sm text-background/55 lg:flex-row lg:items-center lg:justify-between">
           <p>&copy; {new Date().getFullYear()} Trackstage. MIT licensed.</p>
           <div className="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:gap-5">
-            <p className="font-mono text-xs">
-              {PUBLIC_ICS_PATH} · {MCP_ENDPOINT_PATH}
-            </p>
             <a
               href={GITHUB_URL}
               {...EXTERNAL_LINK_PROPS}
