@@ -1,9 +1,15 @@
-import { useCallback, useEffect, useRef, useState } from "react"
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react"
 import { useNavigate, useRouterState } from "@tanstack/react-router"
 import { useMutation, useQuery } from "@tanstack/react-query"
 import { convexQuery, useConvexMutation } from "@convex-dev/react-query"
 import { api } from "@convex/_generated/api"
-import { RiArrowRightLine } from "@remixicon/react"
+import { RiArrowRightLine, RiLoaderLine } from "@remixicon/react"
 import { toast } from "sonner"
 
 import { cn } from "@/lib/utils"
@@ -27,7 +33,10 @@ import { browserTimezone } from "@/components/settings/timezone"
 import { isValidSlug, publicEventUrl, slugify } from "@/components/settings/slug"
 import { authClient } from "@/lib/auth-client"
 import {
-  FRESH_SIGNUP_KEY,
+  WELCOME_PARAM,
+  clearFreshSignup,
+  isFreshSignup,
+  markFreshSignup,
   clearTourPhase,
   writeTourPhase,
 } from "@/lib/onboarding-storage"
@@ -108,11 +117,19 @@ function writeResume(state: ResumeState): void {
 function clearOnboardingStorage(): void {
   try {
     sessionStorage.removeItem(RESUME_KEY)
-    sessionStorage.removeItem(FRESH_SIGNUP_KEY)
   } catch {
     /* private mode */
   }
+  clearFreshSignup()
 }
+
+/** How long the fresh-signup hint waits for proof before showing the wizard. */
+const HINT_GRACE_MS = 2_000
+
+/** The hint is written before the page that reads it exists — nothing to
+ *  subscribe to, and no server value to report. */
+const subscribeNothing = () => () => {}
+const alwaysFalse = () => false
 
 export type OnboardingGate =
   | { state: "hide" }
@@ -140,13 +157,50 @@ export function useOnboardingGate(): OnboardingGate {
   const resetOnboarding = useConvexMutation(api.onboarding.reset)
   const navigate = useNavigate()
   const [active, setActive] = useState<boolean | null>(null)
-  const [hint] = useState(
-    () =>
-      typeof window !== "undefined" &&
-      sessionStorage.getItem(FRESH_SIGNUP_KEY) === "1",
+
+  // ——— "Is this a first-run arrival?" — two hints, one answer ——————————————
+  //
+  // 1. THE URL, and it is the one that matters most. Signup mints its
+  //    confirmation link with `callbackURL=/app?welcome=1`
+  //    (src/routes/login.tsx), so the arrival ANNOUNCES itself in the address
+  //    — which means the SERVER knows too, and the very first painted frame is
+  //    this screen instead of a shell that has to be taken back. Read from
+  //    the raw search string: `/app`'s own validateSearch keeps only the keys
+  //    it declares, and every child route re-validates on top of that.
+  const urlHint = useRouterState({
+    select: (s) => new URLSearchParams(s.location.searchStr).get(WELCOME_PARAM) === "1",
+  })
+  // 2. Web storage, for every other first-run arrival (a reload mid-wizard, a
+  //    second tab). The server cannot see it, so it is read through
+  //    `useSyncExternalStore` with a `false` server snapshot — the one API
+  //    React sanctions for "the client knows something the server didn't":
+  //    it hydrates against the server's answer and re-renders with the
+  //    browser's instead of tripping a hydration mismatch.
+  const storageHint = useSyncExternalStore(
+    subscribeNothing,
+    isFreshSignup,
+    alwaysFalse,
   )
+  // Latched: finishing the wizard clears the storage this is read from, and
+  // the gate must not change its mind mid-flow.
+  const latchedHint = useRef(false)
+  if (urlHint || storageHint) latchedHint.current = true
+  const hint = latchedHint.current
 
   const resolved = flag !== undefined && !eventsLoading
+
+  // BOUNDED CONVERGENCE (Marko, 2026-08-12 — "it needs to be fast and
+  // snappy… fix so this never happens"). The hint is proof this browser just
+  // created an account, so the wizard is where this person belongs whatever
+  // the queries eventually say. If they haven't landed by now, stop waiting
+  // and show it: a first-run screen that is a beat early is right; a frame
+  // that never resolves is the bug.
+  const [waitedOut, setWaitedOut] = useState(false)
+  useEffect(() => {
+    if (!hint || resolved || active !== null) return
+    const timer = setTimeout(() => setWaitedOut(true), HINT_GRACE_MS)
+    return () => clearTimeout(timer)
+  }, [hint, resolved, active])
 
   // Verification is an AUTH concern: an unverified session gets the
   // /confirm-email page, not an in-app screen. Born-verified (exempt)
@@ -189,11 +243,7 @@ export function useOnboardingGate(): OnboardingGate {
       setActive(false)
       writeTourPhase("welcome")
     } else {
-      try {
-        sessionStorage.setItem(FRESH_SIGNUP_KEY, "1")
-      } catch {
-        /* private mode */
-      }
+      markFreshSignup()
       setActive(true)
     }
     // Strip THROUGH the router (raw history.replaceState desyncs TanStack's
@@ -214,7 +264,7 @@ export function useOnboardingGate(): OnboardingGate {
   if (unverified) return { state: "pending" }
   if (active === true) return { state: "show", finish }
   if (active === null && hint && status !== "unauthenticated") {
-    return { state: "pending" }
+    return waitedOut ? { state: "show", finish } : { state: "pending" }
   }
   return { state: "hide" }
 }
@@ -722,9 +772,19 @@ export function OnboardingTakeover({ onDone }: { onDone: () => void }) {
   )
 }
 
-/** The takeover's frame with nothing in it yet — shown for the beat between
- *  a fresh signup's redirect and its queries resolving, so the first thing a
- *  new organizer ever sees is this screen, not a flash of the app shell. */
+/**
+ * The takeover's frame while the first screen is still coming — the beat
+ * between a fresh signup's arrival (including the one the confirmation email's
+ * link produces) and the queries that decide what to show.
+ *
+ * It used to be this frame with NOTHING in it and an `sr-only` "Loading…":
+ * a blank white page, which is the worst possible way to spend someone's
+ * attention (Marko, 2026-08-12 — "if something must load, have a clear loader
+ * … occupied time"). Unoccupied waiting feels ~35% longer than the same wait
+ * with something to look at, so this says what is happening, in the same
+ * frame, in the same place on screen the wizard's card will occupy — the swap
+ * is then a fill-in, not a page change.
+ */
 export function OnboardingTakeoverPending() {
   return (
     <div aria-busy="true" className="flex min-h-svh flex-col bg-background">
@@ -732,7 +792,22 @@ export function OnboardingTakeoverPending() {
         <Logo size="sm" />
       </header>
       <main className="flex flex-1 items-center justify-center px-4 py-10">
-        <p className="sr-only">Loading…</p>
+        <div
+          role="status"
+          className="animate-in fade-in-0 flex flex-col items-center gap-3 text-center duration-300"
+        >
+          <RiLoaderLine
+            size={22}
+            aria-hidden
+            className="animate-spin text-primary"
+          />
+          <p className="text-sm font-medium text-foreground">
+            Setting up your account…
+          </p>
+          <p className="max-w-xs text-sm text-muted-foreground">
+            One moment — we're getting your workspace ready.
+          </p>
+        </div>
       </main>
     </div>
   )

@@ -3031,3 +3031,91 @@ with the right length, so it is a dev-server artifact, not a regression.
 Not mine, seen in the tree: `src/components/comms/message-drawer.tsx` has an
 unused `RiDownload2Line` import (another agent, mid-edit) — the only `tsc`
 error; lint is clean.
+
+---
+
+## 2026-08-12 — the eternal skeleton after confirming your email (first-run, Safari)
+
+**Report (Marko, production Safari).** Sign up → click the confirmation link
+(`/api/auth/verify-email?token=…&callbackURL=%2Fapp`) → land on `/app` showing
+the full organizer shell with a sidebar, a shimmering event switcher and
+dashboard skeletons **that never resolve**. Only a manual reload produced the
+onboarding wizard. "Slow ass… horrible — fix so this never happens."
+
+**Reproduced** with Playwright (webkit + chromium) against both the local dev
+server and production: sign up with a non-exempt address, read the real
+verification link out of `_scheduled_functions`
+(`platformEmails:recentEmailVerifications`), open it in a NEW tab of the same
+browser. The happy path resolved in ~2.2s; stalling **one** request —
+`/api/auth/get-session` — reproduced Marko's screenshot exactly, forever.
+
+**Root cause, three faults stacked on one path.**
+
+1. `useSession().status` — the gate on *every* authed Convex query in the app
+   (`useCurrentEvent`, `useOnboardingGate`, every `status === "authenticated" ?
+   {} : "skip"`) — was derived from Better Auth's browser `get-session` fetch
+   alone. Better Auth gives that fetch no timeout, and its refresh manager only
+   re-drives it when a session already exists (`shouldPollSession: () =>
+   session.data != null`) — never for the first one. **Safari parks in-flight
+   fetches in the background tab a mail client opens.** Parked first fetch ⇒
+   `isPending: true` forever ⇒ every query skipped forever ⇒ skeletons forever.
+   That is why it was Safari-only and why a reload was the only escape.
+2. The "this is a fresh signup" hint lived in `sessionStorage`, which never
+   crosses tabs — missing in precisely the tab the emailed link opens. So the
+   gate fell through to `hide` and painted the ORGANIZER SHELL at a brand-new
+   account, which is both the wrong surface and the one that looks broken while
+   it waits.
+3. Nothing bounded the undecided state: no retry, no timeout, no fallback.
+
+**Fix.**
+
+- `status` now means the only thing it can usefully mean — *can the Convex
+  client serve an authed query right now* — and comes from `useConvexAuth()`,
+  which on a cold load is seeded by the `initialToken` the SERVER resolved.
+  Better Auth's session is still read for the user's name/email, and re-asked
+  on a bounded schedule **plus on visibility/focus/online**, which is the
+  targeted answer to Safari's parked background fetch.
+  (First attempt seeded `status` from the router context instead; the new
+  `first-run.spec.ts` immediately caught it firing `workspaces.ensure` before
+  the Convex socket had a token — `Unauthenticated`. `useConvexAuth` is both
+  the faster and the correct signal.)
+- **`/app?welcome=1`.** Signup mints its confirmation link with that callback,
+  so the arrival announces itself in its own address — which means SSR knows
+  too. Verified: the server HTML for `/app?welcome=1` contains the onboarding
+  loader and **no shell chrome at all**, while plain `/app` still paints the
+  shell for returning organizers. A `localStorage` stamp backs it up for
+  arrivals without the param (read via `useSyncExternalStore` with a `false`
+  server snapshot — no hydration mismatch).
+- Bounded convergence: with the hint present the wizard shows after 2s even if
+  the queries never land. A first-run screen a beat early is right; a frame
+  that never resolves is the bug.
+- The pending frame was a blank page with an `sr-only` "Loading…". It is now a
+  real, labelled loader ("Setting up your account…") in the same place the
+  wizard's card appears — occupied time, per Marko.
+- The root auth memo dropped 60s → 10s (Better Auth's cookies are httpOnly, so
+  the browser cannot fingerprint the session to key the cache by it; the only
+  safe cache is one too short to outlive an auth transition), and
+  `/confirm-email` now invalidates it before its client-side hop to `/app`.
+
+**Measured**, signup → confirm screen → emailed link → wizard, dev server (the
+unbundled module graph dominates; the Worker build is faster):
+
+| engine | link → wizard | first paint |
+| --- | --- | --- |
+| chromium | 1799 / 2220 ms | 420–516 ms |
+| webkit | 1613 / 1621 ms | 310–313 ms |
+
+…and the first paint is now the loader, not shell chrome. Every stall scenario
+(get-session never answers, 2s added to every auth request, background tab)
+converges; none can hang.
+
+**Regression net.** `tests/e2e/flows/first-run.spec.ts` — a cold `/app` load in
+a tab with none of the signup tab's `sessionStorage` must reach the wizard,
+clean console, no `aria-busy` left over, no shell chrome, and the wizard must
+still work from that tab. Rejected on measurement: prefetching the gate's
+queries in `/app`'s loader — it roughly doubled DCL (~420 → ~890 ms, both
+engines) to save ~100 ms at the far end.
+
+Not mine, seen in the tree: seven `smoke.spec.ts` failures (landing copy,
+login card, shell) reproduce with my changes stashed — another agent's
+in-flight landing/login rework, not this fix.

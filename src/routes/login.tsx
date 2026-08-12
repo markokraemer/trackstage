@@ -25,7 +25,10 @@ import {
 } from "@/components/marketing/links"
 import { authClient } from "@/lib/auth-client"
 import { invalidateAuthMemo } from "@/lib/auth-memo"
-import { markFreshSignup } from "@/lib/onboarding-storage"
+import {
+  WELCOME_CALLBACK_URL,
+  markFreshSignup,
+} from "@/lib/onboarding-storage"
 import { useSession } from "@/lib/session"
 import { errorMessage } from "@/lib/errors"
 
@@ -152,8 +155,11 @@ function LoginPage() {
             email: email.trim(),
             password,
             // Rides along into the confirmation email: the verify link's
-            // callback drops the (verified, signed-in) user in the app.
-            callbackURL: "/app",
+            // callback drops the (verified, signed-in) user in the app —
+            // at `/app?welcome=1`, so the tab that link opens (a NEW tab,
+            // with none of this tab's sessionStorage) knows from its own
+            // address that it is a first-run arrival, server render included.
+            callbackURL: WELCOME_CALLBACK_URL,
           })
         if (signUpError)
           throw new Error(signUpError.message ?? "Sign-up failed")
@@ -227,7 +233,7 @@ function LoginPage() {
     try {
       await authClient.sendVerificationEmail({
         email: verifySentTo,
-        callbackURL: "/app",
+        callbackURL: WELCOME_CALLBACK_URL,
       })
     } finally {
       setResending(false)

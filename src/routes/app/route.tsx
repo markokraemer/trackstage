@@ -82,6 +82,13 @@ export const Route = createFileRoute("/app")({
   beforeLoad: ({ context, location }) => {
     requireAuthed(context.isAuthenticated, location.href)
   },
+  // NOTE (2026-08-12): prefetching the gate's queries here — so their answers
+  // stream with the HTML instead of costing the browser a round trip — was
+  // measured and REJECTED. It roughly doubled DCL on every /app load
+  // (~420ms → ~890ms, dev server, both engines) to save ~100ms at the far end.
+  // The first paint is already the right surface (`?welcome=1`, below), so the
+  // wait it would shorten is one the organizer spends looking at their own
+  // shell, not at a blank page.
   // LEGACY `?settings=account|workspace` keys from the brief modal era —
   // validated here at the shell so old URLs stay navigable, then rewritten to
   // the settings PAGES by the host at the bottom of the layout

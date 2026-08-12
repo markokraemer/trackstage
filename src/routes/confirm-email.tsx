@@ -6,6 +6,8 @@ import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Logo } from "@/components/brand/logo"
 import { authClient } from "@/lib/auth-client"
+import { invalidateAuthMemo } from "@/lib/auth-memo"
+import { WELCOME_CALLBACK_URL } from "@/lib/onboarding-storage"
 
 /**
  * `/confirm-email` — email verification as a pure AUTH concern (Marko,
@@ -61,8 +63,15 @@ function ConfirmEmailPage() {
   // The moment the address is confirmed (this tab's poll, another tab's
   // link click, or arriving here already verified): into the app — where
   // onboarding takes over.
+  //
+  // `invalidateAuthMemo()` first, every time: this is a CLIENT-SIDE
+  // transition, so `/app`'s guard re-reads the root route's memoized auth
+  // answer — which this page's own loads wrote *before* the address was
+  // confirmed. Same shape as the login page's sign-in transition.
   useEffect(() => {
-    if (verified) void navigate({ to: "/app", replace: true })
+    if (!verified) return
+    invalidateAuthMemo()
+    void navigate({ to: "/app", replace: true })
   }, [verified, navigate])
 
   // Watch for the confirmation while a session exists (soft mode). Better
@@ -76,6 +85,7 @@ function ConfirmEmailPage() {
           query: { disableCookieCache: true },
         })
         if (!cancelled && fresh.data?.user.emailVerified) {
+          invalidateAuthMemo()
           void navigate({ to: "/app", replace: true })
         }
       } catch {
@@ -107,7 +117,10 @@ function ConfirmEmailPage() {
     if (!email || resending || resentAt !== null) return
     setResending(true)
     try {
-      await authClient.sendVerificationEmail({ email, callbackURL: "/app" })
+      await authClient.sendVerificationEmail({
+        email,
+        callbackURL: WELCOME_CALLBACK_URL,
+      })
       setResentAt(Date.now())
     } finally {
       setResending(false)

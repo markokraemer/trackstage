@@ -8,11 +8,66 @@
  */
 export const FRESH_SIGNUP_KEY = "ts-fresh-signup"
 
+/**
+ * `/app?welcome=1` — "this arrival is a brand-new account", said in the URL.
+ *
+ * The only first-run hint that survives a trip through an email client. Signup
+ * mints its confirmation link with this as the callback
+ * (`…/api/auth/verify-email?token=…&callbackURL=%2Fapp%3Fwelcome%3D1`), so the
+ * tab the link opens declares what it is in its own address — which means the
+ * SERVER knows it too, and the first painted frame is the onboarding screen
+ * rather than an organizer shell that has to be taken back a moment later.
+ * Web storage cannot do this: `sessionStorage` never crosses tabs, and nothing
+ * in storage is visible during SSR.
+ */
+export const WELCOME_PARAM = "welcome"
+export const WELCOME_CALLBACK_URL = `/app?${WELCOME_PARAM}=1`
+
+/**
+ * The CROSS-TAB twin of the key above, and the reason there are two.
+ *
+ * `sessionStorage` is per-tab, and the single most important first-run arrival
+ * happens in a tab that never saw the signup: the confirmation email's link
+ * opens `/api/auth/verify-email?…&callbackURL=/app` in a NEW tab. The hint was
+ * therefore always missing exactly where it mattered, so the gate fell through
+ * to "hide" and painted the ORGANIZER SHELL — sidebar, event switcher, dashboard
+ * skeletons — at a brand-new account, until (or if) the queries that prove it is
+ * first-run came back. `localStorage` crosses tabs, so the arrival paints the
+ * onboarding frame from its first frame instead.
+ *
+ * Stamped with a time so a hint can never outlive its usefulness; cleared the
+ * moment onboarding resolves either way (`clearFreshSignup`).
+ */
+const FRESH_SIGNUP_AT_KEY = "ts-fresh-signup-at"
+const FRESH_SIGNUP_TTL_MS = 6 * 60 * 60 * 1000
+
 export function markFreshSignup(): void {
   try {
     sessionStorage.setItem(FRESH_SIGNUP_KEY, "1")
+    localStorage.setItem(FRESH_SIGNUP_AT_KEY, String(Date.now()))
   } catch {
     /* private mode — the takeover still appears once queries resolve */
+  }
+}
+
+/** "This browser signed up moments ago" — either tab-local or cross-tab. */
+export function isFreshSignup(): boolean {
+  if (typeof window === "undefined") return false
+  try {
+    if (sessionStorage.getItem(FRESH_SIGNUP_KEY) === "1") return true
+    const at = Number(localStorage.getItem(FRESH_SIGNUP_AT_KEY))
+    return Number.isFinite(at) && at > 0 && Date.now() - at < FRESH_SIGNUP_TTL_MS
+  } catch {
+    return false
+  }
+}
+
+export function clearFreshSignup(): void {
+  try {
+    sessionStorage.removeItem(FRESH_SIGNUP_KEY)
+    localStorage.removeItem(FRESH_SIGNUP_AT_KEY)
+  } catch {
+    /* private mode */
   }
 }
 

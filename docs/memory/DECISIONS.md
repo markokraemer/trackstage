@@ -492,3 +492,31 @@ Three layers, all in `convex/lib/formQuestions.ts`:
 Because a new form is born open, `forms.create` (and the REST/MCP equivalents)
 now create the Track question **optional** when the event has no tracks yet —
 required is a choice the organizer makes once there is something to choose from.
+
+## "Am I signed in?" means "can Convex serve an authed query", not "has Better Auth answered" (2026-08-12)
+
+`useSession().status` gates every authed Convex query in the app. It used to be
+derived from Better Auth's browser `/api/auth/get-session` fetch, which is
+neither necessary nor sufficient:
+
+- **Not necessary** — the Convex client is already authenticated on a cold load
+  from the `initialToken` the server resolved in the root `beforeLoad`. Waiting
+  on the browser's own round trip only adds latency.
+- **Not sufficient** — right after a sign-in the Better Auth store has a session
+  a beat before the Convex client has a token, and queries fired in that gap
+  come back `Unauthenticated`.
+
+And it could hang: Better Auth gives that fetch no timeout, and its refresh
+manager only re-drives it once a session exists — never for the first one.
+Safari parks in-flight fetches in the background tab a mail client opens, so
+clicking the confirmation email's link left the whole app pending forever
+(BUILD-LOG 2026-08-12). `status` now comes from `useConvexAuth()`. The Better
+Auth session is still read for the user's name and email — the things no token
+carries — and re-asked on a bounded schedule plus on visibility/focus/online.
+
+**Corollary: a first-run arrival must be legible in the URL.** Web storage
+cannot tell the server anything, and `sessionStorage` cannot cross tabs — so
+neither can help the one arrival that is guaranteed to be first-run and
+guaranteed to be a new tab. Signup mints its confirmation link with
+`callbackURL=/app?welcome=1`, and the server renders the onboarding frame
+directly for that address. Storage remains a backup, never the only signal.

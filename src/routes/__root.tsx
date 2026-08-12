@@ -71,8 +71,16 @@ const getAuth = createServerFn({ method: "GET" }).handler(async () => {
  * state), and an expiring session is caught by the live `useSession()`
  * subscription in the shell, so the window cannot strand anybody on a page
  * they should not see.
+ *
+ * SECONDS, not a minute (2026-08-12). Better Auth's cookies are httpOnly, so
+ * the browser cannot fingerprint the session to key this cache by it — the
+ * only safe cache is one too short to outlive an auth transition. Ten seconds
+ * still collapses what it exists for (a preload burst: RoutePrewarm warms
+ * every sidebar destination at idle, all within a second of each other), and
+ * the request it saves is cheap anyway — `getToken()` decodes the JWT already
+ * in the cookie instead of calling Convex.
  */
-const AUTH_MEMO_MS = 60_000
+const AUTH_MEMO_MS = 10_000
 
 async function resolveAuth() {
   if (typeof document === "undefined") return await getAuth()
