@@ -29,14 +29,14 @@ export type FormWindow =
  * above a banner saying it had stopped accepting submissions. A deadline is a
  * way of closing a form, so it has to count as one everywhere.
  */
-export function formWindow(form: {
-  status: string
-  closeAt?: number | null
-}): FormWindow {
+export function formWindow(
+  form: { status: string; closeAt?: number | null },
+  now: number = Date.now(),
+): FormWindow {
   if (form.status !== "open") {
     return { open: false, reason: "This call for speakers is closed." }
   }
-  if (form.closeAt && Date.now() > form.closeAt) {
+  if (form.closeAt && now > form.closeAt) {
     return {
       open: false,
       reason: "The submission deadline for this form has passed.",
@@ -45,8 +45,11 @@ export function formWindow(form: {
   return { open: true }
 }
 
-export function isFormOpen(form: Doc<"forms">): FormWindow {
-  return formWindow(form)
+export function isFormOpen(
+  form: Doc<"forms">,
+  now: number = Date.now(),
+): FormWindow {
+  return formWindow(form, now)
 }
 
 /** "Jul 22, 2026" in the event's own timezone (falls back to UTC). */
@@ -71,9 +74,10 @@ export function formatCloseDate(ms: number, timezone?: string): string {
 export function cfpClosedMessage(
   form: Doc<"forms">,
   timezone?: string,
+  now: number = Date.now(),
 ): string {
   const closedOn =
-    form.closeAt !== undefined && Date.now() > form.closeAt
+    form.closeAt !== undefined && now > form.closeAt
       ? ` on ${formatCloseDate(form.closeAt, timezone)}`
       : ""
   return `The call for speakers closed${closedOn}, so this submission can no longer be edited here. Email the organizers with what you'd like changed and they'll update it for you.`

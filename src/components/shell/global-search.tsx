@@ -210,10 +210,13 @@ function rememberRecent(term: string): Array<string> {
 
 export function GlobalSearchTrigger({
   onClick,
+  disabled = false,
   compact = false,
   className,
 }: {
   onClick: () => void
+  /** The event context is still loading; opening now would show stale emptiness. */
+  disabled?: boolean
   /** Icon-only, for viewports too narrow to carry the full pill. */
   compact?: boolean
   className?: string
@@ -222,11 +225,13 @@ export function GlobalSearchTrigger({
     <button
       type="button"
       onClick={onClick}
+      disabled={disabled}
+      aria-busy={disabled || undefined}
       aria-label="Search"
       aria-keyshortcuts="Meta+K Control+K"
       className={cn(
         "group flex h-(--control-h-sm) items-center rounded-lg text-sm text-muted-foreground",
-        "transition-colors outline-none hover:text-foreground",
+        "transition-colors outline-none hover:text-foreground disabled:cursor-wait disabled:opacity-60",
         "focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50",
         compact
           ? // The compact trigger only exists below `sm` — phone thumbs get
@@ -276,7 +281,7 @@ export function GlobalSearch({ className }: { className?: string }) {
   const [recents, setRecents] = useState<Array<string>>([])
 
   const navigate = useNavigate()
-  const { event, eventRef } = useCurrentEvent()
+  const { event, eventRef, isLoading } = useCurrentEvent()
   const { setOpen: setCopilotOpen } = useCopilotPanel()
 
   // ⌘K / Ctrl+K from anywhere in the organizer app.
@@ -366,11 +371,13 @@ export function GlobalSearch({ className }: { className?: string }) {
     <>
       {/* The pill at ≥sm, an icon button below it — the palette is the same. */}
       <GlobalSearchTrigger
+        disabled={isLoading}
         onClick={() => setOpen(true)}
         className={cn("max-sm:hidden", className)}
       />
       <GlobalSearchTrigger
         compact
+        disabled={isLoading}
         onClick={() => setOpen(true)}
         className="ml-auto sm:hidden"
       />

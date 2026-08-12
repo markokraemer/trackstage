@@ -135,7 +135,7 @@ export function TextReveal({
   /*
    * Colour INHERITS — this root deliberately does not pin `text-foreground`.
    * Callers set the tone on the element around it (the hero headline wraps its
-   * second clause in `text-muted-foreground/55`), and a hardcoded
+   * second clause in `text-muted-foreground`), and a hardcoded
    * `text-foreground` here silently won that fight: the two-tone headline
    * rendered flat black.
    */

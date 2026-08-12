@@ -153,39 +153,48 @@ function Calendar({
         ...classNames,
       }}
       components={{
-        Root: ({ className, rootRef, ...props }) => {
+        Root: ({ className: rootClassName, rootRef, ...rootProps }) => {
           return (
             <div
               data-slot="calendar"
               ref={rootRef}
-              className={cn(className)}
-              {...props}
+              className={cn(rootClassName)}
+              {...rootProps}
             />
           )
         },
-        Chevron: ({ className, orientation, ...props }) => {
+        Chevron: ({ className: chevronClassName, orientation, ...chevronProps }) => {
           if (orientation === "left") {
             return (
-              <RiArrowLeftSLine className={cn("size-4", className)} {...props} />
+              <RiArrowLeftSLine
+                className={cn("size-4", chevronClassName)}
+                {...chevronProps}
+              />
             )
           }
 
           if (orientation === "right") {
             return (
-              <RiArrowRightSLine className={cn("size-4", className)} {...props} />
+              <RiArrowRightSLine
+                className={cn("size-4", chevronClassName)}
+                {...chevronProps}
+              />
             )
           }
 
           return (
-            <RiArrowDownSLine className={cn("size-4", className)} {...props} />
+            <RiArrowDownSLine
+              className={cn("size-4", chevronClassName)}
+              {...chevronProps}
+            />
           )
         },
-        DayButton: ({ ...props }) => (
-          <CalendarDayButton locale={locale} {...props} />
+        DayButton: ({ ...dayButtonProps }) => (
+          <CalendarDayButton locale={locale} {...dayButtonProps} />
         ),
-        WeekNumber: ({ children, ...props }) => {
+        WeekNumber: ({ children, ...weekNumberProps }) => {
           return (
-            <td {...props}>
+            <td {...weekNumberProps}>
               <div className="flex size-(--cell-size) items-center justify-center text-center">
                 {children}
               </div>

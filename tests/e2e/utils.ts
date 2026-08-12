@@ -7,7 +7,7 @@ import { api } from "../../convex/_generated/api.js"
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "../..")
 
-export const env = Object.fromEntries(
+const fileEnv = Object.fromEntries(
   readFileSync(resolve(root, ".env.local"), "utf8")
     .split("\n")
     .filter((l) => l.includes("="))
@@ -16,6 +16,19 @@ export const env = Object.fromEntries(
       l.slice(l.indexOf("=") + 1).trim(),
     ]),
 ) as Record<string, string>
+
+// Process-scoped values are how an audit can point Playwright at an isolated
+// local/preview Convex deployment without rewriting the developer's
+// `.env.local` (which may be symlinked across worktrees). Keep the file as the
+// normal default, but let the supervised test process override the two public
+// URLs exactly as Vite does.
+export const env = {
+  ...fileEnv,
+  VITE_CONVEX_URL:
+    process.env.VITE_CONVEX_URL ?? fileEnv.VITE_CONVEX_URL,
+  VITE_CONVEX_SITE_URL:
+    process.env.VITE_CONVEX_SITE_URL ?? fileEnv.VITE_CONVEX_SITE_URL,
+} as Record<string, string>
 
 export const DEMO_ORGANIZER = {
   email: "organizer@demo.sessionboard.dev",
@@ -86,10 +99,11 @@ export function watchConsole(
     /Download the React DevTools/i,
     /\[vite\]/i,
     /Failed to load resource.*40[34]/i, // route-level 404s are asserted separately
-    // The email-preview iframe is sandboxed WITHOUT allow-scripts on purpose —
-    // Chrome logs this when the sandbox blocks something, which is the security
-    // model doing its job, not UI breakage.
-    /Blocked script execution in 'about:srcdoc'/i,
+    // Playwright's frame instrumentation can ask Chromium to execute inside
+    // the intentionally script-less branded-email iframe. Chromium refusing
+    // that request proves the sandbox is doing its job; the delivered HTML
+    // contains no script, so this exact message is harness noise.
+    /Blocked script execution in 'about:srcdoc'.*frame is sandboxed.*allow-scripts/i,
     ...extraIgnored,
   ]
   page.on("console", (message) => {

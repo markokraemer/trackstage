@@ -55,6 +55,7 @@ async function publicForm(slug: string, eventSlug = MAIN_EVENT_SLUG) {
   const form = await anonConvexClient().query(api.submit.getForm, {
     slug,
     eventSlug,
+    now: Date.now(),
   })
   return form as {
     questions: Array<Question>
@@ -636,6 +637,23 @@ test.describe("public CFP submission", () => {
       page.getByText(/submissions will be accepted until/i).first(),
     ).toBeVisible({ timeout: 30_000 })
     watcher.assertClean("legacy submit link")
+  })
+
+  test("the bare /submit/:eventSlug link opens that event's primary CFP", async ({
+    page,
+  }) => {
+    const watcher = armed(page)
+    await gotoStable(page, `/submit/${MAIN_EVENT_SLUG}`, "networkidle")
+    await expect(page).toHaveURL(
+      new RegExp(
+        `/submit/${DEMO_WORKSPACE_SLUG}/${MAIN_EVENT_SLUG}/cfp$`,
+      ),
+      { timeout: 30_000 },
+    )
+    await expect(
+      page.getByText(/submissions will be accepted until/i).first(),
+    ).toBeVisible({ timeout: 30_000 })
+    watcher.assertClean("legacy event submit link")
   })
 
   test("hitting the per-user limit shows a friendly error, not a crash", async ({

@@ -94,14 +94,18 @@ portal accounts are nice-to-have. Airtable read-only is fine (bonus, not core).
 
 ## The product surfaces
 
-1. **Organizer app** — left sidebar: Dashboard · Program (Overview, View All, Abstracts,
-   Sessions) · Collect & Review (Forms, Evaluation, Agenda, Portals, Tasks) · Settings.
-2. **Public CFP** (`/submit/:slug`) — de-chromed, centered card, 5-step tracker:
+1. **Organizer app** — left sidebar: Dashboard · Copilot · Program (Forms,
+   Submissions, Evaluation, Agenda) · Speakers (Speakers, Files, Communications) ·
+   Share (Public page, Embeds), with Event settings pinned separately at the bottom.
+2. **Public CFP** (`/submit/:workspaceSlug/:eventSlug/:formSlug`) — de-chromed,
+   centered card, 5-step tracker. Legacy event/form and single-segment form links
+   resolve to the same canonical CFP; a bare event slug opens that event's primary form:
    Welcome → Account → Submission → Participants → Review; then "Continue to portal".
-3. **Speaker portal** (`/portal/:slug`) — tabs: Home, Submissions, Profile, Tasks.
-4. **Form builder** — 7-step wizard (Submission Setup → Welcome Screen → Abstract
-   Information → Participant Information → [Payments, skipped] → Form Settings →
-   Notifications) with per-field Required/Enabled toggles, locked system fields
+3. **Speaker portal** (`/portal`, entered through `/portal/t/:token`) — tabs: Home,
+   Submissions, Profile, Tasks.
+4. **Form builder** — 6-step wizard (Submission Setup → Welcome Screen → Abstract
+   Information → Participant Information → Form Settings → Notifications) with
+   per-field Required/Enabled toggles, locked system fields
    (First/Last/Email), participant-role min/max, close date, submission limits.
 
 ### Speaker identity — how a portal token is earned (security-critical)

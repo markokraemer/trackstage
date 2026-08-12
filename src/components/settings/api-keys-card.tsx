@@ -32,6 +32,7 @@ import {
 } from "@/components/ui/dialog"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Input } from "@/components/ui/input"
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Skeleton } from "@/components/ui/skeleton"
 import {
   Table,
@@ -52,6 +53,24 @@ export interface CreatedApiKey {
   key: string
   prefix: string
   name: string
+  scopes: Array<string> | null
+}
+
+const READ_ONLY_SCOPES = [
+  "read:events",
+  "read:sessions",
+  "read:contacts",
+] as const
+
+function accessLabel(scopes: Array<string> | null) {
+  if (scopes === null) return "Full access"
+  if (
+    scopes.length === READ_ONLY_SCOPES.length &&
+    READ_ONLY_SCOPES.every((scope) => scopes.includes(scope))
+  ) {
+    return "Read only"
+  }
+  return `${scopes.length} custom scope${scopes.length === 1 ? "" : "s"}`
 }
 
 /**
@@ -125,6 +144,7 @@ export function ApiKeysCard({
                 <TableRow>
                   <TableHead>Name</TableHead>
                   <TableHead>Key</TableHead>
+                  <TableHead className="w-28">Access</TableHead>
                   <TableHead className="w-32">Created</TableHead>
                   <TableHead className="w-32">Last used</TableHead>
                   <TableHead className="w-12 text-right">
@@ -160,6 +180,7 @@ function ApiKeyRow({
     prefix: string
     createdAt: number
     lastUsedAt: number | null
+    scopes: Array<string> | null
   }
 }) {
   const revoke = useMutation({ mutationFn: useConvexMutation(api.apiKeys.revoke) })
@@ -170,6 +191,11 @@ function ApiKeyRow({
       <TableCell>
         <span className="font-mono text-xs text-muted-foreground">
           {apiKey.prefix}…
+        </span>
+      </TableCell>
+      <TableCell>
+        <span className="text-xs text-muted-foreground">
+          {accessLabel(apiKey.scopes)}
         </span>
       </TableCell>
       <TableCell className="text-sm text-muted-foreground">
@@ -212,6 +238,9 @@ function CreatedKeyAlert({
         <p className="font-medium text-destructive">
           Copy it now — you won't be able to see it again.
         </p>
+        <p className="text-sm text-foreground">
+          Access: {accessLabel(createdKey.scopes)}
+        </p>
         <div className="flex flex-wrap items-center gap-2 rounded-md border border-border bg-card px-3 py-2">
           <code className="min-w-0 flex-1 leading-relaxed break-all select-all font-mono text-sm text-foreground">
             {createdKey.key}
@@ -242,15 +271,21 @@ function NewKeyDialog({
   onCreated: (key: CreatedApiKey) => void
 }) {
   const [name, setName] = useState("")
+  const [access, setAccess] = useState<"full" | "read-only">("full")
   const create = useMutation({ mutationFn: useConvexMutation(api.apiKeys.create) })
 
   async function submit(event: React.FormEvent) {
     event.preventDefault()
     try {
-      const result = await create.mutateAsync({ name: name.trim() || undefined })
+      const result = await create.mutateAsync({
+        name: name.trim() || undefined,
+        scopes:
+          access === "read-only" ? [...READ_ONLY_SCOPES] : undefined,
+      })
       onCreated(result)
       onOpenChange(false)
       setName("")
+      setAccess("full")
       toast.success("API key created")
     } catch (error) {
       toast.error(errorMessage(error, "Couldn't create that key."))
@@ -262,7 +297,10 @@ function NewKeyDialog({
       open={open}
       onOpenChange={(next) => {
         onOpenChange(next)
-        if (!next) setName("")
+        if (!next) {
+          setName("")
+          setAccess("full")
+        }
       }}
     >
       <DialogContent>
@@ -284,6 +322,61 @@ function NewKeyDialog({
               onChange={(event) => setName(event.target.value)}
             />
           </LabeledField>
+
+          <fieldset className="space-y-2">
+            <legend className="text-sm font-medium text-foreground">
+              Access
+            </legend>
+            <p className="text-xs text-muted-foreground">
+              Read-only keys are safer for reporting tools. Full access is
+              needed when an assistant should update your event.
+            </p>
+            <RadioGroup
+              value={access}
+              onValueChange={(value) =>
+                setAccess(value === "read-only" ? "read-only" : "full")
+              }
+              aria-label="API key access"
+              className="gap-2"
+            >
+              <label
+                htmlFor="api-key-access-full"
+                className="flex cursor-pointer items-start gap-3 rounded-lg border border-border p-3 transition-colors hover:bg-muted/50 has-data-checked:border-primary/40 has-data-checked:bg-primary/5"
+              >
+                <RadioGroupItem
+                  id="api-key-access-full"
+                  value="full"
+                  className="mt-0.5"
+                />
+                <span className="text-sm">
+                  <span className="block font-medium text-foreground">
+                    Full access
+                  </span>
+                  <span className="block text-muted-foreground">
+                    Read and update anything your account can access.
+                  </span>
+                </span>
+              </label>
+              <label
+                htmlFor="api-key-access-read-only"
+                className="flex cursor-pointer items-start gap-3 rounded-lg border border-border p-3 transition-colors hover:bg-muted/50 has-data-checked:border-primary/40 has-data-checked:bg-primary/5"
+              >
+                <RadioGroupItem
+                  id="api-key-access-read-only"
+                  value="read-only"
+                  className="mt-0.5"
+                />
+                <span className="text-sm">
+                  <span className="block font-medium text-foreground">
+                    Read only
+                  </span>
+                  <span className="block text-muted-foreground">
+                    View events, sessions and contacts; every write is refused.
+                  </span>
+                </span>
+              </label>
+            </RadioGroup>
+          </fieldset>
 
           <DialogFooter>
             <DialogClose render={<Button type="button" variant="outline" />}>

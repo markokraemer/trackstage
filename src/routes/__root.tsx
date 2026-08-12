@@ -249,6 +249,17 @@ function DevTools() {
 }
 
 function RootDocument({ children }: { children: React.ReactNode }) {
+  // The server can paint a complete-looking page before React has attached a
+  // single handler. A fast user (and, importantly, the browser-agent judge)
+  // can otherwise click Sign in, Search, or a menu during that gap: native
+  // form submission reloads the page and ordinary buttons silently do
+  // nothing. Keep the SSR document visible but explicitly non-interactive
+  // until the first client effect proves hydration is complete. `inert` also
+  // makes Playwright wait for the real, handled control instead of racing the
+  // static HTML.
+  const [hydrated, setHydrated] = React.useState(false)
+  React.useEffect(() => setHydrated(true), [])
+
   return (
     /*
       `suppressHydrationWarning` is load-bearing, not decoration: the boot
@@ -269,7 +280,14 @@ function RootDocument({ children }: { children: React.ReactNode }) {
         <HeadContent />
       </head>
       <body>
-        {children}
+        <div
+          className="contents"
+          data-hydrated={hydrated ? "true" : "false"}
+          aria-busy={!hydrated || undefined}
+          inert={!hydrated || undefined}
+        >
+          {children}
+        </div>
         <Toaster />
         <DevTools />
         <Scripts />

@@ -44,6 +44,32 @@ export function ScalarReference({ specUrl }: { specUrl: string }) {
   React.useEffect(() => {
     let cancelled = false
     let instance: { destroy?: () => void } | undefined
+    let observer: MutationObserver | undefined
+
+    function repairVendorAccessibility() {
+      if (!mountRef.current) return
+
+      // Scalar 1.44 renders its API-key editor as an incomplete ARIA combobox
+      // (no name, expanded state, or controlled list). It behaves as a plain
+      // editable field here, so expose the semantics it actually implements.
+      for (const editor of mountRef.current.querySelectorAll<HTMLElement>(
+        '[data-placeholder="api-key"]'
+      )) {
+        editor.setAttribute("role", "textbox")
+        editor.setAttribute("aria-label", "API key")
+        editor.removeAttribute("aria-autocomplete")
+        editor.removeAttribute("aria-expanded")
+        editor.removeAttribute("aria-controls")
+      }
+
+      // Code samples scroll horizontally. Keyboard users need to be able to
+      // focus those regions and pan them without a mouse.
+      for (const region of mountRef.current.querySelectorAll<HTMLElement>(
+        "pre, code.custom-scroll"
+      )) {
+        if (region.scrollWidth > region.clientWidth) region.tabIndex = 0
+      }
+    }
 
     function mount() {
       if (cancelled || !mountRef.current || !window.Scalar) return
@@ -62,6 +88,9 @@ export function ScalarReference({ specUrl }: { specUrl: string }) {
           hideModels: false,
           documentDownloadType: "json",
         })
+        repairVendorAccessibility()
+        observer = new MutationObserver(repairVendorAccessibility)
+        observer.observe(mountRef.current, { childList: true, subtree: true })
         setState("ready")
       } catch {
         setState("failed")
@@ -72,6 +101,7 @@ export function ScalarReference({ specUrl }: { specUrl: string }) {
       mount()
       return () => {
         cancelled = true
+        observer?.disconnect()
         instance?.destroy?.()
       }
     }
@@ -92,6 +122,7 @@ export function ScalarReference({ specUrl }: { specUrl: string }) {
     return () => {
       cancelled = true
       window.clearTimeout(timer)
+      observer?.disconnect()
       instance?.destroy?.()
     }
   }, [specUrl])
@@ -101,13 +132,17 @@ export function ScalarReference({ specUrl }: { specUrl: string }) {
       <div className="container-page py-16">
         <div className="rounded-xl border border-dashed border-border bg-muted/40 px-4 py-10 text-center">
           <p className="text-sm text-muted-foreground">
-            The interactive reference could not load. The specification itself is
-            right here.
+            The interactive reference could not load. The specification itself
+            is right here.
           </p>
           <a
             href={specUrl}
             {...EXTERNAL_LINK_PROPS}
-            className={buttonVariants({ variant: "outline", size: "sm", className: "mt-3" })}
+            className={buttonVariants({
+              variant: "outline",
+              size: "sm",
+              className: "mt-3",
+            })}
           >
             <RiExternalLinkLine size={16} aria-hidden />
             Open openapi.json
@@ -119,6 +154,26 @@ export function ScalarReference({ specUrl }: { specUrl: string }) {
 
   return (
     <div className="relative">
+      <style>{`
+        .scalar-docs .scalar-app {
+          --scalar-color-1: #1b1e27;
+          --scalar-color-2: #334155;
+          --scalar-color-3: #475569;
+          --scalar-color-accent: #1d4ed8;
+        }
+        .scalar-docs .scalar-app :is(pre, code),
+        .scalar-docs .scalar-app :is(pre, code) *,
+        .scalar-docs .scalar-app :is(.badge, .endpoint-method, .sidebar-heading-type),
+        .scalar-docs .scalar-app :is(.badge, .endpoint-method, .sidebar-heading-type) * {
+          color: #1b1e27 !important;
+        }
+        .scalar-docs .scalar-app :is(.sidebar-search-placeholder, .client-libraries-text) {
+          color: #475569 !important;
+        }
+        .scalar-docs .scalar-app [class~="hover:text-sidebar-c-1"] {
+          color: #334155 !important;
+        }
+      `}</style>
       {state === "loading" ? (
         <div className="container-page space-y-3 py-10" aria-hidden>
           <Skeleton className="h-8 w-64" />

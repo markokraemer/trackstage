@@ -342,7 +342,7 @@ function taskReminderVars(
   }
 }
 
-/** "Friday, August 14" — a due date in the event's own timezone. */
+/** "Friday, August 14, 2026" — a due date in the event's own timezone. */
 function formatDueDate(dueAt: number, timezone: string): string {
   try {
     return new Intl.DateTimeFormat("en-US", {
@@ -350,6 +350,7 @@ function formatDueDate(dueAt: number, timezone: string): string {
       weekday: "long",
       month: "long",
       day: "numeric",
+      year: "numeric",
     }).format(new Date(dueAt))
   } catch {
     return new Date(dueAt).toDateString()
@@ -628,9 +629,9 @@ const outboxRowValidator = v.object({
   toEmail: v.string(),
   subject: v.string(),
   body: v.string(),
+  isHtml: v.optional(v.boolean()),
   submissionId: v.optional(v.id("submissions")),
   icsAttached: v.boolean(),
-  isHtml: v.optional(v.boolean()),
   scheduledAt: v.optional(v.number()),
   sentAt: v.optional(v.number()),
   status: v.string(),
@@ -853,8 +854,8 @@ export const sendTestToSelf = mutation({
       const vars = taskReminderVars(own, now, event?.timezone ?? "UTC", looksLikeHtml(template.body))
       previewVars.taskList = own.length
         ? vars.taskList
-        : "• Upload your slides — due Friday, August 14"
-      previewVars.nextDueDate = vars.nextDueDate || "Friday, August 14"
+        : "• Upload your slides — due Friday, August 14, 2026"
+      previewVars.nextDueDate = vars.nextDueDate || "Friday, August 14, 2026"
     }
 
     const messageId = await queueMessage(ctx, {

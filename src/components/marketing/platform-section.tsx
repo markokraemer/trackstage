@@ -63,7 +63,7 @@ export function PlatformSection() {
         title={
           <>
             Ask an AI to run your event.{" "}
-            <span className="text-muted-foreground/55">
+            <span className="text-muted-foreground">
               Or plug it into your own website.
             </span>
           </>

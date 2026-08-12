@@ -44,7 +44,7 @@ function McpPage() {
       </p>
 
       {/* ——— The endpoint ——————————————————————————————————————————— */}
-      <h2 className="font-heading mt-10 text-lg font-semibold tracking-[-0.02em] text-foreground">
+      <h2 className="mt-10 font-heading text-lg font-semibold tracking-[-0.02em] text-foreground">
         The endpoint
       </h2>
       <div className="mt-3">
@@ -76,7 +76,7 @@ function McpPage() {
       </div>
 
       {/* ——— Per-client setup ——————————————————————————————————————— */}
-      <h2 className="font-heading mt-10 text-lg font-semibold tracking-[-0.02em] text-foreground">
+      <h2 className="mt-10 font-heading text-lg font-semibold tracking-[-0.02em] text-foreground">
         Connect your client
       </h2>
 
@@ -183,7 +183,7 @@ function McpPage() {
       </Tabs>
 
       {/* ——— Try it ————————————————————————————————————————————————— */}
-      <h2 className="font-heading mt-10 text-lg font-semibold tracking-[-0.02em] text-foreground">
+      <h2 className="mt-10 font-heading text-lg font-semibold tracking-[-0.02em] text-foreground">
         Say this first
       </h2>
       <ul className="doc-prose mt-3">
@@ -195,7 +195,7 @@ function McpPage() {
       </ul>
 
       {/* ——— The tools —————————————————————————————————————————————— */}
-      <h2 className="font-heading mt-10 text-lg font-semibold tracking-[-0.02em] text-foreground">
+      <h2 className="mt-10 font-heading text-lg font-semibold tracking-[-0.02em] text-foreground">
         All {MCP_TOOL_COUNT} tools
       </h2>
       <p className="mt-1 text-[0.875rem] text-muted-foreground">
@@ -204,15 +204,28 @@ function McpPage() {
 
       <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
         <span className="flex items-center gap-1.5">
-          <RiCheckLine size={13} aria-hidden className="text-[var(--status-green-dot)]" />
+          <RiCheckLine
+            size={13}
+            aria-hidden
+            className="text-[var(--status-green-dot)]"
+          />
           Read-only — runs without approval
         </span>
         <span className="flex items-center gap-1.5">
-          <RiAlarmWarningLine size={13} aria-hidden className="text-[var(--status-amber-dot)]" />
-          Creates data — requires <code className="font-mono">confirm: true</code>
+          <RiAlarmWarningLine
+            size={13}
+            aria-hidden
+            className="text-[var(--status-amber-dot)]"
+          />
+          Creates data — requires{" "}
+          <code className="font-mono">confirm: true</code>
         </span>
         <span className="flex items-center gap-1.5">
-          <RiLock2Line size={13} aria-hidden className="text-[var(--status-red-dot)]" />
+          <RiLock2Line
+            size={13}
+            aria-hidden
+            className="text-[var(--status-red-dot)]"
+          />
           Changes or destroys data — requires{" "}
           <code className="font-mono">confirm: true</code>
         </span>
@@ -262,17 +275,16 @@ function McpPage() {
           Every tool that writes anything — creates included — refuses to run
           without <code>confirm: true</code>, so an assistant has to ask you
           before changing your event; reads never need it.{" "}
-          <code>delete_event</code> additionally demands the event&rsquo;s
-          exact name in <code>confirmName</code>. Tools are also annotated
-          with the MCP <code>readOnlyHint</code>/<code>destructiveHint</code>{" "}
-          hints, so clients that honor them (ChatGPT does) add their own
-          approval prompt on top.
+          <code>delete_event</code> additionally demands the event&rsquo;s exact
+          name in <code>confirmName</code>. Tools are also annotated with the
+          MCP <code>readOnlyHint</code>/<code>destructiveHint</code> hints, so
+          clients that honor them (ChatGPT does) add their own approval prompt
+          on top.
         </Callout>
         <Callout tone="note">
-          The in-app{" "}
-          <DocLink to="/docs/guide/ai-copilot">AI copilot</DocLink> uses this
-          exact server, and shows an approval card before every tool that
-          changes something — approving the card is what supplies{" "}
+          The in-app <DocLink to="/docs/guide/ai-copilot">AI copilot</DocLink>{" "}
+          uses this exact server, and shows an approval card before every tool
+          that changes something — approving the card is what supplies{" "}
           <code>confirm: true</code>.
         </Callout>
       </div>
@@ -297,6 +309,7 @@ function ToolBadge({
     return (
       <Badge
         variant="outline"
+        role="img"
         aria-label="Read-only"
         className="mt-0.5 size-6 shrink-0 justify-center border-[var(--status-green-dot)]/30 bg-[var(--status-green-bg)] p-0 text-[var(--status-green-fg)]"
       >
@@ -308,6 +321,7 @@ function ToolBadge({
     return (
       <Badge
         variant="outline"
+        role="img"
         aria-label="Changes or destroys data — requires confirm"
         className="mt-0.5 size-6 shrink-0 justify-center border-[var(--status-red-dot)]/30 bg-[var(--status-red-bg)] p-0 text-[var(--status-red-fg)]"
       >
@@ -318,6 +332,7 @@ function ToolBadge({
   return (
     <Badge
       variant="outline"
+      role="img"
       aria-label="Creates data — requires confirm"
       className="mt-0.5 size-6 shrink-0 justify-center border-[var(--status-amber-dot)]/30 bg-[var(--status-amber-bg)] p-0 text-[var(--status-amber-fg)]"
     >

@@ -51,8 +51,11 @@ Header: event name + dates · "View public page" outline button · avatar menu.
 ### Public (de-chromed, centered card on `#F8FAFC`)
 - `/submit/:workspaceSlug/:eventSlug/:formSlug` — 5-step tracker: Welcome → Account → Submission →
   Participants → Review. Form slugs are unique **per event**, so `cfp` is available to
-  every organizer. The legacy `/submit/:eventSlug/:formSlug` and one-segment `/submit/:formSlug` shapes still resolve and redirect
-  here (docs/memory/DECISIONS.md, "Public URL scheme is hierarchical").
+  every organizer. The legacy `/submit/:eventSlug/:formSlug` shape still resolves.
+  A one-segment link first resolves an exact form slug; otherwise it is treated as an
+  event slug and opens that event's primary CFP (open abstract → any open → closed
+  abstract → oldest remaining). All legacy shapes land on this canonical route
+  (docs/memory/DECISIONS.md, "Public URL scheme is hierarchical").
 - `/e/:eventSlug` — public schedule + speaker gallery (also serves as "embed" surface; struck
   as a requirement, keep minimal).
 
@@ -178,7 +181,11 @@ Accept: dashboard answers "who do I need to chase?" in one glance, live.
 - Outbox: table of scheduled/sent/failed messages; manual "Send reminder to incomplete
   speakers" action + auto-reminder cron (daily, for open tasks near due date).
 - Email transport: Resend (env `RESEND_API_KEY`); without a key, messages render in the
-  outbox with full preview (demo-safe) and .ics still downloadable.
+  outbox with full preview (demo-safe) and .ics still downloadable. Transactional mail
+  addressed outside the event people table (workspace invites, account lifecycle,
+  organizer submission alerts, evaluator reminders) uses `platformEmailDeliveries`: a
+  durable scoped mini-outbox with escaped HTML, idempotent provider calls, bounded retry,
+  stuck-job recovery, final-failure UI and manual retry.
 Accept: committing Accept Queue produces sent (or previewable) personalized emails with
 working portal links; scheduling produces a valid .ics that imports into Google/Apple/Outlook.
 

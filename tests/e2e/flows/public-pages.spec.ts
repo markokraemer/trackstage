@@ -1,11 +1,14 @@
 import { expect, test } from "@playwright/test"
 import type { Page } from "@playwright/test"
+import { api } from "../../../convex/_generated/api.js"
 import {
   DEMO_WORKSPACE_SLUG,
   MAIN_EVENT_NAME,
   MAIN_EVENT_SLUG,
   armed,
   gotoStable,
+  mainEvent,
+  organizerConvexClient,
 } from "./_helpers"
 
 /**
@@ -40,6 +43,15 @@ async function navBarTop(page: Page): Promise<number> {
 }
 
 test.describe("public event pages", () => {
+  test.beforeEach(async () => {
+    // Anonymous pages are intentionally gated by publication. Establish that
+    // precondition per test so a failed agenda lifecycle cannot cascade into
+    // a file full of misleading "0 sessions" failures.
+    const organizer = await organizerConvexClient()
+    const event = await mainEvent(organizer)
+    await organizer.mutation(api.agenda.publishAgenda, { eventId: event._id })
+  })
+
   test("the event nav pins to the top on scroll, on every route", async ({
     page,
   }) => {

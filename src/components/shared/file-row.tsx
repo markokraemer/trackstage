@@ -31,6 +31,7 @@ export interface StoredFile {
   size?: number
   sha256?: string
   version: number
+  isCurrent: boolean
   approvalStatus: string
   reviewNote?: string
   uploadedAt: number
@@ -146,6 +147,12 @@ export function FileRow({
         )}
         <p className="flex flex-wrap items-center gap-x-1.5 text-xs text-muted-foreground">
           <span>Version {file.version}</span>
+          {file.isCurrent ? (
+            <>
+              <span aria-hidden>·</span>
+              <span className="font-medium text-foreground">Current</span>
+            </>
+          ) : null}
           <span aria-hidden>·</span>
           <span>{kind}</span>
           {size ? (

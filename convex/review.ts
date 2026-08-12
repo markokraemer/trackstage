@@ -53,7 +53,7 @@ function personName(person: Doc<"people"> | null): string {
  */
 function roundNotYetOpen(
   plan: Doc<"evaluationPlans">,
-  now: number = Date.now()
+  now: number,
 ): boolean {
   return plan.opensAt !== undefined && now < plan.opensAt
 }
@@ -64,7 +64,7 @@ function roundNotYetOpen(
  * Incomplete submissions come first so "next" always lands on real work.
  */
 export const queue = query({
-  args: { token: v.string() },
+  args: { token: v.string(), now: v.number() },
   handler: async (ctx, args) => {
     const { evaluator, plan } = await requireEvaluator(ctx, args.token)
     const event = await ctx.db.get(plan.eventId)
@@ -72,7 +72,7 @@ export const queue = query({
     // server, not hidden in the UI — an evaluator reading the network response
     // must not be able to recover who submitted.
     const anonymized = plan.blind === true
-    const notYetOpen = roundNotYetOpen(plan)
+    const notYetOpen = roundNotYetOpen(plan, args.now)
     const mine = await myEvaluations(ctx, evaluator._id)
     const bySubmission = new Map<string, Doc<"evaluations">>()
     for (const evaluation of mine) {
@@ -210,7 +210,7 @@ async function requireScorable(
   if (plan.status !== "open") {
     throw new ConvexError("This evaluation round is closed.")
   }
-  if (roundNotYetOpen(plan)) {
+  if (roundNotYetOpen(plan, Date.now())) {
     throw new ConvexError("This evaluation round hasn't opened yet.")
   }
   const assignedIds = assignedSubmissionIds(evaluator, plan)

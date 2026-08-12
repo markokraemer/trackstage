@@ -10,6 +10,40 @@
 
 ---
 
+## Remediation status — 2026-08-12 certification branch
+
+The table below is the current verdict after the original review was acted on. The
+original findings remain below as the immutable before-state and repro record.
+
+| Finding | Current verdict | Closure evidence |
+| --- | --- | --- |
+| F1 | **FIXED** | Generated/served OpenAPI advertises the production Convex site; the live check cross-checks independent sources instead of validating a URL against itself. |
+| F2 | **FIXED** | Every user-controlled platform-email interpolation and CTA URL/label is escaped. The backend verifier submits `Quiet <Talk> & "Proof"` and asserts the stored HTML contains escaped title/ampersand/quotes; hostile evaluator names are covered too. |
+| F3 | **FIXED** | HTML mode is decided from the stored template before variables are merged; ordinary titles such as `<Suspense>` cannot turn a plain template into HTML. |
+| F4 | **FIXED** | Authenticated reads pay the `entity_reads` limiter at the dispatcher door and emit the documented rate-limit headers. |
+| F5 | **FIXED** | All 84 MCP tools have registered generative views; a generated-tool-list invariant makes a new unmapped tool fail tests. The structured auto view is the non-raw safety floor. |
+| F6 | **FIXED** | Successful metadata reads no longer return the internal `unknownResource` sentinel; the backend verifier asserts the key is absent from a real `/tracks` response. |
+| F7 | **REVIEWED / ACCEPTED** | REST keeps ordinary machine-API `DELETE` semantics behind a scoped write key. Interactive MCP deletion retains `confirm:true` + exact `confirmName`. This is a deliberate compatibility boundary, not an accidental missing UI confirmation. |
+| F8 | **FIXED** | `platformEmailDeliveries` is a durable mini-outbox with pending/retrying/sent/preview/failed states, five attempts (1s/5s/25s/125s), stuck-attempt recovery, 90-day retention, scoped issue UI and manual retry. Stable Resend idempotency keys prevent recovery duplicates. Local durable-row probes pass; synthetic 429/500/503/network/422 policy probes are 7/7. |
+| F9–F10 | **FIXED** | Portal links patch field-by-field and merge server-side; the shared profile-completeness rule makes profile tasks born complete and rechecks them after every profile write. |
+| F11 | **FIXED to the safe product boundary** | Embed enable/disable, branding, XML and multi-track filters shipped. Arbitrary custom CSS remains deliberately excluded as an injection/iframe-boundary footgun. |
+| F12 | **FIXED** | Added `update_workspace`, `list_trash`, and `rotate_evaluator_token`; MCP is now 84 tools and the parity matrix names the deliberately excluded boundaries. |
+| F13 | **FIXED** | Bare `/submit/:eventSlug` now resolves the event's deterministic primary CFP (open abstract → any open → closed abstract → oldest remaining). Playwright proves `/submit/ai-summit-2026` opens that event's CFP. |
+| F14 | **REVIEWED / KEPT** | Marko supplied the live Stripe link and later explicitly restored the card. The button stays; only the awkward press-depth treatment was removed. |
+| F15–F16 | **FIXED** | README claims 84 tools/600+ checks and the right clone directory; MIT `LICENSE` exists. The launch film is served at `/launch.mp4`, linked from README and rendered on the landing page with byte-range support. |
+| F17 | **FIXED** | Invalid `application/json` now returns `400 Malformed JSON body.`; the backend verifier sends `{bad json` and distinguishes it from field validation. |
+| F18 | **PARTIAL / P3 only** | Deadline reminders render real close-date/link vars and the Airtable comment now describes opt-in two-way sync. The dormant waitlisted template and invalid-placeholder authoring lint remain low-priority copy hygiene, not a core delivery-path failure. |
+| F19–F20 | **FIXED** | `AGENTS.md` now names the shipped organizer IA and canonical/legacy public URLs; profile/headshot files say “Speaker profile” rather than “—”; the MCP matrix no longer claims bespoke tools are mechanically drift-proof. |
+| F21 | **FIXED locally** | Every backend certification run begins with `seed:setup`; the isolated local deployment is the evidence target and throwaway keys are revoked by the verifier. This does not claim the shared cloud dev database is pristine. |
+| New authz probe | **FIXED** | Event-scoped members could reach another event's webhook deliveries by known hook id. `requireHookAccess` now uses `requireEventAccess` for event hooks; the negative cross-event Playwright probe passes. |
+
+Current residual product findings from the original table: **no P0/P1/P2 defects**. F7
+and F14 are explicit reviewed decisions; F18 retains two P3 copy-authoring nits. Separate
+Convex framework-contract/scale debt is quantified, without pretending cloud telemetry ran,
+in `docs/reference/convex-launch-readiness-2026-08-12.md`.
+
+---
+
 ## Findings table (most severe first)
 
 | # | Sev | Surface | Claim vs observed reality | Repro (URL/command) | Suggested fix |

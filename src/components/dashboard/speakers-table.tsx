@@ -122,7 +122,7 @@ export function SpeakersTable({
     onSelectedChange(
       checked
         ? [...selected.filter((id) => id !== personId), personId]
-        : selected.filter((id) => id !== personId),
+        : selected.filter((id) => id !== personId)
     )
   }
 
@@ -136,7 +136,12 @@ export function SpeakersTable({
   }
 
   return (
-    <Card className={cn("overflow-x-auto p-0 py-0", className)}>
+    <Card
+      className={cn(
+        "w-full max-w-full min-w-0 overflow-x-auto p-0 py-0",
+        className
+      )}
+    >
       <Table>
         <TableHeader>
           <TableRow>
@@ -149,7 +154,9 @@ export function SpeakersTable({
                 }
                 onCheckedChange={(value) =>
                   onSelectedChange(
-                    value === true ? rows.map((row) => String(row.personId)) : [],
+                    value === true
+                      ? rows.map((row) => String(row.personId))
+                      : []
                   )
                 }
               />
@@ -187,7 +194,7 @@ export function SpeakersTable({
                   const target = e.target as HTMLElement
                   if (
                     target.closest(
-                      "button, a, input, label, [role='combobox'], [role='menu'], [role='menuitem'], [role='checkbox'], [role='listbox'], [role='option']",
+                      "button, a, input, label, [role='combobox'], [role='menu'], [role='menuitem'], [role='checkbox'], [role='listbox'], [role='option']"
                     )
                   )
                     return
@@ -272,7 +279,7 @@ export function SpeakersTable({
                     </span>
                   ) : (
                     <div className="flex w-36 flex-col gap-1.5">
-                      <span className="text-xs font-medium tabular-nums text-foreground">
+                      <span className="text-xs font-medium text-foreground tabular-nums">
                         {row.tasks.done}/{row.tasks.total} done
                       </span>
                       <span
@@ -282,7 +289,9 @@ export function SpeakersTable({
                         <span
                           className={cn(
                             "block h-full rounded-full",
-                            progress === 100 ? "bg-status-green-dot" : "bg-primary",
+                            progress === 100
+                              ? "bg-status-green-dot"
+                              : "bg-primary"
                           )}
                           style={{ width: `${progress}%` }}
                         />
@@ -333,7 +342,9 @@ export function SpeakersTable({
                           Edit profile & bio
                         </DropdownMenuItem>
                       ) : null}
-                      <DropdownMenuItem onClick={() => void copyPortalLink(row)}>
+                      <DropdownMenuItem
+                        onClick={() => void copyPortalLink(row)}
+                      >
                         <RiLinkM aria-hidden />
                         Copy portal link
                       </DropdownMenuItem>
@@ -349,7 +360,9 @@ export function SpeakersTable({
                         <RiExternalLinkLine aria-hidden />
                         Open their portal
                       </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => onAssignTask(row.personId)}>
+                      <DropdownMenuItem
+                        onClick={() => onAssignTask(row.personId)}
+                      >
                         <RiListCheck3 aria-hidden />
                         Assign a task
                       </DropdownMenuItem>

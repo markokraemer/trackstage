@@ -1,5 +1,8 @@
 import { defineConfig, devices } from "@playwright/test"
 
+const e2ePort = process.env.SB_E2E_PORT ?? "3000"
+const e2eBaseUrl = process.env.SB_E2E_BASE_URL ?? `http://127.0.0.1:${e2ePort}`
+
 // UI end-to-end suite. Runs against the local dev server (reused if already
 // running). Seeded demo data is assumed: `pnpm exec convex run seed:setup`.
 //
@@ -14,20 +17,20 @@ export default defineConfig({
   globalSetup: "./tests/e2e/global-setup.ts",
   fullyParallel: false,
   workers: 1, // suite shares one seeded deployment; keep runs deterministic
-  retries: process.env.CI ? 1 : 0,
+  retries: 0,
   timeout: process.env.CI ? 90_000 : 30_000,
   reporter: process.env.CI
     ? [["list"], ["html", { open: "never" }]]
     : [["list"]],
   use: {
-    baseURL: "http://localhost:3000",
+    baseURL: e2eBaseUrl,
     trace: "retain-on-failure",
     screenshot: "only-on-failure",
   },
   webServer: {
-    command: "pnpm dev",
-    url: "http://localhost:3000",
-    reuseExistingServer: true,
+    command: `pnpm exec vite dev --host 127.0.0.1 --port ${e2ePort}`,
+    url: e2eBaseUrl,
+    reuseExistingServer: process.env.SB_E2E_REUSE_SERVER !== "0",
     timeout: process.env.CI ? 240_000 : 60_000,
   },
   projects: [
@@ -49,14 +52,11 @@ export default defineConfig({
       name: "flows",
       testMatch: /flows\/.*\.spec\.ts/,
       timeout: 120_000,
-      // Two retries, not one. These specs share a deployment that other agents
-      // reseed while the run is in flight — `seed:setup` recreates the demo
-      // event with a new id, which invalidates whatever the running test set
-      // up (measured: the id changed twice inside one two-minute window during
-      // the build fleet's peak). A reseed collision is unrecoverable mid-test
-      // and entirely uncorrelated with the next attempt, so retrying is the
-      // correct response; a spec that fails all three times is a real failure.
-      retries: 2,
+      // The CI backend is hermetic and seeded exactly once before the suite;
+      // retries would turn a cold-start or state-leak defect into a misleading
+      // green check. Every flow must pass on its first attempt locally and in
+      // CI, so the reported total is the deterministic result.
+      retries: 0,
       use: {
         ...devices["Desktop Chrome"],
         // Without this, an action on an element that never becomes actionable

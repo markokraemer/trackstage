@@ -107,6 +107,14 @@ Cancel / Approve & run. `getRequestHeaders` *is* exported by the installed
 module-graph inconsistency as KI-3 — logged, recovered from, harmless. It was
 one verification away from being filed as a false S1 bug.
 
+**Related, and NOT a bug — the email preview sandbox:** Playwright can ask
+Chromium to execute its frame instrumentation inside the branded-email
+`about:srcdoc` iframe. Chromium then logs that execution was blocked because
+the iframe intentionally omits `allow-scripts`. The captured frame contains
+only the server-rendered email document and no `<script>` element. The console
+watcher ignores that one exact browser security message; widening the sandbox
+to make a test harness quiet would weaken the product.
+
 ## KI-5 — duplicate React keys in the copilot's deadline list
 
 **Severity:** medium — React's own message says rows "may be duplicated and/or
@@ -150,12 +158,15 @@ hostage to `seed:setup`: a reseed purges and recreates that event, and any test
 holding its id or the rows it created dies mid-flight. Measured during this
 build: the event id changed twice inside one two-minute window.
 
-`retries: 2` covers it — the keyboard-drag spec needed all three attempts in
-the last run and then passed — but the structural fix is for the specs that
-don't depend on seeded content (agenda, triage, evaluation, speakers) to
+Retries once hid it; the suite now deliberately runs with `retries: 0`, so a
+reseed must surface instead of turning a contaminated attempt green. The
+structural fix is for the specs that don't depend on seeded content (agenda,
+triage, evaluation, speakers) to
 `events.create` their own event, add rooms/tracks, select it in the switcher,
 and delete it in a `finally`. That makes them immune to reseeding entirely and
-would let the suite run green while the build fleet is active.
+would let the suite run green while the build fleet is active. Hermetic CI is
+seeded once and has no concurrent writer; local shared-deployment runs must
+still avoid reseeding under an active suite.
 
 Keep `cfp-submit`, `forms-builder` and `emails` on the seeded event — they are
 asserting the seeded CFP and templates on purpose.

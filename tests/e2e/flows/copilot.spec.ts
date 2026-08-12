@@ -214,6 +214,22 @@ test.describe("copilot", () => {
     }
   })
 
+  test("an open event menu never blocks the copilot composer", async ({ page }) => {
+    await gotoApp(page, "/app/copilot")
+    const switcher = page.getByRole("button", { name: /switch event/i }).first()
+    await switcher.click()
+    await expect(
+      page.getByRole("menu", { name: /switch event/i }).first(),
+    ).toBeVisible()
+
+    const input = page.getByRole("textbox", { name: /ask/i }).first()
+    await input.click()
+    await expect(input).toBeFocused()
+    await expect(
+      page.getByRole("menu", { name: /switch event/i }).first(),
+    ).toBeHidden()
+  })
+
   test("read-only questions never ask for approval", async ({ page }) => {
     // The flip side of the guard: if everything needed a confirmation the
     // copilot would be useless, so a plain lookup must just answer.

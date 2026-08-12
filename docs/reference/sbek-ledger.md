@@ -14,6 +14,15 @@ classified by **why**, because the fix is completely different in each case:
 Scores are `pct over coverage`. Baseline = run `2026-08-11T12-01-26` (70→150 turn
 config change landed after it).
 
+> **2026-08-12 certification note.** The score board below is the last external sbek
+> run, not a claim about the current branch. Since that run, the adversarial close-out
+> added/fixed the remaining MCP proxy tools and all 84 generative views, portal autosave
+> races, profile-task completion, embed handoff gaps, legacy bare-event CFP links,
+> event-scoped webhook authorization, and durable escaped/retrying platform email.
+> Current deterministic proof is 658/658 backend/API/MCP checks plus the final Playwright
+> matrix recorded in `docs/memory/BUILD-LOG.md`; only a fresh external sbek run may change
+> the numeric score below.
+
 ## Score board
 
 | Area | Weight | Baseline | Rerun-1 (150 turns) | Notes |

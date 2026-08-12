@@ -215,6 +215,8 @@ export interface UploadFile {
   size?: number
   sha256?: string
   version: number
+  /** Newest version in this task/submission/person slot. */
+  isCurrent: boolean
   approvalStatus: string
   reviewNote?: string
   uploadedAt: number
@@ -250,11 +252,14 @@ export async function enrichUploads(
 
   // Earliest version carrying each checksum, per slot — the one we point at.
   const firstSeen = new Map<string, number>()
+  const latestVersion = new Map<string, number>()
   for (const { row, meta } of [...resolved].sort(
     (a, b) => a.row.version - b.row.version,
   )) {
+    const slot = slotKey(row)
+    latestVersion.set(slot, Math.max(latestVersion.get(slot) ?? 0, row.version))
     if (!meta) continue
-    const key = `${slotKey(row)}|${meta.sha256}`
+    const key = `${slot}|${meta.sha256}`
     if (!firstSeen.has(key)) firstSeen.set(key, row.version)
   }
 
@@ -268,6 +273,7 @@ export async function enrichUploads(
       size: meta?.size ?? row.size,
       sha256: meta?.sha256,
       version: row.version,
+      isCurrent: row.version === latestVersion.get(slotKey(row)),
       approvalStatus: row.approvalStatus,
       reviewNote: row.reviewNote,
       uploadedAt: row._creationTime,

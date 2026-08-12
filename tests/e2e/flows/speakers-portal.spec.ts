@@ -100,6 +100,30 @@ test.describe("speakers roster + portal", () => {
     const dialog = page.getByRole("dialog").first()
     await expect(dialog).toBeVisible({ timeout: 20_000 })
     await fillStable(dialog.locator("#task-title"), taskTitle)
+
+    // The eval kit previously burned an entire 150-turn scenario here because
+    // the modal backdrop intercepted nested controls. Prove both the radio card
+    // and the calendar are genuine pointer-operable controls. Escape dismisses
+    // only the calendar — it must not throw away the task form underneath it.
+    await dialog.getByRole("radio", { name: "Collect an answer" }).click()
+    await expect(dialog.getByRole("radio", { name: "Collect an answer" })).toBeChecked()
+    await dialog.getByRole("radio", { name: "Upload a file" }).click()
+    await dialog.locator("#task-due").click()
+    const calendar = page.locator('[data-slot="popover-content"]').last()
+    await expect(calendar).toBeVisible()
+    await page.keyboard.press("Escape")
+    await expect(calendar).toBeHidden()
+    await expect(dialog).toBeVisible()
+    await expect(dialog.locator("#task-title")).toHaveValue(taskTitle)
+
+    await dialog.locator("#task-due").click()
+    const futureDay = calendar
+      .locator('button[data-day]:not([disabled])')
+      .filter({ hasNot: calendar.locator('[data-selected-single="true"]') })
+      .nth(10)
+    await futureDay.click()
+    await expect(calendar).toBeHidden()
+    await expect(dialog.locator("#task-due")).not.toContainText("Pick a due date")
     await fillStable(dialog.locator("#task-speaker-search"), speaker.lastName)
     const assignTo = dialog.getByRole("checkbox", {
       name: new RegExp(`assign to .*${speaker.lastName}`, "i"),
@@ -135,9 +159,34 @@ test.describe("speakers roster + portal", () => {
       async () =>
         (await organizer.query(api.portal.home, {
           portalToken: speaker.portalToken,
+          now: Date.now(),
         })) as { me: { bio?: string }; tasks: Array<{ kind: string; completedAt?: number }> },
       (home) => !!home.me.bio?.includes("developer platforms"),
       { label: "the bio autosaved from the portal" },
+    )
+
+    // Leave two link fields back-to-back, before either save is assumed to
+    // have refreshed the client snapshot. Each mutation must merge only its
+    // own key; otherwise the slower response can erase the other URL.
+    const linkedinUrl = `https://linkedin.com/in/${unique("rapid")}`
+    const twitterUrl = `https://x.com/${unique("rapid").replaceAll("-", "_")}`
+    const linkedin = portal.locator("#profile-linkedin")
+    const twitter = portal.locator("#profile-twitter")
+    await linkedin.fill(linkedinUrl)
+    await twitter.fill(twitterUrl) // blurs LinkedIn and starts save 1
+    await portal.locator("#profile-website").click() // starts save 2 immediately
+    await until(
+      async () =>
+        (await organizer.query(api.portal.home, {
+          portalToken: speaker.portalToken,
+          now: Date.now(),
+        })) as {
+          me: { links?: { linkedin?: string; twitter?: string } }
+        },
+      (home) =>
+        home.me.links?.linkedin === linkedinUrl &&
+        home.me.links.twitter === twitterUrl,
+      { label: "rapid LinkedIn and X autosaves both survive" },
     )
 
     // ——— Headshot upload through the real file input ————————————————
@@ -148,6 +197,7 @@ test.describe("speakers roster + portal", () => {
       async () =>
         (await organizer.query(api.portal.home, {
           portalToken: speaker.portalToken,
+          now: Date.now(),
         })) as { me: { headshotUrl?: string | null; headshotId?: string | null } },
       (home) => Boolean(home.me.headshotUrl ?? home.me.headshotId),
       { timeout: 60_000, label: "the headshot round-tripped through Convex storage" },
@@ -158,6 +208,7 @@ test.describe("speakers roster + portal", () => {
       async () =>
         (await organizer.query(api.portal.home, {
           portalToken: speaker.portalToken,
+          now: Date.now(),
         })) as { tasks: Array<{ kind: string; completedAt?: number }> },
       (home) =>
         home.tasks
@@ -291,7 +342,23 @@ test.describe("speakers roster + portal", () => {
     await expect(
       portal.getByRole("button", { name: /send a new version/i }).first(),
     ).toBeVisible({ timeout: 45_000 })
+    await expect(portal.getByText("Version 1", { exact: true })).toBeVisible()
+    await expect(portal.getByText("Current", { exact: true })).toHaveCount(1)
     await expect(tasksTab).not.toContainText("1", { timeout: 30_000 })
+
+    // CNT-04: a second upload must remain a version, not overwrite v1, and
+    // currency must be explicit rather than inferred from ordering.
+    await portal.getByRole("button", { name: /send a new version/i }).first().click()
+    const newVersionZone = portal
+      .getByRole("button", { name: /drop a new version here/i })
+      .first()
+    await expect(newVersionZone).toBeVisible()
+    await newVersionZone.locator("xpath=../input[@type='file']").setInputFiles(FIXTURE)
+    await expect(portal.getByText("Version 2", { exact: true })).toBeVisible({
+      timeout: 45_000,
+    })
+    await expect(portal.getByText("Version 1", { exact: true })).toBeVisible()
+    await expect(portal.getByText("Current", { exact: true })).toHaveCount(1)
 
     watcher.assertClean("portal drag-and-drop upload")
     await portal.close()

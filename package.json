@@ -7,7 +7,7 @@
     "dev": "vite dev --port 3000",
     "build": "vite build",
     "build:staging": "CLOUDFLARE_ENV=dev vite build --mode staging",
-    "preview": "vite build && wrangler dev",
+    "preview": "vite build && wrangler dev --host localhost:3000 --ip 127.0.0.1 --port 3000",
     "test": "vitest run",
     "lint": "eslint",
     "format": "prettier --write \"**/*.{ts,tsx,js,jsx}\"",
@@ -93,6 +93,7 @@
     "use-stick-to-bottom": "^1.1.6"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.12.1",
     "@cloudflare/vite-plugin": "^1.51.1",
     "@playwright/test": "^1.62.1",
     "@tanstack/devtools-vite": "0.8.3",

@@ -926,6 +926,7 @@ export const remindOutstandingEvaluators = mutation({
     const plan = await requirePlan(ctx, args.planId)
     await requireEventAccess(ctx, plan.eventId)
     const event = await ctx.db.get(plan.eventId)
+    if (!event?.organizationId) throw new ConvexError("Event not found.")
     const evaluators = await evaluatorsForPlan(ctx, plan._id)
     const evaluations = await evaluationsForPlan(ctx, plan._id)
 
@@ -949,9 +950,11 @@ export const remindOutstandingEvaluators = mutation({
         0,
         internal.platformEmails.sendEvaluatorReminder,
         {
+          organizationId: event.organizationId,
+          eventId: plan.eventId,
           toEmail: evaluator.email,
           evaluatorName: evaluator.name,
-          eventName: event?.name ?? "your event",
+          eventName: event.name,
           planName: plan.name,
           outstanding,
           reviewToken: evaluator.token,

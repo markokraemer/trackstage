@@ -66,9 +66,12 @@ export function ShellEventSwitcher() {
             <button
               type="button"
               aria-label="Switch event"
+              disabled={isLoading}
+              aria-busy={isLoading || undefined}
               className={cn(
                 "flex w-full items-center gap-2.5 rounded-lg px-2 py-1.5 text-left",
                 "transition-colors outline-none hover:bg-sidebar-accent",
+                "disabled:cursor-wait disabled:opacity-60",
                 "aria-expanded:bg-sidebar-accent",
                 "focus-visible:ring-3 focus-visible:ring-ring/50",
               )}

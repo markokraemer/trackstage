@@ -118,8 +118,8 @@ export function QueueBanner({
             </AlertDescription>
           </div>
         </div>
-        {/* Wraps on phones — the two buttons together are wider than 390px. */}
-        <div className="flex max-w-full flex-wrap items-center gap-2">
+        {/* Full-width and wrapping on phones — the buttons exceed 390px together. */}
+        <div className="flex w-full max-w-full flex-wrap items-center gap-2 sm:w-auto sm:shrink-0">
           {secondaryAction}
           <Button type="button" onClick={() => setOpen(true)}>
             <RiMailSendLine aria-hidden />

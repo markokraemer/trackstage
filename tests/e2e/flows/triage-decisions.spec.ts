@@ -286,7 +286,12 @@ test.describe("triage and decisions", () => {
     test.skip(list.length === 0, "no submissions to open")
 
     await gotoApp(page, "/app/submissions")
-    await page.getByRole("link", { name: list[0].title }).first().click()
+    const rowLink = page.getByRole("link", { name: list[0].title }).first()
+    await expect(rowLink).toHaveAttribute("href", /[?&]id=/)
+    // The link only changes this page's search state. Do not let Playwright's
+    // action wait couple the click to a cold router transition; the dialog and
+    // URL assertions below are the authoritative completion signals.
+    await rowLink.click({ noWaitAfter: true })
     const drawer = page.getByRole("dialog").first()
     await expect(drawer).toBeVisible({ timeout: 30_000 })
     for (const tab of ["Details", "People", "Reviews"]) {

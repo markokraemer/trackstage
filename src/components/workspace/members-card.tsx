@@ -53,6 +53,7 @@ import { StatusPill } from "@/components/shared/status-pill"
 import { LabeledField } from "@/components/settings/labeled-field"
 import { ConfirmDeleteButton } from "@/components/settings/confirm-delete-button"
 import { errorMessage } from "@/lib/errors"
+import { PlatformEmailIssues } from "@/components/comms/platform-email-issues"
 import {
   ROLE_HELP,
   canChangeRoles,
@@ -283,6 +284,12 @@ export function MembersCard({
           </Button>
         </CardAction>
       </CardHeader>
+
+      <PlatformEmailIssues
+        organizationId={organizationId}
+        enabled={canInvite}
+        className="mx-6 mt-5"
+      />
 
       <CardContent>
         {isPending ? (

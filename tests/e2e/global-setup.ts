@@ -23,11 +23,18 @@ export default async function globalSetup() {
   }
   const started = Date.now()
   try {
-    execFileSync("pnpm", ["exec", "convex", "run", "seed:setup"], {
-      cwd: root,
-      stdio: "pipe",
-      timeout: 180_000,
-    })
+    const deploymentArgs = process.env.SB_CONVEX_DEPLOYMENT
+      ? ["--deployment", process.env.SB_CONVEX_DEPLOYMENT]
+      : []
+    execFileSync(
+      "pnpm",
+      ["exec", "convex", "run", "seed:setup", ...deploymentArgs],
+      {
+        cwd: root,
+        stdio: "pipe",
+        timeout: 180_000,
+      },
+    )
     console.log(`[global-setup] reseeded in ${Date.now() - started}ms`)
   } catch (error) {
     // A failed reseed is worth shouting about but must not mask the real

@@ -34,9 +34,9 @@ export function workspaceMetaLabel(role: string, eventCount: number): string {
  * Switching workspace NAVIGATES: the URL carries the working context
  * (docs/memory/DECISIONS.md, "URL architecture is fully hierarchical"), so
  * the target workspace's first reachable event lands at its canonical
- * dashboard, and an empty workspace lands on its hub — where "create an
- * event" is the obvious next step. The store write travels along so global
- * pages and bare legacy paths agree on the context.
+ * dashboard, and an empty workspace lands on its first-run home — where
+ * "create an event" is the obvious next step. The store write travels along
+ * so global pages and bare legacy paths agree on the context.
  */
 export function useWorkspaceSwitcher() {
   const { workspaceOptions, workspace, selectWorkspace } = useCurrentEvent()
@@ -62,16 +62,16 @@ export function useWorkspaceSwitcher() {
   )
 
   /**
-   * Land on a JUST-created workspace's hub. It is always empty and, crucially,
-   * not yet in `workspaceOptions` (the `workspaces.mine` query hasn't refetched
-   * when the create mutation resolves) — so `switchTo` above would find no
-   * option and bail. The create result carries the slug, which is all the hub
-   * link needs; the context write still moves the pointer.
+   * Land on a JUST-created workspace's first-run home. It is always empty and,
+   * crucially, not yet in `workspaceOptions` (the `workspaces.mine` query
+   * hasn't refetched when the create mutation resolves) — so `switchTo` above
+   * would find no option and bail. The create result carries the slug, which
+   * is all the home link needs; the context write still moves the pointer.
    */
   const switchToCreated = useCallback(
     (created: { organizationId: string; slug: string }) => {
       selectWorkspace(created.organizationId)
-      void navigate({ href: appLink.workspaceHub(created.slug) })
+      void navigate({ href: appLink.workspaceHome(created.slug) })
     },
     [selectWorkspace, navigate],
   )

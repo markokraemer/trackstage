@@ -41,6 +41,7 @@ import type {
   ParticipantDraft,
   SubmitForm,
 } from "@/components/submit/types"
+import { portalHomeArgs } from "@/components/portal/portal-query"
 
 /**
  * `/submit/:eventSlug/:formSlug` — the public call-for-speakers flow, and the
@@ -72,13 +73,16 @@ export const Route = createFileRoute("/submit/$workspaceSlug/$eventSlug/$formSlu
     return token ? { t: token } : {}
   },
   loader: async ({ context, params }) => {
+    const now = Date.now()
     await context.queryClient.ensureQueryData(
       convexQuery(api.submit.getForm, {
         slug: params.formSlug,
         eventSlug: params.eventSlug,
         workspaceSlug: params.workspaceSlug,
+        now,
       }),
     )
+    return { now }
   },
   pendingComponent: SubmitSkeleton,
   component: PublicSubmitPage,
@@ -101,8 +105,14 @@ interface StoredProgress {
 
 function PublicSubmitPage() {
   const { workspaceSlug, eventSlug, formSlug } = Route.useParams()
+  const { now } = Route.useLoaderData()
   const { data: form } = useSuspenseQuery(
-    convexQuery(api.submit.getForm, { slug: formSlug, eventSlug, workspaceSlug }),
+    convexQuery(api.submit.getForm, {
+      slug: formSlug,
+      eventSlug,
+      workspaceSlug,
+      now,
+    }),
   )
 
   if (!form) return <NotFoundCard slug={`${eventSlug}/${formSlug}`} />
@@ -184,7 +194,7 @@ function SubmitFlow({
   const portalQuery = useQuery({
     ...convexQuery(
       api.portal.home,
-      portalToken ? { portalToken } : "skip",
+      portalToken ? portalHomeArgs(portalToken) : "skip",
     ),
     retry: false,
   })

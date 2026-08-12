@@ -2820,6 +2820,70 @@ gains `hideSearch=true` live, Code → snippet + copy receipt, saved row → who
 config restored, 390px stacks with no horizontal scroll. crawl (both embeds
 routes) and the `?embed=1` public-page spec green.
 
+## 2026-08-12 — Adversarial certification continuation: scoped webhooks, legacy CFP, durable platform email
+
+Continued the isolated `codex/adversarial-e2e-audit-20260811` goal after reading the
+166-prompt raw corpus, core requirements and adversarial prompt. Three confirmed gaps
+closed. (1) A known event-hook id let an event-limited workspace member read delivery
+metadata for a different event because `requireHookAccess` stopped at workspace
+membership. Event hooks now use `requireEventAccess`; workspace hooks remain workspace
+scoped. A two-event Playwright regression proves the allowed event is visible and the
+denied delivery query returns “Event not found.” (2) `/submit/:eventSlug` now opens the
+event's deterministic primary CFP while preserving exact form-slug precedence; focused
+Playwright passes. (3) all five platform-email families moved from fire-and-forget to
+durable `platformEmailDeliveries` rows with bounded automatic retry, stuck recovery,
+retention, scoped issue UI and manual retry. Every interpolated HTML value/URL is escaped.
+
+The email retry seam was hardened further during verification: a stable Resend
+`Idempotency-Key` survives every retry/recovery, direct event/workspace+status indexes
+mean successful traffic cannot hide an older issue, and a 7-test transport/policy suite
+proves 429/500/503/network retry, terminal 422, provider receipt capture, preview behavior,
+the 1s/5s/25s/125s schedule and the five-attempt stop. Backend/API/MCP after the first wave:
+**658/658**. The REST adversarial tail also closed F6/F17: successful metadata reads omit
+the `unknownResource` dispatch sentinel, and malformed JSON gets an honest parse error;
+both are now backend assertions.
+
+Convex launch-readiness was run honestly as code/local behavior only. Authz/reviewer scans:
+186 public functions, zero missing args, zero identity-from-argument candidates, zero DB
+query `.filter()`, zero registered-query wall-clock reads, zero scheduling to public
+`api.*`. Systemic debt remains: 95 public functions without exact return validators and
+39 public functions with 53 `.collect()` calls. Per-function scoring therefore floors the
+code-only readiness rubric at 0/100 even while behavioral suites are green; Advisor and
+Insights are explicitly skipped because the official cloud tools/representative traffic
+are unavailable. Full evidence and the ordered remediation plan live in
+`docs/reference/convex-launch-readiness-2026-08-12.md`.
+
+Final merge SHA and complete post-merge gate counts are appended after the last
+`origin/main` refresh.
+
+## 2026-08-12 — Post-merge certification caught API latency, WCAG, and context-order defects
+
+The final post-main matrix found issues that the earlier focused gates did not. First,
+the REST `isAbstract` assertion failed because `apiV1.searchSessions` timed out at the
+Convex one-second query ceiling while serially joining a normal 22-row page. Session
+search now preloads each page's participant rows concurrently, deduplicates person
+loads, shapes rows concurrently and resolves each headshot URL once. Five consecutive
+live probes returned HTTP 200 in 23–242ms; the complete backend/API/MCP verifier then
+passed **658/658**, including all **84 MCP tools** and their confirmation/auth gates.
+
+Second, the full browser matrix found three real accessibility problems: low-contrast
+secondary clauses on the marketing page and nameless Widget/Format select triggers in
+the embed builder. The marketing clauses now use the full muted token and the triggers
+have explicit accessible names. Axe desktop/mobile and embed-route regressions pass.
+Two global-search failures and one multi-tenant failure were stale-event assumptions:
+search is event-scoped and workspace switching promises the first reachable event, not
+the seed fixture. The tests now pin/select `ai-summit-2026` explicitly and also prove
+the newly claimed member can use the event level of the two-tier switcher.
+
+Clean post-fix evidence before the final upstream refresh: **363/363 unit**;
+**658/658 backend/API/MCP**; **65/65 flow Playwright**; **94/94 complementary Chromium
+Playwright**; typecheck; lint; production build; OpenAPI generation **110/110** and live
+route verification **110/110**. The production Worker booted and served HTTP 200. One
+earlier long browser attempt was discarded after Wrangler's local runtime crashed and
+exited; the clean 65- and 94-test runs used a freshly rebuilt Worker and are the counts
+reported here. Final branch SHA and any post-refresh rerun are appended after the last
+`origin/main` merge.
+
 ## 2026-08-12 — Copilot lists were rendering outside their own column
 
 Marko, on two side-panel screenshots: numbered and bulleted lists "pressed
@@ -3032,6 +3096,52 @@ Not mine, seen in the tree: `src/components/comms/message-drawer.tsx` has an
 unused `RiDownload2Line` import (another agent, mid-edit) — the only `tsc`
 error; lint is clean.
 
+## 2026-08-12 ~02:35–04:05 — Adversarial certification final merge-ready pass
+
+The isolated `codex/adversarial-e2e-audit-20260811` branch repeatedly merged
+`main`, ending this pass on merge SHA `72a27bd0fff3345c05bf408c273cd80deedfd50b`
+with `origin/main` at `1275e198557ab066d103b1abd3b5407743a82fc6`.
+The last merge brought in `/get`, the platform-tour GIF and toast-test cleanup;
+both browser suites were rerun from a fresh deterministic local seed after it.
+
+One integration regression was caught before handoff: main's new custom
+`/api/auth/*` forwarder (the production sign-in fix) replaced the helper that
+had carried Cloudflare's trusted client address. That silently dropped
+`cf-connecting-ip` before Better Auth's durable limiter and failed to scrub a
+browser-supplied `x-trackstage-client-ip`. The custom forwarder now overwrites
+the bridge header from Cloudflare's canonical value or removes it when absent.
+The security E2E proves both halves, and the full Chromium suite includes it.
+
+Final exact-merge-SHA evidence:
+
+- backend / REST / MCP verifier: **658 passed, 0 failed**; MCP surface is 84
+  tools with confirmation metadata, auth, revocation and tenant boundaries;
+- Playwright flows, retries disabled: **64 passed, 1 skipped** (the only skip
+  is real Resend receipt verification without delivery credentials);
+- complementary Chromium, retries disabled: **94 passed, 0 failed** across
+  WCAG, mobile overflow, keyboard focus, route crawl and role/token personas;
+- Vitest: **388 passed, 0 failed**; typecheck and lint clean;
+- generated OpenAPI and live endpoint parity: **110/110**;
+- production build clean; the real built Worker booted with `/` and `/get` at
+  HTTP 200, while `Range: bytes=0-15` on `/launch.mp4` returned HTTP 206,
+  `Content-Range: bytes 0-15/11493231`, and exactly 16 bytes.
+
+The browser total is **158 unique tests** when the shared auth setup is counted
+once (64 runnable flows + 94 complementary checks). Evidence is local/headless
+and Worker-local; no claim is made here about a new production deploy or live
+production telemetry. Convex launch-readiness findings remain separately
+recorded: 95 missing exact return validators, 39 public functions containing
+53 `.collect()` calls, and Advisor/Insights unavailable in this environment.
+
+After that certification, `main` advanced once more to
+`9acb45d916bc6b7fa94d64c6e2b6c92af536e93a`. The branch merged it as
+`6d35e9e72031c45859cec2d767b3cffae26edad7`. This delta was documentation-only:
+the final reseeded-production sbek scoring cycle plus README/submission evidence;
+it changed no runtime code, dependency, test or generated API artifact. The
+deterministic repository gates were rerun on the resulting merge SHA before PR
+handoff; the code-identical browser/API/MCP certification above remains the
+applicable runtime evidence.
+
 ---
 
 ## 2026-08-12 — the eternal skeleton after confirming your email (first-run, Safari)
@@ -3143,3 +3253,141 @@ is on screen a beat before it is hydrated, so the spec's bare `.fill()` was
 wiped by hydration and Continue refused with "Give your workspace a name."
 Switched to the suite's `fillStable`/`advance` — the same property, and the
 same helpers, every SSR'd form in this app already lives with.
+
+## 2026-08-12 ~04:10–06:00 — Evaluator-extension and merge-ready certification
+
+Continued the isolated `codex/adversarial-e2e-audit-20260811` worktree, merged
+latest `origin/main` (`8803fe3926677ee4551bb0dfe173d184cb586db2`), and
+certified the resulting runtime without touching the primary checkout's port
+3000 process. The focused product fixes are commit `4102465`: file versions now
+name exactly one visible **Current** upload, task reminders include task titles
+and full dates with years, and organizer task assignment skips exact open
+duplicates while still allowing revised instructions, dates or sessions.
+
+One verifier failure was useful: its purported duplicate used different
+instructions, so the backend correctly created revised work. The fixture now
+resends the exact task, and separately proves changed work remains assignable.
+The UI reports created/skipped counts; REST and MCP task creates remain ordinary
+non-idempotent creates and are not misrepresented as deduplicated.
+
+The evaluator gap review found that EMB-15's backend options were covered but
+the organizer browser lifecycle was not. `tests/e2e/flows/embeds.spec.ts`
+(`85e43bf`) now drives the ordinary UI to save a named iframe configuration,
+persists accent/header/description settings, reopens and restores them, turns
+the saved embed off, proves its already-pasted public URL hides every session
+behind “This embed is turned off”, then turns it on and proves sessions return.
+
+Exact post-merge evidence (all retries disabled where stated):
+
+- backend / REST / MCP verifier: **663 passed, 0 failed**; MCP lists **84**
+  tools with auth, revocation, tenant isolation, confirmation schemas and
+  truthful annotations;
+- Playwright flows: **66 passed, 1 skipped, 0 failed** in 4.6 minutes; the only
+  skip is real Resend receipt acceptance without delivery credentials;
+- complementary Chromium: **94 passed, 0 failed** in 3.0 minutes across WCAG,
+  mobile overflow, keyboard focus, route crawl, auth security, hierarchy and
+  speaker/reviewer personas;
+- **159 unique browser tests** when the shared auth setup is counted once;
+- Vitest **388 passed**, typecheck, lint and diff hygiene clean;
+- generated and live local OpenAPI parity **110/110**;
+- production build clean; a development-mode build of the same Worker against
+  the branch's deployed local Convex backend returned HTTP 200 for `/`, login,
+  docs, API docs, MCP docs, CFP and portal routes, plus a real 206 with exactly
+  100 requested video bytes.
+
+The default production-mode artifact initially returned CFP HTTP 500 locally.
+Read-only reproduction against production Convex proved a deploy-order mismatch:
+the new Worker sends deterministic `now`, while the currently deployed old
+`submit:getForm` validator rejects that field. Live production and staging CFP
+both still returned 200. The release workflows deploy Convex before building
+and shipping the Worker, and the version-matched local Worker/Convex pair is
+green; no cloud deployment was performed from this audit branch.
+
+Official `killmysaas-evals` was refreshed and remained at Forge HEAD
+`2b0f7956ab0c6f4868d41356e495b3a225badaab`. Install/smoke passed and dry-run
+validated all **86 required rubric items / 18 required scenarios**. No current
+official score is claimed: the harness directly constructs Anthropic's SDK and
+this authorized environment has neither `ANTHROPIC_API_KEY` nor an `ant`
+profile. Claude Code Max authentication does not authenticate that SDK. Two
+subscription-based Claude review attempts produced no usable report and count
+as zero evidence. The historical 94.4% composite is stale and is not presented
+as this branch's score.
+
+### PR-head CI follow-up
+
+After squashing the audit into one commit to remove inherited public demo/test
+password fixtures from GitGuardian's commit-range scan, GitGuardian passed and
+the deterministic CI job passed. The first hermetic browser job never entered
+the tests: CI had prestarted Vite on `localhost`, while Playwright probes
+`127.0.0.1`; the hosted runner's address-family split made Playwright miss the
+healthy prestarted server and time out trying to start another. CI now binds
+and probes Vite on the exact `127.0.0.1` address in `playwright.config.ts`.
+That exposed the corresponding auth configuration mismatch: Better Auth
+correctly rejected the browser's `127.0.0.1` origin because hermetic `SITE_URL`
+still named `localhost`. The CI-only `SITE_URL` and `VITE_SITE_URL` now use the
+same canonical IPv4 origin as Vite and Playwright.
+
+The first all-green PR run still reported five retry-recovered flows. Because
+the CI deployment is isolated and seeded once, the older shared-deployment
+justification for retries does not apply there. Playwright retries are now zero
+globally and for the flows project; a cold-start or state-leak failure must be
+fixed, never converted into a green check.
+
+### Zero-retry CI repair
+
+The first no-retry PR run (`31593023681`) correctly exposed ten failures. The
+artifacts reduced them to four independent races, not ten product regressions:
+the agenda lifecycle unpublished the shared demo event and restored it only on
+its happy path (cascading into embeds and five public-page failures), the event
+switcher could return with Base UI's modal menu backdrop still mounted, the
+multi-tenant flow took a cold legacy workspace redirect instead of its
+canonical route, and a submission link click coupled the assertion to router
+navigation bookkeeping.
+
+The repair makes state ownership explicit. Agenda publication is restored in a
+`finally`; public pages and embeds establish publication as their own
+precondition; `selectEvent` never returns with the switcher menu open; workspace
+E2E addresses the canonical workspace page; and the drawer test asserts the
+real `?id=` destination while letting its dialog/URL assertions signal
+completion. Dropdown menus now default to non-modal like the house Select, so
+an open ordinary action menu cannot inert the whole app, with a regression test
+that clicks directly from the open event menu into the copilot composer.
+Playwright output/report paths are ignored by Vite's watcher after the failed
+CI log showed hundreds of full-reload broadcasts for trace resources.
+
+Independent Claude Code read-only review agreed with the artifact diagnosis
+and identified the menu default plus Vite watch-root churn; every recommendation
+used here was independently reproduced before implementation. A fresh anonymous
+local Convex backend first revealed a stale encrypted JWKS key from an earlier
+local run after the test secret changed; preserving that state and recreating
+the backend cleanly reproduced CI's fresh-run order and removed the unrelated
+token-mint failure.
+
+First-attempt local evidence after the repair, with Playwright retries still
+zero: affected six-file selection **25 passed / 3 expected local copilot skips**
+apart from one incorrect boolean-attribute assertion caught and fixed; focused
+multi-tenancy **6/6**; full flows **63 passed / 4 expected credential skips / 0
+failed** in 4.4 minutes; and the explicit non-modal menu regression **2 passed /
+3 model-key skips**. The four full-suite skips were three OpenRouter-backed
+copilot behaviours on the disposable keyless backend plus the existing real
+Resend receipt check. Exact-head PR CI remains the next authority.
+
+### Exact-head CI exposed background-traffic coupling in embeds
+
+PR run `31598918830` reached **66 passed / 1 expected provider skip** before the
+saved-embed lifecycle exhausted its timeout on its second organizer navigation.
+The retained trace and screenshot proved the target Embeds page was already
+fully rendered, with the newly saved row visible and off; only Playwright's
+`waitUntil: "networkidle"` condition had not settled. The page can legitimately
+have background activity (including copilot/model traffic), so network silence
+is not a user-visible readiness contract. The lifecycle now navigates on DOM
+readiness and uses the existing page heading, off-curtain, switch state and
+session-card assertions as its real completion signals.
+
+The next exact-head run (`31601481344`) then isolated the complementary cold
+render case: DOM readiness returned in 0.5 seconds, while the first uncached
+organizer route was still on its legitimate loading skeleton when Playwright's
+default 5-second assertion timeout expired. The retained snapshot showed no
+error boundary or wrong route. The semantic readiness assertions now have 30
+seconds of cold-start headroom; they still fail a stuck skeleton, but no longer
+confuse a cold route chunk/query with a product failure.

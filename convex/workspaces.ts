@@ -173,6 +173,7 @@ export const addMember = mutation({
       }
     }
     await ctx.scheduler.runAfter(0, internal.platformEmails.sendWorkspaceInvite, {
+      organizationId: args.organizationId,
       toEmail: email,
       workspaceName: org?.name ?? "your team's workspace",
       inviterName: user.name ?? user.email,

@@ -1,8 +1,11 @@
 import { expect, test } from "@playwright/test"
+import { api } from "../../convex/_generated/api.js"
 import {
   DEMO_ORGANIZER,
   ORGANIZER_STATE,
   assertNoErrorBoundary,
+  env,
+  organizerConvexClient,
   watchConsole,
 } from "./utils"
 
@@ -10,7 +13,9 @@ test.describe("landing + design system", () => {
   test("landing shows the three demo entry points", async ({ page }) => {
     const watcher = watchConsole(page)
     await page.goto("/")
-    await expect(page.getByText(/organizer demo/i).first()).toBeVisible()
+    await expect(
+      page.getByRole("link", { name: /open the organizer app/i }).first(),
+    ).toBeVisible()
     await expect(page.getByText(/speaker portal/i).first()).toBeVisible()
     await expect(page.getByText(/submit a talk/i).first()).toBeVisible()
     watcher.assertClean("/")
@@ -26,18 +31,60 @@ test.describe("landing + design system", () => {
 })
 
 test.describe("organizer auth flow", () => {
+  test("auth proxy preserves the Cloudflare client IP and drops a spoofed bridge header", async ({
+    request,
+  }) => {
+    const edgeIp = "203.0.113.77"
+    const signIn = await request.post("/api/auth/sign-in/email", {
+      headers: {
+        Origin: "http://localhost:3000",
+        "cf-connecting-ip": edgeIp,
+      },
+      data: DEMO_ORGANIZER,
+    })
+    expect(signIn.ok()).toBe(true)
+
+    const edgeSession = await request.get("/api/auth/get-session")
+    expect(edgeSession.ok()).toBe(true)
+    expect((await edgeSession.json()).session.ipAddress).toBe(edgeIp)
+
+    const spoofedIp = "198.51.100.88"
+    const spoofedSignIn = await request.post("/api/auth/sign-in/email", {
+      headers: {
+        Origin: "http://localhost:3000",
+        "x-trackstage-client-ip": spoofedIp,
+      },
+      data: DEMO_ORGANIZER,
+    })
+    expect(spoofedSignIn.ok()).toBe(true)
+
+    const spoofedSession = await request.get("/api/auth/get-session")
+    expect(spoofedSession.ok()).toBe(true)
+    expect((await spoofedSession.json()).session.ipAddress).not.toBe(spoofedIp)
+  })
+
   test("wrong password shows a friendly error", async ({ page }) => {
     await page.goto("/login")
     await page.getByLabel("Email").first().fill(DEMO_ORGANIZER.email)
     await page.getByLabel("Password").first().fill("definitely-wrong")
-    await page.getByRole("button", { name: /^sign in$/i }).first().click()
-    await expect(page.getByText(/couldn't sign you in/i).first()).toBeVisible()
+    await page
+      .getByRole("button", { name: /^sign in$/i })
+      .first()
+      .click()
+    await expect(
+      page.getByText(/email and password don't match/i).first()
+    ).toBeVisible()
   })
 
   test("demo credentials one-click fill works", async ({ page }) => {
     await page.goto("/login")
-    await page.getByRole("button", { name: /use these/i }).first().click()
-    await expect(page.getByLabel("Email").first()).toHaveValue(DEMO_ORGANIZER.email)
+    await page
+      .getByRole("button", { name: /use these/i })
+      .first()
+      .click()
+    await expect(page.getByLabel("Email").first()).toHaveValue(
+      DEMO_ORGANIZER.email
+    )
   })
 })
 
@@ -46,9 +93,11 @@ test.describe("organizer shell", () => {
 
   test("shell shows event context, nav, and user menu", async ({ page }) => {
     const watcher = watchConsole(page)
-    await page.goto("/app")
+    // Pin the fixture instead of inheriting a valid but unrelated event from
+    // the organizer's persisted context.
+    await page.goto("/app/ai-engineer/ai-summit-2026")
     await expect(
-      page.getByRole("button", { name: /switch event/i }).first(),
+      page.getByRole("button", { name: /switch event/i }).first()
     ).toBeVisible({ timeout: 15_000 })
     for (const item of [
       "Dashboard",
@@ -61,21 +110,26 @@ test.describe("organizer shell", () => {
       "Settings",
     ]) {
       await expect(
-        page.getByRole("link", { name: new RegExp(item, "i") }).first(),
+        page.getByRole("link", { name: new RegExp(item, "i") }).first()
       ).toBeVisible()
     }
     // Top bar: search trigger, public-page LINK (not a button — the judge is a
     // browser agent), copilot, avatar menu.
-    await expect(page.getByRole("button", { name: "Search" }).first()).toBeVisible()
     await expect(
-      page.getByRole("link", { name: /view public page/i }).first(),
+      page.getByRole("button", { name: "Search" }).first()
     ).toBeVisible()
     await expect(
-      page.getByRole("button", { name: /open the ai copilot/i }).first(),
+      page.getByRole("link", { name: /^public page$/i }).first()
+    ).toBeVisible()
+    await expect(
+      page.getByRole("button", { name: /open the ai copilot/i }).first()
     ).toBeVisible()
 
     // User menu opens without Base UI context errors (regression: MenuGroupContext).
-    await page.getByRole("button", { name: /account menu/i }).first().click()
+    await page
+      .getByRole("button", { name: /account menu/i })
+      .first()
+      .click()
     await expect(page.getByText(/sign out/i).first()).toBeVisible()
     watcher.assertClean("/app shell")
   })
@@ -85,11 +139,15 @@ test.describe("organizer shell", () => {
    * The bar's search has to actually search: open by keyboard AND by click,
    * return grouped results, and navigate on Enter.
    */
-  test("global search finds a session and navigates to it", async ({ page }) => {
+  test("global search finds a session and navigates to it", async ({
+    page,
+  }) => {
     const watcher = watchConsole(page)
-    await page.goto("/app")
+    // Global search is event-scoped. Pin the fixture instead of inheriting a
+    // valid but unrelated event from the organizer's persisted context.
+    await page.goto("/app/ai-engineer/ai-summit-2026")
     await expect(
-      page.getByRole("button", { name: /switch event/i }).first(),
+      page.getByRole("button", { name: /switch event/i }).first()
     ).toBeVisible({ timeout: 15_000 })
 
     // Click opens it…
@@ -99,7 +157,7 @@ test.describe("organizer shell", () => {
 
     // …and the blank palette offers quick actions.
     await expect(
-      page.locator("[cmdk-item]", { hasText: /open the agenda/i }).first(),
+      page.locator("[cmdk-item]", { hasText: /open the agenda/i }).first()
     ).toBeVisible()
 
     // Escape closes.
@@ -129,13 +187,19 @@ test.describe("organizer shell", () => {
 
   test("global search reaches a speaker's profile", async ({ page }) => {
     const watcher = watchConsole(page)
-    await page.goto("/app")
+    // Global search is event-scoped. Pin the fixture instead of inheriting a
+    // valid but unrelated event from the organizer's persisted context.
+    await page.goto("/app/ai-engineer/ai-summit-2026")
     await expect(
-      page.getByRole("button", { name: /switch event/i }).first(),
+      page.getByRole("button", { name: /switch event/i }).first()
     ).toBeVisible({ timeout: 15_000 })
 
+    const searchButton = page.getByRole("button", { name: "Search" }).first()
+    await expect(searchButton).toBeEnabled({ timeout: 15_000 })
     await page.keyboard.press("ControlOrMeta+k")
-    await page.keyboard.type("nakamura")
+    const palette = page.getByRole("dialog").first()
+    await expect(palette).toBeVisible()
+    await palette.getByRole("combobox").fill("nakamura")
     const speaker = page
       .locator("[cmdk-group]", { hasText: "Speakers" })
       .locator("[cmdk-item]")
@@ -147,7 +211,10 @@ test.describe("organizer shell", () => {
       timeout: 10_000,
     })
     await expect(
-      page.getByRole("dialog").filter({ hasText: /Ava Nakamura/i }).first(),
+      page
+        .getByRole("dialog")
+        .filter({ hasText: /Ava Nakamura/i })
+        .first()
     ).toBeVisible({ timeout: 10_000 })
 
     watcher.assertClean("global search → speaker")
@@ -174,17 +241,22 @@ test.describe("hierarchy", () => {
     // Land on a known event first — the deployment carries more than the two
     // seeded ones, and a fresh browser starts on whichever comes back first.
     await switcher.click()
-    const items = page.getByRole("menuitem")
-    expect(await items.count()).toBeGreaterThanOrEqual(2)
-    await page
+    const menu = page.getByRole("menu", { name: /switch event/i })
+    await expect(menu).toBeVisible()
+    const summit = menu
       .getByRole("menuitem", { name: /AI Engineer Summit 2026/i })
       .first()
-      .click()
+    const designDay = menu
+      .getByRole("menuitem", { name: /Design Systems Day/i })
+      .first()
+    await expect(summit).toBeVisible()
+    await expect(designDay).toBeVisible()
+    await summit.click()
     await expect(switcher).toContainText(/AI Engineer Summit 2026/i)
 
     // Switching moves the shell's event context.
     await switcher.click()
-    await page
+    await menu
       .getByRole("menuitem", { name: /Design Systems Day/i })
       .first()
       .click()
@@ -194,7 +266,7 @@ test.describe("hierarchy", () => {
 
     // Put it back so the rest of the suite sees the main seeded event.
     await switcher.click()
-    await page
+    await menu
       .getByRole("menuitem", { name: /AI Engineer Summit 2026/i })
       .first()
       .click()
@@ -211,7 +283,10 @@ test.describe("hierarchy", () => {
     // Open + pick as one retried unit: a click that lands before hydration is
     // swallowed and the menu never opens.
     await expect(async () => {
-      await page.getByRole("button", { name: /account menu/i }).first().click()
+      await page
+        .getByRole("button", { name: /account menu/i })
+        .first()
+        .click()
       await page
         .getByRole("menuitem", { name: /account settings/i })
         .first()
@@ -220,7 +295,7 @@ test.describe("hierarchy", () => {
     // Settings surfaces are PAGES (dialogs are for atomic actions only).
     await expect(page).toHaveURL(/\/app\/account/)
     await expect(
-      page.getByRole("heading", { name: /account settings/i }).first(),
+      page.getByRole("heading", { name: /account settings/i }).first()
     ).toBeVisible()
     watcher.assertClean("account settings via menu")
   })
@@ -231,21 +306,83 @@ test.describe("hierarchy", () => {
     const watcher = watchConsole(page)
     await page.goto("/app/account")
     await expect(
-      page.getByRole("heading", { name: /account settings/i }).first(),
+      page.getByRole("heading", { name: /account settings/i }).first()
     ).toBeVisible({ timeout: 15_000 })
     await expect(page.getByText(/your profile/i).first()).toBeVisible()
     await expect(page.getByLabel(/full name/i).first()).toBeVisible()
 
     // Password lives on Security; API keys on API & MCP (personal, not
     // event-level — docs/memory/RULES.md 23b).
-    await page.getByRole("tab", { name: /security/i }).first().click()
+    await page
+      .getByRole("tab", { name: /security/i })
+      .first()
+      .click()
     await expect(page.getByLabel(/current password/i).first()).toBeVisible()
 
-    await page.getByRole("tab", { name: /api & mcp/i }).first().click()
+    await page
+      .getByRole("tab", { name: /api & mcp/i })
+      .first()
+      .click()
     await expect(page.getByText(/api keys/i).first()).toBeVisible()
 
     await assertNoErrorBoundary(page, "/app/account")
     watcher.assertClean("/app/account")
+  })
+
+  test("a read-only API key created in the UI can read but cannot write", async ({
+    page,
+    request,
+  }) => {
+    const watcher = watchConsole(page)
+    const client = await organizerConvexClient()
+    const keyName = `Read-only E2E ${Date.now().toString(36)}`
+
+    try {
+      await page.goto("/app/account?tab=api-mcp")
+      await page
+        .getByRole("button", { name: /new key/i })
+        .first()
+        .click()
+      const dialog = page.getByRole("dialog").first()
+      await dialog.getByLabel("Name").fill(keyName)
+      await dialog.getByRole("radio", { name: /read only/i }).click()
+      await dialog.getByRole("button", { name: /create key/i }).click()
+
+      await expect(page.getByText(`“${keyName}” created`)).toBeVisible()
+      const row = page.getByRole("row").filter({ hasText: keyName }).first()
+      await expect(row).toContainText("Read only")
+
+      const plaintext = await page
+        .locator("code")
+        .filter({ hasText: /^sb_live_/ })
+        .first()
+        .textContent()
+      expect(plaintext).toMatch(/^sb_live_[0-9a-f]{32}$/)
+      if (!plaintext) throw new Error("created API key was not rendered")
+
+      const read = await request.get(
+        `${env.VITE_CONVEX_SITE_URL}/v1/event/ai-summit-2026/sessions`,
+        { headers: { Authorization: `Bearer ${plaintext}` } }
+      )
+      expect(read.status()).toBe(200)
+
+      const write = await request.post(
+        `${env.VITE_CONVEX_SITE_URL}/v1/event/ai-summit-2026/sessions/create`,
+        {
+          headers: { Authorization: `Bearer ${plaintext}` },
+          data: { title: "This write must be refused" },
+        }
+      )
+      expect(write.status()).toBe(403)
+      expect(await write.text()).toMatch(/write:sessions/i)
+      watcher.assertClean("read-only API key UI")
+    } finally {
+      for (const key of await client.query(api.apiKeys.list, {})) {
+        if (key.name === keyName) {
+          await client.mutation(api.apiKeys.revoke, { keyId: key.keyId })
+        }
+      }
+    }
   })
 
   test("the old event-level api-mcp link lands on account settings", async ({
@@ -269,23 +406,34 @@ test.describe("hierarchy", () => {
     // DESIGN-REVAMP 2026-08-12). The bare legacy address still resolves.
     await page.goto("/app/workspace")
     await expect(
-      page.getByRole("heading", { name: /workspace settings/i }).first(),
+      page.getByRole("heading", { name: /workspace settings/i }).first()
     ).toBeVisible({ timeout: 15_000 })
     await expect(page.getByLabel(/workspace name/i).first()).toBeVisible()
-
     // Team is a first-class tab: the member table with per-member event
     // access and the invite CTA is its whole content.
-    await page.getByRole("tab", { name: /^team$/i }).first().click()
+    await page
+      .getByRole("tab", { name: /^team$/i })
+      .first()
+      .click()
     await expect(
-      page.getByRole("columnheader", { name: /event access/i }).first(),
+      page
+        .locator('[data-slot="card-title"]')
+        .filter({ hasText: /^\s*Team/ })
+        .first()
     ).toBeVisible()
     await expect(
-      page.getByRole("button", { name: /invite teammate/i }).first(),
+      page.getByRole("columnheader", { name: /event access/i }).first()
+    ).toBeVisible()
+    await expect(
+      page.getByRole("button", { name: /invite teammate/i }).first()
     ).toBeVisible()
 
-    await page.getByRole("tab", { name: /^events$/i }).first().click()
+    await page
+      .getByRole("tab", { name: /^events$/i })
+      .first()
+      .click()
     await expect(
-      page.getByText(/each event keeps its own dates/i).first(),
+      page.getByText(/each event keeps its own dates/i).first()
     ).toBeVisible()
     await assertNoErrorBoundary(page, "/app/workspace")
     watcher.assertClean("/app/workspace")
@@ -297,11 +445,14 @@ test.describe("hierarchy", () => {
     const watcher = watchConsole(page)
     await page.goto("/app/settings")
     await expect(
-      page.getByRole("heading", { name: /event settings —/i }).first(),
+      page.getByRole("heading", { name: /event settings —/i }).first()
     ).toBeVisible({ timeout: 15_000 })
     // Team sits among the event's own tabs — the same member table as
     // Workspace settings, scoped to who can open this event.
-    await page.getByRole("tab", { name: /^team$/i }).first().click()
+    await page
+      .getByRole("tab", { name: /^team$/i })
+      .first()
+      .click()
     await expect(page.getByText(/who can open/i).first()).toBeVisible({
       timeout: 15_000,
     })

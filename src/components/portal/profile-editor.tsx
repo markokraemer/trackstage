@@ -19,6 +19,7 @@ import { HeadshotUploader } from "./headshot-uploader"
 import { usePortal } from "./portal-context"
 import type { PortalMe } from "./portal-context"
 import { initialsOf } from "./portal-utils"
+import { portalHomeArgs } from "./portal-query"
 import { errorMessage } from "@/lib/errors"
 
 const BIO_MAX = 5000
@@ -111,12 +112,13 @@ export function ProfileEditor() {
   const updateProfile = useConvexMutation(
     api.portal.updateProfile,
   ).withOptimisticUpdate((localStore, args) => {
-    const current = localStore.getQuery(api.portal.home, { portalToken })
+    const queryArgs = portalHomeArgs(portalToken)
+    const current = localStore.getQuery(api.portal.home, queryArgs)
     if (!current) return
     const { links, ...fields } = args.patch
     localStore.setQuery(
       api.portal.home,
-      { portalToken },
+      queryArgs,
       {
         ...current,
         me: {

@@ -24,8 +24,10 @@ import {
  * />
  * ```
  */
-export interface DataToolbarProps
-  extends Omit<React.ComponentProps<"div">, "onChange"> {
+export interface DataToolbarProps extends Omit<
+  React.ComponentProps<"div">,
+  "onChange"
+> {
   /** Search text (controlled). Omit both to hide the search box. */
   value?: string
   onValueChange?: (value: string) => void
@@ -55,7 +57,7 @@ export function DataToolbar({
       data-slot="data-toolbar"
       className={cn(
         "flex flex-wrap items-center gap-2 sm:flex-nowrap",
-        className,
+        className
       )}
       {...props}
     >
@@ -88,9 +90,9 @@ export function DataToolbar({
 
       {filters ? (
         // `min-w-0 max-w-full` lets a scrollable child (e.g. a wide tab strip)
-        // actually shrink on phones — without it the flex child's min-content
-        // width wins and drags the whole page into horizontal scroll.
-        <div className="flex min-w-0 max-w-full flex-wrap items-center gap-2">
+        // actually shrink on phones. Full width below `sm` also prevents the
+        // filter cluster from dragging the page into horizontal scroll.
+        <div className="flex w-full max-w-full min-w-0 flex-wrap items-center gap-2 sm:w-auto">
           {filters}
         </div>
       ) : null}
@@ -98,7 +100,7 @@ export function DataToolbar({
       {children}
 
       {actions ? (
-        <div className="flex min-w-0 max-w-full flex-wrap items-center gap-2 sm:ml-auto">
+        <div className="flex max-w-full min-w-0 flex-wrap items-center gap-2 sm:ml-auto">
           {actions}
         </div>
       ) : null}

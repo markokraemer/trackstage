@@ -27,6 +27,7 @@ import { DueChip } from "./due-chip"
 import { usePortal } from "./portal-context"
 import type { PortalTask, PortalUpload } from "./portal-context"
 import { usePortalUpload } from "./use-portal-upload"
+import { portalHomeArgs } from "./portal-query"
 import { TASK_KIND_LABEL, formatDate } from "./portal-utils"
 import { errorMessage } from "@/lib/errors"
 
@@ -52,11 +53,12 @@ export function TaskItem({ task, uploads }: TaskItemProps) {
   const completeTask = useConvexMutation(
     api.portal.completeTask,
   ).withOptimisticUpdate((localStore, args) => {
-    const current = localStore.getQuery(api.portal.home, { portalToken })
+    const queryArgs = portalHomeArgs(portalToken)
+    const current = localStore.getQuery(api.portal.home, queryArgs)
     if (!current) return
     localStore.setQuery(
       api.portal.home,
-      { portalToken },
+      queryArgs,
       {
         ...current,
         tasks: current.tasks.map((t) =>
@@ -71,11 +73,12 @@ export function TaskItem({ task, uploads }: TaskItemProps) {
   const answerTask = useConvexMutation(
     api.portal.answerTask,
   ).withOptimisticUpdate((localStore, args) => {
-    const current = localStore.getQuery(api.portal.home, { portalToken })
+    const queryArgs = portalHomeArgs(portalToken)
+    const current = localStore.getQuery(api.portal.home, queryArgs)
     if (!current) return
     localStore.setQuery(
       api.portal.home,
-      { portalToken },
+      queryArgs,
       {
         ...current,
         tasks: current.tasks.map((t) =>

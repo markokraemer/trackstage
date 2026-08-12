@@ -29,6 +29,7 @@ import {
   resolveBulkRecipients,
 } from "./comms"
 import { deleteUploadRow } from "./lib/files"
+import { personProfileComplete } from "./lib/profileTasks"
 import {
   assertReleasable,
   eventTrackNames,
@@ -36,6 +37,7 @@ import {
 } from "./lib/formQuestions"
 import { EMBED_FORMATS, EMBED_WIDGETS, validAccent } from "./embeds"
 import { humanMessage } from "./lib/errors"
+import { formWindow } from "./lib/formWindow"
 import {
   DEFAULT_TEMPLATES,
   TEMPLATE_KEYS,
@@ -486,12 +488,12 @@ async function eventStats(ctx: QueryCtx, event: Doc<"events">) {
  * query exists only to keep the old tool name answering.
  */
 export const eventOverview = internalQuery({
-  args: { userId: v.string(), event: v.string() },
+  args: { userId: v.string(), event: v.string(), now: v.number() },
   returns: v.any(),
   handler: async (ctx, args) => {
     const event = await resolveEvent(ctx, args.userId, args.event)
     return {
-      ...(await eventSummaryPayload(ctx, event)),
+      ...(await eventSummaryPayload(ctx, event, args.now)),
       deprecated:
         "get_event_overview is a deprecated alias of get_event_summary and returns exactly the same payload. Call get_event_summary instead.",
     }
@@ -503,7 +505,7 @@ export const eventOverview = internalQuery({
 // ══════════════════════════════════════════════════════════════════════════
 
 export const listForms = internalQuery({
-  args: { userId: v.string(), event: v.string() },
+  args: { userId: v.string(), event: v.string(), now: v.number() },
   returns: v.any(),
   handler: async (ctx, args) => {
     const event = await resolveEvent(ctx, args.userId, args.event)
@@ -513,6 +515,7 @@ export const listForms = internalQuery({
       .collect()
     const rows = []
     for (const form of forms) {
+      const window = formWindow(form, args.now)
       const submissions = await ctx.db
         .query("submissions")
         .withIndex("by_formId", (q) => q.eq("formId", form._id))
@@ -524,6 +527,8 @@ export const listForms = internalQuery({
         slug: form.slug,
         kind: form.kind,
         status: form.status,
+        effectiveStatus: window.open ? "open" : "closed",
+        acceptingSubmissions: window.open,
         closeAt: iso(form.closeAt),
         publicUrl: await eventFormUrl(ctx, event, form.slug),
         submissionCount: submissions.filter((s) => s.status !== "draft").length,
@@ -582,10 +587,11 @@ async function resolveForm(
 }
 
 export const getForm = internalQuery({
-  args: { userId: v.string(), form: v.string() },
+  args: { userId: v.string(), form: v.string(), now: v.number() },
   returns: v.any(),
   handler: async (ctx, args) => {
     const form = await resolveForm(ctx, args.userId, args.form)
+    const window = formWindow(form, args.now)
     return withLinkWarning({
       formId: form._id,
       eventId: form.eventId,
@@ -596,6 +602,8 @@ export const getForm = internalQuery({
       slug: form.slug,
       kind: form.kind,
       status: form.status,
+      effectiveStatus: window.open ? "open" : "closed",
+      acceptingSubmissions: window.open,
       closeAt: iso(form.closeAt),
       publicUrl: await formPublicUrl(ctx, form),
       // Track options are the event's tracks, live (lib/formQuestions.ts).
@@ -802,13 +810,13 @@ export const updateFormSettings = internalMutation({
 })
 
 export const publicFormLink = internalQuery({
-  args: { userId: v.string(), form: v.string() },
+  args: { userId: v.string(), form: v.string(), now: v.number() },
   returns: v.any(),
   handler: async (ctx, args) => {
     const form = await resolveForm(ctx, args.userId, args.form)
-    const now = Date.now()
     const closed =
-      form.status !== "open" || (form.closeAt !== undefined && form.closeAt < now)
+      form.status !== "open" ||
+      (form.closeAt !== undefined && form.closeAt < args.now)
     return withLinkWarning({
       formId: form._id,
       name: form.internalName,
@@ -1656,6 +1664,14 @@ export const assignTask = internalMutation({
         instructions: args.instructions,
         kind,
         dueAt: args.dueAt,
+        // Match the organizer UI: a profile task assigned to somebody whose
+        // profile is already complete is born complete, whichever API surface
+        // assigned it. Otherwise MCP-created tasks could demand work the
+        // speaker has no remaining way to do.
+        completedAt:
+          kind === "profile" && personProfileComplete(person)
+            ? Date.now()
+            : undefined,
       })
       assigned.push(person.email)
     }
@@ -1820,6 +1836,10 @@ export const assignTaskFromTemplate = internalMutation({
         kind: template.kind,
         submissionId,
         dueAt: args.dueAt,
+        completedAt:
+          template.kind === "profile" && personProfileComplete(person)
+            ? Date.now()
+            : undefined,
       })
       assigned.push(person.email)
     }
@@ -2187,11 +2207,11 @@ export const removeTask = internalMutation({
 // ══════════════════════════════════════════════════════════════════════════
 
 export const eventSummary = internalQuery({
-  args: { userId: v.string(), event: v.string() },
+  args: { userId: v.string(), event: v.string(), now: v.number() },
   returns: v.any(),
   handler: async (ctx, args) => {
     const event = await resolveEvent(ctx, args.userId, args.event)
-    return await eventSummaryPayload(ctx, event)
+    return await eventSummaryPayload(ctx, event, args.now)
   },
 })
 
@@ -2205,11 +2225,13 @@ export const eventSummary = internalQuery({
  * `acceptedNotScheduled` (never `acceptedNotYetScheduled`) — because a model
  * that meets the same value under two names hedges instead of answering.
  */
-async function eventSummaryPayload(ctx: QueryCtx, event: Doc<"events">) {
+async function eventSummaryPayload(
+  ctx: QueryCtx,
+  event: Doc<"events">,
+  now: number,
+) {
   const stats = await eventStats(ctx, event)
   const conflicts = await computeConflicts(ctx, event._id)
-  const now = Date.now()
-
   const messages = await ctx.db
     .query("messages")
     .withIndex("by_eventId", (q) => q.eq("eventId", event._id))
@@ -2491,6 +2513,7 @@ export const inviteWorkspaceMember = internalMutation({
           : `${scoped.length} events`
     }
     await ctx.scheduler.runAfter(0, internal.platformEmails.sendWorkspaceInvite, {
+      organizationId: org._id,
       toEmail: email,
       workspaceName: org.name,
       inviterName: inviter.email,
@@ -2991,6 +3014,7 @@ export const remindEvaluators = internalMutation({
   handler: async (ctx, args) => {
     const plan = await planFor(ctx, args.userId, args.planId)
     const event = await ctx.db.get(plan.eventId)
+    if (!event?.organizationId) throw new ConvexError("Event not found.")
     const evaluators = await ctx.db
       .query("evaluators")
       .withIndex("by_planId", (q) => q.eq("planId", plan._id))
@@ -3021,9 +3045,11 @@ export const remindEvaluators = internalMutation({
         0,
         internal.platformEmails.sendEvaluatorReminder,
         {
+          organizationId: event.organizationId,
+          eventId: plan.eventId,
           toEmail: evaluator.email,
           evaluatorName: evaluator.name,
-          eventName: event?.name ?? "your event",
+          eventName: event.name,
           planName: plan.name,
           outstanding,
           reviewToken: evaluator.token,
@@ -3544,7 +3570,11 @@ export const TOOLS: Array<ToolDef> = [
     inputSchema: schema({ event: EVENT_ARG }, ["event"]),
     readOnly: true,
     run: (ctx, userId, args) =>
-      ctx.runQuery(internal.mcp.eventOverview, { userId, event: args.event }),
+      ctx.runQuery(internal.mcp.eventOverview, {
+        userId,
+        event: args.event,
+        now: Date.now(),
+      }),
   },
 
   // ——— Forms ——————————————————————————————————————————————————————————————
@@ -3556,7 +3586,11 @@ export const TOOLS: Array<ToolDef> = [
     inputSchema: schema({ event: EVENT_ARG }, ["event"]),
     readOnly: true,
     run: (ctx, userId, args) =>
-      ctx.runQuery(internal.mcp.listForms, { userId, event: args.event }),
+      ctx.runQuery(internal.mcp.listForms, {
+        userId,
+        event: args.event,
+        now: Date.now(),
+      }),
   },
   {
     name: "get_form",
@@ -3569,7 +3603,11 @@ export const TOOLS: Array<ToolDef> = [
     ),
     readOnly: true,
     run: (ctx, userId, args) =>
-      ctx.runQuery(internal.mcp.getForm, { userId, form: args.form }),
+      ctx.runQuery(internal.mcp.getForm, {
+        userId,
+        form: args.form,
+        now: Date.now(),
+      }),
   },
   {
     name: "create_form",
@@ -3648,7 +3686,11 @@ export const TOOLS: Array<ToolDef> = [
     ),
     readOnly: true,
     run: (ctx, userId, args) =>
-      ctx.runQuery(internal.mcp.publicFormLink, { userId, form: args.form }),
+      ctx.runQuery(internal.mcp.publicFormLink, {
+        userId,
+        form: args.form,
+        now: Date.now(),
+      }),
   },
 
   // ——— Submissions ————————————————————————————————————————————————————————
@@ -4298,7 +4340,11 @@ export const TOOLS: Array<ToolDef> = [
     inputSchema: schema({ event: EVENT_ARG }, ["event"]),
     readOnly: true,
     run: (ctx, userId, args) =>
-      ctx.runQuery(internal.mcp.eventSummary, { userId, event: args.event }),
+      ctx.runQuery(internal.mcp.eventSummary, {
+        userId,
+        event: args.event,
+        now: Date.now(),
+      }),
   },
 
   // ——— Events: update ————————————————————————————————————————————————————
@@ -4499,6 +4545,7 @@ export const TOOLS: Array<ToolDef> = [
       const form = await ctx.runQuery(internal.mcp.getForm, {
         userId,
         form: args.form,
+        now: Date.now(),
       })
       return fromApi(
         await ctx.runMutation(internal.apiV1.writeForm, {
@@ -5004,6 +5051,7 @@ export const TOOLS: Array<ToolDef> = [
           status: args.status,
           speakerId,
           search: args.search,
+          now: Date.now(),
           page: 1,
           pageSize: 100,
         }),

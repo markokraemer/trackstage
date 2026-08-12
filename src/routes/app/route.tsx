@@ -242,7 +242,7 @@ function OrganizerLayout() {
   const navGroups = useMemo(
     () => navGroupsFor(eventRef),
     // Slugs, not the ref object — refs compare by value.
-    [eventRef?.workspaceSlug, eventRef?.eventSlug],
+    [eventRef?.workspaceSlug, eventRef?.eventSlug]
   )
   // Event settings is pinned separately at the sidebar's bottom, so it lives
   // in its own one-item group list.
@@ -405,6 +405,8 @@ function OrganizerLayout() {
                   variant="ghost"
                   size="sm"
                   aria-label="Account menu"
+                  aria-busy={!session || undefined}
+                  disabled={!session}
                   className="gap-1 px-1.5 max-md:min-h-11"
                 />
               }
@@ -554,7 +556,7 @@ function OrganizerLayout() {
         </aside>
 
         {/* Tier 3 — content */}
-        <main className="container-app min-w-0 flex-1 py-6">
+        <main className="container-app w-0 min-w-0 flex-1 py-6">
           <Outlet />
         </main>
       </div>

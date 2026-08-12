@@ -24,18 +24,16 @@ and live HTTP responses counted.
 | MISSING | **31** | 18% |
 | CANNOT-VERIFY (needs browser) | **1** | <1% |
 
-> **Post-audit update (2026-08-11)** — the top three ranked gaps are closed and their rows
-> re-verdicted in place: **#84** (submission confirmation email), **#69** (`notifyEmails`
-> organizer alerts) and **#112** (blind review enforcement) are now COVERED, each with
-> assertions in `scripts/verify-backend.mjs`. The counts in the table below are the ORIGINAL
-> audit snapshot and are deliberately not restated — re-run the audit for fresh totals.
+> **Certification update (2026-08-12)** — this remains the original 175-item audit
+> snapshot, not a live scorecard. The remediation branch has closed the ranked product
+> gaps and records current proof in `adversarial-review-findings.md`,
+> `sbek-ledger.md`, and `convex-launch-readiness-2026-08-12.md`. Do not infer current
+> behavior from an old MISSING/PARTIAL row without checking those documents and the code.
 
-Coverage is strong exactly where the video spends its time (form builder, public CFP,
-submissions pipeline, speaker portal, agenda, public widgets — the widget area that the
-sbek digest called "0 of 16 covered" is now essentially all built). The residual gaps
-cluster in three places: **side-effect emails that are configured but never fire**,
-**evaluation depth (blind/weights/COI/per-reviewer assignment)**, and **event-settings
-fidelity items swyx showed on screen** (logo upload, exhibitors/sponsors, email themes).
+Coverage is strongest exactly where the video spends its time: form builder, public CFP,
+submissions pipeline, speaker portal, agenda and public widgets. Platform-email side
+effects now use a durable retrying mini-outbox; blind evaluation, evaluator assignment,
+event branding and the later sbek gaps were implemented after this snapshot.
 
 **Severity legend** — impact on judging:
 `S1` = an explicit brief requirement or a sbek `rule`/`scoping`/`handoff` item; a judge
@@ -114,9 +112,9 @@ will notice. `S2` = a surface swyx demoed on screen; an evaluator hunting for it
 | 66 | "Customize the success page message" rich text. | V32 | **COVERED** | `src/components/forms-builder/steps/settings-step.tsx:148`, `src/components/submit/outcome-cards.tsx:57` | Rich text success message editor saved and displayed on confirmation card |
 | 67 | Cross-field character limits setting. | VID master 05:33 | **MISSING** | Searched `src/components/forms-builder` and `convex/` | No cross-field character limits setting or rule builder found |
 | 68 | Multi-language section/toggle (English only is fine, but the surface was shown). | V33 | **MISSING** | Searched `src/components/forms-builder` and `convex/schema.ts` | No multi-language section or toggle found in form editor or schema |
-| 69 | Step: Notifications — which admins are notified on new submission AND on updated submission. | V34 | **COVERED** (send path fixed 2026-08-11) | `src/components/forms-builder/steps/notifications-step.tsx:77`, `convex/platformEmails.ts:notifySubmissionAdmins` | The step configured `notifyEmails` and **nothing read it**. Now `submit.submit` fires `kind:"new"` and `portal.updateSubmission` fires `kind:"updated"` through `internal.platformEmails.sendSubmissionNotification` (direct transactional Resend — organizer addresses aren't event `people`, so they can't use the outbox). Scheduled fire-and-forget; no dedupe window in v1. |
+| 69 | Step: Notifications — which admins are notified on new submission AND on updated submission. | V34 | **COVERED** | `src/components/forms-builder/steps/notifications-step.tsx`, `convex/platformEmails.ts:notifySubmissionAdmins` | `submit.submit` fires `kind:"new"` and `portal.updateSubmission` fires `kind:"updated"`. Each recipient gets a durable `platformEmailDeliveries` row with escaped HTML, automatic retry, final-failure UI and manual retry. |
 | 70 | Save button persists the form; form appears in list with Open badge. | VID master 05:50 | **COVERED** | `src/routes/app/forms/$formId.tsx:192`, `src/routes/app/forms/index.tsx:160` | Form save button updates form via Convex mutation; forms list renders Open status badge |
-| 71 | Public CFP reachable with no login, shows event branding/deadline/tracks/formats. | SBEK CFP-03 | **COVERED** | `http://localhost:3000/submit/cfp` | Public route accessible unauthenticated, rendering event title, deadline, tracks, and formats |
+| 71 | Public CFP reachable with no login, shows event branding/deadline/tracks/formats. | SBEK CFP-03 | **COVERED** | `/submit/ai-engineer/ai-summit-2026/cfp`, `convex/submit.ts:resolveLegacyLink` | Canonical route is public and branded. Legacy event/form and single-form-slug links resolve; a bare event slug deterministically opens that event's primary CFP (Playwright regression). |
 | 72 | Public CFP header banner: event title, submission deadline, remaining submission allocation. | V35 | **COVERED** | `http://localhost:3000/submit/cfp`, `src/components/submit/welcome-step.tsx:49` | Header card displays event title, deadline date/time, and submission allocation limit |
 | 73 | Public 5-step tracker: Welcome → Account → Submission → Participant → Review. | V36 | **COVERED** | `http://localhost:3000/submit/cfp`, `src/components/submit/step-tracker.tsx:55` | 5-step stepper bar renders Welcome, Account, Submission, Participants, Review |
 | 74 | Account step: email lookup → auth (magic code / passwordless preferred over password). | V37, ui_fidelity E | **COVERED** | `src/components/submit/account-step.tsx`, `convex/submit.ts` (`identify`) | Passwordless email lookup. A new address gets its portal token immediately; an address with speaker history gets a sign-in link emailed to it (`?t=…`) and the step shows "Check your email" — typing somebody else's address never opens their portal (DECISIONS.md, "Typing an email is not proof of owning it") |
@@ -223,7 +221,7 @@ will notice. `S2` = a surface swyx demoed on screen; an evaluator hunting for it
 | 175 | Open-source repo + deployed site reachable. | BRIEF submission rules | **COVERED** | `git remote -v` | Git repo at `https://github.com/markokraemer/trackstage.git` and app running at `http://localhost:3000/` |
 ---
 
-## Auditor's own spot-checks (Claude, independent of Gemini)
+## Auditor's original spot-checks (historical before-state)
 
 Every one of these confirmed the evaluator's verdict, and three found a *worse* problem
 than the item as written:
@@ -232,7 +230,7 @@ than the item as written:
 |---|---|
 | `logoId` in `convex/schema.ts:100` vs any upload UI | schema field exists, **no upload control anywhere** — confirms #3 |
 | `sendConfirmationEmail` | set in `convex/schema.ts:138`, `forms.ts:37/67`, seeded true — **read by nothing**; `convex/submit.ts` has no `queueForPerson`/`scheduler` call. Confirms #84 |
-| `notifyEmails` | stored (`schema.ts:147`), edited in the Notifications wizard step, **never read by any send path** — the entire Notifications step is inert. *New finding, not on the checklist* |
+| `notifyEmails` | **Historical finding, now fixed:** stored (`schema.ts:147`) but then unread. The current new/update path is durable and verified; see item #69 above. |
 | `autoRedirectToPortal` | plumbed through `submit.ts:81/418` to the client but `rg autoRedirect src/routes/submit/$slug.tsx` → no hits. Confirms #65 |
 | `blind` | `schema.ts:230` only; `rg blind convex/review.ts src/routes/review src/components/evaluation` → **zero hits**. Confirms #112 |
 | `evaluationPlans.criteria` | `v.object({id, label})` — no `type`, no `weight`. Confirms #108/#109 |

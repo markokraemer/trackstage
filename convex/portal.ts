@@ -54,10 +54,14 @@ function portalBehavior(event: Doc<"events"> | null): PortalBehavior {
  * visible — a speaker needs to see what they missed — but the portal shows
  * them as "closed" and the mutations refuse to complete them.
  */
-function isTaskLocked(task: Doc<"tasks">, behavior: PortalBehavior): boolean {
+function isTaskLocked(
+  task: Doc<"tasks">,
+  behavior: PortalBehavior,
+  now: number,
+): boolean {
   if (behavior.extendTaskDeadlines) return false
   if (task.completedAt) return false
-  return task.dueAt !== undefined && task.dueAt < Date.now()
+  return task.dueAt !== undefined && task.dueAt < now
 }
 
 const TASK_LOCKED_MESSAGE =
@@ -110,6 +114,7 @@ function editLockFor(
   form: Doc<"forms"> | null,
   behavior: PortalBehavior,
   timezone?: string,
+  now: number = Date.now(),
 ): EditLock | null {
   if (submission.status === "withdrawn") {
     return {
@@ -143,11 +148,11 @@ function editLockFor(
   // organizer can still change anything, and the message below says exactly
   // who to ask, so nothing is actually unfixable; it just goes through the
   // person accountable for the programme.
-  if (form && !isFormOpen(form).open) {
+  if (form && !isFormOpen(form, now).open) {
     return {
       code: "cfp_closed",
       title: "The call for speakers has closed",
-      message: cfpClosedMessage(form, timezone),
+      message: cfpClosedMessage(form, timezone, now),
     }
   }
   return null
@@ -170,7 +175,7 @@ function editableUntil(
 async function submissionSummary(
   ctx: QueryCtx,
   s: Doc<"submissions">,
-  opts: { behavior: PortalBehavior; timezone?: string },
+  opts: { behavior: PortalBehavior; timezone?: string; now: number },
 ) {
   const track = s.trackId ? await ctx.db.get(s.trackId) : null
   const room = s.roomId ? await ctx.db.get(s.roomId) : null
@@ -193,7 +198,7 @@ async function submissionSummary(
       }),
   )
   const form = s.formId ? await ctx.db.get(s.formId) : null
-  const lock = editLockFor(s, form, opts.behavior, opts.timezone)
+  const lock = editLockFor(s, form, opts.behavior, opts.timezone, opts.now)
   return {
     id: s._id,
     title: s.title,
@@ -219,7 +224,7 @@ async function submissionSummary(
 }
 
 export const home = query({
-  args: { portalToken: v.string() },
+  args: { portalToken: v.string(), now: v.number() },
   handler: async (ctx, args) => {
     const person = await requirePerson(ctx, args.portalToken)
     const event = await ctx.db.get(person.eventId)
@@ -250,7 +255,11 @@ export const home = query({
       [...map.values()]
         .sort((a, b) => b._creationTime - a._creationTime)
         .map((s) =>
-          submissionSummary(ctx, s, { behavior, timezone: event.timezone }),
+          submissionSummary(ctx, s, {
+            behavior,
+            timezone: event.timezone,
+            now: args.now,
+          }),
         ),
     )
 
@@ -330,7 +339,7 @@ export const home = query({
               submissionId: t.submissionId,
               dueAt: t.dueAt,
               completedAt: t.completedAt,
-              locked: isTaskLocked(t, behavior),
+              locked: isTaskLocked(t, behavior, args.now),
             }))
         : [],
     }
@@ -518,7 +527,9 @@ export const completeTask = mutation({
     }
     // "Extend task deadlines" off ⇒ a past-due task is closed for good.
     const behavior = portalBehavior(await ctx.db.get(task.eventId))
-    if (isTaskLocked(task, behavior)) throw new ConvexError(TASK_LOCKED_MESSAGE)
+    if (isTaskLocked(task, behavior, Date.now())) {
+      throw new ConvexError(TASK_LOCKED_MESSAGE)
+    }
     await ctx.db.patch(args.taskId, { completedAt: Date.now() })
     return null
   },
@@ -555,7 +566,9 @@ export const answerTask = mutation({
     }
     // "Extend task deadlines" off ⇒ a past-due task is closed for good.
     const behavior = portalBehavior(await ctx.db.get(task.eventId))
-    if (isTaskLocked(task, behavior)) throw new ConvexError(TASK_LOCKED_MESSAGE)
+    if (isTaskLocked(task, behavior, Date.now())) {
+      throw new ConvexError(TASK_LOCKED_MESSAGE)
+    }
     await ctx.db.patch(args.taskId, {
       response,
       completedAt: task.completedAt ?? Date.now(),
@@ -602,7 +615,9 @@ export const attachUpload = mutation({
     const task = args.taskId ? await ctx.db.get(args.taskId) : null
     if (task && task.personId === person._id) {
       const behavior = portalBehavior(await ctx.db.get(task.eventId))
-      if (isTaskLocked(task, behavior)) throw new ConvexError(TASK_LOCKED_MESSAGE)
+      if (isTaskLocked(task, behavior, Date.now())) {
+        throw new ConvexError(TASK_LOCKED_MESSAGE)
+      }
     }
 
     // A task bound to a session files its uploads against that session, so the

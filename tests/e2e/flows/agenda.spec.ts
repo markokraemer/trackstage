@@ -81,6 +81,21 @@ async function scheduleViaPopover(
   title: string,
   { startIndex = 0, roomIndex = 0 }: { startIndex?: number; roomIndex?: number } = {},
 ) {
+  const choose = async (combobox: ReturnType<Page["getByLabel"]>, index: number) => {
+    // A reactive board rerender can close an open list mid-gesture, so retry
+    // open + pick as one unit. Base UI also keeps the preceding Select mounted
+    // for its exit animation; scope to the currently visible listbox so a
+    // Room option can never be mistaken for a Start-time option.
+    await expect(async () => {
+      await combobox.click()
+      await expect(combobox).toHaveAttribute("aria-expanded", "true")
+      const listbox = page.locator('[role="listbox"]:visible').last()
+      await expect(listbox).toBeVisible()
+      await listbox.getByRole("option").nth(index).click({ timeout: 3_000 })
+      await expect(combobox).toHaveAttribute("aria-expanded", "false")
+    }).toPass({ timeout: 40_000 })
+  }
+
   const trigger = page
     .getByRole("button", { name: new RegExp(escape(title), "i") })
     .first()
@@ -88,17 +103,10 @@ async function scheduleViaPopover(
   await trigger.click()
   const room = page.getByLabel("Room", { exact: true }).first()
   await expect(room).toBeVisible({ timeout: 20_000 })
-  // In isolation these selects are rock-stable; under a full parallel run a
-  // reactive board rerender can close an open list mid-click. Open + pick is
-  // therefore ONE retried gesture: if the list vanished, reopen and try again.
-  const pick = async (field: ReturnType<typeof page.getByLabel>, index: number) => {
-    await expect(async () => {
-      await field.click()
-      await page.getByRole("option").nth(index).click({ timeout: 3_000 })
-    }).toPass({ timeout: 40_000 })
-  }
-  await pick(room, roomIndex)
-  await pick(page.getByLabel(/start time/i).first(), startIndex)
+  await choose(room, roomIndex)
+
+  const start = page.getByLabel(/start time/i).first()
+  await choose(start, startIndex)
 
   await page.getByRole("button", { name: /schedule session/i }).first().click()
 }
@@ -414,72 +422,83 @@ test.describe("agenda", () => {
 
     const publicPage = await context.newPage()
     const publicWatcher = armed(publicPage)
-
-    // ——— Ensure unpublished, then check the public page says so ————————
-    await organizer.mutation(api.agenda.unpublishAgenda, {
-      eventId: await eventId(),
-    })
-    await gotoStable(publicPage, `/e/${MAIN_EVENT_SLUG}`, "networkidle")
-    await expect(
-      publicPage.getByText(/schedule coming soon/i).first(),
-    ).toBeVisible({ timeout: 30_000 })
-
-    // ——— Publish through the UI ————————————————————————————————————————
-    // The header is reactive, so the Publish button appears on its own once
-    // the unpublish above lands — but a concurrent publish (another agent, or
-    // a leftover from an earlier run) can flip it back, so re-assert rather
-    // than clicking whatever is there the instant we reload.
-    await page.reload({ waitUntil: "domcontentloaded" })
-    const publishTrigger = page
-      .getByRole("button", { name: /^publish agenda$/i })
-      .first()
-    await expect(async () => {
-      if (await present(publishTrigger, 2_000)) return
+    let primaryFailure: unknown
+    let restoreFailure: unknown
+    try {
+      // ——— Ensure unpublished, then check the public page says so ———————
       await organizer.mutation(api.agenda.unpublishAgenda, {
         eventId: await eventId(),
       })
-      await page.reload({ waitUntil: "domcontentloaded" })
-      await expect(publishTrigger).toBeVisible({ timeout: 5_000 })
-    }).toPass({ timeout: 60_000 })
-    await publishTrigger.click()
-    await expect(
-      page.getByRole("heading", { name: /publish the agenda\?/i }).first(),
-    ).toBeVisible({ timeout: 15_000 })
-    await page.getByRole("button", { name: /^publish agenda$/i }).last().click()
-    await expect(page.getByText(/^published ·/i).first()).toBeVisible({
-      timeout: 30_000,
-    })
-    await clearToasts(page)
-
-    // ——— Sessions are now public ————————————————————————————————————————
-    await gotoStable(publicPage, `/e/${MAIN_EVENT_SLUG}`, "networkidle")
-    await expect(
-      publicPage.getByText(/schedule coming soon/i),
-    ).toHaveCount(0, { timeout: 30_000 })
-    const scheduled = (await board(organizer, await eventId())).scheduled
-    if (scheduled.length > 0) {
+      await gotoStable(publicPage, `/e/${MAIN_EVENT_SLUG}`, "networkidle")
       await expect(
-        publicPage.getByText(scheduled[0].title).first(),
+        publicPage.getByText(/schedule coming soon/i).first(),
       ).toBeVisible({ timeout: 30_000 })
+
+      // ——— Publish through the UI ——————————————————————————————————————
+      // Convex is reactive: the same mounted agenda header must flip to the
+      // publish action. Full reload loops made a cold CI shell repeatedly
+      // restart its event queries and could strand it on "Loading…".
+      const publishTrigger = page
+        .getByRole("button", { name: /^publish agenda$/i })
+        .first()
+      await expect(publishTrigger).toBeVisible({ timeout: 45_000 })
+      await publishTrigger.click()
+      await expect(
+        page.getByRole("heading", { name: /publish the agenda\?/i }).first(),
+      ).toBeVisible({ timeout: 15_000 })
+      await page.getByRole("button", { name: /^publish agenda$/i }).last().click()
+      await expect(page.getByText(/^published ·/i).first()).toBeVisible({
+        timeout: 30_000,
+      })
+      await clearToasts(page)
+
+      // ——— Sessions are now public —————————————————————————————————————
+      await gotoStable(publicPage, `/e/${MAIN_EVENT_SLUG}`, "networkidle")
+      await expect(
+        publicPage.getByText(/schedule coming soon/i),
+      ).toHaveCount(0, { timeout: 30_000 })
+      const scheduled = (await board(organizer, await eventId())).scheduled
+      if (scheduled.length > 0) {
+        await expect(
+          publicPage.getByText(scheduled[0].title).first(),
+        ).toBeVisible({ timeout: 30_000 })
+      }
+      publicWatcher.assertClean(`/e/${MAIN_EVENT_SLUG} published`)
+
+      // ——— …and unpublishing puts the curtain back up ————————————————
+      await page.getByRole("button", { name: /^unpublish$/i }).first().click()
+      await page.getByRole("button", { name: /unpublish schedule/i }).last().click()
+      await expect(
+        page.getByRole("button", { name: /^publish agenda$/i }).first(),
+      ).toBeVisible({ timeout: 30_000 })
+      await gotoStable(publicPage, `/e/${MAIN_EVENT_SLUG}`, "networkidle")
+      await expect(
+        publicPage.getByText(/schedule coming soon/i).first(),
+      ).toBeVisible({ timeout: 30_000 })
+    } catch (error) {
+      primaryFailure = error
+      throw error
+    } finally {
+      // This test deliberately mutates shared demo state. Restore the judge's
+      // published programme even if any UI assertion above fails, otherwise
+      // every later anonymous public-page test fails for the wrong reason.
+      try {
+        await organizer.mutation(api.agenda.publishAgenda, {
+          eventId: await eventId(),
+        })
+      } catch (restoreError) {
+        if (primaryFailure === undefined) restoreFailure = restoreError
+        else {
+          // Preserve the assertion that actually failed. The restore problem
+          // stays visible in output without replacing the root cause.
+          console.warn(`agenda publication restore also failed: ${String(restoreError)}`)
+        }
+      } finally {
+        await publicPage.close().catch(() => {})
+      }
     }
-    publicWatcher.assertClean(`/e/${MAIN_EVENT_SLUG} published`)
 
-    // ——— …and unpublishing puts the curtain back up ————————————————
-    await page.getByRole("button", { name: /^unpublish$/i }).first().click()
-    await page.getByRole("button", { name: /unpublish schedule/i }).last().click()
-    await expect(
-      page.getByRole("button", { name: /^publish agenda$/i }).first(),
-    ).toBeVisible({ timeout: 30_000 })
-    await gotoStable(publicPage, `/e/${MAIN_EVENT_SLUG}`, "networkidle")
-    await expect(
-      publicPage.getByText(/schedule coming soon/i).first(),
-    ).toBeVisible({ timeout: 30_000 })
-    await publicPage.close()
-
-    // Leave the demo world published — that's the state a judge should find.
-    await organizer.mutation(api.agenda.publishAgenda, {
-      eventId: await eventId(),
-    })
+    if (restoreFailure !== undefined) throw restoreFailure
     watcher.assertClean("publish agenda")
   })
 })
