@@ -20,11 +20,11 @@ config change landed after it).
 | --- | --- | --- | --- | --- |
 | Call for Papers | 25 | 74.2 / 86.8 | **83.8 / 97.4** | rerun-2: **90.3 / 94.7** |
 | Abstract Management | 20 | 86.0 / 89.3 | **94.6 / 100** | rerun-2: **96.4 / 100** |
-| Speaker Management | 20 | 90.6 / 97.0 | not rerun | rerun-2: **96.9 / 97** |
-| Content Management | 15 | 77.1 / 77.4 | **82.3 / 100** | rerun-2: **85.5 / 100** |
+| Speaker Management | 20 | 90.6 / 97.0 | not rerun | rerun-2: **96.9 / 97** · rerun-3: 93.8 / 97 · **final: 96.9 / 97** |
+| Content Management | 15 | 77.1 / 77.4 | **82.3 / 100** | rerun-2: 85.5 / 100 · rerun-3: **90.3 / 100** · final: 83.9 / 100 |
 | AI Agenda | 10 | 100 / 100 | not rerun | Maxed |
 | Public widgets / Embeds | 10 | 95.7 / 100 | not rerun | |
-| **Overall (best per area)** | | **86.3** | **~89.9** | rerun-2 composite: **93.6** |
+| **Overall (best per area)** | | **86.3** | **~89.9** | rerun-2: 93.6 · **final: 94.4** (lowest-reading floor: 93.4) |
 
 Rerun-1 (`runs/2026-08-11T16-47-12`) ran CFP + CNT + ABS only, at 150 turns, against the
 code as it stood *before* any of the fixes below. Almost all of its gain is coverage: the
@@ -425,3 +425,116 @@ including the mid-surrogate boundary.
 Three items in a row — CNT-14, ABS-13, the `.ics` feed — were "unverifiable by the
 agent". Two of the three were not merely unverified but **wrong**. Opening the artefact
 rather than trusting the toast is what found both.
+
+
+---
+
+## Cycle 6 — the final scoring pass (2026-08-12)
+
+Two runs landed inside two hours, both against `https://trackstage.app`, both at 150
+turns, both covering **Content Management + Speaker Management** — the two areas whose
+last valid numbers predated the restore fix, the latest-only ZIP, the outbox `isHtml`
+crash fix and the file-preview work.
+
+| Run | Dir | CNT | SPK | Notes |
+| --- | --- | --- | --- | --- |
+| rerun-3 | `runs/2026-08-11T23-12-27` | **90.3 / 100** | 93.8 / 97 | Completed 02:09 local, i.e. *before* the 02:10–02:50 sign-in outage — valid. Ran on residue data (duplicate Priya/Marcus records from earlier runs), which cost SPK a major "status tab vs status field" defect |
+| **final** | `runs/2026-08-12T01-01-00` | 83.9 / 100 | **96.9 / 97** | Ran on a freshly reseeded prod after `seed:setup --prod` + smoke 15/15. Two scenarios (CNT-S3, SPK-S1) hit the 150-turn cap |
+
+Release gate before the final run: `pnpm exec convex run seed:setup --prod` then
+`node scripts/smoke-production.mjs` → **15/15**, demo sign-in included (the outage was
+already fixed by `af1bf6e`). A prod promotion of `c91af35` was in CI during the run;
+`deploy.yml` only runs `convex deploy` + `wrangler deploy` + smoke, so no data moved
+under the judge.
+
+### What the two fixes bought
+
+| Item | rerun-2 | rerun-3 | final | Reading |
+| --- | --- | --- | --- | --- |
+| CNT-11 history + restore | partial | pass | **pass** | The `submissionVersions` restore (`45ba304`) is verified by the kit, twice |
+| CNT-14 bulk ZIP | partial | partial | **pass** | `latestVersionsOnly()` — the judge exercised multi-select → "Downloaded 2 files." 7 unit tests still green |
+| SPK-04 workflow status | partial | partial | **pass** | |
+| SPK-05 organizer task creation | pass | partial | **pass** | |
+
+### What the turn cap cost
+
+CNT-S3 and SPK-S1 both ended `agent_error` at turn 150. The judge is explicit about the
+consequence — CNT-05, CNT-07, CNT-10 and SPK-12 all read *"the screenshots were not
+attached and the S3 transcript is truncated before those turns"*. All four were `pass`
+in a run where the same scenario finished. That, and nothing else, is the 90.3 → 83.9
+gap in Content Management: **not one of the four is a claim that the product failed**.
+
+Both capped scenarios burned their turns in the same place — the **"Assign a task"
+dialog** (see the major defect below), where the agent resorted to `press(ArrowDown)`
+sequences to select a task type it could not click.
+
+### Composite
+
+Best-per-area (the convention this file has always used):
+**94.4** — CFP 90.3 · ABS 96.4 · SPK 96.9 · CNT 90.3 · AIA 100 · EMB 95.7.
+Taking the *lowest* reading of every area instead — CNT 83.9 — gives **93.4**. Both
+numbers are in `SUBMISSION.md`; the honest range for Content Management today is
+83.9–90.3 and the spread is a harness artifact, not a product one.
+
+### Email egress, proven without an inbox
+
+No Gmail access this session, so delivery was verified the way a postal receipt works:
+every send writes `resendId`, and Resend's `GET /emails/{id}` reports `last_event`.
+For messages this run generated:
+
+| Class | Recipient | `last_event` |
+| --- | --- | --- |
+| `reminder` (CNT-08) | `marko+sbek-speaker@kortix.ai`, `markokraemer.mail@gmail.com` | **delivered** |
+| `custom-bulk` (SPK-13) | `marko+sbek-speaker@kortix.ai` | **delivered** |
+| `portal_link` (SPK-06) | `markokraemer.mail@gmail.com` | **delivered** |
+| `confirmation` (CFP-08) | `markokraemer.mail@gmail.com` | **delivered** |
+| `declined` (CFP-14 half) | `markokraemer.mail+sbek-speaker@gmail.com` | **delivered** |
+
+Folded into `manual-results.json` and `pnpm run finalize`d: SPK-06 **pass**, SPK-13
+**pass**, CNT-08 **partial** — see below for why the reminder is not a pass. CNT-14,
+SPK-07, SPK-10 and SPK-16 were left pending rather than folded: nothing was verified
+by hand for them this cycle, and an unverified "pass" is a fabricated verdict.
+
+The public `.ics` feed was re-validated against RFC 5545 after the reseed:
+`text/calendar`, correct `Content-Disposition`, 6 VEVENTs, every line ≤75 octets,
+unique UIDs, CRLF throughout, no U+FFFD. (Note the feed lives on the Convex site —
+`/v1/event/{slug}/schedule.ics` — not under `/e/...`.)
+
+### Defects the judge surfaced — for the next fix pass
+
+Product, in descending value:
+
+1. **major — the "Assign a task" dialog eats clicks on the task-type radios.** *"Clicks
+   are intercepted by an invisible fixed inset-0 overlay even though nothing visible
+   covers them. Only keyboard navigation selects."* Same family as C2 (a Base UI
+   backdrop), but this is the nested **date-picker popover / select inside the dialog**,
+   not the plain select that C2 fixed. It is the single most expensive item in this
+   cycle — it is why two scenarios ran out of turns.
+2. **major — uploads against a file-request task carry no session association.** The
+   Files library shows Session `—` for the deck a speaker uploaded, so AV/web cannot
+   tell which session it belongs to. Previously logged here as "cosmetic"; the judge
+   rated it major and it is also what holds **CNT-13** at partial.
+3. **minor — Escape inside the assign-task date picker closes the whole dialog** and
+   discards title, instructions and assignees. Data-loss trap.
+4. **minor — the reminder email is generic.** It says "you still have a few speaker
+   tasks outstanding"; CNT-08's pass condition wants the task name and its due date.
+   Delivery is proven, so this one product change likely converts CNT-08 to a pass.
+5. **minor — "Restore this version" restores the state *before* that entry's edit,**
+   which reads as an off-by-one and caused an unintended rollback of two edits.
+6. **minor — no "Latest"/"Current" badge on file versions**; currency is implied only by
+   version number and ordering.
+7. **minor — replacing a headshot from the portal creates a second independent file
+   record** (`headshot.png · v1` twice, one Approved, one Awaiting review) instead of a
+   new version of the existing file.
+8. **minor — `{{sessionTitle}}` renders as `""`** for recipients with no linked session:
+   *Your session "" is on the programme*. Needs a fallback or a suppressed sentence.
+9. **minor — duplicate task assignment is silent.** Assigning a task a speaker already
+   has creates a second row; bulk assign offers no filter by session or acceptance
+   state, so a session deliverable is broadcast to every record.
+10. **minor — the submission drawer opens on an empty skeleton** with blank fields and a
+    disabled Save, which reads as a broken record before data lands.
+11. **minor — file comments attribute the author as "You · Speaker"** rather than the
+    person's name (CNT-05).
+
+Not product: the roster duplicate-people defect is residue from repeated eval runs
+creating their own `DevFlow Conf 2027` event — the seeded event is clean.

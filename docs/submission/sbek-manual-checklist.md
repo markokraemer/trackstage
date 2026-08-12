@@ -2,7 +2,18 @@
 
 Target: https://trackstage.app
 Baseline run: `runs/2026-08-11T12-01-26` (the run that generated this 21-item list) ·
-Latest full run: `runs/2026-08-11T18-41-41` (rerun-2, 150 turns, all 12 scenarios)
+Latest full run: `runs/2026-08-11T18-41-41` (rerun-2, 150 turns, all 12 scenarios) ·
+Final CNT+SPK pass: `runs/2026-08-12T01-01-00`
+
+**Update after the final pass (2026-08-12).** Four of the items below are settled:
+**CNT-11** (history + restore) and **CNT-14** (bulk ZIP, latest versions only) now come
+back `pass` from the kit itself — no manual work left. **SPK-06** and **SPK-13** are
+folded as `pass` on real delivery evidence: every send records a `resendId`, and Resend's
+`GET /emails/{id}` reports `last_event: "delivered"` for the portal-link, bulk-compose,
+confirmation, decision and reminder classes sent to real mailboxes. **CNT-08** stays
+`partial` for a product reason, not an evidence one — the reminder *is* delivered, but its
+body says only "you still have a few speaker tasks outstanding" and never names the task
+or its due date, which the pass condition below requires.
 
 The 21 items below are the ones the baseline flagged as not automatically verifiable.
 Rerun-2 has since **auto-verified 8 of them outright** (marked ✅ AUTO-VERIFIED — no

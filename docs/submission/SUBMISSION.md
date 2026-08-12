@@ -56,14 +56,23 @@ one-click Airtable sync.
 ## Self-evaluation against the official kit
 
 We ran `swyx/killmysaas-evals` (sbek) against production repeatedly and hill-climbed on
-its verdicts. Latest full run (12 scenarios, 150 turns, best-per-area composite):
+its verdicts. Across the runs (150 turns each, best-per-area composite):
 
-**93.6%** — Call for Papers 90.3 · Abstract Management 96.4 · Speaker Management 96.9 ·
-Content Management 85.5 · AI Agenda 100 · Public Widgets/Embeds 95.7.
+**94.4%** — Call for Papers 90.3 · Abstract Management 96.4 · Speaker Management 96.9 ·
+Content Management 90.3 · AI Agenda 100 · Public Widgets/Embeds 95.7.
+
+Content Management was measured twice within two hours of each other and came back
+**90.3 and 83.9**; in the lower run the third scenario hit the harness's 150-turn cap, so
+four items the other run passed had no attached evidence. Taking the *lowest* reading of
+every area instead gives **93.4** — that is the floor, 94.4 the ceiling, and both are
+self-reported from our own runs rather than an official result.
 
 Honest caveats: several rubric items are capped at *partial* by construction — the
 browser agent cannot open inboxes, import an `.ics`, or unzip a download — those halves
 are documented with evidence steps in `docs/submission/sbek-manual-checklist.md`.
+Email delivery is no longer taken on trust: every send records its Resend id, and the
+provider's own `delivered` receipts for the confirmation, decision, reminder, portal-link
+and bulk-compose classes are recorded in the ledger.
 ABS-14 (AI-assisted review) scores `not_found` deliberately: swyx struck it from scope.
 A few residual partials are run artifacts (screenshots the judge model never received),
 not product gaps; the ledger with every non-pass item and its root cause is in

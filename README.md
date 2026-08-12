@@ -236,8 +236,11 @@ clutter, make every click instant.
 The competition ships an LLM browser-agent eval kit,
 [`swyx/killmysaas-evals`](https://github.com/swyx/killmysaas-evals), which drives real
 user flows and scores them. We ran it against production and fixed what it found. Our own
-latest run scores **93.6%** overall (Call for Papers 90.3 · Abstract Management 96.4 ·
-Speaker Management 96.9 · Content Management 85.5 · AI Agenda 100 · Public Widgets 95.7).
+runs score **94.4%** overall (Call for Papers 90.3 · Abstract Management 96.4 ·
+Speaker Management 96.9 · Content Management 90.3 · AI Agenda 100 · Public Widgets 95.7);
+Content Management swung 83.9–90.3 between two runs an hour apart because one of them ran
+out of the harness's 150 turns mid-scenario, so **93.4** is the same composite taken from
+every area's worst reading.
 That is a self-reported number from our own runs, not an official result — every non-pass
 item, its root cause, and what we did about it is written up in
 [`docs/reference/sbek-ledger.md`](docs/reference/sbek-ledger.md).
