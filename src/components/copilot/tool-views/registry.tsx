@@ -28,6 +28,7 @@ import {
   RiTeamLine,
   RiToolsLine,
   RiUserAddLine,
+  RiUserLine,
   RiUserStarLine,
   RiWebhookLine,
 } from "@remixicon/react"
@@ -41,6 +42,7 @@ import {
   EventStatsView,
   EventUpdatedView,
   EventsView,
+  WhoAmIView,
   WorkspacesView,
 } from "@/components/copilot/tool-views/events"
 import {
@@ -184,6 +186,7 @@ const FALLBACK_ICON: IconComponent = RiToolsLine
 
 export const TOOL_VIEWS: Record<string, ToolViewSpec | undefined> = {
   // ——— Workspaces & events ————————————————————————————————————————————————
+  whoami: { icon: RiUserLine, OutputView: WhoAmIView },
   list_workspaces: { icon: RiBuilding2Line, OutputView: WorkspacesView },
   update_workspace: { icon: RiBuilding2Line, OutputView: WorkspaceUpdatedView },
   list_events: { icon: RiCalendarEventLine, OutputView: EventsView },

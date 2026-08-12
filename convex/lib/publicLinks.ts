@@ -113,6 +113,16 @@ export function eventPath(workspaceSlug: string, eventSlug: string): string {
   return `/e/${workspaceSlug}/${eventSlug}`
 }
 
+/**
+ * Canonical ORGANIZER path for an event: `/app/:ws/:event`. The public
+ * builders above are for speakers and attendees; this one is the admin side,
+ * which the MCP tools hand to assistants so a chat answer can link a person
+ * straight to the screen it is describing.
+ */
+export function appEventPath(workspaceSlug: string, eventSlug: string): string {
+  return `/app/${workspaceSlug}/${eventSlug}`
+}
+
 /** Canonical public path for a CFP form: `/submit/:ws/:event/:form`. */
 export function formPath(
   workspaceSlug: string,

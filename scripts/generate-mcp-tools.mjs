@@ -27,6 +27,7 @@ const GROUPS = [
     id: "workspaces",
     label: "Workspaces & events",
     tools: [
+      "whoami",
       "list_workspaces",
       "list_events",
       "create_event",

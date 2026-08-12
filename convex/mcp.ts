@@ -11,7 +11,7 @@ import {
   internalQuery,
 } from "./_generated/server"
 import { internal } from "./_generated/api"
-import { createAuth } from "./auth"
+import { authComponent, createAuth } from "./auth"
 import {
   eventAccessFor,
   memberCanSeeEvent,
@@ -47,6 +47,7 @@ import {
   siteUrl,
 } from "./lib/email"
 import {
+  appEventPath,
   eventPath,
   formPath,
   uniqueEventSlug,
@@ -290,6 +291,57 @@ export const resolveApiKey = internalMutation({
 // Workspaces & events
 // ══════════════════════════════════════════════════════════════════════════
 
+/**
+ * Who the caller is. An assistant otherwise has no way to name the account it
+ * is acting as — it can list workspaces and events, but the human's identity
+ * is nowhere in the tool surface, so it either stays silent or guesses from
+ * the surrounding chat (which is how "how do you know it's me?" happens).
+ * This says it outright, from the credential that authenticated the request.
+ */
+export const whoAmI = internalQuery({
+  args: { userId: v.string() },
+  returns: v.any(),
+  handler: async (ctx, args) => {
+    const authUser = await authComponent.getAnyUserById(ctx, args.userId)
+    const memberships = await ctx.db
+      .query("members")
+      .withIndex("by_userId", (q) => q.eq("userId", args.userId))
+      .collect()
+    const base = siteUrl()
+    const workspaces = []
+    for (const membership of memberships) {
+      const org = await ctx.db.get(membership.organizationId)
+      if (!org) continue
+      workspaces.push({
+        organizationId: org._id,
+        name: org.name,
+        slug: org.slug,
+        yourRole: membership.role,
+        url: `${base}/app/${org.slug}`,
+      })
+    }
+    return {
+      userId: args.userId,
+      email: authUser?.email ?? null,
+      name: authUser?.name || null,
+      emailVerified: authUser?.emailVerified === true,
+      workspaces,
+      // Every link an assistant might want to hand back, resolved against this
+      // deployment's own origin — so a chat answer can send someone to the
+      // screen it is describing instead of telling them to go find it.
+      links: {
+        app: `${base}/app`,
+        dashboard: `${base}/app`,
+        events: `${base}/app/events`,
+        copilot: `${base}/app/copilot`,
+        accountSettings: `${base}/app/account`,
+        docs: `${base}/docs`,
+      },
+      note: "This is the Trackstage account whose credential authorized this connection. Every tool acts as this account and sees only what it can. Use these URLs when pointing the user at a screen.",
+    }
+  },
+})
+
 export const listWorkspaces = internalQuery({
   args: { userId: v.string() },
   returns: v.any(),
@@ -354,6 +406,14 @@ export const listEvents = internalQuery({
           organizationId: membership.organizationId,
           organizationName: org?.name ?? "",
           yourRole: membership.role,
+          // Both sides of every event, ready to hand to a person: the
+          // organizer screen and the page their audience sees.
+          url: org
+            ? `${siteUrl()}${appEventPath(org.slug, event.slug)}`
+            : null,
+          publicUrl: org
+            ? `${siteUrl()}${eventPath(org.slug, event.slug)}`
+            : null,
         })
       }
     }
@@ -3507,6 +3567,15 @@ function fromApi<T>(result: T, what = "That record"): T {
 
 export const TOOLS: Array<ToolDef> = [
   // ——— Workspaces & events ———————————————————————————————————————————————
+  {
+    name: "whoami",
+    title: "Who am I signed in as",
+    description:
+      "Returns the Trackstage account this connection is authenticated as — name, email, and the workspaces it belongs to with its role in each. Call this before telling the user anything about 'their' account or attributing data to a person: it is the only source of the connected identity. Never infer the user's identity from the conversation.",
+    inputSchema: schema({}),
+    readOnly: true,
+    run: (ctx, userId) => ctx.runQuery(internal.mcp.whoAmI, { userId }),
+  },
   {
     name: "list_workspaces",
     title: "List workspaces",

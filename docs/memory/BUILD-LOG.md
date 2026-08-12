@@ -3484,3 +3484,27 @@ manual connect instructions back (paste the address into Claude/ChatGPT
 connectors and sign in; API key from Account settings for terminal
 assistants) — the address comes from the env var, never hardcoded.
 Screenshots recaptured for the light-default Appearance card.
+
+## 2026-08-12 ~23:20 — The confirmation card stops lying; MCP learns who it is
+
+Marko signed in to his own unconfirmed prod account: "We sent a confirmation
+link" — and nothing arrived until he guessed at Resend. Cause: the link is
+mailed at SIGNUP; a later plain sign-in mails nothing, and the gate lands the
+same card anyway. /confirm-email now sends on arrival when the gate brought
+you there (no ?email=), stays quiet on the signup path (Better Auth already
+sent), and surfaces a real error if the send fails. Pinned by
+tests/e2e/flows/confirm-email.spec.ts — verified to FAIL without the fix.
+
+Same page, second bug he saw: a flash of the first-run onboarding after
+confirming. The verification link always carried ?welcome=1, which makes /app
+paint the takeover before its queries answer — right for a brand-new account,
+wrong for an existing one. The gate path now uses a plain /app callback.
+
+MCP: added `whoami`. An assistant had no way to name the account it acts as
+and would infer the user from chat context. It returns the authenticated
+identity, workspaces with roles, and app URLs; list_events gained per-event
+admin + public URLs, so any answer can link to the screen it describes.
+Generative UI verified, not assumed: tool views read named fields, extra keys
+are ignored — proven by adding the new fields to the copilot fixtures (397
+unit tests green) plus a purpose-built WhoAmIView, which the registry test
+requires for every tool.

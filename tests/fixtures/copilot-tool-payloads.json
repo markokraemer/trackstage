@@ -1,163 +1,467 @@
 {
-  "list_events": {
+  "add_manual_session": {
+    "input": {
+      "title": "Copilot Verification Keynote",
+      "event": "ai-summit-2026"
+    },
+    "output": {
+      "format": null,
+      "kind": "session",
+      "speakers": [],
+      "status": "accepted",
+      "submissionId": "k57b3xv1qd153p55150x3x80gs8c8sea",
+      "title": "Copilot Verification Keynote",
+      "track": null
+    }
+  },
+  "assign_task": {
+    "input": {
+      "speakers": [
+        "rafael.duarte@example.com"
+      ],
+      "title": "Copilot verification check",
+      "event": "ai-summit-2026"
+    },
+    "output": {
+      "assignedTo": [
+        "rafael.duarte@example.com"
+      ],
+      "created": 1,
+      "dueAt": null,
+      "kind": "confirm",
+      "note": "Speakers see this in their portal. Use send_reminders to nudge them by email.",
+      "title": "Copilot verification check"
+    }
+  },
+  "auto_place_sessions": {
     "input": {},
     "output": {
-      "events": [
-        {
-          "endsAt": "2026-10-14T01:00:00.000Z",
-          "eventId": "j97a7rtr9rbj9ezjfqfb3qd5nx8c8hcv",
-          "name": "AI Engineer Summit 2026",
-          "organizationId": "mn7fs8btg5szyhbkqdfhtd4xmn8c8xhg",
-          "organizationName": "AI Engineer",
-          "slug": "ai-summit-2026",
-          "startsAt": "2026-10-12T16:00:00.000Z",
-          "timezone": "America/Los_Angeles",
-          "type": "Conference",
-          "venue": "Moscone West, San Francisco",
-          "yourRole": "owner"
-        },
-        {
-          "endsAt": "2026-11-05T23:00:00.000Z",
-          "eventId": "j971xt2t3pbptpk0kb3aegrc3d8c982e",
-          "name": "Design Systems Day",
-          "organizationId": "mn7fs8btg5szyhbkqdfhtd4xmn8c8xhg",
-          "organizationName": "AI Engineer",
-          "slug": "design-systems-day",
-          "startsAt": "2026-11-05T14:00:00.000Z",
-          "timezone": "America/New_York",
-          "type": "Meetup",
-          "venue": "Brooklyn Expo Center, New York",
-          "yourRole": "owner"
-        }
+      "conflictsAfterwards": 0,
+      "couldNotFit": 0,
+      "note": "Existing scheduled sessions were left untouched; only the unscheduled tray was filled.",
+      "placed": 1
+    }
+  },
+  "commit_decision_queue": {
+    "input": {},
+    "output": {
+      "committed": 0,
+      "emailsQueued": 0,
+      "note": "Nothing was staged in that queue — use set_submission_status first.",
+      "queue": "accept_queue",
+      "titles": []
+    }
+  },
+  "count_bulk_audience": {
+    "input": {
+      "event": "ai-summit-2026",
+      "audience": "accepted"
+    },
+    "output": {
+      "audience": "accepted",
+      "note": "This is exactly who send_bulk_email would email with the same arguments.",
+      "recipients": 16,
+      "sampleEmails": [
+        "sofia.marchetti@example.com",
+        "ava.nakamura@example.com",
+        "tom.beaumont@example.com",
+        "hana.kobayashi@example.com",
+        "liam.ferguson@example.com",
+        "rafael.duarte@example.com",
+        "elena.petrova@example.com",
+        "priya.raghavan@example.com",
+        "noah.blackwood@example.com",
+        "daniel.okonkwo@example.com"
       ]
     }
   },
-  "list_workspaces": {
-    "input": {},
+  "create_event": {
+    "input": {
+      "organizationId": "mn7fs8btg5szyhbkqdfhtd4xmn8c8xhg",
+      "name": "Copilot Verification Event"
+    },
     "output": {
-      "workspaces": [
-        {
-          "eventCount": 2,
-          "name": "AI Engineer",
-          "organizationId": "mn7fs8btg5szyhbkqdfhtd4xmn8c8xhg",
-          "slug": "ai-engineer",
-          "yourRole": "owner"
-        },
-        {
-          "eventCount": 0,
-          "name": "t12",
-          "organizationId": "mn725eqf7g5nwtgp5jga954xbx8c9xyn",
-          "slug": "t12",
-          "yourRole": "owner"
-        }
-      ]
+      "eventId": "j972c4ems4mk1hjgfv814ewjgn8c9tcm",
+      "linkWarning": "http://localhost:3000 is a loopback address (demo URL — set SITE_URL in production). Links below only work on the machine running Trackstage — don't send them to a speaker.",
+      "name": "Copilot Verification Event",
+      "publicSubmitUrlHint": "http://localhost:3000/submit/<form-slug>",
+      "slug": "copilot-verification-event-5"
     }
   },
-  "get_event_summary": {
+  "create_form": {
+    "input": {
+      "name": "Copilot Verification CFP",
+      "event": "ai-summit-2026"
+    },
+    "output": {
+      "formId": "jd7e3107b4ys2yd78x3z5j2g5x8c8vyn",
+      "kind": "abstract",
+      "linkWarning": "http://localhost:3000 is a loopback address (demo URL — set SITE_URL in production). Links below only work on the machine running Trackstage — don't send them to a speaker.",
+      "name": "Copilot Verification CFP",
+      "publicUrl": "http://localhost:3000/submit/copilot-verification-cfp",
+      "slug": "copilot-verification-cfp",
+      "status": "open"
+    }
+  },
+  "delete_event": {
+    "input": {},
+    "output": {
+      "deleted": true,
+      "eventId": "j9726nrwb529ang7nfwxjvdms18c8zz4",
+      "name": "Copilot Verification Event",
+      "note": "The event and everything belonging to it (submissions, speakers, forms, tasks, uploads, emails) are gone. This cannot be undone.",
+      "removed": {
+        "forms": 1,
+        "people": 0,
+        "rooms": 0,
+        "submissions": 0,
+        "tasks": 0
+      },
+      "slug": "copilot-verification-event"
+    }
+  },
+  "delete_form": {
+    "input": {},
+    "output": {
+      "deleted": true,
+      "formId": "jd7e3107b4ys2yd78x3z5j2g5x8c8vyn",
+      "name": "Copilot Verification CFP",
+      "note": "The form is gone. Its public URL now 404s.",
+      "slug": "copilot-verification-cfp"
+    }
+  },
+  "get_agenda": {
     "input": {
       "event": "ai-summit-2026"
     },
     "output": {
-      "agenda": {
-        "acceptedNotScheduled": 0,
-        "conflictCount": 0,
-        "conflicts": [],
-        "scheduled": 9
-      },
+      "byRoom": [
+        {
+          "capacity": 300,
+          "firstStartsAt": "2026-10-12T09:00:00.000Z",
+          "lastStartsAt": "2026-10-13T23:00:00.000Z",
+          "room": "Main Stage",
+          "roomId": "js7acd45wnyra7fx3n5c26mv9x8c912t",
+          "sessionCount": 7
+        },
+        {
+          "capacity": 80,
+          "firstStartsAt": "2026-10-12T09:00:00.000Z",
+          "lastStartsAt": "2026-10-12T17:00:00.000Z",
+          "room": "Workshop Room",
+          "roomId": "js739pc0h5at27jbpg0j3d5hw58c928r",
+          "sessionCount": 2
+        }
+      ],
+      "conflictCount": 0,
+      "conflicts": [],
       "event": {
         "endsAt": "2026-10-14T01:00:00.000Z",
-        "eventId": "j972cy9qbmve3d3c85p0bjmnzh8c8tv3",
         "name": "AI Engineer Summit 2026",
-        "slug": "ai-summit-2026",
         "startsAt": "2026-10-12T16:00:00.000Z",
-        "timezone": "America/Los_Angeles",
-        "venue": "Moscone West, San Francisco"
+        "timezone": "America/Los_Angeles"
       },
-      "forms": [
+      "rooms": [
         {
-          "closeAt": "2026-09-16T06:59:00.000Z",
-          "formId": "jd73phacyyzmagrpmvddn4mge98c80tq",
-          "name": "CFP 2026 — main call",
-          "publicUrl": "http://localhost:3000/submit/cfp",
-          "slug": "cfp",
-          "status": "open"
+          "capacity": 300,
+          "name": "Main Stage",
+          "roomId": "js7acd45wnyra7fx3n5c26mv9x8c912t"
         },
         {
-          "closeAt": null,
-          "formId": "jd78remdhhy54d7c8sp5w90j0s8c83qg",
-          "name": "Capped CFP f-mso2hg1a-psaqp",
-          "publicUrl": "http://localhost:3000/submit/capped-cfp-f-mso2hg1a-psaqp",
-          "slug": "capped-cfp-f-mso2hg1a-psaqp",
-          "status": "open"
+          "capacity": 80,
+          "name": "Workshop Room",
+          "roomId": "js739pc0h5at27jbpg0j3d5hw58c928r"
         }
       ],
-      "headline": "AI Engineer Summit 2026 — 20 submission(s): 9 accepted, 5 pending, 1 declined. 9 session(s) scheduled across 2 form(s).",
-      "linkWarning": "http://localhost:3000 is a loopback address (demo URL — set SITE_URL in production). Links below only work on the machine running Trackstage — don't send them to a speaker.",
-      "needsAttention": [
-        "5 submission(s) still pending review",
-        "1 staged in the decline queue",
-        "10 outstanding speaker task(s) — send_reminders will nudge them"
-      ],
-      "outbox": {
-        "preview": 24,
-        "sent": 2
-      },
-      "speakerTasks": {
-        "completed": 16,
-        "open": 10
-      },
-      "submissions": {
-        "accept_queue": 0,
-        "accepted": 9,
-        "decline_queue": 1,
-        "declined": 1,
-        "draft": 3,
-        "pending": 5,
-        "withdrawn": 1
-      },
-      "totalSubmissions": 20,
-      "upcomingDeadlines": [
+      "scheduled": [
         {
-          "daysAway": -2,
-          "what": "Speaker task \"Upload your headshot\" due",
-          "when": "2026-08-09T02:51:05.017Z"
+          "durationMinutes": 45,
+          "room": "Main Stage",
+          "roomId": "js7acd45wnyra7fx3n5c26mv9x8c912t",
+          "speakers": [
+            "Yara Haddad"
+          ],
+          "startsAt": "2026-10-12T09:00:00.000Z",
+          "submissionId": "k574asz8ghnm6d934twqgpv9md8c9nx6",
+          "title": "Structured output without the sadness",
+          "track": "AI Engineering"
         },
         {
-          "daysAway": 1,
-          "what": "Speaker task \"Confirm your biography\" due",
-          "when": "2026-08-12T02:51:05.017Z"
+          "durationMinutes": 45,
+          "room": "Workshop Room",
+          "roomId": "js739pc0h5at27jbpg0j3d5hw58c928r",
+          "speakers": [
+            "Noah Blackwood"
+          ],
+          "startsAt": "2026-10-12T09:00:00.000Z",
+          "submissionId": "k57528z7r9pn2ch4s8se4fvam18c8mvs",
+          "title": "Cost modelling for inference-heavy products",
+          "track": "Product"
         },
         {
-          "daysAway": 2,
-          "what": "Speaker task \"Upload your slides\" due",
-          "when": "2026-08-13T02:51:05.017Z"
+          "durationMinutes": 45,
+          "room": "Main Stage",
+          "roomId": "js7acd45wnyra7fx3n5c26mv9x8c912t",
+          "speakers": [
+            "Vera Efftest"
+          ],
+          "startsAt": "2026-10-12T10:00:00.000Z",
+          "submissionId": "k57czh39b0pg0dc3twessgjrmn8c90r3",
+          "title": "Verification Talk (edited)",
+          "track": "AI Engineering"
         },
         {
-          "daysAway": 2,
-          "what": "Speaker task \"Upload your headshot\" due",
-          "when": "2026-08-13T02:51:05.017Z"
+          "durationMinutes": 45,
+          "room": "Main Stage",
+          "roomId": "js7acd45wnyra7fx3n5c26mv9x8c912t",
+          "speakers": [
+            "Priya Raghavan"
+          ],
+          "startsAt": "2026-10-12T16:00:00.000Z",
+          "submissionId": "k57ebm4ky3gbepjg2f36fdmbgd8c8y3e",
+          "title": "Opening keynote: the year AI engineering grew up",
+          "track": "AI Engineering"
         },
         {
-          "daysAway": 20,
-          "what": "Speaker task \"Upload your slides\" due",
-          "when": "2026-08-31T02:51:05.017Z"
+          "durationMinutes": 60,
+          "room": "Main Stage",
+          "roomId": "js7acd45wnyra7fx3n5c26mv9x8c912t",
+          "speakers": [
+            "Sofia Marchetti",
+            "Ava Nakamura"
+          ],
+          "startsAt": "2026-10-12T17:00:00.000Z",
+          "submissionId": "k579cpezm9j9ara8rgcdeqs7v58c87wm",
+          "title": "Building reliable agents: a practitioner's playbook",
+          "track": "AI Engineering"
         },
         {
-          "daysAway": 20,
-          "what": "Speaker task \"Upload your slides\" due",
-          "when": "2026-08-31T02:51:05.017Z"
+          "durationMinutes": 45,
+          "room": "Workshop Room",
+          "roomId": "js739pc0h5at27jbpg0j3d5hw58c928r",
+          "speakers": [
+            "Tom Beaumont",
+            "Hana Kobayashi"
+          ],
+          "startsAt": "2026-10-12T17:00:00.000Z",
+          "submissionId": "k57edx26bh7vmc303nwxtse7e18c87sw",
+          "title": "Evaluation harnesses for production LLMs",
+          "track": "AI Engineering"
         },
         {
-          "daysAway": 20,
-          "what": "Speaker task \"Upload your slides\" due",
-          "when": "2026-08-31T02:51:05.017Z"
+          "durationMinutes": 45,
+          "room": "Main Stage",
+          "roomId": "js7acd45wnyra7fx3n5c26mv9x8c912t",
+          "speakers": [
+            "Liam Ferguson"
+          ],
+          "startsAt": "2026-10-12T18:15:00.000Z",
+          "submissionId": "k5775v0bs06ngwgt5r36prg3c58c90g1",
+          "title": "Serving four hundred models on one GPU fleet",
+          "track": "Infrastructure"
         },
         {
-          "daysAway": 20,
-          "what": "Speaker task \"Upload your slides\" due",
-          "when": "2026-08-31T02:51:05.017Z"
+          "durationMinutes": 60,
+          "room": "Main Stage",
+          "roomId": "js7acd45wnyra7fx3n5c26mv9x8c912t",
+          "speakers": [
+            "Rafael Duarte",
+            "Elena Petrova"
+          ],
+          "startsAt": "2026-10-13T16:30:00.000Z",
+          "submissionId": "k57c3aqtrb9ry32ycnhphedc3h8c97wx",
+          "title": "What users actually do with your AI feature",
+          "track": "Product"
+        },
+        {
+          "durationMinutes": 60,
+          "room": "Main Stage",
+          "roomId": "js7acd45wnyra7fx3n5c26mv9x8c912t",
+          "speakers": [
+            "Noah Blackwood",
+            "Daniel Okonkwo",
+            "Ava Nakamura"
+          ],
+          "startsAt": "2026-10-13T23:00:00.000Z",
+          "submissionId": "k57ej1p981dqv6dm5hvcwnt3wn8c81t9",
+          "title": "Closing panel: what we got wrong about agents",
+          "track": "Product"
         }
-      ]
+      ],
+      "scheduledCount": 9,
+      "unscheduled": [],
+      "unscheduledCount": 0
+    }
+  },
+  "get_evaluation_plan": {
+    "input": {
+      "planId": "kn7e3e98kbvz52855smwthcec58c8tpq",
+      "event": "ai-summit-2026"
+    },
+    "output": {
+      "data": {
+        "assigned_count": 16,
+        "average_score": 4.3,
+        "blind": false,
+        "completed_count": 10,
+        "completion_pct": 63,
+        "created_at": "2026-08-11T19:58:32.992Z",
+        "criteria": [
+          {
+            "id": "overall",
+            "label": "Overall",
+            "options": null,
+            "type": "numeric",
+            "weight": 1
+          },
+          {
+            "id": "relevance",
+            "label": "Relevance",
+            "options": null,
+            "type": "numeric",
+            "weight": 1
+          }
+        ],
+        "due_at": "2026-09-26T00:00:00.000Z",
+        "evaluator_count": 2,
+        "evaluators": [
+          {
+            "assigned_count": 8,
+            "assigned_submission_ids": [
+              "k57fjx2z12yr4098666pcgyapx8c87wh",
+              "k570ck4przm6wy3tmyv65kz5hx8c9x6n",
+              "k57cdcabj5n6dwppa6fjnfcxjd8c9vcs",
+              "k5701d4ksfq5vjwarhb2n4mk0x8c87es",
+              "k577h4wmb7qq32ggqgz28578758c8g1a",
+              "k57b5q08xv8r176s8ykndc2tdd8c9zp9",
+              "k57cqfjerkdsxhas4fzn4r8y798c8pj7",
+              "k5711qjjy48tmsh1b63rt86cpn8c8z04"
+            ],
+            "completed_count": 6,
+            "created_at": "2026-08-11T19:58:32.992Z",
+            "custom_assignment": false,
+            "email": "alex.rivera@example.com",
+            "id": "kx79rsf5szqxm5gqabs6pw8w2h8c9z22",
+            "last_reminded_at": null,
+            "name": "Alex Rivera",
+            "outstanding_count": 2,
+            "plan_id": "kn7e3e98kbvz52855smwthcec58c8tpq",
+            "recused_count": 0,
+            "review_path": "/review/demo-eval-alex",
+            "token": "demo-eval-alex"
+          },
+          {
+            "assigned_count": 8,
+            "assigned_submission_ids": [
+              "k57fjx2z12yr4098666pcgyapx8c87wh",
+              "k570ck4przm6wy3tmyv65kz5hx8c9x6n",
+              "k57cdcabj5n6dwppa6fjnfcxjd8c9vcs",
+              "k5701d4ksfq5vjwarhb2n4mk0x8c87es",
+              "k577h4wmb7qq32ggqgz28578758c8g1a",
+              "k57b5q08xv8r176s8ykndc2tdd8c9zp9",
+              "k57cqfjerkdsxhas4fzn4r8y798c8pj7",
+              "k5711qjjy48tmsh1b63rt86cpn8c8z04"
+            ],
+            "completed_count": 4,
+            "created_at": "2026-08-11T19:58:32.992Z",
+            "custom_assignment": false,
+            "email": "sam.okafor@example.com",
+            "id": "kx72rea571mzm4vrb743k0vm358c8etn",
+            "last_reminded_at": null,
+            "name": "Sam Okafor",
+            "outstanding_count": 4,
+            "plan_id": "kn7e3e98kbvz52855smwthcec58c8tpq",
+            "recused_count": 0,
+            "review_path": "/review/demo-eval-sam",
+            "token": "demo-eval-sam"
+          }
+        ],
+        "id": "kn7e3e98kbvz52855smwthcec58c8tpq",
+        "name": "Round 1 — Programme Committee",
+        "opens_at": null,
+        "outstanding_count": 6,
+        "recused_count": 0,
+        "round": 1,
+        "scored_count": 10,
+        "status": "open",
+        "submission_count": 8,
+        "submission_ids": [
+          "k57fjx2z12yr4098666pcgyapx8c87wh",
+          "k570ck4przm6wy3tmyv65kz5hx8c9x6n",
+          "k57cdcabj5n6dwppa6fjnfcxjd8c9vcs",
+          "k5701d4ksfq5vjwarhb2n4mk0x8c87es",
+          "k577h4wmb7qq32ggqgz28578758c8g1a",
+          "k57b5q08xv8r176s8ykndc2tdd8c9zp9",
+          "k57cqfjerkdsxhas4fzn4r8y798c8pj7",
+          "k5711qjjy48tmsh1b63rt86cpn8c8z04"
+        ],
+        "submissions": [
+          {
+            "average_score": 4.25,
+            "completed_count": 2,
+            "id": "k57fjx2z12yr4098666pcgyapx8c87wh",
+            "recused_count": 0,
+            "status": "pending",
+            "title": "Shipping LLM features when latency is the product"
+          },
+          {
+            "average_score": 4,
+            "completed_count": 2,
+            "id": "k570ck4przm6wy3tmyv65kz5hx8c9x6n",
+            "recused_count": 0,
+            "status": "pending",
+            "title": "Vector databases at ten billion embeddings"
+          },
+          {
+            "average_score": 3.5,
+            "completed_count": 1,
+            "id": "k57cdcabj5n6dwppa6fjnfcxjd8c9vcs",
+            "recused_count": 0,
+            "status": "pending",
+            "title": "From notebook to nine-nines: productionising ML in regulated healthcare"
+          },
+          {
+            "average_score": 5,
+            "completed_count": 1,
+            "id": "k5701d4ksfq5vjwarhb2n4mk0x8c87es",
+            "recused_count": 0,
+            "status": "pending",
+            "title": "Teaching your model to say “I don't know”"
+          },
+          {
+            "average_score": 4.25,
+            "completed_count": 2,
+            "id": "k577h4wmb7qq32ggqgz28578758c8g1a",
+            "recused_count": 0,
+            "status": "accept_queue",
+            "title": "Structured output without the sadness"
+          },
+          {
+            "average_score": 4.5,
+            "completed_count": 1,
+            "id": "k57b5q08xv8r176s8ykndc2tdd8c9zp9",
+            "recused_count": 0,
+            "status": "accept_queue",
+            "title": "Cost modelling for inference-heavy products"
+          },
+          {
+            "average_score": null,
+            "completed_count": 0,
+            "id": "k57cqfjerkdsxhas4fzn4r8y798c8pj7",
+            "recused_count": 0,
+            "status": "decline_queue",
+            "title": "Why we rewrote our stack in Rust (again)"
+          },
+          {
+            "average_score": 5,
+            "completed_count": 1,
+            "id": "k5711qjjy48tmsh1b63rt86cpn8c8z04",
+            "recused_count": 0,
+            "status": "accepted",
+            "title": "Building reliable agents: a practitioner's playbook"
+          }
+        ]
+      }
     }
   },
   "get_event_overview": {
@@ -268,39 +572,111 @@
       ]
     }
   },
-  "list_forms": {
+  "get_event_summary": {
     "input": {
       "event": "ai-summit-2026"
     },
     "output": {
-      "formCount": 2,
+      "agenda": {
+        "acceptedNotScheduled": 0,
+        "conflictCount": 0,
+        "conflicts": [],
+        "scheduled": 9
+      },
+      "event": {
+        "endsAt": "2026-10-14T01:00:00.000Z",
+        "eventId": "j972cy9qbmve3d3c85p0bjmnzh8c8tv3",
+        "name": "AI Engineer Summit 2026",
+        "slug": "ai-summit-2026",
+        "startsAt": "2026-10-12T16:00:00.000Z",
+        "timezone": "America/Los_Angeles",
+        "venue": "Moscone West, San Francisco"
+      },
       "forms": [
         {
           "closeAt": "2026-09-16T06:59:00.000Z",
-          "draftCount": 3,
-          "externalTitle": "Call for Speakers — AI Engineer Summit 2026",
           "formId": "jd73phacyyzmagrpmvddn4mge98c80tq",
-          "kind": "abstract",
           "name": "CFP 2026 — main call",
           "publicUrl": "http://localhost:3000/submit/cfp",
           "slug": "cfp",
-          "status": "open",
-          "submissionCount": 15
+          "status": "open"
         },
         {
           "closeAt": null,
-          "draftCount": 0,
-          "externalTitle": "Copilot Verification CFP",
-          "formId": "jd7e3107b4ys2yd78x3z5j2g5x8c8vyn",
-          "kind": "abstract",
-          "name": "Copilot Verification CFP",
-          "publicUrl": "http://localhost:3000/submit/copilot-verification-cfp",
-          "slug": "copilot-verification-cfp",
-          "status": "open",
-          "submissionCount": 0
+          "formId": "jd78remdhhy54d7c8sp5w90j0s8c83qg",
+          "name": "Capped CFP f-mso2hg1a-psaqp",
+          "publicUrl": "http://localhost:3000/submit/capped-cfp-f-mso2hg1a-psaqp",
+          "slug": "capped-cfp-f-mso2hg1a-psaqp",
+          "status": "open"
         }
       ],
-      "linkWarning": "http://localhost:3000 is a loopback address (demo URL — set SITE_URL in production). Links below only work on the machine running Trackstage — don't send them to a speaker."
+      "headline": "AI Engineer Summit 2026 — 20 submission(s): 9 accepted, 5 pending, 1 declined. 9 session(s) scheduled across 2 form(s).",
+      "linkWarning": "http://localhost:3000 is a loopback address (demo URL — set SITE_URL in production). Links below only work on the machine running Trackstage — don't send them to a speaker.",
+      "needsAttention": [
+        "5 submission(s) still pending review",
+        "1 staged in the decline queue",
+        "10 outstanding speaker task(s) — send_reminders will nudge them"
+      ],
+      "outbox": {
+        "preview": 24,
+        "sent": 2
+      },
+      "speakerTasks": {
+        "completed": 16,
+        "open": 10
+      },
+      "submissions": {
+        "accept_queue": 0,
+        "accepted": 9,
+        "decline_queue": 1,
+        "declined": 1,
+        "draft": 3,
+        "pending": 5,
+        "withdrawn": 1
+      },
+      "totalSubmissions": 20,
+      "upcomingDeadlines": [
+        {
+          "daysAway": -2,
+          "what": "Speaker task \"Upload your headshot\" due",
+          "when": "2026-08-09T02:51:05.017Z"
+        },
+        {
+          "daysAway": 1,
+          "what": "Speaker task \"Confirm your biography\" due",
+          "when": "2026-08-12T02:51:05.017Z"
+        },
+        {
+          "daysAway": 2,
+          "what": "Speaker task \"Upload your slides\" due",
+          "when": "2026-08-13T02:51:05.017Z"
+        },
+        {
+          "daysAway": 2,
+          "what": "Speaker task \"Upload your headshot\" due",
+          "when": "2026-08-13T02:51:05.017Z"
+        },
+        {
+          "daysAway": 20,
+          "what": "Speaker task \"Upload your slides\" due",
+          "when": "2026-08-31T02:51:05.017Z"
+        },
+        {
+          "daysAway": 20,
+          "what": "Speaker task \"Upload your slides\" due",
+          "when": "2026-08-31T02:51:05.017Z"
+        },
+        {
+          "daysAway": 20,
+          "what": "Speaker task \"Upload your slides\" due",
+          "when": "2026-08-31T02:51:05.017Z"
+        },
+        {
+          "daysAway": 20,
+          "what": "Speaker task \"Upload your slides\" due",
+          "when": "2026-08-31T02:51:05.017Z"
+        }
+      ]
     }
   },
   "get_form": {
@@ -526,113 +902,18 @@
       "status": "open"
     }
   },
-  "create_form": {
-    "input": {
-      "name": "Copilot Verification CFP",
-      "event": "ai-summit-2026"
-    },
-    "output": {
-      "formId": "jd7e3107b4ys2yd78x3z5j2g5x8c8vyn",
-      "kind": "abstract",
-      "linkWarning": "http://localhost:3000 is a loopback address (demo URL — set SITE_URL in production). Links below only work on the machine running Trackstage — don't send them to a speaker.",
-      "name": "Copilot Verification CFP",
-      "publicUrl": "http://localhost:3000/submit/copilot-verification-cfp",
-      "slug": "copilot-verification-cfp",
-      "status": "open"
-    }
-  },
-  "list_submissions": {
+  "get_speaker_portal_link": {
     "input": {
       "event": "ai-summit-2026",
-      "status": "pending"
+      "speaker": "rafael.duarte@example.com"
     },
     "output": {
-      "returned": 5,
-      "submissions": [
-        {
-          "format": "Talk",
-          "kind": "abstract",
-          "level": "Introductory",
-          "scheduled": null,
-          "speakers": [
-            "Quinn Quiet <verify-quiet-mso2d23a@example.com>"
-          ],
-          "status": "pending",
-          "submissionId": "k574y2n3adb6hh2k831d8p1nkd8c87dh",
-          "tags": [],
-          "title": "Quiet Talk",
-          "track": "AI Engineering"
-        },
-        {
-          "format": "Talk",
-          "kind": "abstract",
-          "level": "Advanced",
-          "scheduled": null,
-          "speakers": [
-            "Hana Kobayashi <hana.kobayashi@example.com>"
-          ],
-          "status": "pending",
-          "submissionId": "k5788agpvtqzy3d1rf7axbkvcn8c9hh7",
-          "tags": [
-            "calibration",
-            "safety"
-          ],
-          "title": "Teaching your model to say “I don't know”",
-          "track": "AI Engineering"
-        },
-        {
-          "format": "Workshop",
-          "kind": "abstract",
-          "level": "Intermediate",
-          "scheduled": null,
-          "speakers": [
-            "Daniel Okonkwo <daniel.okonkwo@example.com>"
-          ],
-          "status": "pending",
-          "submissionId": "k571f2h98nn2nxmp5m2pt2c70s8c8qxn",
-          "tags": [
-            "mlops",
-            "compliance"
-          ],
-          "title": "From notebook to nine-nines: productionising ML in regulated healthcare",
-          "track": "Infrastructure"
-        },
-        {
-          "format": "Talk",
-          "kind": "abstract",
-          "level": "Advanced",
-          "scheduled": null,
-          "speakers": [
-            "Jonas Weber <jonas.weber@example.com>"
-          ],
-          "status": "pending",
-          "submissionId": "k577v576dgfs0cj91jrdkpav8s8c95ya",
-          "tags": [
-            "retrieval",
-            "scale"
-          ],
-          "title": "Vector databases at ten billion embeddings",
-          "track": "Infrastructure"
-        },
-        {
-          "format": "Talk",
-          "kind": "abstract",
-          "level": "Intermediate",
-          "scheduled": null,
-          "speakers": [
-            "Elena Petrova <elena.petrova@example.com>"
-          ],
-          "status": "pending",
-          "submissionId": "k573818ejy52d66k4rxb9w5cb58c9z9c",
-          "tags": [
-            "latency",
-            "product"
-          ],
-          "title": "Shipping LLM features when latency is the product",
-          "track": "Product"
-        }
-      ],
-      "total": 5
+      "email": "rafael.duarte@example.com",
+      "linkWarning": "http://localhost:3000 is a loopback address (demo URL — set SITE_URL in production). Links below only work on the machine running Trackstage — don't send them to a speaker.",
+      "name": "Rafael Duarte",
+      "note": "A private magic link — it signs this speaker straight into their portal. Share it only with them.",
+      "personId": "m9702hy57p6pbmhysetqw2c2598c80tn",
+      "portalUrl": "http://localhost:3000/portal/t/demo-rafael-duarte"
     }
   },
   "get_submission": {
@@ -680,458 +961,18 @@
       "uploads": []
     }
   },
-  "get_agenda": {
-    "input": {
-      "event": "ai-summit-2026"
-    },
-    "output": {
-      "byRoom": [
-        {
-          "capacity": 300,
-          "firstStartsAt": "2026-10-12T09:00:00.000Z",
-          "lastStartsAt": "2026-10-13T23:00:00.000Z",
-          "room": "Main Stage",
-          "roomId": "js7acd45wnyra7fx3n5c26mv9x8c912t",
-          "sessionCount": 7
-        },
-        {
-          "capacity": 80,
-          "firstStartsAt": "2026-10-12T09:00:00.000Z",
-          "lastStartsAt": "2026-10-12T17:00:00.000Z",
-          "room": "Workshop Room",
-          "roomId": "js739pc0h5at27jbpg0j3d5hw58c928r",
-          "sessionCount": 2
-        }
-      ],
-      "conflictCount": 0,
-      "conflicts": [],
-      "event": {
-        "endsAt": "2026-10-14T01:00:00.000Z",
-        "name": "AI Engineer Summit 2026",
-        "startsAt": "2026-10-12T16:00:00.000Z",
-        "timezone": "America/Los_Angeles"
-      },
-      "rooms": [
-        {
-          "capacity": 300,
-          "name": "Main Stage",
-          "roomId": "js7acd45wnyra7fx3n5c26mv9x8c912t"
-        },
-        {
-          "capacity": 80,
-          "name": "Workshop Room",
-          "roomId": "js739pc0h5at27jbpg0j3d5hw58c928r"
-        }
-      ],
-      "scheduled": [
-        {
-          "durationMinutes": 45,
-          "room": "Main Stage",
-          "roomId": "js7acd45wnyra7fx3n5c26mv9x8c912t",
-          "speakers": [
-            "Yara Haddad"
-          ],
-          "startsAt": "2026-10-12T09:00:00.000Z",
-          "submissionId": "k574asz8ghnm6d934twqgpv9md8c9nx6",
-          "title": "Structured output without the sadness",
-          "track": "AI Engineering"
-        },
-        {
-          "durationMinutes": 45,
-          "room": "Workshop Room",
-          "roomId": "js739pc0h5at27jbpg0j3d5hw58c928r",
-          "speakers": [
-            "Noah Blackwood"
-          ],
-          "startsAt": "2026-10-12T09:00:00.000Z",
-          "submissionId": "k57528z7r9pn2ch4s8se4fvam18c8mvs",
-          "title": "Cost modelling for inference-heavy products",
-          "track": "Product"
-        },
-        {
-          "durationMinutes": 45,
-          "room": "Main Stage",
-          "roomId": "js7acd45wnyra7fx3n5c26mv9x8c912t",
-          "speakers": [
-            "Vera Efftest"
-          ],
-          "startsAt": "2026-10-12T10:00:00.000Z",
-          "submissionId": "k57czh39b0pg0dc3twessgjrmn8c90r3",
-          "title": "Verification Talk (edited)",
-          "track": "AI Engineering"
-        },
-        {
-          "durationMinutes": 45,
-          "room": "Main Stage",
-          "roomId": "js7acd45wnyra7fx3n5c26mv9x8c912t",
-          "speakers": [
-            "Priya Raghavan"
-          ],
-          "startsAt": "2026-10-12T16:00:00.000Z",
-          "submissionId": "k57ebm4ky3gbepjg2f36fdmbgd8c8y3e",
-          "title": "Opening keynote: the year AI engineering grew up",
-          "track": "AI Engineering"
-        },
-        {
-          "durationMinutes": 60,
-          "room": "Main Stage",
-          "roomId": "js7acd45wnyra7fx3n5c26mv9x8c912t",
-          "speakers": [
-            "Sofia Marchetti",
-            "Ava Nakamura"
-          ],
-          "startsAt": "2026-10-12T17:00:00.000Z",
-          "submissionId": "k579cpezm9j9ara8rgcdeqs7v58c87wm",
-          "title": "Building reliable agents: a practitioner's playbook",
-          "track": "AI Engineering"
-        },
-        {
-          "durationMinutes": 45,
-          "room": "Workshop Room",
-          "roomId": "js739pc0h5at27jbpg0j3d5hw58c928r",
-          "speakers": [
-            "Tom Beaumont",
-            "Hana Kobayashi"
-          ],
-          "startsAt": "2026-10-12T17:00:00.000Z",
-          "submissionId": "k57edx26bh7vmc303nwxtse7e18c87sw",
-          "title": "Evaluation harnesses for production LLMs",
-          "track": "AI Engineering"
-        },
-        {
-          "durationMinutes": 45,
-          "room": "Main Stage",
-          "roomId": "js7acd45wnyra7fx3n5c26mv9x8c912t",
-          "speakers": [
-            "Liam Ferguson"
-          ],
-          "startsAt": "2026-10-12T18:15:00.000Z",
-          "submissionId": "k5775v0bs06ngwgt5r36prg3c58c90g1",
-          "title": "Serving four hundred models on one GPU fleet",
-          "track": "Infrastructure"
-        },
-        {
-          "durationMinutes": 60,
-          "room": "Main Stage",
-          "roomId": "js7acd45wnyra7fx3n5c26mv9x8c912t",
-          "speakers": [
-            "Rafael Duarte",
-            "Elena Petrova"
-          ],
-          "startsAt": "2026-10-13T16:30:00.000Z",
-          "submissionId": "k57c3aqtrb9ry32ycnhphedc3h8c97wx",
-          "title": "What users actually do with your AI feature",
-          "track": "Product"
-        },
-        {
-          "durationMinutes": 60,
-          "room": "Main Stage",
-          "roomId": "js7acd45wnyra7fx3n5c26mv9x8c912t",
-          "speakers": [
-            "Noah Blackwood",
-            "Daniel Okonkwo",
-            "Ava Nakamura"
-          ],
-          "startsAt": "2026-10-13T23:00:00.000Z",
-          "submissionId": "k57ej1p981dqv6dm5hvcwnt3wn8c81t9",
-          "title": "Closing panel: what we got wrong about agents",
-          "track": "Product"
-        }
-      ],
-      "scheduledCount": 9,
-      "unscheduled": [],
-      "unscheduledCount": 0
-    }
-  },
-  "list_speakers": {
+  "get_template": {
     "input": {
       "event": "ai-summit-2026",
-      "onlyWithOutstandingWork": true
+      "key": "accepted"
     },
     "output": {
-      "filter": {
-        "includeProfileGaps": false,
-        "means": "speakers with ≥1 incomplete task",
-        "onlyWithOutstandingWork": true
-      },
-      "returned": 7,
-      "speakerCount": 7,
-      "speakers": [
-        {
-          "company": "Terrafirma",
-          "email": "rafael.duarte@example.com",
-          "jobTitle": "Solutions Architect",
-          "missingProfileItems": [
-            "headshot",
-            "slides"
-          ],
-          "name": "Rafael Duarte",
-          "outstandingReason": [
-            "open_tasks",
-            "incomplete_profile"
-          ],
-          "outstandingTasks": [
-            {
-              "dueAt": "2026-08-31T02:51:05.017Z",
-              "kind": "upload",
-              "taskId": "k97bdd4nneqczez6hzmttp9nrh8c8ett",
-              "title": "Upload your slides"
-            },
-            {
-              "dueAt": null,
-              "kind": "confirm",
-              "taskId": "k97c5n0xmz7hq43rzk7zcdmhjs8c8sgs",
-              "title": "Copilot verification check"
-            }
-          ],
-          "personId": "m9702hy57p6pbmhysetqw2c2598c80tn",
-          "sessions": [
-            "What users actually do with your AI feature"
-          ]
-        },
-        {
-          "company": "Vantage Labs",
-          "email": "sofia.marchetti@example.com",
-          "jobTitle": "Founding Engineer",
-          "missingProfileItems": [
-            "headshot",
-            "slides"
-          ],
-          "name": "Sofia Marchetti",
-          "outstandingReason": [
-            "open_tasks",
-            "incomplete_profile"
-          ],
-          "outstandingTasks": [
-            {
-              "dueAt": "2026-08-09T02:51:05.017Z",
-              "kind": "headshot",
-              "taskId": "k97e2wc8bnvrgnhc4rcpnn635x8c88xa",
-              "title": "Upload your headshot"
-            },
-            {
-              "dueAt": "2026-08-31T02:51:05.017Z",
-              "kind": "upload",
-              "taskId": "k97fnhakc7zp2r8r8232b5p7kh8c8b1f",
-              "title": "Upload your slides"
-            }
-          ],
-          "personId": "m9742xqxqmt10e51dd4e01jm7n8c9f0d",
-          "sessions": [
-            "Building reliable agents: a practitioner's playbook"
-          ]
-        },
-        {
-          "company": "Ridgeline",
-          "email": "tom.beaumont@example.com",
-          "jobTitle": "Developer Advocate",
-          "missingProfileItems": [
-            "bio",
-            "slides"
-          ],
-          "name": "Tom Beaumont",
-          "outstandingReason": [
-            "open_tasks",
-            "incomplete_profile"
-          ],
-          "outstandingTasks": [
-            {
-              "dueAt": "2026-08-12T02:51:05.017Z",
-              "kind": "confirm",
-              "taskId": "k97e9fmx246pa6sat32w4hkb298c87b5",
-              "title": "Confirm your biography"
-            },
-            {
-              "dueAt": "2026-08-31T02:51:05.017Z",
-              "kind": "upload",
-              "taskId": "k97chdzw856ye5fyefyzz41n7x8c8wpv",
-              "title": "Upload your slides"
-            }
-          ],
-          "personId": "m97drwk30v7y1fdzb1713ejce98c85fs",
-          "sessions": [
-            "Evaluation harnesses for production LLMs"
-          ]
-        },
-        {
-          "company": "Lumen AI",
-          "email": "ava.nakamura@example.com",
-          "jobTitle": "Staff ML Engineer",
-          "missingProfileItems": [
-            "slides"
-          ],
-          "name": "Ava Nakamura",
-          "outstandingReason": [
-            "open_tasks",
-            "incomplete_profile"
-          ],
-          "outstandingTasks": [
-            {
-              "dueAt": "2026-08-13T02:51:05.017Z",
-              "kind": "upload",
-              "taskId": "k97d64x3e46s2g03ch0yrq6gyx8c92sc",
-              "title": "Upload your slides"
-            }
-          ],
-          "personId": "m977exq5cemva9zyq5k8p781718c9f0n",
-          "sessions": [
-            "Building reliable agents: a practitioner's playbook",
-            "Closing panel: what we got wrong about agents"
-          ]
-        },
-        {
-          "company": "Orbit Cloud",
-          "email": "liam.ferguson@example.com",
-          "jobTitle": "Staff Site Reliability Engineer",
-          "missingProfileItems": [
-            "bio",
-            "slides"
-          ],
-          "name": "Liam Ferguson",
-          "outstandingReason": [
-            "open_tasks",
-            "incomplete_profile"
-          ],
-          "outstandingTasks": [
-            {
-              "dueAt": "2026-08-31T02:51:05.017Z",
-              "kind": "upload",
-              "taskId": "k975f6sqm2rymxcktsqmey13fs8c83f5",
-              "title": "Upload your slides"
-            }
-          ],
-          "personId": "m97dcc60qqjywe7tvxxtakncz18c8zc0",
-          "sessions": [
-            "Serving four hundred models on one GPU fleet"
-          ]
-        },
-        {
-          "company": "Fathom Robotics",
-          "email": "noah.blackwood@example.com",
-          "jobTitle": "Chief Technology Officer",
-          "missingProfileItems": [
-            "slides"
-          ],
-          "name": "Noah Blackwood",
-          "outstandingReason": [
-            "open_tasks",
-            "incomplete_profile"
-          ],
-          "outstandingTasks": [
-            {
-              "dueAt": null,
-              "kind": "upload",
-              "taskId": "k972tkf2bjasq83hqqr2dfks518c89rd",
-              "title": "Upload your slides"
-            }
-          ],
-          "personId": "m97e4vbn3gkqgg42ht41knjgsn8c8szc",
-          "sessions": [
-            "Cost modelling for inference-heavy products",
-            "Closing panel: what we got wrong about agents"
-          ]
-        },
-        {
-          "company": "Cirrus Payments",
-          "email": "yara.haddad@example.com",
-          "jobTitle": "Senior Engineer",
-          "missingProfileItems": [
-            "slides"
-          ],
-          "name": "Yara Haddad",
-          "outstandingReason": [
-            "open_tasks",
-            "incomplete_profile"
-          ],
-          "outstandingTasks": [
-            {
-              "dueAt": null,
-              "kind": "upload",
-              "taskId": "k97b09ne03w113bb8v1b3pz8vx8c9pz1",
-              "title": "Upload your slides"
-            }
-          ],
-          "personId": "m97f5w857pxh933fd2rgx85kes8c9rtc",
-          "sessions": [
-            "Structured output without the sadness"
-          ]
-        }
-      ],
-      "summary": "7 of 12 confirmed speaker(s) returned — filter: speakers with ≥1 incomplete task. Across the whole roster: 7 with open tasks, 10 with an incomplete profile, 10 with either.",
-      "totalSpeakers": 12,
-      "withOpenTasks": 7,
-      "withOpenTasksOrProfileGaps": 10,
-      "withProfileGaps": 10
-    }
-  },
-  "get_speaker_portal_link": {
-    "input": {
-      "event": "ai-summit-2026",
-      "speaker": "rafael.duarte@example.com"
-    },
-    "output": {
-      "email": "rafael.duarte@example.com",
-      "linkWarning": "http://localhost:3000 is a loopback address (demo URL — set SITE_URL in production). Links below only work on the machine running Trackstage — don't send them to a speaker.",
-      "name": "Rafael Duarte",
-      "note": "A private magic link — it signs this speaker straight into their portal. Share it only with them.",
-      "personId": "m9702hy57p6pbmhysetqw2c2598c80tn",
-      "portalUrl": "http://localhost:3000/portal/t/demo-rafael-duarte"
-    }
-  },
-  "list_templates": {
-    "input": {
-      "event": "ai-summit-2026"
-    },
-    "output": {
-      "note": "Bodies are previewed to the first 200 characters — call get_template for the full text of one. Placeholders use {{variable}} syntax and are filled in when the email is queued.",
-      "templateCount": 5,
-      "templates": [
-        {
-          "bodyLength": 428,
-          "bodyPreview": "Hi {{firstName}},\n\nThanks for submitting “{{sessionTitle}}” to {{eventName}}. Your proposal is in and our programme committee will review it alongside the rest of the call for papers.\n\nYou can review …",
-          "bodyTruncated": true,
-          "customized": true,
-          "key": "confirmation",
-          "name": "Submission received",
-          "subject": "We received your submission for {{eventName}}"
-        },
-        {
-          "bodyLength": 753,
-          "bodyPreview": "Hi {{firstName}},\n\nGreat news: “{{sessionTitle}}” has been accepted for {{eventName}}. We had a strong field this year and we're genuinely excited to have you on the programme.\n\nA few next steps so we…",
-          "bodyTruncated": true,
-          "customized": true,
-          "key": "accepted",
-          "name": "Submission accepted",
-          "subject": "Congratulations — “{{sessionTitle}}” is in the {{eventName}} programme"
-        },
-        {
-          "bodyLength": 646,
-          "bodyPreview": "Hi {{firstName}},\n\nThank you for submitting “{{sessionTitle}}” to {{eventName}}. After careful review by our programme committee, we're not able to include it in this year's programme.\n\nThis was a gen…",
-          "bodyTruncated": true,
-          "customized": true,
-          "key": "declined",
-          "name": "Submission not accepted",
-          "subject": "Your submission to {{eventName}}"
-        },
-        {
-          "bodyLength": 604,
-          "bodyPreview": "Hi {{firstName}},\n\nYour submission “{{sessionTitle}}” made it through review for {{eventName}}, but we've run out of slots in the programme for now — so we've placed it on our waitlist.\n\nThat means: i…",
-          "bodyTruncated": true,
-          "customized": true,
-          "key": "waitlisted",
-          "name": "Submission waitlisted",
-          "subject": "“{{sessionTitle}}” is on the {{eventName}} waitlist"
-        },
-        {
-          "bodyLength": 493,
-          "bodyPreview": "Hi {{firstName}},\n\nA friendly nudge — you still have a few speaker tasks outstanding for {{eventName}}. They usually take less than ten minutes in total.\n\nOpen your portal to see exactly what's left a…",
-          "bodyTruncated": true,
-          "customized": true,
-          "key": "reminder",
-          "name": "Outstanding tasks reminder",
-          "subject": "A quick reminder: outstanding tasks for {{eventName}}"
-        }
-      ],
+      "body": "Hi {{firstName}},\n\nGreat news: “{{sessionTitle}}” has been accepted for {{eventName}}. We had a strong field this year and we're genuinely excited to have you on the programme.\n\nA few next steps so we can get you ready:\n\n1. Open your speaker portal: {{portalLink}}\n2. Confirm your biography and upload a headshot — both appear on the public programme.\n3. Work through the tasks listed in the portal before their due dates (slides, travel details, and anything else we need from you).\n\nIf your session has already been scheduled you'll find a calendar invite attached to this email, and the exact time and room in the portal.\n\nPlease let us know if anything changes on your side — we'd rather hear early.\n\nWelcome aboard,\nThe {{eventName}} programme team",
+      "customized": true,
+      "key": "accepted",
+      "name": "Submission accepted",
+      "note": "Rewrite it with update_template, then proof it with send_test_email.",
+      "subject": "Congratulations — “{{sessionTitle}}” is in the {{eventName}} programme",
       "variables": [
         "speakerName",
         "firstName",
@@ -1139,6 +980,1026 @@
         "eventName",
         "portalLink"
       ]
+    }
+  },
+  "list_activity": {
+    "input": {
+      "event": "ai-summit-2026"
+    },
+    "output": {
+      "activity": [
+        {
+          "action": "unscheduled",
+          "actor": "Dana Organizer",
+          "actorType": "organizer",
+          "at": "2026-08-11T20:00:06.189Z",
+          "entity": "session",
+          "summary": "Removed from the agenda · Keyboard kb-msp340ts-zq5yh"
+        },
+        {
+          "action": "scheduled",
+          "actor": "Dana Organizer",
+          "actorType": "organizer",
+          "at": "2026-08-11T20:00:02.655Z",
+          "entity": "session",
+          "summary": "Scheduled to Main Stage, 2026-10-12T16:00:00.000Z (45 min) · Keyboard kb-msp340ts-zq5yh"
+        },
+        {
+          "action": "created",
+          "actor": "Dana Organizer",
+          "actorType": "organizer",
+          "at": "2026-08-11T19:59:56.606Z",
+          "entity": "session",
+          "summary": "Session added manually · Keyboard kb-msp340ts-zq5yh"
+        },
+        {
+          "action": "published",
+          "actor": "Dana Organizer",
+          "actorType": "organizer",
+          "at": "2026-08-11T19:59:55.110Z",
+          "entity": "agenda",
+          "summary": "Agenda published — 9 scheduled sessions went public"
+        },
+        {
+          "action": "unpublished",
+          "actor": "Dana Organizer",
+          "actorType": "organizer",
+          "at": "2026-08-11T19:59:51.989Z",
+          "entity": "agenda",
+          "summary": "Agenda unpublished — the public schedule is hidden again"
+        },
+        {
+          "action": "published",
+          "actor": "Dana Organizer",
+          "actorType": "organizer",
+          "at": "2026-08-11T19:59:48.204Z",
+          "entity": "agenda",
+          "summary": "Agenda published — 9 scheduled sessions went public"
+        },
+        {
+          "action": "unpublished",
+          "actor": "Dana Organizer",
+          "actorType": "organizer",
+          "at": "2026-08-11T19:59:44.161Z",
+          "entity": "agenda",
+          "summary": "Agenda unpublished — the public schedule is hidden again"
+        },
+        {
+          "action": "unscheduled",
+          "actor": "Dana Organizer",
+          "actorType": "organizer",
+          "at": "2026-08-11T19:59:27.342Z",
+          "entity": "session",
+          "summary": "Removed from the agenda · Auto B au-msp337pb-fg0j3"
+        },
+        {
+          "action": "unscheduled",
+          "actor": "Dana Organizer",
+          "actorType": "organizer",
+          "at": "2026-08-11T19:59:26.844Z",
+          "entity": "session",
+          "summary": "Removed from the agenda · Auto A au-msp337dg-wuw9b"
+        },
+        {
+          "action": "auto_placed",
+          "actor": "Dana Organizer",
+          "actorType": "organizer",
+          "at": "2026-08-11T19:59:24.951Z",
+          "entity": "agenda",
+          "summary": "Auto-placed 5 sessions"
+        },
+        {
+          "action": "created",
+          "actor": "Dana Organizer",
+          "actorType": "organizer",
+          "at": "2026-08-11T19:59:18.857Z",
+          "entity": "session",
+          "summary": "Session added manually · Auto B au-msp337pb-fg0j3"
+        },
+        {
+          "action": "created",
+          "actor": "Dana Organizer",
+          "actorType": "organizer",
+          "at": "2026-08-11T19:59:18.424Z",
+          "entity": "session",
+          "summary": "Session added manually · Auto A au-msp337dg-wuw9b"
+        },
+        {
+          "action": "unscheduled",
+          "actor": "Dana Organizer",
+          "actorType": "organizer",
+          "at": "2026-08-11T19:59:10.851Z",
+          "entity": "session",
+          "summary": "Removed from the agenda · Dragged dg-msp32uk9-gd47i"
+        },
+        {
+          "action": "scheduled",
+          "actor": "Dana Organizer",
+          "actorType": "organizer",
+          "at": "2026-08-11T19:59:08.056Z",
+          "entity": "session",
+          "summary": "Scheduled to Main Stage, 2026-10-12T17:30:00.000Z (45 min) · Dragged dg-msp32uk9-gd47i"
+        },
+        {
+          "action": "created",
+          "actor": "Dana Organizer",
+          "actorType": "organizer",
+          "at": "2026-08-11T19:59:01.850Z",
+          "entity": "session",
+          "summary": "Session added manually · Dragged dg-msp32uk9-gd47i"
+        },
+        {
+          "action": "unscheduled",
+          "actor": "Dana Organizer",
+          "actorType": "organizer",
+          "at": "2026-08-11T19:59:00.448Z",
+          "entity": "session",
+          "summary": "Removed from the agenda · Agenda Two ag-msp32g21-o3mkz"
+        },
+        {
+          "action": "unscheduled",
+          "actor": "Dana Organizer",
+          "actorType": "organizer",
+          "at": "2026-08-11T19:59:00.037Z",
+          "entity": "session",
+          "summary": "Removed from the agenda · Agenda One ag-msp32g21-o3mkz"
+        },
+        {
+          "action": "unscheduled",
+          "actor": "Dana Organizer",
+          "actorType": "organizer",
+          "at": "2026-08-11T19:58:58.743Z",
+          "entity": "session",
+          "summary": "Removed from the agenda · Agenda One ag-msp32g21-o3mkz"
+        },
+        {
+          "action": "rescheduled",
+          "actor": "Dana Organizer",
+          "actorType": "organizer",
+          "at": "2026-08-11T19:58:57.879Z",
+          "entity": "session",
+          "summary": "Moved to Main Stage, 2026-10-12T14:00:00.000Z (30 min) · Agenda Two ag-msp32g21-o3mkz"
+        },
+        {
+          "action": "scheduled",
+          "actor": "Dana Organizer",
+          "actorType": "organizer",
+          "at": "2026-08-11T19:58:56.528Z",
+          "entity": "session",
+          "summary": "Scheduled to Main Stage, 2026-10-12T14:00:00.000Z (45 min) · Agenda Two ag-msp32g21-o3mkz"
+        },
+        {
+          "action": "scheduled",
+          "actor": "Dana Organizer",
+          "actorType": "organizer",
+          "at": "2026-08-11T19:58:52.286Z",
+          "entity": "session",
+          "summary": "Scheduled to Main Stage, 2026-10-12T14:00:00.000Z (45 min) · Agenda One ag-msp32g21-o3mkz"
+        },
+        {
+          "action": "created",
+          "actor": "Dana Organizer",
+          "actorType": "organizer",
+          "at": "2026-08-11T19:58:43.466Z",
+          "entity": "session",
+          "summary": "Session added manually · Agenda Two ag-msp32g21-o3mkz"
+        },
+        {
+          "action": "created",
+          "actor": "Dana Organizer",
+          "actorType": "organizer",
+          "at": "2026-08-11T19:58:43.027Z",
+          "entity": "session",
+          "summary": "Session added manually · Agenda One ag-msp32g21-o3mkz"
+        }
+      ],
+      "note": "filter: \"agents\" shows only MCP/API writes — including this session's own. Other filter values match an entity kind (submission, form, speaker, session, agenda, settings).",
+      "returned": 23
+    }
+  },
+  "list_embeds": {
+    "input": {
+      "event": "ai-summit-2026"
+    },
+    "output": {
+      "embedCount": 2,
+      "embeds": [
+        {
+          "embedId": "n17es3g7q4vv6c44m0v3hq1fss8c9ja0",
+          "name": "Agenda for the homepage",
+          "options": {
+            "format": "iframe",
+            "height": 900
+          },
+          "widget": "agenda"
+        },
+        {
+          "embedId": "n17993bj0zwpdqqtrnjj0hxqjs8c9edc",
+          "name": "Speaker gallery for the sponsors page",
+          "options": {
+            "format": "iframe",
+            "height": 720,
+            "hideDescriptions": true,
+            "hideSearch": true
+          },
+          "widget": "speaker-gallery"
+        }
+      ],
+      "formats": [
+        "iframe",
+        "html",
+        "link",
+        "json",
+        "xml",
+        "ics"
+      ],
+      "note": "Saved embed configurations for the event's public widgets. The Embeds page turns one into a copy-paste snippet.",
+      "widgets": [
+        "agenda",
+        "itinerary",
+        "sessions",
+        "speaker-gallery",
+        "speaker-list"
+      ]
+    }
+  },
+  "list_evaluation_plans": {
+    "input": {
+      "event": "ai-summit-2026"
+    },
+    "output": {
+      "data": [
+        {
+          "assigned_count": 16,
+          "average_score": 4.3,
+          "blind": false,
+          "completed_count": 10,
+          "completion_pct": 63,
+          "created_at": "2026-08-11T19:58:32.992Z",
+          "criteria": [
+            {
+              "id": "overall",
+              "label": "Overall",
+              "options": null,
+              "type": "numeric",
+              "weight": 1
+            },
+            {
+              "id": "relevance",
+              "label": "Relevance",
+              "options": null,
+              "type": "numeric",
+              "weight": 1
+            }
+          ],
+          "due_at": "2026-09-26T00:00:00.000Z",
+          "evaluator_count": 2,
+          "id": "kn7e3e98kbvz52855smwthcec58c8tpq",
+          "name": "Round 1 — Programme Committee",
+          "opens_at": null,
+          "outstanding_count": 6,
+          "recused_count": 0,
+          "round": 1,
+          "scored_count": 10,
+          "status": "open",
+          "submission_count": 8,
+          "submission_ids": [
+            "k57fjx2z12yr4098666pcgyapx8c87wh",
+            "k570ck4przm6wy3tmyv65kz5hx8c9x6n",
+            "k57cdcabj5n6dwppa6fjnfcxjd8c9vcs",
+            "k5701d4ksfq5vjwarhb2n4mk0x8c87es",
+            "k577h4wmb7qq32ggqgz28578758c8g1a",
+            "k57b5q08xv8r176s8ykndc2tdd8c9zp9",
+            "k57cqfjerkdsxhas4fzn4r8y798c8pj7",
+            "k5711qjjy48tmsh1b63rt86cpn8c8z04"
+          ]
+        },
+        {
+          "assigned_count": 0,
+          "average_score": null,
+          "blind": false,
+          "completed_count": 0,
+          "completion_pct": 0,
+          "created_at": "2026-08-11T19:58:32.992Z",
+          "criteria": [
+            {
+              "id": "overall",
+              "label": "Overall",
+              "options": null,
+              "type": "numeric",
+              "weight": 1
+            },
+            {
+              "id": "relevance",
+              "label": "Relevance",
+              "options": null,
+              "type": "numeric",
+              "weight": 1
+            }
+          ],
+          "due_at": null,
+          "evaluator_count": 0,
+          "id": "kn71rx66n52bs7m27fp9a4b37d8c92ff",
+          "name": "Round 2 — Final Review",
+          "opens_at": null,
+          "outstanding_count": 0,
+          "recused_count": 0,
+          "round": 2,
+          "scored_count": 0,
+          "status": "closed",
+          "submission_count": 0,
+          "submission_ids": []
+        }
+      ],
+      "pagination": {
+        "currentPage": 1,
+        "current_page": 1,
+        "pageSize": 100,
+        "page_size": 100,
+        "totalPages": 1,
+        "totalResults": 2,
+        "total_pages": 1,
+        "total_results": 2
+      },
+      "results": [
+        {
+          "assigned_count": 16,
+          "average_score": 4.3,
+          "blind": false,
+          "completed_count": 10,
+          "completion_pct": 63,
+          "created_at": "2026-08-11T19:58:32.992Z",
+          "criteria": [
+            {
+              "id": "overall",
+              "label": "Overall",
+              "options": null,
+              "type": "numeric",
+              "weight": 1
+            },
+            {
+              "id": "relevance",
+              "label": "Relevance",
+              "options": null,
+              "type": "numeric",
+              "weight": 1
+            }
+          ],
+          "due_at": "2026-09-26T00:00:00.000Z",
+          "evaluator_count": 2,
+          "id": "kn7e3e98kbvz52855smwthcec58c8tpq",
+          "name": "Round 1 — Programme Committee",
+          "opens_at": null,
+          "outstanding_count": 6,
+          "recused_count": 0,
+          "round": 1,
+          "scored_count": 10,
+          "status": "open",
+          "submission_count": 8,
+          "submission_ids": [
+            "k57fjx2z12yr4098666pcgyapx8c87wh",
+            "k570ck4przm6wy3tmyv65kz5hx8c9x6n",
+            "k57cdcabj5n6dwppa6fjnfcxjd8c9vcs",
+            "k5701d4ksfq5vjwarhb2n4mk0x8c87es",
+            "k577h4wmb7qq32ggqgz28578758c8g1a",
+            "k57b5q08xv8r176s8ykndc2tdd8c9zp9",
+            "k57cqfjerkdsxhas4fzn4r8y798c8pj7",
+            "k5711qjjy48tmsh1b63rt86cpn8c8z04"
+          ]
+        },
+        {
+          "assigned_count": 0,
+          "average_score": null,
+          "blind": false,
+          "completed_count": 0,
+          "completion_pct": 0,
+          "created_at": "2026-08-11T19:58:32.992Z",
+          "criteria": [
+            {
+              "id": "overall",
+              "label": "Overall",
+              "options": null,
+              "type": "numeric",
+              "weight": 1
+            },
+            {
+              "id": "relevance",
+              "label": "Relevance",
+              "options": null,
+              "type": "numeric",
+              "weight": 1
+            }
+          ],
+          "due_at": null,
+          "evaluator_count": 0,
+          "id": "kn71rx66n52bs7m27fp9a4b37d8c92ff",
+          "name": "Round 2 — Final Review",
+          "opens_at": null,
+          "outstanding_count": 0,
+          "recused_count": 0,
+          "round": 2,
+          "scored_count": 0,
+          "status": "closed",
+          "submission_count": 0,
+          "submission_ids": []
+        }
+      ]
+    }
+  },
+  "list_evaluations": {
+    "input": {
+      "event": "ai-summit-2026"
+    },
+    "output": {
+      "data": [
+        {
+          "comment": "Strong, concrete and clearly grounded in real work. The latency-budget framing is the kind of thing attendees can apply on Monday.",
+          "completed_at": "2026-08-06T19:58:32.992Z",
+          "created_at": "2026-08-11T19:58:32.992Z",
+          "evaluator_email": "alex.rivera@example.com",
+          "evaluator_id": "kx79rsf5szqxm5gqabs6pw8w2h8c9z22",
+          "id": "ks7fgk4dt9jpqwf4v1zxpv2m7n8c8xt3",
+          "plan_id": "kn7e3e98kbvz52855smwthcec58c8tpq",
+          "plan_name": "Round 1 — Programme Committee",
+          "recusal_reason": null,
+          "recused": false,
+          "round": 1,
+          "scores": {
+            "overall": 4,
+            "relevance": 5
+          },
+          "session_id": "k57fjx2z12yr4098666pcgyapx8c87wh",
+          "session_title": "Shipping LLM features when latency is the product",
+          "values": {}
+        },
+        {
+          "comment": "Good talk. Would like a little more on measurement methodology, but the substance is there.",
+          "completed_at": "2026-08-07T07:58:32.992Z",
+          "created_at": "2026-08-11T19:58:32.992Z",
+          "evaluator_email": "sam.okafor@example.com",
+          "evaluator_id": "kx72rea571mzm4vrb743k0vm358c8etn",
+          "id": "ks7dhn530w1vp9g593qbpv9x3d8c9x9z",
+          "plan_id": "kn7e3e98kbvz52855smwthcec58c8tpq",
+          "plan_name": "Round 1 — Programme Committee",
+          "recusal_reason": null,
+          "recused": false,
+          "round": 1,
+          "scores": {
+            "overall": 4,
+            "relevance": 4
+          },
+          "session_id": "k57fjx2z12yr4098666pcgyapx8c87wh",
+          "session_title": "Shipping LLM features when latency is the product",
+          "values": {}
+        },
+        {
+          "comment": "Genuinely advanced material from someone clearly operating at this scale. Rare and worth a main-stage slot.",
+          "completed_at": "2026-08-07T19:58:32.992Z",
+          "created_at": "2026-08-11T19:58:32.992Z",
+          "evaluator_email": "alex.rivera@example.com",
+          "evaluator_id": "kx79rsf5szqxm5gqabs6pw8w2h8c9z22",
+          "id": "ks730fpjzjw2kpz6mgas3detns8c8sdk",
+          "plan_id": "kn7e3e98kbvz52855smwthcec58c8tpq",
+          "plan_name": "Round 1 — Programme Committee",
+          "recusal_reason": null,
+          "recused": false,
+          "round": 1,
+          "scores": {
+            "overall": 5,
+            "relevance": 4
+          },
+          "session_id": "k570ck4przm6wy3tmyv65kz5hx8c9x6n",
+          "session_title": "Vector databases at ten billion embeddings",
+          "values": {}
+        },
+        {
+          "comment": "Excellent depth, though the audience for ten-billion-vector problems may be narrow for this event.",
+          "completed_at": "2026-08-08T07:58:32.992Z",
+          "created_at": "2026-08-11T19:58:32.992Z",
+          "evaluator_email": "sam.okafor@example.com",
+          "evaluator_id": "kx72rea571mzm4vrb743k0vm358c8etn",
+          "id": "ks79a95pmhy8kdb4wk71zkaft98c9w6t",
+          "plan_id": "kn7e3e98kbvz52855smwthcec58c8tpq",
+          "plan_name": "Round 1 — Programme Committee",
+          "recusal_reason": null,
+          "recused": false,
+          "round": 1,
+          "scores": {
+            "overall": 4,
+            "relevance": 3
+          },
+          "session_id": "k570ck4przm6wy3tmyv65kz5hx8c9x6n",
+          "session_title": "Vector databases at ten billion embeddings",
+          "values": {}
+        },
+        {
+          "comment": "Valuable and unusually well grounded in compliance reality, but a half-day workshop is a big ask for our schedule.",
+          "completed_at": "2026-08-08T19:58:32.992Z",
+          "created_at": "2026-08-11T19:58:32.992Z",
+          "evaluator_email": "alex.rivera@example.com",
+          "evaluator_id": "kx79rsf5szqxm5gqabs6pw8w2h8c9z22",
+          "id": "ks738he9vxw8vz46z7c6k1nxj18c9dff",
+          "plan_id": "kn7e3e98kbvz52855smwthcec58c8tpq",
+          "plan_name": "Round 1 — Programme Committee",
+          "recusal_reason": null,
+          "recused": false,
+          "round": 1,
+          "scores": {
+            "overall": 3,
+            "relevance": 4
+          },
+          "session_id": "k57cdcabj5n6dwppa6fjnfcxjd8c9vcs",
+          "session_title": "From notebook to nine-nines: productionising ML in regulated healthcare",
+          "values": {}
+        },
+        {
+          "comment": "The best abstract in my batch. Abstention is under-discussed and this proposal treats it as an engineering problem rather than a research curiosity.",
+          "completed_at": "2026-08-09T07:58:32.992Z",
+          "created_at": "2026-08-11T19:58:32.992Z",
+          "evaluator_email": "alex.rivera@example.com",
+          "evaluator_id": "kx79rsf5szqxm5gqabs6pw8w2h8c9z22",
+          "id": "ks7e5bky8cvd0x12hmh2zcd1js8c9cx8",
+          "plan_id": "kn7e3e98kbvz52855smwthcec58c8tpq",
+          "plan_name": "Round 1 — Programme Committee",
+          "recusal_reason": null,
+          "recused": false,
+          "round": 1,
+          "scores": {
+            "overall": 5,
+            "relevance": 5
+          },
+          "session_id": "k5701d4ksfq5vjwarhb2n4mk0x8c87es",
+          "session_title": "Teaching your model to say “I don't know”",
+          "values": {}
+        },
+        {
+          "comment": "Tight, useful, and perfectly sized as a lightning talk. Easy yes.",
+          "completed_at": "2026-08-09T19:58:32.992Z",
+          "created_at": "2026-08-11T19:58:32.992Z",
+          "evaluator_email": "alex.rivera@example.com",
+          "evaluator_id": "kx79rsf5szqxm5gqabs6pw8w2h8c9z22",
+          "id": "ks73pqwy3zq7sk9yfa4k4k99sn8c8h0s",
+          "plan_id": "kn7e3e98kbvz52855smwthcec58c8tpq",
+          "plan_name": "Round 1 — Programme Committee",
+          "recusal_reason": null,
+          "recused": false,
+          "round": 1,
+          "scores": {
+            "overall": 4,
+            "relevance": 4
+          },
+          "session_id": "k577h4wmb7qq32ggqgz28578758c8g1a",
+          "session_title": "Structured output without the sadness",
+          "values": {}
+        },
+        {
+          "comment": "Everyone in the room has fought this. Practical and well scoped.",
+          "completed_at": "2026-08-10T07:58:32.992Z",
+          "created_at": "2026-08-11T19:58:32.992Z",
+          "evaluator_email": "sam.okafor@example.com",
+          "evaluator_id": "kx72rea571mzm4vrb743k0vm358c8etn",
+          "id": "ks7820wsnxg97cw781731n7j6s8c9cwa",
+          "plan_id": "kn7e3e98kbvz52855smwthcec58c8tpq",
+          "plan_name": "Round 1 — Programme Committee",
+          "recusal_reason": null,
+          "recused": false,
+          "round": 1,
+          "scores": {
+            "overall": 5,
+            "relevance": 4
+          },
+          "session_id": "k577h4wmb7qq32ggqgz28578758c8g1a",
+          "session_title": "Structured output without the sadness",
+          "values": {}
+        },
+        {
+          "comment": "Cost is the conversation every team is having and almost nobody submits about. Would schedule.",
+          "completed_at": "2026-08-10T19:58:32.992Z",
+          "created_at": "2026-08-11T19:58:32.992Z",
+          "evaluator_email": "alex.rivera@example.com",
+          "evaluator_id": "kx79rsf5szqxm5gqabs6pw8w2h8c9z22",
+          "id": "ks773a1xdh8v3rak5zmk907kn18c8qyq",
+          "plan_id": "kn7e3e98kbvz52855smwthcec58c8tpq",
+          "plan_name": "Round 1 — Programme Committee",
+          "recusal_reason": null,
+          "recused": false,
+          "round": 1,
+          "scores": {
+            "overall": 4,
+            "relevance": 5
+          },
+          "session_id": "k57b5q08xv8r176s8ykndc2tdd8c9zp9",
+          "session_title": "Cost modelling for inference-heavy products",
+          "values": {}
+        },
+        {
+          "comment": "Clear, experienced and specific. The failure-mode taxonomy alone justifies the slot.",
+          "completed_at": "2026-08-11T07:58:32.992Z",
+          "created_at": "2026-08-11T19:58:32.992Z",
+          "evaluator_email": "sam.okafor@example.com",
+          "evaluator_id": "kx72rea571mzm4vrb743k0vm358c8etn",
+          "id": "ks7br7mg92dfw8mzgvha6wyd1d8c8rc9",
+          "plan_id": "kn7e3e98kbvz52855smwthcec58c8tpq",
+          "plan_name": "Round 1 — Programme Committee",
+          "recusal_reason": null,
+          "recused": false,
+          "round": 1,
+          "scores": {
+            "overall": 5,
+            "relevance": 5
+          },
+          "session_id": "k5711qjjy48tmsh1b63rt86cpn8c8z04",
+          "session_title": "Building reliable agents: a practitioner's playbook",
+          "values": {}
+        }
+      ],
+      "pagination": {
+        "currentPage": 1,
+        "current_page": 1,
+        "pageSize": 100,
+        "page_size": 100,
+        "totalPages": 1,
+        "totalResults": 10,
+        "total_pages": 1,
+        "total_results": 10
+      },
+      "results": [
+        {
+          "comment": "Strong, concrete and clearly grounded in real work. The latency-budget framing is the kind of thing attendees can apply on Monday.",
+          "completed_at": "2026-08-06T19:58:32.992Z",
+          "created_at": "2026-08-11T19:58:32.992Z",
+          "evaluator_email": "alex.rivera@example.com",
+          "evaluator_id": "kx79rsf5szqxm5gqabs6pw8w2h8c9z22",
+          "id": "ks7fgk4dt9jpqwf4v1zxpv2m7n8c8xt3",
+          "plan_id": "kn7e3e98kbvz52855smwthcec58c8tpq",
+          "plan_name": "Round 1 — Programme Committee",
+          "recusal_reason": null,
+          "recused": false,
+          "round": 1,
+          "scores": {
+            "overall": 4,
+            "relevance": 5
+          },
+          "session_id": "k57fjx2z12yr4098666pcgyapx8c87wh",
+          "session_title": "Shipping LLM features when latency is the product",
+          "values": {}
+        },
+        {
+          "comment": "Good talk. Would like a little more on measurement methodology, but the substance is there.",
+          "completed_at": "2026-08-07T07:58:32.992Z",
+          "created_at": "2026-08-11T19:58:32.992Z",
+          "evaluator_email": "sam.okafor@example.com",
+          "evaluator_id": "kx72rea571mzm4vrb743k0vm358c8etn",
+          "id": "ks7dhn530w1vp9g593qbpv9x3d8c9x9z",
+          "plan_id": "kn7e3e98kbvz52855smwthcec58c8tpq",
+          "plan_name": "Round 1 — Programme Committee",
+          "recusal_reason": null,
+          "recused": false,
+          "round": 1,
+          "scores": {
+            "overall": 4,
+            "relevance": 4
+          },
+          "session_id": "k57fjx2z12yr4098666pcgyapx8c87wh",
+          "session_title": "Shipping LLM features when latency is the product",
+          "values": {}
+        },
+        {
+          "comment": "Genuinely advanced material from someone clearly operating at this scale. Rare and worth a main-stage slot.",
+          "completed_at": "2026-08-07T19:58:32.992Z",
+          "created_at": "2026-08-11T19:58:32.992Z",
+          "evaluator_email": "alex.rivera@example.com",
+          "evaluator_id": "kx79rsf5szqxm5gqabs6pw8w2h8c9z22",
+          "id": "ks730fpjzjw2kpz6mgas3detns8c8sdk",
+          "plan_id": "kn7e3e98kbvz52855smwthcec58c8tpq",
+          "plan_name": "Round 1 — Programme Committee",
+          "recusal_reason": null,
+          "recused": false,
+          "round": 1,
+          "scores": {
+            "overall": 5,
+            "relevance": 4
+          },
+          "session_id": "k570ck4przm6wy3tmyv65kz5hx8c9x6n",
+          "session_title": "Vector databases at ten billion embeddings",
+          "values": {}
+        },
+        {
+          "comment": "Excellent depth, though the audience for ten-billion-vector problems may be narrow for this event.",
+          "completed_at": "2026-08-08T07:58:32.992Z",
+          "created_at": "2026-08-11T19:58:32.992Z",
+          "evaluator_email": "sam.okafor@example.com",
+          "evaluator_id": "kx72rea571mzm4vrb743k0vm358c8etn",
+          "id": "ks79a95pmhy8kdb4wk71zkaft98c9w6t",
+          "plan_id": "kn7e3e98kbvz52855smwthcec58c8tpq",
+          "plan_name": "Round 1 — Programme Committee",
+          "recusal_reason": null,
+          "recused": false,
+          "round": 1,
+          "scores": {
+            "overall": 4,
+            "relevance": 3
+          },
+          "session_id": "k570ck4przm6wy3tmyv65kz5hx8c9x6n",
+          "session_title": "Vector databases at ten billion embeddings",
+          "values": {}
+        },
+        {
+          "comment": "Valuable and unusually well grounded in compliance reality, but a half-day workshop is a big ask for our schedule.",
+          "completed_at": "2026-08-08T19:58:32.992Z",
+          "created_at": "2026-08-11T19:58:32.992Z",
+          "evaluator_email": "alex.rivera@example.com",
+          "evaluator_id": "kx79rsf5szqxm5gqabs6pw8w2h8c9z22",
+          "id": "ks738he9vxw8vz46z7c6k1nxj18c9dff",
+          "plan_id": "kn7e3e98kbvz52855smwthcec58c8tpq",
+          "plan_name": "Round 1 — Programme Committee",
+          "recusal_reason": null,
+          "recused": false,
+          "round": 1,
+          "scores": {
+            "overall": 3,
+            "relevance": 4
+          },
+          "session_id": "k57cdcabj5n6dwppa6fjnfcxjd8c9vcs",
+          "session_title": "From notebook to nine-nines: productionising ML in regulated healthcare",
+          "values": {}
+        },
+        {
+          "comment": "The best abstract in my batch. Abstention is under-discussed and this proposal treats it as an engineering problem rather than a research curiosity.",
+          "completed_at": "2026-08-09T07:58:32.992Z",
+          "created_at": "2026-08-11T19:58:32.992Z",
+          "evaluator_email": "alex.rivera@example.com",
+          "evaluator_id": "kx79rsf5szqxm5gqabs6pw8w2h8c9z22",
+          "id": "ks7e5bky8cvd0x12hmh2zcd1js8c9cx8",
+          "plan_id": "kn7e3e98kbvz52855smwthcec58c8tpq",
+          "plan_name": "Round 1 — Programme Committee",
+          "recusal_reason": null,
+          "recused": false,
+          "round": 1,
+          "scores": {
+            "overall": 5,
+            "relevance": 5
+          },
+          "session_id": "k5701d4ksfq5vjwarhb2n4mk0x8c87es",
+          "session_title": "Teaching your model to say “I don't know”",
+          "values": {}
+        },
+        {
+          "comment": "Tight, useful, and perfectly sized as a lightning talk. Easy yes.",
+          "completed_at": "2026-08-09T19:58:32.992Z",
+          "created_at": "2026-08-11T19:58:32.992Z",
+          "evaluator_email": "alex.rivera@example.com",
+          "evaluator_id": "kx79rsf5szqxm5gqabs6pw8w2h8c9z22",
+          "id": "ks73pqwy3zq7sk9yfa4k4k99sn8c8h0s",
+          "plan_id": "kn7e3e98kbvz52855smwthcec58c8tpq",
+          "plan_name": "Round 1 — Programme Committee",
+          "recusal_reason": null,
+          "recused": false,
+          "round": 1,
+          "scores": {
+            "overall": 4,
+            "relevance": 4
+          },
+          "session_id": "k577h4wmb7qq32ggqgz28578758c8g1a",
+          "session_title": "Structured output without the sadness",
+          "values": {}
+        },
+        {
+          "comment": "Everyone in the room has fought this. Practical and well scoped.",
+          "completed_at": "2026-08-10T07:58:32.992Z",
+          "created_at": "2026-08-11T19:58:32.992Z",
+          "evaluator_email": "sam.okafor@example.com",
+          "evaluator_id": "kx72rea571mzm4vrb743k0vm358c8etn",
+          "id": "ks7820wsnxg97cw781731n7j6s8c9cwa",
+          "plan_id": "kn7e3e98kbvz52855smwthcec58c8tpq",
+          "plan_name": "Round 1 — Programme Committee",
+          "recusal_reason": null,
+          "recused": false,
+          "round": 1,
+          "scores": {
+            "overall": 5,
+            "relevance": 4
+          },
+          "session_id": "k577h4wmb7qq32ggqgz28578758c8g1a",
+          "session_title": "Structured output without the sadness",
+          "values": {}
+        },
+        {
+          "comment": "Cost is the conversation every team is having and almost nobody submits about. Would schedule.",
+          "completed_at": "2026-08-10T19:58:32.992Z",
+          "created_at": "2026-08-11T19:58:32.992Z",
+          "evaluator_email": "alex.rivera@example.com",
+          "evaluator_id": "kx79rsf5szqxm5gqabs6pw8w2h8c9z22",
+          "id": "ks773a1xdh8v3rak5zmk907kn18c8qyq",
+          "plan_id": "kn7e3e98kbvz52855smwthcec58c8tpq",
+          "plan_name": "Round 1 — Programme Committee",
+          "recusal_reason": null,
+          "recused": false,
+          "round": 1,
+          "scores": {
+            "overall": 4,
+            "relevance": 5
+          },
+          "session_id": "k57b5q08xv8r176s8ykndc2tdd8c9zp9",
+          "session_title": "Cost modelling for inference-heavy products",
+          "values": {}
+        },
+        {
+          "comment": "Clear, experienced and specific. The failure-mode taxonomy alone justifies the slot.",
+          "completed_at": "2026-08-11T07:58:32.992Z",
+          "created_at": "2026-08-11T19:58:32.992Z",
+          "evaluator_email": "sam.okafor@example.com",
+          "evaluator_id": "kx72rea571mzm4vrb743k0vm358c8etn",
+          "id": "ks7br7mg92dfw8mzgvha6wyd1d8c8rc9",
+          "plan_id": "kn7e3e98kbvz52855smwthcec58c8tpq",
+          "plan_name": "Round 1 — Programme Committee",
+          "recusal_reason": null,
+          "recused": false,
+          "round": 1,
+          "scores": {
+            "overall": 5,
+            "relevance": 5
+          },
+          "session_id": "k5711qjjy48tmsh1b63rt86cpn8c8z04",
+          "session_title": "Building reliable agents: a practitioner's playbook",
+          "values": {}
+        }
+      ]
+    }
+  },
+  "list_events": {
+    "input": {},
+    "output": {
+      "events": [
+        {
+          "endsAt": "2026-10-14T01:00:00.000Z",
+          "eventId": "j97a7rtr9rbj9ezjfqfb3qd5nx8c8hcv",
+          "name": "AI Engineer Summit 2026",
+          "organizationId": "mn7fs8btg5szyhbkqdfhtd4xmn8c8xhg",
+          "organizationName": "AI Engineer",
+          "slug": "ai-summit-2026",
+          "startsAt": "2026-10-12T16:00:00.000Z",
+          "timezone": "America/Los_Angeles",
+          "type": "Conference",
+          "venue": "Moscone West, San Francisco",
+          "yourRole": "owner",
+          "url": "https://trackstage.app/app/ai-engineer/ai-summit-2026",
+          "publicUrl": "https://trackstage.app/e/ai-engineer/ai-summit-2026"
+        },
+        {
+          "endsAt": "2026-11-05T23:00:00.000Z",
+          "eventId": "j971xt2t3pbptpk0kb3aegrc3d8c982e",
+          "name": "Design Systems Day",
+          "organizationId": "mn7fs8btg5szyhbkqdfhtd4xmn8c8xhg",
+          "organizationName": "AI Engineer",
+          "slug": "design-systems-day",
+          "startsAt": "2026-11-05T14:00:00.000Z",
+          "timezone": "America/New_York",
+          "type": "Meetup",
+          "venue": "Brooklyn Expo Center, New York",
+          "yourRole": "owner",
+          "url": "https://trackstage.app/app/ai-engineer/design-systems-day",
+          "publicUrl": "https://trackstage.app/e/ai-engineer/design-systems-day"
+        }
+      ]
+    }
+  },
+  "list_field_options": {
+    "input": {
+      "event": "ai-summit-2026",
+      "resource": "tracks"
+    },
+    "output": {
+      "data": [
+        {
+          "color": "#2F5CE0",
+          "created_at": "2026-08-11T19:58:32.992Z",
+          "event_id": "j97a7rtr9rbj9ezjfqfb3qd5nx8c8hcv",
+          "id": "kd7bqbgrswqb53475y53vp1w6h8c8zn2",
+          "name": "AI Engineering",
+          "order": 0,
+          "updated_at": "2026-08-11T19:58:32.992Z"
+        },
+        {
+          "color": "#1E9E6B",
+          "created_at": "2026-08-11T19:58:32.992Z",
+          "event_id": "j97a7rtr9rbj9ezjfqfb3qd5nx8c8hcv",
+          "id": "kd765rkh0n9jea8axxmpdzex2d8c83s3",
+          "name": "Product",
+          "order": 1,
+          "updated_at": "2026-08-11T19:58:32.992Z"
+        },
+        {
+          "color": "#B45309",
+          "created_at": "2026-08-11T19:58:32.992Z",
+          "event_id": "j97a7rtr9rbj9ezjfqfb3qd5nx8c8hcv",
+          "id": "kd7arjygef2wbq2gr2w4vgdx6x8c8ss3",
+          "name": "Infrastructure",
+          "order": 2,
+          "updated_at": "2026-08-11T19:58:32.992Z"
+        }
+      ],
+      "pagination": {
+        "currentPage": 1,
+        "current_page": 1,
+        "pageSize": 100,
+        "page_size": 100,
+        "totalPages": 1,
+        "totalResults": 3,
+        "total_pages": 1,
+        "total_results": 3
+      },
+      "results": [
+        {
+          "color": "#2F5CE0",
+          "created_at": "2026-08-11T19:58:32.992Z",
+          "event_id": "j97a7rtr9rbj9ezjfqfb3qd5nx8c8hcv",
+          "id": "kd7bqbgrswqb53475y53vp1w6h8c8zn2",
+          "name": "AI Engineering",
+          "order": 0,
+          "updated_at": "2026-08-11T19:58:32.992Z"
+        },
+        {
+          "color": "#1E9E6B",
+          "created_at": "2026-08-11T19:58:32.992Z",
+          "event_id": "j97a7rtr9rbj9ezjfqfb3qd5nx8c8hcv",
+          "id": "kd765rkh0n9jea8axxmpdzex2d8c83s3",
+          "name": "Product",
+          "order": 1,
+          "updated_at": "2026-08-11T19:58:32.992Z"
+        },
+        {
+          "color": "#B45309",
+          "created_at": "2026-08-11T19:58:32.992Z",
+          "event_id": "j97a7rtr9rbj9ezjfqfb3qd5nx8c8hcv",
+          "id": "kd7arjygef2wbq2gr2w4vgdx6x8c8ss3",
+          "name": "Infrastructure",
+          "order": 2,
+          "updated_at": "2026-08-11T19:58:32.992Z"
+        }
+      ],
+      "unknownResource": false
+    }
+  },
+  "list_files": {
+    "input": {
+      "event": "ai-summit-2026"
+    },
+    "output": {
+      "countsByApprovalStatus": {
+        "approved": 1
+      },
+      "files": [
+        {
+          "approvalStatus": "approved",
+          "fileId": "kh7c3efp3sb2v2e8gh0tngnr258c8pm4",
+          "filename": "opening-keynote-slides.pdf",
+          "reviewNote": "Looks great — AV have the deck.",
+          "session": "Opening keynote: the year AI engineering grew up",
+          "speaker": "Priya Raghavan <priya.raghavan@example.com>",
+          "task": "Upload your slides",
+          "uploadedAt": "2026-08-11T19:58:36.672Z",
+          "version": 1
+        }
+      ],
+      "note": "Approve or reject one with review_file. Approved files are what public session pages may expose.",
+      "returned": 1,
+      "total": 1
+    }
+  },
+  "list_forms": {
+    "input": {
+      "event": "ai-summit-2026"
+    },
+    "output": {
+      "formCount": 2,
+      "forms": [
+        {
+          "closeAt": "2026-09-16T06:59:00.000Z",
+          "draftCount": 3,
+          "externalTitle": "Call for Speakers — AI Engineer Summit 2026",
+          "formId": "jd73phacyyzmagrpmvddn4mge98c80tq",
+          "kind": "abstract",
+          "name": "CFP 2026 — main call",
+          "publicUrl": "http://localhost:3000/submit/cfp",
+          "slug": "cfp",
+          "status": "open",
+          "submissionCount": 15
+        },
+        {
+          "closeAt": null,
+          "draftCount": 0,
+          "externalTitle": "Copilot Verification CFP",
+          "formId": "jd7e3107b4ys2yd78x3z5j2g5x8c8vyn",
+          "kind": "abstract",
+          "name": "Copilot Verification CFP",
+          "publicUrl": "http://localhost:3000/submit/copilot-verification-cfp",
+          "slug": "copilot-verification-cfp",
+          "status": "open",
+          "submissionCount": 0
+        }
+      ],
+      "linkWarning": "http://localhost:3000 is a loopback address (demo URL — set SITE_URL in production). Links below only work on the machine running Trackstage — don't send them to a speaker."
     }
   },
   "list_outbox": {
@@ -1380,302 +2241,319 @@
       "note": "\"preview\" means it was rendered but not actually mailed — demo recipients (@example.com) and deployments without RESEND_API_KEY never send."
     }
   },
-  "add_manual_session": {
+  "list_speakers": {
     "input": {
-      "title": "Copilot Verification Keynote",
-      "event": "ai-summit-2026"
+      "event": "ai-summit-2026",
+      "onlyWithOutstandingWork": true
     },
     "output": {
-      "format": null,
-      "kind": "session",
-      "speakers": [],
-      "status": "accepted",
-      "submissionId": "k57b3xv1qd153p55150x3x80gs8c8sea",
-      "title": "Copilot Verification Keynote",
-      "track": null
-    }
-  },
-  "assign_task": {
-    "input": {
+      "filter": {
+        "includeProfileGaps": false,
+        "means": "speakers with ≥1 incomplete task",
+        "onlyWithOutstandingWork": true
+      },
+      "returned": 7,
+      "speakerCount": 7,
       "speakers": [
-        "rafael.duarte@example.com"
-      ],
-      "title": "Copilot verification check",
-      "event": "ai-summit-2026"
-    },
-    "output": {
-      "assignedTo": [
-        "rafael.duarte@example.com"
-      ],
-      "created": 1,
-      "dueAt": null,
-      "kind": "confirm",
-      "note": "Speakers see this in their portal. Use send_reminders to nudge them by email.",
-      "title": "Copilot verification check"
-    }
-  },
-  "create_event": {
-    "input": {
-      "organizationId": "mn7fs8btg5szyhbkqdfhtd4xmn8c8xhg",
-      "name": "Copilot Verification Event"
-    },
-    "output": {
-      "eventId": "j972c4ems4mk1hjgfv814ewjgn8c9tcm",
-      "linkWarning": "http://localhost:3000 is a loopback address (demo URL — set SITE_URL in production). Links below only work on the machine running Trackstage — don't send them to a speaker.",
-      "name": "Copilot Verification Event",
-      "publicSubmitUrlHint": "http://localhost:3000/submit/<form-slug>",
-      "slug": "copilot-verification-event-5"
-    }
-  },
-  "update_template": {
-    "input": {
-      "subject": "A quick nudge about {{eventName}}",
-      "event": "ai-summit-2026",
-      "key": "reminder"
-    },
-    "output": {
-      "body": "Hi {{firstName}},\n\nA friendly nudge — you still have a few speaker tasks outstanding for {{eventName}}. They usually take less than ten minutes in total.\n\nOpen your portal to see exactly what's left and complete it inline:\n{{portalLink}}\n\nGetting these in on time lets us publish the programme, print your details correctly and make sure your session runs smoothly on the day.\n\nIf something is blocking you, just reply to this email and we'll help.\n\nThank you,\nThe {{eventName}} programme team",
-      "key": "reminder",
-      "name": "Outstanding tasks reminder",
-      "note": "Preview it with send_test_email before it goes out for real.",
-      "subject": "A quick nudge about {{eventName}}"
-    }
-  },
-  "schedule_session": {
-    "input": {
-      "startsAt": "2026-10-12T17:00:00Z",
-      "submissionId": "k5737k058av76xd673d3b25nxx8c9y1p",
-      "durationMinutes": 30,
-      "room": "Main Stage"
-    },
-    "output": {
-      "conflicts": [
-        "Both booked in Main Stage at the same time"
-      ],
-      "durationMinutes": 30,
-      "room": "Main Stage",
-      "startsAt": "2026-10-12T17:00:00.000Z",
-      "submissionId": "k5737k058av76xd673d3b25nxx8c9y1p",
-      "title": "Copilot Verification Keynote"
-    }
-  },
-  "send_reminders": {
-    "input": {},
-    "output": {
-      "note": "Skipped speakers were already reminded in the last 20 hours. Check list_outbox for delivery status.",
-      "queued": 0,
-      "skipped": 8
-    }
-  },
-  "set_submission_status": {
-    "input": {},
-    "output": {
-      "note": "Staged only — no email has been sent. Run commit_decision_queue to notify the speakers.",
-      "previousStatus": "accept_queue",
-      "status": "accept_queue",
-      "submissionId": "k577y9smskq0gp9e7zsmdx32rh8c9c1j",
-      "title": "Teaching your model to say “I don't know”"
-    }
-  },
-  "commit_decision_queue": {
-    "input": {},
-    "output": {
-      "committed": 0,
-      "emailsQueued": 0,
-      "note": "Nothing was staged in that queue — use set_submission_status first.",
-      "queue": "accept_queue",
-      "titles": []
-    }
-  },
-  "auto_place_sessions": {
-    "input": {},
-    "output": {
-      "conflictsAfterwards": 0,
-      "couldNotFit": 0,
-      "note": "Existing scheduled sessions were left untouched; only the unscheduled tray was filled.",
-      "placed": 1
-    }
-  },
-  "send_test_email": {
-    "input": {},
-    "output": {
-      "body": "Hi Ava,\n\nGreat news: “Evaluating RAG pipelines without a golden dataset” has been accepted for AI Engineer Summit 2026. We had a strong field this year and we're genuinely excited to have you on the programme.\n\nA few next steps so we can get you ready:\n\n1. Open your speaker portal: http://localhost:3000/portal/t/demo-ava-nakamura\n2. Confirm your biography and upload a headshot — both appear on the public programme.\n3. Work through the tasks listed in the portal before their due dates (slides, travel details, and anything else we need from you).\n\nIf your session has already been scheduled you'll find a calendar invite attached to this email, and the exact time and room in the portal.\n\nPlease let us know if anything changes on your side — we'd rather hear early.\n\nWelcome aboard,\nThe AI Engineer Summit 2026 programme team",
-      "note": "Queued for delivery. Check list_outbox for the final status.",
-      "subject": "Congratulations — “Evaluating RAG pipelines without a golden dataset” is in the AI Engineer Summit 2026 programme",
-      "templateKey": "accepted",
-      "to": "organizer@demo.sessionboard.dev"
-    }
-  },
-  "update_form_settings": {
-    "input": {},
-    "output": {
-      "closeAt": null,
-      "formId": "jd72yjkj9sr84k9pfeq58xgtk98c8jhm",
-      "linkWarning": "http://localhost:3000 is a loopback address (demo URL — set SITE_URL in production). Links below only work on the machine running Trackstage — don't send them to a speaker.",
-      "name": "Copilot Verification CFP",
-      "previous": {
-        "closeAt": null,
-        "settings": {
-          "allowDrafts": true,
-          "autoRedirectToPortal": true,
-          "sendReminderEmail": true,
-          "successMessage": "<p>Thank you for submitting to present at our event! We'll review your submission and get back to you soon.</p>"
-        },
-        "status": "closed"
-      },
-      "publicUrl": "http://localhost:3000/submit/copilot-verification-cfp",
-      "settings": {
-        "allowDrafts": true,
-        "autoRedirectToPortal": true,
-        "sendReminderEmail": true,
-        "successMessage": "<p>Thank you for submitting to present at our event! We'll review your submission and get back to you soon.</p>"
-      },
-      "status": "closed"
-    }
-  },
-  "unschedule_session": {
-    "input": {},
-    "output": {
-      "note": "Moved back to the unscheduled tray.",
-      "submissionId": "k574asz8ghnm6d934twqgpv9md8c9nx6",
-      "title": "Structured output without the sadness"
-    }
-  },
-  "get_template": {
-    "input": {
-      "event": "ai-summit-2026",
-      "key": "accepted"
-    },
-    "output": {
-      "body": "Hi {{firstName}},\n\nGreat news: “{{sessionTitle}}” has been accepted for {{eventName}}. We had a strong field this year and we're genuinely excited to have you on the programme.\n\nA few next steps so we can get you ready:\n\n1. Open your speaker portal: {{portalLink}}\n2. Confirm your biography and upload a headshot — both appear on the public programme.\n3. Work through the tasks listed in the portal before their due dates (slides, travel details, and anything else we need from you).\n\nIf your session has already been scheduled you'll find a calendar invite attached to this email, and the exact time and room in the portal.\n\nPlease let us know if anything changes on your side — we'd rather hear early.\n\nWelcome aboard,\nThe {{eventName}} programme team",
-      "customized": true,
-      "key": "accepted",
-      "name": "Submission accepted",
-      "note": "Rewrite it with update_template, then proof it with send_test_email.",
-      "subject": "Congratulations — “{{sessionTitle}}” is in the {{eventName}} programme",
-      "variables": [
-        "speakerName",
-        "firstName",
-        "sessionTitle",
-        "eventName",
-        "portalLink"
-      ]
-    }
-  },
-  "remove_task": {
-    "input": {},
-    "output": {
-      "note": "It has disappeared from that speaker's portal. Re-create it with assign_task if that was a mistake.",
-      "removed": true,
-      "speaker": "rafael.duarte@example.com",
-      "taskId": "k97bdd4nneqczez6hzmttp9nrh8c8ett",
-      "title": "Upload your slides",
-      "wasCompleted": false
-    }
-  },
-  "delete_form": {
-    "input": {},
-    "output": {
-      "deleted": true,
-      "formId": "jd7e3107b4ys2yd78x3z5j2g5x8c8vyn",
-      "name": "Copilot Verification CFP",
-      "note": "The form is gone. Its public URL now 404s.",
-      "slug": "copilot-verification-cfp"
-    }
-  },
-  "delete_event": {
-    "input": {},
-    "output": {
-      "deleted": true,
-      "eventId": "j9726nrwb529ang7nfwxjvdms18c8zz4",
-      "name": "Copilot Verification Event",
-      "note": "The event and everything belonging to it (submissions, speakers, forms, tasks, uploads, emails) are gone. This cannot be undone.",
-      "removed": {
-        "forms": 1,
-        "people": 0,
-        "rooms": 0,
-        "submissions": 0,
-        "tasks": 0
-      },
-      "slug": "copilot-verification-event"
-    }
-  },
-  "list_workspace_members": {
-    "input": {
-      "workspace": "ai-engineer"
-    },
-    "output": {
-      "memberCount": 9,
-      "members": [
         {
-          "accepted": false,
-          "email": "member-msop599l-ghqjf@example.com",
-          "eventScope": null,
-          "memberId": "mh77wp1xgepdxatepdrxvj3n4d8c9017",
-          "role": "member"
+          "company": "Terrafirma",
+          "email": "rafael.duarte@example.com",
+          "jobTitle": "Solutions Architect",
+          "missingProfileItems": [
+            "headshot",
+            "slides"
+          ],
+          "name": "Rafael Duarte",
+          "outstandingReason": [
+            "open_tasks",
+            "incomplete_profile"
+          ],
+          "outstandingTasks": [
+            {
+              "dueAt": "2026-08-31T02:51:05.017Z",
+              "kind": "upload",
+              "taskId": "k97bdd4nneqczez6hzmttp9nrh8c8ett",
+              "title": "Upload your slides"
+            },
+            {
+              "dueAt": null,
+              "kind": "confirm",
+              "taskId": "k97c5n0xmz7hq43rzk7zcdmhjs8c8sgs",
+              "title": "Copilot verification check"
+            }
+          ],
+          "personId": "m9702hy57p6pbmhysetqw2c2598c80tn",
+          "sessions": [
+            "What users actually do with your AI feature"
+          ]
         },
         {
-          "accepted": true,
-          "email": "organizer@demo.sessionboard.dev",
-          "eventScope": null,
-          "memberId": "mh74jvj8vw6f9k0w684kmr9s558c816e",
-          "role": "owner"
+          "company": "Vantage Labs",
+          "email": "sofia.marchetti@example.com",
+          "jobTitle": "Founding Engineer",
+          "missingProfileItems": [
+            "headshot",
+            "slides"
+          ],
+          "name": "Sofia Marchetti",
+          "outstandingReason": [
+            "open_tasks",
+            "incomplete_profile"
+          ],
+          "outstandingTasks": [
+            {
+              "dueAt": "2026-08-09T02:51:05.017Z",
+              "kind": "headshot",
+              "taskId": "k97e2wc8bnvrgnhc4rcpnn635x8c88xa",
+              "title": "Upload your headshot"
+            },
+            {
+              "dueAt": "2026-08-31T02:51:05.017Z",
+              "kind": "upload",
+              "taskId": "k97fnhakc7zp2r8r8232b5p7kh8c8b1f",
+              "title": "Upload your slides"
+            }
+          ],
+          "personId": "m9742xqxqmt10e51dd4e01jm7n8c9f0d",
+          "sessions": [
+            "Building reliable agents: a practitioner's playbook"
+          ]
         },
         {
-          "accepted": true,
-          "email": "tenant-mso12v1r-z2zhm@example.com",
-          "eventScope": null,
-          "memberId": "mh79bn3tcv5rassvn48epqt7wx8c8wqa",
-          "role": "member"
+          "company": "Ridgeline",
+          "email": "tom.beaumont@example.com",
+          "jobTitle": "Developer Advocate",
+          "missingProfileItems": [
+            "bio",
+            "slides"
+          ],
+          "name": "Tom Beaumont",
+          "outstandingReason": [
+            "open_tasks",
+            "incomplete_profile"
+          ],
+          "outstandingTasks": [
+            {
+              "dueAt": "2026-08-12T02:51:05.017Z",
+              "kind": "confirm",
+              "taskId": "k97e9fmx246pa6sat32w4hkb298c87b5",
+              "title": "Confirm your biography"
+            },
+            {
+              "dueAt": "2026-08-31T02:51:05.017Z",
+              "kind": "upload",
+              "taskId": "k97chdzw856ye5fyefyzz41n7x8c8wpv",
+              "title": "Upload your slides"
+            }
+          ],
+          "personId": "m97drwk30v7y1fdzb1713ejce98c85fs",
+          "sessions": [
+            "Evaluation harnesses for production LLMs"
+          ]
         },
         {
-          "accepted": true,
-          "email": "tenant-mso13bxi-rb0vs@example.com",
-          "eventScope": null,
-          "memberId": "mh7ceyj4kdc7g8h69smanwtxd98c8p7e",
-          "role": "member"
+          "company": "Lumen AI",
+          "email": "ava.nakamura@example.com",
+          "jobTitle": "Staff ML Engineer",
+          "missingProfileItems": [
+            "slides"
+          ],
+          "name": "Ava Nakamura",
+          "outstandingReason": [
+            "open_tasks",
+            "incomplete_profile"
+          ],
+          "outstandingTasks": [
+            {
+              "dueAt": "2026-08-13T02:51:05.017Z",
+              "kind": "upload",
+              "taskId": "k97d64x3e46s2g03ch0yrq6gyx8c92sc",
+              "title": "Upload your slides"
+            }
+          ],
+          "personId": "m977exq5cemva9zyq5k8p781718c9f0n",
+          "sessions": [
+            "Building reliable agents: a practitioner's playbook",
+            "Closing panel: what we got wrong about agents"
+          ]
         },
         {
-          "accepted": true,
-          "email": "tenant-mso19mar-y7oab@example.com",
-          "eventScope": null,
-          "memberId": "mh75sx2hqc16dsfeqvt6keswzd8c9akq",
-          "role": "member"
+          "company": "Orbit Cloud",
+          "email": "liam.ferguson@example.com",
+          "jobTitle": "Staff Site Reliability Engineer",
+          "missingProfileItems": [
+            "bio",
+            "slides"
+          ],
+          "name": "Liam Ferguson",
+          "outstandingReason": [
+            "open_tasks",
+            "incomplete_profile"
+          ],
+          "outstandingTasks": [
+            {
+              "dueAt": "2026-08-31T02:51:05.017Z",
+              "kind": "upload",
+              "taskId": "k975f6sqm2rymxcktsqmey13fs8c83f5",
+              "title": "Upload your slides"
+            }
+          ],
+          "personId": "m97dcc60qqjywe7tvxxtakncz18c8zc0",
+          "sessions": [
+            "Serving four hundred models on one GPU fleet"
+          ]
         },
         {
-          "accepted": true,
-          "email": "tenant-msoocp7h-c003u@example.com",
-          "eventScope": null,
-          "memberId": "mh71ea72p22d2abtwk0sdnrbr18c9b67",
-          "role": "member"
+          "company": "Fathom Robotics",
+          "email": "noah.blackwood@example.com",
+          "jobTitle": "Chief Technology Officer",
+          "missingProfileItems": [
+            "slides"
+          ],
+          "name": "Noah Blackwood",
+          "outstandingReason": [
+            "open_tasks",
+            "incomplete_profile"
+          ],
+          "outstandingTasks": [
+            {
+              "dueAt": null,
+              "kind": "upload",
+              "taskId": "k972tkf2bjasq83hqqr2dfks518c89rd",
+              "title": "Upload your slides"
+            }
+          ],
+          "personId": "m97e4vbn3gkqgg42ht41knjgsn8c8szc",
+          "sessions": [
+            "Cost modelling for inference-heavy products",
+            "Closing panel: what we got wrong about agents"
+          ]
         },
         {
-          "accepted": true,
-          "email": "tenant-msov8p7n-z0qtp@example.com",
-          "eventScope": null,
-          "memberId": "mh70p100bqtar20nfqj0spzwd18c9pvv",
-          "role": "member"
-        },
-        {
-          "accepted": true,
-          "email": "tenant-msova0xn-5eg3z@example.com",
-          "eventScope": null,
-          "memberId": "mh7dvct0fhrfwjfy3t9dx6hk858c98yr",
-          "role": "member"
-        },
-        {
-          "accepted": true,
-          "email": "tenant-msovbfp0-6mh70@example.com",
-          "eventScope": null,
-          "memberId": "mh71n7h6vskzcv9be3h4pt36ad8c8xca",
-          "role": "member"
+          "company": "Cirrus Payments",
+          "email": "yara.haddad@example.com",
+          "jobTitle": "Senior Engineer",
+          "missingProfileItems": [
+            "slides"
+          ],
+          "name": "Yara Haddad",
+          "outstandingReason": [
+            "open_tasks",
+            "incomplete_profile"
+          ],
+          "outstandingTasks": [
+            {
+              "dueAt": null,
+              "kind": "upload",
+              "taskId": "k97b09ne03w113bb8v1b3pz8vx8c9pz1",
+              "title": "Upload your slides"
+            }
+          ],
+          "personId": "m97f5w857pxh933fd2rgx85kes8c9rtc",
+          "sessions": [
+            "Structured output without the sadness"
+          ]
         }
       ],
-      "workspace": {
-        "name": "AI Engineer",
-        "organizationId": "mn7fs8btg5szyhbkqdfhtd4xmn8c8xhg",
-        "slug": "ai-engineer"
-      }
+      "summary": "7 of 12 confirmed speaker(s) returned — filter: speakers with ≥1 incomplete task. Across the whole roster: 7 with open tasks, 10 with an incomplete profile, 10 with either.",
+      "totalSpeakers": 12,
+      "withOpenTasks": 7,
+      "withOpenTasksOrProfileGaps": 10,
+      "withProfileGaps": 10
+    }
+  },
+  "list_submissions": {
+    "input": {
+      "event": "ai-summit-2026",
+      "status": "pending"
+    },
+    "output": {
+      "returned": 5,
+      "submissions": [
+        {
+          "format": "Talk",
+          "kind": "abstract",
+          "level": "Introductory",
+          "scheduled": null,
+          "speakers": [
+            "Quinn Quiet <verify-quiet-mso2d23a@example.com>"
+          ],
+          "status": "pending",
+          "submissionId": "k574y2n3adb6hh2k831d8p1nkd8c87dh",
+          "tags": [],
+          "title": "Quiet Talk",
+          "track": "AI Engineering"
+        },
+        {
+          "format": "Talk",
+          "kind": "abstract",
+          "level": "Advanced",
+          "scheduled": null,
+          "speakers": [
+            "Hana Kobayashi <hana.kobayashi@example.com>"
+          ],
+          "status": "pending",
+          "submissionId": "k5788agpvtqzy3d1rf7axbkvcn8c9hh7",
+          "tags": [
+            "calibration",
+            "safety"
+          ],
+          "title": "Teaching your model to say “I don't know”",
+          "track": "AI Engineering"
+        },
+        {
+          "format": "Workshop",
+          "kind": "abstract",
+          "level": "Intermediate",
+          "scheduled": null,
+          "speakers": [
+            "Daniel Okonkwo <daniel.okonkwo@example.com>"
+          ],
+          "status": "pending",
+          "submissionId": "k571f2h98nn2nxmp5m2pt2c70s8c8qxn",
+          "tags": [
+            "mlops",
+            "compliance"
+          ],
+          "title": "From notebook to nine-nines: productionising ML in regulated healthcare",
+          "track": "Infrastructure"
+        },
+        {
+          "format": "Talk",
+          "kind": "abstract",
+          "level": "Advanced",
+          "scheduled": null,
+          "speakers": [
+            "Jonas Weber <jonas.weber@example.com>"
+          ],
+          "status": "pending",
+          "submissionId": "k577v576dgfs0cj91jrdkpav8s8c95ya",
+          "tags": [
+            "retrieval",
+            "scale"
+          ],
+          "title": "Vector databases at ten billion embeddings",
+          "track": "Infrastructure"
+        },
+        {
+          "format": "Talk",
+          "kind": "abstract",
+          "level": "Intermediate",
+          "scheduled": null,
+          "speakers": [
+            "Elena Petrova <elena.petrova@example.com>"
+          ],
+          "status": "pending",
+          "submissionId": "k573818ejy52d66k4rxb9w5cb58c9z9c",
+          "tags": [
+            "latency",
+            "product"
+          ],
+          "title": "Shipping LLM features when latency is the product",
+          "track": "Product"
+        }
+      ],
+      "total": 5
     }
   },
   "list_tasks": {
@@ -2455,1155 +3333,67 @@
       ]
     }
   },
-  "list_files": {
+  "list_templates": {
     "input": {
       "event": "ai-summit-2026"
     },
     "output": {
-      "countsByApprovalStatus": {
-        "approved": 1
-      },
-      "files": [
+      "note": "Bodies are previewed to the first 200 characters — call get_template for the full text of one. Placeholders use {{variable}} syntax and are filled in when the email is queued.",
+      "templateCount": 5,
+      "templates": [
         {
-          "approvalStatus": "approved",
-          "fileId": "kh7c3efp3sb2v2e8gh0tngnr258c8pm4",
-          "filename": "opening-keynote-slides.pdf",
-          "reviewNote": "Looks great — AV have the deck.",
-          "session": "Opening keynote: the year AI engineering grew up",
-          "speaker": "Priya Raghavan <priya.raghavan@example.com>",
-          "task": "Upload your slides",
-          "uploadedAt": "2026-08-11T19:58:36.672Z",
-          "version": 1
+          "bodyLength": 428,
+          "bodyPreview": "Hi {{firstName}},\n\nThanks for submitting “{{sessionTitle}}” to {{eventName}}. Your proposal is in and our programme committee will review it alongside the rest of the call for papers.\n\nYou can review …",
+          "bodyTruncated": true,
+          "customized": true,
+          "key": "confirmation",
+          "name": "Submission received",
+          "subject": "We received your submission for {{eventName}}"
+        },
+        {
+          "bodyLength": 753,
+          "bodyPreview": "Hi {{firstName}},\n\nGreat news: “{{sessionTitle}}” has been accepted for {{eventName}}. We had a strong field this year and we're genuinely excited to have you on the programme.\n\nA few next steps so we…",
+          "bodyTruncated": true,
+          "customized": true,
+          "key": "accepted",
+          "name": "Submission accepted",
+          "subject": "Congratulations — “{{sessionTitle}}” is in the {{eventName}} programme"
+        },
+        {
+          "bodyLength": 646,
+          "bodyPreview": "Hi {{firstName}},\n\nThank you for submitting “{{sessionTitle}}” to {{eventName}}. After careful review by our programme committee, we're not able to include it in this year's programme.\n\nThis was a gen…",
+          "bodyTruncated": true,
+          "customized": true,
+          "key": "declined",
+          "name": "Submission not accepted",
+          "subject": "Your submission to {{eventName}}"
+        },
+        {
+          "bodyLength": 604,
+          "bodyPreview": "Hi {{firstName}},\n\nYour submission “{{sessionTitle}}” made it through review for {{eventName}}, but we've run out of slots in the programme for now — so we've placed it on our waitlist.\n\nThat means: i…",
+          "bodyTruncated": true,
+          "customized": true,
+          "key": "waitlisted",
+          "name": "Submission waitlisted",
+          "subject": "“{{sessionTitle}}” is on the {{eventName}} waitlist"
+        },
+        {
+          "bodyLength": 493,
+          "bodyPreview": "Hi {{firstName}},\n\nA friendly nudge — you still have a few speaker tasks outstanding for {{eventName}}. They usually take less than ten minutes in total.\n\nOpen your portal to see exactly what's left a…",
+          "bodyTruncated": true,
+          "customized": true,
+          "key": "reminder",
+          "name": "Outstanding tasks reminder",
+          "subject": "A quick reminder: outstanding tasks for {{eventName}}"
         }
       ],
-      "note": "Approve or reject one with review_file. Approved files are what public session pages may expose.",
-      "returned": 1,
-      "total": 1
-    }
-  },
-  "count_bulk_audience": {
-    "input": {
-      "event": "ai-summit-2026",
-      "audience": "accepted"
-    },
-    "output": {
-      "audience": "accepted",
-      "note": "This is exactly who send_bulk_email would email with the same arguments.",
-      "recipients": 16,
-      "sampleEmails": [
-        "sofia.marchetti@example.com",
-        "ava.nakamura@example.com",
-        "tom.beaumont@example.com",
-        "hana.kobayashi@example.com",
-        "liam.ferguson@example.com",
-        "rafael.duarte@example.com",
-        "elena.petrova@example.com",
-        "priya.raghavan@example.com",
-        "noah.blackwood@example.com",
-        "daniel.okonkwo@example.com"
+      "variables": [
+        "speakerName",
+        "firstName",
+        "sessionTitle",
+        "eventName",
+        "portalLink"
       ]
-    }
-  },
-  "list_evaluation_plans": {
-    "input": {
-      "event": "ai-summit-2026"
-    },
-    "output": {
-      "data": [
-        {
-          "assigned_count": 16,
-          "average_score": 4.3,
-          "blind": false,
-          "completed_count": 10,
-          "completion_pct": 63,
-          "created_at": "2026-08-11T19:58:32.992Z",
-          "criteria": [
-            {
-              "id": "overall",
-              "label": "Overall",
-              "options": null,
-              "type": "numeric",
-              "weight": 1
-            },
-            {
-              "id": "relevance",
-              "label": "Relevance",
-              "options": null,
-              "type": "numeric",
-              "weight": 1
-            }
-          ],
-          "due_at": "2026-09-26T00:00:00.000Z",
-          "evaluator_count": 2,
-          "id": "kn7e3e98kbvz52855smwthcec58c8tpq",
-          "name": "Round 1 — Programme Committee",
-          "opens_at": null,
-          "outstanding_count": 6,
-          "recused_count": 0,
-          "round": 1,
-          "scored_count": 10,
-          "status": "open",
-          "submission_count": 8,
-          "submission_ids": [
-            "k57fjx2z12yr4098666pcgyapx8c87wh",
-            "k570ck4przm6wy3tmyv65kz5hx8c9x6n",
-            "k57cdcabj5n6dwppa6fjnfcxjd8c9vcs",
-            "k5701d4ksfq5vjwarhb2n4mk0x8c87es",
-            "k577h4wmb7qq32ggqgz28578758c8g1a",
-            "k57b5q08xv8r176s8ykndc2tdd8c9zp9",
-            "k57cqfjerkdsxhas4fzn4r8y798c8pj7",
-            "k5711qjjy48tmsh1b63rt86cpn8c8z04"
-          ]
-        },
-        {
-          "assigned_count": 0,
-          "average_score": null,
-          "blind": false,
-          "completed_count": 0,
-          "completion_pct": 0,
-          "created_at": "2026-08-11T19:58:32.992Z",
-          "criteria": [
-            {
-              "id": "overall",
-              "label": "Overall",
-              "options": null,
-              "type": "numeric",
-              "weight": 1
-            },
-            {
-              "id": "relevance",
-              "label": "Relevance",
-              "options": null,
-              "type": "numeric",
-              "weight": 1
-            }
-          ],
-          "due_at": null,
-          "evaluator_count": 0,
-          "id": "kn71rx66n52bs7m27fp9a4b37d8c92ff",
-          "name": "Round 2 — Final Review",
-          "opens_at": null,
-          "outstanding_count": 0,
-          "recused_count": 0,
-          "round": 2,
-          "scored_count": 0,
-          "status": "closed",
-          "submission_count": 0,
-          "submission_ids": []
-        }
-      ],
-      "pagination": {
-        "currentPage": 1,
-        "current_page": 1,
-        "pageSize": 100,
-        "page_size": 100,
-        "totalPages": 1,
-        "totalResults": 2,
-        "total_pages": 1,
-        "total_results": 2
-      },
-      "results": [
-        {
-          "assigned_count": 16,
-          "average_score": 4.3,
-          "blind": false,
-          "completed_count": 10,
-          "completion_pct": 63,
-          "created_at": "2026-08-11T19:58:32.992Z",
-          "criteria": [
-            {
-              "id": "overall",
-              "label": "Overall",
-              "options": null,
-              "type": "numeric",
-              "weight": 1
-            },
-            {
-              "id": "relevance",
-              "label": "Relevance",
-              "options": null,
-              "type": "numeric",
-              "weight": 1
-            }
-          ],
-          "due_at": "2026-09-26T00:00:00.000Z",
-          "evaluator_count": 2,
-          "id": "kn7e3e98kbvz52855smwthcec58c8tpq",
-          "name": "Round 1 — Programme Committee",
-          "opens_at": null,
-          "outstanding_count": 6,
-          "recused_count": 0,
-          "round": 1,
-          "scored_count": 10,
-          "status": "open",
-          "submission_count": 8,
-          "submission_ids": [
-            "k57fjx2z12yr4098666pcgyapx8c87wh",
-            "k570ck4przm6wy3tmyv65kz5hx8c9x6n",
-            "k57cdcabj5n6dwppa6fjnfcxjd8c9vcs",
-            "k5701d4ksfq5vjwarhb2n4mk0x8c87es",
-            "k577h4wmb7qq32ggqgz28578758c8g1a",
-            "k57b5q08xv8r176s8ykndc2tdd8c9zp9",
-            "k57cqfjerkdsxhas4fzn4r8y798c8pj7",
-            "k5711qjjy48tmsh1b63rt86cpn8c8z04"
-          ]
-        },
-        {
-          "assigned_count": 0,
-          "average_score": null,
-          "blind": false,
-          "completed_count": 0,
-          "completion_pct": 0,
-          "created_at": "2026-08-11T19:58:32.992Z",
-          "criteria": [
-            {
-              "id": "overall",
-              "label": "Overall",
-              "options": null,
-              "type": "numeric",
-              "weight": 1
-            },
-            {
-              "id": "relevance",
-              "label": "Relevance",
-              "options": null,
-              "type": "numeric",
-              "weight": 1
-            }
-          ],
-          "due_at": null,
-          "evaluator_count": 0,
-          "id": "kn71rx66n52bs7m27fp9a4b37d8c92ff",
-          "name": "Round 2 — Final Review",
-          "opens_at": null,
-          "outstanding_count": 0,
-          "recused_count": 0,
-          "round": 2,
-          "scored_count": 0,
-          "status": "closed",
-          "submission_count": 0,
-          "submission_ids": []
-        }
-      ]
-    }
-  },
-  "get_evaluation_plan": {
-    "input": {
-      "planId": "kn7e3e98kbvz52855smwthcec58c8tpq",
-      "event": "ai-summit-2026"
-    },
-    "output": {
-      "data": {
-        "assigned_count": 16,
-        "average_score": 4.3,
-        "blind": false,
-        "completed_count": 10,
-        "completion_pct": 63,
-        "created_at": "2026-08-11T19:58:32.992Z",
-        "criteria": [
-          {
-            "id": "overall",
-            "label": "Overall",
-            "options": null,
-            "type": "numeric",
-            "weight": 1
-          },
-          {
-            "id": "relevance",
-            "label": "Relevance",
-            "options": null,
-            "type": "numeric",
-            "weight": 1
-          }
-        ],
-        "due_at": "2026-09-26T00:00:00.000Z",
-        "evaluator_count": 2,
-        "evaluators": [
-          {
-            "assigned_count": 8,
-            "assigned_submission_ids": [
-              "k57fjx2z12yr4098666pcgyapx8c87wh",
-              "k570ck4przm6wy3tmyv65kz5hx8c9x6n",
-              "k57cdcabj5n6dwppa6fjnfcxjd8c9vcs",
-              "k5701d4ksfq5vjwarhb2n4mk0x8c87es",
-              "k577h4wmb7qq32ggqgz28578758c8g1a",
-              "k57b5q08xv8r176s8ykndc2tdd8c9zp9",
-              "k57cqfjerkdsxhas4fzn4r8y798c8pj7",
-              "k5711qjjy48tmsh1b63rt86cpn8c8z04"
-            ],
-            "completed_count": 6,
-            "created_at": "2026-08-11T19:58:32.992Z",
-            "custom_assignment": false,
-            "email": "alex.rivera@example.com",
-            "id": "kx79rsf5szqxm5gqabs6pw8w2h8c9z22",
-            "last_reminded_at": null,
-            "name": "Alex Rivera",
-            "outstanding_count": 2,
-            "plan_id": "kn7e3e98kbvz52855smwthcec58c8tpq",
-            "recused_count": 0,
-            "review_path": "/review/demo-eval-alex",
-            "token": "demo-eval-alex"
-          },
-          {
-            "assigned_count": 8,
-            "assigned_submission_ids": [
-              "k57fjx2z12yr4098666pcgyapx8c87wh",
-              "k570ck4przm6wy3tmyv65kz5hx8c9x6n",
-              "k57cdcabj5n6dwppa6fjnfcxjd8c9vcs",
-              "k5701d4ksfq5vjwarhb2n4mk0x8c87es",
-              "k577h4wmb7qq32ggqgz28578758c8g1a",
-              "k57b5q08xv8r176s8ykndc2tdd8c9zp9",
-              "k57cqfjerkdsxhas4fzn4r8y798c8pj7",
-              "k5711qjjy48tmsh1b63rt86cpn8c8z04"
-            ],
-            "completed_count": 4,
-            "created_at": "2026-08-11T19:58:32.992Z",
-            "custom_assignment": false,
-            "email": "sam.okafor@example.com",
-            "id": "kx72rea571mzm4vrb743k0vm358c8etn",
-            "last_reminded_at": null,
-            "name": "Sam Okafor",
-            "outstanding_count": 4,
-            "plan_id": "kn7e3e98kbvz52855smwthcec58c8tpq",
-            "recused_count": 0,
-            "review_path": "/review/demo-eval-sam",
-            "token": "demo-eval-sam"
-          }
-        ],
-        "id": "kn7e3e98kbvz52855smwthcec58c8tpq",
-        "name": "Round 1 — Programme Committee",
-        "opens_at": null,
-        "outstanding_count": 6,
-        "recused_count": 0,
-        "round": 1,
-        "scored_count": 10,
-        "status": "open",
-        "submission_count": 8,
-        "submission_ids": [
-          "k57fjx2z12yr4098666pcgyapx8c87wh",
-          "k570ck4przm6wy3tmyv65kz5hx8c9x6n",
-          "k57cdcabj5n6dwppa6fjnfcxjd8c9vcs",
-          "k5701d4ksfq5vjwarhb2n4mk0x8c87es",
-          "k577h4wmb7qq32ggqgz28578758c8g1a",
-          "k57b5q08xv8r176s8ykndc2tdd8c9zp9",
-          "k57cqfjerkdsxhas4fzn4r8y798c8pj7",
-          "k5711qjjy48tmsh1b63rt86cpn8c8z04"
-        ],
-        "submissions": [
-          {
-            "average_score": 4.25,
-            "completed_count": 2,
-            "id": "k57fjx2z12yr4098666pcgyapx8c87wh",
-            "recused_count": 0,
-            "status": "pending",
-            "title": "Shipping LLM features when latency is the product"
-          },
-          {
-            "average_score": 4,
-            "completed_count": 2,
-            "id": "k570ck4przm6wy3tmyv65kz5hx8c9x6n",
-            "recused_count": 0,
-            "status": "pending",
-            "title": "Vector databases at ten billion embeddings"
-          },
-          {
-            "average_score": 3.5,
-            "completed_count": 1,
-            "id": "k57cdcabj5n6dwppa6fjnfcxjd8c9vcs",
-            "recused_count": 0,
-            "status": "pending",
-            "title": "From notebook to nine-nines: productionising ML in regulated healthcare"
-          },
-          {
-            "average_score": 5,
-            "completed_count": 1,
-            "id": "k5701d4ksfq5vjwarhb2n4mk0x8c87es",
-            "recused_count": 0,
-            "status": "pending",
-            "title": "Teaching your model to say “I don't know”"
-          },
-          {
-            "average_score": 4.25,
-            "completed_count": 2,
-            "id": "k577h4wmb7qq32ggqgz28578758c8g1a",
-            "recused_count": 0,
-            "status": "accept_queue",
-            "title": "Structured output without the sadness"
-          },
-          {
-            "average_score": 4.5,
-            "completed_count": 1,
-            "id": "k57b5q08xv8r176s8ykndc2tdd8c9zp9",
-            "recused_count": 0,
-            "status": "accept_queue",
-            "title": "Cost modelling for inference-heavy products"
-          },
-          {
-            "average_score": null,
-            "completed_count": 0,
-            "id": "k57cqfjerkdsxhas4fzn4r8y798c8pj7",
-            "recused_count": 0,
-            "status": "decline_queue",
-            "title": "Why we rewrote our stack in Rust (again)"
-          },
-          {
-            "average_score": 5,
-            "completed_count": 1,
-            "id": "k5711qjjy48tmsh1b63rt86cpn8c8z04",
-            "recused_count": 0,
-            "status": "accepted",
-            "title": "Building reliable agents: a practitioner's playbook"
-          }
-        ]
-      }
-    }
-  },
-  "list_evaluations": {
-    "input": {
-      "event": "ai-summit-2026"
-    },
-    "output": {
-      "data": [
-        {
-          "comment": "Strong, concrete and clearly grounded in real work. The latency-budget framing is the kind of thing attendees can apply on Monday.",
-          "completed_at": "2026-08-06T19:58:32.992Z",
-          "created_at": "2026-08-11T19:58:32.992Z",
-          "evaluator_email": "alex.rivera@example.com",
-          "evaluator_id": "kx79rsf5szqxm5gqabs6pw8w2h8c9z22",
-          "id": "ks7fgk4dt9jpqwf4v1zxpv2m7n8c8xt3",
-          "plan_id": "kn7e3e98kbvz52855smwthcec58c8tpq",
-          "plan_name": "Round 1 — Programme Committee",
-          "recusal_reason": null,
-          "recused": false,
-          "round": 1,
-          "scores": {
-            "overall": 4,
-            "relevance": 5
-          },
-          "session_id": "k57fjx2z12yr4098666pcgyapx8c87wh",
-          "session_title": "Shipping LLM features when latency is the product",
-          "values": {}
-        },
-        {
-          "comment": "Good talk. Would like a little more on measurement methodology, but the substance is there.",
-          "completed_at": "2026-08-07T07:58:32.992Z",
-          "created_at": "2026-08-11T19:58:32.992Z",
-          "evaluator_email": "sam.okafor@example.com",
-          "evaluator_id": "kx72rea571mzm4vrb743k0vm358c8etn",
-          "id": "ks7dhn530w1vp9g593qbpv9x3d8c9x9z",
-          "plan_id": "kn7e3e98kbvz52855smwthcec58c8tpq",
-          "plan_name": "Round 1 — Programme Committee",
-          "recusal_reason": null,
-          "recused": false,
-          "round": 1,
-          "scores": {
-            "overall": 4,
-            "relevance": 4
-          },
-          "session_id": "k57fjx2z12yr4098666pcgyapx8c87wh",
-          "session_title": "Shipping LLM features when latency is the product",
-          "values": {}
-        },
-        {
-          "comment": "Genuinely advanced material from someone clearly operating at this scale. Rare and worth a main-stage slot.",
-          "completed_at": "2026-08-07T19:58:32.992Z",
-          "created_at": "2026-08-11T19:58:32.992Z",
-          "evaluator_email": "alex.rivera@example.com",
-          "evaluator_id": "kx79rsf5szqxm5gqabs6pw8w2h8c9z22",
-          "id": "ks730fpjzjw2kpz6mgas3detns8c8sdk",
-          "plan_id": "kn7e3e98kbvz52855smwthcec58c8tpq",
-          "plan_name": "Round 1 — Programme Committee",
-          "recusal_reason": null,
-          "recused": false,
-          "round": 1,
-          "scores": {
-            "overall": 5,
-            "relevance": 4
-          },
-          "session_id": "k570ck4przm6wy3tmyv65kz5hx8c9x6n",
-          "session_title": "Vector databases at ten billion embeddings",
-          "values": {}
-        },
-        {
-          "comment": "Excellent depth, though the audience for ten-billion-vector problems may be narrow for this event.",
-          "completed_at": "2026-08-08T07:58:32.992Z",
-          "created_at": "2026-08-11T19:58:32.992Z",
-          "evaluator_email": "sam.okafor@example.com",
-          "evaluator_id": "kx72rea571mzm4vrb743k0vm358c8etn",
-          "id": "ks79a95pmhy8kdb4wk71zkaft98c9w6t",
-          "plan_id": "kn7e3e98kbvz52855smwthcec58c8tpq",
-          "plan_name": "Round 1 — Programme Committee",
-          "recusal_reason": null,
-          "recused": false,
-          "round": 1,
-          "scores": {
-            "overall": 4,
-            "relevance": 3
-          },
-          "session_id": "k570ck4przm6wy3tmyv65kz5hx8c9x6n",
-          "session_title": "Vector databases at ten billion embeddings",
-          "values": {}
-        },
-        {
-          "comment": "Valuable and unusually well grounded in compliance reality, but a half-day workshop is a big ask for our schedule.",
-          "completed_at": "2026-08-08T19:58:32.992Z",
-          "created_at": "2026-08-11T19:58:32.992Z",
-          "evaluator_email": "alex.rivera@example.com",
-          "evaluator_id": "kx79rsf5szqxm5gqabs6pw8w2h8c9z22",
-          "id": "ks738he9vxw8vz46z7c6k1nxj18c9dff",
-          "plan_id": "kn7e3e98kbvz52855smwthcec58c8tpq",
-          "plan_name": "Round 1 — Programme Committee",
-          "recusal_reason": null,
-          "recused": false,
-          "round": 1,
-          "scores": {
-            "overall": 3,
-            "relevance": 4
-          },
-          "session_id": "k57cdcabj5n6dwppa6fjnfcxjd8c9vcs",
-          "session_title": "From notebook to nine-nines: productionising ML in regulated healthcare",
-          "values": {}
-        },
-        {
-          "comment": "The best abstract in my batch. Abstention is under-discussed and this proposal treats it as an engineering problem rather than a research curiosity.",
-          "completed_at": "2026-08-09T07:58:32.992Z",
-          "created_at": "2026-08-11T19:58:32.992Z",
-          "evaluator_email": "alex.rivera@example.com",
-          "evaluator_id": "kx79rsf5szqxm5gqabs6pw8w2h8c9z22",
-          "id": "ks7e5bky8cvd0x12hmh2zcd1js8c9cx8",
-          "plan_id": "kn7e3e98kbvz52855smwthcec58c8tpq",
-          "plan_name": "Round 1 — Programme Committee",
-          "recusal_reason": null,
-          "recused": false,
-          "round": 1,
-          "scores": {
-            "overall": 5,
-            "relevance": 5
-          },
-          "session_id": "k5701d4ksfq5vjwarhb2n4mk0x8c87es",
-          "session_title": "Teaching your model to say “I don't know”",
-          "values": {}
-        },
-        {
-          "comment": "Tight, useful, and perfectly sized as a lightning talk. Easy yes.",
-          "completed_at": "2026-08-09T19:58:32.992Z",
-          "created_at": "2026-08-11T19:58:32.992Z",
-          "evaluator_email": "alex.rivera@example.com",
-          "evaluator_id": "kx79rsf5szqxm5gqabs6pw8w2h8c9z22",
-          "id": "ks73pqwy3zq7sk9yfa4k4k99sn8c8h0s",
-          "plan_id": "kn7e3e98kbvz52855smwthcec58c8tpq",
-          "plan_name": "Round 1 — Programme Committee",
-          "recusal_reason": null,
-          "recused": false,
-          "round": 1,
-          "scores": {
-            "overall": 4,
-            "relevance": 4
-          },
-          "session_id": "k577h4wmb7qq32ggqgz28578758c8g1a",
-          "session_title": "Structured output without the sadness",
-          "values": {}
-        },
-        {
-          "comment": "Everyone in the room has fought this. Practical and well scoped.",
-          "completed_at": "2026-08-10T07:58:32.992Z",
-          "created_at": "2026-08-11T19:58:32.992Z",
-          "evaluator_email": "sam.okafor@example.com",
-          "evaluator_id": "kx72rea571mzm4vrb743k0vm358c8etn",
-          "id": "ks7820wsnxg97cw781731n7j6s8c9cwa",
-          "plan_id": "kn7e3e98kbvz52855smwthcec58c8tpq",
-          "plan_name": "Round 1 — Programme Committee",
-          "recusal_reason": null,
-          "recused": false,
-          "round": 1,
-          "scores": {
-            "overall": 5,
-            "relevance": 4
-          },
-          "session_id": "k577h4wmb7qq32ggqgz28578758c8g1a",
-          "session_title": "Structured output without the sadness",
-          "values": {}
-        },
-        {
-          "comment": "Cost is the conversation every team is having and almost nobody submits about. Would schedule.",
-          "completed_at": "2026-08-10T19:58:32.992Z",
-          "created_at": "2026-08-11T19:58:32.992Z",
-          "evaluator_email": "alex.rivera@example.com",
-          "evaluator_id": "kx79rsf5szqxm5gqabs6pw8w2h8c9z22",
-          "id": "ks773a1xdh8v3rak5zmk907kn18c8qyq",
-          "plan_id": "kn7e3e98kbvz52855smwthcec58c8tpq",
-          "plan_name": "Round 1 — Programme Committee",
-          "recusal_reason": null,
-          "recused": false,
-          "round": 1,
-          "scores": {
-            "overall": 4,
-            "relevance": 5
-          },
-          "session_id": "k57b5q08xv8r176s8ykndc2tdd8c9zp9",
-          "session_title": "Cost modelling for inference-heavy products",
-          "values": {}
-        },
-        {
-          "comment": "Clear, experienced and specific. The failure-mode taxonomy alone justifies the slot.",
-          "completed_at": "2026-08-11T07:58:32.992Z",
-          "created_at": "2026-08-11T19:58:32.992Z",
-          "evaluator_email": "sam.okafor@example.com",
-          "evaluator_id": "kx72rea571mzm4vrb743k0vm358c8etn",
-          "id": "ks7br7mg92dfw8mzgvha6wyd1d8c8rc9",
-          "plan_id": "kn7e3e98kbvz52855smwthcec58c8tpq",
-          "plan_name": "Round 1 — Programme Committee",
-          "recusal_reason": null,
-          "recused": false,
-          "round": 1,
-          "scores": {
-            "overall": 5,
-            "relevance": 5
-          },
-          "session_id": "k5711qjjy48tmsh1b63rt86cpn8c8z04",
-          "session_title": "Building reliable agents: a practitioner's playbook",
-          "values": {}
-        }
-      ],
-      "pagination": {
-        "currentPage": 1,
-        "current_page": 1,
-        "pageSize": 100,
-        "page_size": 100,
-        "totalPages": 1,
-        "totalResults": 10,
-        "total_pages": 1,
-        "total_results": 10
-      },
-      "results": [
-        {
-          "comment": "Strong, concrete and clearly grounded in real work. The latency-budget framing is the kind of thing attendees can apply on Monday.",
-          "completed_at": "2026-08-06T19:58:32.992Z",
-          "created_at": "2026-08-11T19:58:32.992Z",
-          "evaluator_email": "alex.rivera@example.com",
-          "evaluator_id": "kx79rsf5szqxm5gqabs6pw8w2h8c9z22",
-          "id": "ks7fgk4dt9jpqwf4v1zxpv2m7n8c8xt3",
-          "plan_id": "kn7e3e98kbvz52855smwthcec58c8tpq",
-          "plan_name": "Round 1 — Programme Committee",
-          "recusal_reason": null,
-          "recused": false,
-          "round": 1,
-          "scores": {
-            "overall": 4,
-            "relevance": 5
-          },
-          "session_id": "k57fjx2z12yr4098666pcgyapx8c87wh",
-          "session_title": "Shipping LLM features when latency is the product",
-          "values": {}
-        },
-        {
-          "comment": "Good talk. Would like a little more on measurement methodology, but the substance is there.",
-          "completed_at": "2026-08-07T07:58:32.992Z",
-          "created_at": "2026-08-11T19:58:32.992Z",
-          "evaluator_email": "sam.okafor@example.com",
-          "evaluator_id": "kx72rea571mzm4vrb743k0vm358c8etn",
-          "id": "ks7dhn530w1vp9g593qbpv9x3d8c9x9z",
-          "plan_id": "kn7e3e98kbvz52855smwthcec58c8tpq",
-          "plan_name": "Round 1 — Programme Committee",
-          "recusal_reason": null,
-          "recused": false,
-          "round": 1,
-          "scores": {
-            "overall": 4,
-            "relevance": 4
-          },
-          "session_id": "k57fjx2z12yr4098666pcgyapx8c87wh",
-          "session_title": "Shipping LLM features when latency is the product",
-          "values": {}
-        },
-        {
-          "comment": "Genuinely advanced material from someone clearly operating at this scale. Rare and worth a main-stage slot.",
-          "completed_at": "2026-08-07T19:58:32.992Z",
-          "created_at": "2026-08-11T19:58:32.992Z",
-          "evaluator_email": "alex.rivera@example.com",
-          "evaluator_id": "kx79rsf5szqxm5gqabs6pw8w2h8c9z22",
-          "id": "ks730fpjzjw2kpz6mgas3detns8c8sdk",
-          "plan_id": "kn7e3e98kbvz52855smwthcec58c8tpq",
-          "plan_name": "Round 1 — Programme Committee",
-          "recusal_reason": null,
-          "recused": false,
-          "round": 1,
-          "scores": {
-            "overall": 5,
-            "relevance": 4
-          },
-          "session_id": "k570ck4przm6wy3tmyv65kz5hx8c9x6n",
-          "session_title": "Vector databases at ten billion embeddings",
-          "values": {}
-        },
-        {
-          "comment": "Excellent depth, though the audience for ten-billion-vector problems may be narrow for this event.",
-          "completed_at": "2026-08-08T07:58:32.992Z",
-          "created_at": "2026-08-11T19:58:32.992Z",
-          "evaluator_email": "sam.okafor@example.com",
-          "evaluator_id": "kx72rea571mzm4vrb743k0vm358c8etn",
-          "id": "ks79a95pmhy8kdb4wk71zkaft98c9w6t",
-          "plan_id": "kn7e3e98kbvz52855smwthcec58c8tpq",
-          "plan_name": "Round 1 — Programme Committee",
-          "recusal_reason": null,
-          "recused": false,
-          "round": 1,
-          "scores": {
-            "overall": 4,
-            "relevance": 3
-          },
-          "session_id": "k570ck4przm6wy3tmyv65kz5hx8c9x6n",
-          "session_title": "Vector databases at ten billion embeddings",
-          "values": {}
-        },
-        {
-          "comment": "Valuable and unusually well grounded in compliance reality, but a half-day workshop is a big ask for our schedule.",
-          "completed_at": "2026-08-08T19:58:32.992Z",
-          "created_at": "2026-08-11T19:58:32.992Z",
-          "evaluator_email": "alex.rivera@example.com",
-          "evaluator_id": "kx79rsf5szqxm5gqabs6pw8w2h8c9z22",
-          "id": "ks738he9vxw8vz46z7c6k1nxj18c9dff",
-          "plan_id": "kn7e3e98kbvz52855smwthcec58c8tpq",
-          "plan_name": "Round 1 — Programme Committee",
-          "recusal_reason": null,
-          "recused": false,
-          "round": 1,
-          "scores": {
-            "overall": 3,
-            "relevance": 4
-          },
-          "session_id": "k57cdcabj5n6dwppa6fjnfcxjd8c9vcs",
-          "session_title": "From notebook to nine-nines: productionising ML in regulated healthcare",
-          "values": {}
-        },
-        {
-          "comment": "The best abstract in my batch. Abstention is under-discussed and this proposal treats it as an engineering problem rather than a research curiosity.",
-          "completed_at": "2026-08-09T07:58:32.992Z",
-          "created_at": "2026-08-11T19:58:32.992Z",
-          "evaluator_email": "alex.rivera@example.com",
-          "evaluator_id": "kx79rsf5szqxm5gqabs6pw8w2h8c9z22",
-          "id": "ks7e5bky8cvd0x12hmh2zcd1js8c9cx8",
-          "plan_id": "kn7e3e98kbvz52855smwthcec58c8tpq",
-          "plan_name": "Round 1 — Programme Committee",
-          "recusal_reason": null,
-          "recused": false,
-          "round": 1,
-          "scores": {
-            "overall": 5,
-            "relevance": 5
-          },
-          "session_id": "k5701d4ksfq5vjwarhb2n4mk0x8c87es",
-          "session_title": "Teaching your model to say “I don't know”",
-          "values": {}
-        },
-        {
-          "comment": "Tight, useful, and perfectly sized as a lightning talk. Easy yes.",
-          "completed_at": "2026-08-09T19:58:32.992Z",
-          "created_at": "2026-08-11T19:58:32.992Z",
-          "evaluator_email": "alex.rivera@example.com",
-          "evaluator_id": "kx79rsf5szqxm5gqabs6pw8w2h8c9z22",
-          "id": "ks73pqwy3zq7sk9yfa4k4k99sn8c8h0s",
-          "plan_id": "kn7e3e98kbvz52855smwthcec58c8tpq",
-          "plan_name": "Round 1 — Programme Committee",
-          "recusal_reason": null,
-          "recused": false,
-          "round": 1,
-          "scores": {
-            "overall": 4,
-            "relevance": 4
-          },
-          "session_id": "k577h4wmb7qq32ggqgz28578758c8g1a",
-          "session_title": "Structured output without the sadness",
-          "values": {}
-        },
-        {
-          "comment": "Everyone in the room has fought this. Practical and well scoped.",
-          "completed_at": "2026-08-10T07:58:32.992Z",
-          "created_at": "2026-08-11T19:58:32.992Z",
-          "evaluator_email": "sam.okafor@example.com",
-          "evaluator_id": "kx72rea571mzm4vrb743k0vm358c8etn",
-          "id": "ks7820wsnxg97cw781731n7j6s8c9cwa",
-          "plan_id": "kn7e3e98kbvz52855smwthcec58c8tpq",
-          "plan_name": "Round 1 — Programme Committee",
-          "recusal_reason": null,
-          "recused": false,
-          "round": 1,
-          "scores": {
-            "overall": 5,
-            "relevance": 4
-          },
-          "session_id": "k577h4wmb7qq32ggqgz28578758c8g1a",
-          "session_title": "Structured output without the sadness",
-          "values": {}
-        },
-        {
-          "comment": "Cost is the conversation every team is having and almost nobody submits about. Would schedule.",
-          "completed_at": "2026-08-10T19:58:32.992Z",
-          "created_at": "2026-08-11T19:58:32.992Z",
-          "evaluator_email": "alex.rivera@example.com",
-          "evaluator_id": "kx79rsf5szqxm5gqabs6pw8w2h8c9z22",
-          "id": "ks773a1xdh8v3rak5zmk907kn18c8qyq",
-          "plan_id": "kn7e3e98kbvz52855smwthcec58c8tpq",
-          "plan_name": "Round 1 — Programme Committee",
-          "recusal_reason": null,
-          "recused": false,
-          "round": 1,
-          "scores": {
-            "overall": 4,
-            "relevance": 5
-          },
-          "session_id": "k57b5q08xv8r176s8ykndc2tdd8c9zp9",
-          "session_title": "Cost modelling for inference-heavy products",
-          "values": {}
-        },
-        {
-          "comment": "Clear, experienced and specific. The failure-mode taxonomy alone justifies the slot.",
-          "completed_at": "2026-08-11T07:58:32.992Z",
-          "created_at": "2026-08-11T19:58:32.992Z",
-          "evaluator_email": "sam.okafor@example.com",
-          "evaluator_id": "kx72rea571mzm4vrb743k0vm358c8etn",
-          "id": "ks7br7mg92dfw8mzgvha6wyd1d8c8rc9",
-          "plan_id": "kn7e3e98kbvz52855smwthcec58c8tpq",
-          "plan_name": "Round 1 — Programme Committee",
-          "recusal_reason": null,
-          "recused": false,
-          "round": 1,
-          "scores": {
-            "overall": 5,
-            "relevance": 5
-          },
-          "session_id": "k5711qjjy48tmsh1b63rt86cpn8c8z04",
-          "session_title": "Building reliable agents: a practitioner's playbook",
-          "values": {}
-        }
-      ]
-    }
-  },
-  "list_field_options": {
-    "input": {
-      "event": "ai-summit-2026",
-      "resource": "tracks"
-    },
-    "output": {
-      "data": [
-        {
-          "color": "#2F5CE0",
-          "created_at": "2026-08-11T19:58:32.992Z",
-          "event_id": "j97a7rtr9rbj9ezjfqfb3qd5nx8c8hcv",
-          "id": "kd7bqbgrswqb53475y53vp1w6h8c8zn2",
-          "name": "AI Engineering",
-          "order": 0,
-          "updated_at": "2026-08-11T19:58:32.992Z"
-        },
-        {
-          "color": "#1E9E6B",
-          "created_at": "2026-08-11T19:58:32.992Z",
-          "event_id": "j97a7rtr9rbj9ezjfqfb3qd5nx8c8hcv",
-          "id": "kd765rkh0n9jea8axxmpdzex2d8c83s3",
-          "name": "Product",
-          "order": 1,
-          "updated_at": "2026-08-11T19:58:32.992Z"
-        },
-        {
-          "color": "#B45309",
-          "created_at": "2026-08-11T19:58:32.992Z",
-          "event_id": "j97a7rtr9rbj9ezjfqfb3qd5nx8c8hcv",
-          "id": "kd7arjygef2wbq2gr2w4vgdx6x8c8ss3",
-          "name": "Infrastructure",
-          "order": 2,
-          "updated_at": "2026-08-11T19:58:32.992Z"
-        }
-      ],
-      "pagination": {
-        "currentPage": 1,
-        "current_page": 1,
-        "pageSize": 100,
-        "page_size": 100,
-        "totalPages": 1,
-        "totalResults": 3,
-        "total_pages": 1,
-        "total_results": 3
-      },
-      "results": [
-        {
-          "color": "#2F5CE0",
-          "created_at": "2026-08-11T19:58:32.992Z",
-          "event_id": "j97a7rtr9rbj9ezjfqfb3qd5nx8c8hcv",
-          "id": "kd7bqbgrswqb53475y53vp1w6h8c8zn2",
-          "name": "AI Engineering",
-          "order": 0,
-          "updated_at": "2026-08-11T19:58:32.992Z"
-        },
-        {
-          "color": "#1E9E6B",
-          "created_at": "2026-08-11T19:58:32.992Z",
-          "event_id": "j97a7rtr9rbj9ezjfqfb3qd5nx8c8hcv",
-          "id": "kd765rkh0n9jea8axxmpdzex2d8c83s3",
-          "name": "Product",
-          "order": 1,
-          "updated_at": "2026-08-11T19:58:32.992Z"
-        },
-        {
-          "color": "#B45309",
-          "created_at": "2026-08-11T19:58:32.992Z",
-          "event_id": "j97a7rtr9rbj9ezjfqfb3qd5nx8c8hcv",
-          "id": "kd7arjygef2wbq2gr2w4vgdx6x8c8ss3",
-          "name": "Infrastructure",
-          "order": 2,
-          "updated_at": "2026-08-11T19:58:32.992Z"
-        }
-      ],
-      "unknownResource": false
-    }
-  },
-  "list_webhooks": {
-    "input": {
-      "event": "ai-summit-2026"
-    },
-    "output": {
-      "data": [],
-      "results": []
-    }
-  },
-  "list_embeds": {
-    "input": {
-      "event": "ai-summit-2026"
-    },
-    "output": {
-      "embedCount": 2,
-      "embeds": [
-        {
-          "embedId": "n17es3g7q4vv6c44m0v3hq1fss8c9ja0",
-          "name": "Agenda for the homepage",
-          "options": {
-            "format": "iframe",
-            "height": 900
-          },
-          "widget": "agenda"
-        },
-        {
-          "embedId": "n17993bj0zwpdqqtrnjj0hxqjs8c9edc",
-          "name": "Speaker gallery for the sponsors page",
-          "options": {
-            "format": "iframe",
-            "height": 720,
-            "hideDescriptions": true,
-            "hideSearch": true
-          },
-          "widget": "speaker-gallery"
-        }
-      ],
-      "formats": [
-        "iframe",
-        "html",
-        "link",
-        "json",
-        "xml",
-        "ics"
-      ],
-      "note": "Saved embed configurations for the event's public widgets. The Embeds page turns one into a copy-paste snippet.",
-      "widgets": [
-        "agenda",
-        "itinerary",
-        "sessions",
-        "speaker-gallery",
-        "speaker-list"
-      ]
-    }
-  },
-  "list_activity": {
-    "input": {
-      "event": "ai-summit-2026"
-    },
-    "output": {
-      "activity": [
-        {
-          "action": "unscheduled",
-          "actor": "Dana Organizer",
-          "actorType": "organizer",
-          "at": "2026-08-11T20:00:06.189Z",
-          "entity": "session",
-          "summary": "Removed from the agenda · Keyboard kb-msp340ts-zq5yh"
-        },
-        {
-          "action": "scheduled",
-          "actor": "Dana Organizer",
-          "actorType": "organizer",
-          "at": "2026-08-11T20:00:02.655Z",
-          "entity": "session",
-          "summary": "Scheduled to Main Stage, 2026-10-12T16:00:00.000Z (45 min) · Keyboard kb-msp340ts-zq5yh"
-        },
-        {
-          "action": "created",
-          "actor": "Dana Organizer",
-          "actorType": "organizer",
-          "at": "2026-08-11T19:59:56.606Z",
-          "entity": "session",
-          "summary": "Session added manually · Keyboard kb-msp340ts-zq5yh"
-        },
-        {
-          "action": "published",
-          "actor": "Dana Organizer",
-          "actorType": "organizer",
-          "at": "2026-08-11T19:59:55.110Z",
-          "entity": "agenda",
-          "summary": "Agenda published — 9 scheduled sessions went public"
-        },
-        {
-          "action": "unpublished",
-          "actor": "Dana Organizer",
-          "actorType": "organizer",
-          "at": "2026-08-11T19:59:51.989Z",
-          "entity": "agenda",
-          "summary": "Agenda unpublished — the public schedule is hidden again"
-        },
-        {
-          "action": "published",
-          "actor": "Dana Organizer",
-          "actorType": "organizer",
-          "at": "2026-08-11T19:59:48.204Z",
-          "entity": "agenda",
-          "summary": "Agenda published — 9 scheduled sessions went public"
-        },
-        {
-          "action": "unpublished",
-          "actor": "Dana Organizer",
-          "actorType": "organizer",
-          "at": "2026-08-11T19:59:44.161Z",
-          "entity": "agenda",
-          "summary": "Agenda unpublished — the public schedule is hidden again"
-        },
-        {
-          "action": "unscheduled",
-          "actor": "Dana Organizer",
-          "actorType": "organizer",
-          "at": "2026-08-11T19:59:27.342Z",
-          "entity": "session",
-          "summary": "Removed from the agenda · Auto B au-msp337pb-fg0j3"
-        },
-        {
-          "action": "unscheduled",
-          "actor": "Dana Organizer",
-          "actorType": "organizer",
-          "at": "2026-08-11T19:59:26.844Z",
-          "entity": "session",
-          "summary": "Removed from the agenda · Auto A au-msp337dg-wuw9b"
-        },
-        {
-          "action": "auto_placed",
-          "actor": "Dana Organizer",
-          "actorType": "organizer",
-          "at": "2026-08-11T19:59:24.951Z",
-          "entity": "agenda",
-          "summary": "Auto-placed 5 sessions"
-        },
-        {
-          "action": "created",
-          "actor": "Dana Organizer",
-          "actorType": "organizer",
-          "at": "2026-08-11T19:59:18.857Z",
-          "entity": "session",
-          "summary": "Session added manually · Auto B au-msp337pb-fg0j3"
-        },
-        {
-          "action": "created",
-          "actor": "Dana Organizer",
-          "actorType": "organizer",
-          "at": "2026-08-11T19:59:18.424Z",
-          "entity": "session",
-          "summary": "Session added manually · Auto A au-msp337dg-wuw9b"
-        },
-        {
-          "action": "unscheduled",
-          "actor": "Dana Organizer",
-          "actorType": "organizer",
-          "at": "2026-08-11T19:59:10.851Z",
-          "entity": "session",
-          "summary": "Removed from the agenda · Dragged dg-msp32uk9-gd47i"
-        },
-        {
-          "action": "scheduled",
-          "actor": "Dana Organizer",
-          "actorType": "organizer",
-          "at": "2026-08-11T19:59:08.056Z",
-          "entity": "session",
-          "summary": "Scheduled to Main Stage, 2026-10-12T17:30:00.000Z (45 min) · Dragged dg-msp32uk9-gd47i"
-        },
-        {
-          "action": "created",
-          "actor": "Dana Organizer",
-          "actorType": "organizer",
-          "at": "2026-08-11T19:59:01.850Z",
-          "entity": "session",
-          "summary": "Session added manually · Dragged dg-msp32uk9-gd47i"
-        },
-        {
-          "action": "unscheduled",
-          "actor": "Dana Organizer",
-          "actorType": "organizer",
-          "at": "2026-08-11T19:59:00.448Z",
-          "entity": "session",
-          "summary": "Removed from the agenda · Agenda Two ag-msp32g21-o3mkz"
-        },
-        {
-          "action": "unscheduled",
-          "actor": "Dana Organizer",
-          "actorType": "organizer",
-          "at": "2026-08-11T19:59:00.037Z",
-          "entity": "session",
-          "summary": "Removed from the agenda · Agenda One ag-msp32g21-o3mkz"
-        },
-        {
-          "action": "unscheduled",
-          "actor": "Dana Organizer",
-          "actorType": "organizer",
-          "at": "2026-08-11T19:58:58.743Z",
-          "entity": "session",
-          "summary": "Removed from the agenda · Agenda One ag-msp32g21-o3mkz"
-        },
-        {
-          "action": "rescheduled",
-          "actor": "Dana Organizer",
-          "actorType": "organizer",
-          "at": "2026-08-11T19:58:57.879Z",
-          "entity": "session",
-          "summary": "Moved to Main Stage, 2026-10-12T14:00:00.000Z (30 min) · Agenda Two ag-msp32g21-o3mkz"
-        },
-        {
-          "action": "scheduled",
-          "actor": "Dana Organizer",
-          "actorType": "organizer",
-          "at": "2026-08-11T19:58:56.528Z",
-          "entity": "session",
-          "summary": "Scheduled to Main Stage, 2026-10-12T14:00:00.000Z (45 min) · Agenda Two ag-msp32g21-o3mkz"
-        },
-        {
-          "action": "scheduled",
-          "actor": "Dana Organizer",
-          "actorType": "organizer",
-          "at": "2026-08-11T19:58:52.286Z",
-          "entity": "session",
-          "summary": "Scheduled to Main Stage, 2026-10-12T14:00:00.000Z (45 min) · Agenda One ag-msp32g21-o3mkz"
-        },
-        {
-          "action": "created",
-          "actor": "Dana Organizer",
-          "actorType": "organizer",
-          "at": "2026-08-11T19:58:43.466Z",
-          "entity": "session",
-          "summary": "Session added manually · Agenda Two ag-msp32g21-o3mkz"
-        },
-        {
-          "action": "created",
-          "actor": "Dana Organizer",
-          "actorType": "organizer",
-          "at": "2026-08-11T19:58:43.027Z",
-          "entity": "session",
-          "summary": "Session added manually · Agenda One ag-msp32g21-o3mkz"
-        }
-      ],
-      "note": "filter: \"agents\" shows only MCP/API writes — including this session's own. Other filter values match an entity kind (submission, form, speaker, session, agenda, settings).",
-      "returned": 23
     }
   },
   "list_trash": {
@@ -3616,6 +3406,247 @@
       "returned": 0,
       "total": 0,
       "trashed": []
+    }
+  },
+  "list_webhooks": {
+    "input": {
+      "event": "ai-summit-2026"
+    },
+    "output": {
+      "data": [],
+      "results": []
+    }
+  },
+  "list_workspace_members": {
+    "input": {
+      "workspace": "ai-engineer"
+    },
+    "output": {
+      "memberCount": 9,
+      "members": [
+        {
+          "accepted": false,
+          "email": "member-msop599l-ghqjf@example.com",
+          "eventScope": null,
+          "memberId": "mh77wp1xgepdxatepdrxvj3n4d8c9017",
+          "role": "member"
+        },
+        {
+          "accepted": true,
+          "email": "organizer@demo.sessionboard.dev",
+          "eventScope": null,
+          "memberId": "mh74jvj8vw6f9k0w684kmr9s558c816e",
+          "role": "owner"
+        },
+        {
+          "accepted": true,
+          "email": "tenant-mso12v1r-z2zhm@example.com",
+          "eventScope": null,
+          "memberId": "mh79bn3tcv5rassvn48epqt7wx8c8wqa",
+          "role": "member"
+        },
+        {
+          "accepted": true,
+          "email": "tenant-mso13bxi-rb0vs@example.com",
+          "eventScope": null,
+          "memberId": "mh7ceyj4kdc7g8h69smanwtxd98c8p7e",
+          "role": "member"
+        },
+        {
+          "accepted": true,
+          "email": "tenant-mso19mar-y7oab@example.com",
+          "eventScope": null,
+          "memberId": "mh75sx2hqc16dsfeqvt6keswzd8c9akq",
+          "role": "member"
+        },
+        {
+          "accepted": true,
+          "email": "tenant-msoocp7h-c003u@example.com",
+          "eventScope": null,
+          "memberId": "mh71ea72p22d2abtwk0sdnrbr18c9b67",
+          "role": "member"
+        },
+        {
+          "accepted": true,
+          "email": "tenant-msov8p7n-z0qtp@example.com",
+          "eventScope": null,
+          "memberId": "mh70p100bqtar20nfqj0spzwd18c9pvv",
+          "role": "member"
+        },
+        {
+          "accepted": true,
+          "email": "tenant-msova0xn-5eg3z@example.com",
+          "eventScope": null,
+          "memberId": "mh7dvct0fhrfwjfy3t9dx6hk858c98yr",
+          "role": "member"
+        },
+        {
+          "accepted": true,
+          "email": "tenant-msovbfp0-6mh70@example.com",
+          "eventScope": null,
+          "memberId": "mh71n7h6vskzcv9be3h4pt36ad8c8xca",
+          "role": "member"
+        }
+      ],
+      "workspace": {
+        "name": "AI Engineer",
+        "organizationId": "mn7fs8btg5szyhbkqdfhtd4xmn8c8xhg",
+        "slug": "ai-engineer"
+      }
+    }
+  },
+  "list_workspaces": {
+    "input": {},
+    "output": {
+      "workspaces": [
+        {
+          "eventCount": 2,
+          "name": "AI Engineer",
+          "organizationId": "mn7fs8btg5szyhbkqdfhtd4xmn8c8xhg",
+          "slug": "ai-engineer",
+          "yourRole": "owner"
+        },
+        {
+          "eventCount": 0,
+          "name": "t12",
+          "organizationId": "mn725eqf7g5nwtgp5jga954xbx8c9xyn",
+          "slug": "t12",
+          "yourRole": "owner"
+        }
+      ]
+    }
+  },
+  "remove_task": {
+    "input": {},
+    "output": {
+      "note": "It has disappeared from that speaker's portal. Re-create it with assign_task if that was a mistake.",
+      "removed": true,
+      "speaker": "rafael.duarte@example.com",
+      "taskId": "k97bdd4nneqczez6hzmttp9nrh8c8ett",
+      "title": "Upload your slides",
+      "wasCompleted": false
+    }
+  },
+  "schedule_session": {
+    "input": {
+      "startsAt": "2026-10-12T17:00:00Z",
+      "submissionId": "k5737k058av76xd673d3b25nxx8c9y1p",
+      "durationMinutes": 30,
+      "room": "Main Stage"
+    },
+    "output": {
+      "conflicts": [
+        "Both booked in Main Stage at the same time"
+      ],
+      "durationMinutes": 30,
+      "room": "Main Stage",
+      "startsAt": "2026-10-12T17:00:00.000Z",
+      "submissionId": "k5737k058av76xd673d3b25nxx8c9y1p",
+      "title": "Copilot Verification Keynote"
+    }
+  },
+  "send_reminders": {
+    "input": {},
+    "output": {
+      "note": "Skipped speakers were already reminded in the last 20 hours. Check list_outbox for delivery status.",
+      "queued": 0,
+      "skipped": 8
+    }
+  },
+  "send_test_email": {
+    "input": {},
+    "output": {
+      "body": "Hi Ava,\n\nGreat news: “Evaluating RAG pipelines without a golden dataset” has been accepted for AI Engineer Summit 2026. We had a strong field this year and we're genuinely excited to have you on the programme.\n\nA few next steps so we can get you ready:\n\n1. Open your speaker portal: http://localhost:3000/portal/t/demo-ava-nakamura\n2. Confirm your biography and upload a headshot — both appear on the public programme.\n3. Work through the tasks listed in the portal before their due dates (slides, travel details, and anything else we need from you).\n\nIf your session has already been scheduled you'll find a calendar invite attached to this email, and the exact time and room in the portal.\n\nPlease let us know if anything changes on your side — we'd rather hear early.\n\nWelcome aboard,\nThe AI Engineer Summit 2026 programme team",
+      "note": "Queued for delivery. Check list_outbox for the final status.",
+      "subject": "Congratulations — “Evaluating RAG pipelines without a golden dataset” is in the AI Engineer Summit 2026 programme",
+      "templateKey": "accepted",
+      "to": "organizer@demo.sessionboard.dev"
+    }
+  },
+  "set_submission_status": {
+    "input": {},
+    "output": {
+      "note": "Staged only — no email has been sent. Run commit_decision_queue to notify the speakers.",
+      "previousStatus": "accept_queue",
+      "status": "accept_queue",
+      "submissionId": "k577y9smskq0gp9e7zsmdx32rh8c9c1j",
+      "title": "Teaching your model to say “I don't know”"
+    }
+  },
+  "unschedule_session": {
+    "input": {},
+    "output": {
+      "note": "Moved back to the unscheduled tray.",
+      "submissionId": "k574asz8ghnm6d934twqgpv9md8c9nx6",
+      "title": "Structured output without the sadness"
+    }
+  },
+  "update_form_settings": {
+    "input": {},
+    "output": {
+      "closeAt": null,
+      "formId": "jd72yjkj9sr84k9pfeq58xgtk98c8jhm",
+      "linkWarning": "http://localhost:3000 is a loopback address (demo URL — set SITE_URL in production). Links below only work on the machine running Trackstage — don't send them to a speaker.",
+      "name": "Copilot Verification CFP",
+      "previous": {
+        "closeAt": null,
+        "settings": {
+          "allowDrafts": true,
+          "autoRedirectToPortal": true,
+          "sendReminderEmail": true,
+          "successMessage": "<p>Thank you for submitting to present at our event! We'll review your submission and get back to you soon.</p>"
+        },
+        "status": "closed"
+      },
+      "publicUrl": "http://localhost:3000/submit/copilot-verification-cfp",
+      "settings": {
+        "allowDrafts": true,
+        "autoRedirectToPortal": true,
+        "sendReminderEmail": true,
+        "successMessage": "<p>Thank you for submitting to present at our event! We'll review your submission and get back to you soon.</p>"
+      },
+      "status": "closed"
+    }
+  },
+  "update_template": {
+    "input": {
+      "subject": "A quick nudge about {{eventName}}",
+      "event": "ai-summit-2026",
+      "key": "reminder"
+    },
+    "output": {
+      "body": "Hi {{firstName}},\n\nA friendly nudge — you still have a few speaker tasks outstanding for {{eventName}}. They usually take less than ten minutes in total.\n\nOpen your portal to see exactly what's left and complete it inline:\n{{portalLink}}\n\nGetting these in on time lets us publish the programme, print your details correctly and make sure your session runs smoothly on the day.\n\nIf something is blocking you, just reply to this email and we'll help.\n\nThank you,\nThe {{eventName}} programme team",
+      "key": "reminder",
+      "name": "Outstanding tasks reminder",
+      "note": "Preview it with send_test_email before it goes out for real.",
+      "subject": "A quick nudge about {{eventName}}"
+    }
+  },
+  "whoami": {
+    "input": {},
+    "output": {
+      "userId": "mn7user000000000000000000000000",
+      "email": "organizer@demo.sessionboard.dev",
+      "name": "Dana Organizer",
+      "emailVerified": true,
+      "workspaces": [
+        {
+          "organizationId": "mn7fs8btg5szyhbkqdfhtd4xmn8c8xhg",
+          "name": "AI Engineer",
+          "slug": "ai-engineer",
+          "yourRole": "owner",
+          "url": "https://trackstage.app/app/ai-engineer"
+        }
+      ],
+      "links": {
+        "app": "https://trackstage.app/app",
+        "dashboard": "https://trackstage.app/app",
+        "events": "https://trackstage.app/app/events",
+        "copilot": "https://trackstage.app/app/copilot",
+        "accountSettings": "https://trackstage.app/app/account",
+        "docs": "https://trackstage.app/docs"
+      },
+      "note": "This is the Trackstage account whose credential authorized this connection. Every tool acts as this account and sees only what it can. Use these URLs when pointing the user at a screen."
     }
   }
 }

@@ -1,0 +1,16 @@
+import { chromium, devices } from "@playwright/test"
+const iphone = { viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true, userAgent: devices["iPhone 13"].userAgent }
+const browser = await chromium.launch()
+const page = await (await browser.newContext(iphone)).newPage()
+await page.goto("http://localhost:3000/portal/t/demo-ava-nakamura", { waitUntil: "networkidle" }).catch(() => {})
+await page.waitForTimeout(2500)
+await page.goto("http://localhost:3000/portal/submissions").catch(() => {})
+const btn = page.getByRole("button", { name: /view details/i }).first()
+await btn.waitFor({ state: "visible", timeout: 20000 })
+await btn.click()
+await page.waitForTimeout(1500)
+await page.screenshot({ path: ".mobile-shots/drawer-portal2.png" })
+const dlg = page.getByRole("dialog").first()
+const box = await dlg.boundingBox().catch(() => null)
+console.log("drawer box:", JSON.stringify(box))
+await browser.close()

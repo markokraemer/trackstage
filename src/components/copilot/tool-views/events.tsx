@@ -3,6 +3,7 @@ import {
   RiCalendarEventLine,
   RiDeleteBin6Line,
   RiMapPin2Line,
+  RiUserLine,
 } from "@remixicon/react"
 
 import { StatusPill, statusLabel } from "@/components/shared/status-pill"
@@ -41,6 +42,53 @@ import type { ToolOutputProps } from "@/components/copilot/tool-views/registry"
  * present — the organizer should not be able to tell which tool the model
  * happened to pick.
  */
+
+// ——— whoami ——————————————————————————————————————————————————————————————
+
+/**
+ * The connected account. Deliberately plain: the organizer already knows who
+ * they are, so this only has to confirm that the assistant is acting as them
+ * — the value is in the model no longer guessing, not in the panel.
+ */
+export function WhoAmIView({ output }: ToolOutputProps) {
+  const name = str(output.name)
+  const email = str(output.email)
+  const workspaces = asArray(output.workspaces) ?? []
+  return (
+    <Panel title="Signed in as">
+      <Rows>
+        <Row className="items-center">
+          <RiUserLine
+            size={15}
+            aria-hidden
+            className="mt-0.5 shrink-0 text-muted-foreground"
+          />
+          <span className="min-w-0 flex-1 truncate text-sm font-medium text-foreground">
+            {name ?? email ?? "Your account"}
+          </span>
+          {name && email ? (
+            <span className="shrink-0 truncate text-xs text-muted-foreground">
+              {email}
+            </span>
+          ) : null}
+        </Row>
+        {workspaces.map((row, index) => (
+          <Row key={str(row.organizationId) ?? index} className="items-center">
+            <RiBuilding2Line
+              size={15}
+              aria-hidden
+              className="mt-0.5 shrink-0 text-muted-foreground"
+            />
+            <span className="min-w-0 flex-1 truncate text-sm text-foreground">
+              {str(row.name) ?? "Untitled workspace"}
+            </span>
+            <Chip tone="muted">{str(row.yourRole) ?? "member"}</Chip>
+          </Row>
+        ))}
+      </Rows>
+    </Panel>
+  )
+}
 
 // ——— list_workspaces —————————————————————————————————————————————————————
 

@@ -36,6 +36,7 @@ import type * as lib_calendarLinks from "../lib/calendarLinks.js";
 import type * as lib_email from "../lib/email.js";
 import type * as lib_errors from "../lib/errors.js";
 import type * as lib_evaluation from "../lib/evaluation.js";
+import type * as lib_favicon from "../lib/favicon.js";
 import type * as lib_files from "../lib/files.js";
 import type * as lib_formQuestions from "../lib/formQuestions.js";
 import type * as lib_formWindow from "../lib/formWindow.js";
@@ -98,6 +99,7 @@ declare const fullApi: ApiFromModules<{
   "lib/email": typeof lib_email;
   "lib/errors": typeof lib_errors;
   "lib/evaluation": typeof lib_evaluation;
+  "lib/favicon": typeof lib_favicon;
   "lib/files": typeof lib_files;
   "lib/formQuestions": typeof lib_formQuestions;
   "lib/formWindow": typeof lib_formWindow;

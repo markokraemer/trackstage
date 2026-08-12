@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { Link, createFileRoute, useNavigate } from "@tanstack/react-router"
 import { RiMailSendLine } from "@remixicon/react"
 
@@ -53,6 +53,14 @@ function ConfirmEmailPage() {
   const email = data?.user.email ?? emailFromSearch ?? ""
   const verified = Boolean(data?.user.emailVerified)
 
+  // `?email=` means signup sent us here; its absence means the gate did —
+  // i.e. an EXISTING account that merely hasn't confirmed yet. Only the
+  // first deserves `?welcome=1`, which makes /app paint the onboarding
+  // takeover before its queries can answer: an established user clicking
+  // their confirmation link would otherwise get a flash of a first-run
+  // wizard they have no business seeing.
+  const callbackURL = emailFromSearch ? WELCOME_CALLBACK_URL : "/app"
+
   // Nothing to confirm: no session AND no address to show → back to sign-in.
   useEffect(() => {
     if (!isPending && !data?.user && !emailFromSearch) {
@@ -104,6 +112,31 @@ function ConfirmEmailPage() {
 
   const [resending, setResending] = useState(false)
   const [resentAt, setResentAt] = useState<number | null>(null)
+  const [sendFailed, setSendFailed] = useState(false)
+
+  // Arriving WITHOUT `?email=` means the gate sent us: an existing account
+  // signed in normally and is still unverified. Nothing mailed anything on
+  // that path — the link went out at signup, possibly days ago — so the card
+  // used to promise an email that never came, and the only way forward was to
+  // guess at "Resend". Send it on arrival instead, once, so the promise below
+  // is true whichever way this page was reached. (Signup passes `?email=` and
+  // Better Auth has already sent; re-sending there would double-mail.)
+  const autoSent = useRef(false)
+  useEffect(() => {
+    if (isPending || verified || autoSent.current) return
+    if (emailFromSearch || !data?.user.email) return
+    autoSent.current = true
+    setResending(true)
+    void authClient
+      .sendVerificationEmail({
+        email: data.user.email,
+        callbackURL,
+      })
+      .then(() => setResentAt(Date.now()))
+      .catch(() => setSendFailed(true))
+      .finally(() => setResending(false))
+  }, [isPending, verified, emailFromSearch, data])
+
   useEffect(() => {
     if (resentAt === null) return
     const t = setTimeout(
@@ -116,12 +149,15 @@ function ConfirmEmailPage() {
   async function resend() {
     if (!email || resending || resentAt !== null) return
     setResending(true)
+    setSendFailed(false)
     try {
       await authClient.sendVerificationEmail({
         email,
-        callbackURL: WELCOME_CALLBACK_URL,
+        callbackURL,
       })
       setResentAt(Date.now())
+    } catch {
+      setSendFailed(true)
     } finally {
       setResending(false)
     }
@@ -151,7 +187,11 @@ function ConfirmEmailPage() {
               Click it and you'll land straight in Trackstage.
             </p>
           </div>
-          {data?.user ? (
+          {sendFailed ? (
+            <p role="alert" className="text-xs text-destructive">
+              We couldn&rsquo;t send it just now. Try again in a moment.
+            </p>
+          ) : data?.user ? (
             <p role="status" className="text-xs text-muted-foreground">
               Waiting for your confirmation — checking automatically…
             </p>
@@ -166,7 +206,9 @@ function ConfirmEmailPage() {
               ? "Sending…"
               : resentAt !== null
                 ? "Sent — check your inbox"
-                : "Resend email"}
+                : sendFailed
+                  ? "Try again"
+                  : "Resend email"}
           </Button>
         </Card>
 

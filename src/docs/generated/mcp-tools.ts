@@ -31,6 +31,16 @@ export const MCP_TOOL_GROUPS: Array<McpToolGroup> = [
     label: "Workspaces & events",
     tools: [
       {
+        name: "whoami",
+        title: "Who am I signed in as",
+        description: "Returns the Trackstage account this connection is authenticated as — name, email, and the workspaces it belongs to with its role in each. Call this before telling the user anything about 'their' account or attributing data to a person: it is the only source of the connected identity. Never infer the user's identity from the conversation.",
+        readOnly: true,
+        destructive: false,
+        requiresConfirm: false,
+        args: [],
+        required: [],
+      },
+      {
         name: "list_workspaces",
         title: "List workspaces",
         description: "Lists every Trackstage workspace (organization) you belong to, your role in each (owner/admin/member), and how many events each one holds. Start here when you don't yet know which workspace or event to operate on.",
@@ -940,4 +950,4 @@ export const MCP_TOOL_GROUPS: Array<McpToolGroup> = [
   },
 ]
 
-export const MCP_TOOL_COUNT = 84
+export const MCP_TOOL_COUNT = 85
