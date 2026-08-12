@@ -31,8 +31,10 @@ test.describe("saved embeds", () => {
       await gotoStable(
         page,
         `/app/${DEMO_WORKSPACE_SLUG}/${MAIN_EVENT_SLUG}/embeds`,
-        "networkidle",
       )
+      await expect(
+        page.getByRole("heading", { name: "Embeds", exact: true }),
+      ).toBeVisible()
 
       await page.getByLabel("Accent colour").fill("#0F6E70")
       await page
@@ -105,7 +107,6 @@ test.describe("saved embeds", () => {
       await gotoStable(
         page,
         `/e/${DEMO_WORKSPACE_SLUG}/${MAIN_EVENT_SLUG}/sessions?embed=true&e=${embedId}`,
-        "networkidle",
       )
       await expect(
         page.getByText("This embed is turned off", { exact: true }),
@@ -115,8 +116,10 @@ test.describe("saved embeds", () => {
       await gotoStable(
         page,
         `/app/${DEMO_WORKSPACE_SLUG}/${MAIN_EVENT_SLUG}/embeds`,
-        "networkidle",
       )
+      await expect(
+        page.getByRole("heading", { name: "Embeds", exact: true }),
+      ).toBeVisible()
       await page
         .getByRole("switch", { name: `Turn on ${name}` })
         .click()
@@ -127,7 +130,6 @@ test.describe("saved embeds", () => {
       await gotoStable(
         page,
         `/e/${DEMO_WORKSPACE_SLUG}/${MAIN_EVENT_SLUG}/sessions?embed=true&e=${embedId}`,
-        "networkidle",
       )
       await expect(page.getByRole("heading", { name: "Sessions" })).toBeVisible()
       await expect(page.locator("[data-slot=session-card]").first()).toBeVisible()

@@ -3371,3 +3371,15 @@ failed** in 4.4 minutes; and the explicit non-modal menu regression **2 passed /
 3 model-key skips**. The four full-suite skips were three OpenRouter-backed
 copilot behaviours on the disposable keyless backend plus the existing real
 Resend receipt check. Exact-head PR CI remains the next authority.
+
+### Exact-head CI exposed background-traffic coupling in embeds
+
+PR run `31598918830` reached **66 passed / 1 expected provider skip** before the
+saved-embed lifecycle exhausted its timeout on its second organizer navigation.
+The retained trace and screenshot proved the target Embeds page was already
+fully rendered, with the newly saved row visible and off; only Playwright's
+`waitUntil: "networkidle"` condition had not settled. The page can legitimately
+have background activity (including copilot/model traffic), so network silence
+is not a user-visible readiness contract. The lifecycle now navigates on DOM
+readiness and uses the existing page heading, off-curtain, switch state and
+session-card assertions as its real completion signals.
