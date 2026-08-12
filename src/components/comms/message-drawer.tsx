@@ -8,7 +8,6 @@ import { copyText } from "@/lib/clipboard"
 import {
   RiCalendarEventLine,
   RiCheckLine,
-  RiDownload2Line,
   RiErrorWarningLine,
   RiFileCopyLine,
   RiInformationLine,
