@@ -10,10 +10,11 @@ import { buttonVariants } from "@/components/ui/button"
  * `/get` — the source-code front door.
  *
  * The repo stays private until the Kill My SaaS contest concludes so the work
- * can't be lifted mid-competition. This page checks GitHub live: the moment
- * the repo is flipped public it becomes a plain redirect, no deploy needed.
- * Until then it says exactly when the code arrives and how competition folks
- * can get early access.
+ * can't be lifted mid-competition. Flipping it public is a manual step — the
+ * page promises nothing automatic. It does check GitHub live, so once the
+ * repo IS public it redirects straight there without a deploy; until then it
+ * counts down to the contest close and tells competition folks how to get
+ * early access.
  */
 
 const REPO_URL = "https://github.com/markokraemer/trackstage"
@@ -78,12 +79,7 @@ function GetRoute() {
             </h1>
             <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
               Trackstage is open source (MIT), but the repository stays private
-              until the Kill My SaaS competition wraps up. It goes public
-              automatically on{" "}
-              <strong className="text-foreground">
-                <Deadline />
-              </strong>
-              {" — "}this page becomes a straight redirect the moment it does.
+              until the Kill My SaaS competition wraps up.
             </p>
             <Countdown />
             <p className="mt-6 text-sm leading-relaxed text-muted-foreground">
@@ -117,19 +113,6 @@ function GetRoute() {
   )
 }
 
-function Deadline() {
-  // Rendered in the viewer's own timezone, spelled out.
-  const formatted = new Intl.DateTimeFormat(undefined, {
-    weekday: "long",
-    month: "long",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-    timeZoneName: "short",
-  }).format(new Date(CONTEST_ENDS_UTC))
-  return <>{formatted}</>
-}
-
 function Countdown() {
   const [now, setNow] = useState(() => Date.now())
 
@@ -142,7 +125,7 @@ function Countdown() {
   if (remaining <= 0) {
     return (
       <p className="mt-5 text-sm text-muted-foreground">
-        The contest has concluded — the repo should be public any moment.
+        The contest has concluded.
       </p>
     )
   }
