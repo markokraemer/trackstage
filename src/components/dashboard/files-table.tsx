@@ -109,7 +109,7 @@ export function FilesTable({
             ) : null}
             <TableHead className="w-full">File</TableHead>
             <TableHead>Speaker</TableHead>
-            <TableHead>Session</TableHead>
+            <TableHead>Session / context</TableHead>
             <TableHead>Uploaded</TableHead>
             <TableHead className="w-20">Version</TableHead>
             <TableHead>Approval</TableHead>
@@ -275,7 +275,13 @@ function FileTableRow({
             {row.submissionTitle}
           </Link>
         ) : (
-          <span className="text-muted-foreground">—</span>
+          <span className="text-foreground">
+            {row.task?.kind === "profile" || row.task?.kind === "headshot"
+              ? "Speaker profile"
+              : row.task
+                ? "General request"
+                : "Unassigned file"}
+          </span>
         )}
         {row.task ? (
           <span className="block max-w-[220px] truncate text-xs text-muted-foreground">

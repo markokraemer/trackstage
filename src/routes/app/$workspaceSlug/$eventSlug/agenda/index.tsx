@@ -235,7 +235,9 @@ function AgendaPage() {
             <TooltipTrigger
               render={
                 <Link
-                  to={eventRef ? appLink.embeds(eventRef) : legacyAppLink.embeds}
+                  to={
+                    eventRef ? appLink.embeds(eventRef) : legacyAppLink.embeds
+                  }
                   className={buttonVariants({ variant: "outline" })}
                 />
               }
@@ -316,7 +318,9 @@ function AgendaPage() {
           description="The agenda is built from your event's days, rooms, and accepted sessions. Set up the event — name, dates, rooms and tracks — and this page fills itself in."
           action={
             <Link
-              to={eventRef ? appLink.settings(eventRef) : legacyAppLink.settings}
+              to={
+                eventRef ? appLink.settings(eventRef) : legacyAppLink.settings
+              }
               className={buttonVariants({})}
             >
               Go to event settings
@@ -371,11 +375,14 @@ function AgendaPage() {
             <Tabs
               value={view}
               onValueChange={(value) => setView(value as AgendaView)}
-              className="min-w-0 max-w-full"
+              className="max-w-full min-w-0"
             >
               {/* Six views don't fit a phone — scroll the strip, same recipe
                   as the submissions status tabs. */}
-              <TabsList variant="line" className="max-w-full justify-start overflow-x-auto">
+              <TabsList
+                variant="line"
+                className="max-w-full justify-start overflow-x-auto"
+              >
                 {tabs.map((tab) => (
                   <TabsTrigger key={tab.value} value={tab.value}>
                     <tab.icon aria-hidden />

@@ -1,5 +1,9 @@
 import { defineConfig, devices } from "@playwright/test"
 
+const e2ePort = process.env.SB_E2E_PORT ?? "3000"
+const e2eBaseUrl =
+  process.env.SB_E2E_BASE_URL ?? `http://127.0.0.1:${e2ePort}`
+
 // UI end-to-end suite. Runs against the local dev server (reused if already
 // running). Seeded demo data is assumed: `pnpm exec convex run seed:setup`.
 //
@@ -20,14 +24,14 @@ export default defineConfig({
     ? [["list"], ["html", { open: "never" }]]
     : [["list"]],
   use: {
-    baseURL: "http://localhost:3000",
+    baseURL: e2eBaseUrl,
     trace: "retain-on-failure",
     screenshot: "only-on-failure",
   },
   webServer: {
-    command: "pnpm dev",
-    url: "http://localhost:3000",
-    reuseExistingServer: true,
+    command: `pnpm exec vite dev --host 127.0.0.1 --port ${e2ePort}`,
+    url: e2eBaseUrl,
+    reuseExistingServer: process.env.SB_E2E_REUSE_SERVER !== "0",
     timeout: process.env.CI ? 240_000 : 60_000,
   },
   projects: [

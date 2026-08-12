@@ -96,7 +96,7 @@ async function insertTasks(
     /** Bind the task (and everything uploaded into it) to one session. */
     submissionId?: Id<"submissions">
   },
-): Promise<number> {
+): Promise<{ created: number; skipped: number }> {
   // A task can only point at a session of this event — otherwise a stale id
   // from a switched event would file uploads under someone else's programme.
   let submissionId: Id<"submissions"> | undefined
@@ -108,9 +108,28 @@ async function insertTasks(
     submissionId = submission._id
   }
   let created = 0
+  let skipped = 0
   for (const personId of args.personIds) {
     const person = await ctx.db.get(personId)
     if (!person || person.eventId !== args.eventId) continue
+    const existing = await ctx.db
+      .query("tasks")
+      .withIndex("by_personId", (q) => q.eq("personId", personId))
+      .order("desc")
+      .take(1000)
+    const duplicate = existing.some(
+      (task) =>
+        task.completedAt === undefined &&
+        task.kind === args.kind &&
+        task.title.trim().toLowerCase() === args.title.trim().toLowerCase() &&
+        (task.instructions?.trim() || undefined) === args.instructions &&
+        task.dueAt === args.dueAt &&
+        task.submissionId === submissionId,
+    )
+    if (duplicate) {
+      skipped++
+      continue
+    }
     // A "profile" task handed to a speaker whose profile is ALREADY complete
     // is born done. Otherwise it sits open forever: nothing the speaker can do
     // in their portal would change the profile, so the auto-tick never fires
@@ -134,7 +153,7 @@ async function insertTasks(
     })
     created++
   }
-  return created
+  return { created, skipped }
 }
 
 export const create = mutation({
@@ -150,6 +169,11 @@ export const create = mutation({
     /** Also keep this wording in the event's task library for next time. */
     saveAsTemplate: v.optional(v.boolean()),
   },
+  returns: v.object({
+    created: v.number(),
+    skipped: v.number(),
+    templateId: v.union(v.id("taskTemplates"), v.null()),
+  }),
   handler: async (ctx, args) => {
     await requireEventAccess(ctx, args.eventId)
     const title = args.title.trim()
@@ -159,7 +183,7 @@ export const create = mutation({
       throw new ConvexError("Assign the task to at least one speaker.")
     }
     const instructions = args.instructions?.trim() || undefined
-    const created = await insertTasks(ctx, {
+    const result = await insertTasks(ctx, {
       eventId: args.eventId,
       personIds: args.personIds,
       title,
@@ -192,7 +216,7 @@ export const create = mutation({
         })
       }
     }
-    return { created, templateId }
+    return { ...result, templateId }
   },
 })
 
@@ -296,6 +320,7 @@ export const assignFromTemplate = mutation({
     /** Optional: the session this task is about. */
     submissionId: v.optional(v.id("submissions")),
   },
+  returns: v.object({ created: v.number(), skipped: v.number() }),
   handler: async (ctx, args) => {
     const template = await ctx.db.get(args.templateId)
     if (!template) throw new ConvexError("Task template not found.")
@@ -303,7 +328,7 @@ export const assignFromTemplate = mutation({
     if (args.personIds.length === 0) {
       throw new ConvexError("Assign the task to at least one speaker.")
     }
-    const created = await insertTasks(ctx, {
+    const result = await insertTasks(ctx, {
       eventId: template.eventId,
       personIds: args.personIds,
       title: template.alias?.trim() || template.title,
@@ -312,7 +337,7 @@ export const assignFromTemplate = mutation({
       dueAt: args.dueAt,
       submissionId: args.submissionId,
     })
-    return { created }
+    return result
   },
 })
 

@@ -445,7 +445,14 @@ async function requireHookAccess(
 ) {
   const hook = await ctx.db.get(webhookId)
   if (!hook) throw new ConvexError("That webhook no longer exists.")
-  await requireMembership(ctx, hook.organizationId, minRole)
+  // Event-scoped webhooks inherit the event's access boundary. A plain member
+  // may belong to the workspace while being deliberately scoped away from
+  // this event; workspace membership alone must not let them inspect delivery
+  // history, rotate the secret, send tests, edit, or delete the endpoint.
+  // Workspace-wide hooks have no event boundary, so membership is the right
+  // authorization source for those.
+  if (hook.eventId) await requireEventAccess(ctx, hook.eventId, minRole)
+  else await requireMembership(ctx, hook.organizationId, minRole)
   return hook
 }
 

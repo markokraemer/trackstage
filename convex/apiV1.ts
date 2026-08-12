@@ -242,6 +242,12 @@ async function speakerShape(
   role?: string,
 ): Promise<Record<string, unknown>> {
   const friendly = friendlyId("SPK", person._id)
+  // Resolving a storage URL is an async system-table lookup. Reuse the result
+  // for the modern and legacy aliases instead of doing the same lookup twice
+  // for every participant in a paginated session search.
+  const headshotUrl = person.headshotId
+    ? await ctx.storage.getUrl(person.headshotId)
+    : null
   return {
     id: person._id,
     friendly_id: friendly.id,
@@ -256,9 +262,7 @@ async function speakerShape(
     phone_mobile: person.phone ?? null,
     pronouns: person.pronouns ?? null,
     salutation: person.salutation ?? null,
-    photo_url: person.headshotId
-      ? await ctx.storage.getUrl(person.headshotId)
-      : null,
+    photo_url: headshotUrl,
     website_url: person.links?.website ?? null,
     linkedin_url: person.links?.linkedin ?? null,
     twitter_url: person.links?.twitter ?? null,
@@ -279,9 +283,7 @@ async function speakerShape(
     jobTitle: person.jobTitle ?? null,
     company: person.company ?? null,
     bio: person.bio ?? null,
-    headshotUrl: person.headshotId
-      ? await ctx.storage.getUrl(person.headshotId)
-      : null,
+    headshotUrl,
   }
 }
 
@@ -295,6 +297,9 @@ type SessionShapeOptions = {
   defs: Array<FieldDef>
   rooms: Map<Id<"rooms">, Doc<"rooms">>
   tracks: Map<Id<"tracks">, Doc<"tracks">>
+  /** Preloaded joins used by paginated searches to avoid sequential N+1 reads. */
+  participants?: Array<Doc<"submissionParticipants">>
+  people?: Map<Id<"people">, Doc<"people">>
   /** `expand` values from the request, e.g. ["files"]. */
   expand: Set<string>
   /**
@@ -314,10 +319,12 @@ async function sessionShape(
   submission: Doc<"submissions">,
   opts: SessionShapeOptions,
 ): Promise<Record<string, unknown>> {
-  const participants = await ctx.db
-    .query("submissionParticipants")
-    .withIndex("by_submissionId", (q) => q.eq("submissionId", submission._id))
-    .take(64)
+  const participants =
+    opts.participants ??
+    (await ctx.db
+      .query("submissionParticipants")
+      .withIndex("by_submissionId", (q) => q.eq("submissionId", submission._id))
+      .take(64))
   participants.sort((a, b) => a.order - b.order)
 
   const speakers: Array<Record<string, unknown>> = []
@@ -325,7 +332,9 @@ async function sessionShape(
   const moderators: Array<Record<string, unknown>> = []
   const all: Array<Record<string, unknown>> = []
   for (const participant of participants) {
-    const person = await ctx.db.get(participant.personId)
+    const person = opts.people
+      ? (opts.people.get(participant.personId) ?? null)
+      : await ctx.db.get(participant.personId)
     if (!person) continue
     if (opts.publicSpeakersOnly && person.publicVisible === false) continue
     const shaped = await speakerShape(ctx, person, participant.role)
@@ -344,7 +353,9 @@ async function sessionShape(
       ? submission.startsAt + submission.durationMinutes * 60_000
       : undefined
 
-  const submitter = await ctx.db.get(submission.submitterId)
+  const submitter = opts.people
+    ? (opts.people.get(submission.submitterId) ?? null)
+    : await ctx.db.get(submission.submitterId)
   const friendly = friendlyId("SESS", submission._id)
 
   const shape: Record<string, unknown> = {
@@ -706,20 +717,43 @@ export const searchSessions = internalQuery({
     const expand = new Set(args.expand)
     // Shape only the page being returned — the joins are the expensive part.
     const page = paginate(filtered, args.page, args.pageSize)
-    const shaped = []
-    for (const row of page.data) {
-      shaped.push(
-        await sessionShape(ctx, row, {
+    // Preload each page's participant rows concurrently, then fetch each
+    // referenced person once. The old shape loop performed these joins
+    // serially per session and could exceed Convex's one-second query limit on
+    // a normal 22-row abstract page even though the filter itself was correct.
+    const participantGroups = await Promise.all(
+      page.data.map((row) =>
+        ctx.db
+          .query("submissionParticipants")
+          .withIndex("by_submissionId", (q) => q.eq("submissionId", row._id))
+          .take(64),
+      ),
+    )
+    const personIds = new Set<Id<"people">>()
+    for (const row of page.data) personIds.add(row.submitterId)
+    for (const participants of participantGroups)
+      for (const participant of participants) personIds.add(participant.personId)
+    const personRows = await Promise.all(
+      [...personIds].map((personId) => ctx.db.get(personId)),
+    )
+    const people = new Map<Id<"people">, Doc<"people">>()
+    for (const person of personRows) if (person) people.set(person._id, person)
+
+    const shaped = await Promise.all(
+      page.data.map((row, index) =>
+        sessionShape(ctx, row, {
           defs,
           rooms: maps.rooms,
           tracks: maps.tracks,
           expand,
+          participants: participantGroups[index],
+          people,
           // Asking for the public programme means asking for it as the public
           // sees it — hidden speakers drop out of the line-up too.
           publicSpeakersOnly: args.filters.publicOnly === true,
         }),
-      )
-    }
+      ),
+    )
     return {
       event: await eventShape(ctx, event),
       data: shaped,
@@ -1683,7 +1717,9 @@ export const listSettings = internalQuery({
           .includes(needle),
       )
     }
-    return { ...paginate(items, args.page, args.pageSize), unknownResource: false }
+    // `unknownResource` is an internal dispatch sentinel, not API data. Keep
+    // it absent on successful reads so it can never leak into REST envelopes.
+    return paginate(items, args.page, args.pageSize)
   },
 })
 
@@ -2955,6 +2991,7 @@ async function formShape(
   ctx: QueryCtx,
   form: Doc<"forms">,
   event: Doc<"events">,
+  now: number = Date.now(),
 ): Promise<Record<string, unknown>> {
   const submissions = await ctx.db
     .query("submissions")
@@ -2971,7 +3008,7 @@ async function formShape(
     slug: form.slug,
     kind: form.kind,
     status: form.status,
-    is_open: form.status === "open" && (form.closeAt ?? Infinity) > Date.now(),
+    is_open: form.status === "open" && (form.closeAt ?? Infinity) > now,
     close_at: iso(form.closeAt),
     internal_name: form.internalName,
     external_title: form.externalTitle,
@@ -3036,6 +3073,7 @@ export const listForms = internalQuery({
     userId: v.union(v.string(), v.null()),
     search: v.optional(v.string()),
     status: v.optional(v.string()),
+    now: v.number(),
     ...pagingArgs,
   },
   returns: v.any(),
@@ -3049,7 +3087,7 @@ export const listForms = internalQuery({
       .take(MAX_ROWS)
     let shaped = []
     for (const form of forms.sort((a, b) => a._creationTime - b._creationTime))
-      shaped.push(await formShape(ctx, form, event))
+      shaped.push(await formShape(ctx, form, event, args.now))
     if (args.status)
       shaped = shaped.filter((form) => form.status === args.status)
     if (args.search) {
@@ -3069,6 +3107,7 @@ export const getForm = internalQuery({
     eventRef: v.string(),
     userId: v.union(v.string(), v.null()),
     formRef: v.string(),
+    now: v.number(),
   },
   returns: v.any(),
   handler: async (ctx, args) => {
@@ -3077,7 +3116,7 @@ export const getForm = internalQuery({
     await authorizeEvent(ctx, event, args.userId)
     const form = await findForm(ctx, event._id, args.formRef)
     if (!form) return { notFound: true }
-    return { data: await formShape(ctx, form, event) }
+    return { data: await formShape(ctx, form, event, args.now) }
   },
 })
 
@@ -3441,6 +3480,7 @@ const TASK_KINDS = APP_TASK_KINDS
 async function taskShape(
   ctx: QueryCtx,
   task: Doc<"tasks">,
+  now: number = Date.now(),
 ): Promise<Record<string, unknown>> {
   const person = await ctx.db.get(task.personId)
   const submission = task.submissionId ? await ctx.db.get(task.submissionId) : null
@@ -3457,7 +3497,7 @@ async function taskShape(
     is_overdue:
       task.completedAt === undefined &&
       task.dueAt !== undefined &&
-      task.dueAt < Date.now(),
+      task.dueAt < now,
     speaker_id: task.personId,
     speaker: person
       ? {
@@ -3481,6 +3521,7 @@ export const listTasks = internalQuery({
     sessionId: v.optional(v.string()),
     status: v.optional(v.string()), // open | completed | overdue
     search: v.optional(v.string()),
+    now: v.number(),
     ...pagingArgs,
   },
   returns: v.any(),
@@ -3510,7 +3551,7 @@ export const listTasks = internalQuery({
         (task) =>
           task.completedAt === undefined &&
           task.dueAt !== undefined &&
-          task.dueAt < Date.now(),
+          task.dueAt < args.now,
       )
     if (args.search) {
       const needle = args.search.toLowerCase()
@@ -3519,7 +3560,7 @@ export const listTasks = internalQuery({
       )
     }
     const shaped = []
-    for (const task of rows) shaped.push(await taskShape(ctx, task))
+    for (const task of rows) shaped.push(await taskShape(ctx, task, args.now))
     return paginate(shaped, args.page, args.pageSize)
   },
 })
@@ -3529,6 +3570,7 @@ export const getTask = internalQuery({
     eventRef: v.string(),
     userId: v.union(v.string(), v.null()),
     taskId: v.string(),
+    now: v.number(),
   },
   returns: v.any(),
   handler: async (ctx, args) => {
@@ -3538,7 +3580,7 @@ export const getTask = internalQuery({
     const id = ctx.db.normalizeId("tasks", args.taskId)
     const task = id ? await ctx.db.get(id) : null
     if (!task || task.eventId !== event._id) return { notFound: true }
-    return { data: await taskShape(ctx, task) }
+    return { data: await taskShape(ctx, task, args.now) }
   },
 })
 

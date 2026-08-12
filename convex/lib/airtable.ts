@@ -1,11 +1,10 @@
 // ————————————————————————————————————————————————————————————————————————
 // Airtable Web API client + record mappers (docs/memory/RULES.md 15).
 //
-// What this is: a ONE-WAY, idempotent mirror of an event's submissions,
-// speakers and scheduled sessions into the organizer's OWN Airtable base.
-// swyx's clarification is the whole design brief — his team's automations
-// fire "once a new row lands", so a read-only mirror is enough and we never
-// read anything back out of Airtable.
+// What this is: an idempotent mirror of an event's submissions, speakers and
+// scheduled sessions into the organizer's OWN Airtable base. It is one-way by
+// default (the brief only needs rows for Airtable automations), with an explicit
+// opt-in two-way status pull protected by conflict and loop guards.
 //
 // Everything here is pure/self-contained (no Convex ctx) so the mappers can
 // be reasoned about and the client can be pointed at any base:

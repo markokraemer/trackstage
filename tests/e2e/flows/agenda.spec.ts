@@ -81,6 +81,21 @@ async function scheduleViaPopover(
   title: string,
   { startIndex = 0, roomIndex = 0 }: { startIndex?: number; roomIndex?: number } = {},
 ) {
+  const choose = async (combobox: ReturnType<Page["getByLabel"]>, index: number) => {
+    // A reactive board rerender can close an open list mid-gesture, so retry
+    // open + pick as one unit. Base UI also keeps the preceding Select mounted
+    // for its exit animation; scope to the currently visible listbox so a
+    // Room option can never be mistaken for a Start-time option.
+    await expect(async () => {
+      await combobox.click()
+      await expect(combobox).toHaveAttribute("aria-expanded", "true")
+      const listbox = page.locator('[role="listbox"]:visible').last()
+      await expect(listbox).toBeVisible()
+      await listbox.getByRole("option").nth(index).click({ timeout: 3_000 })
+      await expect(combobox).toHaveAttribute("aria-expanded", "false")
+    }).toPass({ timeout: 40_000 })
+  }
+
   const trigger = page
     .getByRole("button", { name: new RegExp(escape(title), "i") })
     .first()
@@ -88,17 +103,10 @@ async function scheduleViaPopover(
   await trigger.click()
   const room = page.getByLabel("Room", { exact: true }).first()
   await expect(room).toBeVisible({ timeout: 20_000 })
-  // In isolation these selects are rock-stable; under a full parallel run a
-  // reactive board rerender can close an open list mid-click. Open + pick is
-  // therefore ONE retried gesture: if the list vanished, reopen and try again.
-  const pick = async (field: ReturnType<typeof page.getByLabel>, index: number) => {
-    await expect(async () => {
-      await field.click()
-      await page.getByRole("option").nth(index).click({ timeout: 3_000 })
-    }).toPass({ timeout: 40_000 })
-  }
-  await pick(room, roomIndex)
-  await pick(page.getByLabel(/start time/i).first(), startIndex)
+  await choose(room, roomIndex)
+
+  const start = page.getByLabel(/start time/i).first()
+  await choose(start, startIndex)
 
   await page.getByRole("button", { name: /schedule session/i }).first().click()
 }

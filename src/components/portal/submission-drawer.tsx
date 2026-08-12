@@ -34,6 +34,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { DrawerShell } from "@/components/shared/drawer-shell"
 import { StatusPill } from "@/components/shared/status-pill"
 import { usePortal } from "./portal-context"
+import { portalHomeArgs } from "./portal-query"
 import type { PortalSubmission } from "./portal-context"
 import { TrackDot } from "./submission-card"
 import { SessionCalendarButton } from "./session-calendar-button"
@@ -91,11 +92,12 @@ export function SubmissionDrawer({
   const updateSubmission = useConvexMutation(
     api.portal.updateSubmission,
   ).withOptimisticUpdate((localStore, args) => {
-    const current = localStore.getQuery(api.portal.home, { portalToken })
+    const queryArgs = portalHomeArgs(portalToken)
+    const current = localStore.getQuery(api.portal.home, queryArgs)
     if (!current) return
     localStore.setQuery(
       api.portal.home,
-      { portalToken },
+      queryArgs,
       {
         ...current,
         submissions: current.submissions.map((s) =>
@@ -114,11 +116,12 @@ export function SubmissionDrawer({
   const withdrawSubmission = useConvexMutation(
     api.portal.withdrawSubmission,
   ).withOptimisticUpdate((localStore, args) => {
-    const current = localStore.getQuery(api.portal.home, { portalToken })
+    const queryArgs = portalHomeArgs(portalToken)
+    const current = localStore.getQuery(api.portal.home, queryArgs)
     if (!current) return
     localStore.setQuery(
       api.portal.home,
-      { portalToken },
+      queryArgs,
       {
         ...current,
         submissions: current.submissions.map((s) =>

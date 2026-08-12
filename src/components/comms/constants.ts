@@ -88,11 +88,11 @@ const PLACEHOLDER_COPY: Record<
   taskList: {
     label: "Their outstanding tasks, with due dates (task reminders)",
     sample:
-      "• Upload your slides — due Friday, August 14\n• Confirm your travel dates — was due Monday, August 10",
+      "• Upload your slides — due Friday, August 14, 2026\n• Confirm your travel dates — was due Monday, August 10, 2026",
   },
   nextDueDate: {
     label: "Their nearest task due date (task reminders)",
-    sample: "Friday, August 14",
+    sample: "Friday, August 14, 2026",
   },
 }
 

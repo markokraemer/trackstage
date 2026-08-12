@@ -494,7 +494,11 @@ function EmbedsPage() {
               value={widgetId}
               onValueChange={(value) => setWidgetId(String(value ?? ""))}
             >
-              <SelectTrigger id="embed-widget" className="w-full">
+              <SelectTrigger
+                id="embed-widget"
+                aria-label="Widget"
+                className="w-full"
+              >
                 <widget.icon
                   size={16}
                   aria-hidden
@@ -528,7 +532,11 @@ function EmbedsPage() {
               value={formatId}
               onValueChange={(value) => setFormatId(String(value ?? ""))}
             >
-              <SelectTrigger id="embed-format" className="w-full">
+              <SelectTrigger
+                id="embed-format"
+                aria-label="Format"
+                className="w-full"
+              >
                 <format.icon
                   size={16}
                   aria-hidden

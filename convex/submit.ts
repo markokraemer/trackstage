@@ -12,6 +12,7 @@ import { formAsSubmitted, eventTrackNames, publicQuestions } from "./lib/formQue
 import { isFormOpen } from "./lib/formWindow"
 import {
   formPath,
+  resolvePublicEvent,
   resolvePublicForm,
   workspaceSlugForEvent,
 } from "./lib/publicLinks"
@@ -84,7 +85,11 @@ async function requirePublicForm(
 
 /**
  * Resolve a legacy `/submit/:slug` or `/submit/:eventSlug/:formSlug` link to
- * its canonical three-segment address, for a 307.
+ * its canonical three-segment address, for a 307. The one-segment form-slug
+ * contract stays first for backwards compatibility; when no form owns that
+ * slug, the same segment is treated as an event slug and opens that event's
+ * primary CFP. That makes old links such as `/submit/ai-summit-2026` useful
+ * without ever stealing an even older `/submit/:formSlug` address.
  *
  * Every link ever printed has to keep working (docs/memory/DECISIONS.md), and
  * several events may now share a slug, so the oldest claimant wins — see
@@ -92,6 +97,15 @@ async function requirePublicForm(
  */
 export const resolveLegacyLink = query({
   args: { slug: v.string(), eventSlug: v.optional(v.string()) },
+  returns: v.union(
+    v.object({
+      status: v.literal("found"),
+      workspaceSlug: v.string(),
+      eventSlug: v.string(),
+      formSlug: v.string(),
+    }),
+    v.object({ status: v.literal("missing") }),
+  ),
   handler: async (ctx, args) => {
     const resolved = await resolvePublicForm(ctx, {
       slug: args.slug,
@@ -105,12 +119,45 @@ export const resolveLegacyLink = query({
         formSlug: resolved.form.slug,
       }
     }
+
+    // Only the one-segment shape can also be an event address. Prefer an open
+    // abstract form, then any open form, then an abstract form, then the
+    // event's oldest form. Creation time is a stable final tie-break, so a new
+    // form can never silently redirect an already-shared event link elsewhere.
+    if (!args.eventSlug) {
+      const event = await resolvePublicEvent(ctx, { eventSlug: args.slug })
+      if (event.status === "ok") {
+        const forms = await ctx.db
+          .query("forms")
+          .withIndex("by_eventId", (q) => q.eq("eventId", event.event._id))
+          .take(100)
+        const primary = forms.sort((a, b) => {
+          const rank = (form: Doc<"forms">) =>
+            form.status === "open" && form.kind === "abstract"
+              ? 0
+              : form.status === "open"
+                ? 1
+                : form.kind === "abstract"
+                  ? 2
+                  : 3
+          return rank(a) - rank(b) || a._creationTime - b._creationTime
+        }).at(0)
+        if (primary) {
+          return {
+            status: "found" as const,
+            workspaceSlug: event.workspaceSlug,
+            eventSlug: event.event.slug,
+            formSlug: primary.slug,
+          }
+        }
+      }
+    }
     return { status: "missing" as const }
   },
 })
 
 export const getForm = query({
-  args: publicFormArgs,
+  args: { ...publicFormArgs, now: v.number() },
   handler: async (ctx, args) => {
     const resolved = await resolvePublicForm(ctx, args)
     if (resolved.status !== "ok") return null
@@ -120,7 +167,10 @@ export const getForm = query({
     // required dropdown with nothing in it (convex/lib/formQuestions.ts). The
     // submission simply arrives without a track; the organizer sets one later.
     const trackNames = await eventTrackNames(ctx, form.eventId)
-    const openState = isFormOpen(form)
+    // Queries do not read the wall clock: the browser supplies `now`, keeping
+    // the close-state result reactive and deterministic while track options
+    // still come from the event live.
+    const openState = isFormOpen(form, args.now)
     return {
       formId: form._id,
       // The canonical address of this exact form, so any page that resolved it

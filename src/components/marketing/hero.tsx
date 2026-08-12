@@ -20,7 +20,6 @@ import { EXTERNAL_LINK_PROPS, GITHUB_URL } from "@/components/marketing/links"
  * odd"). Nothing else on this page moves on its own.
  */
 export function Hero() {
-
   return (
     <section className="relative w-full overflow-hidden border-b border-border/70 bg-card pt-16 pb-0 sm:pt-24">
       <GridBackdrop />
@@ -44,7 +43,7 @@ export function Hero() {
             )}
           >
             <TextReveal text="Call for papers, agenda and speaker management." />{" "}
-            <span className="text-muted-foreground/55">
+            <span className="text-muted-foreground">
               <TextReveal text="In one fast, simple tool." />
             </span>
           </h1>
@@ -65,7 +64,11 @@ export function Hero() {
             <a
               href={GITHUB_URL}
               {...EXTERNAL_LINK_PROPS}
-              className={buttonVariants({ variant: "outline", size: "lg", className: "px-5" })}
+              className={buttonVariants({
+                variant: "outline",
+                size: "lg",
+                className: "px-5",
+              })}
             >
               <RiGithubFill aria-hidden />
               Star on GitHub

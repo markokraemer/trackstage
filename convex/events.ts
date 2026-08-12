@@ -229,6 +229,7 @@ export async function deleteEventCascade(
     "uploads",
     "emailTemplates",
     "messages",
+    "platformEmailDeliveries",
     "embeds",
     // Integration + history rows: they are event-scoped bookkeeping and must
     // not outlive the event they describe.

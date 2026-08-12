@@ -130,7 +130,7 @@ export function FeatureSections() {
         title={
           <>
             From first proposal to final schedule.{" "}
-            <span className="text-muted-foreground/55">
+            <span className="text-muted-foreground">
               All in one place.
             </span>
           </>

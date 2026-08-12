@@ -280,11 +280,16 @@ export function AssignTaskDialog({
       })
       onOpenChange(false)
       toast.success(
-        `Task assigned to ${result.created} speaker${result.created === 1 ? "" : "s"}`,
+        result.created > 0
+          ? `Task assigned to ${result.created} speaker${result.created === 1 ? "" : "s"}`
+          : "That task is already assigned",
         {
-          description: saveAsTemplate
-            ? `"${title.trim()}" is in their speaker portal and saved to your library.`
-            : `"${title.trim()}" is now in their speaker portal.`,
+          description:
+            result.skipped > 0
+              ? `${result.skipped} already had this open task and ${result.skipped === 1 ? "was" : "were"} skipped.`
+              : saveAsTemplate
+                ? `"${title.trim()}" is in their speaker portal and saved to your library.`
+                : `"${title.trim()}" is now in their speaker portal.`,
         },
       )
     } catch (error) {

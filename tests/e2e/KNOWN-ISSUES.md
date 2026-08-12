@@ -107,6 +107,14 @@ Cancel / Approve & run. `getRequestHeaders` *is* exported by the installed
 module-graph inconsistency as KI-3 — logged, recovered from, harmless. It was
 one verification away from being filed as a false S1 bug.
 
+**Related, and NOT a bug — the email preview sandbox:** Playwright can ask
+Chromium to execute its frame instrumentation inside the branded-email
+`about:srcdoc` iframe. Chromium then logs that execution was blocked because
+the iframe intentionally omits `allow-scripts`. The captured frame contains
+only the server-rendered email document and no `<script>` element. The console
+watcher ignores that one exact browser security message; widening the sandbox
+to make a test harness quiet would weaken the product.
+
 ## KI-5 — duplicate React keys in the copilot's deadline list
 
 **Severity:** medium — React's own message says rows "may be duplicated and/or

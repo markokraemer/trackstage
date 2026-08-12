@@ -31,7 +31,7 @@ export function CodeSnippet({
         // block instead of widening whatever flex/grid box it sits in (a
         // dialog, a card) and pushing its own copy button out of view.
         "w-full min-w-0 overflow-hidden rounded-lg border border-border bg-muted/40",
-        className,
+        className
       )}
     >
       <div className="flex items-center justify-between gap-2 border-b border-border bg-card/60 px-3 py-1.5">
@@ -48,7 +48,10 @@ export function CodeSnippet({
           className="h-6 shrink-0 px-2 text-xs"
         />
       </div>
-      <pre className="overflow-x-auto p-3 font-mono text-xs leading-relaxed whitespace-pre text-foreground">
+      <pre
+        tabIndex={0}
+        className="overflow-x-auto p-3 font-mono text-xs leading-relaxed whitespace-pre text-foreground"
+      >
         <code>{value}</code>
       </pre>
     </div>

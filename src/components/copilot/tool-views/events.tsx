@@ -373,7 +373,10 @@ export function EventStatsView({ output }: ToolOutputProps) {
               const days = num(deadline.daysAway)
               return (
                 <Row
-                  key={str(deadline.what) ?? index}
+                  // Several speakers can owe the same task on the same day;
+                  // the human label is not an identity. Include the position
+                  // so React never collapses two real deadlines into one row.
+                  key={`${str(deadline.what) ?? "deadline"}-${str(deadline.when) ?? days ?? "unknown"}-${index}`}
                   className="items-center py-2"
                 >
                   <span className="min-w-0 flex-1 truncate text-sm text-foreground">

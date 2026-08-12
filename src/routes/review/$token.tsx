@@ -42,6 +42,8 @@ import {
   criterionType,
 } from "@/components/evaluation/score-field"
 
+const REVIEW_QUERY_NOW = Math.floor(Date.now() / 60_000) * 60_000
+
 /**
  * Evaluator review queue — `/review/:token` (docs/SPEC.md §4.5).
  *
@@ -63,7 +65,7 @@ function ReviewPage() {
     isError,
     error,
   } = useQuery({
-    ...convexQuery(api.review.queue, { token }),
+    ...convexQuery(api.review.queue, { token, now: REVIEW_QUERY_NOW }),
     retry: false,
   })
 

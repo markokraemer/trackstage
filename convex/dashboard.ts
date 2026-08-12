@@ -184,7 +184,7 @@ function missingBits(person: Doc<"people">, hasUpload: boolean): Array<string> {
 export const overview = query({
   args: {
     eventId: v.id("events"),
-    now: v.optional(v.number()),
+    now: v.number(),
   },
   handler: async (ctx, args) => {
     const { user, event } = await requireEventAccess(ctx, args.eventId)
@@ -265,7 +265,7 @@ export const overview = query({
     )
 
     // ——— Submission pacing, last 21 days in the event's timezone ———
-    const now = args.now ?? Date.now()
+    const now = args.now
     const dayMs = 24 * 60 * 60 * 1000
     const counts = new Map<string, number>()
     for (const submission of submissions) {

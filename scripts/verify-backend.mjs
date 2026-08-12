@@ -10,12 +10,18 @@ import { createHash } from "node:crypto"
 import { execFileSync } from "node:child_process"
 import { fileURLToPath } from "node:url"
 
-const env = Object.fromEntries(
+const fileEnv = Object.fromEntries(
   readFileSync(new URL("../.env.local", import.meta.url), "utf8")
     .split("\n")
     .filter((l) => l.includes("="))
     .map((l) => [l.slice(0, l.indexOf("=")).trim(), l.slice(l.indexOf("=") + 1).trim()]),
 )
+const env = {
+  ...fileEnv,
+  VITE_CONVEX_URL: process.env.VITE_CONVEX_URL ?? fileEnv.VITE_CONVEX_URL,
+  VITE_CONVEX_SITE_URL:
+    process.env.VITE_CONVEX_SITE_URL ?? fileEnv.VITE_CONVEX_SITE_URL,
+}
 const CONVEX_URL = env.VITE_CONVEX_URL
 const SITE_URL = env.VITE_CONVEX_SITE_URL
 if (!CONVEX_URL) throw new Error("VITE_CONVEX_URL missing from .env.local")
@@ -71,9 +77,19 @@ const REPO_ROOT = fileURLToPath(new URL("..", import.meta.url))
  * require exposing storage internals on the public API.
  */
 function convexRun(fn, args = {}) {
+  const deploymentArgs = process.env.SB_CONVEX_DEPLOYMENT
+    ? ["--deployment", process.env.SB_CONVEX_DEPLOYMENT]
+    : []
   const out = execFileSync(
     "pnpm",
-    ["exec", "convex", "run", fn, JSON.stringify(args)],
+    [
+      "exec",
+      "convex",
+      "run",
+      fn,
+      JSON.stringify(args),
+      ...deploymentArgs,
+    ],
     { encoding: "utf8", cwd: REPO_ROOT, stdio: ["ignore", "pipe", "pipe"] },
   )
   const start = out.indexOf("{")
@@ -156,7 +172,7 @@ await throws("locked question cannot be disabled", () =>
 
 // ————— Public submit flow (rules!) —————
 section("Public submission flow")
-const pubForm = await client.query(api.submit.getForm, { slug: "cfp" })
+const pubForm = await client.query(api.submit.getForm, { slug: "cfp", now: Date.now() })
 ok("public form loads with questions", pubForm.questions.length >= 5)
 ok("speaker min is 1 (no trap)", pubForm.participantConfig.speakerMin === 1)
 const verifyEmail = `verify-e2e-${Date.now().toString(36)}@example.com`
@@ -218,9 +234,10 @@ await client.mutation(api.forms.update, {
 })
 const quietEmail = `verify-quiet-${Date.now().toString(36)}@example.com`
 const quietIdent = await client.mutation(api.submit.identify, { slug: "cfp", email: quietEmail })
+const hostileTitle = 'Quiet <Talk> & "Proof"'
 const quietSubmission = await client.mutation(api.submit.submit, {
-  slug: "cfp", portalToken: quietIdent.portalToken, title: "Quiet Talk", answers: { ...goodAnswers, title: "Quiet Talk" },
-  participants: [{ firstName: "Quinn", lastName: "Quiet", email: quietEmail, role: "speaker" }],
+  slug: "cfp", portalToken: quietIdent.portalToken, title: hostileTitle, answers: { ...goodAnswers, title: hostileTitle },
+  participants: [{ firstName: "Quinn <Admin>", lastName: "Quiet", email: quietEmail, role: "speaker" }],
 })
 const outboxQuiet = await client.query(api.comms.listMessages, { eventId: main._id, limit: 500 })
 ok("sendConfirmationEmail=false sends nothing",
@@ -231,7 +248,7 @@ await client.mutation(api.forms.update, {
 })
 
 // notifyEmails goes to organizer addresses, which are NOT event people — so
-// these bypass the outbox entirely. The scheduler is the durable evidence.
+// these use the durable platform mini-outbox instead of the speaker outbox.
 const notifyProbe = convexRun("platformEmails:recentSubmissionNotifications")
 const newAlerts = notifyProbe.notifications.filter((n) => n.kind === "new")
 ok("new-submission alert scheduled for the form's notify list",
@@ -243,8 +260,25 @@ ok("alert deep-links to the submission in the organizer app",
 ok("alert scheduling never fails the submission",
   newAlerts.every((n) => n.state !== "failed"))
 ok("every submission on a notified form raises an alert",
-  newAlerts.some((n) => n.submissionTitle === "Quiet Talk"),
+  newAlerts.some((n) => n.submissionTitle === hostileTitle),
   `quiet submission ${quietSubmission.submissionId}`)
+let platformAlerts = []
+for (let attempt = 0; attempt < 30; attempt++) {
+  platformAlerts = convexRun("platformEmails:recentDeliveries", {
+    kind: "submission-new", limit: 100,
+  }).deliveries
+  if (platformAlerts.some((row) => row.subject.includes(hostileTitle) && row.status !== "pending")) break
+  await new Promise((resolve) => setTimeout(resolve, 100))
+}
+const hostileAlert = platformAlerts.find((row) => row.subject.includes(hostileTitle))
+ok("platform-email outcome is durable and attempted",
+  hostileAlert?.status === "preview" && hostileAlert.attempts === 1,
+  JSON.stringify(hostileAlert))
+ok("public CFP text is escaped in the organizer's HTML email",
+  Boolean(hostileAlert) && hostileAlert.html.includes("&lt;Talk&gt;") &&
+    hostileAlert.html.includes("&amp;") && hostileAlert.html.includes("&quot;Proof&quot;") &&
+    !hostileAlert.html.includes("<Talk>"),
+  hostileAlert?.html)
 
 // ————— Identity: typing an email is not proof of owning it —————
 // The flaw this section exists for: `identify` used to hand back the portal
@@ -283,7 +317,7 @@ function tokenFromSignInEmail(body) {
 }
 const mailedToken = tokenFromSignInEmail(linkMail?.body ?? "")
 ok("the link carries a working sign-in token", mailedToken === PT)
-const viaLink = await client.query(api.portal.home, { portalToken: mailedToken })
+const viaLink = await client.query(api.portal.home, { portalToken: mailedToken, now: Date.now() })
 ok("opening it reaches that speaker's own portal", viaLink.me.email === verifyEmail)
 
 // A session that already holds the token (same browser, or the link just
@@ -489,19 +523,26 @@ ok("custom statuses never leak across events",
 
 // ————— Portal (speaker side) —————
 section("Speaker portal")
-const home = await client.query(api.portal.home, { portalToken: PT })
+const home = await client.query(api.portal.home, { portalToken: PT, now: Date.now() })
 ok("portal home shows my submission accepted", home.submissions.some((s) => s.id === submitted.submissionId && s.status === "accepted"))
 ok("onboarding tasks created on accept", home.tasks.length >= 2, `got ${home.tasks.length}`)
 await client.mutation(api.portal.updateProfile, {
-  portalToken: PT, patch: { bio: "An updated bio from the verify script.", jobTitle: "QA Engineer" },
+  portalToken: PT,
+  patch: {
+    bio: "An updated bio from the verify script.",
+    jobTitle: "QA Engineer",
+    company: "Verification Labs",
+    links: { website: "https://example.com/verification-speaker" },
+  },
 })
-const home2 = await client.query(api.portal.home, { portalToken: PT })
+const home2 = await client.query(api.portal.home, { portalToken: PT, now: Date.now() })
 ok("bio saved", home2.me.bio?.includes("updated bio"))
-ok("profile task auto-completed by bio", home2.tasks.filter((t) => t.kind === "profile").every((t) => t.completedAt))
+ok("profile task stays open until every profile-meter item is complete",
+  home2.tasks.filter((t) => t.kind === "profile").every((t) => !t.completedAt))
 await client.mutation(api.portal.updateSubmission, {
   portalToken: PT, submissionId: submitted.submissionId, patch: { title: "Verification Talk (edited)" },
 })
-const home3 = await client.query(api.portal.home, { portalToken: PT })
+const home3 = await client.query(api.portal.home, { portalToken: PT, now: Date.now() })
 ok("accepted submission still editable (swyx rule)", home3.submissions.some((s) => s.title.includes("edited")))
 const updatedAlerts = convexRun("platformEmails:recentSubmissionNotifications")
   .notifications.filter((n) => n.kind === "updated")
@@ -511,7 +552,7 @@ ok("speaker edit alerts the form's notify list",
   JSON.stringify(updatedAlerts.slice(0, 2)))
 await throws("cannot withdraw accepted", () =>
   client.mutation(api.portal.withdrawSubmission, { portalToken: PT, submissionId: submitted.submissionId }), "accepted")
-await throws("bad portal token rejected", () => client.query(api.portal.home, { portalToken: "bogus" }), "portal link")
+await throws("bad portal token rejected", () => client.query(api.portal.home, { portalToken: "bogus", now: Date.now() }), "portal link")
 
 // ————— File upload + content approval —————
 section("Files & approval")
@@ -534,7 +575,7 @@ const mine = adminUploads.find((u) => u.filename === "slides.pdf")
 await client.mutation(api.tasksAdmin.reviewUpload, {
   uploadId: mine.id, approvalStatus: "changes_requested", reviewNote: "Please use the template",
 })
-const homeAfterReject = await client.query(api.portal.home, { portalToken: PT })
+const homeAfterReject = await client.query(api.portal.home, { portalToken: PT, now: Date.now() })
 ok("changes_requested reopens task", homeAfterReject.tasks.some((t) => t.kind === "upload" && !t.completedAt))
 const uploadUrl2 = await client.mutation(api.portal.generateUploadUrl, { portalToken: PT })
 const res2 = await fetch(uploadUrl2, { method: "POST", headers: { "Content-Type": "application/pdf" }, body: new Blob(["v2"]) })
@@ -591,6 +632,10 @@ await client.mutation(api.portal.attachUpload, {
 const afterDupe = await client.query(api.portal.myUploads, { portalToken: PT })
 const dupeRow = afterDupe.filter((u) => u.filename === "slides.pdf").sort((a, b) => b.version - a.version)[0]
 ok("re-uploading identical bytes is flagged as a duplicate", dupeRow.duplicateOfVersion === versionBefore + 1, JSON.stringify({ v: dupeRow.version, dupe: dupeRow.duplicateOfVersion }))
+const slideVersions = afterDupe.filter((u) => u.taskId === slidesTask?.id)
+ok("exactly the newest upload version is marked Current",
+  slideVersions.filter((u) => u.isCurrent).length === 1 && dupeRow.isCurrent === true,
+  JSON.stringify(slideVersions.map((u) => ({ version: u.version, isCurrent: u.isCurrent }))))
 
 // ————— Headshot replacement deletes the blob it replaces —————
 async function uploadHeadshot(bytes) {
@@ -604,8 +649,10 @@ async function uploadHeadshot(bytes) {
 }
 const headshotA = await uploadHeadshot("headshot-one")
 const headshotB = await uploadHeadshot("headshot-two")
-const homeHeadshot = await client.query(api.portal.home, { portalToken: PT })
+const homeHeadshot = await client.query(api.portal.home, { portalToken: PT, now: Date.now() })
 ok("headshot shows on the profile", typeof homeHeadshot.me.headshotUrl === "string")
+ok("the final profile item auto-completes the profile task",
+  homeHeadshot.tasks.filter((t) => t.kind === "profile").every((t) => t.completedAt))
 const blobState = convexRun("files:blobsExist", { storageIds: [headshotA, headshotB] })
 ok("replacing a headshot DELETES the old blob", blobState[headshotA] === false)
 ok("the current headshot blob survives", blobState[headshotB] === true)
@@ -642,7 +689,7 @@ ok("event logo stored with real metadata", branding.logo?.size === PNG_BYTES.len
 ok("event logo serves a signed URL", typeof branding.logo?.url === "string")
 const publicEvent = await client.query(api.events.getBySlug, { slug: "ai-summit-2026" })
 ok("public event page gets the logo URL", typeof publicEvent.logoUrl === "string")
-ok("speaker portal gets the logo URL", typeof (await client.query(api.portal.home, { portalToken: PT })).event.logoUrl === "string")
+ok("speaker portal gets the logo URL", typeof (await client.query(api.portal.home, { portalToken: PT, now: Date.now() })).event.logoUrl === "string")
 const logoImage = await fetch(branding.logo.url)
 ok("the logo actually downloads", logoImage.status === 200 && Number(logoImage.headers.get("content-length")) === PNG_BYTES.length)
 await throws("branding refuses a non-image", () =>
@@ -704,14 +751,14 @@ const seededTemplates = await client.query(api.tasksAdmin.listTemplates, { event
 ok("every event starts with a task library", seededTemplates.length >= 3, `got ${seededTemplates.length}`)
 ok("library tasks carry personalisation placeholders",
   seededTemplates.some((t) => (t.instructions ?? "").includes("{{firstName}}")))
-const myPersonId = (await client.query(api.portal.home, { portalToken: PT })).me.id
+const myPersonId = (await client.query(api.portal.home, { portalToken: PT, now: Date.now() })).me.id
 const slidesTemplate = seededTemplates.find((t) => t.title === "Upload your slides")
 ok("the slides task is in the library", !!slidesTemplate)
 const fromLibrary = await client.mutation(api.tasksAdmin.assignFromTemplate, {
   templateId: slidesTemplate.id, personIds: [myPersonId], dueAt: Date.now() + 7 * 86400000,
 })
 ok("assigning from the library creates the task", fromLibrary.created === 1)
-const personalisedTasks = (await client.query(api.portal.home, { portalToken: PT })).tasks
+const personalisedTasks = (await client.query(api.portal.home, { portalToken: PT, now: Date.now() })).tasks
 const personalised = personalisedTasks.find(
   (t) => t.title === "Upload your slides" && (t.instructions ?? "").includes("Vera"),
 )
@@ -731,17 +778,29 @@ ok("the organizer's list keeps the unresolved text for editing",
   adminTaskRow?.instructionsTemplate.includes("{{firstName}}"))
 
 const savedTitle = `Sign the speaker agreement ${Date.now().toString(36)}`
+const savedInstructions =
+  "{{firstName}}, sign and return the agreement for “{{sessionTitle}}”."
 const savedTask = await client.mutation(api.tasksAdmin.create, {
   eventId: main._id, personIds: [myPersonId], title: savedTitle,
-  instructions: "{{firstName}}, sign and return the agreement for “{{sessionTitle}}”.",
+  instructions: savedInstructions,
   kind: "confirm", saveAsTemplate: true,
 })
 ok("a task can be assigned and saved to the library in one go",
   savedTask.created === 1 && !!savedTask.templateId)
-await client.mutation(api.tasksAdmin.create, {
+const duplicateSavedTask = await client.mutation(api.tasksAdmin.create, {
   eventId: main._id, personIds: [myPersonId], title: savedTitle,
-  instructions: "{{firstName}}, sign and return the agreement.", kind: "confirm", saveAsTemplate: true,
+  instructions: savedInstructions, kind: "confirm", saveAsTemplate: true,
 })
+ok("reassigning an already-open equivalent task is idempotent",
+  duplicateSavedTask.created === 0 && duplicateSavedTask.skipped === 1,
+  JSON.stringify(duplicateSavedTask))
+const revisedSavedTask = await client.mutation(api.tasksAdmin.create, {
+  eventId: main._id, personIds: [myPersonId], title: savedTitle,
+  instructions: "{{firstName}}, sign and return the revised agreement.", kind: "confirm", dueAt: Date.now() + 86_400_000,
+})
+ok("same-title work with different instructions or due date remains assignable",
+  revisedSavedTask.created === 1 && revisedSavedTask.skipped === 0,
+  JSON.stringify(revisedSavedTask))
 const templatesAfterSave = await client.query(api.tasksAdmin.listTemplates, { eventId: main._id })
 ok("saving the same name twice updates instead of duplicating",
   templatesAfterSave.filter((t) => t.title === savedTitle).length === 1)
@@ -755,7 +814,7 @@ ok("a library task can be renamed for the portal", aliased?.alias === "Speaker a
 await client.mutation(api.tasksAdmin.assignFromTemplate, {
   templateId: savedTemplate.id, personIds: [myPersonId],
 })
-const aliasedTasks = (await client.query(api.portal.home, { portalToken: PT })).tasks
+const aliasedTasks = (await client.query(api.portal.home, { portalToken: PT, now: Date.now() })).tasks
 ok("the speaker sees the alias, not the internal name",
   aliasedTasks.some((t) => t.title === "Speaker agreement"))
 await throws("a library task needs at least one speaker", () =>
@@ -804,7 +863,7 @@ ok("an answer task can be assigned", answerTask.created === 1)
 const answerRowId = (await client.query(api.tasksAdmin.list, { eventId: main._id }))
   .find((t) => t.person?.id === myPersonId && t.title === "Tell us your t-shirt size")?.id
 ok("the answer task is on the organizer's list", !!answerRowId)
-const portalAnswerTask = (await client.query(api.portal.home, { portalToken: PT }))
+const portalAnswerTask = (await client.query(api.portal.home, { portalToken: PT, now: Date.now() }))
   .tasks.find((t) => t.id === answerRowId)
 ok("the speaker sees it as an answer task", portalAnswerTask?.kind === "answer")
 ok("the question is personalised for them",
@@ -819,7 +878,7 @@ await throws("an empty answer is refused", () =>
 await anonClient.mutation(api.portal.answerTask, {
   portalToken: PT, taskId: answerRowId, response: "Large, please",
 })
-const answered = (await client.query(api.portal.home, { portalToken: PT }))
+const answered = (await client.query(api.portal.home, { portalToken: PT, now: Date.now() }))
   .tasks.find((t) => t.id === answerRowId)
 ok("sending the answer completes the task", !!answered?.completedAt)
 ok("the speaker can re-read their own answer", answered?.response === "Large, please")
@@ -918,7 +977,36 @@ const newPlan = await client.mutation(api.evaluationsAdmin.createPlan, {
 })
 const planDetail = await client.query(api.evaluationsAdmin.planDetail, { planId: newPlan })
 const evalToken = planDetail.evaluators[0].token
-const queue = await client.query(api.review.queue, { token: evalToken })
+const hostileEvaluator = await client.mutation(api.evaluationsAdmin.addEvaluator, {
+  planId: newPlan,
+  email: "hostile-reviewer@example.com",
+  name: "Reviewer <img src=x>",
+})
+await client.mutation(api.evaluationsAdmin.remindOutstandingEvaluators, {
+  planId: newPlan,
+})
+let evaluatorMail = []
+for (let attempt = 0; attempt < 30; attempt++) {
+  evaluatorMail = convexRun("platformEmails:recentDeliveries", {
+    kind: "evaluator-reminder", limit: 100,
+  }).deliveries
+  if (evaluatorMail.some((row) => row.toEmail === "hostile-reviewer@example.com" && row.status !== "pending")) break
+  await new Promise((resolve) => setTimeout(resolve, 100))
+}
+const hostileReminder = evaluatorMail.find(
+  (row) => row.toEmail === "hostile-reviewer@example.com",
+)
+ok("evaluator reminder outcome is durable",
+  hostileReminder?.status === "preview" && hostileReminder.attempts === 1,
+  JSON.stringify(hostileReminder))
+ok("evaluator names cannot inject reminder HTML",
+  Boolean(hostileReminder) && hostileReminder.html.includes("Reviewer &lt;img src=x&gt;") &&
+    !hostileReminder.html.includes("<img src=x>"),
+  hostileReminder?.html)
+await client.mutation(api.evaluationsAdmin.removeEvaluator, {
+  evaluatorId: hostileEvaluator.evaluatorId,
+})
+const queue = await client.query(api.review.queue, { token: evalToken, now: Date.now() })
 ok("evaluator queue via magic token", queue.submissions.length === 1)
 await client.mutation(api.review.submitScores, {
   token: evalToken, submissionId: submitted.submissionId, scores: { overall: 4 }, comment: "Solid.",
@@ -929,7 +1017,7 @@ await throws("score >5 rejected", () =>
   client.mutation(api.review.submitScores, { token: evalToken, submissionId: submitted.submissionId, scores: { overall: 9 } }))
 const scores = await client.query(api.evaluationsAdmin.scoresBySubmission, { eventId: main._id })
 ok("avg score visible to organizer", scores[submitted.submissionId]?.avg === 4)
-await throws("bad evaluator token rejected", () => client.query(api.review.queue, { token: "bogus" }))
+await throws("bad evaluator token rejected", () => client.query(api.review.queue, { token: "bogus", now: Date.now() }))
 
 // ————— Blind review (sbek ABS-07) —————
 // The flag existed in the schema and was enforced nowhere; identities must be
@@ -949,7 +1037,7 @@ ok("blind flag surfaces on the plans list",
   (await client.query(api.evaluationsAdmin.listPlans, { eventId: main._id }))
     .find((p) => p._id === blindPlan)?.blind === true)
 const blindToken = blindDetail.evaluators[0].token
-const blindQueue = await client.query(api.review.queue, { token: blindToken })
+const blindQueue = await client.query(api.review.queue, { token: blindToken, now: Date.now() })
 ok("blind queue reports itself anonymized", blindQueue.anonymized === true)
 ok("blind queue strips every speaker",
   blindQueue.submissions.length === 1 && blindQueue.submissions.every((s) => s.speakers.length === 0))
@@ -962,7 +1050,7 @@ await client.mutation(api.review.submitScores, {
 })
 ok("blind evaluator can still score", (await client.query(api.review.progress, { token: blindToken })).done === 1)
 await client.mutation(api.evaluationsAdmin.updatePlan, { planId: blindPlan, blind: false })
-const unblinded = await client.query(api.review.queue, { token: blindToken })
+const unblinded = await client.query(api.review.queue, { token: blindToken, now: Date.now() })
 ok("un-blinding a plan restores speaker names",
   unblinded.anonymized === false && unblinded.submissions[0].speakers.length >= 1)
 await client.mutation(api.evaluationsAdmin.deletePlan, { planId: blindPlan })
@@ -1068,8 +1156,11 @@ ok("the public gallery only shows them once accepted",
 // deleted-submissions tray, which is what a soft delete is for).
 await client.mutation(api.submissions.remove, { submissionId: queuedSessionId })
 await client.mutation(api.speakersAdmin.removePerson, { personId: acceptedRow.personId })
-ok("cleanup leaves the roster where it started",
-  (await client.query(api.dashboard.speakersRoster, { eventId: main._id })).length === rosterBeforeQueued.length)
+const rosterAfterQueuedCleanup = await client.query(api.dashboard.speakersRoster, { eventId: main._id })
+ok("cleanup removes the queued speaker and leaves the roster where it started",
+  !rosterAfterQueuedCleanup.some((speaker) => speaker.email === queuedEmail) &&
+    rosterAfterQueuedCleanup.length === rosterBeforeQueued.length,
+  `before=${rosterBeforeQueued.length} after=${rosterAfterQueuedCleanup.length} queuedStillPresent=${rosterAfterQueuedCleanup.some((speaker) => speaker.email === queuedEmail)}`)
 
 // ————— Public widgets data —————
 section("Public data")
@@ -1235,7 +1326,7 @@ ok("saving with an id overwrites instead of duplicating",
 await throws("unknown widget rejected", () =>
   client.mutation(api.embeds.save, { eventId: main._id, name: "x", widget: "nope", options: {} }), "unknown widget")
 await throws("unknown format rejected", () =>
-  client.mutation(api.embeds.save, { eventId: main._id, name: "x", widget: "agenda", options: { format: "xml" } }), "unknown embed format")
+  client.mutation(api.embeds.save, { eventId: main._id, name: "x", widget: "agenda", options: { format: "pdf" } }), "unknown embed format")
 await throws("unnamed embed rejected", () =>
   client.mutation(api.embeds.save, { eventId: main._id, name: "  ", widget: "agenda", options: {} }), "name")
 await client.mutation(api.embeds.remove, { embedId })
@@ -1246,8 +1337,30 @@ ok("embed deleted",
 section("Comms")
 const templates = await client.query(api.comms.listTemplates, { eventId: main._id })
 ok("5 seeded templates", templates.length >= 5, `got ${templates.length}`)
+const reminderTaskTitle = `Upload evaluator deck ${Date.now().toString(36)}`
+const reminderDueAt = Date.UTC(2027, 4, 1, 12)
+const reminderTask = await client.mutation(api.tasksAdmin.create, {
+  eventId: main._id, personIds: [manual.personId], title: reminderTaskTitle,
+  kind: "upload", dueAt: reminderDueAt,
+})
+ok("the reminder probe task is assigned", reminderTask.created === 1)
 const remind = await client.mutation(api.comms.remindIncompleteSpeakers, { eventId: main._id })
 ok("reminders queued for incomplete", typeof remind.queued === "number")
+const reminderOutbox = await client.query(api.comms.listMessages, { eventId: main._id, limit: 500 })
+const detailedReminder = reminderOutbox.find(
+  (message) => message.personId === manual.personId && message.templateKey === "reminder",
+)
+ok("task reminders name the outstanding task and its due date",
+  detailedReminder?.body.includes(reminderTaskTitle) &&
+    detailedReminder.body.includes("May 1, 2027") &&
+    !detailedReminder.body.includes("{{"),
+  detailedReminder?.body)
+const reminderTaskRow = (await client.query(api.tasksAdmin.list, {
+  eventId: main._id, personId: manual.personId,
+})).find((task) => task.title === reminderTaskTitle)
+if (reminderTaskRow) {
+  await client.mutation(api.tasksAdmin.remove, { taskId: reminderTaskRow.id })
+}
 
 // ————— Bulk composer (sbek SPK-13) —————
 section("Bulk email composer")
@@ -1271,6 +1384,8 @@ const bulkRow = outboxAfterBulk.find((m) => m.templateKey === "custom-bulk")
 ok("bulk email keeps the ad-hoc subject, rendered", bulkRow?.subject === "Venue update for AI Engineer Summit 2026", bulkRow?.subject)
 ok("bulk email renders per-person placeholders",
   Boolean(bulkRow) && !bulkRow.body.includes("{{") && bulkRow.body.includes("/portal/t/"))
+ok("outbox exposes the template-derived HTML mode",
+  bulkRow?.isHtml === false, `isHtml=${String(bulkRow?.isHtml)}`)
 await throws("composeBulk refuses an empty subject", () =>
   client.mutation(api.comms.composeBulk, { eventId: main._id, filter: "accepted", subject: "  ", body: "x" }), "subject")
 await throws("composeBulk refuses an empty body", () =>
@@ -1491,6 +1606,11 @@ if (airtableDemoMode) {
   const inboundId = await client.mutation(api.submissions.addManual, {
     eventId: main._id, kind: "abstract", title: "Airtable Two-Way Probe", status: "pending",
   })
+  // addManual schedules a debounced mirror five seconds out. Let that mirror
+  // drain before the explicit sync below; otherwise its stale scheduled copy
+  // can advance the baseline between the local edit and our conflict probe,
+  // turning a deterministic guard test into a scheduler race.
+  await new Promise((r) => setTimeout(r, 6000))
   await client.mutation(api.airtable.syncNow, { eventId: main._id })
   await new Promise((r) => setTimeout(r, 3000))
 
@@ -1510,7 +1630,8 @@ if (airtableDemoMode) {
   // Both sides move: organizer decides here, someone edits the spreadsheet.
   await client.mutation(api.submissions.setStatus, { submissionId: inboundId, status: "accepted" })
   const conflict = pull([{ externalId: String(inboundId), status: "Decline queue" }])
-  ok("a genuine conflict is counted, not applied", conflict.conflicts === 1 && conflict.applied === 0)
+  ok("a genuine conflict is counted, not applied", conflict.conflicts === 1 && conflict.applied === 0,
+    JSON.stringify(conflict))
   ok("our database wins the conflict", (await statusOf(inboundId)) === "accepted")
 
   const refused = pull([
@@ -1675,6 +1796,18 @@ if (SITE_URL) {
   const err = await call("GET", `/event/nope/sessions`)
   ok("error body carries error + code + message", err.status === 404 && err.json?.error && err.json?.code === "NotFoundError" && err.json?.message,
     JSON.stringify(err.json))
+  const malformed = await fetch(`${API}/event/${EV}/tracks/create`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: "{bad json",
+  })
+  const malformedBody = await malformed.json()
+  ok("malformed JSON gets a parse error, not a misleading field error",
+    malformed.status === 400 && /malformed json/i.test(malformedBody.error),
+    JSON.stringify(malformedBody))
 
   // ——— Events ———
   const eventsPage = await call("GET", "/events")
@@ -1758,7 +1891,10 @@ if (SITE_URL) {
   ok("POST /tracks/create creates a track", track.status === 201 && track.json.data.id)
   const trackId = track.json.data.id
   ok("PUT /tracks/{id} updates it", (await call("PUT", `/event/${EV}/tracks/${trackId}`, { body: { name: "Parity Track v2" } })).json.data.name === "Parity Track v2")
-  ok("GET /tracks lists it", (await call("GET", `/event/${EV}/tracks`)).json.results.some((t) => t.id === trackId))
+  const listedTracks = await call("GET", `/event/${EV}/tracks`)
+  ok("GET /tracks lists it", listedTracks.json.results.some((t) => t.id === trackId))
+  ok("internal dispatch sentinels never leak into API responses",
+    !("unknownResource" in listedTracks.json), JSON.stringify(listedTracks.json))
   const room = await call("POST", `/event/${EV}/rooms/create`, { body: { name: "Parity Room", capacity: 42 } })
   ok("POST /rooms/create creates a room", room.status === 201 && room.json.data.capacity === 42)
   const roomId = room.json.data.id
@@ -2450,6 +2586,49 @@ if (SITE_URL) {
     !afterRemove.json.speakers.some((s) => s.outstandingTasks.some((t) => t.title === taskTitle)))
   ok("removing it again fails cleanly", (await toolCall("remove_task", { taskId: throwawayTask.taskId, confirm: true })).isError)
 
+  // Profile auto-completion is a domain rule, not a UI-only convenience.
+  // Prove both MCP assignment paths apply it when the speaker has already
+  // supplied every profile item.
+  const completeProfileEmail = "priya.raghavan@example.com"
+  const bornDoneTitle = `Verify complete profile ${Date.now().toString(36)}`
+  const bornDone = await toolCall("assign_task", {
+    event: "ai-summit-2026", speakers: [completeProfileEmail],
+    title: bornDoneTitle, kind: "profile", confirm: true,
+  })
+  ok("MCP assign_task accepts a profile task for an already-complete speaker",
+    !bornDone.isError && bornDone.json?.created === 1, bornDone.text?.slice(0, 140))
+  const bornDoneRow = (await client.query(api.tasksAdmin.list, { eventId: main._id }))
+    .find((task) => task.title === bornDoneTitle && task.person?.email === completeProfileEmail)
+  ok("MCP profile task is born complete when the profile already is",
+    typeof bornDoneRow?.completedAt === "number", JSON.stringify(bornDoneRow))
+  if (bornDoneRow) {
+    await toolCall("remove_task", { taskId: bornDoneRow.id, confirm: true })
+  }
+
+  const bornDoneTemplateTitle = `Verify complete profile template ${Date.now().toString(36)}`
+  const savedProfileTemplate = await toolCall("save_task_template", {
+    event: "ai-summit-2026", title: bornDoneTemplateTitle,
+    kind: "profile", confirm: true,
+  })
+  ok("MCP saves a profile task template", !savedProfileTemplate.isError && savedProfileTemplate.json?.templateId)
+  const assignedProfileTemplate = await toolCall("assign_task_from_template", {
+    template: savedProfileTemplate.json.templateId,
+    speakers: [completeProfileEmail], confirm: true,
+  })
+  ok("MCP assigns the profile template", !assignedProfileTemplate.isError && assignedProfileTemplate.json?.created === 1)
+  const bornDoneTemplateRow = (await client.query(api.tasksAdmin.list, { eventId: main._id }))
+    .find((task) => task.title === bornDoneTemplateTitle && task.person?.email === completeProfileEmail)
+  ok("MCP template profile task is also born complete",
+    typeof bornDoneTemplateRow?.completedAt === "number", JSON.stringify(bornDoneTemplateRow))
+  if (bornDoneTemplateRow) {
+    await toolCall("remove_task", { taskId: bornDoneTemplateRow.id, confirm: true })
+  }
+  if (savedProfileTemplate.json?.templateId) {
+    await client.mutation(api.tasksAdmin.removeTemplate, {
+      templateId: savedProfileTemplate.json.templateId,
+    })
+  }
+
   // delete_event: double-confirmed, and neither half alone is enough.
   const eventNoName = await rpc("tools/call", { name: "delete_event", arguments: { event: "ai-summit-2026", confirm: true } })
   ok("delete_event refuses without confirmName",
@@ -2614,7 +2793,7 @@ async function tokenViaEmailedLink(personEmail) {
 }
 const coToken = await tokenViaEmailedLink(coEmail)
 const coIdent = { portalToken: coToken }
-const coHome1 = await client.query(api.portal.home, { portalToken: coIdent.portalToken })
+const coHome1 = await client.query(api.portal.home, { portalToken: coIdent.portalToken, now: Date.now() })
 ok("a named co-speaker gets a profile from the first submission",
   coHome1.me.bio?.startsWith("First bio"), coHome1.me.bio)
 ok("their portal profile starts with only what was provided",
@@ -2626,7 +2805,7 @@ await submitNaming({
   bio: "Second bio — typed by somebody else entirely.",
   jobTitle: "Principal Engineer",
 }, "B")
-const coHome2 = await client.query(api.portal.home, { portalToken: coIdent.portalToken })
+const coHome2 = await client.query(api.portal.home, { portalToken: coIdent.portalToken, now: Date.now() })
 ok("a second submission cannot overwrite an existing contact's bio",
   coHome2.me.bio?.startsWith("First bio"), coHome2.me.bio)
 ok("nor their name",
@@ -2643,7 +2822,7 @@ await submitNaming({
   firstName: "Casey", lastName: "Cospeaker", email: coEmail, role: "speaker",
   bio: "Third bio — still not theirs.", company: "Wrong Company Inc",
 }, "C")
-const coHome3 = await client.query(api.portal.home, { portalToken: coIdent.portalToken })
+const coHome3 = await client.query(api.portal.home, { portalToken: coIdent.portalToken, now: Date.now() })
 ok("the speaker's own portal edits survive later submissions",
   coHome3.me.bio?.startsWith("Authoritative bio") && coHome3.me.company === "Cospeaker Ltd",
   `${coHome3.me.bio} / ${coHome3.me.company}`)
@@ -2654,7 +2833,7 @@ ok("all three submissions still list the co-speaker",
 // Product-map delta #6, the valuable subset of their per-portal Configuration:
 // Always Show Tasks · portal submission edits · Extend Task Deadlines.
 section("Speaker portal behaviour")
-const behaviorHome = await client.query(api.portal.home, { portalToken: PT })
+const behaviorHome = await client.query(api.portal.home, { portalToken: PT, now: Date.now() })
 ok("defaults are permissive — nothing changes until the organizer says so",
   behaviorHome.portal.alwaysShowTasks && behaviorHome.portal.allowSubmissionEdits &&
   behaviorHome.portal.extendTaskDeadlines && behaviorHome.portal.tasksVisible,
@@ -2670,7 +2849,7 @@ await client.mutation(api.tasksAdmin.create, {
   kind: "confirm", dueAt: Date.now() - 3 * 24 * 60 * 60 * 1000,
 })
 const findOverdue = async () =>
-  (await client.query(api.portal.home, { portalToken: PT })).tasks.find((t) => t.title === overdueTitle)
+  (await client.query(api.portal.home, { portalToken: PT, now: Date.now() })).tasks.find((t) => t.title === overdueTitle)
 ok("an overdue task is completable while late work is accepted",
   (await findOverdue())?.locked === false)
 await setPortalSettings({ ...ALL_ON, extendTaskDeadlines: false })
@@ -2685,7 +2864,7 @@ await client.mutation(api.tasksAdmin.remove, { taskId: lockedTask.id })
 
 // — Portal submission edits —
 await setPortalSettings({ ...ALL_ON, allowSubmissionEdits: false })
-const editsOff = await client.query(api.portal.home, { portalToken: PT })
+const editsOff = await client.query(api.portal.home, { portalToken: PT, now: Date.now() })
 ok("the portal is told edits are off", editsOff.portal.allowSubmissionEdits === false)
 await throws("editing a submission is refused with somewhere to go instead", () =>
   client.mutation(api.portal.updateSubmission, {
@@ -2698,21 +2877,21 @@ await client.mutation(api.portal.updateSubmission, {
   patch: { title: "Verification Talk (edited)" },
 })
 ok("switching it back on restores editing",
-  (await client.query(api.portal.home, { portalToken: PT })).submissions
+  (await client.query(api.portal.home, { portalToken: PT, now: Date.now() })).submissions
     .some((s) => s.id === submitted.submissionId && s.title.includes("edited")))
 
 // — Always show tasks —
 await setPortalSettings({ ...ALL_ON, alwaysShowTasks: false })
-const quietHome = await client.query(api.portal.home, { portalToken: quietIdent.portalToken })
+const quietHome = await client.query(api.portal.home, { portalToken: quietIdent.portalToken, now: Date.now() })
 ok("a speaker with nothing accepted loses the task list",
   quietHome.portal.tasksVisible === false && quietHome.tasks.length === 0,
   JSON.stringify(quietHome.portal))
-const acceptedHome = await client.query(api.portal.home, { portalToken: PT })
+const acceptedHome = await client.query(api.portal.home, { portalToken: PT, now: Date.now() })
 ok("an accepted speaker still sees theirs",
   acceptedHome.portal.tasksVisible === true && acceptedHome.tasks.length >= 1)
 await setPortalSettings(ALL_ON)
 ok("tasks come back for everyone once it's on again",
-  (await client.query(api.portal.home, { portalToken: quietIdent.portalToken })).portal.tasksVisible === true)
+  (await client.query(api.portal.home, { portalToken: quietIdent.portalToken, now: Date.now() })).portal.tasksVisible === true)
 
 // ————— Summary —————
 console.log(`\n━━━ ${passed} passed, ${failed} failed ━━━`)

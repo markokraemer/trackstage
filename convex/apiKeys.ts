@@ -104,10 +104,10 @@ export const ensureCopilotKey = mutation({
 
 /**
  * REST API scopes a key may carry (convex/apiHttp.ts). Omitting `scopes`
- * entirely — which is what the UI does today, and what every key minted before
- * this existed has — leaves the key unrestricted: it acts with exactly the
- * permissions its owner's workspace membership grants. Passing scopes can only
- * narrow that, never widen it.
+ * entirely — the UI's "Full access" choice and every key minted before scopes
+ * existed — leaves the key unrestricted: it acts with exactly the permissions
+ * its owner's workspace membership grants. Passing scopes can only narrow
+ * that, never widen it.
  */
 export const API_SCOPES = [
   "read:events",

@@ -119,6 +119,21 @@ crons.interval(
   {},
 )
 
+// Durable platform-email outbox: repair the rare scheduler/runtime failure
+// that left an attempt unfinished, and retain 90 days of delivery receipts.
+crons.interval(
+  "platform-email-recovery",
+  { minutes: 15 },
+  internal.platformEmails.recoverStuckDeliveries,
+  {},
+)
+crons.cron(
+  "platform-email-sweep",
+  "10 4 * * *",
+  internal.platformEmails.sweepDeliveries,
+  {},
+)
+
 // Public REST API housekeeping (convex/webhooks.ts): trim the webhook delivery
 // log past its retention window, and drop two-phase file uploads that were
 // initiated but never completed (along with any bytes they parked in storage).

@@ -363,6 +363,52 @@ their extra step is the sluggishness swyx complained about.
 tests/e2e/flows/triage-decisions.spec.ts follows the new interaction (no Save
 click; asserts the popover closes and the toast repeats the caveat).
 
+## Platform transactional email is a durable mini-outbox (2026-08-12)
+Workspace invites, password reset/verification, form-notification addresses and
+evaluators are not event `people`, so they cannot honestly appear in the speaker
+outbox. They also cannot stay scheduler + console-only: rule 18e says nothing may
+silently not-send. `platformEmailDeliveries` is therefore the smaller durable
+counterpart: payload + safe scope, pending/retrying/sent/preview/failed state,
+provider receipt, five bounded attempts (1s → 5s → 25s → 125s), ten-minute stuck
+recovery, 90-day retention, and a stable per-delivery Resend idempotency key.
+Event/workspace organizers see only safe failure metadata and can retry an
+exhausted row; account-lifecycle rows never leak into organizer UI. Speaker comms
+stay in `messages` because they need per-person merge fields, `.ics`, preview and
+delivery refresh. Two outboxes, one explicit recipient-domain boundary.
+
+## A bare CFP segment is form-first, then event-primary (2026-08-12)
+The canonical public URL remains `/submit/:workspace/:event/:form`. Compatibility
+links are resolved deterministically: `/submit/:segment` first honors an exact
+form slug (so old shared links never change meaning); only when no form owns it is
+the segment treated as an event slug. The event's primary form is the open abstract,
+then any open form, then a closed abstract, then the oldest remaining form. This
+closes the judge path `/submit/ai-summit-2026` without introducing ambiguous redirects.
+
+## REST session pages preload their joins (2026-08-12)
+`POST /v1/event/:event/sessions` returns the full session resource, including
+participants, submitter and both modern/legacy headshot URL aliases. Shaping a page
+must preload participant rows concurrently and hydrate each distinct person once;
+serial per-session/per-person reads crossed Convex's one-second query limit on an
+ordinary 22-row abstract page. A headshot storage URL is also resolved once per shaped
+person and reused for both aliases. The API contract is unchanged; the measured local
+five-probe range after the fix was 23–242ms with every returned row still satisfying
+`is_abstract=true`.
+
+## E2E event context is explicit, never list-order dependent (2026-08-12)
+A workspace switch intentionally lands on that workspace's first reachable event; it
+does not promise a particular seeded event. Any browser test asserting event-scoped
+data must therefore navigate to the canonical event URL or select the target through
+the event level of the switcher. This keeps tests valid when a workspace has additional
+legitimate events and directly exercises the two-level workspace/event hierarchy.
+
+## Webhook authorization follows the hook's own scope (2026-08-12)
+An event-scoped webhook is event data: every hook-id read/write/delivery operation
+must pass `requireEventAccess` for that hook's event. Plain workspace membership is
+insufficient because limited members belong to the workspace yet must receive
+“Event not found” for events outside their grant. Workspace-wide hooks still use
+workspace membership. The same helper controls every operation, with a negative
+two-event regression.
+
 ## Dark mode ships, and it stops at the organizer app's door (2026-08-12)
 Marko: "end-to-end add a dark/light mode switcher as part of the account
 settings." This REVERSES the "light mode only" half of RULES.md #3 (and
@@ -492,6 +538,18 @@ Three layers, all in `convex/lib/formQuestions.ts`:
 Because a new form is born open, `forms.create` (and the REST/MCP equivalents)
 now create the Track question **optional** when the event has no tracks yet —
 required is a choice the organizer makes once there is something to choose from.
+
+## The custom auth proxy owns the trusted client-IP bridge (2026-08-12)
+
+Better Auth's durable rate limiter reads only the application-owned
+`x-trackstage-client-ip` header. The app-origin proxy must derive that header
+from Cloudflare's canonical `cf-connecting-ip` on every request; it must never
+trust a browser-supplied bridge value. Therefore every auth forwarder follows
+one rule: overwrite the bridge from `cf-connecting-ip` when present, otherwise
+delete it. This applies to the hand-written `/api/auth/*` forwarder as well as
+any future library wrapper. A full browser E2E asserts preservation and spoof
+rejection so replacing the proxy implementation cannot silently drop the rate-
+limit identity again.
 
 ## "Am I signed in?" means "can Convex serve an authed query", not "has Better Auth answered" (2026-08-12)
 

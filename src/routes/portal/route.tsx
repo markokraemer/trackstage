@@ -9,6 +9,7 @@ import {
 import { useQuery } from "@tanstack/react-query"
 import { convexQuery } from "@convex-dev/react-query"
 import { api } from "@convex/_generated/api"
+import { portalHomeArgs } from "@/components/portal/portal-query"
 import {
   RiArrowDownSLine,
   RiBookOpenLine,
@@ -104,7 +105,7 @@ function PortalLayout() {
     isPending,
     isError,
   } = useQuery(
-    convexQuery(api.portal.home, token ? { portalToken: token } : "skip")
+    convexQuery(api.portal.home, token ? portalHomeArgs(token) : "skip")
   )
 
   const signOut = useCallback(() => {

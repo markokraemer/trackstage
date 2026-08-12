@@ -245,6 +245,7 @@ test.describe("form builder", () => {
       const publicForm = (await anonConvexClient().query(api.submit.getForm, {
         slug,
         eventSlug: saved.eventSlug,
+        now: Date.now(),
       })) as { questions: Array<{ id: string; label: string }> }
       const triggerId = publicForm.questions.find((q) => q.label === triggerLabel)!.id
       const dependentId = publicForm.questions.find((q) => q.label === dependentLabel)!.id

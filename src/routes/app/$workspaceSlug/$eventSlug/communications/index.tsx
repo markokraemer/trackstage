@@ -27,6 +27,7 @@ import { ComposeDialog } from "@/components/comms/compose-dialog"
 import { OUTBOX_FILTER_VALUES } from "@/components/comms/constants"
 import { MessageDrawer } from "@/components/comms/message-drawer"
 import { OutboxTable } from "@/components/comms/outbox-table"
+import { PlatformEmailIssues } from "@/components/comms/platform-email-issues"
 import { TemplateDrawer } from "@/components/comms/template-drawer"
 import { TemplateList } from "@/components/comms/template-list"
 import { useCurrentEvent } from "@/lib/current-event"
@@ -139,6 +140,8 @@ function CommunicationsPage() {
             </Button>
           }
         />
+
+        <PlatformEmailIssues eventId={eventId} />
 
         <Tabs
           value={tab}

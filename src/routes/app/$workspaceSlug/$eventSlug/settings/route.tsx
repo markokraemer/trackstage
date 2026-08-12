@@ -17,9 +17,11 @@ import { formatZonedDateRange } from "@/components/settings/timezone"
 import { useCurrentEvent } from "@/lib/current-event"
 import { appLink, legacyAppLink } from "@/lib/app-links"
 
-export const Route = createFileRoute("/app/$workspaceSlug/$eventSlug/settings")({
-  component: SettingsLayout,
-})
+export const Route = createFileRoute("/app/$workspaceSlug/$eventSlug/settings")(
+  {
+    component: SettingsLayout,
+  }
+)
 
 const TABS = [
   { value: "details", label: "Event details", section: undefined },
@@ -49,7 +51,9 @@ const TABS = [
  */
 function SettingsLayout() {
   const { event, eventRef, isLoading } = useCurrentEvent()
-  const pathname = useRouterState({ select: (state) => state.location.pathname })
+  const pathname = useRouterState({
+    select: (state) => state.location.pathname,
+  })
 
   const tabHref = (section: (typeof TABS)[number]["section"]) =>
     eventRef
@@ -60,7 +64,8 @@ function SettingsLayout() {
 
   const active =
     TABS.find(
-      (tab) => tab.section !== undefined && pathname.startsWith(tabHref(tab.section)),
+      (tab) =>
+        tab.section !== undefined && pathname.startsWith(tabHref(tab.section))
     )?.value ?? "details"
 
   const dates = event
@@ -105,7 +110,6 @@ function SettingsLayout() {
               ))}
             </TabsList>
           </Tabs>
-
         </PageHeader>
 
         {isLoading ? (

@@ -1,7 +1,9 @@
 import { cn } from "@/lib/utils"
 
-export interface PageHeaderProps
-  extends Omit<React.ComponentProps<"div">, "title"> {
+export interface PageHeaderProps extends Omit<
+  React.ComponentProps<"div">,
+  "title"
+> {
   title: React.ReactNode
   /** One plain-English line under the title. Organizers should never guess. */
   description?: React.ReactNode
@@ -39,28 +41,26 @@ export function PageHeader({
       className={cn(
         "flex flex-col gap-4",
         variant === "banner" && "border-b border-border pb-4",
-        className,
+        className
       )}
       {...props}
     >
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0 space-y-1">
-          <h1 className="font-heading truncate text-xl font-semibold tracking-tight text-foreground">
+          <h1 className="truncate font-heading text-xl font-semibold tracking-tight text-foreground">
             {title}
           </h1>
           {description ? (
             // A <div>, not a <p>: descriptions carry skeletons and chips, and a
             // block element inside <p> is a hydration error.
-            <div className="text-sm text-muted-foreground">
-              {description}
-            </div>
+            <div className="text-sm text-muted-foreground">{description}</div>
           ) : null}
         </div>
         {actions ? (
-          // `flex-wrap` + `max-w-full` (not `shrink-0` alone): on a phone the
-          // action cluster is often wider than the viewport, and a non-wrapping
-          // row is what pushed whole organizer pages into horizontal scroll.
-          <div className="flex max-w-full flex-wrap items-center gap-2">
+          // `flex-wrap` + `min-w-0 max-w-full`: on a phone the action cluster
+          // is often wider than the viewport, so it must be allowed to shrink
+          // and wrap instead of pushing the whole organizer page sideways.
+          <div className="flex max-w-full min-w-0 flex-wrap items-center gap-2 sm:shrink-0 sm:justify-end">
             {actions}
           </div>
         ) : null}

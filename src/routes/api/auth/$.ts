@@ -23,6 +23,12 @@ async function forward(request: Request): Promise<Response> {
   headers.delete("connection")
   // The one deliberate difference from the library: no plain x-forwarded-host.
   headers.delete("x-forwarded-host")
+  // Preserve Cloudflare's canonical client address for Better Auth's durable
+  // rate limiter. Always overwrite (or remove) the application-owned bridge
+  // header so a browser cannot choose its own rate-limit identity.
+  const clientIp = headers.get("cf-connecting-ip")
+  if (clientIp) headers.set("x-trackstage-client-ip", clientIp)
+  else headers.delete("x-trackstage-client-ip")
   headers.set("accept-encoding", "application/json")
   headers.set("host", new URL(CONVEX_SITE_URL).host)
   headers.set("x-forwarded-proto", requestUrl.protocol.replace(/:$/, ""))

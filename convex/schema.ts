@@ -637,6 +637,50 @@ export default defineSchema({
     .index("by_personId", ["personId"])
     .index("by_status", ["status"]),
 
+  // Transactional email that is not addressed to an event `people` row:
+  // workspace invites, account verification/reset, form notifications and
+  // evaluator reminders. Unlike the speaker outbox above, these recipients
+  // may not have a personId — but rule 18e still requires a durable receipt,
+  // retries, and an honest final failure instead of a console-only loss.
+  platformEmailDeliveries: defineTable({
+    organizationId: v.optional(v.id("organizations")),
+    eventId: v.optional(v.id("events")),
+    toEmail: v.string(),
+    kind: v.string(),
+    subject: v.string(),
+    html: v.string(),
+    /** Local/demo log aid for one-time links; never exposed by public queries. */
+    previewNote: v.optional(v.string()),
+    status: v.union(
+      v.literal("pending"),
+      v.literal("retrying"),
+      v.literal("sent"),
+      v.literal("preview"),
+      v.literal("failed"),
+    ),
+    attempts: v.number(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+    nextAttemptAt: v.optional(v.number()),
+    lastError: v.optional(v.string()),
+    resendId: v.optional(v.string()),
+  })
+    .index("by_eventId", ["eventId"])
+    .index("by_organizationId_and_eventId_and_status_and_createdAt", [
+      "organizationId",
+      "eventId",
+      "status",
+      "createdAt",
+    ])
+    .index("by_eventId_and_status_and_createdAt", [
+      "eventId",
+      "status",
+      "createdAt",
+    ])
+    .index("by_toEmail_and_createdAt", ["toEmail", "createdAt"])
+    .index("by_status_and_updatedAt", ["status", "updatedAt"])
+    .index("by_createdAt", ["createdAt"]),
+
   // ——— Embeds ———————————————————————————————————————————————————————————
   // A named, reusable widget configuration (sbek EMB-15). The embed itself is
   // still just a URL into the public site — nothing is "published" and there

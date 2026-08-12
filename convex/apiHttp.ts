@@ -284,16 +284,24 @@ function readPaging(
 
 async function readJsonBody(
   req: Request,
-): Promise<Record<string, unknown> | null> {
+): Promise<{
+  body: Record<string, unknown> | null
+  malformed: boolean
+}> {
   const type = req.headers.get("Content-Type") ?? ""
-  if (!type.includes("application/json")) return null
+  if (!type.includes("application/json"))
+    return { body: null, malformed: false }
   try {
     const parsed: unknown = await req.json()
-    return parsed && typeof parsed === "object" && !Array.isArray(parsed)
-      ? (parsed as Record<string, unknown>)
-      : null
+    return {
+      body:
+        parsed && typeof parsed === "object" && !Array.isArray(parsed)
+          ? (parsed as Record<string, unknown>)
+          : null,
+      malformed: false,
+    }
   } catch {
-    return null
+    return { body: null, malformed: true }
   }
 }
 
@@ -731,7 +739,10 @@ async function handleEvents(
   credential: Credential,
   denyDemoWrite: () => Response | null,
 ): Promise<Response> {
-  const body = (await readJsonBody(req)) ?? {}
+  const parsedBody = await readJsonBody(req)
+  if (parsedBody.malformed)
+    return errorResponse("Malformed JSON body.", 400)
+  const body = parsedBody.body ?? {}
 
   // GET /v1/events · POST /v1/events
   if (rest.length === 1) {
@@ -848,7 +859,10 @@ async function handleWebhooks(
       403,
     )
   const userId = credential.userId
-  const body = (await readJsonBody(req)) ?? {}
+  const parsedBody = await readJsonBody(req)
+  if (parsedBody.malformed)
+    return errorResponse("Malformed JSON body.", 400)
+  const body = parsedBody.body ?? {}
 
   // /v1/webhooks
   if (rest.length === 1) {
@@ -986,7 +1000,10 @@ async function handleEventScoped(
     )
   }
 
-  const body = (await readJsonBody(req)) ?? {}
+  const parsedBody = await readJsonBody(req)
+  if (parsedBody.malformed)
+    return errorResponse("Malformed JSON body.", 400)
+  const body = parsedBody.body ?? {}
   const paging = readPaging(url, body)
   if ("error" in paging) return errorResponse(paging.error, 400)
 
@@ -1477,6 +1494,7 @@ async function handleEventScoped(
         userId: credential.userId,
         search: url.searchParams.get("search") ?? undefined,
         status: url.searchParams.get("status") ?? undefined,
+        now: Date.now(),
         page: paging.page,
         pageSize: paging.pageSize,
       })
@@ -1493,6 +1511,7 @@ async function handleEventScoped(
         eventRef,
         userId: credential.userId,
         formRef: tail[0],
+        now: Date.now(),
       })
       if (result === null)
         return errorResponse(`No event with slug "${eventRef}".`, 404)
@@ -1548,6 +1567,7 @@ async function handleEventScoped(
         sessionId: url.searchParams.get("session_id") ?? undefined,
         status: url.searchParams.get("status") ?? undefined,
         search: url.searchParams.get("search") ?? undefined,
+        now: Date.now(),
         page: paging.page,
         pageSize: paging.pageSize,
       })
@@ -1564,6 +1584,7 @@ async function handleEventScoped(
         eventRef,
         userId: credential.userId,
         taskId: tail[0],
+        now: Date.now(),
       })
       if (result === null)
         return errorResponse(`No event with slug "${eventRef}".`, 404)
@@ -1842,7 +1863,7 @@ async function handleEventScoped(
       })
       if (result === null)
         return errorResponse(`No event with slug "${eventRef}".`, 404)
-      if (result.unknownResource)
+      if ("unknownResource" in result && result.unknownResource)
         return errorResponse(`Unknown resource "${resource}".`, 404)
       return jsonResponse(result, 200, gate.headers)
     }
@@ -2338,7 +2359,10 @@ async function handleSessionFiles(
     return jsonResponse(result, 201, gate.headers)
   }
 
-  const body = (await readJsonBody(req)) ?? {}
+  const parsedBody = await readJsonBody(req)
+  if (parsedBody.malformed)
+    return errorResponse("Malformed JSON body.", 400)
+  const body = parsedBody.body ?? {}
 
   // POST …/files — initiate the two-phase upload.
   if (tail.length === 0 && method === "POST") {

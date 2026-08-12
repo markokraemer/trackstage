@@ -69,6 +69,18 @@ export const createAuth = (ctx: GenericCtx<DataModel>) => {
     baseURL: siteUrl,
     trustedOrigins,
     database: authComponent.adapter(ctx),
+    advanced: {
+      ipAddress: {
+        // Both production front doors terminate at Cloudflare. The Worker
+        // copies its single-valued, edge-authenticated CF-Connecting-IP into
+        // this application-owned header before the auth subrequest crosses to
+        // Convex (src/lib/auth-server.ts). Prefer it over X-Forwarded-For:
+        // that header may be a multi-hop chain, which Better Auth correctly
+        // refuses without an exact trusted-proxy list. Local/CI has no edge;
+        // CI disables this limiter explicitly.
+        ipAddressHeaders: ["x-trackstage-client-ip"],
+      },
+    },
     // Session cookies: Better Auth defaults are already the safe ones — the
     // session token is httpOnly + sameSite=lax, and `secure` switches on
     // automatically because it follows the baseURL scheme (https in every
