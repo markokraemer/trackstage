@@ -9,7 +9,7 @@ import { ProductShot } from "@/components/marketing/product-shot"
  * "place it in the hero with action to start playing"). The still stays the
  * hero — it loads instantly and reads as the real product — and the play
  * affordance opens the film in a lightbox. `/launch.mp4` is the 1080p web
- * render of the final cut (82s, CRF 25, ~11 MiB — well under the 25 MiB
+ * render of the final cut (93s, narrated, CRF 25 — well under the 25 MiB
  * Workers static-asset cap, and half the file the old cut shipped as, because
  * visitor bandwidth matters more here than pixel-perfection). The full-quality
  * master lives at `video/out/trackstage-launch-final.mp4`, and a 720p
@@ -61,7 +61,7 @@ export function HeroVideoShot() {
             </span>
             <span className="text-sm font-medium text-foreground">
               Watch the film
-              <span className="ml-1.5 text-muted-foreground">81 sec</span>
+              <span className="ml-1.5 text-muted-foreground">93 sec</span>
             </span>
           </span>
         </button>

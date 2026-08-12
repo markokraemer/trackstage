@@ -3408,3 +3408,35 @@ which could make a new base read inbound without a fresh opt-in and reject its
 first edit as a conflict. `airtable.saveConnection` now resets the switch,
 cursor/results/counts, and event-scoped baseline rows on reconnect. The complete
 live outbound/inbound flow passed after the repair.
+
+## 2026-08-12 ~21:40 — Demo-mode gate + honest /get copy
+
+Marko asked whether the demo credentials on the login page were env-gated for
+self-deploys. They weren't: seeding was manual, but the UI hardcoded the
+credentials everywhere. Added `VITE_DEMO_MODE` (default off in production
+builds, on in dev and in our committed env files) gating the login card, the
+homepage demo entries, the portal demo-speaker card and the feature-tour demo
+links; gave `seed:setup` an optional `password` arg; documented both in the
+README self-host section. Also removed the false "goes public automatically /
+straight redirect" claim from `/get` — kept the countdown and the live
+repo-visibility check. typecheck · lint · build · 388 unit tests green.
+
+## 2026-08-12 ~22:00 — The launch film speaks (ElevenLabs VO, 93s cut)
+
+Marko: make the film more engaging, full audio, ElevenLabs end-to-end. Wrote a
+16-line narration (one line per scene, the landing page's own language),
+generated it with ElevenLabs Brian / eleven_multilingual_v2 via the new
+`video/vo/generate.mjs` pipeline (silence-trimmed, −16 LUFS, measured lengths
+in `vo/durations.json`), and wired it into `TrackstageLaunchFinal`: each line
+placed at its scene's absolute start, Digital Clouds bed ducking 0.62→0.22
+under speech. Scenes retimed so every line breathes — graphics scenes
+lengthened, triage/portal/mcp clips slowed ≤12% via `stretched()`; 82s → 93.4s.
+Two lines were rewritten shorter after measuring (Brian reads ~0.44s/word —
+budget words, then measure, then retime). SFX auditioned-in-thought and
+rejected: same reason as the EDM bed, it reads as pitch. Web cut (1080p CRF 25,
+14.6 MiB) → public/launch.mp4, Discord cut 7.7 MB, both faststart-verified;
+hero label now 93 sec. VO QA: loudness deltas prove speech placement; frame QA
+at the stretched tails shows no freezes. NOTE: free-tier ElevenLabs key —
+attribution + non-commercial terms; regenerate on a paid plan if the film ever
+fronts a commercial offering (CREDITS.md has the exact path). Marko's API key
+lives only in the chat/shell — rotate it.

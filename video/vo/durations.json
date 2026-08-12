@@ -1,0 +1,66 @@
+{
+  "cold-open": {
+    "seconds": 3.628458,
+    "frames": 109
+  },
+  "reveal": {
+    "seconds": 7.468141,
+    "frames": 225
+  },
+  "form-builder": {
+    "seconds": 4.359819,
+    "frames": 131
+  },
+  "cfp": {
+    "seconds": 7.151769,
+    "frames": 215
+  },
+  "triage": {
+    "seconds": 5.159841,
+    "frames": 155
+  },
+  "commit": {
+    "seconds": 3.940431,
+    "frames": 119
+  },
+  "portal": {
+    "seconds": 4.841451,
+    "frames": 146
+  },
+  "agenda": {
+    "seconds": 5.38229,
+    "frames": 162
+  },
+  "autoplace": {
+    "seconds": 2.242177,
+    "frames": 68
+  },
+  "publish": {
+    "seconds": 4.884671,
+    "frames": 147
+  },
+  "copilot": {
+    "seconds": 5.432676,
+    "frames": 163
+  },
+  "mcp": {
+    "seconds": 4.55839,
+    "frames": 137
+  },
+  "embeds": {
+    "seconds": 3.789138,
+    "frames": 114
+  },
+  "landing": {
+    "seconds": 2.104717,
+    "frames": 64
+  },
+  "stats": {
+    "seconds": 6.139841,
+    "frames": 185
+  },
+  "close": {
+    "seconds": 5.547846,
+    "frames": 167
+  }
+}

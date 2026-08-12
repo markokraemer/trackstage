@@ -153,7 +153,17 @@ pnpm dev                          # http://localhost:3000
 pnpm exec convex run seed:setup   # demo event, organizer account, sample data
 ```
 
-Sign in with `organizer@demo.sessionboard.dev` / `demo2026`.
+Sign in with `organizer@demo.sessionboard.dev` / `demo2026`. Seeding is always an
+explicit step — nothing is created on deploy. Two knobs for self-hosting:
+
+- `seed:setup` accepts your own password, so the sample data doesn't come with the
+  publicly known one: `pnpm exec convex run seed:setup '{"password": "your-own"}'`
+- Demo entrances in the UI (the credentials card on `/login`, the demo entry points on
+  the homepage, the demo speaker shortcut on `/portal`) only render when the build sets
+  `VITE_DEMO_MODE=1`. It's on in this repo's committed `.env.production` /
+  `.env.staging` because our hosted deployments keep the demo seeded — delete that line
+  for your own deployment and the UI stops advertising the demo world. Local `pnpm dev`
+  always shows the demo entrances.
 
 ### Deploy
 

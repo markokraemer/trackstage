@@ -11,6 +11,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Field, FieldDescription, FieldLabel } from "@/components/ui/field"
 import { Logo } from "@/components/brand/logo"
+import { DEMO_MODE } from "@/lib/demo-mode"
 import {
   DEMO_PORTAL_TOKEN,
   parsePortalToken,
@@ -108,28 +109,32 @@ export function PortalSignedOut({
           </CardContent>
         </Card>
 
-        <Card className="mt-4 bg-accent/60" size="sm">
-          <CardContent className="gap-2">
-            <p className="flex items-center gap-2 text-sm font-medium text-foreground">
-              <RiSparkling2Line
-                size={16}
-                aria-hidden
-                className="text-primary"
-              />
-              Just looking around?
-            </p>
-            <p className="text-sm text-muted-foreground">
-              Open the demo speaker portal for Ava Nakamura — a real speaker in
-              the sample event, with submissions, a profile and open tasks.
-            </p>
-            <div>
-              <Button variant="outline" size="sm" onClick={openDemo}>
-                Open the demo speaker portal
-                <RiArrowRightLine aria-hidden />
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+        {/* The demo speaker only exists where the demo world is seeded. */}
+        {DEMO_MODE ? (
+          <Card className="mt-4 bg-accent/60" size="sm">
+            <CardContent className="gap-2">
+              <p className="flex items-center gap-2 text-sm font-medium text-foreground">
+                <RiSparkling2Line
+                  size={16}
+                  aria-hidden
+                  className="text-primary"
+                />
+                Just looking around?
+              </p>
+              <p className="text-sm text-muted-foreground">
+                Open the demo speaker portal for Ava Nakamura — a real speaker
+                in the sample event, with submissions, a profile and open
+                tasks.
+              </p>
+              <div>
+                <Button variant="outline" size="sm" onClick={openDemo}>
+                  Open the demo speaker portal
+                  <RiArrowRightLine aria-hidden />
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        ) : null}
       </div>
     </main>
   )

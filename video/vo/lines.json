@@ -1,0 +1,79 @@
+{
+  "voice": {
+    "name": "Brian",
+    "id": "nPczCjzI2devNBz1zQrb",
+    "model": "eleven_multilingual_v2",
+    "settings": {
+      "stability": 0.45,
+      "similarity_boost": 0.8,
+      "style": 0.15,
+      "use_speaker_boost": true
+    }
+  },
+  "lines": [
+    {
+      "id": "cold-open",
+      "text": "Software for running a call for papers has always been sold the same way."
+    },
+    {
+      "id": "reveal",
+      "text": "This is Trackstage. Call for papers, agenda, and speaker management — in one fast, simple, open-source tool."
+    },
+    {
+      "id": "form-builder",
+      "text": "You build the form yourself — every question, every track."
+    },
+    {
+      "id": "cfp",
+      "text": "Speakers apply in minutes, straight from a link. No account to create, no password to remember."
+    },
+    {
+      "id": "triage",
+      "text": "Review everything in one place, and stage your decisions — nothing sends by accident."
+    },
+    {
+      "id": "commit",
+      "text": "When you're sure, commit the queue — and every email goes out at once."
+    },
+    {
+      "id": "portal",
+      "text": "Every speaker gets their own portal — submissions, profile, and tasks."
+    },
+    {
+      "id": "agenda",
+      "text": "Then drag the agenda together — rooms, tracks and time slots, with conflicts caught live."
+    },
+    {
+      "id": "autoplace",
+      "text": "Or let auto-place schedule the rest for you."
+    },
+    {
+      "id": "publish",
+      "text": "Publish when you're ready — a clean public schedule, with calendar invites included."
+    },
+    {
+      "id": "copilot",
+      "text": "There's an AI copilot built in. Ask it to run your event — it always checks with you first."
+    },
+    {
+      "id": "mcp",
+      "text": "Or drive the whole thing from Claude, ChatGPT, or Codex."
+    },
+    {
+      "id": "embeds",
+      "text": "And when your program is ready, embed it on your own website."
+    },
+    {
+      "id": "landing",
+      "text": "Free, open source, and live right now."
+    },
+    {
+      "id": "stats",
+      "text": "The whole product is MIT licensed. Self-host it, or use the cloud beta — for exactly nothing."
+    },
+    {
+      "id": "close",
+      "text": "Trackstage. Ready to open your call for papers? It's waiting at trackstage dot app."
+    }
+  ]
+}

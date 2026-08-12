@@ -589,3 +589,25 @@ flag, sync cursor, counts, inbound result, or per-submission status baselines.
 connection fields, and deletes the event's `airtableRecordSync` rows before the
 first outbound mirror establishes a fresh baseline. Status can come back only
 after the organizer explicitly opts in again.
+
+## Demo surfaces are a build flag, not a birthright (2026-08-12)
+
+The demo credentials card on `/login`, the demo entry points on the homepage,
+the demo speaker shortcut on `/portal` and the demo links in the feature tour
+all assume a seeded demo world — which only our hosted deployments have.
+Seeding was already an explicit step (`seed:setup`, never run on deploy), but
+the UI advertised the credentials unconditionally, so a self-hosted build
+showed a login pair that either didn't exist or, worse after seeding, was the
+publicly known `demo2026`.
+
+Now: `src/lib/demo-mode.ts` exports `DEMO_MODE = import.meta.env.DEV ||
+VITE_DEMO_MODE === "1"`. Off by default in production builds; our committed
+`.env.production`/`.env.staging` set `VITE_DEMO_MODE=1`; local dev always
+shows the entrances (dev talks to a seeded playground, and e2e runs `vite
+dev`). `seed:setup` additionally takes an optional `password` so a
+self-hoster can keep the sample data without the well-known credential.
+
+Same day, `/get` copy: dropped "goes public automatically on {date} — this
+page becomes a straight redirect", because flipping the repo public is a
+manual act, not a scheduled one. The countdown stays; the live GitHub check
+that redirects once the repo *is* public also stays (that part is true).
