@@ -39,6 +39,7 @@ import { humanMessage } from "./lib/errors"
 import {
   DEFAULT_TEMPLATES,
   TEMPLATE_KEYS,
+  TEMPLATE_VARIABLES,
   defaultTemplate,
   portalLinkFor,
   siteUrl,
@@ -1903,7 +1904,7 @@ export const listTemplates = internalQuery({
     return {
       templateCount: rows.length,
       templates: rows,
-      variables: ["speakerName", "firstName", "sessionTitle", "eventName", "portalLink"],
+      variables: [...TEMPLATE_VARIABLES],
       note: "Bodies are previewed to the first 200 characters — call get_template for the full text of one. Placeholders use {{variable}} syntax and are filled in when the email is queued.",
     }
   },
@@ -1933,7 +1934,7 @@ export const getTemplate = internalQuery({
       subject: existing?.subject ?? fallback.subject,
       body: existing?.body ?? fallback.body,
       customized: existing !== null,
-      variables: ["speakerName", "firstName", "sessionTitle", "eventName", "portalLink"],
+      variables: [...TEMPLATE_VARIABLES],
       note: "Rewrite it with update_template, then proof it with send_test_email.",
     }
   },

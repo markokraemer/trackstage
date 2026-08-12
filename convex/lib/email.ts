@@ -25,6 +25,12 @@ export const TEMPLATE_VARIABLES = [
   // formatted in the event's timezone, and a link straight back to the form.
   "closeDate",
   "formLink",
+  // Task reminders only (convex/comms.ts::queueTaskReminders): the recipient's
+  // own outstanding tasks, one per line with their due dates, and the date of
+  // the nearest one on its own. A reminder that can't say what is outstanding
+  // is just noise, so the default body names them.
+  "taskList",
+  "nextDueDate",
 ] as const
 
 export type TemplateVariable = (typeof TEMPLATE_VARIABLES)[number]
@@ -165,9 +171,11 @@ export const DEFAULT_TEMPLATES: TemplateDefinition[] = [
     body: [
       "Hi {{firstName}},",
       "",
-      "A friendly nudge — you still have a few speaker tasks outstanding for {{eventName}}. They usually take less than ten minutes in total.",
+      "A friendly nudge — these are still outstanding for {{eventName}}:",
       "",
-      "Open your portal to see exactly what's left and complete it inline:",
+      "{{taskList}}",
+      "",
+      "You can complete them straight from your speaker portal:",
       "{{portalLink}}",
       "",
       "Getting these in on time lets us publish the programme, print your details correctly and make sure your session runs smoothly on the day.",

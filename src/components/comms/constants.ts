@@ -85,6 +85,15 @@ const PLACEHOLDER_COPY: Record<
     label: "Submission form link (deadline reminders)",
     sample: "https://trackstage.app/submit/ai-summit-2026/cfp",
   },
+  taskList: {
+    label: "Their outstanding tasks, with due dates (task reminders)",
+    sample:
+      "• Upload your slides — due Friday, August 14\n• Confirm your travel dates — was due Monday, August 10",
+  },
+  nextDueDate: {
+    label: "Their nearest task due date (task reminders)",
+    sample: "Friday, August 14",
+  },
 }
 
 /**

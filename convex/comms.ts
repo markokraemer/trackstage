@@ -31,6 +31,7 @@ import {
   defaultTemplate,
   emailFrom,
   emailFromAddress,
+  escapeHtml,
   looksLikeHtml,
   portalLinkFor,
   renderBrandedEmail,
@@ -257,7 +258,8 @@ export async function queueTaskReminders(
     .take(1000)
 
   const horizon = opts.dueWithinMs === undefined ? null : opts.now + opts.dueWithinMs
-  const personIds = new Set<Id<"people">>()
+  // Keep the tasks themselves, not just who owns one: the email names them.
+  const byPerson = new Map<Id<"people">, Array<Doc<"tasks">>>()
   for (const task of tasks) {
     if (task.completedAt !== undefined) continue
     if (horizon !== null) {
@@ -265,12 +267,24 @@ export async function queueTaskReminders(
       if (task.dueAt === undefined) continue
       if (task.dueAt > horizon) continue
     }
-    personIds.add(task.personId)
+    const list = byPerson.get(task.personId)
+    if (list) list.push(task)
+    else byPerson.set(task.personId, [task])
   }
+
+  const event = await ctx.db.get("events", opts.eventId)
+  const timezone = event?.timezone ?? "UTC"
+  // Whether the list is joined with newlines or <br> depends on how the body
+  // was authored, and an organizer may have rewritten this template as HTML —
+  // so decide once, here, and escape the task titles when it is HTML. A plain
+  // text body is escaped wholesale at render time, so escaping there too would
+  // show speakers `&amp;`.
+  const template = await resolveTemplate(ctx, opts.eventId, "reminder")
+  const asHtml = looksLikeHtml(template.body)
 
   let queued = 0
   let skipped = 0
-  for (const personId of personIds) {
+  for (const [personId, own] of byPerson) {
     if (await wasRecentlyMessaged(ctx, personId, "reminder", opts.now)) {
       skipped++
       continue
@@ -279,10 +293,67 @@ export async function queueTaskReminders(
       eventId: opts.eventId,
       personId,
       templateKey: "reminder",
+      extraVars: taskReminderVars(own, opts.now, timezone, asHtml),
     })
     queued++
   }
   return { queued, skipped }
+}
+
+/** How many tasks the email spells out before it says "and N more". */
+const MAX_LISTED_TASKS = 5
+
+/**
+ * The two per-recipient placeholders a task reminder needs (sbek CNT-08): the
+ * outstanding tasks by name with their due dates, and the nearest due date on
+ * its own for anyone who wants it in a subject line.
+ *
+ * Soonest first, undated last — the order someone should work through them.
+ */
+function taskReminderVars(
+  own: Array<Doc<"tasks">>,
+  now: number,
+  timezone: string,
+  asHtml: boolean,
+): { taskList: string; nextDueDate: string } {
+  const sorted = [...own].sort(
+    (a, b) => (a.dueAt ?? Number.MAX_SAFE_INTEGER) - (b.dueAt ?? Number.MAX_SAFE_INTEGER),
+  )
+  const shown = sorted.slice(0, MAX_LISTED_TASKS)
+  const lines = shown.map((task) => {
+    const when =
+      task.dueAt === undefined
+        ? ""
+        : task.dueAt < now
+          ? ` — was due ${formatDueDate(task.dueAt, timezone)}`
+          : ` — due ${formatDueDate(task.dueAt, timezone)}`
+    return `• ${task.title}${when}`
+  })
+  const rest = sorted.length - shown.length
+  if (rest > 0) {
+    lines.push(`• …and ${rest} more in your portal`)
+  }
+  const soonest = sorted.find((task) => task.dueAt !== undefined)?.dueAt
+  return {
+    taskList: asHtml
+      ? lines.map((line) => escapeHtml(line)).join("<br />")
+      : lines.join("\n"),
+    nextDueDate: soonest === undefined ? "" : formatDueDate(soonest, timezone),
+  }
+}
+
+/** "Friday, August 14" — a due date in the event's own timezone. */
+function formatDueDate(dueAt: number, timezone: string): string {
+  try {
+    return new Intl.DateTimeFormat("en-US", {
+      timeZone: timezone,
+      weekday: "long",
+      month: "long",
+      day: "numeric",
+    }).format(new Date(dueAt))
+  } catch {
+    return new Date(dueAt).toDateString()
+  }
 }
 
 /**
@@ -641,6 +712,69 @@ export const listMessages = query({
   },
 })
 
+/**
+ * Every event gets its own row-level copy of the shipped templates at seed
+ * time, so improving the shipped copy does nothing for events that already
+ * exist — their stored copy wins in `resolveTemplate`.
+ *
+ * This upgrades those copies, and only those: a row is rewritten only when its
+ * body is still byte-for-byte a default we have since superseded, which means
+ * nobody has touched it. An organizer's own wording is never overwritten.
+ * Idempotent — run it as often as you like.
+ *
+ *   npx convex run comms:upgradeSeededTemplates '{}'
+ */
+export const SUPERSEDED_TEMPLATE_BODIES: Record<
+  string,
+  Array<string> | undefined
+> = {
+  // Superseded 2026-08-12: the reminder never said what was outstanding
+  // (sbek CNT-08). The replacement lists the tasks and their due dates.
+  reminder: [
+    [
+      "Hi {{firstName}},",
+      "",
+      "A friendly nudge — you still have a few speaker tasks outstanding for {{eventName}}. They usually take less than ten minutes in total.",
+      "",
+      "Open your portal to see exactly what's left and complete it inline:",
+      "{{portalLink}}",
+      "",
+      "Getting these in on time lets us publish the programme, print your details correctly and make sure your session runs smoothly on the day.",
+      "",
+      "If something is blocking you, just reply to this email and we'll help.",
+      "",
+      "Thank you,",
+      "The {{eventName}} programme team",
+    ].join("\n"),
+  ],
+}
+
+export const upgradeSeededTemplates = internalMutation({
+  args: {},
+  returns: v.object({ upgraded: v.number(), left: v.number() }),
+  handler: async (ctx) => {
+    let upgraded = 0
+    let left = 0
+    // A handful of rows per event and only ever run by hand — a full scan is
+    // cheaper than carrying an index nothing else would use.
+    const rows = await ctx.db.query("emailTemplates").take(5000)
+    for (const row of rows) {
+      const stale = SUPERSEDED_TEMPLATE_BODIES[row.key]
+      if (!stale || !stale.includes(row.body)) {
+        left++
+        continue
+      }
+      const current = defaultTemplate(row.key)
+      await ctx.db.patch("emailTemplates", row._id, {
+        subject: current.subject,
+        body: current.body,
+      })
+      upgraded++
+    }
+    return { upgraded, left }
+  },
+})
+
 // ——— Queueing ————————————————————————————————————————————————————————————
 
 /**
@@ -700,12 +834,35 @@ export const sendTestToSelf = mutation({
       .withIndex("by_submitterId", (q) => q.eq("submitterId", recipient._id))
       .first()
 
+    // A proof of the reminder has to show the task list, or the organizer is
+    // proofing a hole in their own email. Use the preview recipient's real
+    // outstanding tasks; if they have none, show what one looks like.
+    const previewVars: Record<string, string> = submission
+      ? {}
+      : { sessionTitle: "Your session title" }
+    if (args.key === "reminder") {
+      const now = Date.now()
+      const event = await ctx.db.get("events", args.eventId)
+      const own = (
+        await ctx.db
+          .query("tasks")
+          .withIndex("by_personId", (q) => q.eq("personId", recipient._id))
+          .take(100)
+      ).filter((task) => task.completedAt === undefined)
+      const template = await resolveTemplate(ctx, args.eventId, "reminder")
+      const vars = taskReminderVars(own, now, event?.timezone ?? "UTC", looksLikeHtml(template.body))
+      previewVars.taskList = own.length
+        ? vars.taskList
+        : "• Upload your slides — due Friday, August 14"
+      previewVars.nextDueDate = vars.nextDueDate || "Friday, August 14"
+    }
+
     const messageId = await queueMessage(ctx, {
       eventId: args.eventId,
       personId: recipient._id,
       templateKey: args.key,
       submissionId: submission?._id,
-      extraVars: submission ? undefined : { sessionTitle: "Your session title" },
+      extraVars: previewVars,
       toEmailOverride: user.email,
     })
     await ctx.scheduler.runAfter(0, internal.comms.deliverPending, {})
