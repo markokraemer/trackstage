@@ -175,8 +175,11 @@ function canonical(path) {
   if (!demoRef) return path
   const base = `/app/${demoRef.workspaceSlug}/${demoRef.eventSlug}`
   if (path === "/app") return base
-  // `/app/workspace` is workspace-level, not event-level.
-  if (path === "/app/workspace") return `/app/${demoRef.workspaceSlug}/workspace`
+  // `/app/workspace…` is workspace-level, not event-level — keep any query
+  // string (`?tab=team&invite=1`) attached to the canonical address.
+  if (path === "/app/workspace" || path.startsWith("/app/workspace?")) {
+    return `/app/${demoRef.workspaceSlug}/workspace${path.slice("/app/workspace".length)}`
+  }
   const rest = path.replace(/^\/app\//, "")
   const section = rest.split(/[/?]/)[0]
   return EVENT_SECTIONS.includes(section) ? `${base}/${rest}` : path
@@ -341,8 +344,9 @@ async function captureMarketingShots(page) {
  *
  * Every shot is wrapped in `safeShot`: a missing control, a renamed label, or
  * an empty dataset skips that ONE file and logs it — the run always finishes.
- * Read-only navigation + opening dialogs only; every dialog is dismissed with
- * its own Cancel button (never the destructive confirm action).
+ * Read-only navigation only: nothing here clicks a destructive confirm, and
+ * the one write-shaped screen (the invite panel) is reached by its own
+ * `?invite=1` deep link and left without submitting.
  */
 async function captureDocsShots(page) {
   const written = []
@@ -357,14 +361,6 @@ async function captureDocsShots(page) {
       const message = error instanceof Error ? error.message : String(error)
       log(`skipped: ${name} — ${message.slice(0, 160)}`)
     }
-  }
-
-  /** Close whatever dialog/drawer is open via its own Cancel affordance. */
-  async function dismiss(page) {
-    const cancel = page.getByRole("button", { name: /^cancel$/i }).first()
-    if (await tryClick(page, cancel, "dismiss dialog (Cancel)")) return
-    await page.keyboard.press("Escape").catch(() => {})
-    await page.waitForTimeout(300)
   }
 
   // gs-dashboard: the organizer dashboard.
@@ -474,17 +470,26 @@ async function captureDocsShots(page) {
     await shot(page, "workspace-settings", DOCS_OUT)
   })
 
+  // workspace-team: the member table now has its own tab (General · Team ·
+  // Events) rather than sitting in one long column.
+  await safeShot("workspace-team", async () => {
+    await gotoOrganizer(page, "/app/workspace?tab=team")
+    await settle(page, 700)
+    await shot(page, "workspace-team", DOCS_OUT)
+  })
+
+  // workspace-invite: inviting is an IN-PLACE panel that takes over the Team
+  // card (never a second dialog stacked on the page), reachable directly via
+  // `?tab=team&invite=1` — see src/components/workspace/members-card.tsx.
   await safeShot("workspace-invite", async () => {
-    await gotoOrganizer(page, "/app/workspace")
-    await settle(page)
-    const opened = await tryClick(
-      page,
-      page.getByRole("button", { name: /^invite teammate$/i }),
-      "open Invite teammate dialog"
-    )
-    if (!opened) throw new Error("Invite teammate control not reachable")
-    await elementShot(page, page.locator('[data-slot="dialog-content"]'), "workspace-invite")
-    await dismiss(page)
+    await gotoOrganizer(page, "/app/workspace?tab=team&invite=1")
+    await settle(page, 900)
+    const panel = page
+      .locator('[data-slot="card"]')
+      .filter({ hasText: /invite (a )?teammate/i })
+      .first()
+    if ((await panel.count()) === 0) throw new Error("invite panel not reachable")
+    await elementShot(page, panel, "workspace-invite")
   })
 
   // account-settings: there is no avatar-menu MODAL in this build — "Account
@@ -552,11 +557,18 @@ async function captureAgendaShots(page) {
  * Six frames of a real agenda drag, showing the whole interaction language:
  * idle → picked up (ghost + time chip) → moved (chip follows, new slot) →
  * hovering a clash (ghost and chip go red, and name the session it would
- * double-book) → back to a free slot → dropped and settled.
+ * double-book) → back to a free slot → let go.
  *
  * dnd-kit needs a mousedown plus several small moves before it activates, and
  * each frame waits for the preview to catch up so the GIF shows the ghost and
  * the chip rather than a blur between them.
+ *
+ * The drag is CANCELLED with Escape rather than dropped (2026-08-12): this
+ * runs against the shared demo event, which the launch-video pipeline and the
+ * e2e gate also drive, and a screenshot refresh has no business re-timetabling
+ * somebody else's programme. Every frame that teaches the interaction is
+ * already captured before the release, and cancelling has the bonus that the
+ * looping GIF ends exactly where it began.
  */
 async function captureAgendaFlow(page) {
   await hideDevtools(page)
@@ -593,14 +605,16 @@ async function captureAgendaFlow(page) {
       await page.screenshot({ path: resolve(FRAMES, "f4.png") })
     }
 
-    // Back to open space, then let go — the card springs into the slot.
+    // Back to open space, then let go — Escape first, so the demo agenda is
+    // exactly as we found it (see the note above).
     await page.mouse.move(nx, y + 150, { steps: 8 })
     await page.waitForTimeout(350)
     await page.screenshot({ path: resolve(FRAMES, clash ? "f5.png" : "f4.png") })
+    await page.keyboard.press("Escape")
     await page.mouse.up()
     await page.waitForTimeout(900)
     await page.screenshot({ path: resolve(FRAMES, clash ? "f6.png" : "f5.png") })
-    log(`captured ${clash ? 6 : 5} agenda drag frames`)
+    log(`captured ${clash ? 6 : 5} agenda drag frames (drag cancelled — nothing moved)`)
   } catch {
     // Fallback: cycle the view switcher so the GIF still shows real product.
     log("drag frames unavailable — falling back to view-switch frames")

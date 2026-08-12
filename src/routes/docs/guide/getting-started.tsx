@@ -35,44 +35,85 @@ function Page() {
               alt="The Trackstage sign-up card filled in with a name, email and password"
               caption="No credit card, no trial clock — it is open source."
             />
+            <p className="doc-prose">
+              We email you a confirmation link. Until you open it, signing in
+              lands you on a “Confirm your email” page with a Resend button — so
+              nothing else is in the way, and nothing is lost.
+            </p>
           </Step>
 
-          <Step title="You land in a workspace straight away, and it is empty. A workspace is your organisation: it owns your events and your team.">
+          <Step title="Setup takes over the whole screen: three short questions and nothing else. First, name your workspace — your organisation, the thing that owns your events and your team.">
             <Shot
-              src="walkthrough/02-empty-workspace.png"
-              alt="A brand-new workspace with no events yet and a Create your first event button"
-              caption="Nothing to configure here. Renaming it and inviting colleagues can wait."
+              src="walkthrough/02-name-your-workspace.png"
+              alt="The first onboarding screen: Welcome to Trackstage, with a Workspace name field filled in as Devcon Events"
+              caption="Three dots at the top say how far there is to go. “Skip” moves past one question — it never dumps you out."
             />
           </Step>
 
-          <Step title="Press “Create your first event”. Type the name — the public web address and your timezone fill themselves in.">
+          <Step title="Then the event itself. Only the name is required; the public web address writes itself underneath as you type.">
             <Shot
-              src="walkthrough/03-create-event.png"
-              alt="The Create an event dialog with the name Devcon Berlin 2026, a matching web address and the Europe/Berlin timezone"
-              caption="Three fields. The grey line under the address is the page your speakers will get."
+              src="walkthrough/03-your-event.png"
+              alt="The second onboarding screen: event name Devcon Berlin 2026, its public address, an event type of Conference and a short description"
+              caption="Type and description are optional — the description is the paragraph speakers read on your public page."
+            />
+            <p className="doc-prose">
+              The address under the name has two parts:{" "}
+              <code>/e/{"{workspace}"}/{"{event}"}</code>. The second half comes
+              from the event name you just typed. The first is your
+              workspace&rsquo;s address, which starts out made from your own
+              name — change it once in Workspace settings and every link
+              follows.
+            </p>
+          </Step>
+
+          <Step title="Last, when and where. All optional: fill in what you know, leave the rest blank.">
+            <Shot
+              src="walkthrough/04-when-and-where.png"
+              alt="The third onboarding screen: start and end dates, the Europe/Berlin timezone and a venue"
+              caption="The timezone is guessed from your browser. Every date, deadline and calendar invite in the app follows it, so it is worth a glance."
             />
           </Step>
 
-          <Step title="You land on the event’s settings. Add the dates and the venue — this is what your public page and every calendar invite will say.">
+          <Step title="Press “Create event” and you are in — on your new event, with the app around you.">
             <Shot
-              src="walkthrough/04-event-details.png"
-              alt="Event settings for Devcon Berlin 2026 with dates, timezone and venue filled in"
-              caption="The row above the title — Account · Workspace · Event — is the whole hierarchy. These tabs change this one event."
+              src="walkthrough/05-welcome.png"
+              alt="The Trackstage app with a welcome card and confetti over the new event's settings page"
+              caption="The sidebar is the whole app: Dashboard and Copilot at the top, then Program, Speakers and Share, with Event settings pinned at the bottom."
             />
+            <p className="doc-prose">
+              The <strong>Getting started</strong> list above it counts off the
+              five things worth doing first, and ticks them itself as you do
+              them. Close it whenever you like — it disappears for good once all
+              five are done.
+            </p>
+          </Step>
+
+          <Step title="Event settings is where everything about this one event lives, on seven tabs.">
+            <Shot
+              src="walkthrough/06-event-settings.png"
+              alt="Event settings for Devcon Berlin 2026: the Event details form with dates, timezone and venue, and the Branding card beside it"
+              caption="Event details · Rooms & tracks · Team · Fields & options · Statuses · Integrations · Activity. Everything here changes this event and no other."
+            />
+            <p className="doc-prose">
+              Your dates and venue are already filled in from setup. Branding
+              sits beside them: a logo and a header image, which appear on your
+              public pages, in the speaker portal and in embedded widgets.
+            </p>
           </Step>
 
           <Step title="Add your rooms and tracks while you are here — Settings → Rooms & tracks. The agenda has nowhere to put a session until a room exists.">
             <Shot
-              src="walkthrough/06-rooms-and-tracks.png"
+              src="walkthrough/07-rooms-and-tracks.png"
               alt="Rooms and tracks for Devcon Berlin 2026: the Aula and Workshop rooms, and two coloured tracks"
               caption="Tracks colour every card and become the columns in the track view."
             />
           </Step>
 
-          <Step title="The dashboard is now your home. On day one it is honest about being empty and tells you what to do next.">
+          <Step title="The dashboard is your home. On day one it is honest about being empty and tells you what to do next.">
             <Shot
-              src="walkthrough/05-empty-dashboard.png"
-              alt="The Devcon Berlin 2026 dashboard on day one, with empty counts and a next step"
+              src="walkthrough/08-empty-dashboard.png"
+              alt="The Devcon Berlin 2026 dashboard on day one, with zero counts and a getting-started checklist in the sidebar"
+              caption="Two of five ticked already: the event details and the rooms and tracks you just added."
             />
           </Step>
 

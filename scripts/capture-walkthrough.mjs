@@ -10,11 +10,20 @@
  * This script instead provisions a BRAND-NEW account on every run and drives
  * the whole journey through the real UI, shooting it as it goes:
  *
- *   sign up → empty workspace → create "Devcon Berlin 2026" → empty dashboard
- *   → event details → rooms & tracks → build the CFP form → copy the public
- *   link → submit one talk as a speaker → it lands in the inbox → open it →
- *   stage it to the Accept Queue → commit the queue → speaker portal → assign
- *   a task → schedule the talk on the agenda → publish → public page live.
+ *   sign up → the onboarding wizard (workspace → event → when & where) →
+ *   the welcome moment → event settings → rooms & tracks → empty dashboard →
+ *   build the CFP form → copy the public link → submit one talk as a speaker
+ *   → it lands in the inbox → open it → stage it to the Accept Queue →
+ *   commit the queue → speaker portal → assign a task → schedule the talk on
+ *   the agenda → publish → public page live.
+ *
+ * The first five shots are the 2026-08-12 onboarding: a signed-up organizer
+ * with zero events never sees `/app/events` at all — the full-screen
+ * takeover (src/components/onboarding/onboarding-takeover.tsx) owns the
+ * screen until the event exists, then drops them on that event's settings
+ * page with confetti and one welcome card. `@example.com` addresses are born
+ * verified (the databaseHook in convex/auth.ts), so this run never meets the
+ * `/confirm-email` wall.
  *
  * Usage:
  *
@@ -30,7 +39,7 @@
  * `/app/:workspaceSlug/:eventSlug/…` and every public page at
  * `/e/:workspaceSlug/:eventSlug`. A fresh account's workspace slug is minted
  * server-side from the organizer's name, so the run READS both segments off
- * the URL the create-event dialog lands on and addresses everything
+ * the URL the onboarding wizard lands on and addresses everything
  * canonically from there — the bare legacy paths (`/app/agenda`) only ever
  * redirect through a stored pointer, which is a race we don't need in a
  * screenshot run, and the legacy `/e/:slug` resolves oldest-claimant-first,
@@ -66,10 +75,18 @@ const ORGANIZER = {
   email: `nora.feldmann.${RUN}@example.com`,
   password: "Devcon2026!walkthrough",
 }
+const WORKSPACE = "Devcon Events"
+// The workspace's web address — the first segment of every canonical URL.
+// Claimed once and auto-suffixed by the server on a re-run ("devcon-2"),
+// which still photographs far better than the minted "<name>-s-workspace".
+const WORKSPACE_SLUG = "devcon"
 const EVENT = {
   name: "Devcon Berlin 2026",
-  // The slug is derived from the name by the dialog and confirmed by the
+  // The slug is derived from the name by the wizard and confirmed by the
   // server (unique per workspace, and every run gets a fresh workspace).
+  type: "Conference",
+  description:
+    "Two days of talks on platform engineering and developer experience, in the middle of Berlin.",
   venue: "Kulturbrauerei, Prenzlauer Berg",
   // Two days, far enough out that the CFP story makes sense.
   starts: { month: 10, day: 13, year: 2026 },
@@ -95,7 +112,7 @@ const TASK = {
   title: "Send your talk photo and a one-line bio",
   // A due date is what makes the task sort to the top of the speaker's list
   // (convex/portal.ts orders by `dueAt`, and the three onboarding tasks
-  // acceptance creates have none), so shot 26 shows the task the organizer
+  // acceptance creates have none), so shot 29 shows the task the organizer
   // just assigned rather than only the automatic ones.
   due: { month: 9, day: 15, year: 2026 },
 }
@@ -306,16 +323,18 @@ async function main() {
     // `--resume <email> <workspace-slug> <event-slug>` re-shoots only the
     // agenda/publish tail on an account a previous run already built, so one
     // flaky navigation at the end never costs a whole 6-minute run.
-    // Shots 27 and 28 show the agenda BEFORE anything is scheduled, so they
+    // Shots 30 and 31 show the agenda BEFORE anything is scheduled, so they
     // can only ever come from the original run — resume picks up after them.
     state.ref = RESUME.ref
     await signIn(page, RESUME.email)
-    await scheduleAndPublish(page, state, { from: 29 })
+    await scheduleAndPublish(page, state, { from: 32 })
   } else {
     await signUp(page)
-    await createEvent(page, state)
-    await eventDetails(page, state)
+    await onboardingWizard(page, state)
+    await workspaceAddress(page, state)
+    await eventSettings(page, state)
     await roomsAndTracks(page, state)
+    await emptyDashboard(page, state)
     await buildForm(page, state)
     await submitATalk(context, state)
     await reviewAndAccept(page, state)
@@ -382,66 +401,131 @@ async function signUp(page) {
     "submitted the sign-up form"
   )
   await page.waitForURL(/\/app/, { timeout: 25000 })
-  await settle(page, 1600) // workspaces.ensure provisions the org on first paint
+  // The onboarding takeover owns every `/app` address until an event exists,
+  // so the first thing a new organizer ever sees is its first card — never a
+  // flash of the shell. Wait for it rather than for a settle.
+  await page
+    .locator("#onboarding-workspace-name")
+    .waitFor({ state: "visible", timeout: 45000 })
   log(`signed up as ${ORGANIZER.email}`)
 }
 
 /**
- * 02–04 — the empty workspace, the create dialog, the empty dashboard.
+ * 02–05 — the onboarding wizard, then the welcome moment.
  *
- * Event slugs are unique PER WORKSPACE now (convex/lib/publicLinks.ts), and
- * every run signs up a brand-new organizer with a brand-new workspace, so
- * "devcon-berlin-2026" is always free and there is no slug to reserve up
- * front. The server still hands back whatever it actually stored — we read it
- * (with the workspace segment) off the URL the app navigates to.
+ * Three cards (workspace → your event → when & where) and one "Create event",
+ * which is where the event is actually written; the wizard then navigates
+ * into the app at that event's settings page and arms the confetti welcome.
+ *
+ * Event slugs are unique PER WORKSPACE (convex/lib/publicLinks.ts) and every
+ * run signs up a brand-new organizer with a brand-new workspace, so
+ * "devcon-berlin-2026" is always free. The server still hands back whatever
+ * it stored — we read it (with the workspace segment) off the URL the app
+ * navigates to.
  */
-async function createEvent(page, state) {
-  await go(page, `${BASE}/app/events`)
-  await safeShot("02-empty-workspace", () => shot(page, "02-empty-workspace"))
+async function onboardingWizard(page, state) {
+  // Progress dots + card, cropped together: the dots are what say "three
+  // screens, you are on the first", and they live outside the card.
+  const card = page.locator("main > div").first()
+
+  await fillSticky(page, "#onboarding-workspace-name", WORKSPACE)
+  await safeShot("02-name-your-workspace", () =>
+    cropShot(page, card, "02-name-your-workspace")
+  )
+  await click(
+    page,
+    page.getByRole("button", { name: /^continue$/i }),
+    "wizard: named the workspace"
+  )
+
+  await fillSticky(page, "#onboarding-event-name", EVENT.name)
+  await pickOption(page, "#onboarding-event-type", EVENT.type).catch(() =>
+    log("skipped the event type")
+  )
+  await fillSticky(page, "#onboarding-event-description", EVENT.description).catch(
+    () => log("skipped the description")
+  )
+  await safeShot("03-your-event", () => cropShot(page, card, "03-your-event"))
+  await click(
+    page,
+    page.getByRole("button", { name: /^continue$/i }),
+    "wizard: named the event"
+  )
+
+  await pickDate(page, "onboarding-starts", EVENT.starts).catch(() =>
+    log("skipped the start date")
+  )
+  await pickDate(page, "onboarding-ends", EVENT.ends).catch(() =>
+    log("skipped the end date")
+  )
+  await fillSticky(page, "#onboarding-venue", EVENT.venue).catch(() =>
+    log("skipped the venue")
+  )
+  await safeShot("04-when-and-where", () => cropShot(page, card, "04-when-and-where"))
 
   await click(
     page,
-    page.getByRole("button", { name: /create your first event|^new event$/i }),
-    "opened the Create an event dialog"
+    page.getByRole("button", { name: /^create event$/i }),
+    "wizard: created the event"
   )
-  await fillSticky(page, "#new-event-name", EVENT.name)
-  await settle(page, 400)
-
-  await safeShot("03-create-event", () =>
-    cropShot(page, page.locator('[data-slot="dialog-content"]'), "03-create-event")
-  )
-
-  await click(page, page.getByRole("button", { name: /^create event$/i }), "created the event")
-  // The dialog navigates to the new event's canonical settings page —
-  // `/app/:workspaceSlug/:eventSlug/settings`.
-  await page.waitForURL(/\/app\/[^/]+\/[^/]+\/settings/, { timeout: 30000 })
+  await page.waitForURL(/\/app\/[^/]+\/[^/]+\/settings/, { timeout: 45000 })
   await settle(page, 1200)
 
   state.ref = refFromUrl(page.url())
   if (!state.ref) throw new Error(`could not read the event ref from ${page.url()}`)
-  log(
-    `created "${EVENT.name}" at /app/${state.ref.workspaceSlug}/${state.ref.eventSlug}`
+  log(`created "${EVENT.name}" at /app/${state.ref.workspaceSlug}/${state.ref.eventSlug}`)
+
+  // 05 — the welcome card, confetti still in the air, over the event's own
+  // settings page. Shot full-page: the point is where it lands you.
+  await safeShot("05-welcome", () => shot(page, "05-welcome"))
+  await tryClick(
+    page,
+    page.getByRole("button", { name: /let's go/i }),
+    "dismissed the welcome card"
   )
+  await settle(page, 800)
 }
 
-/** 04–05 — fill in the event, then look at the still-empty dashboard. */
-async function eventDetails(page, state) {
+/**
+ * No shot — housekeeping that has to happen BEFORE anything photographs a URL.
+ *
+ * The workspace slug is minted at sign-up from the person's own name
+ * (`convex/workspaces.ts::ensure` → "<name>'s workspace"), and the onboarding
+ * wizard's "name your workspace" step patches the NAME only — it never
+ * re-slugs. So a fresh account's canonical addresses read
+ * `/e/nora-feldmann-s-workspace/devcon-berlin-2026` until somebody sets the
+ * address by hand in Workspace settings → General, which is exactly what this
+ * does. Every later shot then shows the address a real organizer would have
+ * chosen rather than a leftover of their own name.
+ */
+async function workspaceAddress(page, state) {
+  await go(page, `${BASE}/app/${state.ref.workspaceSlug}/workspace`)
+  await settle(page)
+  try {
+    await fillSticky(page, "#workspace-slug", WORKSPACE_SLUG)
+    await click(page, page.getByRole("button", { name: /^save$/i }), "set the web address")
+    // The card follows the address it just changed; read what the server
+    // actually stored (it auto-suffixes on a clash) off the new URL.
+    await page.waitForURL(/\/app\/[^/]+\/workspace/, { timeout: 15000 })
+    await settle(page, 900)
+    const slug = new URL(page.url()).pathname.split("/")[2]
+    if (slug && slug !== state.ref.workspaceSlug) {
+      state.ref = { ...state.ref, workspaceSlug: slug }
+      log(`workspace address is now /${slug}`)
+    }
+  } catch (error) {
+    log(`kept the minted workspace address — ${String(error).split("\n")[0].slice(0, 120)}`)
+  }
+}
+
+/** 06 — the event's settings, already carrying everything the wizard asked. */
+async function eventSettings(page, state) {
   await go(page, appUrl(state, "/settings"))
   await settle(page)
-  await fillSticky(page, "#event-venue", EVENT.venue)
-  await pickDate(page, "event-starts", EVENT.starts)
-  await pickDate(page, "event-ends", EVENT.ends)
-
-  await safeShot("04-event-details", () => shot(page, "04-event-details"))
-
-  await click(page, page.getByRole("button", { name: /save changes/i }), "saved the event details")
-  await settle(page, 1200)
-
-  await go(page, appUrl(state))
-  await safeShot("05-empty-dashboard", () => shot(page, "05-empty-dashboard"))
+  await safeShot("06-event-settings", () => shot(page, "06-event-settings"))
 }
 
-/** 06 — the rooms and tracks every later screen depends on. */
+/** 07 — the rooms and tracks every later screen depends on. */
 async function roomsAndTracks(page, state) {
   await go(page, appUrl(state, "/settings/rooms-and-tracks"))
   await settle(page)
@@ -459,20 +543,38 @@ async function roomsAndTracks(page, state) {
     await settle(page, 600)
   }
 
-  await safeShot("06-rooms-and-tracks", () => shot(page, "06-rooms-and-tracks"))
+  await safeShot("07-rooms-and-tracks", () => shot(page, "07-rooms-and-tracks"))
 }
 
-/** 07–11 — the CFP form, step by step, and the public link. */
+/** 08 — the dashboard on day one, with the getting-started list beside it. */
+async function emptyDashboard(page, state) {
+  await go(page, appUrl(state))
+  await safeShot("08-empty-dashboard", () => shot(page, "08-empty-dashboard"))
+}
+
+/** 09–14 — the CFP form, step by step, and the public link. */
 async function buildForm(page, state) {
   await go(page, appUrl(state, "/forms"))
-  await safeShot("07-no-forms-yet", () => shot(page, "07-no-forms-yet"))
+  await safeShot("09-no-forms-yet", () => shot(page, "09-no-forms-yet"))
 
-  await go(page, appUrl(state, "/forms/new"))
-  await settle(page)
-  await fillSticky(page, page.getByLabel(/form name/i), FORM_NAME)
-  await safeShot("08-new-form", () => shot(page, "08-new-form"))
+  // "New form" is a DIALOG now, addressable as `?new=1` — the same pattern as
+  // every other create surface. The empty state's own CTA opens it too.
+  await click(
+    page,
+    page.getByRole("link", { name: /create your first form|^new form$/i }),
+    "opened the New form dialog"
+  )
+  const newForm = page.locator('[data-slot="dialog-content"]')
+  await newForm.waitFor({ timeout: 10000 })
+  await fillSticky(page, newForm.getByLabel(/form name/i), FORM_NAME)
+  await settle(page, 400)
+  await safeShot("10-new-form", () => cropShot(page, newForm, "10-new-form"))
 
-  await click(page, page.getByRole("button", { name: /^create form$/i }), "created the form")
+  await click(
+    page,
+    newForm.getByRole("button", { name: /^create form$/i }),
+    "created the form"
+  )
   // `/app/:ws/:event/forms/:formId` — anything but the `new` page it left.
   await page.waitForURL(
     (url) => /\/forms\/[^/]+$/.test(url.pathname) && !url.pathname.endsWith("/new"),
@@ -484,19 +586,19 @@ async function buildForm(page, state) {
   // start of the accessible name rather than matching it whole.
   const step = (name) => page.getByRole("button", { name }).first()
 
-  await safeShot("09-form-questions", async () => {
+  await safeShot("11-form-questions", async () => {
     await click(page, step(/^submission questions/i), "form step: Submission questions")
-    await shot(page, "09-form-questions")
+    await shot(page, "11-form-questions")
   })
 
-  await safeShot("10-form-participants", async () => {
+  await safeShot("12-form-participants", async () => {
     await click(page, step(/^participants/i), "form step: Participants")
-    await shot(page, "10-form-participants")
+    await shot(page, "12-form-participants")
   })
 
-  await safeShot("11-form-settings", async () => {
+  await safeShot("13-form-settings", async () => {
     await click(page, step(/^form settings/i), "form step: Form settings")
-    await shot(page, "11-form-settings")
+    await shot(page, "13-form-settings")
   })
 
   // The header's "View form" link is the authoritative public URL.
@@ -512,11 +614,11 @@ async function buildForm(page, state) {
 
   await go(page, appUrl(state, "/forms"))
   await settle(page)
-  await safeShot("12-share-the-link", async () => {
+  await safeShot("14-share-the-link", async () => {
     const copy = page.getByRole("button", { name: /copy (public )?link/i }).first()
     await copy.waitFor({ timeout: 6000 })
     const card = copy.locator('xpath=ancestor::*[@data-slot="card"][1]')
-    await cropShot(page, card, "12-share-the-link")
+    await cropShot(page, card, "14-share-the-link")
   })
 }
 
@@ -572,7 +674,7 @@ async function submitATalk(context, state) {
       if (step === "welcome") {
         if (!seen.has("welcome")) {
           seen.add("welcome")
-          await safeShot("13-submit-welcome", () => shot(page, "13-submit-welcome"))
+          await safeShot("15-submit-welcome", () => shot(page, "15-submit-welcome"))
         }
         await continueOn().catch(() => {})
         await page.waitForTimeout(1200)
@@ -583,7 +685,7 @@ async function submitATalk(context, state) {
         await fillSticky(page, "#submit-email", TALK.email).catch(() => {})
         if (!seen.has("account")) {
           seen.add("account")
-          await safeShot("14-submit-account", () => shot(page, "14-submit-account"))
+          await safeShot("16-submit-account", () => shot(page, "16-submit-account"))
         }
         await continueOn().catch(() => {})
         // `submit.identify` can take a while on a cold dev deployment.
@@ -598,7 +700,7 @@ async function submitATalk(context, state) {
         await pickOption(page, "#question-track", TRACKS[0]).catch(() => {})
         if (!seen.has("talk")) {
           seen.add("talk")
-          await safeShot("15-submit-talk", () => shot(page, "15-submit-talk"))
+          await safeShot("17-submit-talk", () => shot(page, "17-submit-talk"))
         }
         await continueOn().catch(() => {})
         await page.waitForTimeout(1500)
@@ -612,7 +714,7 @@ async function submitATalk(context, state) {
         await fillSticky(page, "#participant-0-company", TALK.company).catch(() => {})
         if (!seen.has("participants")) {
           seen.add("participants")
-          await safeShot("16-submit-speaker", () => shot(page, "16-submit-speaker"))
+          await safeShot("18-submit-speaker", () => shot(page, "18-submit-speaker"))
         }
         await continueOn().catch(() => {})
         await page.waitForTimeout(1500)
@@ -622,7 +724,7 @@ async function submitATalk(context, state) {
       if (step === "review") {
         if (!seen.has("review")) {
           seen.add("review")
-          await safeShot("17-submit-review", () => shot(page, "17-submit-review"))
+          await safeShot("19-submit-review", () => shot(page, "19-submit-review"))
         }
         await page
           .getByRole("button", { name: /^submit$/i })
@@ -636,7 +738,7 @@ async function submitATalk(context, state) {
       // success
       // The card auto-redirects to the portal after a few seconds — stop it.
       await tryClick(page, page.getByRole("button", { name: /stay here/i }), "stay on the success card")
-      await safeShot("18-submitted", () => shot(page, "18-submitted"))
+      await safeShot("20-submitted", () => shot(page, "20-submitted"))
       const portalHref = await page
         .locator("a[href^='/portal/t/']")
         .first()
@@ -655,43 +757,56 @@ async function submitATalk(context, state) {
   }
 }
 
-/** 19–22 — it lands in the inbox, gets read, staged and committed. */
+/** 21–25 — it lands in the inbox, gets read, staged and committed. */
 async function reviewAndAccept(page, state) {
   await go(page, appUrl(state, "/submissions"))
   await settle(page, 1200)
-  await safeShot("19-first-submission", () => shot(page, "19-first-submission"))
+  await safeShot("21-first-submission", () => shot(page, "21-first-submission"))
 
-  await safeShot("20-read-the-submission", async () => {
+  await safeShot("22-read-the-submission", async () => {
     await click(
       page,
       page.locator('table a[href*="/submissions"]').first(),
       "opened the submission drawer"
     )
-    await cropShot(page, page.locator('[data-slot="drawer-shell"]'), "20-read-the-submission")
+    await cropShot(page, page.locator('[data-slot="drawer-shell"]'), "22-read-the-submission")
   })
 
-  // Stage it to the Accept Queue from inside the drawer.
-  await safeShot("21-accept-queue", async () => {
+  // 23 — the status picker, open. One click applies (no Save/Cancel pair):
+  // picking a queue only STAGES the decision, which is what makes a one-click
+  // apply safe — src/components/submissions/status-picker.tsx says so in the
+  // popover's own footnote.
+  await safeShot("23-status-picker", async () => {
     await click(
       page,
       page.getByRole("button", { name: /change status of/i }),
       "opened the status picker"
     )
+    const popover = page.locator('[data-slot="popover-content"]').first()
+    await popover.waitFor({ timeout: 6000 })
+    await cropShot(page, popover, "23-status-picker")
+  })
+
+  // Stage it to the Accept Queue from that same open picker.
+  await safeShot("24-accept-queue", async () => {
+    const picker = page.getByRole("button", { name: /change status of/i })
+    if ((await page.locator('[data-slot="popover-content"]').count()) === 0) {
+      await click(page, picker, "re-opened the status picker")
+    }
     await click(page, page.getByRole("button", { name: /^accept queue$/i }), "picked Accept Queue")
-    await tryClick(page, page.getByRole("button", { name: /^save$/i }), "saved the status")
     await settle(page, 1200)
     await page.keyboard.press("Escape").catch(() => {})
     await go(page, appUrl(state, "/submissions?status=accept_queue"))
-    await shot(page, "21-accept-queue")
+    await shot(page, "24-accept-queue")
   })
 
-  await safeShot("22-send-acceptances", async () => {
+  await safeShot("25-send-acceptances", async () => {
     await click(
       page,
       page.getByRole("button", { name: /^send acceptances$/i }),
       "opened the commit confirmation"
     )
-    await cropShot(page, page.locator('[data-slot="alert-dialog-content"]'), "22-send-acceptances")
+    await cropShot(page, page.locator('[data-slot="alert-dialog-content"]'), "25-send-acceptances")
     // Commit for real — the rest of the story needs an accepted speaker.
     await click(
       page,
@@ -702,13 +817,13 @@ async function reviewAndAccept(page, state) {
   })
 }
 
-/** 23–25 — the speaker's side: a task to do, and the portal they do it in. */
+/** 26–29 — the speaker's side: a task to do, and the portal they do it in. */
 async function speakerFollowUp(page, state) {
   await go(page, appUrl(state, "/speakers"))
   await settle(page, 1000)
-  await safeShot("23-speakers", () => shot(page, "23-speakers"))
+  await safeShot("26-speakers", () => shot(page, "26-speakers"))
 
-  await safeShot("24-assign-a-task", async () => {
+  await safeShot("27-assign-a-task", async () => {
     await click(
       page,
       page.getByRole("button", { name: /^assign task$/i }),
@@ -728,7 +843,7 @@ async function speakerFollowUp(page, state) {
     // a speaker (one more scroll) rather than after.
     await scrollDialogToTop(page, dialog)
     await settle(page, 400)
-    await cropShot(page, dialog, "24-assign-a-task")
+    await cropShot(page, dialog, "27-assign-a-task")
     // "Assign to" is required — the dialog refuses to submit with nobody
     // ticked, and the story needs a real assignment: the speaker-portal shots
     // downstream are the proof it landed.
@@ -746,7 +861,7 @@ async function speakerFollowUp(page, state) {
       "assigned the task"
     )
     // The dialog closes on success — if it is still there, nothing was created
-    // and shot 26 would quietly lie about it.
+    // and shot 29 would quietly lie about it.
     await dialog.waitFor({ state: "hidden", timeout: 15000 })
     await settle(page, 900)
   })
@@ -762,7 +877,7 @@ async function speakerFollowUp(page, state) {
   }
 
   if (!state.portalUrl) {
-    skipped.push("25-speaker-portal", "26-speaker-tasks")
+    skipped.push("28-speaker-portal", "29-speaker-tasks")
     log("SKIPPED portal shots — no portal token captured")
     return
   }
@@ -772,22 +887,22 @@ async function speakerFollowUp(page, state) {
   try {
     await go(portal, state.portalUrl)
     await settle(portal, 1500)
-    await safeShot("25-speaker-portal", () => shot(portal, "25-speaker-portal"))
+    await safeShot("28-speaker-portal", () => shot(portal, "28-speaker-portal"))
     await go(portal, `${BASE}/portal/tasks`)
-    await safeShot("26-speaker-tasks", () => shot(portal, "26-speaker-tasks"))
+    await safeShot("29-speaker-tasks", () => shot(portal, "29-speaker-tasks"))
   } finally {
     await speaker.close()
   }
 }
 
-/** 27–31 — the accepted talk onto the agenda, then live to the world. */
-async function scheduleAndPublish(page, state, { from = 27 } = {}) {
-  if (from <= 28) {
+/** 30–34 — the accepted talk onto the agenda, then live to the world. */
+async function scheduleAndPublish(page, state, { from = 30 } = {}) {
+  if (from <= 31) {
     await go(page, appUrl(state, "/agenda"))
     await settle(page, 1400)
-    await safeShot("27-nothing-scheduled", () => shot(page, "27-nothing-scheduled"))
+    await safeShot("30-nothing-scheduled", () => shot(page, "30-nothing-scheduled"))
 
-    await safeShot("28-schedule-a-session", async () => {
+    await safeShot("31-schedule-a-session", async () => {
       await click(
         page,
         page.getByRole("button", { name: /schedule this session/i }),
@@ -805,7 +920,7 @@ async function scheduleAndPublish(page, state, { from = 27 } = {}) {
         await pickOption(page, `#room-${id}`, ROOMS[0].name).catch(() => {})
         await pickOption(page, `#start-${id}`, /9:00|09:00/).catch(() => {})
       }
-      await cropShot(page, popover, "28-schedule-a-session")
+      await cropShot(page, popover, "31-schedule-a-session")
       await click(
         page,
         page.getByRole("button", { name: /^schedule session$/i }),
@@ -815,18 +930,18 @@ async function scheduleAndPublish(page, state, { from = 27 } = {}) {
     })
   }
 
-  await safeShot("29-agenda", async () => {
+  await safeShot("32-agenda", async () => {
     await go(page, appUrl(state, "/agenda?view=day"))
     await settle(page, 1200)
     await scrollGridToProgramme(page)
-    await shot(page, "29-agenda")
+    await shot(page, "32-agenda")
   })
 
-  await safeShot("30-publish", async () => {
+  await safeShot("33-publish", async () => {
     await go(page, appUrl(state, "/agenda"))
     await settle(page, 1000)
     await click(page, page.getByRole("button", { name: /^publish agenda$/i }), "opened Publish")
-    await cropShot(page, page.locator('[data-slot="dialog-content"]'), "30-publish")
+    await cropShot(page, page.locator('[data-slot="dialog-content"]'), "33-publish")
     await click(
       page,
       page.locator('[data-slot="dialog-content"]').getByRole("button", { name: /^publish agenda$/i }),
@@ -835,13 +950,13 @@ async function scheduleAndPublish(page, state, { from = 27 } = {}) {
     await settle(page, 1800)
   })
 
-  await safeShot("31-public-page", async () => {
+  await safeShot("34-public-page", async () => {
     // Canonical `/e/:workspaceSlug/:eventSlug`. The legacy one-segment address
     // resolves oldest-claimant-first, which on the shared dev database is a
     // previous run's event.
     await go(page, `${BASE}/e/${state.ref.workspaceSlug}/${state.ref.eventSlug}`)
     await settle(page, 1200)
-    await shot(page, "31-public-page")
+    await shot(page, "34-public-page")
   })
 }
 

@@ -20,11 +20,11 @@ function Page() {
       lead="Mirror your event into an Airtable base so the automations your team already built keep firing."
     >
       <Steps>
-        <Step title="Go to Settings → Integrations and press “Connect Airtable”.">
+        <Step title="Open Event settings — bottom of the sidebar — then the Integrations tab, and press “Connect Airtable”.">
           <Shot
             src="airtable.png"
             alt="The event's Integrations settings tab with the Airtable card and the Webhooks card below it"
-            caption="Event-scoped, like every tab on this page — each event mirrors into its own base."
+            caption="Event-scoped, like every tab on this page — each event mirrors into its own base. Webhooks sit underneath, for when you'd rather be called than polled."
           />
         </Step>
 

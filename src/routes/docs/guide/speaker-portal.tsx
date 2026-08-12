@@ -22,10 +22,19 @@ function Page() {
       <Steps>
         <Step title="Speakers get in with a link — from the confirmation after submitting, or from any email you send them. No password.">
           <Shot
-            src="walkthrough/25-speaker-portal.png"
+            src="walkthrough/28-speaker-portal.png"
             alt="The speaker portal home for the accepted Devcon Berlin speaker: their submission, profile completeness and open tasks"
-            caption="Your event's name, dates and venue sit across the top; Home shows what has been decided and what is still outstanding."
+            caption="Your event's name, dates and venue sit across the top. Four tabs — Home, Submissions, Profile, Tasks — and Tasks carries a count so nothing gets forgotten."
           />
+        </Step>
+
+        <Step title="Home answers the two questions they actually have: what was decided, and what is still on me?">
+          <p className="doc-prose">
+            Their submission shows its status in your words —{" "}
+            <strong>Accepted</strong> here. A profile bar counts what is filled
+            in (biography, headshot, job title, a link), and the open tasks run
+            underneath with their due dates.
+          </p>
         </Step>
 
         <Step title="Lost the link? They enter their email on your call-for-speakers page and we send a fresh one.">
@@ -41,7 +50,7 @@ function Page() {
 
         <Step title="Tasks is their to-do list from you: confirm the slot, upload slides, send a headshot.">
           <Shot
-            src="walkthrough/26-speaker-tasks.png"
+            src="walkthrough/29-speaker-tasks.png"
             alt="The speaker portal Tasks tab: the task the organizer assigned, plus the three onboarding tasks acceptance created"
             caption="Top of the list is the task the organizer assigned a minute ago — anything with a due date sorts first. The three below it were created automatically the moment the talk was accepted."
           />
@@ -51,7 +60,7 @@ function Page() {
           <Shot
             src="portal-submissions.png"
             alt="The speaker portal Submissions tab for a speaker with several proposals"
-            caption="Accepted speakers can still edit — nothing locks."
+            caption="They can keep editing while your call is open — being accepted does not lock anything. Once the call closes, editing closes with it for everyone, unless you reopen it in the event's portal settings."
           />
         </Step>
 

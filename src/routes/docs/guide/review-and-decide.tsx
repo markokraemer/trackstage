@@ -22,7 +22,7 @@ function Page() {
       <Steps>
         <Step title="Open Submissions. Two rows of tabs: what a thing IS, then where it stands.">
           <Shot
-            src="walkthrough/19-first-submission.png"
+            src="walkthrough/21-first-submission.png"
             alt="The Devcon Berlin submissions inbox with kind tabs, status tabs and one pending proposal"
             caption="Top row: All · Abstracts · Sessions. Second row: the pipeline. Search and a track filter sit above the table."
           />
@@ -39,30 +39,40 @@ function Page() {
 
         <Step title="Click a row to read the whole thing. The drawer has five tabs: Details, People, Reviews, Files and History.">
           <Shot
-            src="walkthrough/20-read-the-submission.png"
+            src="walkthrough/22-read-the-submission.png"
             alt="The submission drawer for the Devcon Berlin proposal, with Details, People, Reviews, Files and History tabs"
             caption="Everything is editable in place, including the status pill at the top."
           />
         </Step>
 
-        <Step title="Set the status to Accept Queue or Decline Queue. Nothing is emailed yet — the speaker sees no change at all.">
+        <Step title="Click that status pill and pick where it goes. One click applies it — there is no Save.">
           <Shot
-            src="walkthrough/21-accept-queue.png"
-            alt="The Accept Queue tab with one staged proposal and a banner counting it"
-            caption="Tick several rows to stage them in one go."
+            src="walkthrough/23-status-picker.png"
+            alt="The status picker open: Accepted, Accept Queue, Pending, Decline Queue, Declined, Withdrawn and Draft, with a note that queue statuses don't email anyone until you send the queue"
+            caption="The same picker sits in every row of the table, so triage is one click per submission. A toast confirms each one, and re-picking is one click back."
           />
+          <p className="doc-prose">
+            That is safe because picking a queue only <em>stages</em> the
+            decision — the note at the bottom of the picker says so. The
+            speaker sees nothing, hears nothing, and their portal keeps saying{" "}
+            <strong>Pending</strong>. The list here is your own: rename the
+            built-ins or add one of your own (a “Waitlist”, say) under{" "}
+            <strong>Event settings → Statuses</strong>, reachable from the gear
+            in the picker&rsquo;s corner.
+          </p>
         </Step>
 
         <Step title="A banner counts what is staged. Read the queue one last time — this is the only moment it costs nothing to change your mind.">
-          <p className="doc-prose">
-            “Review the queue” filters the table down to exactly what is about to
-            go out.
-          </p>
+          <Shot
+            src="walkthrough/24-accept-queue.png"
+            alt="The Accept Queue tab with one staged proposal and a banner counting it"
+            caption="Tick several rows to stage them in one go: a bar appears with the same statuses on it."
+          />
         </Step>
 
         <Step title="Press “Send acceptances” (or “Send declines”) and confirm.">
           <Shot
-            src="walkthrough/22-send-acceptances.png"
+            src="walkthrough/25-send-acceptances.png"
             alt="The confirmation dialog before sending the acceptances"
             caption="The dialog counts what is going out. Accepted speakers also get their onboarding tasks created."
           />

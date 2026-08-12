@@ -38,7 +38,7 @@ Then eyeball the PNGs before committing.
 | `form-builder.png` | Form builder, Submission questions step | `/app/forms` → first form → "Submission questions" |
 | `portal.png` | Speaker portal home | `/portal/t/demo-ava-nakamura` |
 | `public-schedule.png` | Published public schedule | `/e/ai-summit-2026` |
-| `agenda-flow.gif` | A real agenda drag, 4 frames | mouse down + move + drop on a day-grid card |
+| `agenda-flow.gif` | A real agenda drag, 6 frames | mouse down + move over a clash + Escape (the drag is CANCELLED — the demo agenda is never re-timetabled by a screenshot run) |
 
 `agenda-list.png` was retired on 2026-08-11: nothing referenced it, and the List
 view's **Room** cell renders the raw Convex room id instead of the room name
@@ -66,7 +66,10 @@ holds each shot's alt text and the address shown in the mock browser chrome).
    opens at midnight and would otherwise photograph an empty overnight block.
 5. For the GIF: presses on a session card, moves the pointer in small steps
    (dnd-kit needs several moves to activate), and captures idle → lifted →
-   moved → dropped into `.screenshot-frames/`, then assembles them with
+   moved → over a clash → back to free space → released into
+   `.screenshot-frames/`. The drag ends with **Escape**, so nothing is
+   actually rescheduled and the loop returns to its first frame. Then it
+   assembles them with
    **ffmpeg** (`palettegen`/`paletteuse`, 1.2 fps, looping) and deletes the
    frames. No ffmpeg on `PATH` → the GIF step is skipped with a log line and the
    stills still get written. If the drag can't start, it falls back to four
@@ -76,7 +79,7 @@ holds each shot's alt text and the address shown in the mock browser chrome).
 
 ## `--docs` mode: the at-scale docs shots
 
-`node scripts/capture-screenshots.mjs --docs` writes twelve PNGs into
+`node scripts/capture-screenshots.mjs --docs` writes thirteen PNGs into
 `public/docs/`. They are deliberately the *only* seeded-demo shots left in the
 user guide: a dashboard with real numbers on it, a submissions table hundreds of
 rows deep, a conflicting agenda, a filled-in speaker profile, the workspace and
@@ -94,8 +97,10 @@ marketing capture, and adds:
   is independent and wrapped in try/catch: a renamed label or a control that
   didn't render skips **that one file** and logs `skipped: <name> — <reason>`,
   everything else still runs. The run ends with a written/skipped summary.
-- Destructive dialogs (invite a teammate) are opened, screenshotted, then
-  dismissed with their own **Cancel** button — never the real action.
+- Write-shaped surfaces are reached by their own deep link and left without
+  submitting: `workspace-invite` opens `?tab=team&invite=1`, which is the
+  in-place invite panel (it replaces the Team card — it is not a dialog, and
+  there is nothing to dismiss).
 
 Run it on its own, or let the plain `node scripts/capture-screenshots.mjs`
 (no flags) run it right after the marketing shots in the same signed-in
@@ -126,13 +131,27 @@ node scripts/capture-walkthrough.mjs      # writes public/docs/walkthrough/*.png
 
 Where this script drives the *seeded* demo, `capture-walkthrough.mjs` **signs up
 a brand-new account on every run** and drives one organizer's whole journey
-through the real UI, shooting all 31 steps in order:
+through the real UI, shooting all 34 steps in order:
 
-> sign up → empty workspace → create "Devcon Berlin 2026" → event details →
-> rooms & tracks → build the CFP form → copy the public link → submit one talk
-> as a speaker → it lands in the inbox → open it → stage it to the Accept Queue
-> → commit the queue → speaker portal → assign a task → schedule the talk →
-> publish → the public page is live.
+> sign up → the onboarding wizard (workspace → your event → when & where) →
+> the confetti welcome → event settings → rooms & tracks → the day-one
+> dashboard → build the CFP form → copy the public link → submit one talk as a
+> speaker → it lands in the inbox → open it → the status picker → stage it to
+> the Accept Queue → commit the queue → speakers → assign a task → speaker
+> portal → schedule the talk → publish → the public page is live.
+
+A signed-up organizer with zero events never sees `/app/events`: the
+full-screen onboarding takeover
+(`src/components/onboarding/onboarding-takeover.tsx`) owns every `/app`
+address until an event exists. `@example.com` addresses are born verified
+(the `databaseHook` in `convex/auth.ts`), so the run never meets the
+`/confirm-email` wall either.
+
+One step writes without a shot: the workspace slug is minted at sign-up from
+the person's own name (`convex/workspaces.ts::ensure`) and the wizard's
+"name your workspace" step patches the NAME only, so the run sets the web
+address to `devcon` through Workspace settings → General before anything
+photographs a URL.
 
 That is what a first-time reader actually needs: the **empty states** a new
 organizer meets on day one, and one story they can follow from page to page
@@ -152,11 +171,11 @@ Two things worth knowing:
   at which step is on screen, does the next right thing, and shoots each step
   the first time it sees it — the same approach as
   `tests/e2e/flows/cfp-submit.spec.ts`.
-- **`--resume <email> <event-slug>`** re-shoots only the agenda/publish tail
-  (shots 29–31) on an account a previous run already built, so one flaky
-  navigation at the end doesn't cost a whole six-minute run. Shots 27 and 28
-  show the agenda *before* anything is scheduled and can only come from the
-  original run, so resume deliberately skips them.
+- **`--resume <email> <workspace-slug> <event-slug>`** re-shoots only the
+  agenda/publish tail (shots 32–34) on an account a previous run already
+  built, so one flaky navigation at the end doesn't cost a whole six-minute
+  run. Shots 30 and 31 show the agenda *before* anything is scheduled and can
+  only come from the original run, so resume deliberately skips them.
 
 ## Knobs
 
@@ -206,9 +225,15 @@ it). Two things that work:
 `video/public/captures/*.png` (3200×2000) and `video/public/clips/*.mp4`
 (1600×1000) are shot by the launch-video pipeline at a calm moment, and several
 of them are homepage-grade. They are 16:10 like everything here, so they drop
-straight into `public/screenshots/` with no layout change. `agenda-flow.gif` is
-built from `video/public/clips/agenda.mp4` rather than from this script's drag
-frames — it is a real 9.5s drag with the conflict pre-warning in it:
+straight into `public/screenshots/` with no layout change.
+
+`agenda-flow.gif` used to be cut from `video/public/clips/agenda.mp4`. It is
+now rebuilt by this script (`--agenda --gif`), because the video clips are a
+snapshot of whatever the app looked like the day they were recorded and the
+2026-08-12 sidebar rework (labelled groups, Copilot, pinned Event settings)
+left the old GIF photographing an interface that no longer exists. Check the
+first frame's sidebar before shipping either source. The ffmpeg recipe for the
+video-clip route, if you ever want it back:
 
 ```sh
 ffmpeg -i video/public/clips/agenda.mp4 \
