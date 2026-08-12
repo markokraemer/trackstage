@@ -345,6 +345,26 @@ const TAG_COLORS: Array<Swatch> = [
   { name: "Tag · gray", token: "--tag-gray-bg", hex: "#F4F4F5" },
 ]
 
+/**
+ * The dark half of the same system (`.dark` in src/styles.css). Every token
+ * here has a light twin above — the app never gained a second palette, it
+ * gained a second set of values for the one it already had.
+ */
+const DARK_COLORS: Array<Swatch> = [
+  { name: "Page background", token: "--background", hex: "#0B0D12" },
+  { name: "Card", token: "--card", hex: "#12141A" },
+  { name: "Muted", token: "--muted", hex: "#171A20" },
+  { name: "Accent (hover/selected)", token: "--accent", hex: "#1F232B" },
+  { name: "Border", token: "--border", hex: "#23262E" },
+  { name: "Text (ink)", token: "--foreground", hex: "#ECEDEF" },
+  { name: "Muted text", token: "--muted-foreground", hex: "#9A9DA6" },
+  { name: "Primary (lifted)", token: "--primary", hex: "#3D6BE5" },
+  { name: "Destructive", token: "--destructive", hex: "#E5484D" },
+  { name: "Green fill", token: "--status-green-bg", hex: "#0F2E22" },
+  { name: "Amber fill", token: "--status-amber-bg", hex: "#33240B" },
+  { name: "Red fill", token: "--status-red-bg", hex: "#3A1516" },
+]
+
 const TYPE_SCALE = [
   {
     label: "Page title",
@@ -751,6 +771,25 @@ function DesignSystemPage() {
               <SwatchGrid swatches={STATUS_COLORS} />
               <SubTitle>Categorical tags</SubTitle>
               <SwatchGrid swatches={TAG_COLORS} />
+
+              <SubTitle>Dark mode</SubTitle>
+              <p className="mb-3 text-sm text-muted-foreground">
+                Organizers choose Light / Dark / System in{" "}
+                <code className="font-mono">/app/account</code>. Dark is scoped
+                to the organizer app — every public and marketing surface stays
+                light for everyone. The rules mirror the light palette: chrome
+                stays neutral, elevation still reads upward (the page is the
+                darkest surface, cards step up), colour still carries data, and
+                the accent is <em>lifted</em> rather than changed —{" "}
+                <code className="font-mono">#2F5CE0</code> →{" "}
+                <code className="font-mono">#3D6BE5</code>, which keeps white
+                button text at AA.
+              </p>
+              {/* Rendered inside `.dark` so the cards themselves demonstrate
+                  the theme, on a page that is otherwise pinned light. */}
+              <div className="dark rounded-xl bg-background p-3">
+                <SwatchGrid swatches={DARK_COLORS} />
+              </div>
             </Section>
 
             {/* ----------------------------------------------- TYPOGRAPHY */}
