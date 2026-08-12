@@ -19,6 +19,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { DrawerShell } from "@/components/shared/drawer-shell"
+import { RoomsTracksLink } from "./rooms-tracks-link"
 import {
   BuilderField,
   InfoNote,
@@ -245,9 +246,8 @@ export function QuestionEditorDrawer({
             ) : (
               <WarningNote>
                 You haven&rsquo;t created any tracks yet, so this question has
-                nothing to offer. Add them in{" "}
-                <span className="font-medium">Settings → Rooms &amp; tracks</span>{" "}
-                — until then it is hidden on the public form
+                nothing to offer. Add them in <RoomsTracksLink /> — until then
+                it is hidden on the public form
                 {question.required && question.enabled
                   ? ", and the form can't be opened while it is required"
                   : ""}
@@ -338,8 +338,8 @@ export function QuestionEditorDrawer({
                 </>
               ) : (
                 <>
-                  You haven&rsquo;t created any tracks yet. Add them in Settings
-                  → Rooms &amp; tracks and they appear here — and on your public
+                  You haven&rsquo;t created any tracks yet. Add them in{" "}
+                  <RoomsTracksLink /> and they appear here — and on your public
                   form — straight away.
                 </>
               )}

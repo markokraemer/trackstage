@@ -27,6 +27,7 @@ import {
 } from "../builder-controls"
 import { QuestionEditorDrawer } from "../question-editor-drawer"
 import { QuestionRow } from "../question-row"
+import { RoomsTracksLink } from "../rooms-tracks-link"
 import { makeQuestion, makeQuestionId } from "../model"
 import type { FormQuestion, QuestionType } from "../model"
 import type { FormDraft } from "../use-form-draft"
@@ -200,9 +201,9 @@ export function QuestionsStep({
         // it on the live public form.
         <WarningNote>
           <span className="font-medium">“{trackQuestion.label}”</span> offers
-          your event tracks — and you haven&rsquo;t created any yet. Add them in{" "}
-          <span className="font-medium">Settings → Rooms &amp; tracks</span>;
-          until then this question is hidden on the public form
+          your event tracks — and you haven&rsquo;t created any yet. Add them
+          in <RoomsTracksLink />; until then this question is hidden on the
+          public form
           {trackQuestion.required && trackQuestion.enabled
             ? ", and the form can't be opened while it is switched on and required"
             : ""}
@@ -221,7 +222,7 @@ export function QuestionsStep({
             </span>{" "}
             routes submissions: whatever a submitter picks puts their session in
             the matching track, ready for the agenda. Its answers stay in step
-            with Settings → Rooms &amp; tracks automatically.
+            with <RoomsTracksLink /> automatically.
           </p>
         </div>
       ) : (
