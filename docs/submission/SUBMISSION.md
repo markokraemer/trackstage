@@ -15,7 +15,7 @@ walkthrough swyx showed, then measured against the official eval kit until it sc
 | Speaker (public CFP) | https://trackstage.app/submit/ai-engineer/ai-summit-2026/cfp — submit with a fresh email, you land in the portal |
 | Speaker (portal) | Organizer → Speakers → any row → "Open their portal" (passwordless, tokenized) |
 | Attendee | https://trackstage.app/e/ai-engineer/ai-summit-2026 — published program, personal schedule, `.ics` feed |
-| Developer | https://trackstage.app/docs — REST API (109 operations, OpenAPI + try-it) and MCP setup |
+| Developer | https://trackstage.app/docs — REST API (110 operations, OpenAPI + try-it) and MCP setup |
 
 Everything in the brief's scope is in: CFP form builder with conditional questions and
 track routing · five-step public submission flow with drafts, limits and deadlines ·
@@ -44,11 +44,11 @@ one-click Airtable sync.
    statuses, webhooks with HMAC signatures and delivery logs. OpenAPI-documented,
    interactive reference at `/docs/api`.
 4. **Open source, and honestly engineered.** MIT license, self-host in five commands.
-   Every push runs typecheck · lint · OpenAPI drift · 341 unit tests · the complete
-   Playwright e2e suite against a hermetic Convex backend booted in CI — nothing
-   deploys without the whole gate green. Plus 600+ live backend checks
-   (`pnpm test:backend`) driving auth, scoping, files, comms, REST and MCP against a
-   real deployment.
+   Every push runs typecheck · lint · OpenAPI drift · 353 unit tests · the complete
+   Playwright e2e suite (12 flow specs) against a hermetic Convex backend booted in CI —
+   nothing deploys without the whole gate green. Plus 585 live backend checks across 36
+   sections (`pnpm test:backend`) driving auth, scoping, files, comms, REST and MCP
+   against a real deployment.
 5. **Simplicity as a decision.** Copied the structure, cut the clutter. The domain
    language (Abstracts vs Sessions, staged queues, tracks vs tags) matches Sessionboard
    exactly so the walkthrough maps one-to-one.

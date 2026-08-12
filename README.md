@@ -5,147 +5,136 @@
 <h1 align="center">Trackstage</h1>
 
 <p align="center">
-  Open-source speaker &amp; program management for conferences.<br/>
-  Call for speakers → review → speaker portal → agenda → published program. One fast tool.
+  <b>Call for papers, agenda and speaker management — in one fast, simple tool.</b><br/>
+  The open-source Sessionboard alternative.
 </p>
 
 <p align="center">
   <a href="https://trackstage.app">trackstage.app</a> ·
-  <a href="https://trackstage.app/launch.mp4">90-second film</a> ·
-  <a href="#try-it">Try it</a> ·
+  <a href="#try-it-now">Try it now</a> ·
+  <a href="#what-it-does">Features</a> ·
   <a href="#self-host">Self-host</a> ·
-  <a href="#api">API</a> ·
-  <a href="#mcp">MCP</a> ·
-  <a href="#ai-copilot">AI copilot</a>
+  <a href="#for-developers">API &amp; MCP</a> ·
+  <a href="LICENSE">MIT</a>
 </p>
 
-![Trackstage dashboard — live submission counts, outstanding speaker tasks, and pacing at a glance](public/screenshots/dashboard.png)
+Trackstage runs the whole speaker side of a conference: you collect talk submissions
+through a call-for-papers form, review and decide on them, send the acceptance and
+decline emails, give every speaker a portal to finish their profile and their to-dos,
+and drag the accepted talks onto a schedule that catches clashes as you build it. It is
+free, MIT-licensed, and you can self-host it.
 
-## Why
+## Try it now
 
-Event teams pay $40k+/yr for closed speaker-management software they can't customize.
-Trackstage is the open alternative: the same job — collecting talk submissions,
-reviewing them, chasing speakers, building the schedule — without the enterprise sales
-call. Built for non-technical event producers: plain-English screens, safe defaults,
-and everything updates live.
-
-## Try it
+Nothing to install — the live demo is seeded and open.
 
 | I want to… | Go to |
 | --- | --- |
-| Run an event (organizer demo) | [trackstage.app/login](https://trackstage.app/login) — `organizer@demo.sessionboard.dev` / `demo2026` (also shown on the page) |
-| Submit a talk (public CFP) | [trackstage.app/submit/ai-engineer/ai-summit-2026/cfp](https://trackstage.app/submit/ai-engineer/ai-summit-2026/cfp) |
-| See what speakers see | [trackstage.app/portal](https://trackstage.app/portal) — open a speaker's emailed link (copy one from the organizer's Speakers table); no password |
-| Browse a published program | [trackstage.app/e/ai-engineer/ai-summit-2026](https://trackstage.app/e/ai-engineer/ai-summit-2026) |
-| Read the docs | [trackstage.app/docs](https://trackstage.app/docs) |
-| Watch the launch film | [trackstage.app/launch.mp4](https://trackstage.app/launch.mp4) (90 s) |
+| **Run an event** (organizer) | [trackstage.app/login](https://trackstage.app/login) → `organizer@demo.sessionboard.dev` / `demo2026` (also printed on the page) |
+| **Submit a talk** (public CFP) | [trackstage.app/submit/ai-engineer/ai-summit-2026/cfp](https://trackstage.app/submit/ai-engineer/ai-summit-2026/cfp) — use any email, you land in the speaker portal |
+| **See what a speaker sees** | Organizer → Speakers → any row → *Open their portal* (passwordless link) |
+| **Browse a published program** | [trackstage.app/e/ai-engineer/ai-summit-2026](https://trackstage.app/e/ai-engineer/ai-summit-2026) |
+| **Read the docs** | [trackstage.app/docs](https://trackstage.app/docs) |
+| **Watch the 90-second film** | [trackstage.app/launch.mp4](https://trackstage.app/launch.mp4) |
 
-## What's inside
+![The organizer dashboard — live submission counts, the decision pipeline, and which speakers to chase first](public/screenshots/dashboard.png)
 
-**Call for speakers** — a form builder with conditional questions and track routing.
-Speakers submit through a five-step public flow; drafts, per-person limits, and
-deadlines are actually enforced.
+## What it does
 
-**Review & decisions** — triage submissions across status tabs, stage accept/decline
-queues, then commit once: emails go out, onboarding tasks appear in each speaker's
-portal, and statuses flip everywhere instantly.
+**Call for papers.** Build the form in a wizard: your own questions, conditional
+questions that only appear when they're relevant, and track routing. Turn fields on and
+off, mark them required, set a close date and a per-person submission limit. Speakers
+submit through a five-step public flow with drafts.
 
-**Speaker portal** — passwordless. Speakers edit their talk, complete their profile,
-upload headshots and slides (versioned, previewable in place, with organizer
-approval), and tick off tasks.
+**Review and decide.** All submissions in one table with status tabs. Stage your
+accepts and declines into queues, then commit once — that is what sends the decision
+emails, creates each new speaker's onboarding tasks, and flips every screen at the same
+time. Nothing is announced before you press the button.
 
-**Agenda builder** — drag talks onto a day × room grid with live conflict detection
-(room clashes *and* double-booked speakers), auto-placement, and an explicit publish
-step for the public schedule.
+**Evaluation rounds.** Bundle evaluators, submissions and rounds into a plan, distribute
+the work, and track who has finished. Evaluators only see "My evaluations".
 
-![Dragging a session onto the agenda grid — it snaps into a 15-minute slot, and conflicts flag in red the moment they exist](public/screenshots/agenda-flow.gif)
+**Agenda.** Drag talks onto a day × room grid. Room clashes *and* double-booked speakers
+flag in red as you drag, not after a refresh. Auto-place the leftovers, then publish the
+public schedule when you're ready.
 
-**Communications** — templated emails with placeholders, reminder sweeps, and `.ics`
-calendar invites (room details included once assigned). Real sending via Resend;
-seeded demo recipients render as inspectable previews instead.
+**Speaker portal.** Passwordless — speakers arrive from an emailed link. They edit their
+talk, fill in their bio, upload a headshot and slides (versioned, and you approve them),
+and tick off their tasks. You watch the outstanding ones on the dashboard in real time.
 
-**Multi-tenant workspaces** — organizations own events; members carry roles
-(owner / admin / member) with invites by email. Authentication via
-[Better Auth](https://better-auth.com); authorization enforced in every function.
+**Emails and calendar invites.** Templated emails with placeholders, reminder sweeps, and
+`.ics` invites that carry the room once you've assigned one. There's a public `.ics` feed
+for the whole program too.
 
-**Airtable sync** — one-click connect: submissions, speakers, and sessions mirror into
-your base as rows (idempotent upserts), so your existing Airtable automations fire on
-every new submission.
+**Embeds.** Build a schedule or speaker widget for your event website in a visual editor
+and copy the snippet.
+
+**Dark mode**, light mode, or follow the system — set it in account settings.
+
+Also in the box: multi-tenant workspaces with roles and email invites, one-click Airtable
+sync, a REST API, an MCP server, and an in-app AI copilot — see
+[For developers](#for-developers).
 
 <details>
 <summary><b>More screenshots</b></summary>
 
 | | |
 | --- | --- |
-| ![Submissions triage table](public/screenshots/submissions.png) | ![Form builder — questions step](public/screenshots/form-builder.png) |
-| ![Agenda day view](public/screenshots/agenda.png) | ![Speaker portal](public/screenshots/portal.png) |
+| ![Submissions triage table with staged accept and decline queues](public/screenshots/submissions.png) | ![Form builder — the questions step](public/screenshots/form-builder.png) |
+| ![Agenda day view with rooms as columns](public/screenshots/agenda.png) | ![Speaker portal](public/screenshots/portal.png) |
+
+![Dragging a session onto the agenda grid — it snaps to a 15-minute slot and conflicts flag in red the moment they exist](public/screenshots/agenda-flow.gif)
 
 </details>
 
-## Where it beats the original
+## For developers
 
-Measured against Sessionboard's own product, not just matched to it:
+**REST API** — Bearer-authenticated, paginated, 110 operations. Events, forms,
+submissions, speakers, tasks, evaluations, tracks, rooms, statuses, and webhooks with
+HMAC signatures and a delivery log. OpenAPI spec and an interactive reference at
+[`/docs/api`](https://trackstage.app/docs/api).
 
-1. **Live conflict detection.** Drag a talk onto the agenda and room clashes *and*
-   double-booked speakers flag in red the moment they exist — Sessionboard makes you
-   refresh to find out.
-2. **Status-change emails from the pipeline itself.** Committing an accept/decline
-   queue sends the decision email, creates the speaker's onboarding tasks, and flips
-   every surface at once — one action, no separate mail-merge step.
-3. **A REST API that actually writes.** Tracks, rooms, tags, formats, levels,
-   languages and custom statuses are all creatable over the API, and webhooks are
-   API-managed with HMAC signatures, one-time secrets, rotation, and a delivery log —
-   Sessionboard's API reads but barely writes.
-4. **An MCP server and an in-app copilot.** Operate the whole event from Claude,
-   ChatGPT, or Codex — or press ⌘I and hand the work to the built-in copilot with
-   approval gates. Sessionboard has nothing in this category.
-5. **Speed, and you can read the code.** Every interaction is optimistic and instant —
-   the complaint that started this project was sluggishness — and the entire product
-   is MIT-licensed source you can self-host in five commands.
+```sh
+curl -H "Authorization: Bearer <key>" \
+  https://<your-convex-site>/v1/event/ai-summit-2026/sessions
+```
 
-## AI copilot
+The `/v1/event/{slug}/schedule.ics` feed needs no credential.
 
-Press <kbd>⌘I</kbd> anywhere in the app. The copilot talks to Trackstage through its own
-MCP server — ask anything ("who hasn't finished onboarding?") or hand it work ("create a
-CFP form", "schedule the unscheduled talks"). Destructive actions always stop at an
-approval card first, and results render as real product UI, not prose.
-
-## MCP
-
-A full [MCP](https://modelcontextprotocol.io) server ships with the product — operate
-your entire event from Claude, ChatGPT, Codex, or any MCP client. 84 tools in 12
-groups (workspaces & events · CFP forms · submissions & decisions · agenda ·
-speakers · speaker tasks · files & review · email · evaluation · event setup ·
-webhooks & embeds · activity) — the always-current list renders at `/docs/mcp`.
-Every tool that writes anything refuses without `confirm: true`, so the destructive
-half (`delete_event`, `delete_form`, `remove_task`) is gated rather than absent —
-and `delete_event` additionally demands the event's exact name.
+**MCP server** — 84 tools in 12 groups (workspaces & events · CFP forms · submissions &
+decisions · agenda · speakers · speaker tasks · files & review · email · evaluation ·
+event setup · webhooks & embeds · activity). Every tool that writes refuses without
+`confirm: true`, so destructive operations are gated rather than missing;
+`delete_event` also demands the event's exact name. The current list renders at
+[`/docs/mcp`](https://trackstage.app/docs/mcp).
 
 ```sh
 claude mcp add trackstage --transport http https://<your-convex-site>/mcp \
   --header "Authorization: Bearer <key from Settings → API & MCP>"
 ```
 
-**Claude / ChatGPT connectors** need no key at all: add the `/mcp` URL as a custom
-connector and sign in — it's a real OAuth 2.1 authorization server (dynamic client
-registration + PKCE). An API key is an *identity*, not a capability: every tool call
-runs the same workspace-membership checks as the web app, keys are stored as hashes,
-shown once, and revoke instantly. Per-client setup snippets (Codex TOML, generic JSON)
-live in **Settings → API & MCP** and `/docs/mcp`.
+Claude and ChatGPT connectors need no key: add the `/mcp` URL and sign in — it is a real
+OAuth 2.1 authorization server (dynamic client registration + PKCE). A key is an
+*identity*, not a bypass: every call runs the same workspace-membership checks as the web
+app. Keys are stored hashed, shown once, and revoke instantly.
 
-## API
+**AI copilot** — press <kbd>⌘I</kbd> anywhere in the app. It drives that same MCP server,
+so it can answer questions ("who hasn't finished onboarding?") or do the work ("schedule
+the unscheduled talks"). Anything destructive stops at an approval card first, and
+results render as real product UI instead of prose.
 
-REST, Bearer-authenticated, paginated like you'd expect:
+## Stack
 
-```sh
-curl -H "Authorization: Bearer demo-api-token" \
-  https://<your-convex-site>/v1/event/ai-summit-2026/sessions
-```
+[TanStack Start](https://tanstack.com/start) (React 19) for routing and SSR ·
+[Convex](https://convex.dev) as the backend — reactive database, file storage, crons, and
+the HTTP endpoints that serve `/v1` and `/mcp` · [Better Auth](https://better-auth.com)
+for accounts · [shadcn/ui](https://ui.shadcn.com) on [Base UI](https://base-ui.com) ·
+[Cloudflare Workers](https://workers.cloudflare.com) for hosting.
 
-`/v1/event/{slug}/sessions · /speakers · /submissions · /forms · /tasks ·
-/evaluations`, workspace-level `/v1/events` and `/v1/webhooks`, plus an open
-`/v1/event/{slug}/schedule.ics` calendar feed that needs no credential.
-OpenAPI spec + interactive reference at `/docs/api`.
+The Worker serves SSR with Smart Placement so it sits next to the Convex deployment;
+every screen subscribes to Convex queries, which is why counts and statuses update
+everywhere at once without a refresh. Application code lives in `src/routes` (file-based;
+never edit `routeTree.gen.ts`) and `convex/`.
 
 ## Self-host
 
@@ -154,98 +143,97 @@ git clone https://github.com/markokraemer/trackstage && cd trackstage
 pnpm install
 pnpm dev:setup                    # provisions a free Convex backend (interactive login)
 pnpm dev                          # http://localhost:3000
-pnpm exec convex run seed:setup   # demo data + organizer account
+pnpm exec convex run seed:setup   # demo event, organizer account, sample data
 ```
+
+Sign in with `organizer@demo.sessionboard.dev` / `demo2026`.
 
 ### Deploy
 
 ```sh
-pnpm deploy   # convex deploy (backend) → vite build → wrangler deploy (Worker) → smoke test
+pnpm deploy   # convex deploy → vite build → wrangler deploy → smoke test
 ```
 
-The build reads `.env.production` (committed, public values only), so a production
-build always points at the production Convex deployment. Secrets live where they
-belong and are never in the repo:
+The build reads `.env.production` (committed — public values only), so a production build
+always points at the production Convex deployment. Secrets live outside the repo:
 
 | Where | What |
 | --- | --- |
-| `convex env set … --prod` | `BETTER_AUTH_SECRET` · `RESEND_API_KEY` · `EMAIL_FROM` · `SITE_URL` (your app origin — required for MCP OAuth and every emailed link) · `PUBLIC_API_TOKEN` · `EXTRA_TRUSTED_ORIGINS` (optional) · `REQUIRE_EMAIL_VERIFICATION` (optional, default off) |
+| `convex env set … --prod` | `BETTER_AUTH_SECRET` · `RESEND_API_KEY` · `EMAIL_FROM` · `SITE_URL` (your app origin — required for MCP OAuth and every emailed link) · `PUBLIC_API_TOKEN` · optional `EXTRA_TRUSTED_ORIGINS`, `REQUIRE_EMAIL_VERIFICATION` |
 | `wrangler secret put …` | `OPENROUTER_API_KEY` (the copilot runs in the Worker) |
 
-Signup always sends a confirmation email, but by default verification is
-**soft**: unverified accounts work fully and just see a dismissible
-"confirm your email" banner. `convex env set REQUIRE_EMAIL_VERIFICATION true`
-flips on the hard gate (sign-in refused until the emailed link is opened, with
-a resend screen) — no code change needed. It is deliberately OFF for the
-competition: the judge's browser agent signs up with inboxes nobody can open.
+Signup always sends a confirmation email, but verification is **soft** by default:
+unverified accounts work fully and see a dismissible banner.
+`convex env set REQUIRE_EMAIL_VERIFICATION true` turns on the hard gate (sign-in refused
+until the link is opened) with no code change.
 
-`main` is the dev branch (`master` mirrors it during the transition); `prod` is
-the release branch. Every push runs the full **CI** gate — typecheck · lint ·
-OpenAPI spec up to date · unit tests, then the **complete Playwright e2e flows
-suite** against a hermetic local Convex backend booted inside the runner. A
-green run on `main`/`master` auto-deploys staging:
-**https://dev.trackstage.app** (Worker `trackstage-dev`, built against the dev
-Convex deployment). Releasing to production is one deliberate step:
+Check any deploy:
 
 ```sh
-git push origin main:prod   # promote main to production
-```
-
-A push to `prod` re-runs the same full CI gate (e2e included) and, once green,
-**Deploy** ships it (Convex → build → Worker → production smoke test) — nothing
-reaches production without the whole suite passing. The Actions tab's "Deploy →
-Run workflow" button releases any ref manually and is the escape hatch if the
-e2e gate ever wrongly blocks an urgent release. See
-`.github/workflows/`. Deploys need three repo secrets: `CONVEX_DEPLOY_KEY`
-(`pnpm exec convex deployment token create github-actions --prod`),
-`CLOUDFLARE_API_TOKEN` (scoped: Workers Scripts R/W, Workers KV R/W, Workers
-Observability Write, Account Settings Read, Workers Routes Write + Zone DNS Write)
-and `CLOUDFLARE_ACCOUNT_ID`; optional `OPENROUTER_API_KEY` keeps the staging
-copilot (and the copilot e2e spec) live.
-
-Verify a deploy at any time:
-
-```sh
-node scripts/smoke-production.mjs          # 9 SSR routes + /v1 + /mcp + OAuth discovery
+node scripts/smoke-production.mjs                                   # SSR routes + /v1 + /mcp + OAuth discovery
 APP_URL=https://your-app.workers.dev node scripts/smoke-production.mjs
 ```
 
 ### Custom domain
 
-Two idempotent scripts, in this order — re-run either one safely:
+Two idempotent scripts, in this order — re-run either safely:
 
 ```sh
-export CLOUDFLARE_EMAIL=… CLOUDFLARE_GLOBAL_API_KEY=…    # CF credentials
-node scripts/configure-domain.mjs  yourdomain.com        # Resend domain + SPF/DKIM/MX
+export CLOUDFLARE_EMAIL=… CLOUDFLARE_GLOBAL_API_KEY=…
+node scripts/configure-domain.mjs yourdomain.com                    # Resend domain + SPF/DKIM/MX
 RESEND_API_KEY=… node scripts/attach-domain.mjs yourdomain.com trackstage
 ```
 
-(`attach-domain.mjs` also accepts a scoped `CLOUDFLARE_API_TOKEN` instead — Workers
-Scripts Write + Zone DNS/Routes Write — which is what CI uses. `configure-domain.mjs`
-needs the global key, because it writes DNS through the account-key endpoint.)
+`attach-domain.mjs` attaches the domain to the Worker, waits for it to serve, then moves
+Convex `SITE_URL` and `EMAIL_FROM` onto it. It also accepts a scoped
+`CLOUDFLARE_API_TOKEN` instead of the global key (that is what CI uses). Finish by
+setting `VITE_SITE_URL` in `.env.production`, adding the `routes` entry to
+`wrangler.jsonc`, and redeploying so the client bundle agrees.
 
-`attach-domain.mjs` attaches the domain to the Worker, waits for it to serve, moves
-Convex `SITE_URL` (Better Auth base URL, portal links, MCP OAuth issuer) onto it, and
-moves `EMAIL_FROM` once Resend reports the domain verified. Then set
-`VITE_SITE_URL` in `.env.production`, add the `routes`/`custom_domain` entry to
-`wrangler.jsonc`, and redeploy so the client bundle agrees.
-
-## Stack & testing
-
-TanStack Start (React 19) · [Convex](https://convex.dev) (reactive database, file
-storage, crons) · Better Auth · shadcn/ui on Base UI · Cloudflare Workers.
+## Tests and CI
 
 ```sh
-pnpm test          # unit (vitest)
-pnpm test:backend  # 600+ live end-to-end checks across 36 sections — seeds a real
-                   # Convex deployment, then drives auth, scoping, rules, files,
-                   # comms, the REST API and MCP against it
-pnpm test:e2e      # Playwright: route crawler + per-flow suites
+pnpm test          # 353 unit tests (vitest)
+pnpm test:e2e      # Playwright — 12 flow suites through the real UI
+pnpm test:backend  # 585 live checks across 36 sections against a real Convex deployment
 ```
 
-## About
+`main` is the dev branch (`master` mirrors it); `prod` is the release branch. Every push
+runs the full CI gate — typecheck · lint · OpenAPI drift · unit tests, then the complete
+Playwright flow suite against a Convex backend booted inside the runner, so it is
+hermetic: no cloud data, no secrets, no mail. A green run on `main` auto-deploys staging
+to **https://dev.trackstage.app**.
 
-Built for [swyx's "$10,000 Kill My SaaS"](https://luma.com/ls-06v7): clone an
-enterprise speaker-management SaaS in a weekend, open source, judged by the team that
-would actually use it. MIT licensed. The design system lives at `/design-system` —
-right-click the logo, anywhere.
+```sh
+git push origin main:prod   # promote to production
+```
+
+That re-runs the same full gate and only then ships Convex → build → Worker → smoke test.
+Nothing reaches production without the whole suite green. Actions → Deploy → *Run
+workflow* is the manual escape hatch. See `.github/workflows/`.
+
+## License
+
+[MIT](LICENSE). Use it, fork it, run it for your conference.
+
+## Where this came from
+
+Trackstage was built for [swyx's "$10,000 Kill My SaaS"](https://luma.com/ls-06v7)
+competition: clone an enterprise SaaS in a weekend, open source it, and let the team that
+actually uses the original judge the result. The target was
+[Sessionboard](https://www.sessionboard.com) — event teams pay a lot for it, and the
+walkthrough that kicked off the competition was mostly complaints about how slow it is.
+So the two things we optimized for were speed and simplicity: copy the structure, cut the
+clutter, make every click instant.
+
+The competition ships an LLM browser-agent eval kit,
+[`swyx/killmysaas-evals`](https://github.com/swyx/killmysaas-evals), which drives real
+user flows and scores them. We ran it against production and fixed what it found. Our own
+latest run scores **93.6%** overall (Call for Papers 90.3 · Abstract Management 96.4 ·
+Speaker Management 96.9 · Content Management 85.5 · AI Agenda 100 · Public Widgets 95.7).
+That is a self-reported number from our own runs, not an official result — every non-pass
+item, its root cause, and what we did about it is written up in
+[`docs/reference/sbek-ledger.md`](docs/reference/sbek-ledger.md).
+
+The design system is at [`/design-system`](https://trackstage.app/design-system) —
+right-click the logo anywhere in the app.
