@@ -86,6 +86,10 @@ export function watchConsole(
     /Download the React DevTools/i,
     /\[vite\]/i,
     /Failed to load resource.*40[34]/i, // route-level 404s are asserted separately
+    // The email-preview iframe is sandboxed WITHOUT allow-scripts on purpose —
+    // Chrome logs this when the sandbox blocks something, which is the security
+    // model doing its job, not UI breakage.
+    /Blocked script execution in 'about:srcdoc'/i,
     ...extraIgnored,
   ]
   page.on("console", (message) => {
