@@ -3453,3 +3453,19 @@ now says "Follows your device — currently …" (the old hint was dead code),
 README + theme-provider comment reworded, DECISIONS amended, and
 tests/unit/theme-default.test.ts pins the fallback in every layer. Known
 leftover: public/docs/account-settings.png still shows System pre-selected.
+
+## 2026-08-12 ~22:50 — Dev MCP connect fixed; branded API origin prepared
+
+Claude's connector failed against the DEV MCP endpoint ("couldn't register
+with the sign-in service") while prod worked. Cause: the shared dev Convex
+deployment's SITE_URL env was http://localhost:3000, so all OAuth metadata
+(issuer, authorize, token, register) pointed at localhost — unreachable from
+claude.ai. Fixed by setting SITE_URL=https://dev.trackstage.app on the dev
+deployment and adding localhost:3000/127.0.0.1:3000 to EXTRA_TRUSTED_ORIGINS
+so local dev keeps working; DCR verified issuing client_ids on both dev and
+prod. Consequence: emailed links + OAuth from the dev deployment now carry
+the staging origin (same backend, links still resolve). For branding the
+convex.site endpoints under our domain, VITE_PUBLIC_API_URL now overrides
+the ADVERTISED MCP/REST origin only (auth plumbing stays on
+VITE_CONVEX_SITE_URL); flip it on in .env.production after attaching
+api.trackstage.app as a Convex custom domain in the dashboard.
