@@ -19,14 +19,29 @@ export function convexSiteUrl(): string {
   return "https://your-deployment.convex.site"
 }
 
+/**
+ * The origin we ADVERTISE for the public HTTP surfaces (MCP + REST). When a
+ * branded custom domain is attached to the Convex deployment (Convex
+ * dashboard → project settings → Custom Domains), set VITE_PUBLIC_API_URL to
+ * it and every printed endpoint becomes ours instead of *.convex.site.
+ * Deliberately separate from VITE_CONVEX_SITE_URL, which stays on the raw
+ * deployment host — the auth proxy, SSR session resolution and copilot tools
+ * are wired through it and must not move when the branding does.
+ */
+export function publicApiOrigin(): string {
+  const branded = import.meta.env.VITE_PUBLIC_API_URL as string | undefined
+  if (branded) return branded.replace(/\/+$/, "")
+  return convexSiteUrl()
+}
+
 /** The MCP Streamable-HTTP endpoint AI clients connect to. */
 export function mcpEndpoint(): string {
-  return `${convexSiteUrl()}/mcp`
+  return `${publicApiOrigin()}/mcp`
 }
 
 /** Base for the public REST API — `${base}/v1/event/{slug}/…`. */
 export function apiBaseUrl(): string {
-  return convexSiteUrl()
+  return publicApiOrigin()
 }
 
 /**
