@@ -408,3 +408,41 @@ Appearance control renders pre-selected in the SSR HTML. `<html>` carries
 `suppressHydrationWarning` and no `className` prop, so React never fights the
 script for the attribute. "System" is a live `matchMedia` subscription, not a
 one-time read.
+
+## The CFP stepper fits one line, or degrades on purpose (2026-08-12)
+Marko, on the public wizard's Account step: "you see how ugly the break is? it
+just breaks for the five Review step, it's quite weird." The tracker was
+`flex-wrap`, and five labels + four chevrons need ~647px against the card's
+608px of content — so "Review" orphan-wrapped. The card is capped at 42rem, so
+no viewport can widen that budget; the fix has to come out of the row itself.
+Three tiers now, and wrapping is structurally impossible (`flex-nowrap`,
+`whitespace-nowrap`): `< sm` collapses to "Account · Step 2 of 5" + a progress
+bar; `sm…md` is compact — numbered circles joined by a rule that tints once
+traversed, only the CURRENT step labelled; `≥ md` is the full breadcrumb on one
+line with 27px of measured slack (gap-1.5/px-1 buttons, 14px chevrons, no
+chevron margin). Compact hides labels with `sr-only`, never `hidden`, so every
+step keeps its accessible name — the judge is a browser agent.
+Completed steps use the house "done" language (green check disc), the same one
+`WizardShell`'s rail and the portal's `ProfileMeter` use; current stays solid
+primary, which is what docs/ux/01 §7 recorded from the reference screenshots.
+
+## "Powered by Trackstage" is a component, not a phrase (2026-08-12)
+Marko: "make sure every 'Trackstage' mention like that uses the actual
+Trackstage logo correctly, 100%." It was three different things — a plain blue
+text link on the CFP wizard, a bare wordmark on the portal footer, a 22px full
+lockup on public event pages. Now one `<PoweredByTrackstage />`
+(src/components/brand/powered-by.tsx): the real 16px boxed mark + wordmark,
+muted, warming on hover, one link target. It points at `/` rather than an
+absolute trackstage.app URL so dev/staging/preview attribution doesn't send
+people to production, and it renders a plain `<a>` so it works outside the
+router. Sites: CFP wizard footer, speaker portal footer, public event page and
+embed frames (`EmbedAttribution`).
+
+## Required asterisks sit on the word (2026-08-12)
+`Label` is a flex row with `gap-2`, so `Name<span>*</span>` put 8px between the
+label and its asterisk — it read as its own word — and five places used a raw
+`text-destructive` span with a literal space on top of that, with no
+screen-reader equivalent. One rule now: `label .required-asterisk` pulls back
+0.375rem, scoped to labels so running prose ("fields marked with * are
+required") keeps its space; the raw spans became `.required-asterisk` +
+`aria-hidden` + an `(required)` sr-only, matching the CFP wizard.
