@@ -9,9 +9,11 @@ import { ProductShot } from "@/components/marketing/product-shot"
  * "place it in the hero with action to start playing"). The still stays the
  * hero — it loads instantly and reads as the real product — and the play
  * affordance opens the film in a lightbox. `/launch.mp4` is the 1080p web
- * render of the final cut (81s, ~23 MiB — the Workers static-asset cap is
- * 25 MiB); the full-quality master lives at
- * `video/out/trackstage-launch-final.mp4`.
+ * render of the final cut (82s, CRF 25, ~11 MiB — well under the 25 MiB
+ * Workers static-asset cap, and half the file the old cut shipped as, because
+ * visitor bandwidth matters more here than pixel-perfection). The full-quality
+ * master lives at `video/out/trackstage-launch-final.mp4`, and a 720p
+ * sub-10 MB cut for Discord at `video/out/trackstage-launch-discord.mp4`.
  *
  * The label's duration has to match the file: re-render the film, re-measure,
  * update it here.

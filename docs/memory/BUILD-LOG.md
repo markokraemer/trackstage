@@ -2997,12 +2997,36 @@ payoff. Re-cut to 9.6s of source so the grid fills in and "Placed 3 sessions"
 lands. Everything else passed: no ghosting at the crossfades, no loading
 skeletons at chapter heads, no fixture leakage, no frozen tails.
 
-**Deliverables.** Master `video/out/trackstage-launch-final.mp4` (CRF 16,
-30.2 MB). Web `public/launch.mp4` — 1080p H.264 CRF 20, AAC 128k, faststart
-(moov at byte 32, verified), **18.93 MiB** against the 25 MiB Workers
-static-asset cap. Verified end to end in the real lightbox: plays, reports
-81.984s / 1920×1080, and a seek to 60s resumed at 62.1s over the site's 206
-Range support. `hero-video.tsx`'s label 90 sec → 81 sec.
+**Deliverables.** Three encodes, all 81.984s, all faststart (moov verified at
+byte 32 by parsing the atom order, not by trusting the flag):
+
+| file | what | size |
+| --- | --- | --- |
+| `video/out/trackstage-launch-final.mp4` | master, 1080p CRF 16 | 28.8 MiB |
+| `public/launch.mp4` | web, 1080p CRF 25, AAC 112k | **10.96 MiB** |
+| `video/out/trackstage-launch-discord.mp4` | 720p CRF 22, AAC 96k | **7.53 MiB / 7.90 MB** |
+
+Marko asked mid-task for the web cut to be *noticeably* smaller than the old
+24 MB and for a Discord-ready cut under 10 MB. Screen content compresses far
+better than the CRF ladder suggests: crops of a text-dense frame (the
+submissions table at 2× zoom) and of a motion frame (the agenda drag with the
+red clash tooltip) are indistinguishable from the master at CRF 25, so the web
+cut stays 1080p at **less than half** the old file, and the Discord cut keeps
+the full 82s at 720p with 21% headroom under the cap — no trimming of the end
+card and no two-pass needed.
+
+Verified end to end in the real lightbox: plays, reports 81.984s / 1920×1080,
+and a seek to 60s resumed at 62.1s. `hero-video.tsx`'s label 90 sec → 81 sec.
+
+Serving note, for whoever hits it next: `/launch.mp4` is the one path with
+`assets.run_worker_first` (src/server.ts slices it into 206s because the asset
+layer can't). **`wrangler dev`'s miniflare does not honour `run_worker_first`**
+— it answers a Range with a 200 and the whole body — so local wrangler is not a
+valid test of seeking. Deployed staging and prod both return a proper
+`206 / content-range`, checked with curl. Separately, the vite dev server on
+:3000 started 404ing `/launch.mp4` after another agent restarted it mid-session;
+it 404s the *old* file too, a fresh `wrangler dev` serves the new one at 200
+with the right length, so it is a dev-server artifact, not a regression.
 
 Not mine, seen in the tree: `src/components/comms/message-drawer.tsx` has an
 unused `RiDownload2Line` import (another agent, mid-edit) — the only `tsc`
