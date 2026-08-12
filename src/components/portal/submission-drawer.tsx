@@ -303,7 +303,11 @@ export function SubmissionDrawer({
 
           <Field>
             <FieldLabel htmlFor="submission-title">
-              Title <span className="text-destructive">*</span>
+              Title
+              <span className="required-asterisk" aria-hidden>
+                *
+              </span>
+              <span className="sr-only">(required)</span>
             </FieldLabel>
             <Input
               id="submission-title"

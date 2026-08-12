@@ -472,6 +472,17 @@
   .required-asterisk {
     @apply text-destructive;
     }
+  /*
+   * …and they sit ON the word, not beside it (Marko, 2026-08-12: "the *
+   * asterisk spacing/label rhythm could be tighter"). `Label` is a flex row
+   * with `gap-2`, so an asterisk that follows the label text is a separate
+   * flex item and inherits 8px of air — enough to read as its own word. Pull
+   * it back inside labels only; in running prose ("fields marked with * are
+   * required") the asterisk is a real word and keeps its space.
+   */
+  label .required-asterisk {
+    margin-inline-start: -0.375rem;
+    }
 }
 
 /*

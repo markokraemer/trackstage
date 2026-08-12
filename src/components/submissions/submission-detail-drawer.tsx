@@ -399,7 +399,11 @@ export function SubmissionDetailDrawer({
               <FieldGroup>
                 <Field>
                   <FieldLabel htmlFor="detail-title">
-                    Title <span className="text-destructive">*</span>
+                    Title
+                    <span className="required-asterisk" aria-hidden>
+                      *
+                    </span>
+                    <span className="sr-only">(required)</span>
                   </FieldLabel>
                   <Input
                     id="detail-title"

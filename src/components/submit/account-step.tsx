@@ -109,12 +109,7 @@ export function AccountStep({
         }}
       >
         <Field data-invalid={invalid || undefined}>
-          {/* `gap-1`, not the primitive's `gap-2`: the asterisk belongs to the
-              label, and 8px of air made it read as its own word. */}
-          <FieldLabel
-            htmlFor="submit-email"
-            className="gap-1 text-foreground"
-          >
+          <FieldLabel htmlFor="submit-email" className="text-foreground">
             Email address
             <span className="required-asterisk" aria-hidden>
               *

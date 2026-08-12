@@ -176,7 +176,10 @@ export function HeadshotUploader({
             ? "Replace photo"
             : "Upload a photo"}
       </Button>
-      <p className="text-xs leading-relaxed text-muted-foreground">
+      {/* The avatar and its button are centred; four lines of prose are not.
+          Every other helper line in the portal and the CFP wizard is
+          left-aligned, and centred multi-line copy is harder to read. */}
+      <p className="self-stretch text-left text-xs leading-relaxed text-muted-foreground">
         A square photo, at least 800 × 800 pixels — JPG or PNG. Big photos are
         shrunk automatically. Tap the photo, or drag one straight onto it. It
         appears on the public programme next to your talk.

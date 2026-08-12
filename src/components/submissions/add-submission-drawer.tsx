@@ -236,7 +236,11 @@ export function AddSubmissionDrawer({
 
             <Field>
               <FieldLabel htmlFor="add-title">
-                Title <span className="text-destructive">*</span>
+                Title
+                <span className="required-asterisk" aria-hidden>
+                  *
+                </span>
+                <span className="sr-only">(required)</span>
               </FieldLabel>
               <Input
                 id="add-title"

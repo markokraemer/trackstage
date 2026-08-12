@@ -116,7 +116,10 @@ export function StepTracker({
                     isCurrent
                       ? "bg-primary text-primary-foreground"
                       : isComplete
-                        ? "bg-primary-surface text-primary"
+                        ? // The house language for "done" — the same green
+                          // check disc the organizer wizard rail and the
+                          // portal's profile meter use.
+                          "bg-status-green-bg text-status-green-fg"
                         : "border border-input bg-card text-muted-foreground",
                   )}
                 >
@@ -139,7 +142,7 @@ export function StepTracker({
                   <span
                     className={cn(
                       "h-px w-full md:hidden",
-                      isComplete ? "bg-primary/35" : "bg-border",
+                      isComplete ? "bg-status-green-dot/40" : "bg-border",
                     )}
                   />
                   <RiArrowRightSLine

@@ -278,7 +278,11 @@ export function ProfileEditor() {
 
           <Field>
             <FieldLabel htmlFor="profile-first-name">
-              First name <span className="text-destructive">*</span>
+              First name
+              <span className="required-asterisk" aria-hidden>
+                *
+              </span>
+              <span className="sr-only">(required)</span>
             </FieldLabel>
             <Input
               id="profile-first-name"
@@ -289,7 +293,11 @@ export function ProfileEditor() {
 
           <Field>
             <FieldLabel htmlFor="profile-last-name">
-              Last name <span className="text-destructive">*</span>
+              Last name
+              <span className="required-asterisk" aria-hidden>
+                *
+              </span>
+              <span className="sr-only">(required)</span>
             </FieldLabel>
             <Input
               id="profile-last-name"
