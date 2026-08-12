@@ -16,6 +16,7 @@ import { EmptyState } from "@/components/shared/empty-state"
 import { DataToolbar } from "@/components/shared/data-toolbar"
 import { WidgetHeader } from "@/components/public/public-shell"
 import { SessionCard } from "@/components/public/session-card"
+import { AddToCalendarButton } from "@/components/public/add-to-calendar-button"
 import { formatRange } from "@/components/public/format"
 import {
   useSearchParamWriter,
@@ -127,6 +128,16 @@ function SessionsPage() {
         title="Sessions"
         count={formatRange(sessions.length, data.totalResults)}
         description="Everything on the program. Search by session title or speaker, or narrow it down by track."
+        actions={
+          <AddToCalendarButton
+            event={{ ...event, workspaceSlug }}
+            sessions={sessions}
+            label="Add to calendar"
+            filename={`${event.slug}-sessions`}
+            hideWhenEmpty
+            size="sm"
+          />
+        }
       />
 
       {search.hideSearch ? null : (

@@ -17,6 +17,7 @@ import { WidgetHeader } from "@/components/public/public-shell"
 import { SessionCard } from "@/components/public/session-card"
 import { RoomsGrid } from "@/components/public/rooms-grid"
 import { AddToCalendarButton } from "@/components/public/add-to-calendar-button"
+import { icsFeedUrl } from "@/components/public/ics"
 import { segmentedGroup, segmentedItem } from "@/components/public/segmented"
 import {
   formatDayShort,
@@ -110,10 +111,14 @@ function SchedulePage() {
         actions={
           allSessions.length > 0 ? (
             <AddToCalendarButton
-              event={event}
+              event={{ ...event, workspaceSlug }}
               sessions={allSessions}
-              label="Download the whole program"
+              label="Add the whole program"
               filename={`${event.slug}-schedule`}
+              // The only control with the *whole* program in view, so this is
+              // where subscribing belongs: one click and the visitor's calendar
+              // tracks every later change instead of freezing at today's copy.
+              feedUrl={icsFeedUrl(event.slug)}
               size="sm"
             />
           ) : null
@@ -324,7 +329,7 @@ function SchedulePage() {
               </div>
               <div className="flex flex-wrap items-center gap-2">
                 <AddToCalendarButton
-                  event={event}
+                  event={{ ...event, workspaceSlug }}
                   sessions={activeDay.sessions}
                   label="Add this day"
                   filename={`${event.slug}-${activeDay.date}`}

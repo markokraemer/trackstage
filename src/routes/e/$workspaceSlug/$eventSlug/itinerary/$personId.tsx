@@ -150,7 +150,7 @@ function ItineraryPage() {
         actions={
           sessions.length > 0 ? (
             <AddToCalendarButton
-              event={event}
+              event={{ ...event, workspaceSlug }}
               sessions={sessions}
               label="Add all to calendar"
               filename={`${event.slug}-${speaker.name}`}

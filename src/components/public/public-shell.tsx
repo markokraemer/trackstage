@@ -283,7 +283,7 @@ export function PublicShell({
             </div>
 
             <div className="flex shrink-0 flex-wrap items-center gap-2">
-              <SubscribeMenu slug={event.slug} />
+              <SubscribeMenu slug={event.slug} eventName={event.name} />
               <CopyLinkButton
                 what="Event link"
                 size="sm"

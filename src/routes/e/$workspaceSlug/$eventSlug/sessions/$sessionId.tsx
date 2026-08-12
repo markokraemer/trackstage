@@ -215,7 +215,7 @@ function SessionDetailPage() {
               className="w-full"
             />
             <AddToCalendarButton
-              event={event}
+              event={{ ...event, workspaceSlug }}
               sessions={[session]}
               filename={session.title}
               className="w-full"

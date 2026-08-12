@@ -9,6 +9,7 @@ import { ShowMore } from "@/components/public/show-more"
 import { TrackChip } from "@/components/public/track-chip"
 import { SaveSessionButton } from "@/components/public/save-session-button"
 import { CopyLinkButton } from "@/components/public/copy-link-button"
+import { AddToCalendarButton } from "@/components/public/add-to-calendar-button"
 import { formatTimeRange, formatWhen } from "@/components/public/format"
 import { ROLE_LABELS } from "@/components/submit/types"
 import type { PublicEvent, PublicSession } from "@/components/public/types"
@@ -78,6 +79,17 @@ export function SessionCard({
           ) : null}
         </div>
         <div className="flex shrink-0 items-center gap-1">
+          {/* Icon-only here: the card is dense and repeats down a long list,
+              so the affordance has to be small — the menu behind it is the
+              same one every other surface opens. Hidden outright when the
+              session has no time, rather than showing a dead control. */}
+          <AddToCalendarButton
+            event={{ ...event, workspaceSlug }}
+            sessions={[session]}
+            variant="ghost"
+            iconOnly
+            hideWhenEmpty
+          />
           <CopyLinkButton
             display="icon"
             variant="ghost"

@@ -63,7 +63,7 @@ function MySchedulePage() {
           sessions.length > 0 ? (
             <>
               <AddToCalendarButton
-                event={event}
+                event={{ ...event, workspaceSlug }}
                 sessions={sessions}
                 label="Add all to calendar"
                 filename={`${event.slug}-my-schedule`}
