@@ -428,6 +428,9 @@ export const messageHtml = query({
     const message = await ctx.db.get("messages", args.messageId)
     if (!message || message.eventId !== args.eventId) return null
     const brand = await brandFor(ctx, message.eventId, message.personId)
+    const calendar = message.icsAttached
+      ? await icsContextFor(ctx, args.messageId)
+      : null
     return renderBrandedEmail({
       subject: message.subject,
       body: message.body,
@@ -435,6 +438,7 @@ export const messageHtml = query({
       eventName: brand.eventName,
       logoUrl: brand.logoUrl,
       portalLink: brand.portalLink,
+      calendar,
     })
   },
 })
@@ -1055,39 +1059,52 @@ const icsContextValidator = v.object({
   eventName: v.optional(v.string()),
 })
 
-/** Everything the action needs to build a calendar invite: submission + event + room. */
+/**
+ * Everything needed to describe one message's session as a calendar entry:
+ * submission + event + room. Shared by the delivery action (which turns it into
+ * the .ics attachment) and the outbox preview (which renders the same
+ * add-to-calendar row the recipient will see), so the two can never disagree.
+ */
+async function icsContextFor(
+  ctx: QueryCtx,
+  messageId: Id<"messages">,
+): Promise<Infer<typeof icsContextValidator> | null> {
+  const message = await ctx.db.get("messages", messageId)
+  if (!message || !message.submissionId) return null
+  const submission = await ctx.db.get("submissions", message.submissionId)
+  if (!submission || submission.startsAt === undefined) return null
+  const event = await ctx.db.get("events", submission.eventId)
+  const room = submission.roomId
+    ? await ctx.db.get("rooms", submission.roomId)
+    : null
+  const person = await ctx.db.get("people", message.personId)
+
+  const locationParts = [room?.name, event?.venue].filter(
+    (part): part is string => Boolean(part),
+  )
+  return {
+    messageId,
+    filename: `${slugify(submission.title) || "session"}.ics`,
+    uid: `${submission._id}@trackstage`,
+    title: submission.title,
+    description: submission.description,
+    startsAt: submission.startsAt,
+    durationMinutes: submission.durationMinutes ?? 45,
+    timezone: event?.timezone,
+    location: locationParts.length ? locationParts.join(" · ") : undefined,
+    attendeeEmail: person?.email,
+    eventName: event?.name,
+  }
+}
+
 export const icsContexts = internalQuery({
   args: { messageIds: v.array(v.id("messages")) },
   returns: v.array(icsContextValidator),
   handler: async (ctx, args) => {
     const out: Array<Infer<typeof icsContextValidator>> = []
     for (const messageId of args.messageIds.slice(0, 100)) {
-      const message = await ctx.db.get("messages", messageId)
-      if (!message || !message.submissionId) continue
-      const submission = await ctx.db.get("submissions", message.submissionId)
-      if (!submission || submission.startsAt === undefined) continue
-      const event = await ctx.db.get("events", submission.eventId)
-      const room = submission.roomId
-        ? await ctx.db.get("rooms", submission.roomId)
-        : null
-      const person = await ctx.db.get("people", message.personId)
-
-      const locationParts = [room?.name, event?.venue].filter(
-        (part): part is string => Boolean(part),
-      )
-      out.push({
-        messageId,
-        filename: `${slugify(submission.title) || "session"}.ics`,
-        uid: `${submission._id}@trackstage`,
-        title: submission.title,
-        description: submission.description,
-        startsAt: submission.startsAt,
-        durationMinutes: submission.durationMinutes ?? 45,
-        timezone: event?.timezone,
-        location: locationParts.length ? locationParts.join(" · ") : undefined,
-        attendeeEmail: person?.email,
-        eventName: event?.name,
-      })
+      const context = await icsContextFor(ctx, messageId)
+      if (context) out.push(context)
     }
     return out
   },
@@ -1191,6 +1208,18 @@ export const deliverPending = internalAction({
             eventName: message.brand.eventName,
             logoUrl: message.brand.logoUrl,
             portalLink: message.brand.portalLink,
+            // Same session the .ics carries, as one-click Google/Outlook links.
+            // An attachment is useless to a speaker reading this on a phone.
+            calendar: context
+              ? {
+                  title: context.title,
+                  startsAt: context.startsAt,
+                  durationMinutes: context.durationMinutes,
+                  location: context.location,
+                  timezone: context.timezone,
+                  eventName: context.eventName,
+                }
+              : null,
           }),
         }
         if (!(message.isHtml ?? looksLikeHtml(message.body)))

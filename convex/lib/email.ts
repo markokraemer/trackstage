@@ -8,6 +8,12 @@
 // Pure module — no Convex imports — so it is usable from queries, mutations and
 // actions.
 
+import {
+  googleCalendarUrl,
+  outlookLiveUrl,
+  outlookOfficeUrl,
+} from "./calendarLinks"
+
 /** The placeholder set exposed in the template editor. */
 export const TEMPLATE_VARIABLES = [
   "speakerName",
@@ -252,6 +258,24 @@ export type BrandedEmailInput = {
   logoUrl?: string | null
   /** The recipient's speaker-portal link, when they have one. */
   portalLink?: string | null
+  /**
+   * The scheduled session this email is about, when there is one. Adds a
+   * one-click "add to calendar" row under the message — see `calendarBlock`.
+   */
+  calendar?: CalendarBlockInput | null
+}
+
+export type CalendarBlockInput = {
+  title: string
+  /** Epoch milliseconds. */
+  startsAt: number
+  durationMinutes: number
+  /** Room, venue, or both. */
+  location?: string
+  /** IANA zone of the event — used to say *when*, in the venue's own hours. */
+  timezone?: string
+  /** Conference name, carried into the calendar entry's description. */
+  eventName?: string
 }
 
 /** True when a body was authored as HTML rather than plain text. */
@@ -291,6 +315,79 @@ function textToHtml(body: string): string {
 }
 
 /**
+ * "Friday, October 12 · 04:00 PM – 04:45 PM PDT" — the session line, in the
+ * *event's* zone, because "4pm" on a conference programme means 4pm at the
+ * venue. Falls back to a plain UTC rendering if the runtime rejects the zone,
+ * since a mangled date must never take an acceptance email down with it.
+ */
+function formatSessionWhen(input: CalendarBlockInput): string {
+  const endsAt = input.startsAt + Math.max(1, input.durationMinutes) * 60_000
+  const zone = input.timezone
+  try {
+    const day = new Intl.DateTimeFormat("en-US", {
+      timeZone: zone,
+      weekday: "long",
+      month: "long",
+      day: "numeric",
+    }).format(new Date(input.startsAt))
+    const time = new Intl.DateTimeFormat("en-US", {
+      timeZone: zone,
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: true,
+    })
+    const abbrev = new Intl.DateTimeFormat("en-US", {
+      timeZone: zone,
+      timeZoneName: "short",
+    })
+      .formatToParts(new Date(input.startsAt))
+      .find((part) => part.type === "timeZoneName")?.value
+    return `${day} · ${time.format(new Date(input.startsAt))} – ${time.format(new Date(endsAt))}${abbrev ? ` ${abbrev}` : ""}`
+  } catch {
+    return new Date(input.startsAt).toUTCString()
+  }
+}
+
+/**
+ * The "add to calendar" row printed under a message about a scheduled session.
+ *
+ * The `.ics` file is already attached, which every desktop client handles — but
+ * a speaker reading this on a phone, in Gmail or Outlook on the web, gets
+ * nowhere with an attachment. These three links open the provider with the
+ * session already filled in, so the answer to "when am I on" ends up in their
+ * actual calendar in one tap. Every interpolated value is escaped: the title
+ * and room come from organizer- and speaker-supplied text.
+ */
+function calendarBlock(input: CalendarBlockInput): string {
+  const endsAt = input.startsAt + Math.max(1, input.durationMinutes) * 60_000
+  const event = {
+    title: input.title,
+    startsAt: input.startsAt,
+    endsAt,
+    location: input.location,
+    description: input.eventName,
+  }
+  const link = (href: string, label: string) =>
+    `<a href="${escapeHtml(href)}" style="color:#2f5ce0;text-decoration:underline;white-space:nowrap;">${label}</a>`
+
+  const where = input.location
+    ? `<div style="color:#64748b;">${escapeHtml(input.location)}</div>`
+    : ""
+
+  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:24px 0 0 0;border:1px solid #e6e6e9;border-radius:10px;background-color:#fafafa;">
+<tr>
+<td style="padding:16px 18px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:14px;line-height:1.5;color:#17171a;">
+<div style="font-weight:600;">${escapeHtml(input.title)}</div>
+<div style="color:#64748b;">${escapeHtml(formatSessionWhen(input))}</div>
+${where}
+<div style="margin-top:12px;">Add it to your calendar: ${link(googleCalendarUrl(event), "Google Calendar")} &nbsp;·&nbsp; ${link(outlookLiveUrl(event), "Outlook.com")} &nbsp;·&nbsp; ${link(outlookOfficeUrl(event), "Outlook (work)")}</div>
+<div style="margin-top:6px;color:#64748b;font-size:12px;">Apple Calendar and everything else: open the .ics file attached to this email.</div>
+</td>
+</tr>
+</table>`
+}
+
+/**
  * Wrap a rendered message in the event's branding. Pure and total: with no
  * logo it falls back to the event name as a wordmark, and with no portal link
  * the footer simply drops that clause.
@@ -304,7 +401,12 @@ export function renderBrandedEmail(input: BrandedEmailInput): string {
   // our verified domain (adversarial-review F2/F3, 2026-08-11). Callers that
   // don't know pass undefined and we fall back to sniffing.
   const isHtml = input.isHtml ?? looksLikeHtml(input.body)
-  const content = isHtml ? input.body : textToHtml(input.body)
+  // The calendar row is appended *after* the rendered body, never merged into
+  // it, so an HTML template can't be broken by it and it can't be escaped away
+  // by a plain-text one.
+  const content =
+    (isHtml ? input.body : textToHtml(input.body)) +
+    (input.calendar ? calendarBlock(input.calendar) : "")
 
   const header = input.logoUrl
     ? `<img src="${escapeHtml(input.logoUrl)}" alt="${eventName}" height="36" style="display:block;max-height:36px;border:0;outline:none;text-decoration:none;" />`
