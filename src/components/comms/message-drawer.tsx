@@ -31,6 +31,7 @@ import {
 } from "./constants"
 import { EmailPreviewCard } from "./email-preview"
 import { AddToCalendar } from "@/components/shared/add-to-calendar"
+import { formatWhen } from "@/components/public/format"
 import type { MessageRow } from "./types"
 import { errorMessageOrNull } from "@/lib/errors"
 
@@ -302,8 +303,11 @@ export function MessageDrawer({
                 Calendar invite attached
               </p>
               <p className="mt-0.5 text-sm text-muted-foreground">
+                {/* The event's zone, not the organizer's browser: this line has
+                    to match the invite the speaker actually received, and the
+                    two disagreed by however far the organizer had travelled. */}
                 {session && session.startsAt !== undefined
-                  ? `${format(new Date(session.startsAt), "EEE, MMM d · h:mm a")} · ${session.durationMinutes} min${roomName ? ` · ${roomName}` : ""}`
+                  ? `${formatWhen(session.startsAt, session.startsAt + session.durationMinutes * 60_000, board?.event.timezone ?? "UTC")} · ${session.durationMinutes} min${roomName ? ` · ${roomName}` : ""}`
                   : "Loading the session's time and room…"}
               </p>
             </div>

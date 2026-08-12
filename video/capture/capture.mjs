@@ -11,8 +11,9 @@
 import { resolve } from "node:path"
 import {
   AUTH_STATE, BASE, EVENT_SLUG, ORGANIZER, RAW, OUT,
-  api, browser, clickCalm, clickUntil, glide, glideTo, gotoStable, loadState,
-  mainEvent, organizerClient, recordBeat, saveState, shutdown, still, typeCalm,
+  api, appPath, browser, cfpPath, clickCalm, clickUntil, glide, glideTo,
+  gotoStable, loadState, mainEvent, organizerClient, publicPath, recordBeat,
+  saveState, shutdown, still, typeCalm,
 } from "./lib.mjs"
 
 // ——— Realistic fixture cast (deleted again in `cleanup`) ————————————————————
@@ -127,7 +128,7 @@ async function cfp() {
     await resetPerson(client, event, CAST.maya.email, CAST.maya.title)
   }
   await recordBeat("cfp-submit", async (page, { mark }) => {
-    await gotoStable(page, `/submit/${EVENT_SLUG}/cfp`)
+    await gotoStable(page, cfpPath())
     await page.waitForTimeout(400)
     mark("welcome")
     await glide(page, { x: 800, y: 560 }, { duration: 500 })
@@ -185,7 +186,7 @@ async function triage() {
       "What actually broke when we put agents in front of customers, and the playbook that fixed it.")
   }
   await recordBeat("triage", async (page, { mark }) => {
-    await gotoStable(page, "/app/submissions")
+    await gotoStable(page, appPath("/submissions"))
     await page.waitForTimeout(600)
     mark("table")
     await clickCalm(page, page.getByRole("tab", { name: /pending/i }).first())
@@ -201,9 +202,8 @@ async function triage() {
     await clickCalm(page, statusButton)
     await page.waitForTimeout(500)
     mark("status-menu")
+    // One click applies (status-picker.tsx: no Save/Cancel since 2026-08-12).
     await clickCalm(page, page.getByRole("button", { name: /^accept queue$/i }).first())
-    await page.waitForTimeout(400)
-    await clickCalm(page, page.getByRole("button", { name: /^save$/i }).first())
     mark("staged")
     await page.waitForTimeout(1400)
     // Show where it landed: the row now sits in the Accept Queue tab.
@@ -222,7 +222,7 @@ async function commit() {
       "What actually broke when we put agents in front of customers, and the playbook that fixed it.")
   }
   await recordBeat("commit-queue", async (page, { mark }) => {
-    await gotoStable(page, "/app/submissions")
+    await gotoStable(page, appPath("/submissions"))
     await page.waitForTimeout(800)
     await clickCalm(page, page.getByRole("button", { name: /send acceptances/i }).first())
     await page.getByRole("heading", { name: /send \d+ acceptance/i }).first().waitFor({ timeout: 15000 })
@@ -232,7 +232,7 @@ async function commit() {
     // let the outbox in /app/communications carry the "real emails" motif.
     await clickCalm(page, page.getByRole("button", { name: /cancel/i }).last())
     await page.waitForTimeout(500)
-    await gotoStable(page, "/app/communications")
+    await gotoStable(page, appPath("/communications"))
     mark("outbox")
     await page.waitForTimeout(2800)
   })
@@ -311,6 +311,8 @@ async function copilot() {
       "Which eval harnesses actually hold up in CI, with the receipts.")
   }
   await recordBeat("copilot", async (page, { mark }) => {
+    await gotoStable(page, appPath())
+    await page.waitForTimeout(600)
     await gotoStable(page, "/app/copilot")
     await page.waitForTimeout(700)
     mark("open")
@@ -340,7 +342,7 @@ async function agendaDrag() {
     await client.mutation(api.agenda.unschedule, { submissionId: id }).catch(() => {})
   }
   await recordBeat("agenda-drag", async (page, { mark }) => {
-    await gotoStable(page, "/app/agenda?view=day")
+    await gotoStable(page, appPath("/agenda?view=day"))
     await page.waitForTimeout(1200)
     mark("agenda")
     const esc = (v) => v.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
@@ -389,7 +391,7 @@ async function autoPlace() {
     }
   }
   await recordBeat("auto-place", async (page, { mark }) => {
-    await gotoStable(page, "/app/agenda?view=day")
+    await gotoStable(page, appPath("/agenda?view=day"))
     await page.waitForTimeout(1200)
     mark("agenda")
     await clickCalm(page, page.getByRole("button", { name: /auto-place/i }).first())
@@ -409,7 +411,7 @@ async function publish() {
   // Film the real transition: make sure we start unpublished.
   await client.mutation(api.agenda.unpublishAgenda, { eventId: event._id }).catch(() => {})
   await recordBeat("publish", async (page, { mark }) => {
-    await gotoStable(page, "/app/agenda")
+    await gotoStable(page, appPath("/agenda"))
     await page.waitForTimeout(1000)
     await clickCalm(page, page.getByRole("button", { name: /^publish agenda$/i }).first())
     await page.getByRole("heading", { name: /publish the agenda\?/i }).first().waitFor({ timeout: 15000 })
@@ -419,7 +421,7 @@ async function publish() {
     await page.getByText(/^published ·/i).first().waitFor({ timeout: 30000 })
     mark("published")
     await page.waitForTimeout(1600)
-    await gotoStable(page, `/e/${EVENT_SLUG}`)
+    await gotoStable(page, publicPath())
     mark("public-page")
     await page.waitForTimeout(1600)
     await page.mouse.wheel(0, 500)
@@ -432,7 +434,7 @@ async function publish() {
 /** Form builder: open the CFP form, walk the wizard, flip a toggle. */
 async function formBuilder() {
   await recordBeat("form-builder", async (page, { mark }) => {
-    await gotoStable(page, "/app/forms")
+    await gotoStable(page, appPath("/forms"))
     await page.waitForTimeout(900)
     mark("forms")
     await clickCalm(page, page.getByRole("link", { name: /CFP 2026/i }).first())
@@ -458,15 +460,92 @@ async function formBuilder() {
   })
 }
 
+
+/** The embeds builder: pick a widget, watch the live preview redraw, copy code. */
+async function embeds() {
+  await recordBeat("embeds", async (page, { mark }) => {
+    await gotoStable(page, appPath("/embeds"))
+    await page.waitForTimeout(1400)
+    mark("builder")
+    await glide(page, { x: 900, y: 560 }, { duration: 600 })
+    await page.waitForTimeout(1200)
+    // Swap the widget — the preview on the right redraws immediately.
+    const widget = page.getByRole("combobox").first()
+    await clickCalm(page, widget)
+    await page.waitForTimeout(500)
+    mark("widget-open")
+    const speakers = page.getByRole("option", { name: /speaker gallery/i }).first()
+    if (await speakers.isVisible().catch(() => false)) {
+      await clickCalm(page, speakers)
+    } else {
+      await page.keyboard.press("Escape")
+    }
+    await page.waitForTimeout(2200)
+    mark("preview")
+    // And the code you paste into your own site.
+    const code = page.getByRole("tab", { name: /^code$/i }).first()
+    if (await code.isVisible().catch(() => false)) {
+      await clickCalm(page, code)
+    } else {
+      await clickCalm(page, page.getByRole("button", { name: /^code$/i }).first())
+    }
+    await page.waitForTimeout(2600)
+    mark("code")
+  })
+}
+
+/** The Connect MCP modal — Claude / ChatGPT / Codex, one command. */
+async function mcpModal() {
+  await recordBeat("mcp-connect", async (page, { mark }) => {
+    // Pin the event context first: /app/copilot is a bare path and resolves
+    // "the event you were last in", which on a shared dev deployment is
+    // whatever another agent touched last.
+    await gotoStable(page, appPath())
+    await page.waitForTimeout(800)
+    await gotoStable(page, "/app/copilot")
+    await page.waitForTimeout(1200)
+    mark("copilot")
+    await clickCalm(page, page.getByRole("button", { name: /connect mcp/i }).first())
+    await page.waitForTimeout(1800)
+    mark("modal")
+    // Walk the client tabs: Claude → ChatGPT → Codex.
+    for (const name of [/chatgpt/i, /codex/i, /claude/i]) {
+      const tab = page.getByRole("tab", { name }).first()
+      if (await tab.isVisible().catch(() => false)) {
+        await clickCalm(page, tab)
+        await page.waitForTimeout(1500)
+      }
+    }
+    mark("tabs")
+    await page.waitForTimeout(2000)
+  })
+}
+
+/** The landing page itself, scrolled calmly. */
+async function landing() {
+  await recordBeat("landing", async (page, { mark }) => {
+    await gotoStable(page, "/")
+    await page.waitForTimeout(2200)
+    mark("hero")
+    for (let i = 0; i < 14; i++) {
+      await page.mouse.wheel(0, 130)
+      await page.waitForTimeout(90)
+    }
+    await page.waitForTimeout(1800)
+    mark("scrolled")
+  }, { authed: false })
+}
+
 /** Held frames. */
 async function stills() {
-  await still("dashboard", "/app")
-  await still("speakers", "/app/speakers")
-  await still("communications", "/app/communications")
-  await still("mcp", "/app/settings/api-mcp")
-  await still("embeds", "/app/embeds")
-  await still("public-event", `/e/${EVENT_SLUG}`, null, { authed: false })
-  await still("evaluation", "/app/evaluation")
+  await still("dashboard", appPath())
+  await still("speakers", appPath("/speakers"))
+  await still("communications", appPath("/communications"))
+  await still("embeds", appPath("/embeds"))
+  await still("evaluation", appPath("/evaluation"))
+  await still("files", appPath("/files"))
+  await still("public-event", publicPath(), null, { authed: false })
+  await still("landing", "/", null, { authed: false })
 }
 
 /** Remove every fixture this script created; leave the agenda published. */
@@ -494,9 +573,10 @@ async function cleanup() {
 const BEATS = {
   login, fixtures, cfp, triage, commit, acceptMaya, portal, copilot,
   "agenda-drag": agendaDrag, "auto-place": autoPlace, publish,
-  "form-builder": formBuilder, stills, cleanup,
+  "form-builder": formBuilder, embeds, "mcp-modal": mcpModal, landing,
+  stills, cleanup,
 }
-const ORDER = ["login", "fixtures", "form-builder", "cfp", "triage", "commit", "acceptMaya", "portal", "copilot", "agenda-drag", "auto-place", "publish", "stills", "cleanup"]
+const ORDER = ["login", "fixtures", "form-builder", "cfp", "triage", "commit", "acceptMaya", "portal", "copilot", "agenda-drag", "auto-place", "publish", "embeds", "mcp-modal", "landing", "stills", "cleanup"]
 
 const args = process.argv.slice(2)
 const names = args[0] === "all" ? ORDER : args

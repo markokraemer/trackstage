@@ -48,6 +48,7 @@ import type { ActivityRow } from "@/components/activity/activity-timeline"
 import { DeleteSubmissionButton } from "@/components/submissions/delete-submission-dialog"
 import { AddToCalendar } from "@/components/shared/add-to-calendar"
 import { useCurrentEvent } from "@/lib/current-event"
+import { formatWhen } from "@/components/public/format"
 import { errorMessage } from "@/lib/errors"
 import {
   EMPTY_CELL,
@@ -580,11 +581,19 @@ export function SubmissionDetailDrawer({
                   label="Room"
                   value={submission.room?.name ?? EMPTY_CELL}
                 />
+                {/* The venue's hours, not the organizer's laptop's. A slot on
+                    the programme means 9am *at the conference*, and printing it
+                    in local time contradicted the calendar menu right below. */}
                 <MetaRow
                   label="Scheduled"
                   value={
                     submission.startsAt
-                      ? absoluteDate(submission.startsAt)
+                      ? formatWhen(
+                          submission.startsAt,
+                          submission.startsAt +
+                            (submission.durationMinutes ?? 45) * 60_000,
+                          currentEvent?.timezone ?? "UTC",
+                        )
                       : "Not scheduled"
                   }
                 />

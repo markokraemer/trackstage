@@ -15,3 +15,6 @@ capture/fr_*.png
 capture/probe.mjs
 capture/chk*.mjs
 capture/recon*.mjs
+capture/qa/
+capture/qa2/
+capture/sheets/

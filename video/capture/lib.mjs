@@ -17,8 +17,18 @@ export const HERE = dirname(fileURLToPath(import.meta.url))
 export const ROOT = resolve(HERE, "../..")
 export const RAW = resolve(HERE, "raw")
 export const OUT = resolve(HERE, "../public/captures")
-export const BASE = process.env.CAPTURE_BASE ?? "http://localhost:3001"
+export const BASE = process.env.CAPTURE_BASE ?? "http://localhost:3000"
 export const EVENT_SLUG = "ai-summit-2026"
+export const WS_SLUG = "ai-engineer"
+
+/**
+ * URLs went fully hierarchical (`/app/:workspace/:event/…`) — the bare paths
+ * still resolve but only via a client-side redirect, which films as a flash.
+ * Every beat therefore addresses the canonical path directly.
+ */
+export const appPath = (p = "") => `/app/${WS_SLUG}/${EVENT_SLUG}${p}`
+export const cfpPath = (form = "cfp") => `/submit/${WS_SLUG}/${EVENT_SLUG}/${form}`
+export const publicPath = () => `/e/${WS_SLUG}/${EVENT_SLUG}`
 export const AUTH_STATE = resolve(HERE, ".auth.json")
 export const STATE_FILE = resolve(HERE, "state.json")
 export const MARKS_FILE = resolve(HERE, "marks.json")

@@ -8,8 +8,13 @@ import { ProductShot } from "@/components/marketing/product-shot"
  * The hero product shot with a launch-film play action (Marko, 2026-08-11:
  * "place it in the hero with action to start playing"). The still stays the
  * hero — it loads instantly and reads as the real product — and the play
- * affordance opens the film in a lightbox. The 720p web render lives at
- * /launch.mp4 (the 1080p master is video/out/, over the asset size cap).
+ * affordance opens the film in a lightbox. `/launch.mp4` is the 1080p web
+ * render of the final cut (81s, ~23 MiB — the Workers static-asset cap is
+ * 25 MiB); the full-quality master lives at
+ * `video/out/trackstage-launch-final.mp4`.
+ *
+ * The label's duration has to match the file: re-render the film, re-measure,
+ * update it here.
  */
 export function HeroVideoShot() {
   const [open, setOpen] = React.useState(false)
@@ -54,7 +59,7 @@ export function HeroVideoShot() {
             </span>
             <span className="text-sm font-medium text-foreground">
               Watch the film
-              <span className="ml-1.5 text-muted-foreground">90 sec</span>
+              <span className="ml-1.5 text-muted-foreground">81 sec</span>
             </span>
           </span>
         </button>

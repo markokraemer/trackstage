@@ -4,11 +4,13 @@ import { Composition } from "remotion"
 import { Main } from "./Main"
 import { MainV2, StingV2 } from "./MainV2"
 import { MainV3 } from "./MainV3"
+import { MainFinal } from "./MainFinal"
 import { LogoSting } from "./LogoSting"
 import { HeroSquare } from "./HeroSquare"
 import { FPS, totalDurationInFrames } from "./storyboard"
 import { totalDurationInFramesV2 } from "./storyboard-v2"
 import { totalDurationInFramesV3 } from "./storyboard-v3"
+import { totalDurationInFramesFinal } from "./storyboard-final"
 
 export const RemotionRoot: React.FC = () => {
   return (
@@ -33,6 +35,14 @@ export const RemotionRoot: React.FC = () => {
         id="TrackstageLaunchV3"
         component={MainV3}
         durationInFrames={totalDurationInFramesV3}
+        fps={FPS}
+        width={1920}
+        height={1080}
+      />
+      <Composition
+        id="TrackstageLaunchFinal"
+        component={MainFinal}
+        durationInFrames={totalDurationInFramesFinal}
         fps={FPS}
         width={1920}
         height={1080}

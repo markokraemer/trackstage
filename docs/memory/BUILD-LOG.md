@@ -2941,3 +2941,69 @@ from a LIVE form hid the question instead of breaking the link. Builder UI
 checked in-browser (warnings render, switch disables). Seeded ai-summit-2026
 unchanged. typecheck + lint + 353 unit tests + openapi:check green; cfp-submit
 and forms-builder flows 9 passed / 1 flaky-then-passed.
+
+## 2026-08-12 ~01:50–02:35 — Launch film, FINAL cut (`public/launch.mp4`)
+
+Marko: "based on the latest landing page and the latest product end-to-end,
+produce a FULL FINAL video that we'll place on the landing page. Make it like
+the V1 / latest version a bit." So: V1's calm as the taste, V3's scene
+vocabulary as the machinery, **all-new footage**, and copy lifted from the
+landing page section for section.
+
+**Footage — every product shot re-recorded from scratch.** The UI had moved
+under the old capture library: URLs are hierarchical now
+(`/app/:workspace/:event/…`; the bare paths only client-side-redirect, which
+films as a flash), the status picker applies on one click (no Save), the CFP
+lives at `/submit/:ws/:event/:form`, and the copilot, embeds builder and
+Connect-a-client sheet are all new. `capture/lib.mjs` gained `appPath` /
+`cfpPath` / `publicPath` and defaults to :3000; `capture/capture.mjs` gained
+three beats (`embeds`, `mcp-modal`, `landing`) and lost the triage Save click.
+Reseeded first (`convex run seed:setup`) so the demo world was clean.
+
+Two capture gotchas worth remembering: (a) `/app/copilot` is a **bare** path and
+resolves "the event you were last in" — on a shared dev deployment that is
+whatever another agent touched last, and the first MCP take filmed a stranger's
+"Track Guard Check 2026" in the backdrop. Every beat that uses a bare path now
+navigates to `appPath()` first to pin the context. (b) The Connect-a-client
+sheet is a small centred dialog; at composition scale its endpoint and CLI line
+were ~11px. `prep-clips-final.mjs` gained a per-clip `crop`, and the MCP clip is
+cropped to `1120:700:240:150` — which also removes the sidebar, the header and
+the account email by construction.
+
+**Pipeline change:** `capture/prep-clips-final.mjs` now emits clips that are
+ALREADY cut and retimed to their final length into `public/clips/final/`, so the
+storyboard plays each one whole from frame 0 at rate 1. The old two-stage retime
+(ffmpeg speed × Remotion `playbackRate`) was the thing that made every timing
+tweak a guessing game.
+
+**The cut** — `src/storyboard-final.ts` + `MainFinal.tsx`, reusing `scenes-v3`
+(two additive tweaks: the reveal tagline is width-bounded so the hero's full
+headline wraps to two centred lines, and the stat wall's column count follows
+the data). 16 scenes, 2458 frames, **81.98s**:
+
+cold open (the pitch, from `open-source.tsx`) → reveal (hero headline + chip,
+verbatim) → 01 Collect (form builder) → 02 Submit (public CFP, conditional
+logic, thank-you) → 03 Review (search → one-click status → "nothing emailed
+yet") → 04 Decide (send-acceptances sheet + templates) → 05 Speakers (portal,
+task marked done) → 06 Schedule (drag out of the tray, red clash, fix it) →
+07 Auto-place → 08 Publish (+ the public program) → 09 Copilot (ask → approval
+card → Approve & run → plain-words result) → 10 Connect (Claude / ChatGPT /
+Codex) → 11 Embed (builder + the snippet) → 12 Try it (the landing page itself)
+→ the open-source stat wall (MIT · 100% · $0) → end card.
+
+**QA loop** (render → 1fps contact sheets → read → fix → re-render) found one
+real defect: the auto-place chapter cut at the click and never showed the
+payoff. Re-cut to 9.6s of source so the grid fills in and "Placed 3 sessions"
+lands. Everything else passed: no ghosting at the crossfades, no loading
+skeletons at chapter heads, no fixture leakage, no frozen tails.
+
+**Deliverables.** Master `video/out/trackstage-launch-final.mp4` (CRF 16,
+30.2 MB). Web `public/launch.mp4` — 1080p H.264 CRF 20, AAC 128k, faststart
+(moov at byte 32, verified), **18.93 MiB** against the 25 MiB Workers
+static-asset cap. Verified end to end in the real lightbox: plays, reports
+81.984s / 1920×1080, and a seek to 60s resumed at 62.1s over the site's 206
+Range support. `hero-video.tsx`'s label 90 sec → 81 sec.
+
+Not mine, seen in the tree: `src/components/comms/message-drawer.tsx` has an
+unused `RiDownload2Line` import (another agent, mid-edit) — the only `tsc`
+error; lint is clean.

@@ -153,7 +153,18 @@ export const Reveal: React.FC<{ scene: RevealSceneV3 }> = ({ scene }) => {
             Trackstage
           </div>
         </div>
-        <div style={{ ...heading(48), marginTop: 46, textAlign: "center" }}>
+        {/* Bounded so a full-sentence tagline (the landing hero's own
+            headline, in the final cut) wraps to two centred lines instead of
+            running to the frame edges. */}
+        <div
+          style={{
+            ...heading(48),
+            marginTop: 46,
+            textAlign: "center",
+            maxWidth: 1240,
+            lineHeight: 1.16,
+          }}
+        >
           <TextReveal text={scene.tagline} delay={36} perWord={2.5} />{" "}
           <span style={{ color: MUTED_INK }}>
             <TextReveal text={scene.taglineMuted} delay={48} perWord={2.5} />
@@ -455,7 +466,7 @@ export const Stats: React.FC<{ scene: StatsSceneV3 }> = ({ scene }) => {
           style={{
             marginTop: 52,
             display: "grid",
-            gridTemplateColumns: "repeat(4, 1fr)",
+            gridTemplateColumns: `repeat(${scene.stats.length}, 1fr)`,
             gap: 1,
             background: color.border,
             border: `1px solid ${color.border}`,
