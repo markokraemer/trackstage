@@ -2,15 +2,12 @@ import { createFileRoute } from "@tanstack/react-router"
 import {
   RiAlarmWarningLine,
   RiCheckLine,
-  RiInformationLine,
   RiLock2Line,
 } from "@remixicon/react"
 
-import { ClientIcon } from "@/components/docs/client-icon"
-import { Callout, DocLink } from "@/components/docs/doc-primitives"
+import { Callout, DocLink, Shot } from "@/components/docs/doc-primitives"
 import { CodeSnippet } from "@/components/settings/code-snippet"
 import { Badge } from "@/components/ui/badge"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { MCP_TOOL_COUNT, MCP_TOOL_GROUPS } from "@/docs/generated/mcp-tools"
 import { mcpEndpoint } from "@/lib/deployment-urls"
 
@@ -28,8 +25,6 @@ export const Route = createFileRoute("/docs/mcp")({
   }),
 })
 
-const PLACEHOLDER_KEY = "sb_live_xxx"
-
 function McpPage() {
   const endpoint = mcpEndpoint()
 
@@ -39,13 +34,34 @@ function McpPage() {
         MCP server
       </h1>
       <p className="mt-2 text-[0.9375rem] leading-7 text-pretty text-muted-foreground">
-        One endpoint, {MCP_TOOL_COUNT} tools, everything the app can do. Point
-        your assistant at it and ask for what you want.
+        Let Claude, ChatGPT, Codex or any other AI assistant work on your event
+        with you — ask for what you want in chat, and it uses Trackstage on
+        your behalf.
       </p>
 
-      {/* ——— The endpoint ——————————————————————————————————————————— */}
+      {/* ——— Connect from the app ——————————————————————————————————— */}
       <h2 className="mt-10 font-heading text-lg font-semibold tracking-[-0.02em] text-foreground">
-        The endpoint
+        Connect your assistant
+      </h2>
+      <p className="doc-prose mt-3">
+        Do it from inside the app: open the <strong>Copilot</strong> screen
+        (in your event&rsquo;s sidebar) and click{" "}
+        <strong>Connect MCP</strong> in the top-right corner. It walks you
+        through a one-click connection for Claude, ChatGPT, Codex and other
+        assistants — with the right link and the right steps for each one, so
+        there is nothing to get wrong.
+      </p>
+      <div className="mt-4">
+        <Shot
+          src="copilot.png"
+          alt="The Copilot screen with the Connect MCP button in the top-right corner of the header."
+          caption="The Copilot screen — Connect MCP sits in the top-right corner."
+        />
+      </div>
+
+      {/* ——— The link, for assistants that ask for one ————————————— */}
+      <h2 className="mt-10 font-heading text-lg font-semibold tracking-[-0.02em] text-foreground">
+        If your assistant asks for a link
       </h2>
       <div className="mt-3">
         <CodeSnippet
@@ -56,131 +72,19 @@ function McpPage() {
         />
       </div>
       <p className="doc-prose mt-3">
-        Two ways in. <strong>Just add the URL</strong> and sign in with your
-        browser — Claude and ChatGPT both do this, no key to paste. Or send an{" "}
-        <strong>API key</strong> as a bearer token, which is what CLI clients
-        want. Create keys under Account settings → API &amp; MCP (avatar menu →
-        Account settings), where they live — keys are personal, not per-event.
-      </p>
-      <p className="doc-prose mt-3">
-        The app hands you the same thing without leaving it:{" "}
-        <strong>Connect MCP</strong> in the copilot header (or on the Copilot
-        page) opens the endpoint and the per-client instructions in a dialog.
+        Some assistants just want this link. Paste it where they ask, then sign
+        in with your Trackstage account when your browser opens — no key to
+        copy. The Connect MCP dialog covers the rest, including the assistants
+        that want an API key instead.
       </p>
 
       <div className="mt-3">
         <Callout tone="note">
-          Either way, the server acts as <em>you</em>: it can see and change
-          exactly what your account can, in the workspaces you belong to.
+          However it connects, the assistant acts as <em>you</em>: it can see
+          and change exactly what your account can, in the workspaces you
+          belong to.
         </Callout>
       </div>
-
-      {/* ——— Per-client setup ——————————————————————————————————————— */}
-      <h2 className="mt-10 font-heading text-lg font-semibold tracking-[-0.02em] text-foreground">
-        Connect your client
-      </h2>
-
-      <Tabs defaultValue="claude" className="mt-3">
-        {/* Four labels plus their brand icons are a few pixels wider than a
-            390px phone — let the strip scroll rather than the page. */}
-        <TabsList className="max-w-full justify-start overflow-x-auto">
-          <TabsTrigger value="claude">
-            <ClientIcon client="claude" />
-            Claude
-          </TabsTrigger>
-          <TabsTrigger value="chatgpt">
-            <ClientIcon client="chatgpt" />
-            ChatGPT
-          </TabsTrigger>
-          <TabsTrigger value="codex">
-            <ClientIcon client="codex" />
-            Codex
-          </TabsTrigger>
-          <TabsTrigger value="any">
-            <ClientIcon client="any" />
-            Any client
-          </TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="claude" className="space-y-5 pt-4">
-          <div className="space-y-2">
-            <h3 className="text-sm font-medium text-foreground">
-              Claude desktop or claude.ai
-            </h3>
-            <ol className="doc-prose">
-              <li>Settings → Connectors → Add custom connector.</li>
-              <li>Paste the endpoint URL above.</li>
-              <li>Sign in with your Trackstage account when prompted.</li>
-            </ol>
-            <OAuthNote />
-          </div>
-          <div className="space-y-2 border-t border-border pt-5">
-            <h3 className="text-sm font-medium text-foreground">
-              Claude Code (CLI)
-            </h3>
-            <p className="doc-prose">
-              Run this once — Claude Code will remember it.
-            </p>
-            <CodeSnippet
-              title="Terminal"
-              copyLabel="Copy command"
-              successMessage="Command copied to your clipboard"
-              value={`claude mcp add trackstage --transport http ${endpoint} --header "Authorization: Bearer ${PLACEHOLDER_KEY}"`}
-            />
-            <KeyNote />
-          </div>
-        </TabsContent>
-
-        <TabsContent value="chatgpt" className="space-y-2 pt-4">
-          <p className="doc-prose">
-            ChatGPT connects the same way as Claude’s Connectors — no key to
-            paste, you just sign in.
-          </p>
-          <ol className="doc-prose">
-            <li>Settings → Connectors → Create.</li>
-            <li>Paste the endpoint URL above.</li>
-            <li>Authenticate with your Trackstage account.</li>
-          </ol>
-          <OAuthNote />
-        </TabsContent>
-
-        <TabsContent value="codex" className="space-y-2 pt-4">
-          <p className="doc-prose">Add this to your Codex config file.</p>
-          <CodeSnippet
-            title="~/.codex/config.toml"
-            copyLabel="Copy config"
-            successMessage="Config copied to your clipboard"
-            value={`[mcp_servers.trackstage]\nurl = "${endpoint}"\nhttp_headers = { Authorization = "Bearer ${PLACEHOLDER_KEY}" }`}
-          />
-          <KeyNote />
-        </TabsContent>
-
-        <TabsContent value="any" className="space-y-2 pt-4">
-          <p className="doc-prose">
-            A generic streamable-HTTP MCP config — for Cursor, Windsurf, or
-            anything else that speaks MCP over HTTP with a bearer token.
-          </p>
-          <CodeSnippet
-            title="mcp.json"
-            copyLabel="Copy config"
-            successMessage="Config copied to your clipboard"
-            value={JSON.stringify(
-              {
-                mcpServers: {
-                  trackstage: {
-                    type: "http",
-                    url: endpoint,
-                    headers: { Authorization: `Bearer ${PLACEHOLDER_KEY}` },
-                  },
-                },
-              },
-              null,
-              2
-            )}
-          />
-          <KeyNote />
-        </TabsContent>
-      </Tabs>
 
       {/* ——— Try it ————————————————————————————————————————————————— */}
       <h2 className="mt-10 font-heading text-lg font-semibold tracking-[-0.02em] text-foreground">
@@ -199,7 +103,7 @@ function McpPage() {
         All {MCP_TOOL_COUNT} tools
       </h2>
       <p className="mt-1 text-[0.875rem] text-muted-foreground">
-        Generated from the server’s own definitions, so this list cannot drift.
+        Everything an assistant can do in Trackstage, in one list.
       </p>
 
       <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
@@ -209,7 +113,7 @@ function McpPage() {
             aria-hidden
             className="text-[var(--status-green-dot)]"
           />
-          Read-only — runs without approval
+          Only looks things up — runs right away
         </span>
         <span className="flex items-center gap-1.5">
           <RiAlarmWarningLine
@@ -217,8 +121,7 @@ function McpPage() {
             aria-hidden
             className="text-[var(--status-amber-dot)]"
           />
-          Creates data — requires{" "}
-          <code className="font-mono">confirm: true</code>
+          Creates something — asks you first
         </span>
         <span className="flex items-center gap-1.5">
           <RiLock2Line
@@ -226,8 +129,7 @@ function McpPage() {
             aria-hidden
             className="text-[var(--status-red-dot)]"
           />
-          Changes or destroys data — requires{" "}
-          <code className="font-mono">confirm: true</code>
+          Changes or deletes something — asks you first
         </span>
       </div>
 
@@ -272,20 +174,16 @@ function McpPage() {
 
       <div className="mt-8 space-y-3">
         <Callout tone="warning">
-          Every tool that writes anything — creates included — refuses to run
-          without <code>confirm: true</code>, so an assistant has to ask you
-          before changing your event; reads never need it.{" "}
-          <code>delete_event</code> additionally demands the event&rsquo;s exact
-          name in <code>confirmName</code>. Tools are also annotated with the
-          MCP <code>readOnlyHint</code>/<code>destructiveHint</code> hints, so
-          clients that honor them (ChatGPT does) add their own approval prompt
-          on top.
+          Nothing changes without your yes. Any tool that would create, change
+          or delete something in your event refuses to run until you approve
+          it — so an assistant can never email your speakers or touch your
+          agenda behind your back. Deleting an event goes one step further:
+          you also have to type the event&rsquo;s exact name.
         </Callout>
         <Callout tone="note">
           The in-app <DocLink to="/docs/guide/ai-copilot">AI copilot</DocLink>{" "}
-          uses this exact server, and shows an approval card before every tool
-          that changes something — approving the card is what supplies{" "}
-          <code>confirm: true</code>.
+          uses these same tools, and shows you an approval card before
+          anything that changes your event.
         </Callout>
       </div>
     </div>
@@ -341,21 +239,3 @@ function ToolBadge({
   )
 }
 
-function OAuthNote() {
-  return (
-    <p className="flex items-start gap-2 text-xs text-muted-foreground">
-      <RiInformationLine size={14} aria-hidden className="mt-0.5 shrink-0" />
-      Sign-in happens in your browser — no API key needed for this route.
-    </p>
-  )
-}
-
-function KeyNote() {
-  return (
-    <p className="flex items-start gap-2 text-xs text-muted-foreground">
-      <RiInformationLine size={14} aria-hidden className="mt-0.5 shrink-0" />
-      Swap <code className="font-mono">{PLACEHOLDER_KEY}</code> for a key from
-      Account settings → API &amp; MCP.
-    </p>
-  )
-}
