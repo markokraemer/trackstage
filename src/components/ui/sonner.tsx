@@ -30,8 +30,10 @@ const Toaster = ({ ...props }: ToasterProps) => {
       /* Most of these toasts are receipts for something irreversible — mail
          sent, decisions committed — and several carry a count or a URL in the
          description. Four seconds is not long enough to read a two-line receipt
-         and act on it; six is, and a toast that has already been read is
-         dismissible by clicking it. */
+         and act on it; six is. A toast is NOT dismissible by clicking it — it
+         takes no pointer events at all (see `toast` below), so the click goes
+         to whatever is underneath. That is the intended trade: the receipt
+         never blocks the page, and it leaves on its own. */
       duration={6000}
       icons={{
         success: <RiCheckboxCircleLine className="size-4" />,

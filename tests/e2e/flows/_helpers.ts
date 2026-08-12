@@ -437,9 +437,12 @@ export async function advance(
   }).toPass({ timeout })
 }
 
-/** Sonner toast text (any toast currently on screen). */
+/**
+ * Sonner toast text — any toast on screen that a test hasn't already retired
+ * via `clearToasts`.
+ */
 export function toasts(page: Page) {
-  return page.locator("[data-sonner-toast]")
+  return page.locator("[data-sonner-toast]:not([data-e2e-retired])")
 }
 
 export async function expectToast(page: Page, pattern: RegExp, timeout = 15_000) {
@@ -448,13 +451,36 @@ export async function expectToast(page: Page, pattern: RegExp, timeout = 15_000)
   })
 }
 
-/** Dismiss every visible toast so it can't intercept later clicks. */
+/**
+ * Retire the toasts currently on screen, so a later `expectToast` can only be
+ * satisfied by a NEW one.
+ *
+ * This must never click a toast. Two facts make that gesture actively
+ * destructive here:
+ *
+ *  1. Sonner puts no click handler on the toast body — only on a close button,
+ *     which this app doesn't render. Clicking a toast has never dismissed it.
+ *  2. `src/components/ui/sonner.tsx` deliberately sets `pointer-events: none`
+ *     on every toast ("a receipt must never be a wall"), so the click doesn't
+ *     even land on the toast.
+ *
+ * The old implementation clicked with `force: true`, which skips Playwright's
+ * hit-target check — so the browser delivered the click to whatever sits under
+ * the bottom-right corner of the viewport. On `/app/speakers` that is a roster
+ * row, and a roster row now opens the edit drawer (Marko, 2026-08-11); the
+ * drawer is modal, so it aria-hides the table and every `getByRole("row")` in
+ * the rest of the test resolves to nothing. That is what took
+ * speakers-portal.spec.ts down, deterministically.
+ *
+ * Marking is also simply more correct: toasts expire on their own, and what a
+ * test actually needs is to stop confusing the previous receipt for the next.
+ */
 export async function clearToasts(page: Page) {
-  const all = toasts(page)
-  for (let i = (await all.count()) - 1; i >= 0; i--) {
-    await all.nth(i).click({ force: true }).catch(() => {})
-  }
-  await page.waitForTimeout(200)
+  await page
+    .locator("[data-sonner-toast]")
+    .evaluateAll((nodes) => {
+      for (const node of nodes) node.setAttribute("data-e2e-retired", "")
+    })
 }
 
 /**
