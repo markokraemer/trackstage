@@ -11,6 +11,12 @@ dist-ssr
 __unconfig*
 todos.json
 
+# Capture scratch — stills + intermediate video for the screenshot/GIF scripts.
+# Kept on disk between runs so `capture-tour-gif.mjs --gif` can re-assemble
+# without re-driving the browser; never committed (the GIF itself is).
+.screenshot-frames/
+.tour-frames/
+
 # typescript
 *.tsbuildinfo
 
