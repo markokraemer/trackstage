@@ -298,7 +298,11 @@ export function OnboardingTakeover({ onDone }: { onDone: () => void }) {
   ])
 
   const workspaceId = workspace?.id ?? workspaces.at(0)?.id
-  const workspaceSlug = workspace?.slug ?? workspaces.at(0)?.slug ?? ""
+  // The rename below may re-slug the workspace; the mutation's answer beats
+  // the reactive query by a beat, so keep the freshest slug locally too.
+  const [liveSlug, setLiveSlug] = useState<string | null>(null)
+  const workspaceSlug =
+    liveSlug ?? workspace?.slug ?? workspaces.at(0)?.slug ?? ""
 
   // ——— Step actions ———————————————————————————————————————————————————————
   /** Into the app: the new event's settings page, welcome moment armed. */
@@ -352,11 +356,27 @@ export function OnboardingTakeover({ onDone }: { onDone: () => void }) {
     setStep(STEP_EVENT)
     // Rename in the background — a hiccup here must not gate the flow.
     if (workspace && name !== workspace.name) {
+      // The auto-created workspace's slug was minted from the signup name
+      // ("Nora Feldmann's workspace" → /e/nora-feldmann-s-workspace-…). If
+      // it is still that auto-minted shape — the user never chose an address
+      // of their own — re-slug from the NEW name, so every public URL from
+      // here on reads /e/devcon-events/… instead of fossilizing the signup
+      // default. A customized address is never touched. Uniqueness-adjust
+      // happens server-side (workspaces.update → uniqueWorkspaceSlug), and
+      // the answer carries the address that is actually live.
+      const mintedBase = slugify(workspace.name)
+      const autoMinted =
+        workspace.slug === mintedBase ||
+        workspace.slug.startsWith(`${mintedBase}-`)
       renameWorkspace
         .mutateAsync({
           organizationId: workspace.id,
-          patch: { name },
+          patch: {
+            name,
+            ...(autoMinted && slugify(name) ? { slug: slugify(name) } : {}),
+          },
         })
+        .then((result) => setLiveSlug(result.slug))
         .catch(() => {})
     }
   }
