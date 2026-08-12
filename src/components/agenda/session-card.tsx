@@ -26,6 +26,7 @@ import {
   dayKeyOf,
 } from "./agenda-time"
 import { ScheduleFields } from "./schedule-fields"
+import { AgendaCalendarButton } from "./agenda-calendar-button"
 import { useAgendaActions } from "./use-agenda-actions"
 
 /**
@@ -264,20 +265,30 @@ export function SessionDetailContent({
       />
 
       {scheduled ? (
-        <Button
-          type="button"
-          variant="destructive"
-          size="sm"
-          className="w-full"
-          onClick={() => {
-            void remove(session.id, session.title).then((ok) => {
-              if (ok) onDone?.()
-            })
-          }}
-        >
-          Unschedule
-          {room ? ` from ${room.name}` : ""}
-        </Button>
+        <div className="flex flex-col gap-2">
+          {/* Organizers keep their own copy of the program too — and this is
+              the panel they are already in when they finish placing a talk. */}
+          <AgendaCalendarButton
+            session={session}
+            roomName={room?.name}
+            timeZone={timeZone}
+            className="w-full"
+          />
+          <Button
+            type="button"
+            variant="destructive"
+            size="sm"
+            className="w-full"
+            onClick={() => {
+              void remove(session.id, session.title).then((ok) => {
+                if (ok) onDone?.()
+              })
+            }}
+          >
+            Unschedule
+            {room ? ` from ${room.name}` : ""}
+          </Button>
+        </div>
       ) : null}
     </div>
   )

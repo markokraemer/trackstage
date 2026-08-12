@@ -59,6 +59,7 @@ import {
   timeAt,
 } from "./agenda-time"
 import { ScheduleFields } from "./schedule-fields"
+import { AgendaCalendarButton } from "./agenda-calendar-button"
 import { useAgendaActions } from "./use-agenda-actions"
 
 export interface ListViewProps {
@@ -383,13 +384,22 @@ function ScheduledRow({
       </TableCell>
 
       <TableCell className="text-right">
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => void remove(session.id, session.title)}
-        >
-          Unschedule
-        </Button>
+        <div className="flex items-center justify-end gap-1">
+          <AgendaCalendarButton
+            session={session}
+            roomName={rooms.find((room) => room._id === session.roomId)?.name}
+            timeZone={timeZone}
+            variant="ghost"
+            iconOnly
+          />
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => void remove(session.id, session.title)}
+          >
+            Unschedule
+          </Button>
+        </div>
       </TableCell>
     </TableRow>
   )

@@ -30,7 +30,7 @@ import {
   templateLabel,
 } from "./constants"
 import { EmailPreviewCard } from "./email-preview"
-import { downloadIcs, icsFilename, icsForSession } from "./ics"
+import { AddToCalendar } from "@/components/shared/add-to-calendar"
 import type { MessageRow } from "./types"
 import { errorMessageOrNull } from "@/lib/errors"
 
@@ -131,30 +131,6 @@ export function MessageDrawer({
     }
   }
 
-  function handleDownloadIcs() {
-    if (!message || !session || session.startsAt === undefined) {
-      toast.error("Calendar details are still loading", {
-        description: "Give it a second and try again.",
-      })
-      return
-    }
-    const contents = icsForSession({
-      submissionId: message.submissionId ?? session.id,
-      title: session.title,
-      startsAt: session.startsAt,
-      durationMinutes: session.durationMinutes,
-      roomName,
-      venue,
-      timezone: board?.event.timezone,
-      eventName: board?.event.name,
-      attendeeEmail: message.toEmail,
-    })
-    downloadIcs(icsFilename(session.title), contents)
-    toast.success("Calendar invite downloaded", {
-      description: "Opens in Google Calendar, Apple Calendar and Outlook.",
-    })
-  }
-
   async function handleCopy() {
     if (!message) return
     const ok = await copyText(
@@ -185,11 +161,29 @@ export function MessageDrawer({
             )}
             {copied ? "Copied" : "Copy email text"}
           </Button>
-          {message.icsAttached ? (
-            <Button onClick={handleDownloadIcs} disabled={!session}>
-              <RiDownload2Line aria-hidden />
-              Download .ics
-            </Button>
+          {/* Same control the speaker sees on their end of this email, so the
+              organizer can check exactly what the invite carries. */}
+          {message.icsAttached && session && session.startsAt !== undefined ? (
+            <AddToCalendar
+              items={[
+                {
+                  uid: `${message.submissionId ?? session.id}@trackstage`,
+                  title: session.title,
+                  location:
+                    [roomName, venue].filter(Boolean).join(" \u00b7 ") ||
+                    undefined,
+                  startsAt: session.startsAt,
+                  endsAt:
+                    session.startsAt + session.durationMinutes * 60_000,
+                },
+              ]}
+              calendarName={session.title}
+              timezone={board?.event.timezone}
+              filename={session.title}
+              variant="default"
+              size="default"
+              label="Add to calendar"
+            />
           ) : (
             <Button variant="outline" onClick={() => onOpenChange(false)}>
               Close

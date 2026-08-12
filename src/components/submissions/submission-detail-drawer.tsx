@@ -46,6 +46,8 @@ import { AnswersEditor } from "@/components/submissions/answers-editor"
 import { ActivityTimeline } from "@/components/activity/activity-timeline"
 import type { ActivityRow } from "@/components/activity/activity-timeline"
 import { DeleteSubmissionButton } from "@/components/submissions/delete-submission-dialog"
+import { AddToCalendar } from "@/components/shared/add-to-calendar"
+import { useCurrentEvent } from "@/lib/current-event"
 import { errorMessage } from "@/lib/errors"
 import {
   EMPTY_CELL,
@@ -106,6 +108,9 @@ export function SubmissionDetailDrawer({
   const [tab, setTab] = useState("details")
   const [draft, setDraft] = useState<Draft | null>(null)
   const [saving, setSaving] = useState(false)
+  // Times on a session are absolute instants; the zone is only needed to say
+  // *when* in words, on the "Add to calendar" menu below.
+  const { event: currentEvent } = useCurrentEvent()
 
   const { data: submission, error: loadError } = useQuery(
     convexQuery(api.submissions.get, submissionId ? { submissionId } : "skip")
@@ -584,6 +589,29 @@ export function SubmissionDetailDrawer({
                   }
                 />
               </dl>
+
+              {submission.startsAt ? (
+                <div className="mt-3">
+                  <AddToCalendar
+                    items={[
+                      {
+                        uid: `${submission._id}@trackstage`,
+                        title: submission.title,
+                        description: submission.description ?? undefined,
+                        location: submission.room?.name ?? undefined,
+                        startsAt: submission.startsAt,
+                        endsAt:
+                          submission.startsAt +
+                          (submission.durationMinutes ?? 45) * 60_000,
+                      },
+                    ]}
+                    calendarName={submission.title}
+                    timezone={currentEvent?.timezone}
+                    filename={submission.title}
+                    align="start"
+                  />
+                </div>
+              ) : null}
 
               {hasAnswers ? (
                 <>
