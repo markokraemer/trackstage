@@ -144,6 +144,10 @@ jobs:
           # rate limiter (convex/auth.ts) would stack retries into 429s.
           # Hermetic backend only — dev/prod keep limits on.
           pnpm exec convex env set AUTH_RATE_LIMIT_DISABLED true
+          # An operator token, as prod has one, so `demo-api-token` is what it
+          # is in production — the published, demo-workspace-only credential —
+          # and the flows suite can prove it cannot read a stranger's event.
+          pnpm exec convex env set PUBLIC_API_TOKEN "ci-operator-token"
 
       # The first function push happens asynchronously inside `convex dev`;
       # seeding succeeds only once it has landed, so this doubles as the

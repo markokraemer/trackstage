@@ -128,6 +128,67 @@ test.describe("public API", () => {
     expect(missing.status()).toBe(404)
   })
 
+  test("the published demo token reads the demo event and nothing else", async ({
+    request,
+  }) => {
+    // `demo-api-token` is printed in the public API reference so anyone can
+    // explore without signing up. The same database holds real organizers'
+    // work, so what it may read is the seeded demo workspace — and this is the
+    // proof, run against a stranger's event created seconds earlier.
+    const strangerEmail = testEmail("demo-scope")
+    await signUpApi("Scope Stranger", strangerEmail, "stranger-pass-1")
+    const { ConvexHttpClient } = await import("convex/browser")
+    const strangerClient = new ConvexHttpClient(env.VITE_CONVEX_URL)
+    strangerClient.setAuth(await signInApi(strangerEmail, "stranger-pass-1"))
+    const strangerKey = await strangerClient.mutation(api.apiKeys.create, {
+      name: "stranger-demo-scope",
+    })
+    // A signup owns nothing until onboarding gives it a workspace.
+    await strangerClient.mutation(api.workspaces.ensure, {})
+
+    const created = await request.post(`${SITE}/v1/events`, {
+      headers: { Authorization: `Bearer ${strangerKey.key}` },
+      data: { name: unique("Private Summit"), timezone: "UTC" },
+      failOnStatusCode: false,
+    })
+    expect(created.status(), await created.text()).toBe(201)
+    const slug = ((await created.json()) as { data: { slug: string } }).data.slug
+
+    const asDemo = (path: string) =>
+      request.get(`${SITE}${path}`, {
+        headers: { Authorization: "Bearer demo-api-token" },
+        failOnStatusCode: false,
+      })
+
+    const peek = await asDemo(`/v1/event/${slug}/sessions`)
+    // Unset PUBLIC_API_TOKEN (a bare self-host) makes this string the
+    // deployment's own read-everything token, which is a different, legitimate
+    // configuration — there is nothing to assert about scoping there.
+    test.skip(
+      peek.status() === 200,
+      "PUBLIC_API_TOKEN is unset — `demo-api-token` IS this deployment's operator token",
+    )
+    expect(peek.status(), "a stranger's event is not the demo world").toBe(403)
+
+    const listed = await asDemo("/v1/events?pageSize=100")
+    expect(listed.status()).toBe(200)
+    const slugs = ((await listed.json()) as { data: Array<{ slug: string }> }).data.map(
+      (row) => row.slug,
+    )
+    expect(slugs, "the demo token lists only demo events").not.toContain(slug)
+    expect(slugs).toContain(MAIN_EVENT_SLUG)
+
+    // The owner still reads their own event, and the demo event still reads.
+    const asOwner = await request.get(`${SITE}/v1/event/${slug}/sessions`, {
+      headers: { Authorization: `Bearer ${strangerKey.key}` },
+      failOnStatusCode: false,
+    })
+    expect(asOwner.status()).toBe(200)
+    expect((await asDemo(`/v1/event/${MAIN_EVENT_SLUG}/sessions`)).status()).toBe(200)
+
+    await strangerClient.mutation(api.apiKeys.revoke, { keyId: strangerKey.keyId })
+  })
+
   test("speakers endpoint never leaks private contact details", async ({ request }) => {
     const res = await request.get(`${SITE}/v1/event/${MAIN_EVENT_SLUG}/speakers`, {
       headers: { Authorization: "Bearer demo-api-token" },

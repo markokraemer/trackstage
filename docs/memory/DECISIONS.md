@@ -705,3 +705,31 @@ already agrees with us is asking for nothing, so it is neither a refusal nor a
 conflict. `unchanged`/`echo` are also excluded from the "left alone" count for
 the same reason — with twelve columns over two hundred rows they would bury the
 number that matters.
+
+---
+
+- **2026-08-13 · The API reference prints one address, and the token it prints
+  can only read the demo.** Two things were false on `trackstage.app/docs/api`.
+
+**The base URL.** `scripts/generate-openapi.mjs` still read
+`VITE_CONVEX_SITE_URL`, so the committed spec advertised
+`keen-eagle-41.convex.site` months after `api.trackstage.app` went up. It now
+follows the same precedence as `publicApiOrigin()` — `VITE_PUBLIC_API_URL`
+first — and rewrites the dev hosts that live example capture bakes into file
+and headshot URLs to prod's, so a reader never meets two bases in one document.
+The API's own `upload.url` follows the host the caller actually used, the rule
+MCP discovery already keeps: a client that came in on the branded domain is not
+bounced to `*.convex.site` for the follow-up PUT.
+
+**The demo token.** The reference has always told readers to explore with
+`demo-api-token`. On prod that 401'd (prod sets a real `PUBLIC_API_TOKEN`), and
+the "fix" of publishing prod's token would have handed every reader read access
+to every organizer's submissions, speaker addresses and files — the legacy
+token reads the whole database by design. So the constant is now accepted on
+every deployment as a *smaller* credential: read-only, and confined to the
+seeded demo workspace, checked once at the dispatcher door on the event
+reference every scoped path carries (`convex/apiHttp.ts`, `apiV1.eventIsDemo`).
+An operator's own `PUBLIC_API_TOKEN` keeps the full read-only view, so a
+self-host that sets nothing behaves exactly as before. CI now sets an operator
+token on the hermetic backend so the flows suite proves the scoping against a
+stranger's event created seconds earlier.

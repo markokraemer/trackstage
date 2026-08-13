@@ -41,7 +41,8 @@ const ENV = [
   },
   {
     name: "PUBLIC_API_TOKEN",
-    what: "The bearer token the read-only HTTP API accepts.",
+    what:
+      "Your own read-only token for the whole HTTP API. Unset, that role falls to `demo-api-token`, which otherwise reads only the seeded demo events.",
   },
   {
     name: "OPENROUTER_API_KEY",

@@ -45,7 +45,9 @@ export function apiBaseUrl(): string {
 }
 
 /**
- * The bearer token the demo deployment ships with (`PUBLIC_API_TOKEN` defaults
- * to this in `convex/http.ts`), so the docs' copy-paste examples work as-is.
+ * The bearer token printed in the public API reference, so the docs'
+ * copy-paste examples work as-is on any deployment. It is read-only and, where
+ * the operator has set their own `PUBLIC_API_TOKEN`, confined to the seeded
+ * demo events (`convex/apiHttp.ts`).
  */
 export const DEMO_API_TOKEN = "demo-api-token"
