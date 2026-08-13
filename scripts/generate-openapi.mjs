@@ -2401,7 +2401,7 @@ function buildSpec(routes, examples, siteUrl, rewrites = []) {
         '  -H "x-access-token: sb_live_…"',
         "```",
         "",
-        "Prefer to look before you sign up? The token `demo-api-token` reads the demo events — `ai-summit-2026` and `design-systems-day` — and answers **403** on every write and on every event that is not one of those two.",
+        "Prefer to look before you sign up? The token `demo-api-token` reads the demo workspace — start with `ai-summit-2026` — and answers **403** on every write, and on every event outside that workspace.",
         "",
         "---",
         "",
