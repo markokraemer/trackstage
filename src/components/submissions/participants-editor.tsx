@@ -20,14 +20,21 @@
  */
 
 import * as React from "react"
+import { Link } from "@tanstack/react-router"
 import { useConvexMutation } from "@convex-dev/react-query"
 import { api } from "@convex/_generated/api"
 import type { Id } from "@convex/_generated/dataModel"
-import { RiAddLine, RiCloseLine, RiTeamLine, RiUserAddLine } from "@remixicon/react"
+import {
+  RiAddLine,
+  RiArrowRightUpLine,
+  RiCloseLine,
+  RiTeamLine,
+  RiUserAddLine,
+} from "@remixicon/react"
 import { toast } from "sonner"
 
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
-import { Button } from "@/components/ui/button"
+import { Button, buttonVariants } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Field, FieldDescription, FieldLabel } from "@/components/ui/field"
 import {
@@ -40,6 +47,7 @@ import {
 import { EmptyState } from "@/components/shared/empty-state"
 import { initialsOf } from "@/components/dashboard/format"
 import { PersonPicker } from "@/components/dashboard/person-picker"
+import { appLink, legacyAppLink } from "@/lib/app-links"
 import { useCurrentEvent } from "@/lib/current-event"
 import { errorMessage } from "@/lib/errors"
 
@@ -94,7 +102,12 @@ export function ParticipantsEditor({
 
   // The picker searches the event in context — the same event this drawer's
   // submission belongs to, since the organizer app is single-event scoped.
-  const { event } = useCurrentEvent()
+  const { event, eventRef } = useCurrentEvent()
+  // Where a person's full profile lives. `?person=` opens their drawer there —
+  // see the deep-link handler in the speakers route.
+  const speakersPath = eventRef
+    ? appLink.speakers(eventRef)
+    : legacyAppLink.speakers
 
   const [adding, setAdding] = React.useState(false)
   const [firstName, setFirstName] = React.useState("")
@@ -202,14 +215,37 @@ export function ParticipantsEditor({
                 </AvatarFallback>
               </Avatar>
               <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-medium text-foreground">
+                <Link
+                  to={speakersPath as never}
+                  search={{ person: String(person.personId) } as never}
+                  className="block truncate text-sm font-medium text-foreground underline-offset-4 hover:underline"
+                >
                   {person.name}
-                </p>
+                </Link>
                 <p className="truncate text-xs text-muted-foreground">
                   {person.email}
                   {person.company ? ` · ${person.company}` : ""}
                 </p>
               </div>
+              {/* The role picker answers "who are they on THIS submission"; the
+                  profile answers "who are they" — bio, headshot, tasks, their
+                  other sessions. Editing a bio from here used to mean leaving,
+                  finding the roster and searching for them again, so the row
+                  carries the jump itself. Same ?person= deep link the ⌘K
+                  palette uses, which means it is an ordinary link: middle-click
+                  and "open in new tab" both work, and so does a browser agent. */}
+              <Link
+                to={speakersPath as never}
+                search={{ person: String(person.personId) } as never}
+                aria-label={`Open ${person.name}'s speaker profile`}
+                title={`Open ${person.name}'s speaker profile`}
+                className={buttonVariants({
+                  variant: "ghost",
+                  size: "icon-sm",
+                })}
+              >
+                <RiArrowRightUpLine aria-hidden />
+              </Link>
               <Select
                 items={PARTICIPANT_ROLES}
                 value={person.role}

@@ -26,7 +26,6 @@ import {
   dayKeyOf,
 } from "./agenda-time"
 import { ScheduleFields } from "./schedule-fields"
-import { AgendaCalendarButton } from "./agenda-calendar-button"
 import { useAgendaActions } from "./use-agenda-actions"
 
 /**
@@ -265,30 +264,25 @@ export function SessionDetailContent({
       />
 
       {scheduled ? (
-        <div className="flex flex-col gap-2">
-          {/* Organizers keep their own copy of the program too — and this is
-              the panel they are already in when they finish placing a talk. */}
-          <AgendaCalendarButton
-            session={session}
-            roomName={room?.name}
-            timeZone={timeZone}
-            className="w-full"
-          />
-          <Button
-            type="button"
-            variant="destructive"
-            size="sm"
-            className="w-full"
-            onClick={() => {
-              void remove(session.id, session.title).then((ok) => {
-                if (ok) onDone?.()
-              })
-            }}
-          >
-            Unschedule
-            {room ? ` from ${room.name}` : ""}
-          </Button>
-        </div>
+        // Placement only. "Add to calendar" used to sit here too and it read as
+        // clutter: this popover exists to answer "where and when does this go",
+        // and every control in it changes the programme. Exporting one talk to
+        // your own calendar is a different job at a different moment, so it
+        // lives with the other per-session actions in List view.
+        <Button
+          type="button"
+          variant="destructive"
+          size="sm"
+          className="w-full"
+          onClick={() => {
+            void remove(session.id, session.title).then((ok) => {
+              if (ok) onDone?.()
+            })
+          }}
+        >
+          Unschedule
+          {room ? ` from ${room.name}` : ""}
+        </Button>
       ) : null}
     </div>
   )

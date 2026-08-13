@@ -104,10 +104,38 @@ type Credential = {
   subject: string
   /** Displayable key head, for audit-log attribution only. */
   prefix: string
+  /**
+   * The token printed in the public reference: reads the seeded demo
+   * workspace and nothing else. Only ever true alongside `userId: null`.
+   */
+  demoOnly?: boolean
 }
 
+/**
+ * The operator's read-only token. Unset (self-host, dev) it IS the published
+ * demo string, which keeps the whole deployment readable exactly as before.
+ */
 function legacyToken(): string {
-  return process.env.PUBLIC_API_TOKEN ?? "demo-api-token"
+  return process.env.PUBLIC_API_TOKEN ?? PUBLIC_DEMO_TOKEN
+}
+
+/**
+ * The token our public API reference tells readers to explore with. It is a
+ * constant, not a secret, so it is accepted on every deployment — and it is
+ * confined to the seeded demo workspace, because on our hosted deployment the
+ * same database holds real organizers' submissions, speaker addresses and
+ * files. A deployment whose operator sets PUBLIC_API_TOKEN to something else
+ * still answers that token with the full read-only view; this one is the
+ * strictly smaller, publishable credential.
+ */
+const PUBLIC_DEMO_TOKEN = "demo-api-token"
+
+/** What the published demo token gets for anything outside the demo world. */
+function demoOutOfScope(): Response {
+  return errorResponse(
+    "The public demo token only reads the demo event. Create a personal API key in Settings → API & MCP to reach your own events.",
+    403,
+  )
 }
 
 function presentedToken(req: Request): string | null {
@@ -127,13 +155,23 @@ async function authenticate(
   const token = presentedToken(req)
   if (!token) return null
   if (token === legacyToken()) {
-    // Predates scopes and predates multi-tenancy. Read-only forever: it is
-    // the token in the public docs so judges can explore without signing up.
+    // Predates scopes and predates multi-tenancy. Read-only forever.
     return {
       userId: null,
       scopes: ["read:*"],
       subject: "legacy-demo-token",
       prefix: "legacy-demo-token",
+    }
+  }
+  if (token === PUBLIC_DEMO_TOKEN) {
+    // The token in the public docs, so judges can explore without signing up
+    // — same read-only rights, narrowed to the demo workspace.
+    return {
+      userId: null,
+      scopes: ["read:*"],
+      subject: "public-demo-token",
+      prefix: "public-demo-token",
+      demoOnly: true,
     }
   }
   if (!token.startsWith("sb_live_")) return null
@@ -654,6 +692,29 @@ export const handleApiRequest = httpAction(async (ctx, req) => {
         )
       : null
 
+  // The published demo token reads the seeded demo workspace and nothing
+  // else: the hosted deployment's database also holds real organizers'
+  // submissions, speaker addresses and files, and that token is printed in
+  // the public reference for anyone to use. Checked once, at the door, on the
+  // event reference every scoped path carries. A reference that resolves to
+  // no event at all falls through to its own 404.
+  if (credential.demoOnly === true) {
+    const ref =
+      rest[0] === "event" && rest.length >= 2
+        ? rest[1]
+        : rest[0] === "events" && rest.length >= 2
+          ? rest[1]
+          : null
+    if (ref !== null) {
+      const isDemo = await ctx.runQuery(internal.apiV1.eventIsDemo, {
+        eventRef: ref,
+      })
+      if (isDemo === false) return demoOutOfScope()
+    } else if (rest[0] === "webhooks") {
+      return demoOutOfScope()
+    }
+  }
+
   try {
     // ——— /v1/events… (full CRUD) ———
     if (rest[0] === "events") {
@@ -753,6 +814,7 @@ async function handleEvents(
       if ("error" in paging) return errorResponse(paging.error, 400)
       const result = await ctx.runQuery(internal.apiV1.listEvents, {
         userId: credential.userId,
+        demoOnly: credential.demoOnly === true,
         page: paging.page,
         pageSize: paging.pageSize,
       })

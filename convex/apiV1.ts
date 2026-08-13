@@ -31,6 +31,7 @@ import {
 } from "./sessionStatuses"
 import type { StatusCategory, StatusColor } from "./sessionStatuses"
 import { humanMessage } from "./lib/errors"
+import { DEMO_WORKSPACE_SLUG } from "./seed"
 import { TASK_KINDS as APP_TASK_KINDS } from "./tasksAdmin"
 
 // ————————————————————————————————————————————————————————————————————————
@@ -72,6 +73,34 @@ export async function resolveEvent(
   // when the integration was written keeps it). Ids are always unambiguous.
   return await oldestEventBySlug(ctx, trimmed)
 }
+
+/**
+ * The seeded demo workspace: the whole of what the token printed in the public
+ * API reference may read. Resolved by slug because that is what the seed
+ * creates and what the public links already spell.
+ */
+async function demoOrganizationId(
+  ctx: QueryCtx,
+): Promise<Id<"organizations"> | null> {
+  const org = await ctx.db
+    .query("organizations")
+    .withIndex("by_slug", (q) => q.eq("slug", DEMO_WORKSPACE_SLUG))
+    .first()
+  return org?._id ?? null
+}
+
+/** Is this event part of the seeded demo world? */
+export const eventIsDemo = internalQuery({
+  args: { eventRef: v.string() },
+  returns: v.union(v.boolean(), v.null()),
+  handler: async (ctx, args) => {
+    const event = await resolveEvent(ctx, args.eventRef)
+    // null = no such event; the caller lets its own 404 speak instead.
+    if (!event) return null
+    if (!event.organizationId) return false
+    return event.organizationId === (await demoOrganizationId(ctx))
+  },
+})
 
 /**
  * The API's authorization gate. `userId === null` is the legacy demo token:
@@ -637,11 +666,26 @@ const filtersValidator = v.object({
 // ══════════════════════════════════════════════════════════════════════════
 
 export const listEvents = internalQuery({
-  args: { userId: v.union(v.string(), v.null()), ...pagingArgs },
+  args: {
+    userId: v.union(v.string(), v.null()),
+    /** The published demo token: the demo workspace and nothing else. */
+    demoOnly: v.optional(v.boolean()),
+    ...pagingArgs,
+  },
   returns: v.any(),
   handler: async (ctx, args) => {
     let events: Array<Doc<"events">>
-    if (args.userId === null) {
+    if (args.userId === null && args.demoOnly === true) {
+      const demoOrg = await demoOrganizationId(ctx)
+      events = demoOrg
+        ? await ctx.db
+            .query("events")
+            .withIndex("by_organizationId", (q) =>
+              q.eq("organizationId", demoOrg),
+            )
+            .take(MAX_ROWS)
+        : []
+    } else if (args.userId === null) {
       // Legacy demo token: every event, read-only. Unchanged behaviour.
       events = await ctx.db.query("events").take(MAX_ROWS)
     } else {
