@@ -205,3 +205,12 @@ the narrative memory; RULES.md is the things circled as important along the way.
     (GitHub redirects the old URL); all in-repo references + package name updated.
 65. **OOM warning**: be aware of memory while developing — persisted as rule 30
     (browser hygiene, sequential heavy tooling, orphan cleanup, memory watchdog).
+66. **Two-way Airtable, in depth (2026-08-13)**: "why dont u fully complete the
+    implementation in DEPTH e2e AIRTABLE SYNC 2 way working perfectly" — with a real
+    PAT + base handed over to prove it live. Requirements stated explicitly:
+    inbound must be an EXPLICIT opt-in, ideally **per field** ("whether all or
+    specific ones"), and the safer one-way sync stays the default. Delivered as a
+    20-column registry across all three mirrored tables, a master switch plus a
+    per-column checklist, and `scripts/verify-airtable-live.mjs` — 32 assertions
+    driven against the real base (both directions, echo, conflict, refusals,
+    narrowing, off).

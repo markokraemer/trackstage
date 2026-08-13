@@ -1,36 +1,32 @@
 // ————————————————————————————————————————————————————————————————————————
-// EXPERIMENTAL two-way Airtable sync — the inbound half (HISTORY.md 61).
+// Two-way Airtable sync — the shared inbound machinery (HISTORY.md 61, 66).
 //
 // The one-way mirror (convex/lib/airtable.ts) is deliberately safe: nothing
-// an organizer does in Airtable can corrupt the programme. This adds the one
-// inbound path swyx's use case actually wants — triage the Status column in
-// Airtable and have the decisions land back here — WITHOUT giving that safety
-// up. It is off by default and scoped to a single field.
+// an organizer does in Airtable can corrupt the programme. Write-back gives
+// them the other direction WITHOUT giving that safety up — it is off by
+// default, and when it is on it is scoped to the individual columns the
+// organizer ticked (convex/lib/airtableFields.ts).
 //
-// Everything in this file is PURE (no Convex ctx, no fetch), so the guard
+// This file holds the pieces every inbound field shares: the status
+// vocabulary, the modified-since cursor, and the run tally. The per-field
+// guard itself lives next door in airtableFields.ts, which imports from here.
+// (The dependency runs one way on purpose: this module knows nothing about the
+// registry, so the registry can be built out of it.)
+//
+// Everything in both files is PURE (no Convex ctx, no fetch), so the guard
 // logic can be unit-tested exhaustively in tests/unit/airtable-sync.test.ts.
 // That matters more here than anywhere else in the integration: the failure
 // modes are echo loops and lost organizer decisions, and both are decided by
-// these few comparisons.
+// a handful of string comparisons.
 //
-// ── Why Status only ───────────────────────────────────────────────────────
-// It is the highest-value field (the triage-in-Airtable workflow), and the
-// only one that is enum-validatable — an unknown value can be rejected rather
-// than half-applied. Free text would let an Airtable typo silently overwrite
-// a talk abstract. If this ever widens, it widens field by field.
+// ── The loop guard, in one sentence ───────────────────────────────────────
+// We record, per document per field, the canonical value WE last pushed. One
+// value answers both dangerous questions:
 //
-// ── The loop guard ────────────────────────────────────────────────────────
-// We record, per submission, the status WE last pushed (`lastPushedStatus`).
-// One value answers both dangerous questions:
-//
-//   echo:     airtable === lastPushed  → this is our own write coming back.
-//   conflict: current  !== lastPushed  → our side moved since the mirror was
-//                                        written, so the organizer changed it
-//                                        HERE. Our DB wins; we log and skip.
-//
-// Checked in this order — unchanged, unknown, not-allowed, echo, conflict —
-// so the cheap, common cases never reach the expensive reasoning, and a
-// genuine conflict is always reported rather than silently dropped.
+//   echo:     airtable === baseline  → this is our own write coming back.
+//   conflict: current  !== baseline  → our side moved since the mirror was
+//                                      written, so the organizer changed it
+//                                      HERE. Our DB wins; we log and skip.
 // ————————————————————————————————————————————————————————————————————————
 
 /**
@@ -81,90 +77,6 @@ export function parseStatusLabel(label: unknown): string | null {
   return known[normalized] ?? null
 }
 
-export type InboundDecision =
-  | { apply: true; status: InboundStatus; reason: "apply" }
-  | {
-      apply: false
-      status: null
-      reason:
-        | "unknown_status" // not a status we recognise at all
-        | "not_allowed" // recognised, but Airtable may not set it (draft/withdrawn)
-        | "unchanged" // already what we hold — nothing to do
-        | "no_baseline" // never mirrored, so echo can't be told from intent
-        | "echo" // exactly what we last pushed — our own write returning
-        | "conflict" // both sides moved; our DB wins
-      /** Present for `conflict`, so the caller can log what was overruled. */
-      airtableStatus?: string
-    }
-
-export type InboundCandidate = {
-  /** The raw Airtable "Status" cell. */
-  airtableValue: unknown
-  /** What we hold right now. */
-  currentStatus: string
-  /** The status we last wrote INTO Airtable for this row, if ever. */
-  lastPushedStatus?: string | null
-}
-
-/**
- * The whole decision, in one pure function.
- *
- * Order is load-bearing:
- *  1. `unknown_status` / `not_allowed` — reject before any state reasoning,
- *     so a typo in Airtable can never be interpreted as a conflict.
- *  2. `unchanged` BEFORE `conflict`. After we apply an inbound change our
- *     `lastPushedStatus` is momentarily stale; checking equality first means
- *     the very next pull says "nothing to do" instead of crying conflict.
- *  3. `no_baseline` — a row we have never mirrored gives us nothing to
- *     compare against, so we decline to act. The next push writes the
- *     baseline and the row becomes eligible.
- *  4. `echo` before `conflict` — our own write returning is not a conflict.
- */
-export function shouldApplyInbound(
-  candidate: InboundCandidate
-): InboundDecision {
-  const parsed = parseStatusLabel(candidate.airtableValue)
-  if (parsed === null)
-    return { apply: false, status: null, reason: "unknown_status" }
-  if (!INBOUND_STATUSES.includes(parsed as InboundStatus)) {
-    return { apply: false, status: null, reason: "not_allowed" }
-  }
-  if (parsed === candidate.currentStatus) {
-    return { apply: false, status: null, reason: "unchanged" }
-  }
-
-  const lastPushed = candidate.lastPushedStatus ?? null
-  if (lastPushed === null) {
-    return { apply: false, status: null, reason: "no_baseline" }
-  }
-  if (parsed === lastPushed) {
-    return { apply: false, status: null, reason: "echo" }
-  }
-  if (candidate.currentStatus !== lastPushed) {
-    // Both sides moved since the last mirror write. Trackstage is the source
-    // of truth, so the organizer's in-app decision stands and the Airtable
-    // edit is reported, not applied. The next push overwrites the cell.
-    return {
-      apply: false,
-      status: null,
-      reason: "conflict",
-      airtableStatus: parsed,
-    }
-  }
-  return { apply: true, status: parsed as InboundStatus, reason: "apply" }
-}
-
-/** Reader-facing wording for each skip reason (Integrations card + audit log). */
-export const INBOUND_REASON_TEXT: Record<InboundDecision["reason"], string> = {
-  apply: "Applied from Airtable",
-  unknown_status: "Airtable holds a status we don't recognise — left alone",
-  not_allowed: "Draft and Withdrawn can't be set from Airtable — left alone",
-  unchanged: "Already up to date",
-  no_baseline: "Not mirrored yet — will be eligible after the next sync",
-  echo: "Our own last sync coming back — ignored",
-  conflict: "Changed in Trackstage too — Trackstage wins",
-}
-
 /**
  * `filterByFormula` limiting a list to records touched since our last sync.
  *
@@ -186,27 +98,56 @@ export function modifiedSinceFormula(
   return `IS_AFTER(LAST_MODIFIED_TIME(), DATETIME_PARSE("${iso}"))`
 }
 
-/** Tally of one pull, as shown on the Integrations card. */
+/**
+ * Tally of one pull, as shown on the Integrations card.
+ *
+ * `checked` counts ROWS examined; the rest count FIELD decisions, because with
+ * a dozen columns selected a row is rarely wholly applied or wholly skipped.
+ */
 export type InboundSummary = {
+  checked: number
   applied: number
   skipped: number
   conflicts: number
 }
 
 export function emptySummary(): InboundSummary {
-  return { applied: 0, skipped: 0, conflicts: 0 }
+  return { checked: 0, applied: 0, skipped: 0, conflicts: 0 }
 }
 
-export function tally(
-  summary: InboundSummary,
-  reason: InboundDecision["reason"]
+export function addSummary(
+  a: InboundSummary,
+  b: InboundSummary
 ): InboundSummary {
+  return {
+    checked: a.checked + b.checked,
+    applied: a.applied + b.applied,
+    skipped: a.skipped + b.skipped,
+    conflicts: a.conflicts + b.conflicts,
+  }
+}
+
+/**
+ * Reasons that are pure noise and are deliberately NOT counted as "skipped".
+ *
+ * Every pull re-reads whole rows, so most field decisions are "unchanged" or
+ * "echo" by construction. Counting those would bury the number that matters:
+ * with twelve columns selected across two hundred rows, "3 applied, 2,397 left
+ * alone" tells an organizer nothing, while "3 applied, 2 left alone" is a
+ * sentence they can act on. Noise stays out; anything we actually declined to
+ * do stays in.
+ */
+const QUIET_REASONS = new Set(["unchanged", "echo"])
+
+export function tally(summary: InboundSummary, reason: string): InboundSummary {
   if (reason === "apply") return { ...summary, applied: summary.applied + 1 }
-  if (reason === "conflict")
+  if (reason === "conflict") {
     return {
       ...summary,
       skipped: summary.skipped + 1,
       conflicts: summary.conflicts + 1,
     }
+  }
+  if (QUIET_REASONS.has(reason)) return summary
   return { ...summary, skipped: summary.skipped + 1 }
 }

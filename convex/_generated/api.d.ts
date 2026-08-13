@@ -27,6 +27,7 @@ import type * as files from "../files.js";
 import type * as forms from "../forms.js";
 import type * as http from "../http.js";
 import type * as lib_airtable from "../lib/airtable.js";
+import type * as lib_airtableFields from "../lib/airtableFields.js";
 import type * as lib_airtableInbound from "../lib/airtableInbound.js";
 import type * as lib_apiIcs from "../lib/apiIcs.js";
 import type * as lib_apiXml from "../lib/apiXml.js";
@@ -90,6 +91,7 @@ declare const fullApi: ApiFromModules<{
   forms: typeof forms;
   http: typeof http;
   "lib/airtable": typeof lib_airtable;
+  "lib/airtableFields": typeof lib_airtableFields;
   "lib/airtableInbound": typeof lib_airtableInbound;
   "lib/apiIcs": typeof lib_apiIcs;
   "lib/apiXml": typeof lib_apiXml;

@@ -720,9 +720,9 @@ export default defineSchema({
   }).index("by_eventId", ["eventId"]),
 
   // ——— Integrations —————————————————————————————————————————————————————
-  // One-way Airtable mirror (docs/memory/RULES.md 15, convex/airtable.ts).
-  // At most one connection per event: the organizer's own base, mirrored
-  // into by us and never read back.
+  // Airtable sync (docs/memory/RULES.md 15, convex/airtable.ts). At most one
+  // connection per event: the organizer's own base, mirrored into by us —
+  // one-way unless they explicitly switch write-back on, field by field.
   airtableConnections: defineTable({
     eventId: v.id("events"),
     // The organizer's Airtable personal access token, stored as-is.
@@ -750,16 +750,27 @@ export default defineSchema({
     // Debounce latch for the on-write hook (scheduleAirtableSync): one
     // pending sync at a time, cleared when that sync starts.
     syncScheduled: v.optional(v.boolean()),
-    // EXPERIMENTAL inbound sync (HISTORY.md 61). Off unless the organizer
-    // opts in. When on, the sync run also PULLS the Status column back —
-    // scoped to that one field, guarded against echoes, and our DB always
-    // wins a genuine conflict. See convex/lib/airtableInbound.ts.
+    // Inbound (Airtable → Trackstage) write-back. OFF unless the organizer
+    // opts in — the mirror alone is what the brief asks for, and one-way is
+    // the only shape where nothing done in a spreadsheet can corrupt the
+    // programme. See convex/lib/airtableFields.ts.
     twoWaySync: v.optional(v.boolean()),
+    // WHICH columns Airtable may write back, as field keys from the registry
+    // ("submissions.status", "speakers.bio", …). The master switch above says
+    // whether any write-back happens at all; this says how much.
+    //
+    // Absent or empty while the switch is on means DEFAULT_INBOUND_FIELDS
+    // (Status only) — which is exactly what the switch meant before per-field
+    // selection existed, so connections made then keep behaving as they did.
+    // Unknown keys are ignored on read, never rejected.
+    inboundFields: v.optional(v.array(v.string())),
     // Outcome of the last pull, so the Integrations card can be honest about
-    // what came back rather than silently swallowing skips.
+    // what came back rather than silently swallowing skips. `checked` counts
+    // rows; the rest count per-field decisions (see InboundSummary).
     inbound: v.optional(
       v.object({
         at: v.number(),
+        checked: v.optional(v.number()),
         applied: v.number(),
         skipped: v.number(),
         conflicts: v.number(),
@@ -767,19 +778,33 @@ export default defineSchema({
     ),
   }).index("by_eventId", ["eventId"]),
 
-  // Per-submission mirror state for the two-way sync. Separate from
-  // `submissions` on purpose: it is high-churn integration bookkeeping that
-  // must never contend with the product row, and it disappears cleanly when
-  // the integration does.
+  // Per-DOCUMENT mirror state for the two-way sync. Separate from `submissions`
+  // and `people` on purpose: it is high-churn integration bookkeeping that must
+  // never contend with the product row, and it disappears cleanly when the
+  // integration does.
   //
-  // `lastPushedStatus` is the whole loop guard. It records the value WE last
-  // wrote into Airtable, which lets one comparison answer both questions the
-  // inbound path has to get right: "is this Airtable value just our own echo
-  // coming back?" (airtable === lastPushed) and "did our side change since
-  // the mirror was written?" (current !== lastPushed ⇒ conflict, we win).
+  // `lastPushed` is the whole loop guard: field key → the canonical value WE
+  // last wrote into that Airtable cell. One value answers both questions the
+  // inbound path has to get right — "is this just our own echo coming back?"
+  // (airtable === baseline) and "did our side change since the mirror was
+  // written?" (current !== baseline ⇒ conflict, we win).
+  //
+  // Keyed on the DOCUMENT, not the mirrored table, because "Submissions" and
+  // "Sessions" are two views of the same submission and would otherwise need
+  // two rows that could disagree. Field keys are already table-qualified, so
+  // one map holds both without collision.
   airtableRecordSync: defineTable({
     eventId: v.id("events"),
-    submissionId: v.id("submissions"),
+    /** The Convex document id we mirrored — the "Trackstage ID" cell. */
+    externalId: v.optional(v.string()),
+    /** "submission" | "person". Absent on rows written before speakers were syncable. */
+    entity: v.optional(v.string()),
+    /** Baselines by field key (convex/lib/airtableFields.ts). */
+    lastPushed: v.optional(v.record(v.string(), v.string())),
+    // Kept so connections that predate per-field sync keep their Status
+    // baseline instead of falling back to `no_baseline` for a run. Adopted
+    // into `lastPushed` the first time such a row is touched.
+    submissionId: v.optional(v.id("submissions")),
     lastPushedStatus: v.optional(v.string()),
     lastPushedAt: v.optional(v.number()),
     lastPulledStatus: v.optional(v.string()),
@@ -788,7 +813,8 @@ export default defineSchema({
     lastPulledModifiedTime: v.optional(v.string()),
   })
     .index("by_submissionId", ["submissionId"])
-    .index("by_eventId", ["eventId"]),
+    .index("by_eventId", ["eventId"])
+    .index("by_event_and_external", ["eventId", "externalId"]),
 
   // ——— Audit log (sbek CNT-11) ———————————————————————————————————————————
   // One append-only row per meaningful change, with attribution. Deliberately

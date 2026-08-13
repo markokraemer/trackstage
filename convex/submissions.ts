@@ -553,46 +553,109 @@ export const updateDetails = mutation({
     const submission = await ctx.db.get(args.submissionId)
     if (!submission) throw new ConvexError("Submission not found")
     await requireEventAccess(ctx, submission.eventId)
-    const { trackId, answers, ...rest } = args.patch
-    await ctx.db.patch(args.submissionId, {
-      ...rest,
-      ...(trackId !== undefined ? { trackId: trackId ?? undefined } : {}),
-      ...(answers !== undefined
-        ? { answers: { ...submission.answers, ...answers } }
-        : {}),
-      updatedAt: Date.now(),
-    })
-    await emitWebhook(
-      ctx,
-      submission.eventId,
-      submission.kind === "abstract" ? "submission.updated" : "session.updated",
-      { id: args.submissionId, title: rest.title ?? submission.title },
-    )
-    const changed = Object.keys(args.patch).filter(
-      (key) => args.patch[key as keyof typeof args.patch] !== undefined,
-    )
-    // Field names for everything — the History tab's job is "what was touched,
-    // by whom". But when the edit rewrote the wording, the previous wording is
-    // kept as a version row, because "Jordan changed the abstract" is only half
-    // an answer when what you need is the paragraph back.
-    const versionId = await snapshotWording(ctx, submission, args.patch)
-    await recordAudit(ctx, {
-      eventId: submission.eventId,
-      entity: submission.kind === "session" ? "session" : "submission",
-      entityId: args.submissionId,
-      action: "updated",
-      summary:
-        changed.length > 0
-          ? `Updated ${changed.map((key) => DETAIL_FIELD_LABELS[key] ?? key).join(", ")} · ${rest.title ?? submission.title}`
-          : `Updated · ${submission.title}`,
-      meta: {
-        fields: changed,
-        title: rest.title ?? submission.title,
-        // Strings only. `clampMeta` JSON-stringifies anything nested and trims
-        // it to 500 characters — which is exactly how the first attempt at
-        // this shipped a Restore button that could never restore anything.
-        ...(versionId ? { versionId, previousTitle: submission.title } : {}),
-      },
+    await applyDetailUpdate(ctx, submission, args.patch)
+    return null
+  },
+})
+
+type DetailPatch = {
+  title?: string
+  description?: string
+  trackId?: Id<"tracks"> | null
+  format?: string
+  level?: string
+  language?: string
+  tags?: string[]
+  durationMinutes?: number
+  publicVisible?: boolean
+  answers?: Record<string, unknown>
+}
+
+/**
+ * The edit itself, minus the authorization — shared by the organizer's own
+ * mutation above and by the internal twin below, so an integration can never
+ * reach past the domain logic with a raw patch and quietly skip the webhook,
+ * the audit row or the version snapshot.
+ */
+async function applyDetailUpdate(
+  ctx: MutationCtx,
+  submission: Doc<"submissions">,
+  patch: DetailPatch,
+  actor?: AuditActor,
+): Promise<void> {
+  const { trackId, answers, ...rest } = patch
+  await ctx.db.patch(submission._id, {
+    ...rest,
+    ...(trackId !== undefined ? { trackId: trackId ?? undefined } : {}),
+    ...(answers !== undefined
+      ? { answers: { ...submission.answers, ...answers } }
+      : {}),
+    updatedAt: Date.now(),
+  })
+  await emitWebhook(
+    ctx,
+    submission.eventId,
+    submission.kind === "abstract" ? "submission.updated" : "session.updated",
+    { id: submission._id, title: rest.title ?? submission.title },
+  )
+  const changed = Object.keys(patch).filter(
+    (key) => patch[key as keyof DetailPatch] !== undefined,
+  )
+  // Field names for everything — the History tab's job is "what was touched,
+  // by whom". But when the edit rewrote the wording, the previous wording is
+  // kept as a version row, because "Jordan changed the abstract" is only half
+  // an answer when what you need is the paragraph back.
+  const versionId = await snapshotWording(ctx, submission, patch)
+  await recordAudit(ctx, {
+    eventId: submission.eventId,
+    entity: submission.kind === "session" ? "session" : "submission",
+    entityId: submission._id,
+    action: "updated",
+    summary:
+      changed.length > 0
+        ? `Updated ${changed.map((key) => DETAIL_FIELD_LABELS[key] ?? key).join(", ")} · ${rest.title ?? submission.title}`
+        : `Updated · ${submission.title}`,
+    meta: {
+      fields: changed,
+      title: rest.title ?? submission.title,
+      // Strings only. `clampMeta` JSON-stringifies anything nested and trims
+      // it to 500 characters — which is exactly how the first attempt at
+      // this shipped a Restore button that could never restore anything.
+      ...(versionId ? { versionId, previousTitle: submission.title } : {}),
+    },
+    actor,
+  })
+}
+
+/**
+ * Same semantics for callers that have already authorized the change and carry
+ * their own attribution — today that is the Airtable pull-back
+ * (convex/airtable.ts). Deliberately narrower than the organizer's mutation:
+ * only the fields the inbound registry can write are accepted, so widening
+ * write-back stays a decision made in one place.
+ */
+export const updateDetailsInternal = internalMutation({
+  args: {
+    submissionId: v.id("submissions"),
+    patch: v.object({
+      title: v.optional(v.string()),
+      description: v.optional(v.string()),
+      trackId: v.optional(v.union(v.id("tracks"), v.null())),
+      format: v.optional(v.string()),
+      level: v.optional(v.string()),
+      language: v.optional(v.string()),
+      tags: v.optional(v.array(v.string())),
+    }),
+    actorType: v.string(),
+    actorLabel: v.string(),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const submission = await ctx.db.get(args.submissionId)
+    if (!submission) throw new ConvexError("Submission not found")
+    await applyDetailUpdate(ctx, submission, args.patch, {
+      type: args.actorType as AuditActor["type"],
+      label: args.actorLabel,
     })
     return null
   },

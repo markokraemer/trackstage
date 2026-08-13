@@ -1,12 +1,12 @@
 // ————————————————————————————————————————————————————————————————————————
-// Airtable one-click sync (docs/memory/RULES.md 15, HISTORY.md 40).
+// Airtable one-click sync (docs/memory/RULES.md 15, HISTORY.md 40, 61, 66).
 //
-// ONE-WAY. The organizer pastes a personal access token + a base ID; we
-// create (or adopt) three tables — Submissions, Speakers, Sessions — in
-// THEIR base and keep them mirrored. We never read their data back, never
-// delete their rows, and never treat Airtable as a source of truth. That is
-// exactly what swyx asked for: his team's automations fire "once a new row
-// lands", so a read-only mirror is enough.
+// ONE-WAY BY DEFAULT. The organizer pastes a personal access token + a base
+// ID; we create (or adopt) three tables — Submissions, Speakers, Sessions —
+// in THEIR base and keep them mirrored. Out of the box we never read their
+// data back, never delete their rows, and never treat Airtable as a source of
+// truth. That is exactly what swyx asked for: his team's automations fire
+// "once a new row lands", so a read-only mirror is enough.
 //
 // NEAR-REAL-TIME on purpose, two cheap paths, both idempotent:
 //   · on-write  — `scheduleAirtableSync(ctx, eventId)` from the mutations
@@ -17,14 +17,24 @@
 // Overlap is harmless: every write is a PATCH upsert keyed on our own
 // "Trackstage ID" column, so the same run twice is the same result.
 //
-// EXPERIMENTAL TWO-WAY (HISTORY.md 61): opt-in per connection. When on, each
-// sync first PULLS the Status column back — one field, enum-validated, guarded
-// against echo loops by the status we last pushed, and our DB wins every
-// genuine conflict (the losing Airtable edit is written to the audit log, not
-// swallowed). The guard itself is pure and unit-tested in
-// convex/lib/airtableInbound.ts + tests/unit/airtable-sync.test.ts.
-// PULL BEFORE PUSH is not a preference: the push rewrites every Status cell,
-// so pushing first destroys the very edit the pull exists to collect.
+// TWO-WAY IS AN OPT-IN, TWICE OVER. A connection has a master switch, and
+// then a per-COLUMN selection (convex/lib/airtableFields.ts): status, wording,
+// classification, speaker profiles, agenda slots — the organizer ticks what
+// Airtable is allowed to change and nothing else travels. Every inbound value
+// is parsed and validated, guarded against echo loops by the value we last
+// pushed into that exact cell, and our DB wins every genuine conflict (the
+// losing Airtable edit is written to the audit log, not swallowed). The guard
+// is pure and unit-tested in convex/lib/airtableFields.ts +
+// tests/unit/airtable-sync.test.ts.
+//
+// Nothing inbound patches a document directly: status goes through
+// submissions.setStatusInternal, wording through updateDetailsInternal,
+// profiles through speakersAdmin.updateProfileInternal and slots through
+// agenda.rescheduleInternal — so a spreadsheet edit fires the same webhooks
+// and writes the same history as a click in the UI, attributed to Airtable.
+//
+// PULL BEFORE PUSH is not a preference: the push rewrites every mirrored
+// cell, so pushing first destroys the very edit the pull exists to collect.
 //
 // DEMO MODE: with AIRTABLE_DEMO_MODE=1 on the deployment, `connect` skips
 // live validation and `syncEvent` counts rows without talking to Airtable.
@@ -60,15 +70,28 @@ import {
   speakerFields,
   submissionFields,
 } from "./lib/airtable"
-import type { AirtableRecordPayload } from "./lib/airtable"
+import type { AirtableFields, TableKey } from "./lib/airtable"
 import {
-  INBOUND_REASON_TEXT,
+  addSummary,
   emptySummary,
   modifiedSinceFormula,
-  shouldApplyInbound,
   tally,
 } from "./lib/airtableInbound"
 import type { InboundSummary } from "./lib/airtableInbound"
+import {
+  INBOUND_FIELDS,
+  INBOUND_FIELD_REASON_TEXT,
+  decideField,
+  inboundField,
+  resolveInboundFields,
+  tablesToPull,
+  tagsToCell,
+} from "./lib/airtableFields"
+import type {
+  InboundFieldSpec,
+  InboundReason,
+} from "./lib/airtableFields"
+import type { AuditEntity } from "./lib/audit"
 import { record as recordAudit } from "./lib/audit"
 
 /** How long we let writes settle before the on-write sync fires. */
@@ -136,9 +159,17 @@ export const status = query({
       recordCounts: v.union(countsValidator, v.null()),
       tables: v.array(v.string()),
       twoWaySync: v.boolean(),
+      /**
+       * The field keys Airtable may write back, already resolved — an empty
+       * selection has been expanded to the default and anything we no longer
+       * recognise has been dropped, so the card renders what will actually
+       * happen rather than what happens to be stored.
+       */
+      inboundFields: v.array(v.string()),
       inbound: v.union(
         v.object({
           at: v.number(),
+          checked: v.number(),
           applied: v.number(),
           skipped: v.number(),
           conflicts: v.number(),
@@ -151,6 +182,7 @@ export const status = query({
     await requireEventAccess(ctx, args.eventId)
     const connection = await connectionQuery(ctx, args.eventId)
     if (!connection) return null
+    const inbound = connection.inbound
     return {
       baseId: connection.baseId,
       baseUrl: `https://airtable.com/${connection.baseId}`,
@@ -163,7 +195,13 @@ export const status = query({
       recordCounts: connection.recordCounts ?? null,
       tables: TABLE_KEYS.map((key) => TABLE_NAMES[key]),
       twoWaySync: connection.twoWaySync === true,
-      inbound: connection.inbound ?? null,
+      inboundFields: resolveInboundFields(
+        connection.twoWaySync,
+        connection.inboundFields
+      ).map((field) => field.key),
+      inbound: inbound
+        ? { ...inbound, checked: inbound.checked ?? 0 }
+        : null,
     }
   },
 })
@@ -274,33 +312,69 @@ export const disconnect = mutation({
 })
 
 /**
- * Turn the experimental inbound sync on or off (admin only — it is the one
- * switch that lets an outside system change programme data).
+ * Turn inbound write-back on or off, and choose which columns it covers
+ * (admin only — it is the one switch that lets an outside system change
+ * programme data).
+ *
+ * `fields` left out means "don't touch the selection", so the master switch
+ * and the per-field list can be driven independently by the UI. An empty array
+ * IS meaningful — it resets to the default (Status only) rather than leaving
+ * the switch on with nothing to do.
  *
  * Turning it ON does not immediately pull: the first push after this writes
- * the per-record baseline (`lastPushedStatus`), and only once a row has a
- * baseline can an Airtable edit be told apart from our own echo. So the
- * honest sequence is switch on → next sync mirrors out → edits in Airtable
- * come back from the sync after that.
+ * the per-field baselines, and only once a cell has a baseline can an Airtable
+ * edit be told apart from our own echo. So the honest sequence is switch on →
+ * next sync mirrors out → edits in Airtable come back from the sync after
+ * that. Same for a newly-ticked field, which is why re-mirroring is scheduled
+ * here rather than waiting for the cron.
  */
 export const setTwoWaySync = mutation({
-  args: { eventId: v.id("events"), enabled: v.boolean() },
+  args: {
+    eventId: v.id("events"),
+    enabled: v.boolean(),
+    fields: v.optional(v.array(v.string())),
+  },
   returns: v.null(),
   handler: async (ctx, args) => {
     await requireEventAccess(ctx, args.eventId, "admin")
     const connection = await connectionQuery(ctx, args.eventId)
     if (!connection)
       throw new ConvexError("Airtable isn't connected for this event.")
-    await ctx.db.patch(connection._id, { twoWaySync: args.enabled })
+
+    // Store only keys we understand, so a stale tab can never park a typo in
+    // the selection and quietly disable a column the organizer thinks is on.
+    const fields =
+      args.fields === undefined
+        ? undefined
+        : args.fields.filter((key) => inboundField(key) !== undefined)
+    if (args.fields !== undefined && fields!.length !== args.fields.length) {
+      throw new ConvexError("That isn't a field Airtable can write back.")
+    }
+
+    await ctx.db.patch(connection._id, {
+      twoWaySync: args.enabled,
+      ...(fields === undefined ? {} : { inboundFields: fields }),
+    })
+
+    const selected = resolveInboundFields(
+      args.enabled,
+      fields ?? connection.inboundFields
+    )
     await recordAudit(ctx, {
       eventId: args.eventId,
       entity: "settings",
       entityId: args.eventId,
       action: "updated",
-      summary: `Airtable two-way sync turned ${args.enabled ? "on" : "off"}`,
-      meta: { twoWaySync: args.enabled, baseId: connection.baseId },
+      summary: args.enabled
+        ? `Airtable write-back on for ${selected.length} field${selected.length === 1 ? "" : "s"}: ${selected.map((field) => field.label).join(", ")}`
+        : "Airtable write-back turned off",
+      meta: {
+        twoWaySync: args.enabled,
+        baseId: connection.baseId,
+        fields: selected.map((field) => field.key).join(", "),
+      },
     })
-    // Re-mirror straight away so every row has a baseline to compare against.
+    // Re-mirror straight away so every cell has a baseline to compare against.
     await ctx.scheduler.runAfter(0, internal.airtable.syncEvent, {
       eventId: args.eventId,
     })
@@ -385,10 +459,11 @@ export const saveConnection = internalMutation({
       await ctx.db.patch(existing._id, {
         ...fields,
         // Reconnecting starts a fresh mirror authority. A previous
-        // connection's inbound switch/cursor must never silently carry over:
-        // the new base first receives a clean outbound baseline, then the
-        // organizer can explicitly opt back into Status write-back.
+        // connection's inbound switch/selection/cursor must never silently
+        // carry over: the new base first receives a clean outbound baseline,
+        // then the organizer can explicitly opt back into write-back.
         twoWaySync: false,
+        inboundFields: undefined,
         inbound: undefined,
         lastSyncAt: undefined,
         recordCounts: undefined,
@@ -622,44 +697,63 @@ export const syncPayload = internalQuery({
 /** Records the mirror baseline in batches the transaction can comfortably hold. */
 const STATE_BATCH = 200
 
-const recordStateRow = v.object({
-  submissionId: v.id("submissions"),
-  status: v.string(),
+const baselineRow = v.object({
+  /** The Convex document id, exactly as it went into "Trackstage ID". */
+  externalId: v.string(),
+  entity: v.string(),
+  /** Field key → the canonical value now sitting in that Airtable cell. */
+  fields: v.record(v.string(), v.string()),
 })
 
 /**
  * Remember what we just wrote into Airtable. This is the ENTIRE loop guard:
  * with it, an inbound value that equals the baseline is our own echo, and a
- * local status that differs from the baseline means the organizer changed it
+ * local value that differs from the baseline means the organizer changed it
  * here since the mirror was written (so we win).
  *
  * Written for every connection, not just two-way ones, so flipping the switch
- * on doesn't need a special backfill — the baseline is already there.
+ * on doesn't need a special backfill — the baselines are already there.
+ *
+ * Baselines MERGE rather than replace: a submission's row collects keys from
+ * both the "Submissions" and the "Sessions" push, and an unscheduled session
+ * simply isn't in the second one. Replacing would erase the other table's
+ * baselines on every run and push those fields back to `no_baseline` forever.
  */
-export const recordPushedStatuses = internalMutation({
-  args: { eventId: v.id("events"), rows: v.array(recordStateRow) },
+export const recordBaselines = internalMutation({
+  args: { eventId: v.id("events"), rows: v.array(baselineRow) },
   returns: v.null(),
   handler: async (ctx, args) => {
     const now = Date.now()
     for (const row of args.rows) {
-      const existing = await ctx.db
-        .query("airtableRecordSync")
-        .withIndex("by_submissionId", (q) =>
-          q.eq("submissionId", row.submissionId)
-        )
-        .unique()
+      const existing = await findRecordState(ctx, args.eventId, row.externalId)
+      const merged = { ...(existing?.lastPushed ?? {}), ...row.fields }
       if (existing) {
-        if (existing.lastPushedStatus === row.status) continue
         await ctx.db.patch(existing._id, {
-          lastPushedStatus: row.status,
+          externalId: row.externalId,
+          entity: row.entity,
+          lastPushed: merged,
           lastPushedAt: now,
+          // Kept in step for connections that predate per-field baselines, so
+          // nothing reads a stale status out of the legacy column.
+          ...("submissions.status" in merged
+            ? { lastPushedStatus: merged["submissions.status"] }
+            : {}),
         })
       } else {
         await ctx.db.insert("airtableRecordSync", {
           eventId: args.eventId,
-          submissionId: row.submissionId,
-          lastPushedStatus: row.status,
+          externalId: row.externalId,
+          entity: row.entity,
+          lastPushed: merged,
           lastPushedAt: now,
+          ...(row.entity === "submission"
+            ? {
+                submissionId:
+                  ctx.db.normalizeId("submissions", row.externalId) ??
+                  undefined,
+                lastPushedStatus: merged["submissions.status"],
+              }
+            : {}),
         })
       }
     }
@@ -667,7 +761,47 @@ export const recordPushedStatuses = internalMutation({
   },
 })
 
-/** Credentials + cursor for one pull. Null when there is nothing to pull. */
+/**
+ * The mirror-state row for one document, adopting the pre-per-field shape when
+ * it finds one.
+ *
+ * Rows written before speakers and sessions became syncable are keyed only by
+ * `submissionId` and carry a bare `lastPushedStatus`. Looking them up by that
+ * index and lifting the old column into the new map means an organizer who had
+ * write-back on before an upgrade keeps their Status baseline instead of
+ * losing a sync cycle to `no_baseline`.
+ */
+async function findRecordState(
+  ctx: MutationCtx,
+  eventId: Id<"events">,
+  externalId: string
+): Promise<Doc<"airtableRecordSync"> | null> {
+  const byExternal = await ctx.db
+    .query("airtableRecordSync")
+    .withIndex("by_event_and_external", (q) =>
+      q.eq("eventId", eventId).eq("externalId", externalId)
+    )
+    .unique()
+  if (byExternal) return byExternal
+
+  const submissionId = ctx.db.normalizeId("submissions", externalId)
+  if (!submissionId) return null
+  const legacy = await ctx.db
+    .query("airtableRecordSync")
+    .withIndex("by_submissionId", (q) => q.eq("submissionId", submissionId))
+    .unique()
+  if (!legacy || legacy.eventId !== eventId) return null
+  return {
+    ...legacy,
+    lastPushed:
+      legacy.lastPushed ??
+      (legacy.lastPushedStatus === undefined
+        ? {}
+        : { "submissions.status": legacy.lastPushedStatus }),
+  }
+}
+
+/** Credentials, selection and cursor for one pull. Null when there is nothing to pull. */
 export const pullContext = internalQuery({
   args: { eventId: v.id("events") },
   returns: v.union(
@@ -677,16 +811,23 @@ export const pullContext = internalQuery({
       baseId: v.string(),
       demo: v.boolean(),
       lastSyncAt: v.union(v.number(), v.null()),
+      fieldKeys: v.array(v.string()),
     })
   ),
   handler: async (ctx, args) => {
     const connection = await connectionQuery(ctx, args.eventId)
     if (!connection || connection.twoWaySync !== true) return null
+    const fields = resolveInboundFields(
+      connection.twoWaySync,
+      connection.inboundFields
+    )
+    if (fields.length === 0) return null
     return {
       token: connection.token,
       baseId: connection.baseId,
       demo: connection.demo === true,
       lastSyncAt: connection.lastSyncAt ?? null,
+      fieldKeys: fields.map((field) => field.key),
     }
   },
 })
@@ -694,108 +835,499 @@ export const pullContext = internalQuery({
 const inboundRecord = v.object({
   /** Our own document id, from the "Trackstage ID" column. */
   externalId: v.string(),
-  /** The raw Airtable "Status" cell. */
-  status: v.optional(v.string()),
+  /**
+   * Field key → the cell as a string. A key is present only when we actually
+   * read that column, so a column missing from the base can never be mistaken
+   * for an emptied cell.
+   */
+  values: v.record(v.string(), v.string()),
   modifiedTime: v.optional(v.string()),
 })
 
 const inboundSummaryValidator = v.object({
+  checked: v.number(),
   applied: v.number(),
   skipped: v.number(),
   conflicts: v.number(),
 })
 
+/** Who an inbound change is attributed to, everywhere it leaves a trace. */
+const SYNC_ACTOR = { type: "system" as const, label: "Airtable sync" }
+
+/** One field's verdict for one record, after both guarding and applying. */
+type Outcome = {
+  spec: InboundFieldSpec
+  reason: InboundReason
+  /** The canonical value to write, present only while `reason` is "apply". */
+  value?: string
+  /** What Airtable held, for the conflict audit row. */
+  airtableValue?: string
+}
+
 /**
- * Apply one batch of Airtable rows, guarded.
+ * Guard every selected field of one record. Pure bookkeeping — nothing is
+ * written here, so the caller can still downgrade an "apply" that the domain
+ * layer then refuses (an unknown track, a session that isn't accepted).
+ */
+function decideRecord(
+  specs: readonly InboundFieldSpec[],
+  values: Record<string, string>,
+  baselines: Record<string, string>,
+  current: (spec: InboundFieldSpec) => unknown
+): Outcome[] {
+  const outcomes: Outcome[] = []
+  for (const spec of specs) {
+    // Absent means we never read that column (it isn't in the base, or the
+    // table wasn't pulled) — which is NOT the same as an emptied cell.
+    if (!(spec.key in values)) continue
+    const decision = decideField({
+      spec,
+      airtableValue: values[spec.key],
+      currentValue: current(spec),
+      baseline: baselines[spec.key],
+    })
+    outcomes.push({
+      spec,
+      reason: decision.reason,
+      value: decision.apply ? decision.value : undefined,
+      airtableValue: decision.apply ? undefined : decision.airtableValue,
+    })
+  }
+  return outcomes
+}
+
+/**
+ * Fold the verdicts into the run tally, write an audit row for every conflict,
+ * and move the baselines of everything that actually landed.
+ *
+ * Moving the baseline on apply is not optional bookkeeping: after an inbound
+ * write our value and the cell agree, so the baseline has to agree with them
+ * too. Leave it stale and the organizer's NEXT Airtable edit reads as a
+ * conflict against a value nobody holds any more.
+ */
+async function settleRecord(
+  ctx: MutationCtx,
+  args: {
+    eventId: Id<"events">
+    externalId: string
+    entity: "submission" | "person"
+    label: string
+    auditEntity: AuditEntity
+    outcomes: Outcome[]
+    modifiedTime?: string
+  }
+): Promise<InboundSummary> {
+  let summary = emptySummary()
+  summary = { ...summary, checked: 1 }
+  const applied: Record<string, string> = {}
+
+  for (const outcome of args.outcomes) {
+    summary = tally(summary, outcome.reason)
+    if (outcome.reason === "apply" && outcome.value !== undefined) {
+      applied[outcome.spec.key] = outcome.value
+      continue
+    }
+    if (outcome.reason !== "conflict") continue
+    // The overruled edit is recorded rather than silently dropped — an
+    // organizer who edited in Airtable and lost deserves to see why.
+    await recordAudit(ctx, {
+      eventId: args.eventId,
+      entity: args.auditEntity,
+      entityId: args.externalId,
+      action: "sync_conflict",
+      summary: `Airtable said “${outcome.airtableValue ?? ""}” for ${outcome.spec.label} but this changed in Trackstage — Trackstage wins · ${args.label}`,
+      meta: {
+        field: outcome.spec.key,
+        airtableValue: outcome.airtableValue ?? "",
+        reason: INBOUND_FIELD_REASON_TEXT.conflict,
+      },
+      actor: SYNC_ACTOR,
+    })
+  }
+
+  if (Object.keys(applied).length > 0) {
+    const state = await findRecordState(ctx, args.eventId, args.externalId)
+    const patch = {
+      externalId: args.externalId,
+      entity: args.entity,
+      lastPushed: { ...(state?.lastPushed ?? {}), ...applied },
+      lastPulledAt: Date.now(),
+      lastPulledModifiedTime: args.modifiedTime,
+      ...("submissions.status" in applied
+        ? {
+            lastPushedStatus: applied["submissions.status"],
+            lastPulledStatus: applied["submissions.status"],
+          }
+        : {}),
+    }
+    if (state) await ctx.db.patch(state._id, patch)
+    else {
+      await ctx.db.insert("airtableRecordSync", {
+        eventId: args.eventId,
+        ...patch,
+        ...(args.entity === "submission"
+          ? {
+              submissionId:
+                ctx.db.normalizeId("submissions", args.externalId) ?? undefined,
+            }
+          : {}),
+      })
+    }
+  }
+  return summary
+}
+
+/** The selected specs for one entity, resolved from stored keys. */
+function specsFor(
+  keys: readonly string[],
+  entity: "submission" | "person"
+): InboundFieldSpec[] {
+  return resolveInboundFields(true, keys).filter(
+    (spec) => spec.entity === entity
+  )
+}
+
+/**
+ * Apply one batch of Airtable rows to SUBMISSIONS — which covers both mirrored
+ * tables that key on a submission, "Submissions" and "Sessions".
  *
  * Public-ish surface note: this is INTERNAL and takes rows as data, which is
  * exactly what lets the verify suite exercise the real guard logic (and the
  * state-table roundtrip) in demo mode without an Airtable account.
  *
- * Nothing here patches `status` directly — it calls submissions.setStatus's
- * internal twin, so an inbound change fires the same webhook and writes the
- * same audit row as a click in the UI, attributed to Airtable.
+ * Nothing here patches a document directly. Status goes through
+ * submissions.setStatusInternal, wording and classification through
+ * submissions.updateDetailsInternal, and a slot through
+ * agenda.rescheduleInternal — so an inbound change fires the same webhooks,
+ * writes the same audit rows and keeps the same version history as a click in
+ * the UI, attributed to Airtable rather than to a person.
  */
 export const applyInbound = internalMutation({
-  args: { eventId: v.id("events"), records: v.array(inboundRecord) },
+  args: {
+    eventId: v.id("events"),
+    fieldKeys: v.array(v.string()),
+    records: v.array(inboundRecord),
+  },
   returns: inboundSummaryValidator,
   handler: async (ctx, args) => {
-    let summary: InboundSummary = emptySummary()
-    const now = Date.now()
+    const specs = specsFor(args.fieldKeys, "submission")
+    if (specs.length === 0) return emptySummary()
+
+    // Names, not ids, travel through a spreadsheet. Resolved once per batch.
+    const [tracks, rooms] = await Promise.all([
+      ctx.db
+        .query("tracks")
+        .withIndex("by_eventId", (q) => q.eq("eventId", args.eventId))
+        .take(200),
+      ctx.db
+        .query("rooms")
+        .withIndex("by_eventId", (q) => q.eq("eventId", args.eventId))
+        .take(200),
+    ])
+    const trackByName = new Map(
+      tracks.map((track) => [track.name.trim().toLowerCase(), track])
+    )
+    const roomByName = new Map(
+      rooms.map((room) => [room.name.trim().toLowerCase(), room])
+    )
+    const trackById = new Map(tracks.map((track) => [track._id, track]))
+    const roomById = new Map(rooms.map((room) => [room._id, room]))
+
+    let summary = emptySummary()
 
     for (const row of args.records) {
       const submissionId = ctx.db.normalizeId("submissions", row.externalId)
-      if (!submissionId) {
-        // A row created by hand in Airtable, or one belonging to another
-        // deployment. We never create submissions from a spreadsheet.
-        summary = tally(summary, "unknown_status")
-        continue
-      }
-      const submission = await ctx.db.get(submissionId)
-      // Cross-event isolation: an id from a different event's base must not
-      // be reachable through this connection.
-      if (!submission || submission.eventId !== args.eventId) {
-        summary = tally(summary, "unknown_status")
-        continue
-      }
-
-      const state = await ctx.db
-        .query("airtableRecordSync")
-        .withIndex("by_submissionId", (q) => q.eq("submissionId", submissionId))
-        .unique()
-
-      const decision = shouldApplyInbound({
-        airtableValue: row.status,
-        currentStatus: submission.status,
-        lastPushedStatus: state?.lastPushedStatus ?? null,
-      })
-      summary = tally(summary, decision.reason)
-
-      if (decision.reason === "conflict") {
-        // The overruled edit is recorded rather than silently dropped — an
-        // organizer who triaged in Airtable and lost deserves to see why.
-        await recordAudit(ctx, {
-          eventId: args.eventId,
-          entity: submission.kind === "session" ? "session" : "submission",
-          entityId: submissionId,
-          action: "sync_conflict",
-          summary: `Airtable said “${decision.airtableStatus}” but this changed in Trackstage — Trackstage wins · ${submission.title}`,
-          meta: {
-            airtableStatus: decision.airtableStatus ?? "",
-            currentStatus: submission.status,
-            lastPushedStatus: state?.lastPushedStatus ?? "none",
-            reason: INBOUND_REASON_TEXT.conflict,
-          },
-          actor: { type: "system", label: "Airtable sync" },
+      const submission = submissionId ? await ctx.db.get(submissionId) : null
+      // A row created by hand in Airtable, one belonging to another
+      // deployment, or an id from a different event's base — none of them are
+      // reachable through this connection. We never create records from a
+      // spreadsheet.
+      if (!submissionId || !submission || submission.eventId !== args.eventId) {
+        summary = addSummary(summary, {
+          checked: 1,
+          applied: 0,
+          skipped: 1,
+          conflicts: 0,
         })
         continue
       }
 
-      if (!decision.apply) continue
+      const state = await findRecordState(ctx, args.eventId, row.externalId)
+      const currentTrack = submission.trackId
+        ? trackById.get(submission.trackId)
+        : undefined
+      const currentRoom = submission.roomId
+        ? roomById.get(submission.roomId)
+        : undefined
 
-      await ctx.runMutation(internal.submissions.setStatusInternal, {
-        submissionId,
-        status: decision.status,
-        actorType: "system",
-        actorLabel: "Airtable sync",
-      })
+      const outcomes = decideRecord(
+        specs,
+        row.values,
+        state?.lastPushed ?? {},
+        (spec) => {
+          switch (spec.key) {
+            case "submissions.status":
+              return submission.status
+            case "submissions.title":
+              return submission.title
+            case "submissions.description":
+              return submission.description ?? ""
+            case "submissions.track":
+              return currentTrack?.name ?? ""
+            case "submissions.format":
+              return submission.format ?? ""
+            case "submissions.level":
+              return submission.level ?? ""
+            case "submissions.language":
+              return submission.language ?? ""
+            case "submissions.tags":
+              return tagsToCell(submission.tags)
+            case "sessions.room":
+              return currentRoom?.name ?? ""
+            case "sessions.startsAt":
+              return submission.startsAt ?? ""
+            case "sessions.duration":
+              return submission.durationMinutes ?? ""
+            default:
+              return ""
+          }
+        }
+      )
 
-      // The mirror and our row now agree, so the baseline moves with them —
-      // otherwise the very next pull would read this as a fresh conflict.
-      const patch = {
-        lastPushedStatus: decision.status,
-        lastPulledStatus: decision.status,
-        lastPulledAt: now,
-        lastPulledModifiedTime: row.modifiedTime,
+      // ── Resolve names to ids, downgrading anything that has no match here ──
+      const applying = new Map(
+        outcomes
+          .filter((outcome) => outcome.reason === "apply")
+          .map((outcome) => [outcome.spec.key, outcome])
+      )
+      const downgrade = (key: string, reason: InboundReason) => {
+        const outcome = applying.get(key)
+        if (!outcome) return
+        outcome.reason = reason
+        outcome.value = undefined
+        applying.delete(key)
       }
-      if (state) await ctx.db.patch(state._id, patch)
-      else {
-        await ctx.db.insert("airtableRecordSync", {
-          eventId: args.eventId,
+
+      let trackId: Id<"tracks"> | null | undefined
+      const trackOutcome = applying.get("submissions.track")
+      if (trackOutcome) {
+        const name = (trackOutcome.value ?? "").trim()
+        if (name === "") trackId = null
+        else {
+          const match = trackByName.get(name.toLowerCase())
+          if (match) trackId = match._id
+          else downgrade("submissions.track", "unresolved")
+        }
+      }
+      let roomId: Id<"rooms"> | undefined
+      const roomOutcome = applying.get("sessions.room")
+      if (roomOutcome) {
+        const match = roomByName.get((roomOutcome.value ?? "").toLowerCase())
+        if (match) roomId = match._id
+        else downgrade("sessions.room", "unresolved")
+      }
+
+      // ── Apply, most consequential first ──────────────────────────────────
+      // Status leads because a schedule change in the same batch may depend on
+      // it: a talk accepted in Airtable and given a slot in the same edit only
+      // works if the acceptance lands first.
+      const statusOutcome = applying.get("submissions.status")
+      if (statusOutcome?.value) {
+        await ctx.runMutation(internal.submissions.setStatusInternal, {
           submissionId,
-          ...patch,
+          status: statusOutcome.value,
+          actorType: SYNC_ACTOR.type,
+          actorLabel: SYNC_ACTOR.label,
         })
       }
+
+      const detail: {
+        title?: string
+        description?: string
+        format?: string
+        level?: string
+        language?: string
+        tags?: string[]
+        trackId?: Id<"tracks"> | null
+      } = {}
+      const applied = (key: string) => applying.get(key)?.value
+      const title = applied("submissions.title")
+      if (title !== undefined) detail.title = title
+      const description = applied("submissions.description")
+      if (description !== undefined) detail.description = description
+      const format = applied("submissions.format")
+      if (format !== undefined) detail.format = format
+      const level = applied("submissions.level")
+      if (level !== undefined) detail.level = level
+      const language = applied("submissions.language")
+      if (language !== undefined) detail.language = language
+      const tags = applied("submissions.tags")
+      if (tags !== undefined) detail.tags = tags === "" ? [] : tags.split(", ")
+      if (trackId !== undefined) detail.trackId = trackId
+      if (Object.keys(detail).length > 0) {
+        await ctx.runMutation(internal.submissions.updateDetailsInternal, {
+          submissionId,
+          patch: detail,
+          actorType: SYNC_ACTOR.type,
+          actorLabel: SYNC_ACTOR.label,
+        })
+      }
+
+      const startsAt = applying.get("sessions.startsAt")?.value
+      const duration = applying.get("sessions.duration")?.value
+      if (roomId !== undefined || startsAt !== undefined || duration !== undefined) {
+        const result = await ctx.runMutation(
+          internal.agenda.rescheduleInternal,
+          {
+            submissionId,
+            roomId,
+            startsAt:
+              startsAt === undefined ? undefined : Date.parse(startsAt),
+            durationMinutes:
+              duration === undefined ? undefined : Number(duration),
+            actorType: SYNC_ACTOR.type,
+            actorLabel: SYNC_ACTOR.label,
+          }
+        )
+        if (result === "rejected") {
+          // The agenda refused the slot (not accepted yet, or the three
+          // scheduling values don't add up to a placeable session). Report it
+          // per field rather than pretending the row synced.
+          for (const key of [
+            "sessions.room",
+            "sessions.startsAt",
+            "sessions.duration",
+          ]) {
+            downgrade(key, "rejected")
+          }
+        }
+      }
+
+      summary = addSummary(
+        summary,
+        await settleRecord(ctx, {
+          eventId: args.eventId,
+          externalId: row.externalId,
+          entity: "submission",
+          label: submission.title,
+          auditEntity: submission.kind === "session" ? "session" : "submission",
+          outcomes,
+          modifiedTime: row.modifiedTime,
+        })
+      )
+    }
+
+    return summary
+  },
+})
+
+/**
+ * The same machinery for the Speakers table. Profile fields are the other half
+ * of the spreadsheet workflow — an organizer chasing twelve missing bios wants
+ * a grid, not twelve drawers — and they are safer than submission fields:
+ * nothing here can move a decision or a slot.
+ *
+ * `Email` is deliberately not writable. It is the identity a speaker's portal
+ * token, tasks and comms all hang off, so rewriting it in a spreadsheet would
+ * silently cut someone off from their own submissions.
+ */
+export const applyInboundPeople = internalMutation({
+  args: {
+    eventId: v.id("events"),
+    fieldKeys: v.array(v.string()),
+    records: v.array(inboundRecord),
+  },
+  returns: inboundSummaryValidator,
+  handler: async (ctx, args) => {
+    const specs = specsFor(args.fieldKeys, "person")
+    if (specs.length === 0) return emptySummary()
+
+    let summary = emptySummary()
+    for (const row of args.records) {
+      const personId = ctx.db.normalizeId("people", row.externalId)
+      const person = personId ? await ctx.db.get("people", personId) : null
+      if (!personId || !person || person.eventId !== args.eventId) {
+        summary = addSummary(summary, {
+          checked: 1,
+          applied: 0,
+          skipped: 1,
+          conflicts: 0,
+        })
+        continue
+      }
+
+      const state = await findRecordState(ctx, args.eventId, row.externalId)
+      const outcomes = decideRecord(
+        specs,
+        row.values,
+        state?.lastPushed ?? {},
+        (spec) => {
+          switch (spec.key) {
+            case "speakers.firstName":
+              return person.firstName
+            case "speakers.lastName":
+              return person.lastName
+            case "speakers.jobTitle":
+              return person.jobTitle ?? ""
+            case "speakers.company":
+              return person.company ?? ""
+            case "speakers.pronouns":
+              return person.pronouns ?? ""
+            case "speakers.bio":
+              return person.bio ?? ""
+            case "speakers.linkedin":
+              return person.links?.linkedin ?? ""
+            case "speakers.twitter":
+              return person.links?.twitter ?? ""
+            case "speakers.website":
+              return person.links?.website ?? ""
+            default:
+              return ""
+          }
+        }
+      )
+
+      const patch: {
+        firstName?: string
+        lastName?: string
+        jobTitle?: string
+        company?: string
+        pronouns?: string
+        bio?: string
+        linkedin?: string
+        twitter?: string
+        website?: string
+      } = {}
+      for (const outcome of outcomes) {
+        if (outcome.reason !== "apply" || outcome.value === undefined) continue
+        // Every person field is `speakers.<documentField>` by construction —
+        // the registry and convex/speakersAdmin.ts's internal twin are named
+        // to match, so the mapping is the key itself.
+        patch[outcome.spec.key.slice("speakers.".length) as "bio"] =
+          outcome.value
+      }
+      if (Object.keys(patch).length > 0) {
+        await ctx.runMutation(internal.speakersAdmin.updateProfileInternal, {
+          personId,
+          patch,
+          actorType: SYNC_ACTOR.type,
+          actorLabel: SYNC_ACTOR.label,
+        })
+      }
+
+      summary = addSummary(
+        summary,
+        await settleRecord(ctx, {
+          eventId: args.eventId,
+          externalId: row.externalId,
+          entity: "person",
+          label:
+            `${person.firstName} ${person.lastName}`.trim() || person.email,
+          auditEntity: "speaker",
+          outcomes,
+          modifiedTime: row.modifiedTime,
+        })
+      )
     }
 
     return summary
@@ -846,42 +1378,60 @@ async function pullCore(
     eventId,
   })
   if (!context) return { summary: emptySummary() }
-  // Demo mode never talks to Airtable; the suite drives `applyInbound`
+  // Demo mode never talks to Airtable; the suite drives the apply mutations
   // directly with fabricated rows to exercise the same guards.
   if (context.demo || demoMode()) return { summary: emptySummary() }
 
+  const selected = resolveInboundFields(true, context.fieldKeys)
   const client = new AirtableClient(context.token, context.baseId)
-  let records: Array<{ id: string; fields: Record<string, unknown> }>
-  try {
-    records = await client.listRecords(TABLE_NAMES.submissions, {
-      fields: [EXTERNAL_ID_FIELD, "Status"],
-      filterByFormula: modifiedSinceFormula(context.lastSyncAt),
-      maxRecords: MAX_ROWS,
-    })
-  } catch (error) {
-    return { summary: emptySummary(), error: humanAirtableError(error) }
-  }
-
-  const candidates = records
-    .map((record) => ({
-      externalId: String(record.fields[EXTERNAL_ID_FIELD] ?? "").trim(),
-      status:
-        typeof record.fields.Status === "string"
-          ? record.fields.Status
-          : undefined,
-    }))
-    .filter((row) => row.externalId.length > 0)
-
+  const formula = modifiedSinceFormula(context.lastSyncAt)
   let summary = emptySummary()
-  for (let i = 0; i < candidates.length; i += STATE_BATCH) {
-    const batch = await ctx.runMutation(internal.airtable.applyInbound, {
-      eventId,
-      records: candidates.slice(i, i + STATE_BATCH),
-    })
-    summary = {
-      applied: summary.applied + batch.applied,
-      skipped: summary.skipped + batch.skipped,
-      conflicts: summary.conflicts + batch.conflicts,
+
+  // One read per mirrored table that has at least one selected column, so an
+  // organizer who only ticked speaker fields never pays for a submissions
+  // read — and the Sessions table is only touched when the agenda is in play.
+  for (const table of tablesToPull(selected)) {
+    const specs = selected.filter((spec) => spec.table === table)
+    let page: Awaited<ReturnType<typeof client.listRecords>>
+    try {
+      page = await client.listRecords(TABLE_NAMES[table], {
+        fields: [EXTERNAL_ID_FIELD, ...specs.map((spec) => spec.column)],
+        filterByFormula: formula,
+        maxRecords: MAX_ROWS,
+      })
+    } catch (error) {
+      return { summary, error: humanAirtableError(error) }
+    }
+
+    // A column the organizer deleted from their base is dropped from the read
+    // rather than failing it — but it is then excluded from the candidates
+    // entirely, because "we couldn't read this column" must never be mistaken
+    // for "this cell is empty" by a field that is allowed to clear.
+    const readable = specs.filter(
+      (spec) => !page.droppedFields.includes(spec.column)
+    )
+    if (readable.length === 0) continue
+
+    const candidates = page.records
+      .map((record) => ({
+        externalId: String(record.fields[EXTERNAL_ID_FIELD] ?? "").trim(),
+        values: Object.fromEntries(
+          readable.map((spec) => [spec.key, cellToString(record.fields[spec.column])])
+        ),
+      }))
+      .filter((row) => row.externalId.length > 0)
+
+    const apply =
+      table === "speakers"
+        ? internal.airtable.applyInboundPeople
+        : internal.airtable.applyInbound
+    for (let i = 0; i < candidates.length; i += STATE_BATCH) {
+      const batch = await ctx.runMutation(apply, {
+        eventId,
+        fieldKeys: readable.map((spec) => spec.key),
+        records: candidates.slice(i, i + STATE_BATCH),
+      })
+      summary = addSummary(summary, batch)
     }
   }
 
@@ -890,6 +1440,23 @@ async function pullCore(
     summary,
   })
   return { summary }
+}
+
+/**
+ * An Airtable cell as the guard wants it: a string, with an absent cell and an
+ * empty one collapsing to "". Numbers (durations) and the odd array-valued
+ * cell (a multi-select the organizer changed the column type to) are rendered
+ * rather than dropped, so the parser gets a chance to reject them by name
+ * instead of silently seeing a blank.
+ */
+function cellToString(value: unknown): string {
+  if (value === undefined || value === null) return ""
+  if (typeof value === "string") return value
+  if (typeof value === "number" || typeof value === "boolean") {
+    return String(value)
+  }
+  if (Array.isArray(value)) return value.map(cellToString).join(", ")
+  return ""
 }
 
 /**
@@ -941,21 +1508,45 @@ export const syncEvent = internalAction({
       sessions: payload.sessions.length,
     }
 
-    // The mirror baseline every inbound comparison depends on. Recorded for
-    // the demo path too, so the toggle and the state table are exercisable
-    // (and verifiable) without an Airtable account.
-    const statusRows = payload.submissions
-      .map((row) => ({
-        submissionId: row.id,
-        status: String(row.status),
-      }))
-      .slice(0, MAX_ROWS)
+    // The exact cells we are about to write. Baselines are derived from THESE
+    // objects rather than re-derived from the documents, so the value we
+    // record as "what's in Airtable" is literally the value we sent.
+    const tables: Array<{
+      key: TableKey
+      entity: "submission" | "person"
+      records: Array<{ id: string; fields: AirtableFields }>
+    }> = [
+      {
+        key: "submissions",
+        entity: "submission",
+        records: payload.submissions.map((row) => ({
+          id: String(row.id),
+          fields: submissionFields(row),
+        })),
+      },
+      {
+        key: "speakers",
+        entity: "person",
+        records: payload.speakers.map((row) => ({
+          id: String(row.id),
+          fields: speakerFields(row),
+        })),
+      },
+      {
+        key: "sessions",
+        entity: "submission",
+        records: payload.sessions.map((row) => ({
+          id: String(row.id),
+          fields: sessionFields(row),
+        })),
+      },
+    ]
 
     if (payload.demo || demoMode()) {
       // Nothing leaves the deployment: the mirror is simulated so the UI,
       // the cron and the verify suite are all exercisable without an
       // Airtable account.
-      await recordPushed(ctx, args.eventId, statusRows)
+      await recordPushed(ctx, args.eventId, baselinesFor(tables, {}))
       await ctx.runMutation(internal.airtable.finishSync, {
         eventId: args.eventId,
         counts,
@@ -964,25 +1555,18 @@ export const syncEvent = internalAction({
     }
 
     const client = new AirtableClient(payload.token, payload.baseId)
-    const tables: Array<[string, AirtableRecordPayload[]]> = [
-      [
-        TABLE_NAMES.submissions,
-        payload.submissions.map((row) => ({ fields: submissionFields(row) })),
-      ],
-      [
-        TABLE_NAMES.speakers,
-        payload.speakers.map((row) => ({ fields: speakerFields(row) })),
-      ],
-      [
-        TABLE_NAMES.sessions,
-        payload.sessions.map((row) => ({ fields: sessionFields(row) })),
-      ],
-    ]
-
+    // Columns the base turned out not to have. We never wrote them, so they
+    // must not get a baseline — claiming to have written a cell we didn't is
+    // the one bookkeeping error that could let a pull overwrite live data.
+    const dropped: Record<string, string[]> = {}
     try {
-      for (const [name, records] of tables) {
-        if (records.length === 0) continue
-        await client.upsert(name, records)
+      for (const table of tables) {
+        if (table.records.length === 0) continue
+        const result = await client.upsert(
+          TABLE_NAMES[table.key],
+          table.records.map((record) => ({ fields: record.fields }))
+        )
+        dropped[table.key] = result.droppedFields
       }
     } catch (error) {
       await ctx.runMutation(internal.airtable.finishSync, {
@@ -992,10 +1576,10 @@ export const syncEvent = internalAction({
       return null
     }
 
-    // The baseline moves last, once the mirror really holds these values —
+    // The baselines move last, once the mirror really holds these values —
     // that is what lets the NEXT pull tell an organizer's edit apart from our
     // own write coming back.
-    await recordPushed(ctx, args.eventId, statusRows)
+    await recordPushed(ctx, args.eventId, baselinesFor(tables, dropped))
     await ctx.runMutation(internal.airtable.finishSync, {
       eventId: args.eventId,
       counts,
@@ -1004,14 +1588,65 @@ export const syncEvent = internalAction({
   },
 })
 
+type BaselineRow = {
+  externalId: string
+  entity: string
+  fields: Record<string, string>
+}
+
+/**
+ * Turn the cells we just pushed into per-field baselines, one row per
+ * DOCUMENT — the Submissions and Sessions pushes both contribute to the same
+ * submission's row, which is why they are merged here rather than written
+ * twice.
+ *
+ * Each value goes through the same `parse` the inbound side uses, so the
+ * baseline is spelled exactly the way a pull will spell the cell it reads
+ * back. That single shared function is what makes echo detection reliable;
+ * deriving the baseline any other way is how a mirror starts fighting itself.
+ */
+function baselinesFor(
+  tables: Array<{
+    key: TableKey
+    entity: "submission" | "person"
+    records: Array<{ id: string; fields: AirtableFields }>
+  }>,
+  dropped: Record<string, string[]>
+): BaselineRow[] {
+  const byDocument = new Map<string, BaselineRow>()
+  for (const table of tables) {
+    const specs = INBOUND_FIELDS.filter(
+      (spec) =>
+        spec.table === table.key &&
+        !(dropped[table.key] ?? []).includes(spec.column)
+    )
+    if (specs.length === 0) continue
+    for (const record of table.records.slice(0, MAX_ROWS)) {
+      let row = byDocument.get(record.id)
+      if (!row) {
+        row = { externalId: record.id, entity: table.entity, fields: {} }
+        byDocument.set(record.id, row)
+      }
+      for (const spec of specs) {
+        const canonical = spec.parse(record.fields[spec.column])
+        // Our own value failing our own parser means the mirror holds
+        // something this field can't represent. Recording no baseline leaves
+        // it at `no_baseline` — inert — which beats recording a wrong one.
+        if (canonical !== null) row.fields[spec.key] = canonical
+      }
+    }
+  }
+  return [...byDocument.values()]
+}
+
 /** Baseline write, chunked to stay well inside one transaction each. */
 async function recordPushed(
   ctx: ActionCtx,
   eventId: Id<"events">,
-  rows: Array<{ submissionId: Id<"submissions">; status: string }>
+  rows: BaselineRow[]
 ): Promise<void> {
   for (let i = 0; i < rows.length; i += STATE_BATCH) {
-    await ctx.runMutation(internal.airtable.recordPushedStatuses, {
+    await ctx.runMutation(internal.airtable.recordBaselines, {
       eventId,
       rows: rows.slice(i, i + STATE_BATCH),
     })

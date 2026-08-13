@@ -551,13 +551,19 @@ export class AirtableClient {
 
   /**
    * Read records back out — the ONLY read path in the integration, used by
-   * the experimental two-way sync (convex/lib/airtableInbound.ts).
+   * the two-way sync (convex/lib/airtableFields.ts).
    *
    * Deliberately narrow: it asks for named fields only (so a pull never drags
    * a base's worth of unrelated columns across the wire), follows Airtable's
    * `offset` pagination, and stops at `maxRecords` so one runaway base cannot
    * make a sync run unbounded. `cellFormat: "string"` is NOT used — we want
    * the raw single-select name, not a locale-formatted rendering.
+   *
+   * Naming a column the base doesn't have is a 422 for the WHOLE request, so
+   * (as in `upsert`) the unknown column is dropped and the read retried. The
+   * names that went missing come back with the records, because to the caller
+   * they are load-bearing: a field we failed to read must not be treated as a
+   * cell someone emptied.
    */
   async listRecords(
     tableName: string,
@@ -567,36 +573,57 @@ export class AirtableClient {
       maxRecords?: number
       pageSize?: number
     } = {}
-  ): Promise<Array<{ id: string; fields: Record<string, unknown> }>> {
+  ): Promise<{
+    records: Array<{ id: string; fields: Record<string, unknown> }>
+    droppedFields: string[]
+  }> {
     const maxRecords = options.maxRecords ?? 1_000
     const out: Array<{ id: string; fields: Record<string, unknown> }> = []
+    const dropped = new Set<string>()
+    let requested = options.fields ?? []
     let offset: string | undefined
 
     do {
-      const params = new URLSearchParams()
-      params.set("pageSize", String(Math.min(options.pageSize ?? 100, 100)))
-      for (const field of options.fields ?? []) params.append("fields[]", field)
-      if (options.filterByFormula) {
-        params.set("filterByFormula", options.filterByFormula)
-      }
-      if (offset) params.set("offset", offset)
-
-      const page = await this.request<{
+      // Inner loop: one attempt per unknown column, dropping it and asking
+      // again. It terminates because `requested` strictly shrinks each time
+      // and an already-dropped name re-throws.
+      let page: {
         records?: Array<{ id: string; fields?: Record<string, unknown> }>
         offset?: string
-      }>(
-        "GET",
-        `/v0/${this.baseId}/${encodeURIComponent(tableName)}?${params.toString()}`
-      )
+      }
+      for (;;) {
+        const params = new URLSearchParams()
+        params.set("pageSize", String(Math.min(options.pageSize ?? 100, 100)))
+        for (const field of requested) params.append("fields[]", field)
+        if (options.filterByFormula) {
+          params.set("filterByFormula", options.filterByFormula)
+        }
+        if (offset) params.set("offset", offset)
+        try {
+          page = await this.request(
+            "GET",
+            `/v0/${this.baseId}/${encodeURIComponent(tableName)}?${params.toString()}`
+          )
+          break
+        } catch (error) {
+          const field =
+            error instanceof AirtableError ? unknownFieldName(error) : null
+          if (!field || dropped.has(field)) throw error
+          dropped.add(field)
+          requested = requested.filter((name) => name !== field)
+        }
+      }
 
       for (const record of page.records ?? []) {
         out.push({ id: record.id, fields: record.fields ?? {} })
-        if (out.length >= maxRecords) return out
+        if (out.length >= maxRecords) {
+          return { records: out, droppedFields: [...dropped] }
+        }
       }
       offset = page.offset
     } while (offset)
 
-    return out
+    return { records: out, droppedFields: [...dropped] }
   }
 
   async createTable(spec: {

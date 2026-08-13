@@ -662,3 +662,46 @@ keeps working identically for anyone already connected there.
 Also: the deployment serves the Trackstage favicon at `/favicon.ico|png|svg`
 (convex/lib/favicon.ts). MCP clients brand a connector with the favicon of
 the ENDPOINT's origin, which 404'd and fell back to Convex's own mark.
+
+## Two-way Airtable is a field-level opt-in, not a switch (2026-08-13)
+
+"Two-way sync" as one boolean is wrong in both directions at once: too timid
+for the organizer who wants to bulk-fix twelve speaker bios in a grid, too
+reckless for the one who only wants Airtable to triage Status and would be
+horrified to learn a spreadsheet typo can rewrite an abstract. The unit an
+organizer reasons about is the COLUMN, so that is the unit we store, check and
+render — a master switch (off by default; one-way is the only provably harmless
+shape) plus a checklist of the 20 columns in `convex/lib/airtableFields.ts`.
+Enabling the switch selects Status alone, which is exactly what it meant
+before, so connections made under the old shape keep behaving identically.
+
+The registry is deliberately a code change per field: each needs a parser, a
+clearing rule and a place to land. Three things are permanently out of reach —
+`Email` (the identity a speaker's portal token, tasks and comms hang off),
+derived columns (`Name`, `Ends At`), and record creation/deletion. Draft and
+Withdrawn remain unsettable because they are the speaker's own state.
+
+**One `parse` per field, run at all three sites.** The Airtable cell we read,
+the value we hold in Convex, and the baseline we stored all go through the same
+function, so "did this change?" is one string comparison that cannot drift.
+Baselines are derived from the exact cell objects we pushed (and never for a
+column Airtable told us it doesn't have), which is what makes echo detection
+reliable and clearing safe: an empty cell can only mean "delete this" once we
+know we put something there.
+
+**Nothing inbound patches a document.** Status goes through
+`submissions.setStatusInternal`, wording through `updateDetailsInternal`,
+profiles through `speakersAdmin.updateProfileInternal`, slots through
+`agenda.rescheduleInternal` — so a spreadsheet edit fires the same webhooks and
+keeps the same version history as a click in the UI, attributed to "Airtable
+sync" rather than to a person.
+
+**Silence must read as silence** (found by the live run, not by unit tests).
+The guard originally refused Draft/Withdrawn before checking whether the value
+had changed at all. But we WRITE "Draft" for every draft submission, so it came
+back on every pull and the card reported four permanent refusals nobody could
+act on or clear. `unchanged` and `echo` now precede `not_allowed`: a cell that
+already agrees with us is asking for nothing, so it is neither a refusal nor a
+conflict. `unchanged`/`echo` are also excluded from the "left alone" count for
+the same reason — with twelve columns over two hundred rows they would bury the
+number that matters.

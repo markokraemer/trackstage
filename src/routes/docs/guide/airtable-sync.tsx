@@ -54,20 +54,42 @@ function Page() {
         </Step>
       </Steps>
 
+      <Steps>
+        <Step title="Optional: let Airtable write back — one switch, then one tick per column.">
+          <p className="doc-prose">
+            Out of the box the sync is <strong>one way</strong>: Trackstage
+            writes to Airtable and never reads back, so anything you type there
+            is overwritten on the next sync. That is the safe default and most
+            events never need more.
+          </p>
+          <p className="doc-prose">
+            Turn on <strong>Let Airtable write back</strong> and you get a
+            checklist of exactly which columns Airtable may change. Tick{" "}
+            <strong>Status</strong> alone to triage in a grid; add{" "}
+            <strong>Title</strong>, <strong>Description</strong>,{" "}
+            <strong>Track</strong>, <strong>Tags</strong> and the rest to edit
+            submissions there; add the Speakers columns to bulk-fix bios and job
+            titles; add the Sessions columns to move things on the agenda.
+            Anything you don’t tick stays read-only.
+          </p>
+        </Step>
+      </Steps>
+
       <div className="mt-10 space-y-3">
         <Callout tone="warning">
-          One way by default. Trackstage writes to Airtable and doesn’t read
-          back, so edits you make in Airtable are overwritten on the next sync.
+          <strong>Trackstage is always the source of truth.</strong> If the same
+          thing changed in both places since the last sync, Trackstage wins and
+          the overruled Airtable edit is written to Settings → Activity, so you
+          can see exactly what was ignored and why.
         </Callout>
         <Callout tone="note">
-          <strong>Experimental: sync Status changes back.</strong> Switch it on
-          under the Airtable card and a submission’s <strong>Status</strong>{" "}
-          column becomes two-way — triage in Airtable, and the decisions land in
-          Trackstage on the next sync. Only that one column comes back. Draft
-          and Withdrawn can never be set from Airtable, a row has to be mirrored
-          once before it’s eligible, and if the same submission changed in both
-          places, <strong>Trackstage wins</strong> — the overruled Airtable edit
-          is written to Settings → Activity so you can see what was ignored.
+          <strong>What Airtable can never do.</strong> Set a submission to Draft
+          or Withdrawn (those belong to the speaker), change a speaker’s email
+          (it’s the identity their portal and emails hang off), create or delete
+          records, or invent a track or room that doesn’t exist in Trackstage — an
+          unrecognised name is left alone rather than guessed at. A cell also has
+          to be mirrored at least once before an edit to it counts, which is what
+          stops a half-filled row from clearing anything.
         </Callout>
         <Callout tone="note">
           If a sync fails you get a “Last sync didn’t finish” message on the card

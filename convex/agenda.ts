@@ -1,8 +1,9 @@
 import { ConvexError, v } from "convex/values"
 import type { Doc, Id } from "./_generated/dataModel"
 import type { MutationCtx, QueryCtx } from "./_generated/server"
-import { mutation, query } from "./_generated/server"
+import { internalMutation, mutation, query } from "./_generated/server"
 import { requireEventAccess } from "./lib/auth"
+import type { AuditActor } from "./lib/audit"
 import { record as recordAudit } from "./lib/audit"
 import { emitWebhook } from "./webhooks"
 
@@ -292,6 +293,80 @@ export const schedule = mutation({
         durationMinutes: args.durationMinutes,
         previousStartsAt: submission.startsAt,
         title: submission.title,
+      },
+    })
+    return null
+  },
+})
+
+/**
+ * A schedule change from the Airtable pull-back (convex/airtable.ts), for a
+ * caller that has already authorized it and carries its own attribution.
+ *
+ * PARTIAL on purpose: an organizer may have ticked only "Start time", so this
+ * takes whatever came back and validates the RESULT. Two rules are the same as
+ * a drag on the board — only accepted sessions can hold a slot, and a slot
+ * needs all three of room, start and duration — and the third is the same too:
+ * a clash is never blocked, only flagged on the Conflicts view. That is the
+ * point of editing the agenda in a grid; the organizer stays in control of
+ * what to do about the overlap.
+ *
+ * Returns why it refused rather than throwing, because one bad row in a
+ * spreadsheet must not abort the rest of the sync.
+ */
+export const rescheduleInternal = internalMutation({
+  args: {
+    submissionId: v.id("submissions"),
+    roomId: v.optional(v.id("rooms")),
+    startsAt: v.optional(v.number()),
+    durationMinutes: v.optional(v.number()),
+    actorType: v.string(),
+    actorLabel: v.string(),
+  },
+  returns: v.union(v.null(), v.literal("rejected")),
+  handler: async (ctx, args) => {
+    const submission = await ctx.db.get(args.submissionId)
+    if (!submission) return "rejected"
+    if (!isSchedulable(submission)) return "rejected"
+
+    const roomId = args.roomId ?? submission.roomId
+    const startsAt = args.startsAt ?? submission.startsAt
+    const durationMinutes = args.durationMinutes ?? submission.durationMinutes
+    if (roomId === undefined || startsAt === undefined) return "rejected"
+    if (durationMinutes === undefined) return "rejected"
+    if (durationMinutes < 5 || durationMinutes > 480) return "rejected"
+
+    const room = await ctx.db.get(roomId)
+    if (!room || room.eventId !== submission.eventId) return "rejected"
+
+    await ctx.db.patch(args.submissionId, {
+      roomId,
+      startsAt,
+      durationMinutes,
+    })
+    await emitWebhook(ctx, submission.eventId, "session.scheduled", {
+      id: args.submissionId,
+      title: submission.title,
+      room_id: roomId,
+      starts_at: new Date(startsAt).toISOString(),
+      duration_minutes: durationMinutes,
+    })
+    await recordAudit(ctx, {
+      eventId: submission.eventId,
+      entity: "session",
+      entityId: args.submissionId,
+      action: submission.startsAt === undefined ? "scheduled" : "rescheduled",
+      summary: `${submission.startsAt === undefined ? "Scheduled" : "Moved"} to ${room.name}, ${new Date(startsAt).toISOString()} (${durationMinutes} min) · ${submission.title}`,
+      meta: {
+        room: room.name,
+        startsAt,
+        durationMinutes,
+        previousStartsAt: submission.startsAt,
+        title: submission.title,
+      },
+      actor: {
+        type: args.actorType as AuditActor["type"],
+        label: args.actorLabel,
       },
     })
     return null

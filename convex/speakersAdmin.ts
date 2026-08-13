@@ -24,9 +24,10 @@
 import { ConvexError, v } from "convex/values"
 import type { Doc, Id } from "./_generated/dataModel"
 import type { MutationCtx } from "./_generated/server"
-import { mutation, query } from "./_generated/server"
+import { internalMutation, mutation, query } from "./_generated/server"
 import { randomToken, requireEventAccess } from "./lib/auth"
 import { emitWebhook } from "./webhooks"
+import type { AuditActor } from "./lib/audit"
 import { record as recordAudit } from "./lib/audit"
 import { syncProfileTasks } from "./lib/profileTasks"
 import {
@@ -218,25 +219,105 @@ export const updateProfile = mutation({
     if (args.patch.publicVisible !== undefined) {
       patch.publicVisible = args.patch.publicVisible
     }
-    await ctx.db.patch(args.personId, { ...patch, updatedAt: Date.now() })
-    // An organizer typing in the missing bio finishes the profile just as
-    // surely as the speaker doing it, so the "update your profile" task ticks
-    // itself here too (convex/lib/profileTasks.ts).
-    await syncProfileTasks(ctx, await ctx.db.get("people", args.personId))
-    await emitWebhook(ctx, person.eventId, "speaker.updated", {
-      id: args.personId,
-      email: person.email,
-      first_name: patch.firstName ?? person.firstName,
-      last_name: patch.lastName ?? person.lastName,
-    })
-    const changed = Object.keys(patch)
-    await recordAudit(ctx, {
-      eventId: person.eventId,
-      entity: "speaker",
-      entityId: args.personId,
-      action: "updated",
-      summary: `Profile updated (${changed.join(", ")}) · ${`${patch.firstName ?? person.firstName} ${patch.lastName ?? person.lastName}`.trim() || person.email}`,
-      meta: { fields: changed, email: person.email },
+    await commitProfilePatch(ctx, person, patch)
+    return null
+  },
+})
+
+/**
+ * The write half of a profile edit — shared by the organizer's mutation above
+ * and the internal twin below, so an integration can never skip the profile
+ * task sync, the webhook or the audit row by patching `people` directly.
+ */
+async function commitProfilePatch(
+  ctx: MutationCtx,
+  person: Doc<"people">,
+  patch: Partial<Doc<"people">>,
+  actor?: AuditActor,
+): Promise<void> {
+  await ctx.db.patch(person._id, { ...patch, updatedAt: Date.now() })
+  // An organizer typing in the missing bio finishes the profile just as
+  // surely as the speaker doing it, so the "update your profile" task ticks
+  // itself here too (convex/lib/profileTasks.ts).
+  await syncProfileTasks(ctx, await ctx.db.get("people", person._id))
+  await emitWebhook(ctx, person.eventId, "speaker.updated", {
+    id: person._id,
+    email: person.email,
+    first_name: patch.firstName ?? person.firstName,
+    last_name: patch.lastName ?? person.lastName,
+  })
+  const changed = Object.keys(patch)
+  await recordAudit(ctx, {
+    eventId: person.eventId,
+    entity: "speaker",
+    entityId: person._id,
+    action: "updated",
+    summary: `Profile updated (${changed.join(", ")}) · ${`${patch.firstName ?? person.firstName} ${patch.lastName ?? person.lastName}`.trim() || person.email}`,
+    meta: { fields: changed, email: person.email },
+    actor,
+  })
+}
+
+/**
+ * Profile fields the Airtable pull-back may write (convex/airtable.ts), for a
+ * caller that has already authorized the change and carries its own
+ * attribution.
+ *
+ * Empty strings mean "clear this" — the registry only sends one for a field it
+ * is allowed to clear, and `email` is absent on purpose: it is the identity a
+ * speaker's portal token, tasks and comms all hang off, so it is not something
+ * a spreadsheet gets to rewrite.
+ */
+export const updateProfileInternal = internalMutation({
+  args: {
+    personId: v.id("people"),
+    patch: v.object({
+      firstName: v.optional(v.string()),
+      lastName: v.optional(v.string()),
+      jobTitle: v.optional(v.string()),
+      company: v.optional(v.string()),
+      pronouns: v.optional(v.string()),
+      bio: v.optional(v.string()),
+      linkedin: v.optional(v.string()),
+      twitter: v.optional(v.string()),
+      website: v.optional(v.string()),
+    }),
+    actorType: v.string(),
+    actorLabel: v.string(),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const person = await ctx.db.get("people", args.personId)
+    if (!person) throw new ConvexError("Speaker not found.")
+
+    const { firstName, lastName, linkedin, twitter, website } = args.patch
+    const patch: Partial<Doc<"people">> = {}
+    // A blank first name would leave a nameless speaker; the registry never
+    // sends one, and this is the backstop if that ever changes.
+    if (firstName !== undefined && firstName.trim()) {
+      patch.firstName = firstName.trim()
+    }
+    if (lastName !== undefined) patch.lastName = lastName.trim()
+    // The rest are optional on the document, so an empty string clears them.
+    for (const key of ["jobTitle", "company", "pronouns", "bio"] as const) {
+      const value = args.patch[key]
+      if (value !== undefined) patch[key] = value.trim() || undefined
+    }
+    // The three links live in one nested object, so a partial edit has to
+    // merge rather than replace — otherwise setting a LinkedIn URL from
+    // Airtable would silently drop the website we already had.
+    if (linkedin !== undefined || twitter !== undefined || website !== undefined) {
+      const links = { ...(person.links ?? {}) }
+      if (linkedin !== undefined) links.linkedin = linkedin.trim() || undefined
+      if (twitter !== undefined) links.twitter = twitter.trim() || undefined
+      if (website !== undefined) links.website = website.trim() || undefined
+      patch.links = links
+    }
+    if (Object.keys(patch).length === 0) return null
+
+    await commitProfilePatch(ctx, person, patch, {
+      type: args.actorType as AuditActor["type"],
+      label: args.actorLabel,
     })
     return null
   },

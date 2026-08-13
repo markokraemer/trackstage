@@ -1587,17 +1587,26 @@ if (airtableDemoMode) {
   await throws("stranger cannot disconnect", () =>
     strangerClient.mutation(api.airtable.disconnect, { eventId: main._id }), "access")
 
-  // ————— EXPERIMENTAL two-way (HISTORY.md 61) —————
+  // ————— Two-way write-back (HISTORY.md 61, 66) —————
   // The guard logic itself is unit-tested pure (tests/unit/airtable-sync.test.ts);
-  // this proves the wiring: the toggle, the per-record state table, the domain
-  // path a pulled change travels down, and the conflict rule ("our DB wins").
+  // this proves the wiring: the toggle, the per-field selection, the per-record
+  // state table, the domain path a pulled change travels down, and the conflict
+  // rule ("our DB wins").
   ok("two-way sync is OFF by default", connected?.twoWaySync === false)
+  ok("with it off, nothing at all is inbound", connected?.inboundFields?.length === 0)
   await throws("stranger cannot enable two-way sync", () =>
     strangerClient.mutation(api.airtable.setTwoWaySync, { eventId: main._id, enabled: true }), "access")
+  await throws("an unknown field key is refused, not silently stored", () =>
+    client.mutation(api.airtable.setTwoWaySync, {
+      eventId: main._id, enabled: true, fields: ["submissions.nonsense"],
+    }), "write back")
 
   await client.mutation(api.airtable.setTwoWaySync, { eventId: main._id, enabled: true })
-  ok("toggle turns two-way sync on",
-    (await client.query(api.airtable.status, { eventId: main._id }))?.twoWaySync === true)
+  const twoWayOn = await client.query(api.airtable.status, { eventId: main._id })
+  ok("toggle turns two-way sync on", twoWayOn?.twoWaySync === true)
+  ok("turning it on selects Status and nothing else",
+    JSON.stringify(twoWayOn?.inboundFields) === JSON.stringify(["submissions.status"]),
+    JSON.stringify(twoWayOn?.inboundFields))
   // Enabling schedules a re-mirror, which is what writes the per-record
   // baseline every inbound comparison needs.
   await new Promise((r) => setTimeout(r, 3000))
@@ -1614,40 +1623,97 @@ if (airtableDemoMode) {
   await client.mutation(api.airtable.syncNow, { eventId: main._id })
   await new Promise((r) => setTimeout(r, 3000))
 
-  const pull = (records) =>
-    convexRun("airtable:applyInbound", { eventId: main._id, records })
+  // A pull as the action would drive it: field keys plus one cell per key.
+  const STATUS = ["submissions.status"]
+  const pull = (records, fieldKeys = STATUS) =>
+    convexRun("airtable:applyInbound", { eventId: main._id, fieldKeys, records })
+  const statusRow = (id, value) => ({
+    externalId: String(id), values: { "submissions.status": value },
+  })
   const statusOf = async (id) =>
     (await client.query(api.submissions.get, { submissionId: id })).status
 
-  const applied = pull([{ externalId: String(inboundId), status: "Accept queue" }])
+  const applied = pull([statusRow(inboundId, "Accept queue")])
   ok("an Airtable Status edit comes back", applied.applied === 1, JSON.stringify(applied))
   ok("it lands through the domain path (status really changed)",
     (await statusOf(inboundId)) === "accept_queue")
 
-  const echo = pull([{ externalId: String(inboundId), status: "Accept queue" }])
-  ok("the same value again is a no-op, not a loop", echo.applied === 0 && echo.skipped === 1)
+  const echo = pull([statusRow(inboundId, "Accept queue")])
+  ok("the same value again is a no-op, not a loop",
+    echo.applied === 0 && echo.skipped === 0 && echo.checked === 1, JSON.stringify(echo))
 
   // Both sides move: organizer decides here, someone edits the spreadsheet.
   await client.mutation(api.submissions.setStatus, { submissionId: inboundId, status: "accepted" })
-  const conflict = pull([{ externalId: String(inboundId), status: "Decline queue" }])
+  const conflict = pull([statusRow(inboundId, "Decline queue")])
   ok("a genuine conflict is counted, not applied", conflict.conflicts === 1 && conflict.applied === 0,
     JSON.stringify(conflict))
   ok("our database wins the conflict", (await statusOf(inboundId)) === "accepted")
 
   const refused = pull([
-    { externalId: String(inboundId), status: "Draft" },
-    { externalId: String(inboundId), status: "Withdrawn" },
-    { externalId: String(inboundId), status: "Shortlisted??" },
+    statusRow(inboundId, "Draft"),
+    statusRow(inboundId, "Withdrawn"),
+    statusRow(inboundId, "Shortlisted??"),
   ])
   ok("Draft, Withdrawn and unknown values are all refused",
-    refused.applied === 0 && refused.skipped === 3)
+    refused.applied === 0 && refused.skipped === 3, JSON.stringify(refused))
   ok("refusals left the status alone", (await statusOf(inboundId)) === "accepted")
+
+  // A field the organizer did NOT tick must not travel, even if the cell is
+  // sitting right there in the payload.
+  const unticked = pull([{
+    externalId: String(inboundId),
+    values: { "submissions.title": "Renamed From A Spreadsheet" },
+  }])
+  ok("an unselected field is never applied", unticked.applied === 0, JSON.stringify(unticked))
+  ok("the title is untouched by an unselected field",
+    (await client.query(api.submissions.get, { submissionId: inboundId })).title
+      === "Airtable Two-Way Probe")
 
   const foreign = await client.query(api.submissions.list, { eventId: other._id })
   ok("cross-event ids are ignored by a pull",
-    pull([{ externalId: String(foreign[0]._id), status: "Declined" }]).applied === 0)
+    pull([statusRow(foreign[0]._id, "Declined")]).applied === 0)
   ok("the other event's submission is untouched",
     (await statusOf(foreign[0]._id)) === foreign[0].status)
+
+  // ——— Per-field write-back: widen the selection and drive a text field ———
+  await client.mutation(api.airtable.setTwoWaySync, {
+    eventId: main._id, enabled: true,
+    fields: ["submissions.status", "submissions.title", "submissions.tags"],
+  })
+  ok("the selection widens to exactly what was ticked",
+    (await client.query(api.airtable.status, { eventId: main._id }))?.inboundFields?.length === 3)
+  // Ticking a field schedules a re-mirror, which writes its baseline.
+  await new Promise((r) => setTimeout(r, 3000))
+
+  const TEXT = ["submissions.status", "submissions.title", "submissions.tags"]
+  const renamed = pull([{
+    externalId: String(inboundId),
+    values: {
+      "submissions.title": "Renamed In Airtable",
+      "submissions.tags": "rag,  evaluation , RAG",
+    },
+  }], TEXT)
+  ok("a ticked text field is applied", renamed.applied === 2, JSON.stringify(renamed))
+  const afterText = await client.query(api.submissions.get, { submissionId: inboundId })
+  ok("the title really changed", afterText.title === "Renamed In Airtable")
+  ok("tags are trimmed and de-duplicated on the way in",
+    JSON.stringify(afterText.tags) === JSON.stringify(["rag", "evaluation"]),
+    JSON.stringify(afterText.tags))
+  ok("a wording change from Airtable is restorable (version snapshot kept)",
+    (await client.query(api.audit.forEntity, {
+      eventId: main._id, entity: "submission", entityId: String(inboundId),
+    })).some((row) => row.action === "updated" && row.meta?.versionId))
+
+  const unknownTrack = pull([{
+    externalId: String(inboundId),
+    values: { "submissions.track": "A Track That Does Not Exist" },
+  }], ["submissions.track"])
+  ok("an unknown track name is left alone, never invented",
+    unknownTrack.applied === 0 && unknownTrack.skipped === 1, JSON.stringify(unknownTrack))
+
+  await client.mutation(api.airtable.setTwoWaySync, {
+    eventId: main._id, enabled: true, fields: ["submissions.status"],
+  })
 
   // The losing Airtable edit is recorded rather than silently dropped.
   const conflictLog = await client.query(api.audit.forEntity, {

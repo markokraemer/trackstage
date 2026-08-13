@@ -63,7 +63,7 @@ embeddable gallery/itinerary widgets, AI-assisted review, payments, CRM, marketi
 
 **Clarified:** `.ics` is enough (no Gmail/Outlook APIs). Single CFP form with track options
 is fine. Accepted speakers can still edit submissions (no locking needed). Co-speaker
-portal accounts are nice-to-have. Airtable read-only is fine (bonus, not core).
+portal accounts are nice-to-have. Airtable read-only is fine (bonus, not core) — we ship the mirror plus an opt-in, per-column write-back.
 
 ## Canonical domain language (match Sessionboard exactly)
 

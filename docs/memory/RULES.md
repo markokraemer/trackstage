@@ -52,11 +52,13 @@ trail visible).
 14. **The git repo is THE source of truth**: all context, rules, specs, learnings, todos
     live in the repo and are kept in constant sync. Anything Marko says that matters
     gets digested into the repo (RULES/TODO/DECISIONS/BUILD-LOG) immediately.
-15. **Airtable sync is on the roadmap** (bonus points, can come at the end): one-click
-    connect (API key + base) with one-way near-real-time mirror of submissions/
-    speakers/sessions into the organizer's Airtable base — swyx's team fires Airtable
-    automations "once a new row lands"; read-only mirror is explicitly enough per his
-    Discord clarification. Idempotent upserts, cron + on-write.
+15. **Airtable sync** (bonus points): one-click connect (API key + base) with a
+    near-real-time mirror of submissions/speakers/sessions into the organizer's
+    Airtable base — swyx's team fires Airtable automations "once a new row lands";
+    read-only mirror is explicitly enough per his Discord clarification. Idempotent
+    upserts, cron + on-write. **One-way stays the DEFAULT.** Write-back exists
+    (HISTORY 66) but is an explicit opt-in twice over — a master switch plus a
+    per-column checklist — and Trackstage wins every conflict.
 16. **Work style**: ultra-think, ultra-work — divide across many subagents (Task tool)
     and Workflow runs in parallel; push many frontiers simultaneously. Track all of
     Marko's asks in TODO.md at repo root.

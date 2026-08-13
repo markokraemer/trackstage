@@ -12,6 +12,10 @@ import {
   normalizeBaseId,
   normalizeToken,
 } from "@convex/lib/airtable"
+import {
+  INBOUND_FIELD_KEYS,
+  inboundGroups,
+} from "@convex/lib/airtableFields"
 import type { FunctionReturnType } from "convex/server"
 import { formatDistanceToNow } from "date-fns"
 import { toast } from "sonner"
@@ -46,6 +50,7 @@ import {
 } from "@/components/ui/dialog"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
+import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
 import { Switch } from "@/components/ui/switch"
 import {
@@ -62,6 +67,8 @@ import { errorMessage } from "@/lib/errors"
 
 const TOKEN_HELP_URL = "https://airtable.com/create/tokens"
 const SCOPES = REQUIRED_SCOPES
+/** Static — the registry is a module constant, so this never needs recomputing. */
+const INBOUND_GROUPS = inboundGroups()
 
 /**
  * Settings → Integrations → Airtable (docs/memory/RULES.md 15).
@@ -69,8 +76,9 @@ const SCOPES = REQUIRED_SCOPES
  * The whole promise in one card: paste a token and a base ID, and every
  * submission, speaker and scheduled session shows up as a row in the
  * organizer's OWN Airtable base — which is what their existing automations
- * are already watching. One way only, so nothing they do in Airtable can
- * corrupt the programme.
+ * are already watching. One way to begin with, so nothing they do in Airtable
+ * can corrupt the programme; write-back is theirs to switch on, column by
+ * column (see TwoWayToggle below).
  */
 export function AirtableCard({ eventId }: { eventId: Id<"events"> }) {
   const { data: connection, isPending } = useQuery(
@@ -106,9 +114,9 @@ export function AirtableCard({ eventId }: { eventId: Id<"events"> }) {
         </CardTitle>
         <CardDescription>
           Mirror this event into a base you own. New submissions appear as rows
-          — point your Airtable automations at them. Trackstage stays the source
-          of truth; only Status can be sent back, and only if you switch it on
-          below.
+          — point your Airtable automations at them. One-way by default;
+          switch write-back on below and pick exactly which columns Airtable is
+          allowed to change back.
         </CardDescription>
         {connection ? (
           <CardAction>
@@ -292,12 +300,19 @@ function ConnectedState({ connection }: { connection: Connection }) {
 }
 
 /**
- * The experimental inbound half (docs/memory/HISTORY.md 61).
+ * The inbound half (docs/memory/HISTORY.md 61, 66).
  *
- * Framed as one switch with a plain-English promise and a plain-English limit,
- * because that is the whole risk model an organizer needs: ONE column comes
- * back, and if the two sides disagree, Trackstage wins. Everything subtler —
- * echo detection, modified-since cursors — is our problem, not theirs.
+ * Two levels of consent, because they answer two different questions. The
+ * switch is "may Airtable change my event at all?" — off by default, and the
+ * only state where the integration is provably harmless. The checkboxes are
+ * "which columns?", because that is the unit an organizer actually reasons
+ * about: someone who wants to triage Status in a grid does NOT want a
+ * spreadsheet typo rewriting an abstract, and someone bulk-fixing speaker bios
+ * has no interest in the agenda.
+ *
+ * Everything subtler — echo detection, modified-since cursors, per-field
+ * baselines — is our problem, not theirs. The only rule they need is the one
+ * stated on the card: if both sides changed, Trackstage wins.
  */
 function TwoWayToggle({
   eventId,
@@ -310,6 +325,31 @@ function TwoWayToggle({
     mutationFn: useConvexMutation(api.airtable.setTwoWaySync),
   })
   const inbound = connection.inbound
+  const groups = INBOUND_GROUPS
+  const selected = new Set(connection.inboundFields)
+
+  async function save(next: { enabled: boolean; fields?: string[] }) {
+    try {
+      await setTwoWay.mutateAsync({ eventId, ...next })
+    } catch (error) {
+      toast.error(errorMessage(error, "Couldn't change that setting."))
+    }
+  }
+
+  async function toggleField(key: string, on: boolean) {
+    const next = new Set(selected)
+    if (on) next.add(key)
+    else next.delete(key)
+    // Unticking the last field is the same intent as flipping the switch off,
+    // and saying so is kinder than leaving a switch on that does nothing.
+    const fields = INBOUND_FIELD_KEYS.filter((field) => next.has(field))
+    if (fields.length === 0) {
+      await save({ enabled: false, fields: [] })
+      toast.success("Write-back off — Airtable is a read-only mirror again.")
+      return
+    }
+    await save({ enabled: true, fields })
+  }
 
   return (
     <div className="mt-5 flex flex-col gap-3 rounded-lg border border-border bg-muted/30 p-4">
@@ -319,14 +359,15 @@ function TwoWayToggle({
             htmlFor="airtable-two-way"
             className="flex items-center gap-2 text-sm font-medium"
           >
-            Sync Status changes back
-            <Badge variant="outline">Experimental</Badge>
+            Let Airtable write back
+            <Badge variant="outline">Two-way</Badge>
           </FieldLabel>
           <FieldDescription>
-            Change a submission's <b>Status</b> in Airtable and it lands here on
-            the next sync. Only that one column comes back — and if the same
-            submission changed in Trackstage too, Trackstage wins and we note it
-            in the activity log.
+            Off, this is a read-only mirror and anything you type in Airtable is
+            overwritten on the next sync. On, the columns you tick below become
+            editable in Airtable and land here within five minutes. If the same
+            thing changed in Trackstage too, <b>Trackstage wins</b> and we note
+            it in the activity log.
           </FieldDescription>
         </FieldContent>
         <Switch
@@ -334,27 +375,88 @@ function TwoWayToggle({
           checked={connection.twoWaySync}
           disabled={setTwoWay.isPending}
           onCheckedChange={async (value) => {
-            try {
-              await setTwoWay.mutateAsync({ eventId, enabled: Boolean(value) })
-              toast.success(
-                value
-                  ? "Two-way sync on — Status changes in Airtable will come back."
-                  : "Two-way sync off — Airtable is a read-only mirror again."
-              )
-            } catch (error) {
-              toast.error(errorMessage(error, "Couldn't change that setting."))
-            }
+            const enabled = Boolean(value)
+            await save({ enabled })
+            toast.success(
+              enabled
+                ? "Write-back on — tick the columns Airtable may change."
+                : "Write-back off — Airtable is a read-only mirror again."
+            )
           }}
         />
       </Field>
 
       {connection.twoWaySync ? (
-        <p className="text-xs text-muted-foreground">
-          {inbound
-            ? `Last check ${formatDistanceToNow(inbound.at, { addSuffix: true })}: ${inbound.applied} applied, ${inbound.skipped} left alone${inbound.conflicts > 0 ? `, ${inbound.conflicts} kept as Trackstage had them` : ""}.`
-            : "Waiting for the first sync — a row becomes eligible once we've mirrored it at least once."}{" "}
-          Draft and Withdrawn can never be set from Airtable.
-        </p>
+        <>
+          <div className="grid gap-4 border-t border-border pt-4 sm:grid-cols-3">
+            {groups.map((group) => {
+              const keys = group.fields.map((field) => field.key)
+              const allOn = keys.every((key) => selected.has(key))
+              return (
+                <div key={group.table} className="flex flex-col gap-2">
+                  <div className="flex items-baseline justify-between gap-2">
+                    <span className="text-xs font-semibold text-foreground">
+                      {group.tableName}
+                    </span>
+                    <button
+                      type="button"
+                      className="text-[11px] text-primary underline-offset-2 hover:underline"
+                      disabled={setTwoWay.isPending}
+                      onClick={async () => {
+                        const next = new Set(selected)
+                        for (const key of keys) {
+                          if (allOn) next.delete(key)
+                          else next.add(key)
+                        }
+                        const fields = INBOUND_FIELD_KEYS.filter((key) =>
+                          next.has(key)
+                        )
+                        if (fields.length === 0) {
+                          await save({ enabled: false, fields: [] })
+                          toast.success(
+                            "Write-back off — Airtable is a read-only mirror again."
+                          )
+                          return
+                        }
+                        await save({ enabled: true, fields })
+                      }}
+                    >
+                      {allOn ? "None" : "All"}
+                    </button>
+                  </div>
+                  {group.fields.map((field) => (
+                    <label
+                      key={field.key}
+                      htmlFor={`airtable-field-${field.key}`}
+                      title={field.help}
+                      className="flex items-start gap-2 text-xs text-muted-foreground"
+                    >
+                      <Checkbox
+                        id={`airtable-field-${field.key}`}
+                        className="mt-0.5"
+                        checked={selected.has(field.key)}
+                        disabled={setTwoWay.isPending}
+                        onCheckedChange={(value) =>
+                          toggleField(field.key, Boolean(value))
+                        }
+                      />
+                      <span className="text-foreground">{field.label}</span>
+                    </label>
+                  ))}
+                </div>
+              )
+            })}
+          </div>
+
+          <p className="text-xs text-muted-foreground">
+            {inbound
+              ? `Last check ${formatDistanceToNow(inbound.at, { addSuffix: true })}: ${inbound.checked} row${inbound.checked === 1 ? "" : "s"} read, ${inbound.applied} change${inbound.applied === 1 ? "" : "s"} applied, ${inbound.skipped} left alone${inbound.conflicts > 0 ? ` (${inbound.conflicts} kept as Trackstage had them)` : ""}.`
+              : "Waiting for the first sync — a cell becomes editable once we've mirrored it at least once."}{" "}
+            Draft and Withdrawn can never be set from Airtable, and a name we
+            don't recognise — a track or room that doesn't exist here — is left
+            alone rather than invented.
+          </p>
+        </>
       ) : null}
     </div>
   )
