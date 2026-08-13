@@ -2343,7 +2343,7 @@ const WEBHOOK_EVENT_TABLE = [
  */
 const METHOD_ORDER = ["get", "post", "put", "delete"]
 
-function buildSpec(routes, examples, siteUrl) {
+function buildSpec(routes, examples, siteUrl, rewrites = []) {
   const paths = {}
   for (const route of routes) {
     paths[route.path] ??= {}
@@ -2359,7 +2359,7 @@ function buildSpec(routes, examples, siteUrl) {
 
   const eventRows = WEBHOOK_EVENT_TABLE.map(([name, desc]) => `| \`${name}\` | ${desc} |`).join("\n")
 
-  return {
+  const spec = {
     openapi: "3.1.0",
     info: {
       title: "Trackstage API",
@@ -2377,7 +2377,7 @@ function buildSpec(routes, examples, siteUrl) {
         "",
         "### 1. Base URL",
         "",
-        `Every path below is relative to your deployment's Convex site URL — the one server, no regions to choose between:`,
+        `Every path below is relative to the API base — one server, no regions to choose between:`,
         "",
         "```",
         `${siteUrl ?? "https://your-deployment.convex.site"}`,
@@ -2616,8 +2616,8 @@ function buildSpec(routes, examples, siteUrl) {
     },
     servers: [
       {
-        url: siteUrl ?? "https://neat-sparrow-926.convex.site",
-        description: "Your deployment's Convex site URL.",
+        url: siteUrl ?? "https://your-deployment.convex.site",
+        description: "The API base URL.",
       },
     ],
     security: [{ ApiKeyHeader: [] }, { BearerToken: [] }],
@@ -2730,6 +2730,19 @@ function buildSpec(routes, examples, siteUrl) {
       schemas: { ...SCHEMAS, ...DERIVED },
     },
   }
+
+  // Hand-written fixtures spell their URLs against the self-host placeholder,
+  // because that is the honest default when nobody has told us the host. Once
+  // we know it, every printed URL becomes that one — a reader must never see
+  // two different bases in the same reference — and captured examples get
+  // their dev hosts rewritten to prod's on the same pass.
+  const all = siteUrl
+    ? [...rewrites, ["https://your-deployment.convex.site", siteUrl]]
+    : rewrites
+  if (all.length === 0) return spec
+  let json = JSON.stringify(spec)
+  for (const [from, to] of all) json = json.replaceAll(from, to)
+  return JSON.parse(json)
 }
 
 // ——— Checks ——————————————————————————————————————————————————————————————
@@ -2775,24 +2788,55 @@ async function checkDispatcher(routes, settingsResources) {
   return problems
 }
 
+/** One `KEY=value` out of a committed env file, trailing slashes trimmed. */
+async function readEnv(file, key) {
+  const env = await readFile(resolve(root, file), "utf8").catch(() => "")
+  const line = env.split("\n").find((l) => l.startsWith(`${key}=`))
+  return line ? line.slice(line.indexOf("=") + 1).trim().replace(/\/+$/, "") : null
+}
+
 /** Dev deployment URL (probing only), same source as the backend suite. */
 async function readSiteUrl() {
-  const env = await readFile(resolve(root, ".env.local"), "utf8").catch(() => "")
-  const line = env.split("\n").find((l) => l.startsWith("VITE_CONVEX_SITE_URL"))
-  return line ? line.slice(line.indexOf("=") + 1).trim() : null
+  return await readEnv(".env.local", "VITE_CONVEX_SITE_URL")
 }
 
 /**
- * PRODUCTION deployment URL from the committed .env.production. The COMMITTED
- * spec must advertise prod: it is served from trackstage.app, where Scalar's
+ * The base URL the COMMITTED spec advertises, read from .env.production —
+ * the branded `VITE_PUBLIC_API_URL` (api.trackstage.app) when one is attached,
+ * else the raw deployment host. Same precedence as `publicApiOrigin()` in
+ * src/lib/deployment-urls.ts, so the reference, the settings cards, the embeds
+ * and the .ics feeds all print one address.
+ *
+ * It must be PROD: the spec is served from trackstage.app, where Scalar's
  * "Try it" sends the reader's real key to whatever `servers[0]` says — baking
  * the dev URL here aimed real prod keys (and deletes!) at the dev deployment
  * (adversarial-review finding F1, 2026-08-11).
  */
 async function readProdSiteUrl() {
-  const env = await readFile(resolve(root, ".env.production"), "utf8").catch(() => "")
-  const line = env.split("\n").find((l) => l.startsWith("VITE_CONVEX_SITE_URL"))
-  return line ? line.slice(line.indexOf("=") + 1).trim() : null
+  return (
+    (await readEnv(".env.production", "VITE_PUBLIC_API_URL")) ??
+    (await readEnv(".env.production", "VITE_CONVEX_SITE_URL"))
+  )
+}
+
+/**
+ * Examples are captured from the DEV deployment, so anything it printed with
+ * its own host in it — file and headshot download URLs — would publish a dev
+ * address in the production reference. Rewrite those hosts to prod's on the
+ * way into the spec; the ids stay exactly as captured, they are illustrative
+ * either way.
+ */
+async function hostRewrites(advertised) {
+  const pairs = [
+    // HTTP-action URLs (uploads) follow the base we advertise; storage
+    // downloads are served from the deployment's own .convex.cloud host.
+    [await readSiteUrl(), advertised],
+    [
+      await readEnv(".env.local", "VITE_CONVEX_URL"),
+      await readEnv(".env.production", "VITE_CONVEX_URL"),
+    ],
+  ]
+  return pairs.filter(([from, to]) => from && to && from !== to)
 }
 
 /**
@@ -3422,7 +3466,8 @@ async function main() {
   // probing (adversarial-review F1: Scalar "Try it" sends real keys to
   // servers[0]).
   const prodSiteUrl = await readProdSiteUrl()
-  const spec = buildSpec(routes, examples, prodSiteUrl ?? siteUrl)
+  const base = prodSiteUrl ?? siteUrl
+  const spec = buildSpec(routes, examples, base, await hostRewrites(base))
   await mkdir(dirname(OUT), { recursive: true })
   await writeFile(OUT, `${JSON.stringify(spec, null, 2)}\n`)
   console.log(

@@ -2250,6 +2250,17 @@ function readSpeakerInput(body: Record<string, unknown>): Record<string, unknown
 
 // ——— Session files ————————————————————————————————————————————————————————
 
+/**
+ * The base every URL we hand back is spelled against: the host the caller
+ * actually reached us on. A client that came in through the branded domain
+ * (api.trackstage.app) must not be bounced to the raw *.convex.site one for
+ * the follow-up upload PUT — same rule the MCP discovery documents follow.
+ * CONVEX_SITE_URL is the fallback for an origin we somehow cannot read.
+ */
+function requestBase(url: URL): string {
+  return url.origin || process.env.CONVEX_SITE_URL || ""
+}
+
 async function handleSessionFiles(
   ctx: ActionCtx,
   req: Request,
@@ -2387,7 +2398,6 @@ async function handleSessionFiles(
     if (created === null)
       return errorResponse(`No event with slug "${eventRef}".`, 404)
     if (created.notFound) return errorResponse("Session not found.", 404)
-    const base = process.env.CONVEX_SITE_URL ?? url.origin
     return jsonResponse(
       {
         data: {
@@ -2395,7 +2405,7 @@ async function handleSessionFiles(
           filename,
           title: str(body.title) ?? filename,
           upload: {
-            url: `${base}/v1/event/${eventRef}/sessions/${sessionId}/files/${created.intentId}/bytes`,
+            url: `${requestBase(url)}/v1/event/${eventRef}/sessions/${sessionId}/files/${created.intentId}/bytes`,
             method: "PUT",
             headers: {
               "Content-Type": str(body.content_type) ?? "application/octet-stream",
@@ -2451,14 +2461,13 @@ async function handleSessionFiles(
     if (created === null)
       return errorResponse(`No event with slug "${eventRef}".`, 404)
     if (created.notFound) return errorResponse("Session not found.", 404)
-    const base = process.env.CONVEX_SITE_URL ?? url.origin
     return jsonResponse(
       {
         data: {
           id: created.intentId,
           replaces: fileId,
           upload: {
-            url: `${base}/v1/event/${eventRef}/sessions/${sessionId}/files/${created.intentId}/bytes`,
+            url: `${requestBase(url)}/v1/event/${eventRef}/sessions/${sessionId}/files/${created.intentId}/bytes`,
             method: "PUT",
             headers: {
               "Content-Type": str(body.content_type) ?? "application/octet-stream",

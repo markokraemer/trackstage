@@ -103,8 +103,11 @@ HMAC signatures and a delivery log. OpenAPI spec and an interactive reference at
 
 ```sh
 curl -H "Authorization: Bearer <key>" \
-  https://<your-convex-site>/v1/event/ai-summit-2026/sessions
+  https://api.trackstage.app/v1/event/ai-summit-2026/sessions
 ```
+
+Self-hosting? The base is your own deployment's Convex site URL (or whatever custom
+domain you point at it via `VITE_PUBLIC_API_URL`).
 
 The `/v1/event/{slug}/schedule.ics` feed needs no credential.
 
