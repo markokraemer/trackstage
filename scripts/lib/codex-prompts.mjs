@@ -103,6 +103,18 @@ export const SECRET_RULES = [
     name: "env-assignment",
     re: /\b[A-Z][A-Z0-9_]*(?:KEY|SECRET|TOKEN|PASSWORD|PASSWD|CREDENTIALS?)\s*[=:]\s*["']?[A-Za-z0-9._~+/-]{12,}["']?/g,
   },
+  // ——— Both of these were found by the entropy backstop in Marko's own
+  // prompts after every named rule above had already passed. Promoted to named
+  // rules so the next run catches them outright instead of asking for review.
+  // ElevenLabs-style keys: `sk_` + a long alnum run, no live/test infix, and
+  // an UNDERSCORE where the `sk-` rules expect a hyphen — which is exactly how
+  // one slipped past. (Seen 2026-08-12, session be720e46.)
+  { name: "sk-underscore", re: /\bsk_[A-Za-z0-9]{32,}/g },
+  // Convex personal access tokens are base64-encoded JSON. A bare `eyJ…` blob
+  // that is not a three-part JWT is still a bearer credential in prose — the
+  // JWT rule above runs first, so real JWTs are consumed before this fires.
+  // (Seen 2026-08-12, session b7709de6: "here a personal access token for convex".)
+  { name: "base64-json-token", re: /\beyJ[A-Za-z0-9+/]{16,}={0,2}/g },
 ]
 
 /**

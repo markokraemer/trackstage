@@ -22,7 +22,10 @@
     "test:e2e": "playwright test",
     "test:flows": "playwright test --project=flows",
     "test:all": "pnpm test && pnpm test:backend && pnpm test:e2e",
+    "prompts": "node scripts/extract-prompts.mjs --commit",
     "prompts:regen": "node scripts/extract-prompts.mjs",
+    "prompts:check": "node scripts/extract-prompts.mjs --check",
+    "prompts:audit": "node scripts/extract-prompts.mjs --audit-history",
     "openapi:regen": "node scripts/generate-openapi.mjs",
     "openapi:check": "node scripts/generate-openapi.mjs --check",
     "openapi:verify": "node scripts/generate-openapi.mjs --check --live"

@@ -1,0 +1,22 @@
+{
+  "_readme": [
+    "Optional overrides for scripts/extract-prompts.mjs. Everything else is discovered.",
+    "exclude: session ids to leave out of PROMPTS.md/SESSIONS.md entirely.",
+    "notes:   hand-written one-line characterizations; without one the script falls back",
+    "         to the transcript's own ai-title, then to the session's first prompt."
+  ],
+  "exclude": [],
+  "notes": {
+    "118b76be-7bc9-4385-b170-00baeb55f0ff": "The founding session — competition brief in, stack chosen (TanStack Start + Convex + shadcn/Base UI), scaffold to a working organizer app, CFP, portal and agenda",
+    "83a5b5a1-d91e-408d-b337-5efb2db29b66": "The long continuation of the founding session — parallel build waves, Better Auth multi-tenancy, the Attio design revamp, MCP + API + Fumadocs, sbek hill-climb, production launch, and everything after",
+    "c6ee6f3e-07ab-4730-9776-190cc71b4b57": "Spot-check that the Trackstage MCP server was reachable from a fresh session",
+    "ed1dc323-5f5d-48a2-a715-c561271dee2c": "One-line release: promote main to staging, then to production",
+    "021fe28b-5b5b-4d0b-ab44-8896eba50c69": "Drive the product end to end through the Trackstage MCP server as a real client would",
+    "be720e46-c0a5-4a32-a0af-186950bfe59d": "Rebuild the launch walkthrough video with narrated ElevenLabs audio",
+    "b7709de6-301d-491a-bde7-d9efc09b8a09": "Public-launch prep — demo credentials, the go-public countdown page, API-docs endpoint coverage, MCP connector fixes, light-mode default, OG assets",
+    "fd49c5a0-30be-431a-a604-696dc5866afd": "Cost accounting: total token spend across every session and subagent, rendered as a ccusage-style graphic",
+    "203cfaed-6ea0-46c7-b1e7-949e6e3facf9": "Airtable mirror copy + the speaker-details affordance on submissions",
+    "21004fc0-08d2-445e-8dfe-82391498f857": "Point the published API reference at api.trackstage.app and re-verify production",
+    "ca3e4acd-dff4-4716-ad3b-816f82556923": "Marko opened `/mcp` to check the server list and closed the session — no prompt typed"
+  }
+}

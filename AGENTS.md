@@ -188,3 +188,13 @@ Routes in `src/routes` (file-based; never edit `routeTree.gen.ts`). Convex wired
   `git push origin master master:main`). **Never add a Claude co-author trailer.**
 - Keep this file updated when decisions, learnings, or scope changes land.
 - Deep specs live in `docs/`; this file holds only the always-needed facts.
+- **`pnpm prompts` after any stretch of work with Marko.** It discovers every Claude Code
+  and Codex session belonging to this repo (project dir, worktree dirs, scratchpad dirs,
+  `~/.codex/sessions` by cwd — no ids to register), regenerates `docs/memory/PROMPTS.md`
+  (the verbatim corpus of every human prompt) and `docs/memory/SESSIONS.md` (the session
+  inventory), then commits + pushes only if they changed. It **refuses to write** if any
+  credential shape survives redaction or an unreviewed high-entropy run appears — that
+  gate is the reason the corpus is safe in a public repo, so never bypass it.
+  `pnpm prompts:check` = no-write drift check, `pnpm prompts:audit` = same plus a
+  credential sweep of past revisions of those files. Both docs are GENERATED — edit
+  `docs/memory/sessions.overrides.json` (notes/exclusions), never the docs themselves.
