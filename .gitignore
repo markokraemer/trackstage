@@ -43,3 +43,6 @@ playwright-report/
 .status-picker-shots/
 .scratch-*.png
 .sidebar-shot.png
+
+# prompt-extractor incremental cache (regenerable)
+.cache/
