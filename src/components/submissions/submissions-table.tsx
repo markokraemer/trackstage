@@ -249,7 +249,11 @@ export function SubmissionsTable({
                   </Link>
                   <span className="text-xs text-muted-foreground">
                     {row.kind === "session" ? "Session" : "Abstract"}
-                    {row.formName ? ` · ${row.formName}` : " · Added manually"}
+                    {row.sponsor
+                      ? ` · Sponsor: ${row.sponsor.name}`
+                      : row.formName
+                        ? ` · ${row.formName}`
+                        : " · Added manually"}
                   </span>
                 </TableCell>
 

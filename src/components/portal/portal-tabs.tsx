@@ -1,6 +1,7 @@
 import { Link } from "@tanstack/react-router"
 import {
   RiBriefcase4Line,
+  RiBuilding2Line,
   RiCalendarEventLine,
   RiHome5Line,
   RiUser3Line,
@@ -40,6 +41,15 @@ export const PORTAL_TABS = [
       "Your talks and where each one stands. Open one to read it in full — and to edit it, for as long as this event allows changes.",
   },
   {
+    value: "sponsor",
+    label: "Sponsor",
+    to: "/portal/sponsor",
+    icon: RiBuilding2Line,
+    heading: "Sponsor sessions",
+    blurb:
+      "Your company's sessions at this event. Add the sessions your package includes, say who's presenting, and keep them up to date — no call for papers.",
+  },
+  {
     value: "profile",
     label: "Profile",
     to: "/portal/profile",
@@ -62,6 +72,7 @@ export const PORTAL_TABS = [
 /** Which tab a pathname belongs to. */
 export function activePortalTab(pathname: string): string {
   if (pathname.startsWith("/portal/submissions")) return "submissions"
+  if (pathname.startsWith("/portal/sponsor")) return "sponsor"
   if (pathname.startsWith("/portal/profile")) return "profile"
   if (pathname.startsWith("/portal/tasks")) return "tasks"
   return "home"
@@ -83,6 +94,7 @@ export function PortalTabs({
   active,
   openTaskCount = 0,
   showTasks = true,
+  sponsorName,
 }: {
   active: string
   openTaskCount?: number
@@ -92,10 +104,18 @@ export function PortalTabs({
    * nothing behind the tab, so it isn't offered.
    */
   showTasks?: boolean
+  /**
+   * The sponsor this person is a contact for. Present ⇒ the Sponsor tab is
+   * offered, labelled with the company's own name ("Acme AI") so a contact
+   * who is also a speaker can tell their company's sessions from their own.
+   */
+  sponsorName?: string | null
 }) {
-  const tabs = showTasks
-    ? PORTAL_TABS
-    : PORTAL_TABS.filter((tab) => tab.value !== "tasks")
+  const tabs = PORTAL_TABS.filter(
+    (tab) =>
+      (showTasks || tab.value !== "tasks") &&
+      (sponsorName || tab.value !== "sponsor"),
+  )
   return (
     <Tabs value={active} className="w-full">
       <TabsList
@@ -118,7 +138,11 @@ export function PortalTabs({
                 under its own underline reads as broken. Text-only is also
                 exactly how the organizer app's page tabs look. */}
             <tab.icon size={16} aria-hidden className="hidden sm:block" />
-            {tab.label}
+            {tab.value === "sponsor" && sponsorName ? (
+              <span className="max-w-[12rem] truncate">{sponsorName}</span>
+            ) : (
+              tab.label
+            )}
             {tab.value === "tasks" && openTaskCount > 0 ? (
               <TabsCount>{openTaskCount}</TabsCount>
             ) : null}

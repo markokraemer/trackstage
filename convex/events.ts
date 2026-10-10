@@ -220,6 +220,7 @@ export async function deleteEventCascade(
     "tracks",
     "sessionStatuses",
     "forms",
+    "sponsors",
     "people",
     "submissions",
     "submissionParticipants",

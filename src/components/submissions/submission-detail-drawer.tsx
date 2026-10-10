@@ -23,6 +23,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { Switch } from "@/components/ui/switch"
 import { Separator } from "@/components/ui/separator"
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field"
+import { SponsorPicker } from "@/components/sponsors/sponsor-picker"
 import {
   Select,
   SelectContent,
@@ -564,6 +565,12 @@ export function SubmissionDetailDrawer({
                     onChange={(tags) => setDraft({ ...draft, tags })}
                   />
                 </Field>
+
+                <SponsorPicker
+                  eventId={submission.eventId}
+                  submissionId={submission._id}
+                  sponsorId={submission.sponsor?._id ?? null}
+                />
               </FieldGroup>
 
               <Separator className="my-6" />
@@ -571,7 +578,11 @@ export function SubmissionDetailDrawer({
               <dl className="grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
                 <MetaRow
                   label="Source"
-                  value={submission.formName ?? "Added manually"}
+                  value={
+                    submission.sponsor && !submission.formName
+                      ? `Sponsor portal · ${submission.sponsor.name}`
+                      : (submission.formName ?? "Added manually")
+                  }
                 />
                 <MetaRow
                   label="Submitted"

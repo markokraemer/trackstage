@@ -31,6 +31,7 @@ import { Route as DocsSelfHostRouteImport } from './routes/docs/self-host'
 import { Route as DocsApiRouteImport } from './routes/docs_.api'
 import { Route as PortalIndexRouteImport } from './routes/portal/index'
 import { Route as PortalProfileRouteImport } from './routes/portal/profile'
+import { Route as PortalSponsorRouteImport } from './routes/portal/sponsor'
 import { Route as PortalSubmissionsRouteImport } from './routes/portal/submissions'
 import { Route as PortalTasksRouteImport } from './routes/portal/tasks'
 import { Route as ReviewTokenRouteImport } from './routes/review/$token'
@@ -56,6 +57,7 @@ import { Route as AppSettingsIntegrationsRouteImport } from './routes/app/settin
 import { Route as AppSettingsRoomsAndTracksRouteImport } from './routes/app/settings/rooms-and-tracks'
 import { Route as AppSettingsStatusesRouteImport } from './routes/app/settings/statuses'
 import { Route as AppSpeakersIndexRouteImport } from './routes/app/speakers/index'
+import { Route as AppSponsorsIndexRouteImport } from './routes/app/sponsors/index'
 import { Route as AppSubmissionsIndexRouteImport } from './routes/app/submissions/index'
 import { Route as DocsGuideAiCopilotRouteImport } from './routes/docs/guide/ai-copilot'
 import { Route as DocsGuideAirtableSyncRouteImport } from './routes/docs/guide/airtable-sync'
@@ -67,6 +69,7 @@ import { Route as DocsGuidePublishYourProgramRouteImport } from './routes/docs/g
 import { Route as DocsGuideReviewAndDecideRouteImport } from './routes/docs/guide/review-and-decide'
 import { Route as DocsGuideShareAndCollectRouteImport } from './routes/docs/guide/share-and-collect'
 import { Route as DocsGuideSpeakerPortalRouteImport } from './routes/docs/guide/speaker-portal'
+import { Route as DocsGuideSponsorsRouteImport } from './routes/docs/guide/sponsors'
 import { Route as DocsGuideTeamAndWorkspacesRouteImport } from './routes/docs/guide/team-and-workspaces'
 import { Route as EWorkspaceSlugIndexRouteImport } from './routes/e/$workspaceSlug/index'
 import { Route as EWorkspaceSlugEventSlugRouteRouteImport } from './routes/e/$workspaceSlug/$eventSlug/route'
@@ -98,6 +101,7 @@ import { Route as AppWorkspaceSlugEventSlugSettingsRoomsAndTracksRouteImport } f
 import { Route as AppWorkspaceSlugEventSlugSettingsStatusesRouteImport } from './routes/app/$workspaceSlug/$eventSlug/settings/statuses'
 import { Route as AppWorkspaceSlugEventSlugSettingsTeamRouteImport } from './routes/app/$workspaceSlug/$eventSlug/settings/team'
 import { Route as AppWorkspaceSlugEventSlugSpeakersIndexRouteImport } from './routes/app/$workspaceSlug/$eventSlug/speakers/index'
+import { Route as AppWorkspaceSlugEventSlugSponsorsIndexRouteImport } from './routes/app/$workspaceSlug/$eventSlug/sponsors/index'
 import { Route as AppWorkspaceSlugEventSlugSubmissionsIndexRouteImport } from './routes/app/$workspaceSlug/$eventSlug/submissions/index'
 import { Route as EWorkspaceSlugEventSlugItineraryPersonIdRouteImport } from './routes/e/$workspaceSlug/$eventSlug/itinerary/$personId'
 import { Route as EWorkspaceSlugEventSlugSessionsIndexRouteImport } from './routes/e/$workspaceSlug/$eventSlug/sessions/index'
@@ -212,6 +216,11 @@ const PortalIndexRoute = PortalIndexRouteImport.update({
 const PortalProfileRoute = PortalProfileRouteImport.update({
   id: '/profile',
   path: '/profile',
+  getParentRoute: () => PortalRouteRoute,
+} as any)
+const PortalSponsorRoute = PortalSponsorRouteImport.update({
+  id: '/sponsor',
+  path: '/sponsor',
   getParentRoute: () => PortalRouteRoute,
 } as any)
 const PortalSubmissionsRoute = PortalSubmissionsRouteImport.update({
@@ -343,6 +352,11 @@ const AppSpeakersIndexRoute = AppSpeakersIndexRouteImport.update({
   path: '/speakers/',
   getParentRoute: () => AppRouteRoute,
 } as any)
+const AppSponsorsIndexRoute = AppSponsorsIndexRouteImport.update({
+  id: '/sponsors/',
+  path: '/sponsors/',
+  getParentRoute: () => AppRouteRoute,
+} as any)
 const AppSubmissionsIndexRoute = AppSubmissionsIndexRouteImport.update({
   id: '/submissions/',
   path: '/submissions/',
@@ -399,6 +413,11 @@ const DocsGuideShareAndCollectRoute =
 const DocsGuideSpeakerPortalRoute = DocsGuideSpeakerPortalRouteImport.update({
   id: '/guide/speaker-portal',
   path: '/guide/speaker-portal',
+  getParentRoute: () => DocsRouteRoute,
+} as any)
+const DocsGuideSponsorsRoute = DocsGuideSponsorsRouteImport.update({
+  id: '/guide/sponsors',
+  path: '/guide/sponsors',
   getParentRoute: () => DocsRouteRoute,
 } as any)
 const DocsGuideTeamAndWorkspacesRoute =
@@ -585,6 +604,12 @@ const AppWorkspaceSlugEventSlugSpeakersIndexRoute =
     path: '/speakers/',
     getParentRoute: () => AppWorkspaceSlugEventSlugRouteRoute,
   } as any)
+const AppWorkspaceSlugEventSlugSponsorsIndexRoute =
+  AppWorkspaceSlugEventSlugSponsorsIndexRouteImport.update({
+    id: '/sponsors/',
+    path: '/sponsors/',
+    getParentRoute: () => AppWorkspaceSlugEventSlugRouteRoute,
+  } as any)
 const AppWorkspaceSlugEventSlugSubmissionsIndexRoute =
   AppWorkspaceSlugEventSlugSubmissionsIndexRouteImport.update({
     id: '/submissions/',
@@ -630,6 +655,7 @@ export interface FileRoutesByFullPath {
   '/docs/self-host': typeof DocsSelfHostRoute
   '/docs/api': typeof DocsApiRoute
   '/portal/profile': typeof PortalProfileRoute
+  '/portal/sponsor': typeof PortalSponsorRoute
   '/portal/submissions': typeof PortalSubmissionsRoute
   '/portal/tasks': typeof PortalTasksRoute
   '/review/$token': typeof ReviewTokenRoute
@@ -659,6 +685,7 @@ export interface FileRoutesByFullPath {
   '/docs/guide/review-and-decide': typeof DocsGuideReviewAndDecideRoute
   '/docs/guide/share-and-collect': typeof DocsGuideShareAndCollectRoute
   '/docs/guide/speaker-portal': typeof DocsGuideSpeakerPortalRoute
+  '/docs/guide/sponsors': typeof DocsGuideSponsorsRoute
   '/docs/guide/team-and-workspaces': typeof DocsGuideTeamAndWorkspacesRoute
   '/portal/t/$token': typeof PortalTTokenRoute
   '/app/$workspaceSlug/': typeof AppWorkspaceSlugIndexRoute
@@ -671,6 +698,7 @@ export interface FileRoutesByFullPath {
   '/app/forms/': typeof AppFormsIndexRoute
   '/app/settings/': typeof AppSettingsIndexRoute
   '/app/speakers/': typeof AppSpeakersIndexRoute
+  '/app/sponsors/': typeof AppSponsorsIndexRoute
   '/app/submissions/': typeof AppSubmissionsIndexRoute
   '/e/$workspaceSlug/': typeof EWorkspaceSlugIndexRoute
   '/submit/$workspaceSlug/': typeof SubmitWorkspaceSlugIndexRoute
@@ -702,6 +730,7 @@ export interface FileRoutesByFullPath {
   '/app/$workspaceSlug/$eventSlug/forms/': typeof AppWorkspaceSlugEventSlugFormsIndexRoute
   '/app/$workspaceSlug/$eventSlug/settings/': typeof AppWorkspaceSlugEventSlugSettingsIndexRoute
   '/app/$workspaceSlug/$eventSlug/speakers/': typeof AppWorkspaceSlugEventSlugSpeakersIndexRoute
+  '/app/$workspaceSlug/$eventSlug/sponsors/': typeof AppWorkspaceSlugEventSlugSponsorsIndexRoute
   '/app/$workspaceSlug/$eventSlug/submissions/': typeof AppWorkspaceSlugEventSlugSubmissionsIndexRoute
   '/e/$workspaceSlug/$eventSlug/sessions/': typeof EWorkspaceSlugEventSlugSessionsIndexRoute
 }
@@ -722,6 +751,7 @@ export interface FileRoutesByTo {
   '/docs/self-host': typeof DocsSelfHostRoute
   '/docs/api': typeof DocsApiRoute
   '/portal/profile': typeof PortalProfileRoute
+  '/portal/sponsor': typeof PortalSponsorRoute
   '/portal/submissions': typeof PortalSubmissionsRoute
   '/portal/tasks': typeof PortalTasksRoute
   '/review/$token': typeof ReviewTokenRoute
@@ -749,6 +779,7 @@ export interface FileRoutesByTo {
   '/docs/guide/review-and-decide': typeof DocsGuideReviewAndDecideRoute
   '/docs/guide/share-and-collect': typeof DocsGuideShareAndCollectRoute
   '/docs/guide/speaker-portal': typeof DocsGuideSpeakerPortalRoute
+  '/docs/guide/sponsors': typeof DocsGuideSponsorsRoute
   '/docs/guide/team-and-workspaces': typeof DocsGuideTeamAndWorkspacesRoute
   '/portal/t/$token': typeof PortalTTokenRoute
   '/app/$workspaceSlug': typeof AppWorkspaceSlugIndexRoute
@@ -761,6 +792,7 @@ export interface FileRoutesByTo {
   '/app/forms': typeof AppFormsIndexRoute
   '/app/settings': typeof AppSettingsIndexRoute
   '/app/speakers': typeof AppSpeakersIndexRoute
+  '/app/sponsors': typeof AppSponsorsIndexRoute
   '/app/submissions': typeof AppSubmissionsIndexRoute
   '/e/$workspaceSlug': typeof EWorkspaceSlugIndexRoute
   '/submit/$workspaceSlug': typeof SubmitWorkspaceSlugIndexRoute
@@ -791,6 +823,7 @@ export interface FileRoutesByTo {
   '/app/$workspaceSlug/$eventSlug/forms': typeof AppWorkspaceSlugEventSlugFormsIndexRoute
   '/app/$workspaceSlug/$eventSlug/settings': typeof AppWorkspaceSlugEventSlugSettingsIndexRoute
   '/app/$workspaceSlug/$eventSlug/speakers': typeof AppWorkspaceSlugEventSlugSpeakersIndexRoute
+  '/app/$workspaceSlug/$eventSlug/sponsors': typeof AppWorkspaceSlugEventSlugSponsorsIndexRoute
   '/app/$workspaceSlug/$eventSlug/submissions': typeof AppWorkspaceSlugEventSlugSubmissionsIndexRoute
   '/e/$workspaceSlug/$eventSlug/sessions': typeof EWorkspaceSlugEventSlugSessionsIndexRoute
 }
@@ -815,6 +848,7 @@ export interface FileRoutesById {
   '/docs/self-host': typeof DocsSelfHostRoute
   '/docs_/api': typeof DocsApiRoute
   '/portal/profile': typeof PortalProfileRoute
+  '/portal/sponsor': typeof PortalSponsorRoute
   '/portal/submissions': typeof PortalSubmissionsRoute
   '/portal/tasks': typeof PortalTasksRoute
   '/review/$token': typeof ReviewTokenRoute
@@ -844,6 +878,7 @@ export interface FileRoutesById {
   '/docs/guide/review-and-decide': typeof DocsGuideReviewAndDecideRoute
   '/docs/guide/share-and-collect': typeof DocsGuideShareAndCollectRoute
   '/docs/guide/speaker-portal': typeof DocsGuideSpeakerPortalRoute
+  '/docs/guide/sponsors': typeof DocsGuideSponsorsRoute
   '/docs/guide/team-and-workspaces': typeof DocsGuideTeamAndWorkspacesRoute
   '/portal/t/$token': typeof PortalTTokenRoute
   '/app/$workspaceSlug/': typeof AppWorkspaceSlugIndexRoute
@@ -856,6 +891,7 @@ export interface FileRoutesById {
   '/app/forms/': typeof AppFormsIndexRoute
   '/app/settings/': typeof AppSettingsIndexRoute
   '/app/speakers/': typeof AppSpeakersIndexRoute
+  '/app/sponsors/': typeof AppSponsorsIndexRoute
   '/app/submissions/': typeof AppSubmissionsIndexRoute
   '/e/$workspaceSlug/': typeof EWorkspaceSlugIndexRoute
   '/submit/$workspaceSlug/': typeof SubmitWorkspaceSlugIndexRoute
@@ -887,6 +923,7 @@ export interface FileRoutesById {
   '/app/$workspaceSlug/$eventSlug/forms/': typeof AppWorkspaceSlugEventSlugFormsIndexRoute
   '/app/$workspaceSlug/$eventSlug/settings/': typeof AppWorkspaceSlugEventSlugSettingsIndexRoute
   '/app/$workspaceSlug/$eventSlug/speakers/': typeof AppWorkspaceSlugEventSlugSpeakersIndexRoute
+  '/app/$workspaceSlug/$eventSlug/sponsors/': typeof AppWorkspaceSlugEventSlugSponsorsIndexRoute
   '/app/$workspaceSlug/$eventSlug/submissions/': typeof AppWorkspaceSlugEventSlugSubmissionsIndexRoute
   '/e/$workspaceSlug/$eventSlug/sessions/': typeof EWorkspaceSlugEventSlugSessionsIndexRoute
 }
@@ -912,6 +949,7 @@ export interface FileRouteTypes {
     | '/docs/self-host'
     | '/docs/api'
     | '/portal/profile'
+    | '/portal/sponsor'
     | '/portal/submissions'
     | '/portal/tasks'
     | '/review/$token'
@@ -941,6 +979,7 @@ export interface FileRouteTypes {
     | '/docs/guide/review-and-decide'
     | '/docs/guide/share-and-collect'
     | '/docs/guide/speaker-portal'
+    | '/docs/guide/sponsors'
     | '/docs/guide/team-and-workspaces'
     | '/portal/t/$token'
     | '/app/$workspaceSlug/'
@@ -953,6 +992,7 @@ export interface FileRouteTypes {
     | '/app/forms/'
     | '/app/settings/'
     | '/app/speakers/'
+    | '/app/sponsors/'
     | '/app/submissions/'
     | '/e/$workspaceSlug/'
     | '/submit/$workspaceSlug/'
@@ -984,6 +1024,7 @@ export interface FileRouteTypes {
     | '/app/$workspaceSlug/$eventSlug/forms/'
     | '/app/$workspaceSlug/$eventSlug/settings/'
     | '/app/$workspaceSlug/$eventSlug/speakers/'
+    | '/app/$workspaceSlug/$eventSlug/sponsors/'
     | '/app/$workspaceSlug/$eventSlug/submissions/'
     | '/e/$workspaceSlug/$eventSlug/sessions/'
   fileRoutesByTo: FileRoutesByTo
@@ -1004,6 +1045,7 @@ export interface FileRouteTypes {
     | '/docs/self-host'
     | '/docs/api'
     | '/portal/profile'
+    | '/portal/sponsor'
     | '/portal/submissions'
     | '/portal/tasks'
     | '/review/$token'
@@ -1031,6 +1073,7 @@ export interface FileRouteTypes {
     | '/docs/guide/review-and-decide'
     | '/docs/guide/share-and-collect'
     | '/docs/guide/speaker-portal'
+    | '/docs/guide/sponsors'
     | '/docs/guide/team-and-workspaces'
     | '/portal/t/$token'
     | '/app/$workspaceSlug'
@@ -1043,6 +1086,7 @@ export interface FileRouteTypes {
     | '/app/forms'
     | '/app/settings'
     | '/app/speakers'
+    | '/app/sponsors'
     | '/app/submissions'
     | '/e/$workspaceSlug'
     | '/submit/$workspaceSlug'
@@ -1073,6 +1117,7 @@ export interface FileRouteTypes {
     | '/app/$workspaceSlug/$eventSlug/forms'
     | '/app/$workspaceSlug/$eventSlug/settings'
     | '/app/$workspaceSlug/$eventSlug/speakers'
+    | '/app/$workspaceSlug/$eventSlug/sponsors'
     | '/app/$workspaceSlug/$eventSlug/submissions'
     | '/e/$workspaceSlug/$eventSlug/sessions'
   id:
@@ -1096,6 +1141,7 @@ export interface FileRouteTypes {
     | '/docs/self-host'
     | '/docs_/api'
     | '/portal/profile'
+    | '/portal/sponsor'
     | '/portal/submissions'
     | '/portal/tasks'
     | '/review/$token'
@@ -1125,6 +1171,7 @@ export interface FileRouteTypes {
     | '/docs/guide/review-and-decide'
     | '/docs/guide/share-and-collect'
     | '/docs/guide/speaker-portal'
+    | '/docs/guide/sponsors'
     | '/docs/guide/team-and-workspaces'
     | '/portal/t/$token'
     | '/app/$workspaceSlug/'
@@ -1137,6 +1184,7 @@ export interface FileRouteTypes {
     | '/app/forms/'
     | '/app/settings/'
     | '/app/speakers/'
+    | '/app/sponsors/'
     | '/app/submissions/'
     | '/e/$workspaceSlug/'
     | '/submit/$workspaceSlug/'
@@ -1168,6 +1216,7 @@ export interface FileRouteTypes {
     | '/app/$workspaceSlug/$eventSlug/forms/'
     | '/app/$workspaceSlug/$eventSlug/settings/'
     | '/app/$workspaceSlug/$eventSlug/speakers/'
+    | '/app/$workspaceSlug/$eventSlug/sponsors/'
     | '/app/$workspaceSlug/$eventSlug/submissions/'
     | '/e/$workspaceSlug/$eventSlug/sessions/'
   fileRoutesById: FileRoutesById
@@ -1351,6 +1400,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PortalProfileRouteImport
       parentRoute: typeof PortalRouteRoute
     }
+    '/portal/sponsor': {
+      id: '/portal/sponsor'
+      path: '/sponsor'
+      fullPath: '/portal/sponsor'
+      preLoaderRoute: typeof PortalSponsorRouteImport
+      parentRoute: typeof PortalRouteRoute
+    }
     '/portal/submissions': {
       id: '/portal/submissions'
       path: '/submissions'
@@ -1526,6 +1582,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppSpeakersIndexRouteImport
       parentRoute: typeof AppRouteRoute
     }
+    '/app/sponsors/': {
+      id: '/app/sponsors/'
+      path: '/sponsors'
+      fullPath: '/app/sponsors/'
+      preLoaderRoute: typeof AppSponsorsIndexRouteImport
+      parentRoute: typeof AppRouteRoute
+    }
     '/app/submissions/': {
       id: '/app/submissions/'
       path: '/submissions'
@@ -1601,6 +1664,13 @@ declare module '@tanstack/react-router' {
       path: '/guide/speaker-portal'
       fullPath: '/docs/guide/speaker-portal'
       preLoaderRoute: typeof DocsGuideSpeakerPortalRouteImport
+      parentRoute: typeof DocsRouteRoute
+    }
+    '/docs/guide/sponsors': {
+      id: '/docs/guide/sponsors'
+      path: '/guide/sponsors'
+      fullPath: '/docs/guide/sponsors'
+      preLoaderRoute: typeof DocsGuideSponsorsRouteImport
       parentRoute: typeof DocsRouteRoute
     }
     '/docs/guide/team-and-workspaces': {
@@ -1820,6 +1890,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppWorkspaceSlugEventSlugSpeakersIndexRouteImport
       parentRoute: typeof AppWorkspaceSlugEventSlugRouteRoute
     }
+    '/app/$workspaceSlug/$eventSlug/sponsors/': {
+      id: '/app/$workspaceSlug/$eventSlug/sponsors/'
+      path: '/sponsors'
+      fullPath: '/app/$workspaceSlug/$eventSlug/sponsors/'
+      preLoaderRoute: typeof AppWorkspaceSlugEventSlugSponsorsIndexRouteImport
+      parentRoute: typeof AppWorkspaceSlugEventSlugRouteRoute
+    }
     '/app/$workspaceSlug/$eventSlug/submissions/': {
       id: '/app/$workspaceSlug/$eventSlug/submissions/'
       path: '/submissions'
@@ -1900,6 +1977,7 @@ interface AppWorkspaceSlugEventSlugRouteRouteChildren {
   AppWorkspaceSlugEventSlugFilesIndexRoute: typeof AppWorkspaceSlugEventSlugFilesIndexRoute
   AppWorkspaceSlugEventSlugFormsIndexRoute: typeof AppWorkspaceSlugEventSlugFormsIndexRoute
   AppWorkspaceSlugEventSlugSpeakersIndexRoute: typeof AppWorkspaceSlugEventSlugSpeakersIndexRoute
+  AppWorkspaceSlugEventSlugSponsorsIndexRoute: typeof AppWorkspaceSlugEventSlugSponsorsIndexRoute
   AppWorkspaceSlugEventSlugSubmissionsIndexRoute: typeof AppWorkspaceSlugEventSlugSubmissionsIndexRoute
 }
 
@@ -1928,6 +2006,8 @@ const AppWorkspaceSlugEventSlugRouteRouteChildren: AppWorkspaceSlugEventSlugRout
       AppWorkspaceSlugEventSlugFormsIndexRoute,
     AppWorkspaceSlugEventSlugSpeakersIndexRoute:
       AppWorkspaceSlugEventSlugSpeakersIndexRoute,
+    AppWorkspaceSlugEventSlugSponsorsIndexRoute:
+      AppWorkspaceSlugEventSlugSponsorsIndexRoute,
     AppWorkspaceSlugEventSlugSubmissionsIndexRoute:
       AppWorkspaceSlugEventSlugSubmissionsIndexRoute,
   }
@@ -1963,6 +2043,7 @@ interface AppRouteRouteChildren {
   AppFormsIndexRoute: typeof AppFormsIndexRoute
   AppSettingsIndexRoute: typeof AppSettingsIndexRoute
   AppSpeakersIndexRoute: typeof AppSpeakersIndexRoute
+  AppSponsorsIndexRoute: typeof AppSponsorsIndexRoute
   AppSubmissionsIndexRoute: typeof AppSubmissionsIndexRoute
 }
 
@@ -1993,6 +2074,7 @@ const AppRouteRouteChildren: AppRouteRouteChildren = {
   AppFormsIndexRoute: AppFormsIndexRoute,
   AppSettingsIndexRoute: AppSettingsIndexRoute,
   AppSpeakersIndexRoute: AppSpeakersIndexRoute,
+  AppSponsorsIndexRoute: AppSponsorsIndexRoute,
   AppSubmissionsIndexRoute: AppSubmissionsIndexRoute,
 }
 
@@ -2014,6 +2096,7 @@ interface DocsRouteRouteChildren {
   DocsGuideReviewAndDecideRoute: typeof DocsGuideReviewAndDecideRoute
   DocsGuideShareAndCollectRoute: typeof DocsGuideShareAndCollectRoute
   DocsGuideSpeakerPortalRoute: typeof DocsGuideSpeakerPortalRoute
+  DocsGuideSponsorsRoute: typeof DocsGuideSponsorsRoute
   DocsGuideTeamAndWorkspacesRoute: typeof DocsGuideTeamAndWorkspacesRoute
 }
 
@@ -2031,6 +2114,7 @@ const DocsRouteRouteChildren: DocsRouteRouteChildren = {
   DocsGuideReviewAndDecideRoute: DocsGuideReviewAndDecideRoute,
   DocsGuideShareAndCollectRoute: DocsGuideShareAndCollectRoute,
   DocsGuideSpeakerPortalRoute: DocsGuideSpeakerPortalRoute,
+  DocsGuideSponsorsRoute: DocsGuideSponsorsRoute,
   DocsGuideTeamAndWorkspacesRoute: DocsGuideTeamAndWorkspacesRoute,
 }
 
@@ -2040,6 +2124,7 @@ const DocsRouteRouteWithChildren = DocsRouteRoute._addFileChildren(
 
 interface PortalRouteRouteChildren {
   PortalProfileRoute: typeof PortalProfileRoute
+  PortalSponsorRoute: typeof PortalSponsorRoute
   PortalSubmissionsRoute: typeof PortalSubmissionsRoute
   PortalTasksRoute: typeof PortalTasksRoute
   PortalIndexRoute: typeof PortalIndexRoute
@@ -2048,6 +2133,7 @@ interface PortalRouteRouteChildren {
 
 const PortalRouteRouteChildren: PortalRouteRouteChildren = {
   PortalProfileRoute: PortalProfileRoute,
+  PortalSponsorRoute: PortalSponsorRoute,
   PortalSubmissionsRoute: PortalSubmissionsRoute,
   PortalTasksRoute: PortalTasksRoute,
   PortalIndexRoute: PortalIndexRoute,

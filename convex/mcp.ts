@@ -21,6 +21,18 @@ import {
 import { hashApiKey, keyPrefix } from "./apiKeys"
 import { autoPlaceCore, computeConflicts } from "./agenda"
 import { deleteEventCascade } from "./events"
+import {
+  addContactCore,
+  createSponsorCore,
+  removeContactCore,
+  removeSponsorCore,
+  sendInvitesCore,
+  setSessionSponsorCore,
+  sponsorRow,
+  updatePortalRulesCore,
+  updateSponsorCore,
+} from "./sponsors"
+import { sponsorPortalRules } from "./lib/sponsors"
 import { ensureOnboardingTasks, withJoins } from "./submissions"
 import { TASK_KINDS } from "./tasksAdmin"
 import {
@@ -3427,6 +3439,261 @@ export const bulkAddSpeakers = internalMutation({
   },
 })
 
+
+// ——— Sponsors (convex/sponsors.ts — the same cores the organizer UI uses) ———
+
+async function findSponsor(
+  ctx: QueryCtx | MutationCtx,
+  eventId: Id<"events">,
+  ref: string,
+): Promise<Doc<"sponsors">> {
+  const trimmed = ref.trim()
+  const asId = ctx.db.normalizeId("sponsors", trimmed)
+  if (asId) {
+    const byId = await ctx.db.get(asId)
+    if (byId && byId.eventId === eventId) return byId
+  }
+  const all = await ctx.db
+    .query("sponsors")
+    .withIndex("by_eventId", (q) => q.eq("eventId", eventId))
+    .take(500)
+  const byName = all.find((s) => s.name.toLowerCase() === trimmed.toLowerCase())
+  if (byName) return byName
+  throw new ConvexError(
+    `No sponsor matching "${ref}" in this event. Call list_sponsors to see their names and ids.`,
+  )
+}
+
+function sponsorPayload(row: Awaited<ReturnType<typeof sponsorRow>>) {
+  return {
+    id: row._id,
+    name: row.name,
+    tier: row.tier,
+    websiteUrl: row.websiteUrl,
+    notes: row.notes,
+    sessionLimit: row.sessionLimit,
+    sessionsUsed: row.sessionsUsed,
+    contacts: row.contacts.map((c) => ({
+      personId: c.personId,
+      name: c.name,
+      email: c.email,
+      jobTitle: c.jobTitle,
+      invitedAt: iso(c.invitedAt),
+    })),
+    sessions: row.sessions,
+  }
+}
+
+export const listSponsors = internalQuery({
+  args: { userId: v.string(), event: v.string() },
+  returns: v.any(),
+  handler: async (ctx, args) => {
+    const event = await resolveEvent(ctx, args.userId, args.event)
+    const sponsors = await ctx.db
+      .query("sponsors")
+      .withIndex("by_eventId", (q) => q.eq("eventId", event._id))
+      .take(500)
+    const rows = await Promise.all(
+      sponsors
+        .sort((a, b) => a.name.localeCompare(b.name))
+        .map(async (s) => sponsorPayload(await sponsorRow(ctx, s))),
+    )
+    const rules = sponsorPortalRules(event)
+    return {
+      summary: `${rows.length} sponsor(s); ${rows.reduce((n, r) => n + r.sessionsUsed, 0)} sponsor session(s) counting against allowances.`,
+      portalSettings: {
+        newSessionStatus: rules.newSessionStatus,
+        closeAt: iso(rules.closeAt),
+        allowColleagueInvites: rules.allowColleagueInvites,
+      },
+      sponsors: rows,
+    }
+  },
+})
+
+export const manageSponsor = internalMutation({
+  args: {
+    userId: v.string(),
+    event: v.string(),
+    action: v.string(),
+    sponsor: v.optional(v.string()),
+    name: v.optional(v.string()),
+    tier: v.optional(v.string()),
+    websiteUrl: v.optional(v.string()),
+    sessionLimit: v.optional(v.number()),
+    notes: v.optional(v.string()),
+  },
+  returns: v.any(),
+  handler: async (ctx, args) => {
+    const event = await resolveEvent(ctx, args.userId, args.event)
+    if (args.action === "create") {
+      if (!args.name) throw new ConvexError("Pass the sponsor's name to create it.")
+      const id = await createSponsorCore(
+        ctx,
+        event,
+        {
+          name: args.name,
+          tier: args.tier,
+          websiteUrl: args.websiteUrl,
+          sessionLimit: args.sessionLimit ?? 1,
+          notes: args.notes,
+        },
+        [],
+      )
+      const created = await ctx.db.get(id)
+      return { created: true, sponsor: sponsorPayload(await sponsorRow(ctx, created!)) }
+    }
+    if (!args.sponsor) throw new ConvexError("Pass `sponsor` (its name or id).")
+    const sponsor = await findSponsor(ctx, event._id, args.sponsor)
+    if (args.action === "update") {
+      await updateSponsorCore(ctx, sponsor, {
+        name: args.name,
+        tier: args.tier,
+        websiteUrl: args.websiteUrl,
+        sessionLimit: args.sessionLimit,
+        notes: args.notes,
+      })
+      const updated = await ctx.db.get(sponsor._id)
+      return { updated: true, sponsor: sponsorPayload(await sponsorRow(ctx, updated!)) }
+    }
+    if (args.action === "delete") {
+      const result = await removeSponsorCore(ctx, sponsor)
+      return {
+        deleted: true,
+        name: sponsor.name,
+        ...result,
+        note: "Its sessions stay on the program and its contacts stay as people; both just lost the sponsor link.",
+      }
+    }
+    throw new ConvexError('action must be "create", "update" or "delete".')
+  },
+})
+
+export const manageSponsorContact = internalMutation({
+  args: {
+    userId: v.string(),
+    event: v.string(),
+    sponsor: v.string(),
+    action: v.string(),
+    email: v.string(),
+    firstName: v.optional(v.string()),
+    lastName: v.optional(v.string()),
+    jobTitle: v.optional(v.string()),
+    sendInvite: v.optional(v.boolean()),
+  },
+  returns: v.any(),
+  handler: async (ctx, args) => {
+    const event = await resolveEvent(ctx, args.userId, args.event)
+    const sponsor = await findSponsor(ctx, event._id, args.sponsor)
+    if (args.action === "add") {
+      const { personId, created } = await addContactCore(ctx, sponsor, args)
+      const invite = args.sendInvite
+        ? await sendInvitesCore(ctx, sponsor, [personId])
+        : null
+      return {
+        added: true,
+        personId,
+        created,
+        invited: invite !== null,
+        note: invite
+          ? "The sponsor portal invite is in the outbox."
+          : "Not emailed yet — call invite_sponsor_contacts to send their portal invite.",
+      }
+    }
+    if (args.action === "remove") {
+      const person = await findPerson(ctx, event._id, args.email)
+      if (person.sponsorId !== sponsor._id) {
+        throw new ConvexError(`${person.email} isn't a contact for ${sponsor.name}.`)
+      }
+      await removeContactCore(ctx, person)
+      return { removed: true, email: person.email }
+    }
+    throw new ConvexError('action must be "add" or "remove".')
+  },
+})
+
+export const inviteSponsorContacts = internalMutation({
+  args: {
+    userId: v.string(),
+    event: v.string(),
+    sponsor: v.string(),
+    emails: v.optional(v.array(v.string())),
+  },
+  returns: v.any(),
+  handler: async (ctx, args) => {
+    const event = await resolveEvent(ctx, args.userId, args.event)
+    const sponsor = await findSponsor(ctx, event._id, args.sponsor)
+    const personIds = args.emails
+      ? await Promise.all(
+          args.emails.map(async (email) => (await findPerson(ctx, event._id, email))._id),
+        )
+      : undefined
+    const result = await sendInvitesCore(ctx, sponsor, personIds)
+    return { ...result, note: "Queued in the outbox; demo @example.com addresses render as previews." }
+  },
+})
+
+export const setSessionSponsor = internalMutation({
+  args: {
+    userId: v.string(),
+    event: v.string(),
+    submissionId: v.string(),
+    sponsor: v.union(v.string(), v.null()),
+  },
+  returns: v.any(),
+  handler: async (ctx, args) => {
+    const event = await resolveEvent(ctx, args.userId, args.event)
+    const submission = await ctx.db.get(requireId(ctx, "submissions", args.submissionId))
+    if (!submission || submission.eventId !== event._id || submission.deletedAt !== undefined) {
+      throw new ConvexError("Submission not found in this event.")
+    }
+    const sponsor = args.sponsor ? await findSponsor(ctx, event._id, args.sponsor) : null
+    await setSessionSponsorCore(ctx, submission, sponsor)
+    return { submissionId: submission._id, title: submission.title, sponsor: sponsor?.name ?? null }
+  },
+})
+
+export const updateSponsorPortalSettings = internalMutation({
+  args: {
+    userId: v.string(),
+    event: v.string(),
+    newSessionStatus: v.optional(v.string()),
+    closeAt: v.optional(v.union(v.string(), v.null())),
+    allowColleagueInvites: v.optional(v.boolean()),
+  },
+  returns: v.any(),
+  handler: async (ctx, args) => {
+    const event = await resolveEvent(ctx, args.userId, args.event)
+    if (
+      args.newSessionStatus !== undefined &&
+      args.newSessionStatus !== "pending" &&
+      args.newSessionStatus !== "accepted"
+    ) {
+      throw new ConvexError('newSessionStatus must be "pending" or "accepted".')
+    }
+    const closeAt =
+      args.closeAt === undefined
+        ? undefined
+        : args.closeAt === null || args.closeAt.trim() === ""
+          ? null
+          : (parseWhen(args.closeAt) ?? null)
+    if (args.closeAt && closeAt === null) {
+      throw new ConvexError("closeAt must be an ISO-8601 date-time, or null to clear it.")
+    }
+    await updatePortalRulesCore(ctx, event, {
+      newSessionStatus: args.newSessionStatus,
+      closeAt,
+      allowColleagueInvites: args.allowColleagueInvites,
+    })
+    const rules = sponsorPortalRules((await ctx.db.get(event._id)))
+    return {
+      newSessionStatus: rules.newSessionStatus,
+      closeAt: iso(rules.closeAt),
+      allowColleagueInvites: rules.allowColleagueInvites,
+    }
+  },
+})
+
 // ══════════════════════════════════════════════════════════════════════════
 // Tool registry
 //
@@ -4041,6 +4308,165 @@ export const TOOLS: Array<ToolDef> = [
         userId,
         event: args.event,
         speaker: args.speaker,
+      }),
+  },
+  // ——— Sponsors ——————————————————————————————————————————————————————————
+  {
+    name: "list_sponsors",
+    title: "List sponsors",
+    description:
+      "Every sponsor company on the event with its tier, session allowance (sessionLimit) and how much of it is used, its contacts (who can sign into the sponsor portal and add sessions without the CFP) with when each was last sent their invite, and its linked sessions with statuses. Also returns the event's sponsor portal settings (what new sponsor sessions start as, and the deadline).",
+    inputSchema: schema({ event: EVENT_ARG }, ["event"]),
+    readOnly: true,
+    run: (ctx, userId, args) =>
+      ctx.runQuery(internal.mcp.listSponsors, { userId, event: args.event }),
+  },
+  {
+    name: "manage_sponsor",
+    title: "Create, update or delete a sponsor",
+    description:
+      "Creates a sponsor company (name, tier such as \"Platinum\", website, sessionLimit = how many sessions its contacts may add from their portal, default 1; internal notes), updates any of those, or deletes it. Deleting keeps its sessions on the program and its contacts as people — only the link is removed. Add the people who will log in with manage_sponsor_contact.",
+    inputSchema: schema(
+      {
+        event: EVENT_ARG,
+        action: { type: "string", enum: ["create", "update", "delete"] },
+        sponsor: { type: "string", description: "Name or id — required for update/delete." },
+        name: { type: "string" },
+        tier: { type: "string" },
+        websiteUrl: { type: "string" },
+        sessionLimit: { type: "number", description: "Sessions the sponsor may add itself (0–50)." },
+        notes: { type: "string", description: "Organizer-only notes." },
+      },
+      ["event", "action"],
+    ),
+    readOnly: false,
+    destructive: true,
+    run: (ctx, userId, args) =>
+      ctx.runMutation(internal.mcp.manageSponsor, {
+        userId,
+        event: args.event,
+        action: args.action,
+        sponsor: args.sponsor,
+        name: args.name,
+        tier: args.tier,
+        websiteUrl: args.websiteUrl,
+        sessionLimit: args.sessionLimit,
+        notes: args.notes,
+      }),
+  },
+  {
+    name: "manage_sponsor_contact",
+    title: "Add or remove a sponsor contact",
+    description:
+      "Adds a person as a contact for a sponsor — they get a passwordless sponsor portal where they add the sponsor's sessions (within its allowance), name the speakers, and invite colleagues — or removes them. Matched by email; an existing speaker is linked rather than duplicated. A person can be a contact for only one sponsor. sendInvite: true also emails them their portal invite.",
+    inputSchema: schema(
+      {
+        event: EVENT_ARG,
+        sponsor: { type: "string", description: "Sponsor name or id." },
+        action: { type: "string", enum: ["add", "remove"] },
+        email: { type: "string" },
+        firstName: { type: "string" },
+        lastName: { type: "string" },
+        jobTitle: { type: "string" },
+        sendInvite: { type: "boolean" },
+      },
+      ["event", "sponsor", "action", "email"],
+    ),
+    readOnly: false,
+    destructive: false,
+    run: (ctx, userId, args) =>
+      ctx.runMutation(internal.mcp.manageSponsorContact, {
+        userId,
+        event: args.event,
+        sponsor: args.sponsor,
+        action: args.action,
+        email: args.email,
+        firstName: args.firstName,
+        lastName: args.lastName,
+        jobTitle: args.jobTitle,
+        sendInvite: args.sendInvite,
+      }),
+  },
+  {
+    name: "invite_sponsor_contacts",
+    title: "Email sponsor portal invites",
+    description:
+      "EMAILS REAL PEOPLE: queues the \"Sponsor portal invite\" email (editable in Communications → Templates) to a sponsor's contacts — all of them, or just the emails you list. The email carries each contact's private sign-in link.",
+    inputSchema: schema(
+      {
+        event: EVENT_ARG,
+        sponsor: { type: "string", description: "Sponsor name or id." },
+        emails: { type: "array", items: { type: "string" }, description: "Omit to invite every contact." },
+      },
+      ["event", "sponsor"],
+    ),
+    readOnly: false,
+    destructive: true,
+    run: (ctx, userId, args) =>
+      ctx.runMutation(internal.mcp.inviteSponsorContacts, {
+        userId,
+        event: args.event,
+        sponsor: args.sponsor,
+        emails: args.emails,
+      }),
+  },
+  {
+    name: "set_session_sponsor",
+    title: "Link a session to a sponsor",
+    description:
+      "Links an existing session or submission to a sponsor (so every contact of that sponsor sees and can edit it in their portal), or unlinks it with sponsor: \"none\". A linked session counts toward the sponsor's allowance.",
+    inputSchema: schema(
+      {
+        event: EVENT_ARG,
+        submissionId: { type: "string" },
+        sponsor: { type: "string", description: "Sponsor name or id; \"none\" to unlink." },
+      },
+      ["event", "submissionId", "sponsor"],
+    ),
+    readOnly: false,
+    idempotent: true,
+    run: (ctx, userId, args) =>
+      ctx.runMutation(internal.mcp.setSessionSponsor, {
+        userId,
+        event: args.event,
+        submissionId: args.submissionId,
+        sponsor:
+          typeof args.sponsor === "string" &&
+          !["", "none", "null"].includes(args.sponsor.trim().toLowerCase())
+            ? args.sponsor
+            : null,
+      }),
+  },
+  {
+    name: "update_sponsor_portal_settings",
+    title: "Sponsor portal settings",
+    description:
+      "How sponsor portals behave on this event: newSessionStatus (\"pending\" — sessions sponsors add wait for your review, the default; or \"accepted\" — straight onto the program) and closeAt (ISO date-time after which sponsors can no longer add or edit sessions; \"none\" clears it).",
+    inputSchema: schema(
+      {
+        event: EVENT_ARG,
+        newSessionStatus: { type: "string", enum: ["pending", "accepted"] },
+        closeAt: { type: "string", description: "ISO date-time; \"\" or \"none\" clears the deadline." },
+        allowColleagueInvites: {
+          type: "boolean",
+          description: "Whether sponsor contacts may add colleagues to their company's portal (default true).",
+        },
+      },
+      ["event"],
+    ),
+    readOnly: false,
+    idempotent: true,
+    run: (ctx, userId, args) =>
+      ctx.runMutation(internal.mcp.updateSponsorPortalSettings, {
+        userId,
+        event: args.event,
+        newSessionStatus: args.newSessionStatus,
+        closeAt:
+          typeof args.closeAt === "string" &&
+          ["", "none", "null"].includes(args.closeAt.trim().toLowerCase())
+            ? null
+            : args.closeAt,
+        allowColleagueInvites: args.allowColleagueInvites,
       }),
   },
   {

@@ -77,6 +77,14 @@ export function SessionCard({
               {session.format}
             </Badge>
           ) : null}
+          {session.sponsor ? (
+            <span className="text-xs text-muted-foreground">
+              Presented by{" "}
+              <span className="font-medium text-foreground">
+                {session.sponsor.name}
+              </span>
+            </span>
+          ) : null}
         </div>
         <div className="flex shrink-0 items-center gap-1">
           {/* Icon-only here: the card is dense and repeats down a long list,

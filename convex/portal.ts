@@ -20,6 +20,25 @@ import { addComment, threadFor } from "./lib/uploadComments"
 import { completeTasksOfKind, syncProfileTasks } from "./lib/profileTasks"
 import { cfpClosedMessage, isFormOpen } from "./lib/formWindow"
 import { notifySubmissionAdmins } from "./platformEmails"
+import { emitWebhook } from "./webhooks"
+import { queueMessage } from "./comms"
+import { internal } from "./_generated/api"
+import { scheduleAirtableSync } from "./airtable"
+import { emitSponsorUpdated } from "./sponsors"
+import type { SponsorPortalRules } from "./lib/sponsors"
+import {
+  MAX_SPONSOR_SESSION_SPEAKERS,
+  addSessionBlocker,
+  allowanceSentence,
+  allowanceUsed,
+  linkContact,
+  resolveSpeaker,
+  sponsorClosedMessage,
+  sponsorContacts,
+  sponsorPortalRules,
+  sponsorSessions,
+  sponsorWindowClosed,
+} from "./lib/sponsors"
 
 // ————————————————————————————————————————————————————————————————————————
 // Speaker portal. All functions authenticate with the person's portalToken
@@ -101,7 +120,12 @@ function speakerFacingStatus(status: string): string {
 // AND the mutation can refuse with the very same sentence. `code` only picks
 // the icon/tone; the words always come from here.
 
-type EditLockCode = "withdrawn" | "declined" | "portal_disabled" | "cfp_closed"
+type EditLockCode =
+  | "withdrawn"
+  | "declined"
+  | "portal_disabled"
+  | "cfp_closed"
+  | "sponsor_closed"
 
 interface EditLock {
   code: EditLockCode
@@ -115,6 +139,7 @@ function editLockFor(
   behavior: PortalBehavior,
   timezone?: string,
   now: number = Date.now(),
+  sponsorRules?: SponsorPortalRules,
 ): EditLock | null {
   if (submission.status === "withdrawn") {
     return {
@@ -155,6 +180,20 @@ function editLockFor(
       message: cfpClosedMessage(form, timezone, now),
     }
   }
+  // A sponsor's session follows the SPONSOR window instead (it never came
+  // through a CFP): once the organizers freeze sponsor sessions, the text the
+  // agenda was built from stops moving — same reasoning as the CFP deadline.
+  if (
+    submission.sponsorId &&
+    sponsorRules?.closeAt != null &&
+    sponsorWindowClosed(sponsorRules, now)
+  ) {
+    return {
+      code: "sponsor_closed",
+      title: "Sponsor sessions are closed",
+      message: sponsorClosedMessage(sponsorRules.closeAt, timezone),
+    }
+  }
   return null
 }
 
@@ -164,18 +203,26 @@ function editLockFor(
  * quietly locking on the day.
  */
 function editableUntil(
-  _submission: Doc<"submissions">,
+  submission: Doc<"submissions">,
   form: Doc<"forms"> | null,
   lock: EditLock | null,
+  sponsorRules?: SponsorPortalRules,
 ): number | null {
-  if (lock || !form) return null
-  return form.closeAt ?? null
+  if (lock) return null
+  if (form) return form.closeAt ?? null
+  if (submission.sponsorId) return sponsorRules?.closeAt ?? null
+  return null
 }
 
 async function submissionSummary(
   ctx: QueryCtx,
   s: Doc<"submissions">,
-  opts: { behavior: PortalBehavior; timezone?: string; now: number },
+  opts: {
+    behavior: PortalBehavior
+    timezone?: string
+    now: number
+    sponsorRules?: SponsorPortalRules
+  },
 ) {
   const track = s.trackId ? await ctx.db.get(s.trackId) : null
   const room = s.roomId ? await ctx.db.get(s.roomId) : null
@@ -190,6 +237,7 @@ async function submissionSummary(
         const person = await ctx.db.get(p.personId)
         return person
           ? {
+              personId: person._id,
               name: `${person.firstName} ${person.lastName}`.trim() || person.email,
               role: p.role,
               company: person.company,
@@ -198,7 +246,14 @@ async function submissionSummary(
       }),
   )
   const form = s.formId ? await ctx.db.get(s.formId) : null
-  const lock = editLockFor(s, form, opts.behavior, opts.timezone, opts.now)
+  const lock = editLockFor(
+    s,
+    form,
+    opts.behavior,
+    opts.timezone,
+    opts.now,
+    opts.sponsorRules,
+  )
   return {
     id: s._id,
     title: s.title,
@@ -208,8 +263,11 @@ async function submissionSummary(
     kind: s.kind,
     // `null` ⇒ the speaker may edit this submission right now.
     editLock: lock,
-    editableUntil: editableUntil(s, form, lock),
+    editableUntil: editableUntil(s, form, lock, opts.sponsorRules),
+    /** True when this session belongs to the reader's sponsor. */
+    sponsored: s.sponsorId !== undefined,
     format: s.format,
+    durationMinutes: s.durationMinutes ?? null,
     level: s.level,
     language: s.language,
     tags: s.tags,
@@ -251,6 +309,7 @@ export const home = query({
     // The organizer's three portal switches, resolved once for the whole
     // payload — the per-submission edit lock needs them too.
     const behavior = portalBehavior(event)
+    const sponsorRules = sponsorPortalRules(event)
     const submissions = await Promise.all(
       [...map.values()]
         .sort((a, b) => b._creationTime - a._creationTime)
@@ -259,9 +318,61 @@ export const home = query({
             behavior,
             timezone: event.timezone,
             now: args.now,
+            sponsorRules,
           }),
         ),
     )
+
+    // A sponsor CONTACT also sees their company: its sessions (whoever added
+    // them), the package's allowance, and why "Add session" is or isn't
+    // available — the same sentence the mutation refuses with.
+    const sponsorDoc = person.sponsorId ? await ctx.db.get(person.sponsorId) : null
+    let sponsor = null
+    if (sponsorDoc && sponsorDoc.eventId === event._id) {
+      const sessions = await sponsorSessions(ctx, sponsorDoc._id)
+      const used = allowanceUsed(sessions)
+      const colleagues = await sponsorContacts(ctx, sponsorDoc._id)
+      sponsor = {
+        id: sponsorDoc._id,
+        name: sponsorDoc.name,
+        tier: sponsorDoc.tier ?? null,
+        websiteUrl: sponsorDoc.websiteUrl ?? null,
+        sessionLimit: sponsorDoc.sessionLimit,
+        sessionsUsed: used,
+        closeAt: sponsorRules.closeAt,
+        // What a new session starts as, so the form can say so up front.
+        newSessionStatus: sponsorRules.newSessionStatus,
+        canInviteColleagues: sponsorRules.allowColleagueInvites,
+        addBlocker: addSessionBlocker(
+          sponsorDoc,
+          used,
+          sponsorRules,
+          event.timezone,
+          args.now,
+        ),
+        // The event's Format list (the CFP's own options), so a sponsor picks
+        // from the same words the organizer's program uses.
+        formatOptions: await eventFormatOptions(ctx, event._id),
+        contacts: colleagues
+          .sort((a, b) => a._creationTime - b._creationTime)
+          .map((c) => ({
+            id: c._id,
+            name: `${c.firstName} ${c.lastName}`.trim() || c.email,
+            email: c.email,
+            isMe: c._id === person._id,
+          })),
+        sessions: await Promise.all(
+          sessions.map((s) =>
+            submissionSummary(ctx, s, {
+              behavior,
+              timezone: event.timezone,
+              now: args.now,
+              sponsorRules,
+            }),
+          ),
+        ),
+      }
+    }
 
     const tasks = await ctx.db
       .query("tasks")
@@ -314,6 +425,7 @@ export const home = query({
         headshotUrl,
       },
       submissions,
+      sponsor,
       // What the organizer's Speaker portal card allows, so the portal shows
       // the same rules the mutations enforce instead of failing on save.
       portal: {
@@ -427,8 +539,11 @@ export const updateSubmission = mutation({
       .collect()
     const isMine =
       submission.submitterId === person._id ||
-      participants.some((p) => p.personId === person._id)
-    if (!isMine) throw new ConvexError("You don't have access to this submission.")
+      participants.some((p) => p.personId === person._id) ||
+      isSponsorSessionOf(person, submission)
+    if (!isMine || submission.deletedAt !== undefined) {
+      throw new ConvexError("You don't have access to this submission.")
+    }
     // Exactly the rules the portal already showed this speaker — decided
     // status, the event's "allow submission edits" switch, and the CFP's own
     // close date — so a save never fails with a surprise the UI didn't warn
@@ -440,9 +555,14 @@ export const updateSubmission = mutation({
       form,
       portalBehavior(event),
       event?.timezone,
+      Date.now(),
+      sponsorPortalRules(event),
     )
     if (lock) throw new ConvexError(lock.message)
     const { title, description, answers } = args.patch
+    if (title !== undefined && !title.trim()) {
+      throw new ConvexError("A session needs a title.")
+    }
     await ctx.db.patch(args.submissionId, {
       ...(title !== undefined ? { title } : {}),
       ...(description !== undefined ? { description } : {}),
@@ -486,9 +606,15 @@ export const withdrawSubmission = mutation({
   handler: async (ctx, args) => {
     const person = await requirePerson(ctx, args.portalToken)
     const submission = await ctx.db.get(args.submissionId)
-    if (!submission || submission.submitterId !== person._id) {
+    if (
+      !submission ||
+      submission.deletedAt !== undefined ||
+      (submission.submitterId !== person._id &&
+        !isSponsorSessionOf(person, submission))
+    ) {
       throw new ConvexError("Submission not found.")
     }
+    if (submission.status === "withdrawn") return null
     if (submission.status === "accepted") {
       throw new ConvexError(
         "This submission was already accepted — contact the organizers to withdraw.",
@@ -741,3 +867,390 @@ export const addUploadComment = mutation({
     })
   },
 })
+
+// ——— Sponsor portal ———————————————————————————————————————————————————————
+// A sponsor CONTACT (people.sponsorId) manages their company's sessions here:
+// add the sessions the package includes, name who presents, edit them while
+// the sponsor window is open, and bring colleagues in. No CFP in between —
+// that is the whole point (Kelsey: "if OpenAI has a sponsor, OpenAI has a
+// main login, then they go in and add the sessions that they want"). The
+// limits live in convex/lib/sponsors.ts so the portal's disabled states and
+// these refusals say the same sentence.
+
+/** Does this session belong to the company this person is a contact for? */
+function isSponsorSessionOf(
+  person: Doc<"people">,
+  submission: Doc<"submissions">,
+): boolean {
+  return (
+    person.sponsorId !== undefined &&
+    submission.sponsorId !== undefined &&
+    submission.sponsorId === person.sponsorId
+  )
+}
+
+function actorFor(person: Doc<"people">) {
+  return {
+    type: "speaker" as const,
+    label: `${person.firstName} ${person.lastName}`.trim() || person.email,
+  }
+}
+
+async function requireSponsorContact(ctx: MutationCtx, portalToken: string) {
+  const person = await requirePerson(ctx, portalToken)
+  const sponsor = person.sponsorId ? await ctx.db.get(person.sponsorId) : null
+  if (!sponsor || sponsor.eventId !== person.eventId) {
+    throw new ConvexError(
+      "Only sponsor contacts can do this. Ask the organizers to add you to your company.",
+    )
+  }
+  const event = await ctx.db.get(person.eventId)
+  if (!event) throw new ConvexError("Event not found")
+  return { person, sponsor, event }
+}
+
+/** A sponsor session this contact may change right now — or the reason why not. */
+async function requireEditableSponsorSession(
+  ctx: MutationCtx,
+  portalToken: string,
+  submissionId: Id<"submissions">,
+) {
+  const { person, sponsor, event } = await requireSponsorContact(ctx, portalToken)
+  const submission = await ctx.db.get(submissionId)
+  if (
+    !submission ||
+    submission.deletedAt !== undefined ||
+    !isSponsorSessionOf(person, submission)
+  ) {
+    throw new ConvexError("Session not found.")
+  }
+  const form = submission.formId ? await ctx.db.get(submission.formId) : null
+  const lock = editLockFor(
+    submission,
+    form,
+    portalBehavior(event),
+    event.timezone,
+    Date.now(),
+    sponsorPortalRules(event),
+  )
+  if (lock) throw new ConvexError(lock.message)
+  return { person, sponsor, event, submission }
+}
+
+const DURATIONS = [10, 15, 20, 25, 30, 40, 45, 50, 60, 90, 120] as const
+
+function cleanDuration(minutes: number | undefined): number | undefined {
+  if (minutes === undefined) return undefined
+  if (!(DURATIONS as ReadonlyArray<number>).includes(minutes)) {
+    throw new ConvexError("Pick one of the session lengths offered.")
+  }
+  return minutes
+}
+
+const speakerArg = v.object({
+  email: v.string(),
+  firstName: v.string(),
+  lastName: v.string(),
+})
+
+export const addSponsorSession = mutation({
+  args: {
+    portalToken: v.string(),
+    title: v.string(),
+    description: v.string(),
+    format: v.optional(v.string()),
+    durationMinutes: v.optional(v.number()),
+    /** The contact is presenting it themselves. */
+    includeMe: v.boolean(),
+    speakers: v.array(speakerArg),
+  },
+  returns: v.id("submissions"),
+  handler: async (ctx, args) => {
+    const { person, sponsor, event } = await requireSponsorContact(
+      ctx,
+      args.portalToken,
+    )
+    const rules = sponsorPortalRules(event)
+    const used = allowanceUsed(await sponsorSessions(ctx, sponsor._id))
+    const blocker = addSessionBlocker(sponsor, used, rules, event.timezone, Date.now())
+    if (blocker) throw new ConvexError(blocker)
+
+    const title = args.title.trim()
+    const description = args.description.trim()
+    if (!title) throw new ConvexError("Give the session a title.")
+    if (title.length > 200) {
+      throw new ConvexError("That title is long — keep it under 200 characters.")
+    }
+    if (!description) {
+      throw new ConvexError("Add a short description — it's what attendees read.")
+    }
+    const totalSpeakers = args.speakers.length + (args.includeMe ? 1 : 0)
+    if (totalSpeakers === 0) {
+      throw new ConvexError("Add at least one speaker — or tick “I'm presenting”.")
+    }
+    if (totalSpeakers > MAX_SPONSOR_SESSION_SPEAKERS) {
+      throw new ConvexError(
+        `A session can have at most ${MAX_SPONSOR_SESSION_SPEAKERS} speakers.`,
+      )
+    }
+
+    const status = rules.newSessionStatus
+    const submissionId = await ctx.db.insert("submissions", {
+      eventId: event._id,
+      kind: "session",
+      title,
+      description,
+      answers: {},
+      format: args.format?.trim() || undefined,
+      durationMinutes: cleanDuration(args.durationMinutes),
+      tags: [],
+      status,
+      decidedAt: status === "accepted" ? Date.now() : undefined,
+      submitterId: person._id,
+      sponsorId: sponsor._id,
+    })
+
+    const speakerIds: Array<Id<"people">> = []
+    if (args.includeMe) speakerIds.push(person._id)
+    for (const input of args.speakers) {
+      const speaker = await resolveSpeaker(ctx, event._id, sponsor, input)
+      if (!speakerIds.includes(speaker._id)) speakerIds.push(speaker._id)
+    }
+    for (const [order, personId] of speakerIds.entries()) {
+      await ctx.db.insert("submissionParticipants", {
+        submissionId,
+        eventId: event._id,
+        personId,
+        role: "speaker",
+        order,
+      })
+    }
+
+    await scheduleAirtableSync(ctx, event._id)
+    await emitWebhook(ctx, event._id, "session.created", {
+      id: submissionId,
+      title,
+      status,
+      kind: "session",
+      sponsors: [{ id: sponsor._id, name: sponsor.name }],
+    })
+    await recordAudit(ctx, {
+      eventId: event._id,
+      entity: "session",
+      entityId: submissionId,
+      action: "created",
+      summary: `Session added by sponsor ${sponsor.name} · ${title}`,
+      meta: { status, sponsor: sponsor.name, speakers: speakerIds.length },
+      actor: actorFor(person),
+    })
+    return submissionId
+  },
+})
+
+export const updateSponsorSession = mutation({
+  args: {
+    portalToken: v.string(),
+    submissionId: v.id("submissions"),
+    patch: v.object({
+      title: v.optional(v.string()),
+      description: v.optional(v.string()),
+      format: v.optional(v.string()),
+      durationMinutes: v.optional(v.number()),
+    }),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const { person, sponsor, submission } = await requireEditableSponsorSession(
+      ctx,
+      args.portalToken,
+      args.submissionId,
+    )
+    const next: Partial<Doc<"submissions">> = {}
+    if (args.patch.title !== undefined) {
+      const title = args.patch.title.trim()
+      if (!title) throw new ConvexError("A session needs a title.")
+      next.title = title
+    }
+    if (args.patch.description !== undefined) {
+      const description = args.patch.description.trim()
+      if (!description) throw new ConvexError("A session needs a description.")
+      next.description = description
+    }
+    if (args.patch.format !== undefined) next.format = args.patch.format.trim() || undefined
+    if (args.patch.durationMinutes !== undefined) {
+      next.durationMinutes = cleanDuration(args.patch.durationMinutes)
+    }
+    if (Object.keys(next).length === 0) return null
+    await ctx.db.patch(submission._id, { ...next, updatedAt: Date.now() })
+    await scheduleAirtableSync(ctx, submission.eventId)
+    await recordAudit(ctx, {
+      eventId: submission.eventId,
+      entity: "session",
+      entityId: submission._id,
+      action: "updated",
+      summary: `Sponsor ${sponsor.name} edited ${Object.keys(next).join(", ")} · ${next.title ?? submission.title}`,
+      meta: { fields: Object.keys(next) },
+      actor: actorFor(person),
+    })
+    return null
+  },
+})
+
+export const addSponsorSessionSpeaker = mutation({
+  args: {
+    portalToken: v.string(),
+    submissionId: v.id("submissions"),
+    speaker: speakerArg,
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const { person, sponsor, event, submission } =
+      await requireEditableSponsorSession(ctx, args.portalToken, args.submissionId)
+    const participants = await ctx.db
+      .query("submissionParticipants")
+      .withIndex("by_submissionId", (q) => q.eq("submissionId", submission._id))
+      .collect()
+    if (participants.length >= MAX_SPONSOR_SESSION_SPEAKERS) {
+      throw new ConvexError(
+        `A session can have at most ${MAX_SPONSOR_SESSION_SPEAKERS} speakers.`,
+      )
+    }
+    const speaker = await resolveSpeaker(ctx, event._id, sponsor, args.speaker)
+    if (participants.some((p) => p.personId === speaker._id)) {
+      throw new ConvexError(`${speaker.email} is already on this session.`)
+    }
+    await ctx.db.insert("submissionParticipants", {
+      submissionId: submission._id,
+      eventId: event._id,
+      personId: speaker._id,
+      role: "speaker",
+      order: participants.reduce((max, p) => Math.max(max, p.order), -1) + 1,
+    })
+    await scheduleAirtableSync(ctx, event._id)
+    await recordAudit(ctx, {
+      eventId: event._id,
+      entity: "session",
+      entityId: submission._id,
+      action: "updated",
+      summary: `Sponsor ${sponsor.name} added speaker ${speaker.email} · ${submission.title}`,
+      meta: { email: speaker.email },
+      actor: actorFor(person),
+    })
+    return null
+  },
+})
+
+export const removeSponsorSessionSpeaker = mutation({
+  args: {
+    portalToken: v.string(),
+    submissionId: v.id("submissions"),
+    personId: v.id("people"),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const { person, sponsor, event, submission } =
+      await requireEditableSponsorSession(ctx, args.portalToken, args.submissionId)
+    const participants = await ctx.db
+      .query("submissionParticipants")
+      .withIndex("by_submissionId", (q) => q.eq("submissionId", submission._id))
+      .collect()
+    const row = participants.find((p) => p.personId === args.personId)
+    if (!row) throw new ConvexError("That person isn't on this session.")
+    if (participants.length <= 1) {
+      throw new ConvexError(
+        "A session needs at least one speaker — add the replacement first, then remove this one.",
+      )
+    }
+    await ctx.db.delete(row._id)
+    const removed = await ctx.db.get(args.personId)
+    await scheduleAirtableSync(ctx, event._id)
+    await recordAudit(ctx, {
+      eventId: event._id,
+      entity: "session",
+      entityId: submission._id,
+      action: "updated",
+      summary: `Sponsor ${sponsor.name} removed speaker ${removed?.email ?? "a speaker"} · ${submission.title}`,
+      meta: { email: removed?.email },
+      actor: actorFor(person),
+    })
+    return null
+  },
+})
+
+/**
+ * Bring a colleague in (Sessionboard's "Add Contacts to Group"). They become a
+ * contact of the same sponsor with their own sign-in link, which is emailed to
+ * them — the contact adding them never sees it.
+ */
+export const addSponsorColleague = mutation({
+  args: {
+    portalToken: v.string(),
+    email: v.string(),
+    firstName: v.string(),
+    lastName: v.string(),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const { person, sponsor, event } = await requireSponsorContact(
+      ctx,
+      args.portalToken,
+    )
+    if (!sponsorPortalRules(event).allowColleagueInvites) {
+      throw new ConvexError(
+        "The organizers add contacts for this event — email them who should have access.",
+      )
+    }
+    if (!args.firstName.trim()) throw new ConvexError("Add their first name.")
+    const contacts = await sponsorContacts(ctx, sponsor._id)
+    if (contacts.length >= 25) {
+      throw new ConvexError("Your company already has 25 contacts — ask the organizers to add more.")
+    }
+    const { person: colleague } = await linkContact(ctx, sponsor, args)
+    if (colleague._id === person._id) {
+      throw new ConvexError("That's you — you already have access.")
+    }
+    const sessions = await sponsorSessions(ctx, sponsor._id)
+    await queueMessage(ctx, {
+      eventId: event._id,
+      personId: colleague._id,
+      templateKey: "sponsor_invite",
+      extraVars: {
+        sponsorName: sponsor.name,
+        sessionAllowance: allowanceSentence(sponsor, allowanceUsed(sessions)),
+      },
+    })
+    await ctx.scheduler.runAfter(0, internal.comms.deliverPending, {})
+    await recordAudit(ctx, {
+      eventId: event._id,
+      entity: "sponsor",
+      entityId: sponsor._id,
+      action: "contact_added",
+      summary: `${actorFor(person).label} added colleague ${colleague.email} to ${sponsor.name}`,
+      meta: { email: colleague.email },
+      actor: actorFor(person),
+    })
+    await emitSponsorUpdated(ctx, sponsor._id)
+    return null
+  },
+})
+
+async function eventFormatOptions(
+  ctx: QueryCtx,
+  eventId: Id<"events">,
+): Promise<Array<string>> {
+  const forms = await ctx.db
+    .query("forms")
+    .withIndex("by_eventId", (q) => q.eq("eventId", eventId))
+    .take(50)
+  const values: Array<string> = []
+  for (const form of forms) {
+    const question = form.questions.find((q) => q.id === "format")
+    for (const option of question?.options ?? []) {
+      if (!values.includes(option)) values.push(option)
+    }
+  }
+  return values
+}
+
+/** Session lengths a sponsor can pick — mirrored in the portal's select. */
+export const SPONSOR_SESSION_DURATIONS = DURATIONS

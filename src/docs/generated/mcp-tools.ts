@@ -487,6 +487,72 @@ export const MCP_TOOL_GROUPS: Array<McpToolGroup> = [
     ],
   },
   {
+    id: "sponsors",
+    label: "Sponsors",
+    tools: [
+      {
+        name: "list_sponsors",
+        title: "List sponsors",
+        description: "Every sponsor company on the event with its tier, session allowance (sessionLimit) and how much of it is used, its contacts (who can sign into the sponsor portal and add sessions without the CFP) with when each was last sent their invite, and its linked sessions with statuses. Also returns the event's sponsor portal settings (what new sponsor sessions start as, and the deadline).",
+        readOnly: true,
+        destructive: false,
+        requiresConfirm: false,
+        args: ["event"],
+        required: ["event"],
+      },
+      {
+        name: "manage_sponsor",
+        title: "Create, update or delete a sponsor",
+        description: "Creates a sponsor company (name, tier such as \"Platinum\", website, sessionLimit = how many sessions its contacts may add from their portal, default 1; internal notes), updates any of those, or deletes it. Deleting keeps its sessions on the program and its contacts as people — only the link is removed. Add the people who will log in with manage_sponsor_contact.",
+        readOnly: false,
+        destructive: true,
+        requiresConfirm: true,
+        args: ["event","action","sponsor","name","tier","websiteUrl","sessionLimit","notes","confirm"],
+        required: ["event","action","confirm"],
+      },
+      {
+        name: "manage_sponsor_contact",
+        title: "Add or remove a sponsor contact",
+        description: "Adds a person as a contact for a sponsor — they get a passwordless sponsor portal where they add the sponsor's sessions (within its allowance), name the speakers, and invite colleagues — or removes them. Matched by email; an existing speaker is linked rather than duplicated. A person can be a contact for only one sponsor. sendInvite: true also emails them their portal invite.",
+        readOnly: false,
+        destructive: false,
+        requiresConfirm: true,
+        args: ["event","sponsor","action","email","firstName","lastName","jobTitle","sendInvite","confirm"],
+        required: ["event","sponsor","action","email","confirm"],
+      },
+      {
+        name: "invite_sponsor_contacts",
+        title: "Email sponsor portal invites",
+        description: "EMAILS REAL PEOPLE: queues the \"Sponsor portal invite\" email (editable in Communications → Templates) to a sponsor's contacts — all of them, or just the emails you list. The email carries each contact's private sign-in link.",
+        readOnly: false,
+        destructive: true,
+        requiresConfirm: true,
+        args: ["event","sponsor","emails","confirm"],
+        required: ["event","sponsor","confirm"],
+      },
+      {
+        name: "set_session_sponsor",
+        title: "Link a session to a sponsor",
+        description: "Links an existing session or submission to a sponsor (so every contact of that sponsor sees and can edit it in their portal), or unlinks it with sponsor: \"none\". A linked session counts toward the sponsor's allowance.",
+        readOnly: false,
+        destructive: true,
+        requiresConfirm: true,
+        args: ["event","submissionId","sponsor","confirm"],
+        required: ["event","submissionId","sponsor","confirm"],
+      },
+      {
+        name: "update_sponsor_portal_settings",
+        title: "Sponsor portal settings",
+        description: "How sponsor portals behave on this event: newSessionStatus (\"pending\" — sessions sponsors add wait for your review, the default; or \"accepted\" — straight onto the program) and closeAt (ISO date-time after which sponsors can no longer add or edit sessions; \"none\" clears it).",
+        readOnly: false,
+        destructive: true,
+        requiresConfirm: true,
+        args: ["event","newSessionStatus","closeAt","allowColleagueInvites","confirm"],
+        required: ["event","confirm"],
+      },
+    ],
+  },
+  {
     id: "tasks",
     label: "Speaker tasks",
     tools: [
@@ -950,4 +1016,4 @@ export const MCP_TOOL_GROUPS: Array<McpToolGroup> = [
   },
 ]
 
-export const MCP_TOOL_COUNT = 85
+export const MCP_TOOL_COUNT = 91

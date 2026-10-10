@@ -34,6 +34,7 @@ export type EventSection =
   | "evaluation"
   | "agenda"
   | "speakers"
+  | "sponsors"
   | "files"
   | "communications"
   | "embeds"
@@ -46,6 +47,7 @@ export const EVENT_SECTIONS: ReadonlyArray<EventSection> = [
   "evaluation",
   "agenda",
   "speakers",
+  "sponsors",
   "files",
   "communications",
   "embeds",
@@ -69,6 +71,7 @@ const STATIC_APP_SEGMENTS: ReadonlySet<string> = new Set([
   "forms",
   "settings",
   "speakers",
+  "sponsors",
   "submissions",
   "workspace",
 ])
@@ -85,6 +88,7 @@ export const appLink = {
     `${base(ref)}/evaluation/${planId}`,
   agenda: (ref: EventRef) => `${base(ref)}/agenda`,
   speakers: (ref: EventRef) => `${base(ref)}/speakers`,
+  sponsors: (ref: EventRef) => `${base(ref)}/sponsors`,
   files: (ref: EventRef) => `${base(ref)}/files`,
   communications: (ref: EventRef) => `${base(ref)}/communications`,
   embeds: (ref: EventRef) => `${base(ref)}/embeds`,
@@ -129,6 +133,7 @@ export const legacyAppLink = {
   evaluation: "/app/evaluation",
   agenda: "/app/agenda",
   speakers: "/app/speakers",
+  sponsors: "/app/sponsors",
   files: "/app/files",
   communications: "/app/communications",
   embeds: "/app/embeds",

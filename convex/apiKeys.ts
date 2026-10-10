@@ -118,6 +118,7 @@ export const API_SCOPES = [
   "write:fields",
   "write:metadata",
   "write:events",
+  "write:sponsors",
 ] as const
 
 export const create = mutation({

@@ -80,6 +80,48 @@ type Payload = { input: unknown; output: unknown }
  * the assertions that name specific strings.
  */
 const SHAPES: Record<string, Payload> = {
+  list_sponsors: {
+    input: { event: "ai-summit-2026" },
+    output: {
+      summary: "2 sponsor(s); 1 sponsor session(s) counting against allowances.",
+      portalSettings: { newSessionStatus: "pending", closeAt: null, allowColleagueInvites: true },
+      sponsors: [
+        {
+          id: "sp1",
+          name: "Northwind AI",
+          tier: "Platinum",
+          sessionLimit: 2,
+          sessionsUsed: 1,
+          contacts: [{ personId: "p1", name: "Jordan Lee", email: "jordan.lee@example.com", invitedAt: "2026-10-01T10:00:00.000Z" }],
+          sessions: [{ _id: "s1", title: "Evals in production", status: "pending", kind: "session", scheduled: false }],
+        },
+        { id: "sp2", name: "Opal Labs", tier: null, sessionLimit: 0, sessionsUsed: 0, contacts: [], sessions: [] },
+      ],
+    },
+  },
+  manage_sponsor: {
+    input: { event: "ai-summit-2026", action: "create", name: "Acme AI" },
+    output: {
+      created: true,
+      sponsor: { id: "sp3", name: "Acme AI", tier: "Gold", sessionLimit: 1, sessionsUsed: 0, contacts: [], sessions: [] },
+    },
+  },
+  manage_sponsor_contact: {
+    input: { event: "ai-summit-2026", sponsor: "Acme AI", action: "add", email: "grace@acme.ai" },
+    output: { added: true, personId: "p9", created: true, invited: false, note: "Not emailed yet — call invite_sponsor_contacts to send their portal invite." },
+  },
+  invite_sponsor_contacts: {
+    input: { event: "ai-summit-2026", sponsor: "Acme AI" },
+    output: { queued: 1, recipients: ["grace@acme.ai"], note: "Queued in the outbox." },
+  },
+  set_session_sponsor: {
+    input: { event: "ai-summit-2026", submissionId: "s1", sponsor: "Acme AI" },
+    output: { submissionId: "s1", title: "Evals in production", sponsor: "Acme AI" },
+  },
+  update_sponsor_portal_settings: {
+    input: { event: "ai-summit-2026", newSessionStatus: "accepted" },
+    output: { newSessionStatus: "accepted", closeAt: "2026-10-20T17:00:00.000Z", allowColleagueInvites: true },
+  },
   list_workspaces: {
     input: {},
     output: {

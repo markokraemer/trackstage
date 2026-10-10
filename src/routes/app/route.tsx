@@ -148,6 +148,9 @@ function navGroupsFor(ref: EventRef | undefined): Array<NavGroup> {
       label: "Speakers",
       items: [
         { label: "Speakers", to: to("speakers"), icon: RiUserVoiceLine },
+        // Companies with a package: their contacts add sessions from their
+        // own portal, no CFP in between (Kelsey's ask, 2026-10-10).
+        { label: "Sponsors", to: to("sponsors"), icon: RiBuilding2Line },
         // Everything speakers send in — slides, headshots, signed forms — with
         // the session and the approval state (sbek CNT-04/05/13). It sits right
         // after Speakers because that is whose work it is.

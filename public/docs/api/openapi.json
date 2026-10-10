@@ -4,7 +4,7 @@
     "title": "Trackstage API",
     "version": "1.1.0",
     "summary": "Read and write your event's programme, speakers, submissions, custom fields and agenda — and get webhooks when any of it changes.",
-    "description": "A complete REST API over an event: the event itself, sessions and abstracts, speakers and line-ups, CFP forms, custom fields, session files, speaker tasks, multi-round evaluation, the agenda, and signed outbound webhooks.\n\nEverything an organizer can do in the browser app, an integration can do here — and every response carries both this API's original field names and the names a Sessionboard client expects, so a migration is a base-URL change.\n\n---\n\n## Getting started\n\n### 1. Base URL\n\nEvery path below is relative to the API base — one server, no regions to choose between:\n\n```\nhttps://api.trackstage.app\n```\n\n### 2. Get a key\n\n**Account settings → API & MCP → Create key.** The key (`sb_live_…`) is shown **once**, at creation — copy it then. Keys are revocable from that same screen, and a revoked key stops working immediately. Optionally pick a scope set when you create it (see below); a key created without one is unrestricted within its owner's own permissions.\n\n### 3. Make a call\n\n```bash\ncurl -s \"https://api.trackstage.app/v1/events\" \\\n  -H \"Authorization: Bearer sb_live_…\"\n```\n\nOr, byte-for-byte compatible with a Sessionboard client:\n\n```bash\ncurl -s \"https://api.trackstage.app/v1/event/ai-summit-2026/sessions\" \\\n  -H \"x-access-token: sb_live_…\"\n```\n\nPrefer to look before you sign up? The token `demo-api-token` reads the demo workspace — start with `ai-summit-2026` — and answers **403** on every write, and on every event outside that workspace.\n\n---\n\n## Authentication\n\nTwo header forms are accepted, interchangeably, on every authenticated endpoint:\n\n| Header | Form | Notes |\n| --- | --- | --- |\n| `Authorization` | `Bearer sb_live_…` | The scheme this API has always used. |\n| `x-access-token` | `sb_live_…` | Sessionboard's header, so their clients work unchanged. |\n\nA key resolves to a **user**, and every request re-runs the same workspace-membership authorization the browser app runs — including per-member event scoping. A key can therefore never reach an event its owner cannot, and a leaked key is bounded by a real permission model rather than by an organization boundary.\n\n**Roles.** Some operations need more than membership: publishing or unpublishing the agenda, deleting or restoring a session, deleting an event, a form or a task, and every webhook write require the **admin** role on the event. A member without it gets a 403 that says so.\n\n### Scopes\n\nA key may declare a scope set. Unset means *unrestricted within the owner's permissions*; setting scopes can only ever **narrow** that, never widen it. Each operation below names the scope it enforces, both in prose and as an `x-required-scope` extension.\n\n| Scope | Grants |\n| --- | --- |\n| `read:events` | Events, agenda, settings, forms, tasks, webhooks. |\n| `read:sessions` | Sessions, abstracts, submissions, session files, evaluation. |\n| `read:contacts` | Speakers, session line-ups, evaluators. |\n| `write:sessions` | Session create/update/delete/restore/bulk, files, participants, evaluation plans. |\n| `write:contacts` | Speaker create/update/delete, evaluator management. |\n| `write:fields` | Custom-field definitions and CFP forms. |\n| `write:metadata` | Tracks, rooms, tags, formats, levels, languages, statuses. |\n| `write:events` | Event CRUD, agenda publish/unpublish, tasks, webhooks. |\n\nA 403 always names the missing scope, e.g. `This token lacks the \\`write:sessions\\` scope.`\n\n### Endpoints that need no credential\n\n- `GET /v1/event/{eventRef}/schedule.ics` — calendar clients subscribe by URL and cannot send headers.\n- `POST /v1/_echo` — the signature-verifying test sink.\n\n### AI agents: MCP and OAuth\n\nThis is the REST surface. Agents have a second, separate one: a full **MCP server at `/mcp`**, authenticated with **OAuth 2.1 + PKCE** (discovery at `/.well-known/oauth-protected-resource`) rather than with an API key — connect it from Claude, Cursor or any MCP client and the same authorization rules apply. An `sb_live_…` key also works there as a bearer token for non-interactive clients. See [the MCP reference](/docs/mcp).\n\n---\n\n## Conventions\n\n### Addressing an event\n\n`{eventRef}` accepts the event's **slug** or its **id**, everywhere. `/v1/event/ai-summit-2026/sessions` and `/v1/event/k97abc…/sessions` are the same endpoint — the slug form is the one you want in a shell history. Forms take their slug too (`/forms/cfp`).\n\n### Pagination\n\nEvery list takes `page` (1-based) and `pageSize` (default 25, max 100; `page_size` is accepted as an alias). Every paginated response carries the same array under **both** `data` and `results`, and pagination counts in **both** spellings:\n\n```json\n{\n  \"data\": [ … ],\n  \"results\": [ … ],\n  \"pagination\": {\n    \"currentPage\": 1, \"pageSize\": 25, \"totalPages\": 4, \"totalResults\": 87,\n    \"current_page\": 1, \"page_size\": 25, \"total_pages\": 4, \"total_results\": 87\n  }\n}\n```\n\nSo a client written against either convention works, and no endpoint makes you check which one you are on. Single-resource responses are `{ \"data\": { … } }`.\n\n### Errors\n\nEvery failure has the same shape:\n\n```json\n{\n  \"error\": \"This session changed since you fetched it (now 2026-08-11T09:12:44.001Z). Re-fetch and retry.\",\n  \"code\": \"ConflictError\",\n  \"message\": \"This session changed since you fetched it (now 2026-08-11T09:12:44.001Z). Re-fetch and retry.\",\n  \"status\": 409\n}\n```\n\n`error` and `message` are the same organizer-readable sentence — `error` is where this API has always put it, `message` is where Sessionboard clients look. `code` is the machine-readable name:\n\n| Status | `code` | When |\n| --- | --- | --- |\n| 400 | `BadRequestError` | The body or parameters are invalid; the message says what. |\n| 401 | `UnauthorizedError` | Missing or invalid key. |\n| 403 | `ForbiddenError` | Valid key, but missing scope, role, or workspace access — including the read-only demo token attempting a write, or reaching past the demo events. |\n| 404 | `NotFoundError` | No such event, resource or endpoint. A mistyped path answers with the nearest real routes. |\n| 405 | `MethodNotAllowedError` | Right path, wrong verb. |\n| 409 | `ConflictError` | Stale `updated_at` — someone else edited first. |\n| 413 | `PayloadTooLargeError` | Over the 50 MB simple-upload ceiling. |\n| 429 | `TooManyRequestsError` | Rate limited; wait `Retry-After` seconds. |\n| 500 | `InternalServerError` | Ours, not yours. |\n\nMessages are written for the person reading them, never stack traces.\n\n### Rate limits\n\n100 requests / 15 minutes **per key, per bucket**. The buckets are `entity_reads`, `session_writes`, `field_writes`, `metadata_writes` and `event_writes`, so a bulk import cannot starve your dashboard's reads. Each operation names its bucket below (and carries it as `x-rate-limit-bucket`).\n\n| Header | Meaning |\n| --- | --- |\n| `RateLimit-Limit` | Requests allowed in the window. |\n| `RateLimit-Remaining` | Requests left. |\n| `RateLimit-Reset` | Unix seconds at which the window resets. |\n| `Retry-After` | On a 429 only: seconds to wait. |\n\n### Times\n\nISO-8601 in responses. Requests accept ISO-8601 **or** epoch milliseconds, anywhere a time is taken. Legacy epoch-millisecond fields (`startTime`, `endTime`, `submittedAt`, `decidedAt`, …) are still returned alongside the ISO ones and will not be removed.\n\n### Optimistic concurrency\n\nSend the `updated_at` you last read on `PUT /sessions/{id}`. If someone edited the session in between, the call answers **409** with the current value instead of silently clobbering their work; re-read and retry.\n\n### `expand`\n\nComma-separated on session reads: `expand=files` inlines the session's attachments, `expand=deleted` lets a soft-deleted session be read.\n\n### Soft deletes\n\n`DELETE /sessions/{id}` and `DELETE /statuses/{id}` archive rather than destroy — the row leaves every listing, reads 404, and comes back intact via the matching `/restore`. `DELETE /events/{ref}` is the one exception: it runs the full cascade and is not recoverable.\n\n---\n\n### Custom fields\n\nA custom field and a CFP form question are the same object. `GET /v1/event/{eventRef}/fields` returns the definitions (with `internal_name`, type, options and whether the field holds PII); every session carries its answers as `custom_fields[]` (labelled, with a lossless `value_raw`) and as a raw `answers` map; `PUT /v1/event/{eventRef}/sessions/{sessionId}/fields` writes them. Creating a field through `POST /fields/create` adds the question to the form builder and to the public submission form.\n\n### Webhooks\n\nRegister an endpoint with `POST /v1/webhooks`. Every delivery POSTs `{ data, metadata }` and carries:\n\n| Header | Meaning |\n| --- | --- |\n| `Trackstage-Signature` | `t=<unix-seconds>,v1=<hex>` — HMAC-SHA256 of `\"{t}.{body}\"` keyed with the endpoint's `whsec_…` secret. |\n| `Trackstage-Event` | The event type. |\n| `Trackstage-Delivery` | Unique delivery id, for idempotency. |\n\nVerify the signature before trusting a payload, and reject timestamps outside your tolerance to prevent replay. Failed deliveries retry five times with exponential backoff (1s, 5s, 25s, 125s) and the full attempt log — including the exact signed body — is readable at `GET /v1/webhooks/{webhookId}/deliveries`.\n\n**Verifying a delivery** (Node, no dependencies):\n\n```js\nimport { createHmac, timingSafeEqual } from \"node:crypto\"\n\nexport function verify(rawBody, header, secret, toleranceSeconds = 300) {\n  const m = /t=(\\d+),v1=([0-9a-f]+)/.exec(header ?? \"\")\n  if (!m) return false\n  const [, t, signature] = m\n  if (Math.abs(Date.now() / 1000 - Number(t)) > toleranceSeconds) return false // replay\n  const expected = createHmac(\"sha256\", secret).update(`${t}.${rawBody}`).digest(\"hex\")\n  const a = Buffer.from(expected), b = Buffer.from(signature)\n  return a.length === b.length && timingSafeEqual(a, b)\n}\n```\n\nSign over the **raw body bytes**, before any JSON parsing — re-serialising changes the bytes and the signature will not match.\n\nNot sure your receiver is right? Point a webhook at `POST /v1/_echo?secret=whsec_…`. That sink recomputes the HMAC itself and answers 200 **only** when the signature verifies, so a green delivery in the log is proof, not a guess.\n\n**Event types**\n\n| Event | Fires when |\n| --- | --- |\n| `submission.created` | A CFP submission arrived. |\n| `submission.updated` | A submission's details or status changed. |\n| `session.created` | A programme session was created. |\n| `session.updated` | A session's details changed. |\n| `session.deleted` | A session was soft-deleted. |\n| `session.restored` | A soft-deleted session was restored. |\n| `session.scheduled` | A session was given a room and a slot. |\n| `session.unscheduled` | A session was taken off the timetable. |\n| `decision.committed` | An accept or decline queue was committed and the emails went out. |\n| `agenda.published` | The public programme went live. |\n| `speaker.created` | Someone was added to the roster. |\n| `speaker.updated` | A speaker's profile or workflow status changed. |\n| `file.uploaded` | A file was attached to a session. |\n| `file.deleted` | A session file was removed. |\n| `webhook.test` | A test delivery you triggered yourself. |\n\nSubscribe to `[\"*\"]` for all of them. Scope an endpoint to one event with `\"event\": \"ai-summit-2026\"`, or omit it for every event in the workspace.\n\n---\n\n### Uploading session files\n\nTwo flows, same resource. Use the simple one until you hit its ceiling.\n\n**Simple — one request, up to 50 MB.** `multipart/form-data`, field name `file`:\n\n```bash\ncurl -X POST \"$BASE/v1/event/ai-summit-2026/sessions/$SID/files/upload\" \\\n  -H \"Authorization: Bearer sb_live_…\" \\\n  -F \"file=@keynote-slides.pptx\" \\\n  -F \"title=Keynote deck (final)\"\n```\n\nSize and MIME type are read from the bytes. Over 50 MB answers **413** and tells you to use the two-phase flow.\n\n**Two-phase — for anything larger.** Three calls:\n\n1. `POST …/sessions/{sessionId}/files` with `{ \"filename\": \"…\" }` → returns an id and an `upload` block (`url`, `method`, `headers`).\n2. `PUT` the raw bytes to that `upload.url`. Unlike a presigned S3 URL this leg is authenticated with **your ordinary API key**, so no credential is ever embedded in a URL that can leak through logs or referrers. Re-PUTting replaces the pending bytes.\n3. `POST …/files/{fileId}/complete` → promotes the blob into a real attachment and returns it. Completing with no bytes received answers 400.\n\n**Replacing a file** is the same three steps starting from `POST …/files/{fileId}/replace`; the file group's version is bumped and the previous version retired when the replacement completes. `PUT …/files/{fileId}` changes the title or the participant it is assigned to without touching bytes, and `DELETE` soft-deletes.\n\n---\n\n### The calendar feed\n\n`GET /v1/event/{eventRef}/schedule.ics` is an RFC 5545 feed of the published programme — accepted, scheduled sessions of an event whose agenda has been published. It takes **no credential**, because calendar clients subscribe by URL and cannot send headers; paste it into Google Calendar, Apple Calendar or Outlook as a subscription and it stays in step with the board.\n\n---\n\n### Migrating from Sessionboard\n\nChange the base URL and the event id, and keep your code. Their paths, their `x-access-token` header, their `filters`/`sort`/`expand` search bodies, their `results` + `pagination` envelope, their status enum, their `custom_fields[]` shape and their 4xx codes are all served as-is. What is additive on our side: `data` alongside `results`, snake_case *and* camelCase pagination, `value_raw` on every custom field, slugs as event references, and the endpoints their API does not have at all — event CRUD, forms, tasks, evaluation, participants and API-managed webhooks.",
+    "description": "A complete REST API over an event: the event itself, sessions and abstracts, speakers and line-ups, CFP forms, custom fields, session files, speaker tasks, multi-round evaluation, the agenda, and signed outbound webhooks.\n\nEverything an organizer can do in the browser app, an integration can do here — and every response carries both this API's original field names and the names a Sessionboard client expects, so a migration is a base-URL change.\n\n---\n\n## Getting started\n\n### 1. Base URL\n\nEvery path below is relative to the API base — one server, no regions to choose between:\n\n```\nhttps://api.trackstage.app\n```\n\n### 2. Get a key\n\n**Account settings → API & MCP → Create key.** The key (`sb_live_…`) is shown **once**, at creation — copy it then. Keys are revocable from that same screen, and a revoked key stops working immediately. Optionally pick a scope set when you create it (see below); a key created without one is unrestricted within its owner's own permissions.\n\n### 3. Make a call\n\n```bash\ncurl -s \"https://api.trackstage.app/v1/events\" \\\n  -H \"Authorization: Bearer sb_live_…\"\n```\n\nOr, byte-for-byte compatible with a Sessionboard client:\n\n```bash\ncurl -s \"https://api.trackstage.app/v1/event/ai-summit-2026/sessions\" \\\n  -H \"x-access-token: sb_live_…\"\n```\n\nPrefer to look before you sign up? The token `demo-api-token` reads the demo workspace — start with `ai-summit-2026` — and answers **403** on every write, and on every event outside that workspace.\n\n---\n\n## Authentication\n\nTwo header forms are accepted, interchangeably, on every authenticated endpoint:\n\n| Header | Form | Notes |\n| --- | --- | --- |\n| `Authorization` | `Bearer sb_live_…` | The scheme this API has always used. |\n| `x-access-token` | `sb_live_…` | Sessionboard's header, so their clients work unchanged. |\n\nA key resolves to a **user**, and every request re-runs the same workspace-membership authorization the browser app runs — including per-member event scoping. A key can therefore never reach an event its owner cannot, and a leaked key is bounded by a real permission model rather than by an organization boundary.\n\n**Roles.** Some operations need more than membership: publishing or unpublishing the agenda, deleting or restoring a session, deleting an event, a form or a task, and every webhook write require the **admin** role on the event. A member without it gets a 403 that says so.\n\n### Scopes\n\nA key may declare a scope set. Unset means *unrestricted within the owner's permissions*; setting scopes can only ever **narrow** that, never widen it. Each operation below names the scope it enforces, both in prose and as an `x-required-scope` extension.\n\n| Scope | Grants |\n| --- | --- |\n| `read:events` | Events, agenda, settings, forms, tasks, webhooks. |\n| `read:sessions` | Sessions, abstracts, submissions, session files, evaluation. |\n| `read:contacts` | Speakers, session line-ups, evaluators. |\n| `write:sessions` | Session create/update/delete/restore/bulk, files, participants, evaluation plans. |\n| `write:contacts` | Speaker create/update/delete, evaluator management. |\n| `write:fields` | Custom-field definitions and CFP forms. |\n| `write:metadata` | Tracks, rooms, tags, formats, levels, languages, statuses. |\n| `write:events` | Event CRUD, agenda publish/unpublish, tasks, webhooks. |\n| `write:sponsors` | Sponsor create/update/delete, contacts, portal invites, sponsor portal settings. Sponsor reads ride `read:contacts`. |\n\nA 403 always names the missing scope, e.g. `This token lacks the \\`write:sessions\\` scope.`\n\n### Endpoints that need no credential\n\n- `GET /v1/event/{eventRef}/schedule.ics` — calendar clients subscribe by URL and cannot send headers.\n- `POST /v1/_echo` — the signature-verifying test sink.\n\n### AI agents: MCP and OAuth\n\nThis is the REST surface. Agents have a second, separate one: a full **MCP server at `/mcp`**, authenticated with **OAuth 2.1 + PKCE** (discovery at `/.well-known/oauth-protected-resource`) rather than with an API key — connect it from Claude, Cursor or any MCP client and the same authorization rules apply. An `sb_live_…` key also works there as a bearer token for non-interactive clients. See [the MCP reference](/docs/mcp).\n\n---\n\n## Conventions\n\n### Addressing an event\n\n`{eventRef}` accepts the event's **slug** or its **id**, everywhere. `/v1/event/ai-summit-2026/sessions` and `/v1/event/k97abc…/sessions` are the same endpoint — the slug form is the one you want in a shell history. Forms take their slug too (`/forms/cfp`).\n\n### Pagination\n\nEvery list takes `page` (1-based) and `pageSize` (default 25, max 100; `page_size` is accepted as an alias). Every paginated response carries the same array under **both** `data` and `results`, and pagination counts in **both** spellings:\n\n```json\n{\n  \"data\": [ … ],\n  \"results\": [ … ],\n  \"pagination\": {\n    \"currentPage\": 1, \"pageSize\": 25, \"totalPages\": 4, \"totalResults\": 87,\n    \"current_page\": 1, \"page_size\": 25, \"total_pages\": 4, \"total_results\": 87\n  }\n}\n```\n\nSo a client written against either convention works, and no endpoint makes you check which one you are on. Single-resource responses are `{ \"data\": { … } }`.\n\n### Errors\n\nEvery failure has the same shape:\n\n```json\n{\n  \"error\": \"This session changed since you fetched it (now 2026-08-11T09:12:44.001Z). Re-fetch and retry.\",\n  \"code\": \"ConflictError\",\n  \"message\": \"This session changed since you fetched it (now 2026-08-11T09:12:44.001Z). Re-fetch and retry.\",\n  \"status\": 409\n}\n```\n\n`error` and `message` are the same organizer-readable sentence — `error` is where this API has always put it, `message` is where Sessionboard clients look. `code` is the machine-readable name:\n\n| Status | `code` | When |\n| --- | --- | --- |\n| 400 | `BadRequestError` | The body or parameters are invalid; the message says what. |\n| 401 | `UnauthorizedError` | Missing or invalid key. |\n| 403 | `ForbiddenError` | Valid key, but missing scope, role, or workspace access — including the read-only demo token attempting a write, or reaching past the demo events. |\n| 404 | `NotFoundError` | No such event, resource or endpoint. A mistyped path answers with the nearest real routes. |\n| 405 | `MethodNotAllowedError` | Right path, wrong verb. |\n| 409 | `ConflictError` | Stale `updated_at` — someone else edited first. |\n| 413 | `PayloadTooLargeError` | Over the 50 MB simple-upload ceiling. |\n| 429 | `TooManyRequestsError` | Rate limited; wait `Retry-After` seconds. |\n| 500 | `InternalServerError` | Ours, not yours. |\n\nMessages are written for the person reading them, never stack traces.\n\n### Rate limits\n\n100 requests / 15 minutes **per key, per bucket**. The buckets are `entity_reads`, `session_writes`, `field_writes`, `metadata_writes` and `event_writes`, so a bulk import cannot starve your dashboard's reads. Each operation names its bucket below (and carries it as `x-rate-limit-bucket`).\n\n| Header | Meaning |\n| --- | --- |\n| `RateLimit-Limit` | Requests allowed in the window. |\n| `RateLimit-Remaining` | Requests left. |\n| `RateLimit-Reset` | Unix seconds at which the window resets. |\n| `Retry-After` | On a 429 only: seconds to wait. |\n\n### Times\n\nISO-8601 in responses. Requests accept ISO-8601 **or** epoch milliseconds, anywhere a time is taken. Legacy epoch-millisecond fields (`startTime`, `endTime`, `submittedAt`, `decidedAt`, …) are still returned alongside the ISO ones and will not be removed.\n\n### Optimistic concurrency\n\nSend the `updated_at` you last read on `PUT /sessions/{id}`. If someone edited the session in between, the call answers **409** with the current value instead of silently clobbering their work; re-read and retry.\n\n### `expand`\n\nComma-separated on session reads: `expand=files` inlines the session's attachments, `expand=deleted` lets a soft-deleted session be read.\n\n### Soft deletes\n\n`DELETE /sessions/{id}` and `DELETE /statuses/{id}` archive rather than destroy — the row leaves every listing, reads 404, and comes back intact via the matching `/restore`. `DELETE /events/{ref}` is the one exception: it runs the full cascade and is not recoverable.\n\n---\n\n### Custom fields\n\nA custom field and a CFP form question are the same object. `GET /v1/event/{eventRef}/fields` returns the definitions (with `internal_name`, type, options and whether the field holds PII); every session carries its answers as `custom_fields[]` (labelled, with a lossless `value_raw`) and as a raw `answers` map; `PUT /v1/event/{eventRef}/sessions/{sessionId}/fields` writes them. Creating a field through `POST /fields/create` adds the question to the form builder and to the public submission form.\n\n### Webhooks\n\nRegister an endpoint with `POST /v1/webhooks`. Every delivery POSTs `{ data, metadata }` and carries:\n\n| Header | Meaning |\n| --- | --- |\n| `Trackstage-Signature` | `t=<unix-seconds>,v1=<hex>` — HMAC-SHA256 of `\"{t}.{body}\"` keyed with the endpoint's `whsec_…` secret. |\n| `Trackstage-Event` | The event type. |\n| `Trackstage-Delivery` | Unique delivery id, for idempotency. |\n\nVerify the signature before trusting a payload, and reject timestamps outside your tolerance to prevent replay. Failed deliveries retry five times with exponential backoff (1s, 5s, 25s, 125s) and the full attempt log — including the exact signed body — is readable at `GET /v1/webhooks/{webhookId}/deliveries`.\n\n**Verifying a delivery** (Node, no dependencies):\n\n```js\nimport { createHmac, timingSafeEqual } from \"node:crypto\"\n\nexport function verify(rawBody, header, secret, toleranceSeconds = 300) {\n  const m = /t=(\\d+),v1=([0-9a-f]+)/.exec(header ?? \"\")\n  if (!m) return false\n  const [, t, signature] = m\n  if (Math.abs(Date.now() / 1000 - Number(t)) > toleranceSeconds) return false // replay\n  const expected = createHmac(\"sha256\", secret).update(`${t}.${rawBody}`).digest(\"hex\")\n  const a = Buffer.from(expected), b = Buffer.from(signature)\n  return a.length === b.length && timingSafeEqual(a, b)\n}\n```\n\nSign over the **raw body bytes**, before any JSON parsing — re-serialising changes the bytes and the signature will not match.\n\nNot sure your receiver is right? Point a webhook at `POST /v1/_echo?secret=whsec_…`. That sink recomputes the HMAC itself and answers 200 **only** when the signature verifies, so a green delivery in the log is proof, not a guess.\n\n**Event types**\n\n| Event | Fires when |\n| --- | --- |\n| `submission.created` | A CFP submission arrived. |\n| `submission.updated` | A submission's details or status changed. |\n| `session.created` | A programme session was created. |\n| `session.updated` | A session's details changed. |\n| `session.deleted` | A session was soft-deleted. |\n| `session.restored` | A soft-deleted session was restored. |\n| `session.scheduled` | A session was given a room and a slot. |\n| `session.unscheduled` | A session was taken off the timetable. |\n| `decision.committed` | An accept or decline queue was committed and the emails went out. |\n| `agenda.published` | The public programme went live. |\n| `speaker.created` | Someone was added to the roster. |\n| `speaker.updated` | A speaker's profile or workflow status changed. |\n| `sponsor.created` | A sponsor was added. |\n| `sponsor.updated` | A sponsor's details or contacts changed. |\n| `sponsor.deleted` | A sponsor was removed (its sessions stay). |\n| `file.uploaded` | A file was attached to a session. |\n| `file.deleted` | A session file was removed. |\n| `webhook.test` | A test delivery you triggered yourself. |\n\nSubscribe to `[\"*\"]` for all of them. Scope an endpoint to one event with `\"event\": \"ai-summit-2026\"`, or omit it for every event in the workspace.\n\n---\n\n### Uploading session files\n\nTwo flows, same resource. Use the simple one until you hit its ceiling.\n\n**Simple — one request, up to 50 MB.** `multipart/form-data`, field name `file`:\n\n```bash\ncurl -X POST \"$BASE/v1/event/ai-summit-2026/sessions/$SID/files/upload\" \\\n  -H \"Authorization: Bearer sb_live_…\" \\\n  -F \"file=@keynote-slides.pptx\" \\\n  -F \"title=Keynote deck (final)\"\n```\n\nSize and MIME type are read from the bytes. Over 50 MB answers **413** and tells you to use the two-phase flow.\n\n**Two-phase — for anything larger.** Three calls:\n\n1. `POST …/sessions/{sessionId}/files` with `{ \"filename\": \"…\" }` → returns an id and an `upload` block (`url`, `method`, `headers`).\n2. `PUT` the raw bytes to that `upload.url`. Unlike a presigned S3 URL this leg is authenticated with **your ordinary API key**, so no credential is ever embedded in a URL that can leak through logs or referrers. Re-PUTting replaces the pending bytes.\n3. `POST …/files/{fileId}/complete` → promotes the blob into a real attachment and returns it. Completing with no bytes received answers 400.\n\n**Replacing a file** is the same three steps starting from `POST …/files/{fileId}/replace`; the file group's version is bumped and the previous version retired when the replacement completes. `PUT …/files/{fileId}` changes the title or the participant it is assigned to without touching bytes, and `DELETE` soft-deletes.\n\n---\n\n### The calendar feed\n\n`GET /v1/event/{eventRef}/schedule.ics` is an RFC 5545 feed of the published programme — accepted, scheduled sessions of an event whose agenda has been published. It takes **no credential**, because calendar clients subscribe by URL and cannot send headers; paste it into Google Calendar, Apple Calendar or Outlook as a subscription and it stays in step with the board.\n\n---\n\n### Migrating from Sessionboard\n\nChange the base URL and the event id, and keep your code. Their paths, their `x-access-token` header, their `filters`/`sort`/`expand` search bodies, their `results` + `pagination` envelope, their status enum, their `custom_fields[]` shape and their 4xx codes are all served as-is. What is additive on our side: `data` alongside `results`, snake_case *and* camelCase pagination, `value_raw` on every custom field, slugs as event references, and the endpoints their API does not have at all — event CRUD, forms, tasks, evaluation, participants and API-managed webhooks.",
     "license": {
       "name": "MIT",
       "identifier": "MIT"
@@ -48,6 +48,10 @@
     {
       "name": "Speakers",
       "description": "The event's people and the sessions they are on. Reads need `read:contacts`, writes `write:contacts`."
+    },
+    {
+      "name": "Sponsors",
+      "description": "Sponsor companies, their portal contacts and their session allowance. A sponsor's contacts add the sessions their package includes from their own portal — no call for papers. Mirrors Sessionboard's `/sponsors` endpoints and adds what their API cannot write: contacts, invites and the portal rules. Reads need `read:contacts`, writes `write:sponsors`."
     },
     {
       "name": "Forms",
@@ -2595,7 +2599,7 @@
                       "external_title": "Call for Speakers",
                       "id": "jd7eas8ez4vgkhtspagrt2h1yn8cda26",
                       "internal_name": "CFP 2026 — main call",
-                      "is_open": true,
+                      "is_open": false,
                       "kind": "abstract",
                       "notify_emails": [
                         "organizer@demo.sessionboard.dev"
@@ -2700,7 +2704,7 @@
                       "external_title": "Call for Speakers",
                       "id": "jd7eas8ez4vgkhtspagrt2h1yn8cda26",
                       "internal_name": "CFP 2026 — main call",
-                      "is_open": true,
+                      "is_open": false,
                       "kind": "abstract",
                       "notify_emails": [
                         "organizer@demo.sessionboard.dev"
@@ -2857,7 +2861,7 @@
                     "external_title": "Call for Speakers",
                     "id": "jd7eas8ez4vgkhtspagrt2h1yn8cda26",
                     "internal_name": "CFP 2026 — main call",
-                    "is_open": true,
+                    "is_open": false,
                     "kind": "abstract",
                     "notify_emails": [
                       "organizer@demo.sessionboard.dev"
@@ -4756,7 +4760,7 @@
                 "schema": {
                   "type": "string"
                 },
-                "example": "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//Trackstage//Event Schedule//EN\r\nCALSCALE:GREGORIAN\r\nMETHOD:PUBLISH\r\nX-WR-CALNAME:AI Engineer Summit 2026\r\nBEGIN:VEVENT\r\nUID:k574kr4an4j5mn5haemrayj5an8ccw80@ai-summit-2026.trackstage\r\nDTSTAMP:20260813T165613Z\r\nDTSTART:20261012T090000Z\r\nDTEND:20261012T094500Z\r\nSUMMARY:Cost modelling for inference-heavy products\r\n…"
+                "example": "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//Trackstage//Event Schedule//EN\r\nCALSCALE:GREGORIAN\r\nMETHOD:PUBLISH\r\nX-WR-CALNAME:AI Engineer Summit 2026\r\nBEGIN:VEVENT\r\nUID:k574kr4an4j5mn5haemrayj5an8ccw80@ai-summit-2026.trackstage\r\nDTSTAMP:20261010T203159Z\r\nDTSTART:20261012T090000Z\r\nDTEND:20261012T094500Z\r\nSUMMARY:Cost modelling for inference-heavy products\r\n…"
               }
             }
           },
@@ -10241,6 +10245,762 @@
         ]
       }
     },
+    "/v1/event/{eventRef}/sponsor-portal": {
+      "get": {
+        "operationId": "getSponsorPortal",
+        "tags": [
+          "Sponsors"
+        ],
+        "summary": "Get sponsor portal settings",
+        "description": "How sponsor portals behave on this event: what a session a sponsor adds starts as, the deadline after which sponsors can no longer add or edit sessions, and whether contacts may add colleagues.\n\n**Authentication** — send a personal API key as `x-access-token: sb_live_…` **or** `Authorization: Bearer sb_live_…`. Both headers are first-class.\n\n**Scope** `read:contacts` — enforced only when the presenting key declares a scope set; an unscoped key acts with exactly its owner's workspace permissions, and declaring scopes can only narrow that. A 403 names the missing scope.\n\nThe read-only demo token can call this.",
+        "x-required-scope": "read:contacts",
+        "x-demo-token-allowed": true,
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/eventRef"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SponsorPortalEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/E401"
+          },
+          "403": {
+            "$ref": "#/components/responses/E403"
+          },
+          "404": {
+            "$ref": "#/components/responses/E404"
+          }
+        },
+        "security": [
+          {
+            "ApiKeyHeader": []
+          },
+          {
+            "BearerToken": []
+          }
+        ]
+      },
+      "put": {
+        "operationId": "updateSponsorPortal",
+        "tags": [
+          "Sponsors"
+        ],
+        "summary": "Update sponsor portal settings",
+        "description": "Partial update. `close_at: null` removes the deadline.\n\n**Authentication** — send a personal API key as `x-access-token: sb_live_…` **or** `Authorization: Bearer sb_live_…`. Both headers are first-class.\n\n**Scope** `write:sponsors` — enforced only when the presenting key declares a scope set; an unscoped key acts with exactly its owner's workspace permissions, and declaring scopes can only narrow that. A 403 names the missing scope.\n\n**Write** — the read-only demo token (`demo-api-token`) answers 403 here.\n\n**Rate limit** 100 requests / 15 minutes per key in the `event_writes` bucket. Every response carries `RateLimit-Limit`, `RateLimit-Remaining` and `RateLimit-Reset`; a 429 adds `Retry-After`.",
+        "x-required-scope": "write:sponsors",
+        "x-rate-limit-bucket": "event_writes",
+        "x-demo-token-allowed": false,
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/eventRef"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SponsorPortalWriteBody"
+              },
+              "example": {
+                "new_session_status": "pending",
+                "close_at": "2026-09-01T23:59:00.000Z",
+                "allow_colleague_invites": true
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success.",
+            "headers": {
+              "RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimit-Limit"
+              },
+              "RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimit-Remaining"
+              },
+              "RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimit-Reset"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SponsorPortalEnvelope"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/E400"
+          },
+          "401": {
+            "$ref": "#/components/responses/E401"
+          },
+          "403": {
+            "$ref": "#/components/responses/E403"
+          },
+          "404": {
+            "$ref": "#/components/responses/E404"
+          },
+          "429": {
+            "$ref": "#/components/responses/E429"
+          }
+        },
+        "security": [
+          {
+            "ApiKeyHeader": []
+          },
+          {
+            "BearerToken": []
+          }
+        ]
+      }
+    },
+    "/v1/event/{eventRef}/sponsors": {
+      "get": {
+        "operationId": "listSponsors",
+        "tags": [
+          "Sponsors"
+        ],
+        "summary": "List sponsors",
+        "description": "Every sponsor on the event — the companies whose contacts add sessions from their own sponsor portal, no call for papers — with their contacts, package allowance (`session_limit`, `sessions_used`) and linked sessions. Filter with `?search=` (name) and `?tier=`.\n\n**Authentication** — send a personal API key as `x-access-token: sb_live_…` **or** `Authorization: Bearer sb_live_…`. Both headers are first-class.\n\n**Scope** `read:contacts` — enforced only when the presenting key declares a scope set; an unscoped key acts with exactly its owner's workspace permissions, and declaring scopes can only narrow that. A 403 names the missing scope.\n\nThe read-only demo token can call this.",
+        "x-required-scope": "read:contacts",
+        "x-demo-token-allowed": true,
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/eventRef"
+          },
+          {
+            "$ref": "#/components/parameters/page"
+          },
+          {
+            "$ref": "#/components/parameters/pageSize"
+          },
+          {
+            "$ref": "#/components/parameters/search"
+          },
+          {
+            "$ref": "#/components/parameters/tier"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SponsorsPage"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/E401"
+          },
+          "403": {
+            "$ref": "#/components/responses/E403"
+          },
+          "404": {
+            "$ref": "#/components/responses/E404"
+          }
+        },
+        "security": [
+          {
+            "ApiKeyHeader": []
+          },
+          {
+            "BearerToken": []
+          }
+        ]
+      },
+      "post": {
+        "operationId": "searchSponsors",
+        "tags": [
+          "Sponsors"
+        ],
+        "summary": "Search sponsors",
+        "description": "Same data as the list form, with the search body Sessionboard clients send (`filters.search`, `filters.tier`).\n\n**Authentication** — send a personal API key as `x-access-token: sb_live_…` **or** `Authorization: Bearer sb_live_…`. Both headers are first-class.\n\n**Scope** `read:contacts` — enforced only when the presenting key declares a scope set; an unscoped key acts with exactly its owner's workspace permissions, and declaring scopes can only narrow that. A 403 names the missing scope.\n\nThe read-only demo token can call this.",
+        "x-required-scope": "read:contacts",
+        "x-demo-token-allowed": true,
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/eventRef"
+          },
+          {
+            "$ref": "#/components/parameters/page"
+          },
+          {
+            "$ref": "#/components/parameters/pageSize"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SponsorSearchBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SponsorsPage"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/E400"
+          },
+          "401": {
+            "$ref": "#/components/responses/E401"
+          },
+          "403": {
+            "$ref": "#/components/responses/E403"
+          },
+          "404": {
+            "$ref": "#/components/responses/E404"
+          }
+        },
+        "security": [
+          {
+            "ApiKeyHeader": []
+          },
+          {
+            "BearerToken": []
+          }
+        ]
+      }
+    },
+    "/v1/event/{eventRef}/sponsors/{sponsorId}": {
+      "get": {
+        "operationId": "getSponsor",
+        "tags": [
+          "Sponsors"
+        ],
+        "summary": "Get a sponsor",
+        "description": "One sponsor with its contacts (the first is `is_primary`), its allowance and every session linked to it.\n\n**Authentication** — send a personal API key as `x-access-token: sb_live_…` **or** `Authorization: Bearer sb_live_…`. Both headers are first-class.\n\n**Scope** `read:contacts` — enforced only when the presenting key declares a scope set; an unscoped key acts with exactly its owner's workspace permissions, and declaring scopes can only narrow that. A 403 names the missing scope.\n\nThe read-only demo token can call this.\n\n**Rate limit** 100 requests / 15 minutes per key in the `entity_reads` bucket. Every response carries `RateLimit-Limit`, `RateLimit-Remaining` and `RateLimit-Reset`; a 429 adds `Retry-After`.",
+        "x-required-scope": "read:contacts",
+        "x-rate-limit-bucket": "entity_reads",
+        "x-demo-token-allowed": true,
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/eventRef"
+          },
+          {
+            "$ref": "#/components/parameters/sponsorId"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success.",
+            "headers": {
+              "RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimit-Limit"
+              },
+              "RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimit-Remaining"
+              },
+              "RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimit-Reset"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SponsorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/E401"
+          },
+          "403": {
+            "$ref": "#/components/responses/E403"
+          },
+          "404": {
+            "$ref": "#/components/responses/E404"
+          },
+          "429": {
+            "$ref": "#/components/responses/E429"
+          }
+        },
+        "security": [
+          {
+            "ApiKeyHeader": []
+          },
+          {
+            "BearerToken": []
+          }
+        ]
+      },
+      "put": {
+        "operationId": "updateSponsor",
+        "tags": [
+          "Sponsors"
+        ],
+        "summary": "Update a sponsor",
+        "description": "Partial update of name, tier, website, notes and session allowance; an empty string clears an optional field. Contacts are managed on their own endpoints. Unlike sessions, `updated_at` is not enforced as a concurrency token on sponsors.\n\n**Authentication** — send a personal API key as `x-access-token: sb_live_…` **or** `Authorization: Bearer sb_live_…`. Both headers are first-class.\n\n**Scope** `write:sponsors` — enforced only when the presenting key declares a scope set; an unscoped key acts with exactly its owner's workspace permissions, and declaring scopes can only narrow that. A 403 names the missing scope.\n\n**Write** — the read-only demo token (`demo-api-token`) answers 403 here.\n\n**Rate limit** 100 requests / 15 minutes per key in the `event_writes` bucket. Every response carries `RateLimit-Limit`, `RateLimit-Remaining` and `RateLimit-Reset`; a 429 adds `Retry-After`.",
+        "x-required-scope": "write:sponsors",
+        "x-rate-limit-bucket": "event_writes",
+        "x-demo-token-allowed": false,
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/eventRef"
+          },
+          {
+            "$ref": "#/components/parameters/sponsorId"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SponsorWriteBody"
+              },
+              "example": {
+                "session_limit": 3,
+                "tier": "Diamond"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success.",
+            "headers": {
+              "RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimit-Limit"
+              },
+              "RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimit-Remaining"
+              },
+              "RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimit-Reset"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SponsorEnvelope"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/E400"
+          },
+          "401": {
+            "$ref": "#/components/responses/E401"
+          },
+          "403": {
+            "$ref": "#/components/responses/E403"
+          },
+          "404": {
+            "$ref": "#/components/responses/E404"
+          },
+          "429": {
+            "$ref": "#/components/responses/E429"
+          }
+        },
+        "security": [
+          {
+            "ApiKeyHeader": []
+          },
+          {
+            "BearerToken": []
+          }
+        ]
+      },
+      "delete": {
+        "operationId": "deleteSponsor",
+        "tags": [
+          "Sponsors"
+        ],
+        "summary": "Delete a sponsor",
+        "description": "Removes the sponsor. Its sessions stay on the programme and its contacts stay on the event — both simply lose the link. Unlike Sessionboard this is a hard delete with no restore. Requires the admin role.\n\n**Authentication** — send a personal API key as `x-access-token: sb_live_…` **or** `Authorization: Bearer sb_live_…`. Both headers are first-class.\n\n**Scope** `write:sponsors` — enforced only when the presenting key declares a scope set; an unscoped key acts with exactly its owner's workspace permissions, and declaring scopes can only narrow that. A 403 names the missing scope.\n\n**Write** — the read-only demo token (`demo-api-token`) answers 403 here.\n\n**Rate limit** 100 requests / 15 minutes per key in the `event_writes` bucket. Every response carries `RateLimit-Limit`, `RateLimit-Remaining` and `RateLimit-Reset`; a 429 adds `Retry-After`.",
+        "x-required-scope": "write:sponsors",
+        "x-rate-limit-bucket": "event_writes",
+        "x-demo-token-allowed": false,
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/eventRef"
+          },
+          {
+            "$ref": "#/components/parameters/sponsorId"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No content.",
+            "headers": {
+              "RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimit-Limit"
+              },
+              "RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimit-Remaining"
+              },
+              "RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimit-Reset"
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/E401"
+          },
+          "403": {
+            "$ref": "#/components/responses/E403"
+          },
+          "404": {
+            "$ref": "#/components/responses/E404"
+          },
+          "429": {
+            "$ref": "#/components/responses/E429"
+          }
+        },
+        "security": [
+          {
+            "ApiKeyHeader": []
+          },
+          {
+            "BearerToken": []
+          }
+        ]
+      }
+    },
+    "/v1/event/{eventRef}/sponsors/{sponsorId}/contacts": {
+      "post": {
+        "operationId": "addSponsorContact",
+        "tags": [
+          "Sponsors"
+        ],
+        "summary": "Add a sponsor contact",
+        "description": "Makes a person a contact of the sponsor — they can sign into the sponsor portal and add its sessions. Idempotent on email within the event (an existing speaker is linked, not duplicated); a person can be a contact for only one sponsor. `send_invite: true` also emails them their portal link.\n\n**Authentication** — send a personal API key as `x-access-token: sb_live_…` **or** `Authorization: Bearer sb_live_…`. Both headers are first-class.\n\n**Scope** `write:sponsors` — enforced only when the presenting key declares a scope set; an unscoped key acts with exactly its owner's workspace permissions, and declaring scopes can only narrow that. A 403 names the missing scope.\n\n**Write** — the read-only demo token (`demo-api-token`) answers 403 here.\n\n**Rate limit** 100 requests / 15 minutes per key in the `event_writes` bucket. Every response carries `RateLimit-Limit`, `RateLimit-Remaining` and `RateLimit-Reset`; a 429 adds `Retry-After`.",
+        "x-required-scope": "write:sponsors",
+        "x-rate-limit-bucket": "event_writes",
+        "x-demo-token-allowed": false,
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/eventRef"
+          },
+          {
+            "$ref": "#/components/parameters/sponsorId"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SponsorContactWriteBody"
+              },
+              "example": {
+                "email": "alan@acme.example.com",
+                "first_name": "Alan",
+                "last_name": "Turing",
+                "send_invite": true
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created.",
+            "headers": {
+              "RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimit-Limit"
+              },
+              "RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimit-Remaining"
+              },
+              "RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimit-Reset"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SponsorContactEnvelope"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/E400"
+          },
+          "401": {
+            "$ref": "#/components/responses/E401"
+          },
+          "403": {
+            "$ref": "#/components/responses/E403"
+          },
+          "404": {
+            "$ref": "#/components/responses/E404"
+          },
+          "429": {
+            "$ref": "#/components/responses/E429"
+          }
+        },
+        "security": [
+          {
+            "ApiKeyHeader": []
+          },
+          {
+            "BearerToken": []
+          }
+        ]
+      }
+    },
+    "/v1/event/{eventRef}/sponsors/{sponsorId}/contacts/{contactId}": {
+      "delete": {
+        "operationId": "removeSponsorContact",
+        "tags": [
+          "Sponsors"
+        ],
+        "summary": "Remove a sponsor contact",
+        "description": "Takes away the person's sponsor access. They stay on the event and keep any sessions they speak on.\n\n**Authentication** — send a personal API key as `x-access-token: sb_live_…` **or** `Authorization: Bearer sb_live_…`. Both headers are first-class.\n\n**Scope** `write:sponsors` — enforced only when the presenting key declares a scope set; an unscoped key acts with exactly its owner's workspace permissions, and declaring scopes can only narrow that. A 403 names the missing scope.\n\n**Write** — the read-only demo token (`demo-api-token`) answers 403 here.\n\n**Rate limit** 100 requests / 15 minutes per key in the `event_writes` bucket. Every response carries `RateLimit-Limit`, `RateLimit-Remaining` and `RateLimit-Reset`; a 429 adds `Retry-After`.",
+        "x-required-scope": "write:sponsors",
+        "x-rate-limit-bucket": "event_writes",
+        "x-demo-token-allowed": false,
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/eventRef"
+          },
+          {
+            "$ref": "#/components/parameters/sponsorId"
+          },
+          {
+            "$ref": "#/components/parameters/contactId"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No content.",
+            "headers": {
+              "RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimit-Limit"
+              },
+              "RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimit-Remaining"
+              },
+              "RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimit-Reset"
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/E401"
+          },
+          "403": {
+            "$ref": "#/components/responses/E403"
+          },
+          "404": {
+            "$ref": "#/components/responses/E404"
+          },
+          "429": {
+            "$ref": "#/components/responses/E429"
+          }
+        },
+        "security": [
+          {
+            "ApiKeyHeader": []
+          },
+          {
+            "BearerToken": []
+          }
+        ]
+      }
+    },
+    "/v1/event/{eventRef}/sponsors/{sponsorId}/invite": {
+      "post": {
+        "operationId": "inviteSponsorContacts",
+        "tags": [
+          "Sponsors"
+        ],
+        "summary": "Email sponsor portal invites",
+        "description": "Queues the “Sponsor portal invite” email (editable under Communications → Templates) to every contact, or to the `contacts` (ids or emails) you list. Sends real email.\n\n**Authentication** — send a personal API key as `x-access-token: sb_live_…` **or** `Authorization: Bearer sb_live_…`. Both headers are first-class.\n\n**Scope** `write:sponsors` — enforced only when the presenting key declares a scope set; an unscoped key acts with exactly its owner's workspace permissions, and declaring scopes can only narrow that. A 403 names the missing scope.\n\n**Write** — the read-only demo token (`demo-api-token`) answers 403 here.\n\n**Rate limit** 100 requests / 15 minutes per key in the `event_writes` bucket. Every response carries `RateLimit-Limit`, `RateLimit-Remaining` and `RateLimit-Reset`; a 429 adds `Retry-After`.",
+        "x-required-scope": "write:sponsors",
+        "x-rate-limit-bucket": "event_writes",
+        "x-demo-token-allowed": false,
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/eventRef"
+          },
+          {
+            "$ref": "#/components/parameters/sponsorId"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SponsorInviteBody"
+              },
+              "example": {
+                "contacts": [
+                  "grace@acme.example.com"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success.",
+            "headers": {
+              "RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimit-Limit"
+              },
+              "RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimit-Remaining"
+              },
+              "RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimit-Reset"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SponsorInviteEnvelope"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/E400"
+          },
+          "401": {
+            "$ref": "#/components/responses/E401"
+          },
+          "403": {
+            "$ref": "#/components/responses/E403"
+          },
+          "404": {
+            "$ref": "#/components/responses/E404"
+          },
+          "429": {
+            "$ref": "#/components/responses/E429"
+          }
+        },
+        "security": [
+          {
+            "ApiKeyHeader": []
+          },
+          {
+            "BearerToken": []
+          }
+        ]
+      }
+    },
+    "/v1/event/{eventRef}/sponsors/create": {
+      "post": {
+        "operationId": "createSponsor",
+        "tags": [
+          "Sponsors"
+        ],
+        "summary": "Create a sponsor",
+        "description": "Adds a sponsor company. Beyond Sessionboard's `name`, it takes the package (`tier`, `session_limit` — how many sessions its contacts may add themselves, default 1), `website_url`, internal `notes`, and `contacts[]` to create in the same call. `account_id` answers 400: there are no organization-level sponsor accounts here. A duplicate name on the same event answers 400.\n\n**Authentication** — send a personal API key as `x-access-token: sb_live_…` **or** `Authorization: Bearer sb_live_…`. Both headers are first-class.\n\n**Scope** `write:sponsors` — enforced only when the presenting key declares a scope set; an unscoped key acts with exactly its owner's workspace permissions, and declaring scopes can only narrow that. A 403 names the missing scope.\n\n**Write** — the read-only demo token (`demo-api-token`) answers 403 here.\n\n**Rate limit** 100 requests / 15 minutes per key in the `event_writes` bucket. Every response carries `RateLimit-Limit`, `RateLimit-Remaining` and `RateLimit-Reset`; a 429 adds `Retry-After`.",
+        "x-required-scope": "write:sponsors",
+        "x-rate-limit-bucket": "event_writes",
+        "x-demo-token-allowed": false,
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/eventRef"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SponsorWriteBody"
+              },
+              "example": {
+                "name": "Acme AI",
+                "tier": "Platinum",
+                "website_url": "https://acme.example.com",
+                "session_limit": 2,
+                "notes": "Keynote slot promised on day 1.",
+                "contacts": [
+                  {
+                    "email": "grace@acme.example.com",
+                    "first_name": "Grace",
+                    "last_name": "Hopper",
+                    "title": "DevRel lead"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created.",
+            "headers": {
+              "RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimit-Limit"
+              },
+              "RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimit-Remaining"
+              },
+              "RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimit-Reset"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SponsorEnvelope"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/E400"
+          },
+          "401": {
+            "$ref": "#/components/responses/E401"
+          },
+          "403": {
+            "$ref": "#/components/responses/E403"
+          },
+          "404": {
+            "$ref": "#/components/responses/E404"
+          },
+          "429": {
+            "$ref": "#/components/responses/E429"
+          }
+        },
+        "security": [
+          {
+            "ApiKeyHeader": []
+          },
+          {
+            "BearerToken": []
+          }
+        ]
+      }
+    },
     "/v1/event/{eventRef}/statuses": {
       "get": {
         "operationId": "listStatuses",
@@ -11475,7 +12235,7 @@
                       "id": "k978pbvhne0305c7ae9k1tvr9h8cdsbf",
                       "instructions": "Hi {{firstName}} — please upload the deck for “{{sessionTitle}}” as a PDF, 16:9. We collect slides a week ahead so the AV team can test them on the room projectors.",
                       "is_complete": false,
-                      "is_overdue": false,
+                      "is_overdue": true,
                       "kind": "upload",
                       "response": null,
                       "session_id": null,
@@ -11508,7 +12268,7 @@
                       "id": "k978pbvhne0305c7ae9k1tvr9h8cdsbf",
                       "instructions": "Hi {{firstName}} — please upload the deck for “{{sessionTitle}}” as a PDF, 16:9. We collect slides a week ahead so the AV team can test them on the room projectors.",
                       "is_complete": false,
-                      "is_overdue": false,
+                      "is_overdue": true,
                       "kind": "upload",
                       "response": null,
                       "session_id": null,
@@ -11593,7 +12353,7 @@
                     "id": "k978pbvhne0305c7ae9k1tvr9h8cdsbf",
                     "instructions": "Hi {{firstName}} — please upload the deck for “{{sessionTitle}}” as a PDF, 16:9. We collect slides a week ahead so the AV team can test them on the room projectors.",
                     "is_complete": false,
-                    "is_overdue": false,
+                    "is_overdue": true,
                     "kind": "upload",
                     "response": null,
                     "session_id": null,
@@ -13656,6 +14416,32 @@
         },
         "description": "The task id."
       },
+      "sponsorId": {
+        "name": "sponsorId",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string"
+        },
+        "description": "The sponsor id."
+      },
+      "contactId": {
+        "name": "contactId",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string"
+        },
+        "description": "The contact's person id (or their email)."
+      },
+      "tier": {
+        "name": "tier",
+        "in": "query",
+        "schema": {
+          "type": "string"
+        },
+        "description": "Only sponsors in this tier (case-insensitive)."
+      },
       "planId": {
         "name": "planId",
         "in": "path",
@@ -14611,6 +15397,18 @@
             "items": {},
             "description": "Always empty — this product has no parent/child sessions. Present so clients written against Sessionboard can iterate it without a guard."
           },
+          "sponsors": {
+            "type": "array",
+            "description": "Sessionboard's `sponsors[]`. Here a session belongs to at most one sponsor, so this holds zero or one entry.",
+            "items": {
+              "$ref": "#/components/schemas/SponsorRef"
+            }
+          },
+          "sponsor_id": {
+            "type": "string",
+            "nullable": true,
+            "description": "The linked sponsor's id — writable on create/update as `sponsor_id`."
+          },
           "files": {
             "type": "array",
             "items": {
@@ -15542,6 +16340,11 @@
             "items": {
               "type": "string"
             }
+          },
+          "sponsor_id": {
+            "type": "string",
+            "nullable": true,
+            "description": "Link the session to a sponsor (its contacts then see and edit it in their sponsor portal); `null` unlinks it."
           },
           "updated_at": {
             "type": "string",
@@ -16624,6 +17427,348 @@
           }
         }
       },
+      "SponsorRef": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string",
+            "examples": [
+              "Acme AI"
+            ]
+          },
+          "website_url": {
+            "type": "string",
+            "nullable": true
+          },
+          "tier": {
+            "type": "string",
+            "nullable": true,
+            "examples": [
+              "Platinum"
+            ]
+          }
+        }
+      },
+      "SponsorContact": {
+        "type": "object",
+        "description": "Sessionboard's `AccountContact`. A contact is a person on the event who can sign into the sponsor portal.",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "The person id — use it to remove the contact."
+          },
+          "friendly_id": {
+            "type": "string",
+            "examples": [
+              "CONT-20481"
+            ]
+          },
+          "friendly_id_raw": {
+            "type": "integer"
+          },
+          "first_name": {
+            "type": "string"
+          },
+          "last_name": {
+            "type": "string"
+          },
+          "full_name": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string",
+            "format": "email"
+          },
+          "photo_url": {
+            "type": "string",
+            "nullable": true
+          },
+          "company_name": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string",
+            "nullable": true
+          },
+          "about": {
+            "type": "string",
+            "nullable": true
+          },
+          "is_primary": {
+            "type": "boolean",
+            "description": "True for the first contact added."
+          },
+          "invited_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true,
+            "description": "When the sponsor portal invite was last sent."
+          }
+        }
+      },
+      "Sponsor": {
+        "type": "object",
+        "description": "A sponsor company. Sessionboard's `Sponsor` field names, plus the package fields their API cannot express: `tier`, `session_limit`, `sessions_used`, `notes` and the linked `sessions`.",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "friendly_id": {
+            "type": "string",
+            "examples": [
+              "SPON-3"
+            ]
+          },
+          "friendly_id_raw": {
+            "type": "integer"
+          },
+          "name": {
+            "type": "string",
+            "examples": [
+              "Acme AI"
+            ]
+          },
+          "description": {
+            "type": "string",
+            "nullable": true,
+            "description": "Always null — not modelled."
+          },
+          "logo_image_url": {
+            "type": "string",
+            "nullable": true,
+            "description": "Always null — not modelled."
+          },
+          "banner_image_url": {
+            "type": "string",
+            "nullable": true,
+            "description": "Always null — not modelled."
+          },
+          "website_url": {
+            "type": "string",
+            "nullable": true
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true,
+            "description": "Creation time."
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true,
+            "description": "Creation time — sponsors carry no write timestamp."
+          },
+          "contacts": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SponsorContact"
+            }
+          },
+          "tier": {
+            "type": "string",
+            "nullable": true,
+            "examples": [
+              "Platinum"
+            ]
+          },
+          "session_limit": {
+            "type": "integer",
+            "description": "How many sessions the sponsor's contacts may add from their portal. 0 = organizer-managed."
+          },
+          "sessions_used": {
+            "type": "integer",
+            "description": "Linked sessions counting against the allowance (withdrawn and declined ones hand their slot back)."
+          },
+          "notes": {
+            "type": "string",
+            "nullable": true,
+            "description": "Organizer-only notes."
+          },
+          "sessions": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "title": {
+                  "type": "string"
+                },
+                "status": {
+                  "type": "string"
+                },
+                "kind": {
+                  "type": "string",
+                  "enum": [
+                    "abstract",
+                    "session"
+                  ]
+                },
+                "is_scheduled": {
+                  "type": "boolean"
+                }
+              }
+            }
+          }
+        }
+      },
+      "SponsorPortal": {
+        "type": "object",
+        "properties": {
+          "new_session_status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "accepted"
+            ],
+            "description": "What a session a sponsor adds starts as."
+          },
+          "close_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true,
+            "description": "After this moment sponsors can no longer add or edit sessions. Null = no deadline."
+          },
+          "allow_colleague_invites": {
+            "type": "boolean",
+            "description": "Whether contacts may add colleagues to their sponsor's portal."
+          }
+        }
+      },
+      "SponsorSearchBody": {
+        "type": "object",
+        "properties": {
+          "filters": {
+            "type": "object",
+            "properties": {
+              "search": {
+                "type": "string",
+                "description": "Case-insensitive match on the name."
+              },
+              "tier": {
+                "type": "string",
+                "description": "Exact tier, case-insensitive."
+              }
+            }
+          }
+        }
+      },
+      "SponsorWriteBody": {
+        "type": "object",
+        "description": "`name` is required on create. Every field is optional on update; an empty string clears an optional one.",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "tier": {
+            "type": "string"
+          },
+          "website_url": {
+            "type": "string",
+            "format": "uri"
+          },
+          "session_limit": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 50,
+            "default": 1
+          },
+          "notes": {
+            "type": "string"
+          },
+          "account_id": {
+            "type": "string",
+            "description": "Not supported — answers 400. There are no organization-level sponsor accounts."
+          },
+          "contacts": {
+            "type": "array",
+            "description": "Create only.",
+            "items": {
+              "type": "object",
+              "required": [
+                "email"
+              ],
+              "properties": {
+                "email": {
+                  "type": "string",
+                  "format": "email"
+                },
+                "first_name": {
+                  "type": "string"
+                },
+                "last_name": {
+                  "type": "string"
+                },
+                "title": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      },
+      "SponsorContactWriteBody": {
+        "type": "object",
+        "required": [
+          "email"
+        ],
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email"
+          },
+          "first_name": {
+            "type": "string"
+          },
+          "last_name": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "send_invite": {
+            "type": "boolean",
+            "description": "Also email them their sponsor portal link."
+          }
+        }
+      },
+      "SponsorInviteBody": {
+        "type": "object",
+        "properties": {
+          "contacts": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Contact ids or emails. Omit to invite every contact."
+          }
+        }
+      },
+      "SponsorPortalWriteBody": {
+        "type": "object",
+        "properties": {
+          "new_session_status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "accepted"
+            ]
+          },
+          "close_at": {
+            "type": "string",
+            "nullable": true,
+            "description": "ISO-8601 or epoch milliseconds; null removes the deadline."
+          },
+          "allow_colleague_invites": {
+            "type": "boolean"
+          }
+        }
+      },
       "TaskWriteBody": {
         "type": "object",
         "properties": {
@@ -17162,6 +18307,93 @@
         "properties": {
           "data": {
             "$ref": "#/components/schemas/Task"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "description": "Single-resource envelope. The resource is under `data`."
+      },
+      "SponsorEnvelope": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/Sponsor"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "description": "Single-resource envelope. The resource is under `data`."
+      },
+      "SponsorsPage": {
+        "type": "object",
+        "description": "Paginated envelope. `data` and `results` are the same array — `data` is what this API has always returned, `results` is what Sessionboard's search endpoints return.",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Sponsor"
+            }
+          },
+          "results": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Sponsor"
+            }
+          },
+          "pagination": {
+            "$ref": "#/components/schemas/Pagination"
+          }
+        }
+      },
+      "SponsorContactEnvelope": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/Sponsor"
+          },
+          "contact_id": {
+            "type": "string"
+          },
+          "created": {
+            "type": "boolean",
+            "description": "False when an existing person was linked."
+          },
+          "invited": {
+            "type": "boolean"
+          }
+        }
+      },
+      "SponsorInviteEnvelope": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "object",
+            "properties": {
+              "queued": {
+                "type": "integer"
+              },
+              "recipients": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "format": "email"
+                }
+              }
+            }
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "description": "Single-resource envelope. The resource is under `data`."
+      },
+      "SponsorPortalEnvelope": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/SponsorPortal"
           }
         },
         "required": [

@@ -91,18 +91,28 @@ portal accounts are nice-to-have. Airtable read-only is fine (bonus, not core) �
   submissions + rounds; evaluators see "My Evaluations"; progress is tracked per evaluator.
 - **Session Submitter ≠ Speaker(s)** — a submission has a submitter plus 1..n participants
   with roles (Speaker / Chairperson / Moderator).
+- **Sponsors** (Sessionboard's "Groups") = companies with a package on the event. Their
+  **contacts** are ordinary `people` rows with `sponsorId` (same passwordless portal),
+  and the sessions they add are ordinary `submissions` with `sponsorId` — no CFP. Bounded
+  by the sponsor's `sessionLimit` (withdrawn/declined hand the slot back) and the event's
+  `sponsorPortal.closeAt`; new ones start Pending unless `newSessionStatus: "accepted"`.
+  Rules live once in `convex/lib/sponsors.ts`; organizer CRUD + MCP cores in
+  `convex/sponsors.ts`; the portal side at the bottom of `convex/portal.ts`
+  (`/portal/sponsor`). A sponsor contact is ALWAYS a protected identity in
+  `submit.identify` (their token opens the whole company). Asked for by Kelsey (AI
+  Engineer ops) on 2026-10-10 — see `docs/reference/sponsors-cross-analysis.md`.
 
 ## The product surfaces
 
 1. **Organizer app** — left sidebar: Dashboard · Copilot · Program (Forms,
-   Submissions, Evaluation, Agenda) · Speakers (Speakers, Files, Communications) ·
+   Submissions, Evaluation, Agenda) · Speakers (Speakers, Sponsors, Files, Communications) ·
    Share (Public page, Embeds), with Event settings pinned separately at the bottom.
 2. **Public CFP** (`/submit/:workspaceSlug/:eventSlug/:formSlug`) — de-chromed,
    centered card, 5-step tracker. Legacy event/form and single-segment form links
    resolve to the same canonical CFP; a bare event slug opens that event's primary form:
    Welcome → Account → Submission → Participants → Review; then "Continue to portal".
 3. **Speaker portal** (`/portal`, entered through `/portal/t/:token`) — tabs: Home,
-   Submissions, Profile, Tasks.
+   Submissions, {Sponsor name} (sponsor contacts only), Profile, Tasks.
 4. **Form builder** — 6-step wizard (Submission Setup → Welcome Screen → Abstract
    Information → Participant Information → Form Settings → Notifications) with
    per-field Required/Enabled toggles, locked system fields

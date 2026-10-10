@@ -137,6 +137,25 @@ function SessionDetailPage() {
               {session.format}
             </Badge>
           ) : null}
+          {session.sponsor ? (
+            <span className="text-sm text-muted-foreground">
+              Presented by{" "}
+              {session.sponsor.websiteUrl ? (
+                <a
+                  href={session.sponsor.websiteUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="font-medium text-foreground underline-offset-4 hover:underline"
+                >
+                  {session.sponsor.name}
+                </a>
+              ) : (
+                <span className="font-medium text-foreground">
+                  {session.sponsor.name}
+                </span>
+              )}
+            </span>
+          ) : null}
         </div>
 
         <h2 className="font-heading text-2xl leading-tight font-semibold tracking-tight text-balance text-foreground sm:text-3xl">

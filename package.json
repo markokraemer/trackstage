@@ -19,6 +19,7 @@
     "smoke": "node scripts/smoke-production.mjs",
     "cf-typegen": "wrangler types --include-runtime=false",
     "test:backend": "convex run seed:setup && node scripts/verify-backend.mjs",
+    "test:sponsors": "node scripts/verify-sponsors.mjs",
     "test:e2e": "playwright test",
     "test:flows": "playwright test --project=flows",
     "test:all": "pnpm test && pnpm test:backend && pnpm test:e2e",

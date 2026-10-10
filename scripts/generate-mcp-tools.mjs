@@ -97,6 +97,18 @@ const GROUPS = [
     ],
   },
   {
+    id: "sponsors",
+    label: "Sponsors",
+    tools: [
+      "list_sponsors",
+      "manage_sponsor",
+      "manage_sponsor_contact",
+      "invite_sponsor_contacts",
+      "set_session_sponsor",
+      "update_sponsor_portal_settings",
+    ],
+  },
+  {
     id: "tasks",
     label: "Speaker tasks",
     tools: [

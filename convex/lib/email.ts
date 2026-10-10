@@ -77,6 +77,7 @@ export const TEMPLATE_KEYS = [
   "waitlisted",
   "reminder",
   "deadline_reminder",
+  "sponsor_invite",
 ] as const
 
 export type TemplateKey = (typeof TEMPLATE_KEYS)[number]
@@ -201,6 +202,25 @@ export const DEFAULT_TEMPLATES: TemplateDefinition[] = [
       "{{formLink}}",
       "",
       "It usually takes a couple of minutes — and we'd genuinely like to read it.",
+      "",
+      "— The {{eventName}} programme team",
+    ].join("\n"),
+  },
+  {
+    key: "sponsor_invite",
+    name: "Sponsor portal invite",
+    subject: "Add {{sponsorName}}'s sessions for {{eventName}}",
+    body: [
+      "Hi {{firstName}},",
+      "",
+      "We're delighted to have {{sponsorName}} at {{eventName}}. Your sponsor portal is ready — it's where you add the sessions your package includes, tell us who is presenting, and keep everything up to date.",
+      "",
+      "Open your portal (no password needed — this link signs you in):",
+      "{{portalLink}}",
+      "",
+      "{{sessionAllowance}}",
+      "",
+      "Anyone else on your team who has been added as a contact can do the same from their own invite. If something looks wrong, just reply to this email.",
       "",
       "— The {{eventName}} programme team",
     ].join("\n"),

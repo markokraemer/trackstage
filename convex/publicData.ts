@@ -70,6 +70,8 @@ export type PublicSession = {
   language?: string
   tags: Array<string>
   speakers: Array<PublicSessionSpeaker>
+  /** "Presented by Acme AI" — the sponsor this session belongs to, if any. */
+  sponsor: { name: string; websiteUrl?: string } | null
 }
 
 function personName(person: Doc<"people">): string {
@@ -157,6 +159,14 @@ async function loadProgram(ctx: QueryCtx, slug: string, workspaceSlug?: string) 
     .query("tracks")
     .withIndex("by_eventId", (q) => q.eq("eventId", event._id))
     .take(MAX_ROWS)
+  const sponsorsById = new Map(
+    (
+      await ctx.db
+        .query("sponsors")
+        .withIndex("by_eventId", (q) => q.eq("eventId", event._id))
+        .take(MAX_ROWS)
+    ).map((s) => [s._id, s] as const),
+  )
   // Only accepted submissions are ever public — the published program.
   // On top of that, `publicVisible: false` keeps an individual session off
   // every public surface (sbek CNT-12, Sessionboard's "Display Session"
@@ -258,6 +268,14 @@ async function loadProgram(ctx: QueryCtx, slug: string, workspaceSlug?: string) 
       language: submission.language,
       tags: submission.tags,
       speakers,
+      sponsor: (() => {
+        const sponsor = submission.sponsorId
+          ? sponsorsById.get(submission.sponsorId)
+          : undefined
+        return sponsor
+          ? { name: sponsor.name, websiteUrl: sponsor.websiteUrl }
+          : null
+      })(),
     })
   }
 
@@ -610,6 +628,9 @@ export const apiSubmissionsPage = internalQuery({
       const track = submission.trackId
         ? await ctx.db.get(submission.trackId)
         : null
+      const sponsor = submission.sponsorId
+        ? await ctx.db.get(submission.sponsorId)
+        : null
       const participants = await ctx.db
         .query("submissionParticipants")
         .withIndex("by_submissionId", (q) =>
@@ -637,6 +658,10 @@ export const apiSubmissionsPage = internalQuery({
         kind: submission.kind,
         status: submission.status,
         track: track?.name ?? null,
+        // Same shape as the session reads (convex/apiV1.ts): zero or one.
+        sponsors: sponsor
+          ? [{ id: sponsor._id, name: sponsor.name, website_url: sponsor.websiteUrl ?? null }]
+          : [],
         format: submission.format ?? null,
         level: submission.level ?? null,
         language: submission.language ?? null,

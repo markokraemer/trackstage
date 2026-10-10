@@ -22,7 +22,7 @@ export const STATUSES = [
 ] as const
 
 export async function withJoins(ctx: QueryCtx, submission: Doc<"submissions">) {
-  const [participants, track, room, form] = await Promise.all([
+  const [participants, track, room, form, sponsor] = await Promise.all([
     ctx.db
       .query("submissionParticipants")
       .withIndex("by_submissionId", (q) => q.eq("submissionId", submission._id))
@@ -30,6 +30,7 @@ export async function withJoins(ctx: QueryCtx, submission: Doc<"submissions">) {
     submission.trackId ? ctx.db.get(submission.trackId) : null,
     submission.roomId ? ctx.db.get(submission.roomId) : null,
     submission.formId ? ctx.db.get(submission.formId) : null,
+    submission.sponsorId ? ctx.db.get(submission.sponsorId) : null,
   ])
   const people = await Promise.all(
     participants
@@ -52,6 +53,7 @@ export async function withJoins(ctx: QueryCtx, submission: Doc<"submissions">) {
     track: track ? { _id: track._id, name: track.name, color: track.color } : null,
     room: room ? { _id: room._id, name: room.name } : null,
     formName: form?.internalName,
+    sponsor: sponsor ? { _id: sponsor._id, name: sponsor.name } : null,
     participants: people.filter((p) => p !== null),
   }
 }

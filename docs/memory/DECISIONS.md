@@ -733,3 +733,37 @@ An operator's own `PUBLIC_API_TOKEN` keeps the full read-only view, so a
 self-host that sets nothing behaves exactly as before. CI now sets an operator
 token on the hermetic backend so the flows suite proves the scoping against a
 stranger's event created seconds earlier.
+
+---
+
+- **2026-10-10 · Sponsors add their own sessions — no CFP in between.** On the
+  finalist call Kelsey (AI Engineer ops, the actual customer) named the gap:
+  "not all submissions come through [the CFP] … if OpenAI has a sponsor, OpenAI
+  has a main login, then they go in and add the sessions that they want", and
+  Sessionboard "specifically calls out how to customize your portals as opposed
+  to just a form." Research (docs/reference/sponsors-cross-analysis.md) showed
+  Sessionboard models sponsors as Groups with contacts and a shared group
+  portal, but its sponsors can only *see/edit* sessions an admin linked — there
+  is no self-serve add and no package allowance. We built the ask itself:
+
+  · **Model, not a parallel universe.** `sponsors` holds only company facts
+    (name, tier, website, `sessionLimit`, notes). Contacts are `people` with
+    `sponsorId`; sessions are `submissions` with `sponsorId`. So the pipeline,
+    agenda, emails, webhooks, Airtable mirror and API all work unchanged, and a
+    contact who also speaks has ONE portal with an extra tab, not two logins.
+  · **Allowance, not approval-per-click.** A package includes N sessions;
+    withdrawn/declined ones hand the slot back. 0 means "organizer-managed".
+  · **Pending by default**, one switch to "Accepted" for guaranteed slots;
+    one event-level deadline freezes adding/editing (agenda freeze), shown in
+    the portal ahead of time with the same sentence the mutation refuses with.
+  · **Colleagues** can be added by contacts (Sessionboard's "Add Contacts to
+    Group"), behind an organizer switch; the colleague gets their own emailed
+    link — the inviter never sees it.
+  · **Security:** a sponsor contact is always a protected identity in
+    `submit.identify` — their token opens the whole company — so typing their
+    address on the CFP mails a link and returns nothing.
+  · Deleting a sponsor is a hard delete that UNLINKS (sessions stay on the
+    program, contacts stay people). Sessionboard soft-deletes; ours is simpler
+    and loses nothing an organizer would want back.
+  · Out of scope, deliberately: booth selection, Accelevents sync, a public
+    sponsor intake form, tier-specific portals, exhibitors as a separate type.

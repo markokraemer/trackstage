@@ -359,7 +359,11 @@ async function hasSpeakerHistory(
     Boolean(person.headshotId) ||
     Boolean(person.links) ||
     Boolean(person.logistics) ||
-    person.workflowStatus !== undefined
+    person.workflowStatus !== undefined ||
+    // A sponsor contact's token opens their whole company — its sessions and
+    // its colleagues — so it is never handed to someone who merely types the
+    // address, however fresh the row.
+    person.sponsorId !== undefined
   if (profiled) return true
 
   return person._creationTime < Date.now() - NEW_ACCOUNT_GRACE_MS

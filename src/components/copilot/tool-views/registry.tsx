@@ -86,6 +86,14 @@ import {
   TaskTemplateSavedView,
 } from "@/components/copilot/tool-views/speakers"
 import {
+  SessionSponsorView,
+  SponsorContactView,
+  SponsorInvitesView,
+  SponsorPortalSettingsView,
+  SponsorSavedView,
+  SponsorsView,
+} from "@/components/copilot/tool-views/sponsors"
+import {
   BulkAudienceView,
   BulkEmailSentView,
   OutboxView,
@@ -299,6 +307,17 @@ export const TOOL_VIEWS: Record<string, ToolViewSpec | undefined> = {
   update_speaker: { icon: RiTeamLine, OutputView: SpeakerSavedView },
   remove_speaker: { icon: RiDeleteBin6Line, OutputView: SpeakerRemovedView },
   bulk_add_speakers: { icon: RiGroupLine, OutputView: BulkSpeakersView },
+
+  // ——— Sponsors ————————————————————————————————————————————————————————
+  list_sponsors: { icon: RiBuilding2Line, OutputView: SponsorsView },
+  manage_sponsor: { icon: RiBuilding2Line, OutputView: SponsorSavedView },
+  manage_sponsor_contact: { icon: RiUserAddLine, OutputView: SponsorContactView },
+  invite_sponsor_contacts: { icon: RiMailSendLine, OutputView: SponsorInvitesView },
+  set_session_sponsor: { icon: RiBuilding2Line, OutputView: SessionSponsorView },
+  update_sponsor_portal_settings: {
+    icon: RiSettings3Line,
+    OutputView: SponsorPortalSettingsView,
+  },
 
   // ——— Speaker tasks ——————————————————————————————————————————————————————
   list_tasks: { icon: RiTaskLine, OutputView: TasksView },

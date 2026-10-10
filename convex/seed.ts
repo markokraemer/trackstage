@@ -150,6 +150,12 @@ async function purgeEvent(ctx: MutationCtx, eventId: Id<"events">) {
     .take(500)
   for (const row of forms) await ctx.db.delete("forms", row._id)
 
+  const sponsors = await ctx.db
+    .query("sponsors")
+    .withIndex("by_eventId", (q) => q.eq("eventId", eventId))
+    .take(500)
+  for (const row of sponsors) await ctx.db.delete("sponsors", row._id)
+
   const uploadComments = await ctx.db
     .query("uploadComments")
     .withIndex("by_eventId", (q) => q.eq("eventId", eventId))
@@ -1510,6 +1516,75 @@ export const run = internalMutation({
     if (submissionIds.s4) {
       await ctx.db.patch(submissionIds.s4, { statusId: waitlistId })
     }
+
+    // — Sponsors (convex/sponsors.ts) ——————————————————————————————————————
+    // Three packages in three states, so the Sponsors page and the sponsor
+    // portal both have something real to show: one sponsor mid-way through
+    // its allowance with a session waiting for review, one whose contact
+    // hasn't been invited yet, and one the organizers manage themselves.
+    // Demo token `demo-sponsor-northwind` opens Jordan's sponsor portal.
+    const northwindId = await ctx.db.insert("sponsors", {
+      eventId,
+      name: "Northwind AI",
+      tier: "Platinum",
+      websiteUrl: "https://example.com/northwind",
+      sessionLimit: 2,
+      notes: "Contract signed — two breakout slots, logo on the main stage.",
+    })
+    const latticeId = await ctx.db.insert("sponsors", {
+      eventId,
+      name: "Lattice Cloud",
+      tier: "Gold",
+      sessionLimit: 1,
+    })
+    await ctx.db.insert("sponsors", {
+      eventId,
+      name: "Opal Labs",
+      tier: "Community partner",
+      sessionLimit: 0,
+      notes: "Booth only. We add their lightning talk ourselves if they want one.",
+    })
+    const jordanId = await ctx.db.insert("people", {
+      eventId,
+      email: "jordan.lee@example.com",
+      firstName: "Jordan",
+      lastName: "Lee",
+      jobTitle: "Head of Developer Relations",
+      company: "Northwind AI",
+      portalToken: "demo-sponsor-northwind",
+      sponsorId: northwindId,
+    })
+    await ctx.db.insert("people", {
+      eventId,
+      email: "mei.tanaka@example.com",
+      firstName: "Mei",
+      lastName: "Tanaka",
+      jobTitle: "Partnerships Lead",
+      company: "Lattice Cloud",
+      portalToken: "demo-sponsor-lattice",
+      sponsorId: latticeId,
+    })
+    const sponsorSessionId = await ctx.db.insert("submissions", {
+      eventId,
+      kind: "session",
+      title: "Evals in production: what Northwind learned shipping 40 agents",
+      description:
+        "The eval harness we wish we'd had on day one — regression suites for prompts, offline replays of real traffic, and the three metrics that actually predicted user complaints.",
+      answers: {},
+      format: "Talk",
+      durationMinutes: 30,
+      tags: [],
+      status: "pending",
+      submitterId: jordanId,
+      sponsorId: northwindId,
+    })
+    await ctx.db.insert("submissionParticipants", {
+      submissionId: sponsorSessionId,
+      eventId,
+      personId: jordanId,
+      role: "speaker",
+      order: 0,
+    })
 
     // — Evaluation ————————————————————————————————————————————————————————
     const criteria = [

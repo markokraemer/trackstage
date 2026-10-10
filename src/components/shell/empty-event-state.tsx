@@ -4,6 +4,7 @@ import {
   RiCodeSSlashLine,
   RiFileList3Line,
   RiFolder3Line,
+  RiBuilding2Line,
   RiMailSendLine,
   RiSettings3Line,
   RiStarLine,
@@ -84,6 +85,12 @@ const SECTION_COPY: Record<EventSection, SectionCopy> = {
     title: "Speakers",
     tagline: "Everyone on your program, and what they still owe you.",
     body: "The speaker roster tracks every speaker's profile, sessions and outstanding tasks in one place. Create your event to start it.",
+  },
+  sponsors: {
+    icon: RiBuilding2Line,
+    title: "Sponsors",
+    tagline: "Companies that add their own sessions — no call for papers needed.",
+    body: "Each sponsor gets a portal where their team adds the sessions their package includes. Create your event to add your first sponsor.",
   },
   files: {
     icon: RiFolder3Line,

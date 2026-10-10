@@ -33,6 +33,19 @@ import type { StatusCategory, StatusColor } from "./sessionStatuses"
 import { humanMessage } from "./lib/errors"
 import { DEMO_WORKSPACE_SLUG } from "./seed"
 import { TASK_KINDS as APP_TASK_KINDS } from "./tasksAdmin"
+import { friendlyId } from "./lib/friendlyId"
+import {
+  addContactCore,
+  sponsorApiShape,
+  createSponsorCore,
+  removeContactCore,
+  removeSponsorCore,
+  sendInvitesCore,
+  setSessionSponsorCore,
+  updatePortalRulesCore,
+  updateSponsorCore,
+} from "./sponsors"
+import { sponsorPortalRules } from "./lib/sponsors"
 
 // ————————————————————————————————————————————————————————————————————————
 // Public REST API — data layer (convex/apiHttp.ts is the routing/serialization
@@ -129,19 +142,6 @@ function updatedAtMs(doc: { _creationTime: number; updatedAt?: number }): number
 
 function personName(person: Doc<"people">): string {
   return `${person.firstName} ${person.lastName}`.trim() || "Speaker"
-}
-
-/**
- * Human-facing short id, mirroring their `friendly_id` / `friendly_id_raw`.
- * Convex ids are opaque strings, so the raw form is a stable numeric hash of
- * the id rather than a sequence — same contract (stable, sortable, short),
- * different derivation.
- */
-function friendlyId(prefix: string, id: string): { id: string; raw: number } {
-  let hash = 0
-  for (let i = 0; i < id.length; i++) hash = (hash * 31 + id.charCodeAt(i)) >>> 0
-  const raw = hash % 100000
-  return { id: `${prefix}-${raw}`, raw }
 }
 
 // ——— Custom fields: form questions ⇄ submission answers ————————————————
@@ -386,6 +386,7 @@ async function sessionShape(
     ? (opts.people.get(submission.submitterId) ?? null)
     : await ctx.db.get(submission.submitterId)
   const friendly = friendlyId("SESS", submission._id)
+  const sponsor = submission.sponsorId ? await ctx.db.get(submission.sponsorId) : null
 
   const shape: Record<string, unknown> = {
     id: submission._id,
@@ -453,6 +454,19 @@ async function sessionShape(
     // We have no parent/child sessions; the key is present and empty so a
     // client written against their API can iterate it without a guard.
     subsessions: [],
+    // Sessionboard's `sponsors[]` (an array on their side; one sponsor per
+    // session on ours), plus the writable id it is set through.
+    sponsors: sponsor
+      ? [
+          {
+            id: sponsor._id,
+            name: sponsor.name,
+            website_url: sponsor.websiteUrl ?? null,
+            tier: sponsor.tier ?? null,
+          },
+        ]
+      : [],
+    sponsor_id: sponsor?._id ?? null,
 
     // ——— Legacy field names from the pre-parity feed (never remove) ———
     startTime: submission.startsAt ?? null,
@@ -901,6 +915,8 @@ type SessionWriteInput = {
   submitter_first_name?: string
   submitter_last_name?: string
   speaker_ids?: Array<string>
+  /** "" unlinks the session from its sponsor. */
+  sponsor_id?: string
 }
 
 const VALID_STATUSES = [
@@ -933,6 +949,7 @@ const writeInputValidator = v.object({
   submitter_first_name: v.optional(v.string()),
   submitter_last_name: v.optional(v.string()),
   speaker_ids: v.optional(v.array(v.string())),
+  sponsor_id: v.optional(v.string()),
 })
 
 /** Shared by create, update and every bulk operation. */
@@ -1003,8 +1020,24 @@ async function applySessionWrite(
 
   patch.updatedAt = Date.now()
 
+  // Resolved up front so a bad id fails the whole write, not half of it.
+  let sponsor: Doc<"sponsors"> | null | undefined
+  if (input.sponsor_id !== undefined) {
+    if (input.sponsor_id === "") sponsor = null
+    else {
+      const sponsorId = ctx.db.normalizeId("sponsors", input.sponsor_id)
+      sponsor = sponsorId ? await ctx.db.get(sponsorId) : null
+      if (!sponsor || sponsor.eventId !== event._id)
+        throw new ConvexError(`No sponsor "${input.sponsor_id}" in this event.`)
+    }
+  }
+
   if (existing) {
     await ctx.db.patch(existing._id, patch)
+    if (sponsor !== undefined) {
+      const fresh = await ctx.db.get(existing._id)
+      if (fresh) await setSessionSponsorCore(ctx, fresh, sponsor, { type: "api", label: "REST API" })
+    }
     return existing._id
   }
 
@@ -1074,6 +1107,10 @@ async function applySessionWrite(
         order: order++,
       })
     }
+  }
+  if (sponsor) {
+    const created = await ctx.db.get(id)
+    if (created) await setSessionSponsorCore(ctx, created, sponsor, { type: "api", label: "REST API" })
   }
   return id
 }
@@ -4635,5 +4672,346 @@ export const consumeRateLimit = internalMutation({
       reset,
       retryAfter: Math.max(1, reset - Math.floor(now / 1000)),
     }
+  },
+})
+
+// ══════════════════════════════════════════════════════════════════════════
+// Sponsors (docs/reference/sponsors-cross-analysis.md §d)
+//
+// Mirrors Sessionboard's `/v1/event/{eventId}/sponsors*` with their field
+// names, plus our extensions (`tier`, `session_limit`, `sessions_used`,
+// `notes`) and the parts their API cannot write at all — contacts, invites
+// and the sponsor portal rules. Every rule lives in convex/sponsors.ts and
+// convex/lib/sponsors.ts; this section only translates.
+// ══════════════════════════════════════════════════════════════════════════
+
+/**
+ * REST writes are attributed to the API in the audit log, not to "System" —
+ * with the presenting key's displayable prefix when there is one, exactly as
+ * the dispatcher's own audit rows read ("API · sb_live_1a2b3c4d").
+ */
+function apiActor(credentialPrefix: string | undefined) {
+  return {
+    type: "api" as const,
+    label: credentialPrefix ? `API · ${credentialPrefix}` : "REST API",
+  }
+}
+
+/** `{data}` for the webhook payload and the write responses. */
+async function sponsorEnvelope(ctx: QueryCtx, sponsorId: Id<"sponsors">) {
+  const fresh = await ctx.db.get(sponsorId)
+  if (!fresh) throw new ConvexError("Sponsor not found.")
+  return await sponsorApiShape(ctx, fresh)
+}
+
+async function findApiSponsor(
+  ctx: QueryCtx,
+  eventId: Id<"events">,
+  ref: string,
+): Promise<Doc<"sponsors"> | null> {
+  const id = ctx.db.normalizeId("sponsors", ref.trim())
+  const sponsor = id ? await ctx.db.get(id) : null
+  return sponsor && sponsor.eventId === eventId ? sponsor : null
+}
+
+function portalRulesShape(event: Doc<"events">): Record<string, unknown> {
+  const rules = sponsorPortalRules(event)
+  return {
+    new_session_status: rules.newSessionStatus,
+    close_at: iso(rules.closeAt),
+    allow_colleague_invites: rules.allowColleagueInvites,
+  }
+}
+
+export const searchSponsors = internalQuery({
+  args: {
+    eventRef: v.string(),
+    userId: v.union(v.string(), v.null()),
+    search: v.optional(v.string()),
+    tier: v.optional(v.string()),
+    ...pagingArgs,
+  },
+  returns: v.any(),
+  handler: async (ctx, args) => {
+    const event = await resolveEvent(ctx, args.eventRef)
+    if (!event) return null
+    await authorizeEvent(ctx, event, args.userId)
+    const rows = await ctx.db
+      .query("sponsors")
+      .withIndex("by_eventId", (q) => q.eq("eventId", event._id))
+      .take(MAX_ROWS)
+    const needle = args.search?.trim().toLowerCase()
+    const tier = args.tier?.trim().toLowerCase()
+    const filtered = rows
+      .filter((s) => !needle || s.name.toLowerCase().includes(needle))
+      .filter((s) => !tier || (s.tier ?? "").toLowerCase() === tier)
+      .sort((a, b) => a.name.localeCompare(b.name))
+    const paged = paginate(filtered, args.page, args.pageSize)
+    const shaped = await Promise.all(paged.data.map((s) => sponsorApiShape(ctx, s)))
+    return { ...paged, data: shaped, results: shaped }
+  },
+})
+
+export const getSponsor = internalQuery({
+  args: {
+    eventRef: v.string(),
+    userId: v.union(v.string(), v.null()),
+    sponsorId: v.string(),
+  },
+  returns: v.any(),
+  handler: async (ctx, args) => {
+    const event = await resolveEvent(ctx, args.eventRef)
+    if (!event) return null
+    await authorizeEvent(ctx, event, args.userId)
+    const sponsor = await findApiSponsor(ctx, event._id, args.sponsorId)
+    if (!sponsor) return { notFound: true }
+    return { data: await sponsorApiShape(ctx, sponsor) }
+  },
+})
+
+const sponsorContactInput = v.object({
+  email: v.string(),
+  first_name: v.optional(v.string()),
+  last_name: v.optional(v.string()),
+  title: v.optional(v.string()),
+})
+
+export const writeSponsor = internalMutation({
+  args: {
+    eventRef: v.string(),
+    userId: v.string(),
+    credentialPrefix: v.optional(v.string()),
+    action: v.union(v.literal("create"), v.literal("update"), v.literal("delete")),
+    sponsorId: v.optional(v.string()),
+    input: v.object({
+      name: v.optional(v.string()),
+      tier: v.optional(v.string()),
+      website_url: v.optional(v.string()),
+      session_limit: v.optional(v.number()),
+      notes: v.optional(v.string()),
+      account_id: v.optional(v.string()),
+      contacts: v.optional(v.array(sponsorContactInput)),
+    }),
+  },
+  returns: v.any(),
+  handler: async (ctx, args) => {
+    const event = await resolveEvent(ctx, args.eventRef)
+    if (!event) return null
+    await authorizeEvent(ctx, event, args.userId, args.action === "delete" ? "admin" : "member")
+    const input = args.input
+    if (input.account_id !== undefined) {
+      throw new ConvexError(
+        "`account_id` is not supported: Trackstage has no organization-level sponsor accounts. Create the sponsor with `name` on each event instead.",
+      )
+    }
+
+    if (args.action === "create") {
+      if (!input.name || !input.name.trim()) throw new ConvexError("`name` is required.")
+      const sponsorId = await createSponsorCore(
+        ctx,
+        event,
+        {
+          name: input.name,
+          tier: input.tier,
+          websiteUrl: input.website_url,
+          sessionLimit: input.session_limit ?? 1,
+          notes: input.notes,
+        },
+        (input.contacts ?? []).map((c) => ({
+          email: c.email,
+          firstName: c.first_name,
+          lastName: c.last_name,
+          jobTitle: c.title,
+        })),
+        apiActor(args.credentialPrefix),
+      )
+      const shaped = await sponsorEnvelope(ctx, sponsorId)
+      return { data: shaped }
+    }
+
+    const sponsor = args.sponsorId
+      ? await findApiSponsor(ctx, event._id, args.sponsorId)
+      : null
+    if (!sponsor) return { notFound: true }
+
+    if (args.action === "delete") {
+      const result = await removeSponsorCore(ctx, sponsor, apiActor(args.credentialPrefix))
+      return { deleted: true, ...result }
+    }
+
+    if (input.name !== undefined && !input.name.trim())
+      throw new ConvexError("`name` cannot be empty.")
+    if (input.contacts !== undefined) {
+      throw new ConvexError(
+        "Contacts are managed with POST/DELETE /sponsors/{id}/contacts, not on PUT.",
+      )
+    }
+    await updateSponsorCore(
+      ctx,
+      sponsor,
+      {
+        name: input.name,
+        tier: input.tier,
+        websiteUrl: input.website_url,
+        sessionLimit: input.session_limit,
+        notes: input.notes,
+      },
+      apiActor(args.credentialPrefix),
+    )
+    const shaped = await sponsorEnvelope(ctx, sponsor._id)
+    return { data: shaped }
+  },
+})
+
+export const writeSponsorContact = internalMutation({
+  args: {
+    eventRef: v.string(),
+    userId: v.string(),
+    credentialPrefix: v.optional(v.string()),
+    sponsorId: v.string(),
+    action: v.union(v.literal("add"), v.literal("remove")),
+    /** Remove: the contact's person id (or email). */
+    contactRef: v.optional(v.string()),
+    input: v.optional(
+      v.object({
+        email: v.string(),
+        first_name: v.optional(v.string()),
+        last_name: v.optional(v.string()),
+        title: v.optional(v.string()),
+        send_invite: v.optional(v.boolean()),
+      }),
+    ),
+  },
+  returns: v.any(),
+  handler: async (ctx, args) => {
+    const event = await resolveEvent(ctx, args.eventRef)
+    if (!event) return null
+    await authorizeEvent(ctx, event, args.userId)
+    const sponsor = await findApiSponsor(ctx, event._id, args.sponsorId)
+    if (!sponsor) return { notFound: true }
+
+    if (args.action === "add") {
+      if (!args.input?.email) throw new ConvexError("`email` is required.")
+      const { personId, created } = await addContactCore(
+        ctx,
+        sponsor,
+        {
+          email: args.input.email,
+          firstName: args.input.first_name,
+          lastName: args.input.last_name,
+          jobTitle: args.input.title,
+        },
+        apiActor(args.credentialPrefix),
+      )
+      const invited = args.input.send_invite === true
+      if (invited) await sendInvitesCore(ctx, sponsor, [personId])
+      const shaped = await sponsorEnvelope(ctx, sponsor._id)
+      return { data: shaped, contact_id: personId, created, invited }
+    }
+
+    const ref = (args.contactRef ?? "").trim()
+    const asId = ctx.db.normalizeId("people", ref)
+    const person = asId
+      ? await ctx.db.get(asId)
+      : await ctx.db
+          .query("people")
+          .withIndex("by_eventId_and_email", (q) =>
+            q.eq("eventId", event._id).eq("email", ref.toLowerCase()),
+          )
+          .unique()
+    if (!person || person.eventId !== event._id || person.sponsorId !== sponsor._id) {
+      return { contactNotFound: true }
+    }
+    await removeContactCore(ctx, person, apiActor(args.credentialPrefix))
+    const shaped = await sponsorEnvelope(ctx, sponsor._id)
+    return { data: shaped }
+  },
+})
+
+export const inviteSponsorContacts = internalMutation({
+  args: {
+    eventRef: v.string(),
+    userId: v.string(),
+    credentialPrefix: v.optional(v.string()),
+    sponsorId: v.string(),
+    /** Contact person ids or emails; absent ⇒ every contact. */
+    contacts: v.optional(v.array(v.string())),
+  },
+  returns: v.any(),
+  handler: async (ctx, args) => {
+    const event = await resolveEvent(ctx, args.eventRef)
+    if (!event) return null
+    await authorizeEvent(ctx, event, args.userId)
+    const sponsor = await findApiSponsor(ctx, event._id, args.sponsorId)
+    if (!sponsor) return { notFound: true }
+    let personIds: Array<Id<"people">> | undefined
+    if (args.contacts) {
+      personIds = []
+      for (const ref of args.contacts) {
+        const trimmed = ref.trim()
+        const asId = ctx.db.normalizeId("people", trimmed)
+        const person = asId
+          ? await ctx.db.get(asId)
+          : await ctx.db
+              .query("people")
+              .withIndex("by_eventId_and_email", (q) =>
+                q.eq("eventId", event._id).eq("email", trimmed.toLowerCase()),
+              )
+              .unique()
+        if (!person || person.eventId !== event._id)
+          throw new ConvexError(`No contact "${ref}" on this sponsor.`)
+        personIds.push(person._id)
+      }
+    }
+    const result = await sendInvitesCore(ctx, sponsor, personIds)
+    return { data: { queued: result.queued, recipients: result.recipients } }
+  },
+})
+
+export const getSponsorPortal = internalQuery({
+  args: { eventRef: v.string(), userId: v.union(v.string(), v.null()) },
+  returns: v.any(),
+  handler: async (ctx, args) => {
+    const event = await resolveEvent(ctx, args.eventRef)
+    if (!event) return null
+    await authorizeEvent(ctx, event, args.userId)
+    return { data: portalRulesShape(event) }
+  },
+})
+
+export const writeSponsorPortal = internalMutation({
+  args: {
+    eventRef: v.string(),
+    userId: v.string(),
+    credentialPrefix: v.optional(v.string()),
+    input: v.object({
+      new_session_status: v.optional(v.string()),
+      /** Epoch ms; `null` clears the deadline. */
+      close_at: v.optional(v.union(v.number(), v.null())),
+      allow_colleague_invites: v.optional(v.boolean()),
+    }),
+  },
+  returns: v.any(),
+  handler: async (ctx, args) => {
+    const event = await resolveEvent(ctx, args.eventRef)
+    if (!event) return null
+    await authorizeEvent(ctx, event, args.userId)
+    const status = args.input.new_session_status
+    if (status !== undefined && status !== "pending" && status !== "accepted") {
+      throw new ConvexError('`new_session_status` must be "pending" or "accepted".')
+    }
+    await updatePortalRulesCore(
+      ctx,
+      event,
+      {
+        newSessionStatus: status,
+        closeAt: args.input.close_at,
+        allowColleagueInvites: args.input.allow_colleague_invites,
+      },
+      apiActor(args.credentialPrefix),
+    )
+    const fresh = await ctx.db.get(event._id)
+    if (!fresh) throw new ConvexError("Event not found.")
+    return { data: portalRulesShape(fresh) }
   },
 })

@@ -44,6 +44,7 @@ export const AUDIT_ENTITIES = [
   "form",
   "session",
   "speaker",
+  "sponsor",
   "agenda",
   "settings",
   "api-key",

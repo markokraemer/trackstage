@@ -495,6 +495,10 @@ function readSessionInput(body: Record<string, unknown>): Record<string, unknown
     input.speaker_ids = speakerIds.filter(
       (s): s is string => typeof s === "string",
     )
+  // `null` (or "") unlinks the session from its sponsor; absent leaves it.
+  const sponsorId = get("sponsor_id", "sponsorId")
+  if (sponsorId === null) input.sponsor_id = ""
+  else if (typeof sponsorId === "string") input.sponsor_id = sponsorId
   return input
 }
 
@@ -1617,6 +1621,210 @@ async function handleEventScoped(
     return errorResponse(`Unknown form endpoint ${method} ${url.pathname}.`, 404)
   }
 
+  // ——— Sponsors (docs/reference/sponsors-cross-analysis.md) ———
+  // Reads ride `read:contacts` (a sponsor is its people), so read-only keys
+  // keep working; every write needs the dedicated `write:sponsors`.
+  if (resource === "sponsors") {
+    const sponsorId = tail[0]
+    // POST /sponsors (search) · GET /sponsors (list)
+    if (tail.length === 0) {
+      if (method !== "GET" && method !== "POST")
+        return errorResponse("Only GET and POST are supported here.", 405)
+      if (!hasScope(credential, "read:contacts"))
+        return errorResponse("This token lacks the `read:contacts` scope.", 403)
+      const filters =
+        method === "POST" && body.filters && typeof body.filters === "object"
+          ? (body.filters as Record<string, unknown>)
+          : {}
+      const result = await ctx.runQuery(internal.apiV1.searchSponsors, {
+        eventRef,
+        userId: credential.userId,
+        search: url.searchParams.get("search") ?? str(filters.search) ?? str(body.search),
+        tier: url.searchParams.get("tier") ?? str(filters.tier),
+        page: paging.page,
+        pageSize: paging.pageSize,
+      })
+      if (result === null)
+        return errorResponse(`No event with slug "${eventRef}".`, 404)
+      return jsonResponse(result)
+    }
+    // GET /sponsors/{id}
+    if (tail.length === 1 && tail[0] !== "create" && method === "GET") {
+      if (!hasScope(credential, "read:contacts"))
+        return errorResponse("This token lacks the `read:contacts` scope.", 403)
+      const gate = await enforceRateLimit(ctx, credential, "entity_reads")
+      if (gate.limited) return gate.limited
+      const result = await ctx.runQuery(internal.apiV1.getSponsor, {
+        eventRef,
+        userId: credential.userId,
+        sponsorId,
+      })
+      if (result === null)
+        return errorResponse(`No event with slug "${eventRef}".`, 404)
+      if (result.notFound) return errorResponse("Sponsor not found.", 404)
+      return jsonResponse(result, 200, gate.headers)
+    }
+
+    // Everything below writes.
+    const denied = denyDemoWrite()
+    if (denied) return denied
+    if (!hasScope(credential, "write:sponsors"))
+      return errorResponse("This token lacks the `write:sponsors` scope.", 403)
+
+    // POST /sponsors/create · PUT /sponsors/{id} · DELETE /sponsors/{id}
+    const isCreate = tail.length === 1 && tail[0] === "create" && method === "POST"
+    const isMutate = tail.length === 1 && tail[0] !== "create" && (method === "PUT" || method === "DELETE")
+    if (isCreate || isMutate) {
+      const gate = await enforceRateLimit(ctx, credential, "event_writes")
+      if (gate.limited) return gate.limited
+      const action = isCreate ? "create" : method === "DELETE" ? "delete" : "update"
+      try {
+        const result = await ctx.runMutation(internal.apiV1.writeSponsor, {
+          eventRef,
+          userId: credential.userId as string,
+          credentialPrefix: credential.prefix,
+          action,
+          sponsorId: isCreate ? undefined : sponsorId,
+          input: action === "delete" ? {} : readSponsorInput(body),
+        })
+        if (result === null)
+          return errorResponse(`No event with slug "${eventRef}".`, 404)
+        if (result.notFound) return errorResponse("Sponsor not found.", 404)
+        if (action === "delete")
+          return new Response(null, {
+            status: 204,
+            headers: { ...CORS_HEADERS, ...gate.headers },
+          })
+        return jsonResponse(result, isCreate ? 201 : 200, gate.headers)
+      } catch (e) {
+        return mapThrown(e)
+      }
+    }
+
+    // POST /sponsors/{id}/contacts · DELETE /sponsors/{id}/contacts/{personId}
+    if (tail[1] === "contacts") {
+      const isAdd = tail.length === 2 && method === "POST"
+      const isRemove = tail.length === 3 && method === "DELETE"
+      if (!isAdd && !isRemove)
+        return errorResponse(`Unknown sponsor endpoint ${method} ${url.pathname}.`, 404)
+      const gate = await enforceRateLimit(ctx, credential, "event_writes")
+      if (gate.limited) return gate.limited
+      try {
+        const email = str(body.email)
+        const result = await ctx.runMutation(internal.apiV1.writeSponsorContact, {
+          eventRef,
+          userId: credential.userId as string,
+          credentialPrefix: credential.prefix,
+          sponsorId,
+          action: isAdd ? "add" : "remove",
+          contactRef: isRemove ? tail[2] : undefined,
+          input: isAdd
+            ? {
+                email: email ?? "",
+                first_name: str(body.first_name) ?? str(body.firstName),
+                last_name: str(body.last_name) ?? str(body.lastName),
+                title: str(body.title) ?? str(body.job_title),
+                send_invite: readBool(body.send_invite ?? body.sendInvite),
+              }
+            : undefined,
+        })
+        if (result === null)
+          return errorResponse(`No event with slug "${eventRef}".`, 404)
+        if (result.notFound) return errorResponse("Sponsor not found.", 404)
+        if (result.contactNotFound)
+          return errorResponse("That person is not a contact of this sponsor.", 404)
+        if (isRemove)
+          return new Response(null, {
+            status: 204,
+            headers: { ...CORS_HEADERS, ...gate.headers },
+          })
+        return jsonResponse(result, 201, gate.headers)
+      } catch (e) {
+        return mapThrown(e)
+      }
+    }
+
+    // POST /sponsors/{id}/invite
+    if (tail.length === 2 && tail[1] === "invite" && method === "POST") {
+      const gate = await enforceRateLimit(ctx, credential, "event_writes")
+      if (gate.limited) return gate.limited
+      const raw = body.contacts ?? body.contact_ids ?? body.emails
+      try {
+        const result = await ctx.runMutation(internal.apiV1.inviteSponsorContacts, {
+          eventRef,
+          userId: credential.userId as string,
+          credentialPrefix: credential.prefix,
+          sponsorId,
+          contacts: Array.isArray(raw)
+            ? raw.filter((c): c is string => typeof c === "string")
+            : undefined,
+        })
+        if (result === null)
+          return errorResponse(`No event with slug "${eventRef}".`, 404)
+        if (result.notFound) return errorResponse("Sponsor not found.", 404)
+        return jsonResponse(result, 200, gate.headers)
+      } catch (e) {
+        return mapThrown(e)
+      }
+    }
+    return errorResponse(`Unknown sponsor endpoint ${method} ${url.pathname}.`, 404)
+  }
+
+  // GET /sponsor-portal · PUT /sponsor-portal
+  if (resource === "sponsor-portal") {
+    if (tail.length !== 0)
+      return errorResponse(`Unknown endpoint ${method} ${url.pathname}.`, 404)
+    if (method === "GET") {
+      if (!hasScope(credential, "read:contacts"))
+        return errorResponse("This token lacks the `read:contacts` scope.", 403)
+      const result = await ctx.runQuery(internal.apiV1.getSponsorPortal, {
+        eventRef,
+        userId: credential.userId,
+      })
+      if (result === null)
+        return errorResponse(`No event with slug "${eventRef}".`, 404)
+      return jsonResponse(result)
+    }
+    if (method === "PUT") {
+      const denied = denyDemoWrite()
+      if (denied) return denied
+      if (!hasScope(credential, "write:sponsors"))
+        return errorResponse("This token lacks the `write:sponsors` scope.", 403)
+      const gate = await enforceRateLimit(ctx, credential, "event_writes")
+      if (gate.limited) return gate.limited
+      const input: {
+        new_session_status?: string
+        close_at?: number | null
+        allow_colleague_invites?: boolean
+      } = {}
+      const status = str(body.new_session_status)
+      if (status !== undefined) input.new_session_status = status
+      if (body.close_at === null || body.close_at === "") input.close_at = null
+      else if (body.close_at !== undefined) {
+        const closeAt = readTime(body.close_at)
+        if (closeAt === undefined)
+          return errorResponse("`close_at` must be ISO-8601, epoch milliseconds or null.", 400)
+        input.close_at = closeAt
+      }
+      const invites = readBool(body.allow_colleague_invites)
+      if (invites !== undefined) input.allow_colleague_invites = invites
+      try {
+        const result = await ctx.runMutation(internal.apiV1.writeSponsorPortal, {
+          eventRef,
+          userId: credential.userId as string,
+          credentialPrefix: credential.prefix,
+          input,
+        })
+        if (result === null)
+          return errorResponse(`No event with slug "${eventRef}".`, 404)
+        return jsonResponse(result, 200, gate.headers)
+      } catch (e) {
+        return mapThrown(e)
+      }
+    }
+    return errorResponse("Only GET and PUT are supported here.", 405)
+  }
+
   // ——— Speaker tasks ———
   if (resource === "tasks") {
     if (tail.length === 0 && method === "GET") {
@@ -2066,7 +2274,7 @@ async function handleEventScoped(
   }
 
   return errorResponse(
-    `Unknown resource "${resource}". Supported: sessions, speakers, submissions, forms, tasks, evaluation-plans, evaluators, evaluations, agenda, fields, tags, tracks, rooms, formats, levels, languages, statuses, schedule.ics, schedule.xml.`,
+    `Unknown resource "${resource}". Supported: sessions, speakers, sponsors, sponsor-portal, submissions, forms, tasks, evaluation-plans, evaluators, evaluations, agenda, fields, tags, tracks, rooms, formats, levels, languages, statuses, schedule.ics, schedule.xml.`,
     404,
   )
 }
@@ -2203,6 +2411,42 @@ function readFormInput(body: Record<string, unknown>): Record<string, unknown> {
     }
   }
   return input
+}
+
+/** Sessionboard's sponsor write body plus our extensions; both key spellings. */
+function readSponsorInput(body: Record<string, unknown>): {
+  name?: string
+  tier?: string
+  website_url?: string
+  session_limit?: number
+  notes?: string
+  account_id?: string
+  contacts?: Array<{ email: string; first_name?: string; last_name?: string; title?: string }>
+} {
+  const out: ReturnType<typeof readSponsorInput> = {}
+  const name = str(body.name)
+  if (name !== undefined) out.name = name
+  const tier = str(body.tier)
+  if (tier !== undefined) out.tier = tier
+  const website = str(body.website_url) ?? str(body.websiteUrl)
+  if (website !== undefined) out.website_url = website
+  const limit = body.session_limit ?? body.sessionLimit
+  if (typeof limit === "number") out.session_limit = limit
+  const notes = str(body.notes)
+  if (notes !== undefined) out.notes = notes
+  const accountId = str(body.account_id) ?? str(body.accountId)
+  if (accountId !== undefined) out.account_id = accountId
+  if (Array.isArray(body.contacts)) {
+    out.contacts = body.contacts
+      .filter((c): c is Record<string, unknown> => !!c && typeof c === "object")
+      .map((c) => ({
+        email: str(c.email) ?? "",
+        first_name: str(c.first_name) ?? str(c.firstName),
+        last_name: str(c.last_name) ?? str(c.lastName),
+        title: str(c.title) ?? str(c.job_title),
+      }))
+  }
+  return out
 }
 
 function readTaskInput(body: Record<string, unknown>): Record<string, unknown> {

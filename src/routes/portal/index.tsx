@@ -1,6 +1,8 @@
 import { Link, createFileRoute } from "@tanstack/react-router"
 import {
+  RiAddLine,
   RiArrowRightLine,
+  RiBuilding2Line,
   RiBriefcase4Line,
   RiCalendarEventLine,
   RiUser3Line,
@@ -16,6 +18,7 @@ import { ProfileMeter } from "@/components/portal/profile-meter"
 import { SubmissionCard } from "@/components/portal/submission-card"
 import { SessionCalendarButton } from "@/components/portal/session-calendar-button"
 import { usePortal } from "@/components/portal/portal-context"
+import { AllowanceMeter } from "@/components/sponsors/allowance-meter"
 import {
   fullName,
   initialsOf,
@@ -41,6 +44,7 @@ function PortalHomePage() {
 
   return (
     <div className="flex flex-col gap-4">
+      {home.sponsor ? <SponsorHomeCard /> : null}
       <div className="grid gap-4 lg:grid-cols-[1.2fr_1fr] lg:items-start">
         <PanelCard
           icon={RiCalendarEventLine}
@@ -227,5 +231,50 @@ function PortalHomePage() {
       </PanelCard>
       )}
     </div>
+  )
+}
+
+/**
+ * A sponsor contact's first question on landing — "how many sessions can we
+ * still add, and where?" — answered above everything personal.
+ */
+function SponsorHomeCard() {
+  const { home } = usePortal()
+  const sponsor = home.sponsor
+  if (!sponsor) return null
+  return (
+    <PanelCard
+      icon={RiBuilding2Line}
+      title={sponsor.name}
+      description="You manage this sponsor's sessions at the event."
+      action={
+        <Link
+          to="/portal/sponsor"
+          className="inline-flex min-h-9 items-center text-sm font-medium text-primary underline-offset-4 hover:underline"
+        >
+          Open sponsor sessions
+        </Link>
+      }
+    >
+      <div className="flex flex-wrap items-center gap-4">
+        <AllowanceMeter
+          used={sponsor.sessionsUsed}
+          limit={sponsor.sessionLimit}
+          className="max-w-xs flex-1"
+        />
+        {sponsor.addBlocker ? (
+          <p className="text-sm text-muted-foreground">{sponsor.addBlocker}</p>
+        ) : (
+          <Link
+            to="/portal/sponsor"
+            search={{ add: true }}
+            className={cn(buttonVariants({ size: "sm" }))}
+          >
+            <RiAddLine aria-hidden />
+            Add a session
+          </Link>
+        )}
+      </div>
+    </PanelCard>
   )
 }

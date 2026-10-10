@@ -185,6 +185,27 @@ export default defineSchema({
         extendTaskDeadlines: v.optional(v.boolean()),
       }),
     ),
+    // How sponsor portals behave for this event (Sponsors → Portal settings).
+    // Sponsors don't go through the CFP: their contacts sign into the portal
+    // and add the sessions their package includes (convex/sponsors.ts).
+    // Unset ⇒ new sponsor sessions arrive as Pending and the door stays open.
+    sponsorPortal: v.optional(
+      v.object({
+        // What a session a sponsor adds starts as. `pending` puts it in front
+        // of the organizer like any other submission; `accepted` sends it
+        // straight onto the program (agenda tray) for teams that pre-approve
+        // every paid slot.
+        newSessionStatus: v.optional(
+          v.union(v.literal("pending"), v.literal("accepted")),
+        ),
+        // After this moment sponsors can no longer add or change sessions —
+        // the agenda freeze. Absent ⇒ no deadline.
+        closeAt: v.optional(v.number()),
+        // Contacts may bring colleagues into their company's portal
+        // (Sessionboard's "Add Contacts to Group"). Unset ⇒ allowed.
+        allowColleagueInvites: v.optional(v.boolean()),
+      }),
+    ),
   })
     // EVENT slugs are unique PER WORKSPACE (docs/memory/DECISIONS.md, "URL
     // architecture is fully hierarchical"): `by_organizationId_slug` is the
@@ -286,6 +307,28 @@ export default defineSchema({
     deletedAt: v.optional(v.number()),
   }).index("by_eventId", ["eventId"]),
 
+  // ——— Sponsors (Sessionboard's "Groups") ————————————————————————————————
+  // A company with a package on this event. Its contacts are ordinary
+  // `people` rows (`people.sponsorId`) so they share the speaker portal's
+  // passwordless sign-in, profile, tasks and files; the sessions it adds are
+  // ordinary `submissions` rows (`submissions.sponsorId`) so the pipeline,
+  // agenda, comms and API treat them like every other session. The sponsor
+  // itself only carries what is about the COMPANY: its name, its tier and how
+  // many sessions its package lets it add without going through the CFP.
+  sponsors: defineTable({
+    eventId: v.id("events"),
+    name: v.string(),
+    // Free text on purpose ("Platinum", "Gold", "Community partner") — every
+    // event names its packages differently.
+    tier: v.optional(v.string()),
+    websiteUrl: v.optional(v.string()),
+    // How many sessions the sponsor's contacts may add from their portal.
+    // 0 ⇒ the portal shows their sessions but offers no "Add session".
+    sessionLimit: v.number(),
+    // Organizer-only notes ("contract signed 3 Aug, keynote slot promised").
+    notes: v.optional(v.string()),
+  }).index("by_eventId", ["eventId"]),
+
   // ——— CFP forms ————————————————————————————————————————————————————————
   forms: defineTable({
     eventId: v.id("events"),
@@ -368,12 +411,17 @@ export default defineSchema({
     // in one place, and forcing that into flight/hotel columns nobody fills in
     // is how CRMs get abandoned. Organizer-side only — never shown publicly.
     logistics: v.optional(v.string()),
+    // Set ⇒ this person is a CONTACT for that sponsor: their portal gains the
+    // sponsor's sessions and, within the package's allowance, "Add session".
+    // One sponsor per person per event — a person row is already per event.
+    sponsorId: v.optional(v.id("sponsors")),
     // Last REST-API write (convex/apiV1.ts) — see submissions.updatedAt.
     updatedAt: v.optional(v.number()),
   })
     .index("by_eventId", ["eventId"])
     .index("by_eventId_and_email", ["eventId", "email"])
-    .index("by_portalToken", ["portalToken"]),
+    .index("by_portalToken", ["portalToken"])
+    .index("by_sponsorId", ["sponsorId"]),
 
   // ——— Submissions (abstracts AND sessions; accepted ones are schedulable) —
   submissions: defineTable({
@@ -420,9 +468,15 @@ export default defineSchema({
     // the blob of history is kept so a mis-click is undoable. Nothing in the
     // product UI sets this — only convex/apiV1.ts.
     deletedAt: v.optional(v.number()),
+    // The sponsor this session belongs to — set when a sponsor contact adds it
+    // from their portal, or by an organizer linking an existing session. Every
+    // contact of that sponsor can then see and (while the sponsor window is
+    // open) edit it from their portal.
+    sponsorId: v.optional(v.id("sponsors")),
   })
     .index("by_eventId", ["eventId"])
     .index("by_eventId_and_status", ["eventId", "status"])
+    .index("by_sponsorId", ["sponsorId"])
     .index("by_formId", ["formId"])
     .index("by_submitterId", ["submitterId"])
     .index("by_roomId", ["roomId"]),
@@ -848,7 +902,7 @@ export default defineSchema({
     // Human attribution: a name, an email, "MCP · set_submission_status ·
     // sb_live_1a2b3c4d", "Airtable sync". Never a raw id.
     actorLabel: v.string(),
-    // submission | form | session | speaker | agenda | settings | api-key
+    // submission | form | session | speaker | sponsor | agenda | settings | api-key
     entity: v.string(),
     /** Stringified doc id (or a stable key like the event id for settings). */
     entityId: v.string(),

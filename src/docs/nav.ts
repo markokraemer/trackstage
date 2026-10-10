@@ -1,4 +1,5 @@
 import {
+  RiBuilding2Line,
   RiAirplayLine,
   RiBookOpenLine,
   RiCalendarScheduleLine,
@@ -91,6 +92,12 @@ export const DOCS_NAV: Array<DocsNavGroup> = [
         title: "Speaker portal",
         summary: "What your speakers see after they submit.",
         icon: RiUserVoiceLine,
+      },
+      {
+        to: "/docs/guide/sponsors",
+        title: "Sponsors",
+        summary: "Let sponsors add their own sessions — no call for papers.",
+        icon: RiBuilding2Line,
       },
       {
         to: "/docs/guide/build-the-agenda",

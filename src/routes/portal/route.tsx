@@ -133,7 +133,7 @@ function PortalLayout() {
 
   if (!contextValue) return <PortalSkeleton />
 
-  const { event, me, tasks, portal } = contextValue.home
+  const { event, me, tasks, portal, sponsor } = contextValue.home
   const openTasks = tasks.filter((task) => !task.completedAt).length
   const dates = formatEventDates(event.startsAt, event.endsAt, event.timezone)
   const activeTab = activePortalTab(location.pathname)
@@ -167,7 +167,7 @@ function PortalLayout() {
                   {event.name}
                 </span>
                 <span className="block truncate text-xs text-muted-foreground">
-                  Speaker portal
+                  {sponsor ? `Sponsor portal · ${sponsor.name}` : "Speaker portal"}
                 </span>
               </span>
             </Link>
@@ -280,6 +280,7 @@ function PortalLayout() {
               active={activeTab}
               openTaskCount={openTasks}
               showTasks={portal.tasksVisible}
+              sponsorName={sponsor?.name}
             />
           </PageHeader>
 

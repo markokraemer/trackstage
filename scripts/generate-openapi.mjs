@@ -521,6 +521,17 @@ const SCHEMAS = {
         description:
           "Always empty — this product has no parent/child sessions. Present so clients written against Sessionboard can iterate it without a guard.",
       },
+      sponsors: {
+        type: "array",
+        description:
+          "Sessionboard's `sponsors[]`. Here a session belongs to at most one sponsor, so this holds zero or one entry.",
+        items: { $ref: "#/components/schemas/SponsorRef" },
+      },
+      sponsor_id: {
+        type: "string",
+        nullable: true,
+        description: "The linked sponsor's id — writable on create/update as `sponsor_id`.",
+      },
       files: {
         type: "array",
         items: { $ref: "#/components/schemas/SessionFile" },
@@ -913,6 +924,12 @@ const SCHEMAS = {
       submitter_first_name: { type: "string" },
       submitter_last_name: { type: "string" },
       speaker_ids: { type: "array", items: { type: "string" } },
+      sponsor_id: {
+        type: "string",
+        nullable: true,
+        description:
+          "Link the session to a sponsor (its contacts then see and edit it in their sponsor portal); `null` unlinks it.",
+      },
       updated_at: {
         type: "string",
         format: "date-time",
@@ -1407,6 +1424,168 @@ const SCHEMAS = {
       },
     },
   },
+  SponsorRef: {
+    type: "object",
+    properties: {
+      id: { type: "string" },
+      name: { type: "string", examples: ["Acme AI"] },
+      website_url: { type: "string", nullable: true },
+      tier: { type: "string", nullable: true, examples: ["Platinum"] },
+    },
+  },
+  SponsorContact: {
+    type: "object",
+    description:
+      "Sessionboard's `AccountContact`. A contact is a person on the event who can sign into the sponsor portal.",
+    properties: {
+      id: { type: "string", description: "The person id — use it to remove the contact." },
+      friendly_id: { type: "string", examples: ["CONT-20481"] },
+      friendly_id_raw: { type: "integer" },
+      first_name: { type: "string" },
+      last_name: { type: "string" },
+      full_name: { type: "string" },
+      email: { type: "string", format: "email" },
+      photo_url: { type: "string", nullable: true },
+      company_name: { type: "string" },
+      title: { type: "string", nullable: true },
+      about: { type: "string", nullable: true },
+      is_primary: {
+        type: "boolean",
+        description: "True for the first contact added.",
+      },
+      invited_at: ts("When the sponsor portal invite was last sent."),
+    },
+  },
+  Sponsor: {
+    type: "object",
+    description:
+      "A sponsor company. Sessionboard's `Sponsor` field names, plus the package fields their API cannot express: `tier`, `session_limit`, `sessions_used`, `notes` and the linked `sessions`.",
+    properties: {
+      id: { type: "string" },
+      friendly_id: { type: "string", examples: ["SPON-3"] },
+      friendly_id_raw: { type: "integer" },
+      name: { type: "string", examples: ["Acme AI"] },
+      description: { type: "string", nullable: true, description: "Always null — not modelled." },
+      logo_image_url: { type: "string", nullable: true, description: "Always null — not modelled." },
+      banner_image_url: { type: "string", nullable: true, description: "Always null — not modelled." },
+      website_url: { type: "string", nullable: true },
+      created_at: ts("Creation time."),
+      updated_at: ts("Creation time — sponsors carry no write timestamp."),
+      contacts: { type: "array", items: { $ref: "#/components/schemas/SponsorContact" } },
+      tier: { type: "string", nullable: true, examples: ["Platinum"] },
+      session_limit: {
+        type: "integer",
+        description: "How many sessions the sponsor's contacts may add from their portal. 0 = organizer-managed.",
+      },
+      sessions_used: {
+        type: "integer",
+        description: "Linked sessions counting against the allowance (withdrawn and declined ones hand their slot back).",
+      },
+      notes: { type: "string", nullable: true, description: "Organizer-only notes." },
+      sessions: {
+        type: "array",
+        items: {
+          type: "object",
+          properties: {
+            id: { type: "string" },
+            title: { type: "string" },
+            status: { type: "string" },
+            kind: { type: "string", enum: ["abstract", "session"] },
+            is_scheduled: { type: "boolean" },
+          },
+        },
+      },
+    },
+  },
+  SponsorPortal: {
+    type: "object",
+    properties: {
+      new_session_status: {
+        type: "string",
+        enum: ["pending", "accepted"],
+        description: "What a session a sponsor adds starts as.",
+      },
+      close_at: ts("After this moment sponsors can no longer add or edit sessions. Null = no deadline."),
+      allow_colleague_invites: {
+        type: "boolean",
+        description: "Whether contacts may add colleagues to their sponsor's portal.",
+      },
+    },
+  },
+  SponsorSearchBody: {
+    type: "object",
+    properties: {
+      filters: {
+        type: "object",
+        properties: {
+          search: { type: "string", description: "Case-insensitive match on the name." },
+          tier: { type: "string", description: "Exact tier, case-insensitive." },
+        },
+      },
+    },
+  },
+  SponsorWriteBody: {
+    type: "object",
+    description: "`name` is required on create. Every field is optional on update; an empty string clears an optional one.",
+    properties: {
+      name: { type: "string" },
+      tier: { type: "string" },
+      website_url: { type: "string", format: "uri" },
+      session_limit: { type: "integer", minimum: 0, maximum: 50, default: 1 },
+      notes: { type: "string" },
+      account_id: {
+        type: "string",
+        description: "Not supported — answers 400. There are no organization-level sponsor accounts.",
+      },
+      contacts: {
+        type: "array",
+        description: "Create only.",
+        items: {
+          type: "object",
+          required: ["email"],
+          properties: {
+            email: { type: "string", format: "email" },
+            first_name: { type: "string" },
+            last_name: { type: "string" },
+            title: { type: "string" },
+          },
+        },
+      },
+    },
+  },
+  SponsorContactWriteBody: {
+    type: "object",
+    required: ["email"],
+    properties: {
+      email: { type: "string", format: "email" },
+      first_name: { type: "string" },
+      last_name: { type: "string" },
+      title: { type: "string" },
+      send_invite: { type: "boolean", description: "Also email them their sponsor portal link." },
+    },
+  },
+  SponsorInviteBody: {
+    type: "object",
+    properties: {
+      contacts: {
+        type: "array",
+        items: { type: "string" },
+        description: "Contact ids or emails. Omit to invite every contact.",
+      },
+    },
+  },
+  SponsorPortalWriteBody: {
+    type: "object",
+    properties: {
+      new_session_status: { type: "string", enum: ["pending", "accepted"] },
+      close_at: {
+        type: "string",
+        nullable: true,
+        description: "ISO-8601 or epoch milliseconds; null removes the deadline.",
+      },
+      allow_colleague_invites: { type: "boolean" },
+    },
+  },
   TaskWriteBody: {
     type: "object",
     properties: {
@@ -1652,6 +1831,25 @@ const DERIVED = {
   }),
   FormEnvelope: envelope("Form", { $ref: "#/components/schemas/Form" }),
   TaskEnvelope: envelope("Task", { $ref: "#/components/schemas/Task" }),
+  SponsorEnvelope: envelope("Sponsor", { $ref: "#/components/schemas/Sponsor" }),
+  SponsorsPage: page("Sponsors", "Sponsor"),
+  SponsorContactEnvelope: {
+    type: "object",
+    properties: {
+      data: { $ref: "#/components/schemas/Sponsor" },
+      contact_id: { type: "string" },
+      created: { type: "boolean", description: "False when an existing person was linked." },
+      invited: { type: "boolean" },
+    },
+  },
+  SponsorInviteEnvelope: envelope("SponsorInvite", {
+    type: "object",
+    properties: {
+      queued: { type: "integer" },
+      recipients: { type: "array", items: { type: "string", format: "email" } },
+    },
+  }),
+  SponsorPortalEnvelope: envelope("SponsorPortal", { $ref: "#/components/schemas/SponsorPortal" }),
   TaskCreateEnvelope: {
     type: "object",
     description:
@@ -1769,6 +1967,26 @@ const PARAMETERS = {
     required: true,
     schema: { type: "string" },
     description: "The task id.",
+  },
+  sponsorId: {
+    name: "sponsorId",
+    in: "path",
+    required: true,
+    schema: { type: "string" },
+    description: "The sponsor id.",
+  },
+  contactId: {
+    name: "contactId",
+    in: "path",
+    required: true,
+    schema: { type: "string" },
+    description: "The contact's person id (or their email).",
+  },
+  tier: {
+    name: "tier",
+    in: "query",
+    schema: { type: "string" },
+    description: "Only sponsors in this tier (case-insensitive).",
   },
   planId: {
     name: "planId",
@@ -2004,6 +2222,27 @@ const REQUEST_EXAMPLES = {
     workflow_status: "invited",
   },
   updateSpeaker: { workflow_status: "confirmed", is_public: true },
+  createSponsor: {
+    name: "Acme AI",
+    tier: "Platinum",
+    website_url: "https://acme.example.com",
+    session_limit: 2,
+    notes: "Keynote slot promised on day 1.",
+    contacts: [{ email: "grace@acme.example.com", first_name: "Grace", last_name: "Hopper", title: "DevRel lead" }],
+  },
+  updateSponsor: { session_limit: 3, tier: "Diamond" },
+  addSponsorContact: {
+    email: "alan@acme.example.com",
+    first_name: "Alan",
+    last_name: "Turing",
+    send_invite: true,
+  },
+  inviteSponsorContacts: { contacts: ["grace@acme.example.com"] },
+  updateSponsorPortal: {
+    new_session_status: "pending",
+    close_at: "2026-09-01T23:59:00.000Z",
+    allow_colleague_invites: true,
+  },
   initiateSessionFileUpload: {
     filename: "keynote-slides.pptx",
     content_type:
@@ -2279,6 +2518,11 @@ const TAGS = [
       "The event's people and the sessions they are on. Reads need `read:contacts`, writes `write:contacts`.",
   },
   {
+    name: "Sponsors",
+    description:
+      "Sponsor companies, their portal contacts and their session allowance. A sponsor's contacts add the sessions their package includes from their own portal — no call for papers. Mirrors Sessionboard's `/sponsors` endpoints and adds what their API cannot write: contacts, invites and the portal rules. Reads need `read:contacts`, writes `write:sponsors`.",
+  },
+  {
     name: "Forms",
     description:
       "The call-for-speakers forms themselves — list, read, create, update, delete. A form's questions ARE this event's custom-field definitions, so editing one here changes the public submission page. Requires `write:fields` to change.",
@@ -2330,6 +2574,9 @@ const WEBHOOK_EVENT_TABLE = [
   ["agenda.published", "The public programme went live."],
   ["speaker.created", "Someone was added to the roster."],
   ["speaker.updated", "A speaker's profile or workflow status changed."],
+  ["sponsor.created", "A sponsor was added."],
+  ["sponsor.updated", "A sponsor's details or contacts changed."],
+  ["sponsor.deleted", "A sponsor was removed (its sessions stay)."],
   ["file.uploaded", "A file was attached to a session."],
   ["file.deleted", "A session file was removed."],
   ["webhook.test", "A test delivery you triggered yourself."],
@@ -2432,6 +2679,7 @@ function buildSpec(routes, examples, siteUrl, rewrites = []) {
         "| `write:fields` | Custom-field definitions and CFP forms. |",
         "| `write:metadata` | Tracks, rooms, tags, formats, levels, languages, statuses. |",
         "| `write:events` | Event CRUD, agenda publish/unpublish, tasks, webhooks. |",
+        "| `write:sponsors` | Sponsor create/update/delete, contacts, portal invites, sponsor portal settings. Sponsor reads ride `read:contacts`. |",
         "",
         "A 403 always names the missing scope, e.g. `This token lacks the \\`write:sessions\\` scope.`",
         "",

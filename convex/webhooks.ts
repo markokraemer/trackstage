@@ -49,6 +49,9 @@ export const WEBHOOK_EVENT_TYPES = [
   "agenda.published",
   "speaker.created",
   "speaker.updated",
+  "sponsor.created",
+  "sponsor.updated",
+  "sponsor.deleted",
   "file.uploaded",
   "file.deleted",
 ] as const

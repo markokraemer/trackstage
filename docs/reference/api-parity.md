@@ -49,7 +49,7 @@ in-scope operation of theirs had already been matched.
 | Media / Session Recordings | 9 | ❌ | Video/audio ingestion + automatic transcription. A media-processing product, not program management; struck by scope discipline, not laziness — see "Not mirrored". |
 | Transcriptions | 13 | ❌ | Same. |
 | Contacts / Contact Writes | 11 | ❌ | CRM. Explicitly out. |
-| Sponsors / Sponsor Writes | 7 | ❌ | Out. |
+| Sponsors / Sponsor Writes | 7 | ✅ | Brought in 2026-10-10 (Kelsey, AI Engineer ops). Search, get, create, update, delete mirrored; **restore and bulk are not** (our delete is a hard unlink, see "Sponsors" below). Ours adds contacts, invites and portal rules their API cannot write. Full analysis: `docs/reference/sponsors-cross-analysis.md`. |
 | Exhibitors / Exhibitor Writes | 7 | ❌ | Out. |
 | Insights / SbQL | 28 | ❌ | A query language + AI query generator over event data. Out. |
 | Dashboards & Widgets | 8 | ❌ | Out. |
@@ -113,7 +113,7 @@ Theirs and not ours, with reasons:
 | `ceu_credits` | Continuing-education credits — a US-association feature, not conference program management. |
 | `client_session_id`, `external_url` | Import bookkeeping for their migration tooling. |
 | `translated_fields` | Multi-locale events. Not in our product. |
-| `sponsors[]`, `exhibitors[]` | Out of scope. |
+| `exhibitors[]` | Out of scope. (`sponsors[]` is now returned — see "Sponsors" below.) |
 | `admin_url` | We return `id`; the admin deep link is `/app/submissions?id={id}`, documented in the reference rather than duplicated per row. |
 
 Ours and not theirs: `answers{}` (the raw, lossless answer map), `kind`, `decided_at`,
@@ -235,7 +235,8 @@ keeps the form builder and the API as one source of truth instead of two that dr
 | Dashboard-only (no API) | `GET`/`POST /v1/webhooks`, `GET`/`PUT`/`DELETE /v1/webhooks/{id}`, `POST /{id}/test`, `POST /{id}/rotate`, `GET /{id}/deliveries` | **OURS-BETTER.** Sessionboard has webhooks but manages them only through Settings → Integrations → Webhooks; there is no endpoint for them in their public API. Ours are fully API-managed. |
 | `{data, metadata}` payload | identical | **MATCH** — `data` carries the full resource + `id` + `sourceOfChange`; `metadata` carries `action`, `event_id`, `org_id`, `resource_url`, `version`, `datetime`. |
 | Session events (`session.created/updated/deleted`, `session.speaker.attached/detached`) | all present | **MATCH.** |
-| Contact / sponsor / exhibitor events | — | **N/A** (out of scope). |
+| `sponsor.created/updated/deleted` | all present (emitted by REST writes) | **MATCH** (their `sponsor.event.associated/disassociated` have no counterpart — a sponsor here belongs to exactly one event). |
+| Contact / exhibitor events | — | **N/A** (out of scope). |
 | "Custom headers for security" | **HMAC-SHA256 signature** | **OURS-BETTER.** Every delivery carries `Trackstage-Signature: t=<unix-seconds>,v1=<hex>` over `"{t}.{body}"` keyed with the endpoint's `whsec_…` secret, plus `Trackstage-Event` and `Trackstage-Delivery` (idempotency). Theirs offers only a static shared header, which cannot detect tampering or replay. |
 | Retries with exponential backoff | 5 attempts: 1s, 5s, 25s, 125s | **MATCH.** |
 | Delivery log in the dashboard | `GET /{id}/deliveries` — status, attempts, response code, error, and the exact signed payload | **OURS-BETTER** (API-readable). |
@@ -303,10 +304,31 @@ Our event catalogue adds `submission.created/updated`, `session.scheduled/unsche
    is returned as an empty array so clients written against their API can iterate without
    a guard.
 5. **`translated_fields`.** Multi-locale events.
-6. **CRM (contacts), sponsors, exhibitors, GDPR requests, Insights/SbQL, dashboards,
-   saved reports.** Explicitly struck from scope.
+6. **CRM (contacts), exhibitors, GDPR requests, Insights/SbQL, dashboards,
+   saved reports.** Explicitly struck from scope. (Sponsors came back into scope on
+   2026-10-10 — see "Sponsors" below.)
 
 ---
+
+## Sponsors
+
+Asked for by Kelsey (AI Engineer ops, 2026-10-10): sponsors' contacts add the sessions
+their package includes from their own portal, with no CFP. Sessionboard's public API
+manages only the company record; everything below the line is ours.
+
+| Theirs | Ours | Verdict |
+| --- | --- | --- |
+| `POST /v1/event/{id}/sponsors` (search) | same path, `filters.search` / `filters.tier`, paginated `{data, results, pagination}`; `GET` list form too | **MATCH** |
+| `GET /sponsors/{id}` | same | **MATCH** |
+| `POST /sponsors/create` `{name \| account_id, custom_fields, translated_fields}` | `{name, tier, website_url, session_limit, notes, contacts[]}` | **MATCH+** — `account_id` answers 400 (no organization-level accounts); custom/translated fields not modelled. |
+| `PUT /sponsors/{id}` with `updated_at` → 409 | partial update | **PARTIAL** — sponsors carry no write timestamp, so `updated_at` is the creation time and is **not** enforced. |
+| `DELETE /sponsors/{id}` (soft) + `POST /restore` | `DELETE` = hard delete that unlinks contacts and sessions (both stay on the event) | **DEVIATION** — no restore. |
+| `POST /sponsors/bulk` | — | **GAP** (low value at sponsor volumes). |
+| `Sponsor` fields | `id, friendly_id (SPON-…), friendly_id_raw, name, website_url, created_at, updated_at, contacts[]`; `description`, `logo_image_url`, `banner_image_url` always `null`; address/social fields omitted | **PARTIAL** + extensions `tier, session_limit, sessions_used, notes, sessions[]` |
+| `AccountContact` | `id, friendly_id, first_name, last_name, full_name, email, photo_url (null), company_name, title, about (null), is_primary` (first contact) + `invited_at` | **MATCH** |
+| — (UI only) | `POST /sponsors/{id}/contacts`, `DELETE /sponsors/{id}/contacts/{contactId}`, `POST /sponsors/{id}/invite`, `GET`/`PUT /sponsor-portal` | **OURS-BETTER** |
+| Session `sponsors[]` (read-only) | `sponsors[]` (0–1 entries, `{id, name, website_url, tier}`) + writable `sponsor_id` on create/update/bulk | **OURS-BETTER** |
+| scope `write:sponsors` | `write:sponsors`; reads ride `read:contacts` so read-only keys keep working | **MATCH** |
 
 ## Ours with no counterpart in theirs (48 operations)
 

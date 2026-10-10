@@ -3508,3 +3508,18 @@ Generative UI verified, not assumed: tool views read named fields, extra keys
 are ignored — proven by adding the new fields to the copilot fixtures (397
 unit tests green) plus a purpose-built WhoAmIView, which the registry test
 requires for every tool.
+
+
+## 2026-10-10 — Sponsor portals (Kelsey's gap)
+
+From the finalist call with swyx + Kelsey: sponsors don't go through the CFP.
+Shipped end to end: `sponsors` table + `people.sponsorId` + `submissions.sponsorId`
++ `events.sponsorPortal`; organizer **Speakers → Sponsors** page (table, drawer with
+Details/Contacts/Sessions tabs, portal-settings dialog, invites via a new editable
+"Sponsor portal invite" template); portal tab named after the company with
+add/edit/withdraw sessions, speaker management, colleague invites, allowance meter and
+deadline lock; sponsor picker in the submission drawer and "Sponsor: X" in the table;
+"Presented by X" on the public program; 6 MCP tools with copilot views; seed data
+(Northwind AI — `demo-sponsor-northwind` opens Jordan's sponsor portal); docs guide
+page; `scripts/verify-sponsors.mjs` (`pnpm test:sponsors`). Cross-analysis of
+Sessionboard's sponsor API + docs in `docs/reference/sponsors-cross-analysis.md`.
