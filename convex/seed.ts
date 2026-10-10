@@ -1288,7 +1288,10 @@ export const run = internalMutation({
       slug: "cfp",
       kind: "abstract",
       status: "open",
-      closeAt: pt(2026, 9, 15, 23, 59),
+      // Relative, never a calendar date: a fixed deadline (it was Sep 15,
+      // 2026) silently closed the demo CFP the day it passed, and with it
+      // every "submit a talk" flow — the e2e gate and the live demo both.
+      closeAt: now + 45 * DAY,
       internalName: "CFP 2026 — main call",
       // The public form title, NOT the event name — the public form frames it
       // with the event above it, so repeating it here reads twice.
