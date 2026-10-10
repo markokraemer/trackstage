@@ -328,5 +328,8 @@ export async function resolveSpeaker(
   return person
 }
 
-/** Speakers per sponsor session — the agenda card gets crowded beyond this. */
-export const MAX_SPONSOR_SESSION_SPEAKERS = 8
+/**
+ * Abuse ceiling only — never shown, never a product rule. A real panel never
+ * gets near it; it just stops a script from attaching thousands of people.
+ */
+export const MAX_SPONSOR_SESSION_SPEAKERS = 50

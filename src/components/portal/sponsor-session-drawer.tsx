@@ -380,12 +380,10 @@ export function AddSponsorSessionDrawer({
               variant="outline"
               size="sm"
               onClick={() => setSpeakers((prev) => [...prev, blankSpeaker()])}
-              disabled={speakers.length + (includeMe ? 1 : 0) >= 8}
             >
               <RiUserAddLine aria-hidden />
               {includeMe || speakers.length > 0 ? "Add another speaker" : "Add a speaker"}
             </Button>
-            <p className="mt-2 text-xs text-muted-foreground">Up to 8 speakers per session.</p>
           </div>
         </FieldGroup>
       </form>
@@ -630,7 +628,7 @@ export function ManageSponsorSessionDrawer({
               </li>
             ))}
           </ul>
-          {!locked && session.participants.length < 8 ? (
+          {!locked ? (
             <form onSubmit={(e) => void add(e)} className="flex flex-col gap-3">
               <SpeakerRow
                 speaker={newSpeaker}
