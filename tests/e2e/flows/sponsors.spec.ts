@@ -45,7 +45,12 @@ test.describe("sponsor portal", () => {
     const drawer = page.locator('[data-slot="drawer-shell"]').first()
     await expect(drawer).toBeVisible({ timeout: 20_000 })
     await fillStable(drawer.locator("#new-sponsor-name"), sponsorName)
-    await fillStable(drawer.locator("#new-sponsor-tier"), "Gold")
+    // Tier is a managed list now (Sponsor settings → Tiers; the seed has
+    // Platinum / Gold / Community partner). Picking one pre-fills the
+    // package's sessions, which we then override.
+    await drawer.locator("#new-sponsor-tier").click()
+    await page.getByRole("option", { name: "Gold", exact: true }).click()
+    await expect(drawer.locator("#new-sponsor-limit")).toHaveValue("1")
     await fillStable(drawer.locator("#new-sponsor-limit"), "2")
     await fillStable(drawer.locator("#new-sponsor-first"), "Casey")
     await fillStable(drawer.locator("#new-sponsor-last"), "Contact")
@@ -68,7 +73,7 @@ test.describe("sponsor portal", () => {
     const token = sponsor.contacts[0].portalToken
     expect(sponsor.contacts[0].invitedAt, "the invite was queued on create").toBeTruthy()
 
-    // ——— Contact: magic link → company tab → add a session ————————————————
+    // ——— Contact: magic link → Overview → Sessions → add a session ———————————
     const portal = await context.newPage()
     const portalWatcher = armed(portal)
     // The sponsor portal has its own address — never the speaker portal.
@@ -81,8 +86,13 @@ test.describe("sponsor portal", () => {
     // A sponsor-only contact who opens the speaker portal is sent back here.
     await gotoStable(portal, "/portal", "networkidle")
     await portal.waitForURL(/\/sponsor(?:[/?#]|$)/, { timeout: 30_000 })
-    await expect(portal.getByText(/0 of 2 sessions added/i).first()).toBeVisible({ timeout: 20_000 })
+    // Overview answers "what do you need from us?" before anything else.
+    await expect(portal.getByText(/still needed from you/i).first()).toBeVisible({ timeout: 20_000 })
+    await expect(portal.getByText(/0 of 2 sessions added/i).first()).toBeVisible()
 
+    // Sessions is its own tab; adding one opens the drawer there.
+    await portal.getByRole("tab", { name: /^sessions$/i }).click()
+    await portal.waitForURL(/\/sponsor\/sessions/, { timeout: 20_000 })
     await portal.getByRole("button", { name: /add a session/i }).first().click()
     const form = portal.locator('[data-slot="drawer-shell"]').first()
     await expect(form).toBeVisible({ timeout: 20_000 })

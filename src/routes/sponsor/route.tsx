@@ -67,8 +67,10 @@ function SponsorPortalLayout() {
   }
 
   const mode = portalModeFor(value.home)
-  const openTasks = tasks.filter((task) => !task.completedAt).length
+  // Personal tasks the organizers assigned this contact — the tab only exists
+  // when there are some.
   const showTasks = portal.tasksVisible && tasks.length > 0
+  const openTasks = tasks.filter((task) => !task.completedAt).length
   const activeTab = activeSponsorTab(location.pathname)
   const tab = sponsorTabMeta(activeTab)
 
@@ -91,7 +93,7 @@ function SponsorPortalLayout() {
           ? { label: "Switch to speaker portal", to: "/portal" }
           : undefined
       }
-      heading={activeTab === "sessions" ? sponsor.name : tab.heading}
+      heading={activeTab === "overview" ? sponsor.name : tab.heading}
       blurb={tab.blurb}
       tabs={
         <PortalTabStrip

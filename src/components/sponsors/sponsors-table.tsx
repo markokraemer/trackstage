@@ -1,6 +1,5 @@
 import { toast } from "sonner"
 import {
-  RiCheckLine,
   RiDeleteBin6Line,
   RiEdit2Line,
   RiExternalLinkLine,
@@ -11,7 +10,6 @@ import {
 
 import { cn } from "@/lib/utils"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
-import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -36,22 +34,11 @@ import { Tag, tagTone } from "@/components/shared/tag"
 import { sponsorPortalLinkFor } from "@/components/dashboard/app-routes"
 import { initialsOf } from "@/components/dashboard/format"
 import { copyText } from "@/lib/clipboard"
+import { StillNeededChips } from "@/components/sponsors/sponsor-drawer"
 import type { SponsorRow } from "@/components/sponsors/sponsor-drawer"
 
 const CONTROL_SELECTOR =
   "button, a, input, label, [role='menu'], [role='menuitem'], [role='checkbox']"
-
-/** What a sponsor still needs before it can deliver — the "Still needed" column. */
-export function sponsorGaps(row: SponsorRow): Array<string> {
-  const gaps: Array<string> = []
-  if (row.contacts.length === 0) gaps.push("No contact")
-  else if (row.contacts.some((c) => c.invitedAt === null)) gaps.push("Not invited")
-  const left = row.sessionLimit - row.sessionsUsed
-  if (row.sessionLimit > 0 && left > 0) {
-    gaps.push(`${left} session${left === 1 ? "" : "s"} to add`)
-  }
-  return gaps
-}
 
 /**
  * The sponsor list, in the Speakers roster's vocabulary: identity with a
@@ -116,7 +103,6 @@ export function SponsorsTable({
         <TableBody>
           {rows.map((row) => {
             const primary = row.contacts.at(0)
-            const gaps = sponsorGaps(row)
             const pct =
               row.sessionLimit > 0 ? Math.min(100, Math.round((row.sessionsUsed / row.sessionLimit) * 100)) : 0
             return (
@@ -139,9 +125,17 @@ export function SponsorsTable({
 
                 <TableCell>
                   <div className="flex items-center gap-2.5">
-                    <Avatar className="rounded-md after:rounded-md">
-                      <AvatarFallback className="rounded-md text-xs">{initialsOf(row.name)}</AvatarFallback>
-                    </Avatar>
+                    {row.logoUrl ? (
+                      <img
+                        src={row.logoUrl}
+                        alt=""
+                        className="size-8 shrink-0 rounded-md border border-border bg-background object-contain p-0.5"
+                      />
+                    ) : (
+                      <Avatar className="rounded-md after:rounded-md">
+                        <AvatarFallback className="rounded-md text-xs">{initialsOf(row.name)}</AvatarFallback>
+                      </Avatar>
+                    )}
                     <div className="min-w-0">
                       <button
                         type="button"
@@ -213,27 +207,7 @@ export function SponsorsTable({
                 </TableCell>
 
                 <TableCell>
-                  {gaps.length === 0 ? (
-                    <Badge
-                      variant="secondary"
-                      className="h-5 gap-1 rounded-full bg-status-green-bg px-2 text-[11px] text-status-green-fg"
-                    >
-                      <RiCheckLine size={12} aria-hidden />
-                      All set
-                    </Badge>
-                  ) : (
-                    <div className="flex flex-wrap items-center gap-1.5">
-                      {gaps.map((gap) => (
-                        <Badge
-                          key={gap}
-                          variant="secondary"
-                          className="h-5 rounded-full bg-status-amber-bg px-2 text-[11px] text-status-amber-fg"
-                        >
-                          {gap}
-                        </Badge>
-                      ))}
-                    </div>
-                  )}
+                  <StillNeededChips items={row.stillNeeded} max={3} />
                 </TableCell>
 
                 <TableCell className="sticky right-0 z-[1] bg-card pr-4 text-right group-hover:bg-muted group-data-[state=selected]:bg-muted">

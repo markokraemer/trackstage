@@ -102,6 +102,8 @@ const GROUPS = [
     tools: [
       "list_sponsors",
       "manage_sponsor",
+      "manage_sponsor_tier",
+      "manage_sponsor_field",
       "manage_sponsor_contact",
       "invite_sponsor_contacts",
       "set_session_sponsor",

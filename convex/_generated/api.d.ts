@@ -60,6 +60,7 @@ import type * as search from "../search.js";
 import type * as seed from "../seed.js";
 import type * as sessionStatuses from "../sessionStatuses.js";
 import type * as speakersAdmin from "../speakersAdmin.js";
+import type * as sponsorProfile from "../sponsorProfile.js";
 import type * as sponsors from "../sponsors.js";
 import type * as submissions from "../submissions.js";
 import type * as submit from "../submit.js";
@@ -127,6 +128,7 @@ declare const fullApi: ApiFromModules<{
   seed: typeof seed;
   sessionStatuses: typeof sessionStatuses;
   speakersAdmin: typeof speakersAdmin;
+  sponsorProfile: typeof sponsorProfile;
   sponsors: typeof sponsors;
   submissions: typeof submissions;
   submit: typeof submit;

@@ -9,6 +9,7 @@ import { record as recordAudit } from "./lib/audit"
 import { queueMessage } from "./comms"
 import { sponsorPortalLinkFor } from "./lib/email"
 import { scheduleAirtableSync } from "./airtable"
+import { assertImageUpload, releaseBlob, storageMeta } from "./lib/files"
 import { emitWebhook } from "./webhooks"
 import { friendlyId } from "./lib/friendlyId"
 import {
@@ -21,8 +22,15 @@ import {
   linkContact,
   requireSponsorInEvent,
   sponsorContacts,
+  cleanDescription,
+  fieldsWithValues,
+  mergeFieldValues,
+  primaryContactOf,
+  sponsorFieldsFor,
   sponsorPortalRules,
   sponsorSessions,
+  sponsorWindowClosed,
+  stillNeeded,
 } from "./lib/sponsors"
 
 // ————————————————————————————————————————————————————————————————————————
@@ -45,9 +53,11 @@ function personLabel(person: Doc<"people">): string {
 
 /** One sponsor as every organizer surface (page, drawer, MCP) reads it. */
 export async function sponsorRow(ctx: QueryCtx, sponsor: Doc<"sponsors">) {
-  const [contacts, sessions] = await Promise.all([
+  const [contacts, sessions, event, fieldDefs] = await Promise.all([
     sponsorContacts(ctx, sponsor._id),
     sponsorSessions(ctx, sponsor._id),
+    ctx.db.get(sponsor.eventId),
+    sponsorFieldsFor(ctx, sponsor.eventId),
   ])
   // When each contact was last sent their invite — "did they ever get it?" is
   // the first question when a sponsor says they can't find their portal.
@@ -62,6 +72,30 @@ export async function sponsorRow(ctx: QueryCtx, sponsor: Doc<"sponsors">) {
       return last ? (last.scheduledAt ?? last._creationTime) : null
     }),
   )
+  const primary = primaryContactOf(sponsor, contacts)
+  const used = allowanceUsed(sessions)
+  const rules = sponsorPortalRules(event)
+  const needed = stillNeeded({
+    sponsor,
+    contacts: invites.map((at) => ({ invited: at !== null })),
+    sessionsUsed: used,
+    windowOpen: !sponsorWindowClosed(rules, Date.now()),
+  })
+  const contactRows = contacts
+    .sort((a, b) => a._creationTime - b._creationTime)
+    .map((person) => ({
+      personId: person._id,
+      name: personLabel(person),
+      firstName: person.firstName,
+      lastName: person.lastName,
+      email: person.email,
+      jobTitle: person.jobTitle ?? null,
+      // Organizer-only, like the speaker roster's: copying a contact's
+      // magic link is how an organizer helps a sponsor who lost the email.
+      portalToken: person.portalToken,
+      invitedAt: invites[contacts.indexOf(person)],
+      isPrimary: primary?._id === person._id,
+    }))
   return {
     _id: sponsor._id,
     _creationTime: sponsor._creationTime,
@@ -69,23 +103,19 @@ export async function sponsorRow(ctx: QueryCtx, sponsor: Doc<"sponsors">) {
     name: sponsor.name,
     tier: sponsor.tier ?? null,
     websiteUrl: sponsor.websiteUrl ?? null,
+    /** The event's company fields with this sponsor's values, in order. */
+    fields: fieldsWithValues(fieldDefs, sponsor.fields),
+    description: sponsor.description ?? null,
+    logoUrl: sponsor.logoId ? await ctx.storage.getUrl(sponsor.logoId) : null,
+    publicVisible: sponsor.publicVisible !== false,
     notes: sponsor.notes ?? null,
     sessionLimit: sponsor.sessionLimit,
-    sessionsUsed: allowanceUsed(sessions),
-    contacts: contacts
-      .sort((a, b) => a._creationTime - b._creationTime)
-      .map((person, index) => ({
-        personId: person._id,
-        name: personLabel(person),
-        firstName: person.firstName,
-        lastName: person.lastName,
-        email: person.email,
-        jobTitle: person.jobTitle ?? null,
-        // Organizer-only, like the speaker roster's: copying a contact's
-        // magic link is how an organizer helps a sponsor who lost the email.
-        portalToken: person.portalToken,
-        invitedAt: invites[index],
-      })),
+    sessionsUsed: used,
+    // Primary first, then in the order they were added.
+    contacts: [
+      ...contactRows.filter((c) => c.isPrimary),
+      ...contactRows.filter((c) => !c.isPrimary),
+    ],
     sessions: sessions.map((s) => ({
       _id: s._id,
       title: s.title,
@@ -93,6 +123,7 @@ export async function sponsorRow(ctx: QueryCtx, sponsor: Doc<"sponsors">) {
       kind: s.kind,
       scheduled: s.startsAt !== undefined,
     })),
+    stillNeeded: needed,
   }
 }
 
@@ -117,10 +148,15 @@ export async function sponsorApiShape(
     friendly_id: friendly.id,
     friendly_id_raw: friendly.raw,
     name: sponsor.name,
-    // Sessionboard fields we don't model — present so their clients can read
-    // them without a guard.
-    description: null,
-    logo_image_url: null,
+    description: row.description,
+    logo_image_url: row.logoUrl,
+    // Sessionboard's `custom_fields` — the event's own company fields.
+    custom_fields: row.fields.map((f) => ({
+      id: f.id,
+      internal_name: f.label,
+      value: f.value,
+      public: f.public,
+    })),
     banner_image_url: null,
     website_url: sponsor.websiteUrl ?? null,
     created_at: isoOrNull(sponsor._creationTime),
@@ -183,16 +219,34 @@ export const list = query({
   args: { eventId: v.id("events") },
   handler: async (ctx, args) => {
     const { event } = await requireEventAccess(ctx, args.eventId)
-    const sponsors = await ctx.db
-      .query("sponsors")
-      .withIndex("by_eventId", (q) => q.eq("eventId", args.eventId))
-      .take(500)
+    const [sponsors, tiers] = await Promise.all([
+      ctx.db
+        .query("sponsors")
+        .withIndex("by_eventId", (q) => q.eq("eventId", args.eventId))
+        .take(500),
+      tiersOf(ctx, args.eventId),
+    ])
+    // Tier order first (Platinum above Gold), untiered last, then by name.
+    const rank = (tier: string | undefined) => {
+      const index = tiers.findIndex((t) => t.name === tier)
+      return index === -1 ? Number.MAX_SAFE_INTEGER : index
+    }
     const rows = await Promise.all(
       sponsors
-        .sort((a, b) => a.name.localeCompare(b.name))
+        .sort((a, b) => rank(a.tier) - rank(b.tier) || a.name.localeCompare(b.name))
         .map((sponsor) => sponsorRow(ctx, sponsor)),
     )
-    return { sponsors: rows, rules: sponsorPortalRules(event) }
+    return {
+      sponsors: rows,
+      rules: sponsorPortalRules(event),
+      tiers: tiers.map((t) => ({ _id: t._id, name: t.name, sessionLimit: t.sessionLimit })),
+      fields: (await sponsorFieldsFor(ctx, args.eventId)).map((f) => ({
+        _id: f._id,
+        label: f.label,
+        kind: f.kind,
+        public: f.public,
+      })),
+    }
   },
 })
 
@@ -219,6 +273,10 @@ export interface SponsorFields {
   websiteUrl?: string
   sessionLimit: number
   notes?: string
+  description?: string
+  /** `{fieldId → value}` — merged; an empty string clears one value. */
+  fields?: Record<string, string>
+  publicVisible?: boolean
 }
 
 export async function createSponsorCore(
@@ -290,8 +348,17 @@ export async function updateSponsorCore(
   if (patch.websiteUrl !== undefined) next.websiteUrl = cleanWebsiteUrl(patch.websiteUrl)
   if (patch.notes !== undefined) next.notes = cleanOptionalText(patch.notes)
   if (patch.sessionLimit !== undefined) next.sessionLimit = cleanSessionLimit(patch.sessionLimit)
+  if (patch.description !== undefined) next.description = cleanDescription(patch.description)
+  if (patch.fields !== undefined && Object.keys(patch.fields).length > 0) {
+    next.fields = mergeFieldValues(
+      sponsor.fields,
+      await sponsorFieldsFor(ctx, sponsor.eventId),
+      patch.fields,
+    )
+  }
+  if (patch.publicVisible !== undefined) next.publicVisible = patch.publicVisible
   if (Object.keys(next).length === 0) return
-  await ctx.db.patch(sponsor._id, next)
+  await ctx.db.patch(sponsor._id, { ...next, updatedAt: Date.now() })
   await recordAudit(ctx, {
     eventId: sponsor.eventId,
     entity: "sponsor",
@@ -365,6 +432,9 @@ export async function removeContactCore(
   if (!person.sponsorId) return
   const sponsor = await ctx.db.get(person.sponsorId)
   await ctx.db.patch(person._id, { sponsorId: undefined })
+  if (sponsor?.primaryContactId === person._id) {
+    await ctx.db.patch(sponsor._id, { primaryContactId: undefined })
+  }
   if (sponsor) {
     await recordAudit(ctx, {
       eventId: sponsor.eventId,
@@ -512,6 +582,9 @@ export const update = mutation({
     websiteUrl: v.optional(v.string()),
     sessionLimit: v.optional(v.number()),
     notes: v.optional(v.string()),
+    description: v.optional(v.string()),
+    fields: v.optional(v.record(v.string(), v.string())),
+    publicVisible: v.optional(v.boolean()),
   },
   returns: v.null(),
   handler: async (ctx, args) => {
@@ -520,6 +593,290 @@ export const update = mutation({
     await requireEventAccess(ctx, sponsor.eventId)
     const { sponsorId: _sponsorId, ...patch } = args
     await updateSponsorCore(ctx, sponsor, patch)
+    return null
+  },
+})
+
+/** Make one of the sponsor's contacts the primary one. */
+export const setPrimaryContact = mutation({
+  args: { sponsorId: v.id("sponsors"), personId: v.id("people") },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const sponsor = await ctx.db.get(args.sponsorId)
+    if (!sponsor) throw new ConvexError("Sponsor not found.")
+    await requireEventAccess(ctx, sponsor.eventId)
+    const person = await ctx.db.get(args.personId)
+    if (!person || person.sponsorId !== sponsor._id) {
+      throw new ConvexError("That person isn't a contact for this sponsor.")
+    }
+    await ctx.db.patch(sponsor._id, { primaryContactId: person._id, updatedAt: Date.now() })
+    await recordAudit(ctx, {
+      eventId: sponsor.eventId,
+      entity: "sponsor",
+      entityId: sponsor._id,
+      action: "updated",
+      summary: `Primary contact for ${sponsor.name} · ${personLabel(person)}`,
+      meta: { email: person.email },
+    })
+    await emitSponsorUpdated(ctx, sponsor._id)
+    return null
+  },
+})
+
+/**
+ * Set or clear (`storageId: null`) a sponsor's logo — shared by the organizer
+ * (here) and the sponsor's own portal (convex/sponsorTasks.ts). A current
+ * value, like event branding: the replaced blob is deleted.
+ */
+export async function setSponsorLogoCore(
+  ctx: MutationCtx,
+  sponsor: Doc<"sponsors">,
+  storageId: Id<"_storage"> | null,
+  filename: string | undefined,
+  actor?: AuditActor,
+): Promise<void> {
+  if (storageId !== null) {
+    const meta = await storageMeta(ctx, storageId)
+    if (!meta) throw new ConvexError("That upload didn't finish — please try again.")
+    assertImageUpload(meta, filename ?? "logo")
+  }
+  const previous = sponsor.logoId
+  await ctx.db.patch(sponsor._id, { logoId: storageId ?? undefined, updatedAt: Date.now() })
+  if (previous && previous !== storageId) await releaseBlob(ctx, previous)
+  await recordAudit(ctx, {
+    eventId: sponsor.eventId,
+    entity: "sponsor",
+    entityId: sponsor._id,
+    action: "updated",
+    summary: storageId ? `Logo updated · ${sponsor.name}` : `Logo removed · ${sponsor.name}`,
+    actor,
+  })
+  await emitSponsorUpdated(ctx, sponsor._id)
+}
+
+export const setLogo = mutation({
+  args: {
+    sponsorId: v.id("sponsors"),
+    storageId: v.union(v.id("_storage"), v.null()),
+    filename: v.optional(v.string()),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const sponsor = await ctx.db.get(args.sponsorId)
+    if (!sponsor) throw new ConvexError("Sponsor not found.")
+    await requireEventAccess(ctx, sponsor.eventId)
+    await setSponsorLogoCore(ctx, sponsor, args.storageId, args.filename)
+    return null
+  },
+})
+
+// ——— Tiers ————————————————————————————————————————————————————————————————
+
+async function tiersOf(ctx: QueryCtx | MutationCtx, eventId: Id<"events">) {
+  const rows = await ctx.db
+    .query("sponsorTiers")
+    .withIndex("by_eventId", (q) => q.eq("eventId", eventId))
+    .take(100)
+  return rows.sort((a, b) => a.order - b.order)
+}
+
+/**
+ * Create or update a tier. Renaming one renames it on every sponsor in it —
+ * the sponsor's `tier` is the tier's name, so they move together.
+ */
+export const saveTier = mutation({
+  args: {
+    eventId: v.id("events"),
+    tierId: v.optional(v.id("sponsorTiers")),
+    name: v.string(),
+    sessionLimit: v.number(),
+  },
+  returns: v.id("sponsorTiers"),
+  handler: async (ctx, args) => {
+    await requireEventAccess(ctx, args.eventId)
+    const name = args.name.trim()
+    if (!name) throw new ConvexError("Give the tier a name.")
+    if (name.length > 60) throw new ConvexError("Keep tier names under 60 characters.")
+    const sessionLimit = cleanSessionLimit(args.sessionLimit)
+    const tiers = await tiersOf(ctx, args.eventId)
+    if (tiers.some((t) => t._id !== args.tierId && t.name.toLowerCase() === name.toLowerCase())) {
+      throw new ConvexError(`There's already a tier called ${name}.`)
+    }
+    if (!args.tierId) {
+      const id = await ctx.db.insert("sponsorTiers", {
+        eventId: args.eventId,
+        name,
+        sessionLimit,
+        order: (tiers.at(-1)?.order ?? 0) + 10,
+      })
+      await recordAudit(ctx, {
+        eventId: args.eventId,
+        entity: "settings",
+        entityId: id,
+        action: "created",
+        summary: `Sponsor tier added · ${name}`,
+      })
+      return id
+    }
+    const tier = tiers.find((t) => t._id === args.tierId)
+    if (!tier) throw new ConvexError("Tier not found.")
+    await ctx.db.patch(tier._id, { name, sessionLimit })
+    if (tier.name !== name) {
+      const sponsors = await ctx.db
+        .query("sponsors")
+        .withIndex("by_eventId", (q) => q.eq("eventId", args.eventId))
+        .take(500)
+      for (const sponsor of sponsors) {
+        if (sponsor.tier === tier.name) await ctx.db.patch(sponsor._id, { tier: name })
+      }
+    }
+    await recordAudit(ctx, {
+      eventId: args.eventId,
+      entity: "settings",
+      entityId: tier._id,
+      action: "updated",
+      summary: tier.name === name ? `Sponsor tier updated · ${name}` : `Sponsor tier renamed · ${tier.name} → ${name}`,
+    })
+    return tier._id
+  },
+})
+
+/** Remove a tier. Its sponsors keep everything but the tier label. */
+export const removeTier = mutation({
+  args: { tierId: v.id("sponsorTiers") },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const tier = await ctx.db.get(args.tierId)
+    if (!tier) throw new ConvexError("Tier not found.")
+    await requireEventAccess(ctx, tier.eventId)
+    const sponsors = await ctx.db
+      .query("sponsors")
+      .withIndex("by_eventId", (q) => q.eq("eventId", tier.eventId))
+      .take(500)
+    for (const sponsor of sponsors) {
+      if (sponsor.tier === tier.name) await ctx.db.patch(sponsor._id, { tier: undefined })
+    }
+    await ctx.db.delete(tier._id)
+    await recordAudit(ctx, {
+      eventId: tier.eventId,
+      entity: "settings",
+      entityId: tier._id,
+      action: "deleted",
+      summary: `Sponsor tier removed · ${tier.name}`,
+    })
+    return null
+  },
+})
+
+// ——— Company fields ——————————————————————————————————————————————————————
+
+const fieldKindArg = v.union(v.literal("text"), v.literal("longText"), v.literal("url"))
+
+/** Create or update one of the event's company fields. */
+export const saveField = mutation({
+  args: {
+    eventId: v.id("events"),
+    fieldId: v.optional(v.id("sponsorFields")),
+    label: v.string(),
+    kind: fieldKindArg,
+    public: v.boolean(),
+  },
+  returns: v.id("sponsorFields"),
+  handler: async (ctx, args) => {
+    await requireEventAccess(ctx, args.eventId)
+    const label = args.label.trim()
+    if (!label) throw new ConvexError("Give the field a label.")
+    if (label.length > 60) throw new ConvexError("Keep field labels under 60 characters.")
+    const fields = await sponsorFieldsFor(ctx, args.eventId)
+    if (fields.some((f) => f._id !== args.fieldId && f.label.toLowerCase() === label.toLowerCase())) {
+      throw new ConvexError(`There's already a field called ${label}.`)
+    }
+    if (!args.fieldId) {
+      const id = await ctx.db.insert("sponsorFields", {
+        eventId: args.eventId,
+        label,
+        kind: args.kind,
+        public: args.public,
+        order: (fields.at(-1)?.order ?? 0) + 10,
+      })
+      await recordAudit(ctx, {
+        eventId: args.eventId,
+        entity: "settings",
+        entityId: id,
+        action: "created",
+        summary: `Sponsor field added · ${label}`,
+      })
+      return id
+    }
+    const field = fields.find((f) => f._id === args.fieldId)
+    if (!field) throw new ConvexError("Field not found.")
+    await ctx.db.patch(field._id, { label, kind: args.kind, public: args.public })
+    await recordAudit(ctx, {
+      eventId: args.eventId,
+      entity: "settings",
+      entityId: field._id,
+      action: "updated",
+      summary: `Sponsor field updated · ${label}`,
+    })
+    return field._id
+  },
+})
+
+/** Remove a company field — and every sponsor's value for it. */
+export const removeField = mutation({
+  args: { fieldId: v.id("sponsorFields") },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const field = await ctx.db.get(args.fieldId)
+    if (!field) throw new ConvexError("Field not found.")
+    await requireEventAccess(ctx, field.eventId)
+    const sponsors = await ctx.db
+      .query("sponsors")
+      .withIndex("by_eventId", (q) => q.eq("eventId", field.eventId))
+      .take(500)
+    for (const sponsor of sponsors) {
+      if (sponsor.fields && field._id in sponsor.fields) {
+        const { [field._id]: _dropped, ...rest } = sponsor.fields
+        await ctx.db.patch(sponsor._id, { fields: rest })
+      }
+    }
+    await ctx.db.delete(field._id)
+    await recordAudit(ctx, {
+      eventId: field.eventId,
+      entity: "settings",
+      entityId: field._id,
+      action: "deleted",
+      summary: `Sponsor field removed · ${field.label}`,
+    })
+    return null
+  },
+})
+
+export const reorderFields = mutation({
+  args: { eventId: v.id("events"), fieldIds: v.array(v.id("sponsorFields")) },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    await requireEventAccess(ctx, args.eventId)
+    const fields = await sponsorFieldsFor(ctx, args.eventId)
+    for (const [index, fieldId] of args.fieldIds.entries()) {
+      const field = fields.find((f) => f._id === fieldId)
+      if (field) await ctx.db.patch(field._id, { order: (index + 1) * 10 })
+    }
+    return null
+  },
+})
+
+/** Reorder tiers (top = most prominent on the sponsor wall). */
+export const reorderTiers = mutation({
+  args: { eventId: v.id("events"), tierIds: v.array(v.id("sponsorTiers")) },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    await requireEventAccess(ctx, args.eventId)
+    const tiers = await tiersOf(ctx, args.eventId)
+    for (const [index, tierId] of args.tierIds.entries()) {
+      const tier = tiers.find((t) => t._id === tierId)
+      if (tier) await ctx.db.patch(tier._id, { order: (index + 1) * 10 })
+    }
     return null
   },
 })

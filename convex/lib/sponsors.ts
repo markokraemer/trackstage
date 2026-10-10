@@ -1,7 +1,7 @@
 import { ConvexError } from "convex/values"
 import type { Doc, Id } from "../_generated/dataModel"
 import type { MutationCtx, QueryCtx } from "../_generated/server"
-import { randomToken } from "./auth"
+import { randomToken, requirePerson } from "./auth"
 
 // ————————————————————————————————————————————————————————————————————————
 // Sponsors — the shared rules behind the organizer's Sponsors page
@@ -333,3 +333,163 @@ export async function resolveSpeaker(
  * gets near it; it just stops a script from attaching thousands of people.
  */
 export const MAX_SPONSOR_SESSION_SPEAKERS = 50
+
+// ——— Portal access ———————————————————————————————————————————————————————
+
+/** The signed-in contact, their sponsor and event — or a plain refusal. */
+export async function requireSponsorContact(
+  ctx: QueryCtx | MutationCtx,
+  portalToken: string,
+) {
+  const person = await requirePerson(ctx, portalToken)
+  const sponsor = person.sponsorId ? await ctx.db.get(person.sponsorId) : null
+  if (!sponsor || sponsor.eventId !== person.eventId) {
+    throw new ConvexError(
+      "Only sponsor contacts can do this. Ask the organizers to add you to your company.",
+    )
+  }
+  const event = await ctx.db.get(person.eventId)
+  if (!event) throw new ConvexError("Event not found")
+  return { person, sponsor, event }
+}
+
+// ——— "What's still needed" ——————————————————————————————————————————————
+
+/** The primary contact: the one chosen, else the first added. */
+export function primaryContactOf(
+  sponsor: Doc<"sponsors">,
+  contacts: Array<Doc<"people">>,
+): Doc<"people"> | null {
+  const chosen = sponsor.primaryContactId
+    ? contacts.find((c) => c._id === sponsor.primaryContactId)
+    : undefined
+  if (chosen) return chosen
+  return [...contacts].sort((a, b) => a._creationTime - b._creationTime).at(0) ?? null
+}
+
+export interface StillNeeded {
+  key: string
+  label: string
+  /** Who has to act: the sponsor, or the organizers. */
+  owner: "sponsor" | "organizer"
+  dueAt?: number
+}
+
+/**
+ * Everything standing between this sponsor and "all set" — ONE list, so the
+ * organizer's "Still needed" column, the sponsor portal's overview and the
+ * dashboard can never disagree. Ordered: organizer blockers first (nobody can
+ * sign in), then the sponsor's own to-dos.
+ */
+export function stillNeeded(input: {
+  sponsor: Doc<"sponsors">
+  contacts: Array<{ invited: boolean }>
+  sessionsUsed: number
+  windowOpen: boolean
+}): Array<StillNeeded> {
+  const out: Array<StillNeeded> = []
+  const { sponsor, contacts } = input
+  if (contacts.length === 0) {
+    out.push({ key: "contact", label: "No contact", owner: "organizer" })
+  } else if (contacts.some((c) => !c.invited)) {
+    out.push({ key: "invite", label: "Not invited", owner: "organizer" })
+  }
+  if (!sponsor.logoId) out.push({ key: "logo", label: "Logo", owner: "sponsor" })
+  if (!sponsor.description?.trim()) {
+    out.push({ key: "description", label: "Company description", owner: "sponsor" })
+  }
+  const left = sponsor.sessionLimit - input.sessionsUsed
+  if (input.windowOpen && sponsor.sessionLimit > 0 && left > 0) {
+    out.push({
+      key: "sessions",
+      label: `${left} session${left === 1 ? "" : "s"} to add`,
+      owner: "sponsor",
+    })
+  }
+  return out
+}
+
+const LINK_PATTERN = /^[a-z][a-z0-9+.-]*:/i
+
+/** A social/profile link: http(s) only, bare domains forgiven, empty clears. */
+export function cleanProfileUrl(value: string | undefined, label: string): string | undefined {
+  const trimmed = cleanOptionalText(value)
+  if (trimmed === undefined) return undefined
+  const withScheme = LINK_PATTERN.test(trimmed) ? trimmed : `https://${trimmed}`
+  try {
+    const url = new URL(withScheme)
+    if (url.protocol !== "https:" && url.protocol !== "http:") throw new Error("scheme")
+    return url.toString()
+  } catch {
+    throw new ConvexError(`That ${label} link doesn't look right.`)
+  }
+}
+
+/** The public blurb: trimmed, and short enough to read on a sponsor wall. */
+export function cleanDescription(value: string | undefined): string | undefined {
+  const trimmed = cleanOptionalText(value)
+  if (trimmed && trimmed.length > 600) {
+    throw new ConvexError("Keep the description under 600 characters — it's read on the sponsor wall.")
+  }
+  return trimmed
+}
+
+// ——— Company fields ——————————————————————————————————————————————————————
+
+const FIELD_LIMITS = { text: 200, longText: 2000, url: 500 } as const
+
+/** One value for one field, cleaned for its kind. Empty ⇒ undefined (cleared). */
+export function cleanFieldValue(field: Doc<"sponsorFields">, raw: string): string | undefined {
+  const trimmed = raw.trim()
+  if (!trimmed) return undefined
+  if (field.kind === "url") return cleanProfileUrl(trimmed, field.label)
+  if (trimmed.length > FIELD_LIMITS[field.kind]) {
+    throw new ConvexError(`Keep ${field.label} under ${FIELD_LIMITS[field.kind]} characters.`)
+  }
+  return trimmed
+}
+
+export async function sponsorFieldsFor(
+  ctx: QueryCtx | MutationCtx,
+  eventId: Id<"events">,
+): Promise<Array<Doc<"sponsorFields">>> {
+  const rows = await ctx.db
+    .query("sponsorFields")
+    .withIndex("by_eventId", (q) => q.eq("eventId", eventId))
+    .take(100)
+  return rows.sort((a, b) => a.order - b.order)
+}
+
+/**
+ * Merge a `{fieldId → value}` patch into a sponsor's values. Only fields the
+ * event defines are accepted; an empty string clears that one value.
+ */
+export function mergeFieldValues(
+  current: Record<string, string> | undefined,
+  definitions: Array<Doc<"sponsorFields">>,
+  patch: Record<string, string>,
+): Record<string, string> {
+  const next = { ...(current ?? {}) }
+  for (const [fieldId, raw] of Object.entries(patch)) {
+    const field = definitions.find((f) => f._id === fieldId)
+    if (!field) throw new ConvexError("That field doesn't exist on this event any more — reload and try again.")
+    const value = cleanFieldValue(field, raw)
+    if (value === undefined) delete next[fieldId]
+    else next[fieldId] = value
+  }
+  return next
+}
+
+/** Definitions joined with one sponsor's values, in display order. */
+export function fieldsWithValues(
+  definitions: Array<Doc<"sponsorFields">>,
+  values: Record<string, string> | undefined,
+) {
+  return definitions.map((f) => ({
+    id: f._id,
+    label: f.label,
+    kind: f.kind,
+    public: f.public,
+    value: values?.[f._id] ?? null,
+  }))
+}

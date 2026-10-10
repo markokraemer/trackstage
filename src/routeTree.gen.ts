@@ -37,6 +37,8 @@ import { Route as PortalSubmissionsRouteImport } from './routes/portal/submissio
 import { Route as PortalTasksRouteImport } from './routes/portal/tasks'
 import { Route as ReviewTokenRouteImport } from './routes/review/$token'
 import { Route as SponsorIndexRouteImport } from './routes/sponsor/index'
+import { Route as SponsorCompanyRouteImport } from './routes/sponsor/company'
+import { Route as SponsorSessionsRouteImport } from './routes/sponsor/sessions'
 import { Route as SponsorTasksRouteImport } from './routes/sponsor/tasks'
 import { Route as SponsorTeamRouteImport } from './routes/sponsor/team'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
@@ -251,6 +253,16 @@ const ReviewTokenRoute = ReviewTokenRouteImport.update({
 const SponsorIndexRoute = SponsorIndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => SponsorRouteRoute,
+} as any)
+const SponsorCompanyRoute = SponsorCompanyRouteImport.update({
+  id: '/company',
+  path: '/company',
+  getParentRoute: () => SponsorRouteRoute,
+} as any)
+const SponsorSessionsRoute = SponsorSessionsRouteImport.update({
+  id: '/sessions',
+  path: '/sessions',
   getParentRoute: () => SponsorRouteRoute,
 } as any)
 const SponsorTasksRoute = SponsorTasksRouteImport.update({
@@ -690,6 +702,8 @@ export interface FileRoutesByFullPath {
   '/portal/submissions': typeof PortalSubmissionsRoute
   '/portal/tasks': typeof PortalTasksRoute
   '/review/$token': typeof ReviewTokenRoute
+  '/sponsor/company': typeof SponsorCompanyRoute
+  '/sponsor/sessions': typeof SponsorSessionsRoute
   '/sponsor/tasks': typeof SponsorTasksRoute
   '/sponsor/team': typeof SponsorTeamRoute
   '/app/': typeof AppIndexRoute
@@ -790,6 +804,8 @@ export interface FileRoutesByTo {
   '/portal/submissions': typeof PortalSubmissionsRoute
   '/portal/tasks': typeof PortalTasksRoute
   '/review/$token': typeof ReviewTokenRoute
+  '/sponsor/company': typeof SponsorCompanyRoute
+  '/sponsor/sessions': typeof SponsorSessionsRoute
   '/sponsor/tasks': typeof SponsorTasksRoute
   '/sponsor/team': typeof SponsorTeamRoute
   '/app': typeof AppIndexRoute
@@ -892,6 +908,8 @@ export interface FileRoutesById {
   '/portal/submissions': typeof PortalSubmissionsRoute
   '/portal/tasks': typeof PortalTasksRoute
   '/review/$token': typeof ReviewTokenRoute
+  '/sponsor/company': typeof SponsorCompanyRoute
+  '/sponsor/sessions': typeof SponsorSessionsRoute
   '/sponsor/tasks': typeof SponsorTasksRoute
   '/sponsor/team': typeof SponsorTeamRoute
   '/app/': typeof AppIndexRoute
@@ -998,6 +1016,8 @@ export interface FileRouteTypes {
     | '/portal/submissions'
     | '/portal/tasks'
     | '/review/$token'
+    | '/sponsor/company'
+    | '/sponsor/sessions'
     | '/sponsor/tasks'
     | '/sponsor/team'
     | '/app/'
@@ -1098,6 +1118,8 @@ export interface FileRouteTypes {
     | '/portal/submissions'
     | '/portal/tasks'
     | '/review/$token'
+    | '/sponsor/company'
+    | '/sponsor/sessions'
     | '/sponsor/tasks'
     | '/sponsor/team'
     | '/app'
@@ -1199,6 +1221,8 @@ export interface FileRouteTypes {
     | '/portal/submissions'
     | '/portal/tasks'
     | '/review/$token'
+    | '/sponsor/company'
+    | '/sponsor/sessions'
     | '/sponsor/tasks'
     | '/sponsor/team'
     | '/app/'
@@ -1499,6 +1523,20 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/sponsor/'
       preLoaderRoute: typeof SponsorIndexRouteImport
+      parentRoute: typeof SponsorRouteRoute
+    }
+    '/sponsor/company': {
+      id: '/sponsor/company'
+      path: '/company'
+      fullPath: '/sponsor/company'
+      preLoaderRoute: typeof SponsorCompanyRouteImport
+      parentRoute: typeof SponsorRouteRoute
+    }
+    '/sponsor/sessions': {
+      id: '/sponsor/sessions'
+      path: '/sessions'
+      fullPath: '/sponsor/sessions'
+      preLoaderRoute: typeof SponsorSessionsRouteImport
       parentRoute: typeof SponsorRouteRoute
     }
     '/sponsor/tasks': {
@@ -2239,6 +2277,8 @@ const PortalRouteRouteWithChildren = PortalRouteRoute._addFileChildren(
 )
 
 interface SponsorRouteRouteChildren {
+  SponsorCompanyRoute: typeof SponsorCompanyRoute
+  SponsorSessionsRoute: typeof SponsorSessionsRoute
   SponsorTasksRoute: typeof SponsorTasksRoute
   SponsorTeamRoute: typeof SponsorTeamRoute
   SponsorIndexRoute: typeof SponsorIndexRoute
@@ -2246,6 +2286,8 @@ interface SponsorRouteRouteChildren {
 }
 
 const SponsorRouteRouteChildren: SponsorRouteRouteChildren = {
+  SponsorCompanyRoute: SponsorCompanyRoute,
+  SponsorSessionsRoute: SponsorSessionsRoute,
   SponsorTasksRoute: SponsorTasksRoute,
   SponsorTeamRoute: SponsorTeamRoute,
   SponsorIndexRoute: SponsorIndexRoute,

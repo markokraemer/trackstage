@@ -783,3 +783,20 @@ stranger's event created seconds earlier.
   "Your details". Who counts as a speaker is now who PRESENTS (participant on any
   session), not who submitted: a contact who presents one of their company's
   sessions gets the speaker portal too and switches from the account menu.
+
+- **2026-10-11 · Sponsor deliverables cut; company fields are the event's own.**
+  Wave 1 shipped company-level "deliverables" (upload / answer / confirm) and fixed
+  LinkedIn + X fields. Marko: "aren't these things way too hardcoded … maybe
+  DELIVERABLES for now is too much & should be removed". Agreed on both:
+  · Deliverables were a second task system under a new name with three hardcoded
+    kinds, and not what Kelsey asked for. Removed entirely (table, module, organizer
+    tab, bulk action, portal tab, MCP tool). The real need behind them — logo and
+    description — is covered by the Company page and the shared "still needed"
+    list. If sponsor-level tasks return, they extend the EXISTING task model with a
+    sponsor assignee, never a parallel copy.
+  · Only logo, website and description are built in (every sponsor wall needs
+    exactly those). Everything else is an organizer-defined `sponsorFields` row
+    (label, kind text/longText/url, public flag, order) managed in Sponsor settings;
+    values live in `sponsors.fields` by field id. Both the organizer drawer and the
+    sponsor's Company page render them; REST exposes them as Sessionboard-style
+    `custom_fields`, MCP as `fields` by label + `manage_sponsor_field`.

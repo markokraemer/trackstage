@@ -10,13 +10,17 @@ import {
   RiArrowRightUpLine,
   RiBuilding2Line,
   RiCalendarEventLine,
+  RiCheckboxCircleLine,
   RiCloseLine,
   RiDeleteBin6Line,
   RiExternalLinkLine,
+  RiEyeLine,
+  RiEyeOffLine,
   RiHistoryLine,
   RiLinkM,
   RiMailSendLine,
   RiMoreLine,
+  RiStarLine,
   RiTeamLine,
   RiUserAddLine,
 } from "@remixicon/react"
@@ -24,6 +28,7 @@ import { toast } from "sonner"
 
 import { cn } from "@/lib/utils"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import { Badge } from "@/components/ui/badge"
 import { Button, buttonVariants } from "@/components/ui/button"
 import {
   DropdownMenu,
@@ -39,6 +44,13 @@ import {
   FieldLabel,
 } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { Separator } from "@/components/ui/separator"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Switch } from "@/components/ui/switch"
@@ -52,6 +64,14 @@ import { sponsorPortalLinkFor } from "@/components/dashboard/app-routes"
 import { initialsOf } from "@/components/dashboard/format"
 import { absoluteDate, relativeDate } from "@/components/submissions/constants"
 import { AllowanceMeter } from "@/components/sponsors/allowance-meter"
+import { SponsorLogoUploader } from "@/components/sponsors/sponsor-logo-uploader"
+import {
+  CompanyFieldInputs,
+  changedFieldValues,
+  fieldValueMap,
+} from "@/components/sponsors/company-field-inputs"
+import type { CompanyField } from "@/components/sponsors/company-field-inputs"
+import type { SponsorTier } from "@/components/sponsors/sponsor-settings-drawer"
 import { copyText } from "@/lib/clipboard"
 import { errorMessage } from "@/lib/errors"
 import type { EventRef } from "@/lib/app-links"
@@ -60,6 +80,8 @@ import { appLink } from "@/lib/app-links"
 export type SponsorRow = FunctionReturnType<typeof api.sponsors.list>["sponsors"][number]
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+const NO_TIER = "__none__"
+const MAX_DESCRIPTION = 600
 
 /** Drawer tabs — real values so the page can deep-link into one. */
 export type SponsorDrawerTab = "details" | "contacts" | "sessions" | "history"
@@ -85,8 +107,8 @@ export function SponsorDrawer({
   eventId: Id<"events">
   eventRef: EventRef | undefined
   sponsor: SponsorRow | null
-  /** Tiers already used on this event — offered as suggestions. */
-  tiers: Array<string>
+  /** The event's managed tiers, in order. */
+  tiers: Array<SponsorTier>
   open: boolean
   onOpenChange: (open: boolean) => void
   initialTab?: SponsorDrawerTab
@@ -107,6 +129,7 @@ export function SponsorDrawer({
   return (
     <EditSponsorDrawer
       key={sponsor._id}
+      eventId={eventId}
       eventRef={eventRef}
       sponsor={sponsor}
       tiers={tiers}
@@ -118,13 +141,14 @@ export function SponsorDrawer({
   )
 }
 
-// ——— Shared: the package fields ——————————————————————————————————————————
+// ——— Shared: the package + profile fields ———————————————————————————————
 
 interface PackageValues {
   name: string
   tier: string
-  websiteUrl: string
   sessionLimit: string
+  websiteUrl: string
+  description: string
   notes: string
 }
 
@@ -134,7 +158,50 @@ function packageProblem(values: PackageValues): string | null {
   if (values.sessionLimit.trim() === "" || !Number.isInteger(limit) || limit < 0 || limit > 50) {
     return "Sessions included must be a whole number from 0 to 50."
   }
+  if (values.description.length > MAX_DESCRIPTION) {
+    return `Keep the description under ${MAX_DESCRIPTION} characters.`
+  }
   return null
+}
+
+/** Tier picker: the managed list, plus a legacy free-text tier if one is set. */
+function TierSelect({
+  id,
+  value,
+  tiers,
+  onChange,
+}: {
+  id: string
+  value: string
+  tiers: Array<SponsorTier>
+  onChange: (tier: string, sessionLimit: number | null) => void
+}) {
+  const items = [
+    { value: NO_TIER, label: "No tier" },
+    ...tiers.map((t) => ({ value: t.name, label: t.name })),
+    ...(value && !tiers.some((t) => t.name === value) ? [{ value, label: value }] : []),
+  ]
+  return (
+    <Select
+      items={items}
+      value={value || NO_TIER}
+      onValueChange={(next) => {
+        const name = next === NO_TIER ? "" : String(next)
+        onChange(name, tiers.find((t) => t.name === name)?.sessionLimit ?? null)
+      }}
+    >
+      <SelectTrigger id={id} className="w-full">
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent>
+        {items.map((item) => (
+          <SelectItem key={item.value} value={item.value}>
+            {item.label}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  )
 }
 
 function PackageFields({
@@ -143,12 +210,22 @@ function PackageFields({
   tiers,
   showErrors,
   idPrefix,
+  withProfile,
+  companyFields = [],
+  fieldValues = {},
+  onFieldChange,
 }: {
   values: PackageValues
   onChange: (patch: Partial<PackageValues>) => void
-  tiers: Array<string>
+  tiers: Array<SponsorTier>
   showErrors: boolean
   idPrefix: string
+  /** Show the public profile fields (description + links). */
+  withProfile: boolean
+  /** The event's own company fields (Sponsor settings → Company fields). */
+  companyFields?: Array<CompanyField>
+  fieldValues?: Record<string, string>
+  onFieldChange?: (fieldId: string, value: string) => void
 }) {
   const limit = Number(values.sessionLimit)
   const limitInvalid =
@@ -175,19 +252,18 @@ function PackageFields({
       <div className="grid grid-cols-2 gap-3">
         <Field>
           <FieldLabel htmlFor={`${idPrefix}-tier`}>Tier</FieldLabel>
-          <Input
+          <TierSelect
             id={`${idPrefix}-tier`}
-            name="tier"
-            list={`${idPrefix}-tiers`}
             value={values.tier}
-            onChange={(e) => onChange({ tier: e.target.value })}
-            placeholder="Platinum"
+            tiers={tiers}
+            onChange={(tier, sessionLimit) =>
+              onChange({
+                tier,
+                // The package decides what's included — pre-fill it.
+                ...(sessionLimit !== null ? { sessionLimit: String(sessionLimit) } : {}),
+              })
+            }
           />
-          <datalist id={`${idPrefix}-tiers`}>
-            {tiers.map((tier) => (
-              <option key={tier} value={tier} />
-            ))}
-          </datalist>
         </Field>
         <Field>
           <FieldLabel htmlFor={`${idPrefix}-limit`}>
@@ -212,8 +288,11 @@ function PackageFields({
         </Field>
       </div>
       <FieldDescription className="-mt-3">
-        How many sessions their contacts can add from the sponsor portal. Use 0
-        if you'll add their sessions yourself.
+        {tiers.length === 0
+          ? "Add your tiers in Sponsor settings and they pre-fill this. "
+          : ""}
+        Sessions included is how many their contacts can add from the sponsor portal — 0 if
+        you add them yourself.
       </FieldDescription>
       <Field>
         <FieldLabel htmlFor={`${idPrefix}-website`}>Website</FieldLabel>
@@ -226,6 +305,35 @@ function PackageFields({
           placeholder="https://acme.ai"
         />
       </Field>
+      {withProfile ? (
+        <>
+          <Field>
+            <FieldLabel htmlFor={`${idPrefix}-description`}>Description</FieldLabel>
+            <Textarea
+              id={`${idPrefix}-description`}
+              rows={3}
+              value={values.description}
+              onChange={(e) => onChange({ description: e.target.value })}
+              placeholder="One or two sentences for the sponsor wall on your event site."
+              aria-invalid={values.description.length > MAX_DESCRIPTION ? true : undefined}
+            />
+            <FieldDescription className="flex justify-between gap-2">
+              <span>Shown on the event site. The sponsor can edit it from their portal too.</span>
+              <span className="shrink-0 tabular-nums">
+                {values.description.length} / {MAX_DESCRIPTION}
+              </span>
+            </FieldDescription>
+          </Field>
+          {onFieldChange ? (
+            <CompanyFieldInputs
+              fields={companyFields}
+              values={fieldValues}
+              onChange={onFieldChange}
+              idPrefix={idPrefix}
+            />
+          ) : null}
+        </>
+      ) : null}
       <Field>
         <FieldLabel htmlFor={`${idPrefix}-notes`}>Internal notes</FieldLabel>
         <Textarea
@@ -281,6 +389,51 @@ function SectionHeading({ title, description }: { title: string; description?: s
   )
 }
 
+/** "Still needed" chips — amber for the sponsor's to-dos, gray for yours. */
+export function StillNeededChips({
+  items,
+  max = 4,
+}: {
+  items: SponsorRow["stillNeeded"]
+  max?: number
+}) {
+  if (items.length === 0) {
+    return (
+      <Badge
+        variant="secondary"
+        className="h-5 gap-1 rounded-full bg-status-green-bg px-2 text-[11px] text-status-green-fg"
+      >
+        <RiCheckboxCircleLine size={12} aria-hidden />
+        All set
+      </Badge>
+    )
+  }
+  return (
+    <div className="flex flex-wrap items-center gap-1.5">
+      {items.slice(0, max).map((item) => (
+        <Badge
+          key={item.key}
+          variant="secondary"
+          title={item.owner === "organizer" ? "Waiting on your team" : "Waiting on the sponsor"}
+          className={cn(
+            "h-5 max-w-[180px] truncate rounded-full px-2 text-[11px]",
+            item.owner === "organizer"
+              ? "bg-muted text-muted-foreground"
+              : "bg-status-amber-bg text-status-amber-fg",
+          )}
+        >
+          {item.label}
+        </Badge>
+      ))}
+      {items.length > max ? (
+        <Badge variant="outline" className="h-5 rounded-full px-2 text-[11px]">
+          +{items.length - max}
+        </Badge>
+      ) : null}
+    </div>
+  )
+}
+
 // ——— Create ————————————————————————————————————————————————————————————————
 
 function CreateSponsorDrawer({
@@ -291,14 +444,21 @@ function CreateSponsorDrawer({
   onCreated,
 }: {
   eventId: Id<"events">
-  tiers: Array<string>
+  tiers: Array<SponsorTier>
   open: boolean
   onOpenChange: (open: boolean) => void
   onCreated?: (sponsorId: Id<"sponsors">) => void
 }) {
   const create = useConvexMutation(api.sponsors.create)
   const sendInvites = useConvexMutation(api.sponsors.sendInvites)
-  const blank: PackageValues = { name: "", tier: "", websiteUrl: "", sessionLimit: "1", notes: "" }
+  const blank = (): PackageValues => ({
+    name: "",
+    tier: tiers.at(0)?.name ?? "",
+    sessionLimit: String(tiers.at(0)?.sessionLimit ?? 1),
+    websiteUrl: "",
+    description: "",
+    notes: "",
+  })
   const [values, setValues] = React.useState<PackageValues>(blank)
   const [contact, setContact] = React.useState({ firstName: "", lastName: "", email: "" })
   const [invite, setInvite] = React.useState(true)
@@ -307,7 +467,7 @@ function CreateSponsorDrawer({
 
   React.useEffect(() => {
     if (!open) return
-    setValues(blank)
+    setValues(blank())
     setContact({ firstName: "", lastName: "", email: "" })
     setInvite(true)
     setShowErrors(false)
@@ -365,7 +525,7 @@ function CreateSponsorDrawer({
       open={open}
       onOpenChange={onOpenChange}
       title="Add a sponsor"
-      description="A company with a package on your event. Its contacts get a portal where they add their own sessions — no call for papers."
+      description="A company with a package on your event. Its contacts get a portal where they add their sessions and keep their company profile up to date."
       footer={
         <>
           <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
@@ -384,13 +544,14 @@ function CreateSponsorDrawer({
           tiers={tiers}
           showErrors={showErrors}
           idPrefix="new-sponsor"
+          withProfile={false}
         />
 
         <Separator className="my-6" />
 
         <SectionHeading
           title="Main contact"
-          description="The person who signs into the sponsor portal. You can add colleagues later — and so can they."
+          description="The person who signs into the sponsor portal. They'll add the logo, description and sessions themselves — and can bring colleagues."
         />
         <FieldGroup>
           <div className="grid grid-cols-2 gap-3">
@@ -446,7 +607,19 @@ function CreateSponsorDrawer({
 
 // ——— Edit ——————————————————————————————————————————————————————————————————
 
+function valuesOf(sponsor: SponsorRow): PackageValues {
+  return {
+    name: sponsor.name,
+    tier: sponsor.tier ?? "",
+    sessionLimit: String(sponsor.sessionLimit),
+    websiteUrl: sponsor.websiteUrl ?? "",
+    description: sponsor.description ?? "",
+    notes: sponsor.notes ?? "",
+  }
+}
+
 function EditSponsorDrawer({
+  eventId,
   eventRef,
   sponsor,
   tiers,
@@ -455,33 +628,34 @@ function EditSponsorDrawer({
   initialTab,
   onDelete,
 }: {
+  eventId: Id<"events">
   eventRef: EventRef | undefined
   sponsor: SponsorRow
-  tiers: Array<string>
+  tiers: Array<SponsorTier>
   open: boolean
   onOpenChange: (open: boolean) => void
   initialTab: SponsorDrawerTab
   onDelete?: (sponsor: SponsorRow) => void
 }) {
   const update = useConvexMutation(api.sponsors.update)
+  const setLogo = useConvexMutation(api.sponsors.setLogo)
+  const generateUploadUrl = useConvexMutation(api.files.generateUploadUrl)
   const [tab, setTab] = React.useState<SponsorDrawerTab>(initialTab)
   React.useEffect(() => {
     if (open) setTab(initialTab)
   }, [open, initialTab])
 
-  const saved: PackageValues = {
-    name: sponsor.name,
-    tier: sponsor.tier ?? "",
-    websiteUrl: sponsor.websiteUrl ?? "",
-    sessionLimit: String(sponsor.sessionLimit),
-    notes: sponsor.notes ?? "",
-  }
+  const saved = valuesOf(sponsor)
   const [values, setValues] = React.useState<PackageValues>(saved)
+  const [publicVisible, setPublicVisible] = React.useState(sponsor.publicVisible)
   const [showErrors, setShowErrors] = React.useState(false)
   const [saving, setSaving] = React.useState(false)
-  const dirty = (Object.keys(saved) as Array<keyof PackageValues>).some(
-    (key) => saved[key] !== values[key],
-  )
+  const savedFields = fieldValueMap(sponsor.fields)
+  const [fieldDraft, setFieldDraft] = React.useState<Record<string, string>>(savedFields)
+  const changedFields = changedFieldValues(savedFields, fieldDraft)
+  const dirty =
+    (Object.keys(saved) as Array<keyof PackageValues>).some((key) => saved[key] !== values[key]) ||
+    Object.keys(changedFields).length > 0
 
   async function save() {
     const problem = packageProblem(values)
@@ -492,14 +666,16 @@ function EditSponsorDrawer({
     }
     setSaving(true)
     try {
+      // Empty strings clear the optional fields server-side.
       await update({
         sponsorId: sponsor._id,
         name: values.name.trim(),
-        // Empty strings clear the optional fields server-side.
         tier: values.tier.trim(),
-        websiteUrl: values.websiteUrl.trim(),
-        notes: values.notes.trim(),
         sessionLimit: Number(values.sessionLimit),
+        websiteUrl: values.websiteUrl.trim(),
+        fields: changedFields,
+        description: values.description.trim(),
+        notes: values.notes.trim(),
       })
       toast.success("Sponsor updated.")
     } catch (error) {
@@ -509,7 +685,19 @@ function EditSponsorDrawer({
     }
   }
 
-  const invited = sponsor.contacts.filter((c) => c.invitedAt !== null).length
+  /** Visibility saves on flip — the submission drawer's rule for its own switch. */
+  async function flipVisibility(next: boolean) {
+    setPublicVisible(next)
+    try {
+      await update({ sponsorId: sponsor._id, publicVisible: next })
+      toast.success(next ? "Showing on the event site." : "Hidden from the event site.")
+    } catch (error) {
+      setPublicVisible(!next)
+      toast.error(errorMessage(error, "Could not change the visibility."))
+    }
+  }
+
+  const sponsorTodo = sponsor.stillNeeded.filter((item) => item.owner === "sponsor").length
 
   return (
     <Tabs value={tab} onValueChange={(value) => setTab(value as SponsorDrawerTab)} className="contents">
@@ -526,7 +714,7 @@ function EditSponsorDrawer({
             </TabsTrigger>
             <TabsTrigger value="contacts">
               <RiTeamLine aria-hidden />
-              Contacts
+              People
             </TabsTrigger>
             <TabsTrigger value="sessions">
               <RiCalendarEventLine aria-hidden />
@@ -563,20 +751,51 @@ function EditSponsorDrawer({
       >
         <TabsContent value="details">
           {/* The status strip — same surface as the submission drawer's. */}
-          <div className="mb-5 flex flex-wrap items-center gap-x-4 gap-y-2 rounded-lg border border-border bg-muted/40 px-3 py-2.5">
-            <AllowanceMeter
-              used={sponsor.sessionsUsed}
-              limit={sponsor.sessionLimit}
-              className="max-w-56 flex-1"
-            />
-            <span className="ml-auto text-xs text-muted-foreground">
-              {sponsor.contacts.length === 0
-                ? "No contact yet"
-                : invited === sponsor.contacts.length
-                  ? `${invited} contact${invited === 1 ? "" : "s"} invited`
-                  : `${invited} of ${sponsor.contacts.length} contacts invited`}
-            </span>
+          <div className="mb-5 flex flex-col gap-2 rounded-lg border border-border bg-muted/40 px-3 py-2.5">
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+              <AllowanceMeter
+                used={sponsor.sessionsUsed}
+                limit={sponsor.sessionLimit}
+                className="max-w-56 flex-1"
+              />
+              <span className="ml-auto text-xs text-muted-foreground">
+                {sponsorTodo === 0
+                  ? "Nothing outstanding from them"
+                  : `${sponsorTodo} thing${sponsorTodo === 1 ? "" : "s"} still to come from them`}
+              </span>
+            </div>
+            {sponsor.stillNeeded.length > 0 ? <StillNeededChips items={sponsor.stillNeeded} max={6} /> : null}
           </div>
+
+          <div className="mb-5">
+            <ToggleCard
+              id={`sponsor-visible-${sponsor._id}`}
+              icon={publicVisible ? RiEyeLine : RiEyeOffLine}
+              title="Show on the event site"
+              description={
+                publicVisible
+                  ? "On the sponsor wall and next to their sessions once your program is published."
+                  : "Hidden everywhere public — keep it off until the announcement."
+              }
+              checked={publicVisible}
+              onCheckedChange={(next) => void flipVisibility(next)}
+            />
+          </div>
+
+          <SectionHeading title="Logo" description="Shown on the sponsor wall and next to their sessions." />
+          <SponsorLogoUploader
+            className="mb-6"
+            logoUrl={sponsor.logoUrl}
+            name={sponsor.name}
+            getUploadUrl={() => generateUploadUrl({ eventId })}
+            onSave={async (storageId, filename) => {
+              await setLogo({
+                sponsorId: sponsor._id,
+                storageId: storageId as Id<"_storage"> | null,
+                filename,
+              })
+            }}
+          />
 
           <form
             onSubmit={(e) => {
@@ -591,6 +810,10 @@ function EditSponsorDrawer({
               tiers={tiers}
               showErrors={showErrors}
               idPrefix={`sponsor-${sponsor._id}`}
+              withProfile
+              companyFields={sponsor.fields}
+              fieldValues={fieldDraft}
+              onFieldChange={(fieldId, value) => setFieldDraft((prev) => ({ ...prev, [fieldId]: value }))}
             />
           </form>
 
@@ -606,11 +829,11 @@ function EditSponsorDrawer({
                   : `${sponsor.sessionsUsed} of ${sponsor.sessionLimit} used`
               }
             />
-            <MetaRow label="Contacts" value={String(sponsor.contacts.length)} />
             <MetaRow
-              label="Website"
-              value={sponsor.websiteUrl ? sponsor.websiteUrl.replace(/^https?:\/\//, "").replace(/\/$/, "") : "—"}
+              label="Primary contact"
+              value={sponsor.contacts.find((c) => c.isPrimary)?.name ?? "—"}
             />
+            <MetaRow label="Contacts" value={String(sponsor.contacts.length)} />
           </dl>
         </TabsContent>
 
@@ -644,6 +867,7 @@ function MetaRow({ label, value }: { label: string; value: string }) {
 function SponsorContacts({ sponsor }: { sponsor: SponsorRow }) {
   const addContact = useConvexMutation(api.sponsors.addContact)
   const removeContact = useConvexMutation(api.sponsors.removeContact)
+  const setPrimary = useConvexMutation(api.sponsors.setPrimaryContact)
   const sendInvites = useConvexMutation(api.sponsors.sendInvites)
   const [adding, setAdding] = React.useState(false)
   const [form, setForm] = React.useState({ firstName: "", lastName: "", email: "" })
@@ -737,7 +961,7 @@ function SponsorContacts({ sponsor }: { sponsor: SponsorRow }) {
         />
       ) : (
         <ul className="flex flex-col gap-2">
-          {sponsor.contacts.map((contact, index) => (
+          {sponsor.contacts.map((contact) => (
             <li
               key={contact.personId}
               className="flex items-center gap-3 rounded-lg border border-border bg-background p-3"
@@ -748,7 +972,7 @@ function SponsorContacts({ sponsor }: { sponsor: SponsorRow }) {
               <div className="min-w-0 flex-1">
                 <p className="flex items-center gap-2 truncate text-sm font-medium text-foreground">
                   <span className="truncate">{contact.name}</span>
-                  {index === 0 ? (
+                  {contact.isPrimary ? (
                     <span className="shrink-0 text-xs font-normal text-muted-foreground">Primary</span>
                   ) : null}
                 </p>
@@ -780,6 +1004,19 @@ function SponsorContacts({ sponsor }: { sponsor: SponsorRow }) {
                   <RiMoreLine aria-hidden />
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-52">
+                  {contact.isPrimary ? null : (
+                    <DropdownMenuItem
+                      onClick={() =>
+                        void setPrimary({ sponsorId: sponsor._id, personId: contact.personId }).then(
+                          () => toast.success(`${contact.name} is now the primary contact`),
+                          (error: unknown) => toast.error(errorMessage(error, "Could not change it.")),
+                        )
+                      }
+                    >
+                      <RiStarLine aria-hidden />
+                      Make primary contact
+                    </DropdownMenuItem>
+                  )}
                   <DropdownMenuItem onClick={() => void copyLink(contact.portalToken, contact.name)}>
                     <RiLinkM aria-hidden />
                     Copy portal link

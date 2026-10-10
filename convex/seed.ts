@@ -156,6 +156,14 @@ async function purgeEvent(ctx: MutationCtx, eventId: Id<"events">) {
     .take(500)
   for (const row of sponsors) await ctx.db.delete("sponsors", row._id)
 
+  for (const table of ["sponsorTiers", "sponsorFields"] as const) {
+    const rows = await ctx.db
+      .query(table)
+      .withIndex("by_eventId", (q) => q.eq("eventId", eventId))
+      .take(500)
+    for (const row of rows) await ctx.db.delete(table, row._id)
+  }
+
   const uploadComments = await ctx.db
     .query("uploadComments")
     .withIndex("by_eventId", (q) => q.eq("eventId", eventId))
@@ -1523,11 +1531,33 @@ export const run = internalMutation({
     // its allowance with a session waiting for review, one whose contact
     // hasn't been invited yet, and one the organizers manage themselves.
     // Demo token `demo-sponsor-northwind` opens Jordan's sponsor portal.
+    for (const [index, tier] of [
+      { name: "Platinum", sessionLimit: 2 },
+      { name: "Gold", sessionLimit: 1 },
+      { name: "Community partner", sessionLimit: 0 },
+    ].entries()) {
+      await ctx.db.insert("sponsorTiers", { eventId, order: (index + 1) * 10, ...tier })
+    }
+    // Company fields are the event's own — this demo collects two public
+    // links and one private logistics field.
+    const linkedinFieldId = await ctx.db.insert("sponsorFields", {
+      eventId, label: "LinkedIn", kind: "url", public: true, order: 10,
+    })
+    await ctx.db.insert("sponsorFields", { eventId, label: "X", kind: "url", public: true, order: 20 })
+    const boothFieldId = await ctx.db.insert("sponsorFields", {
+      eventId, label: "Booth number", kind: "text", public: false, order: 30,
+    })
     const northwindId = await ctx.db.insert("sponsors", {
       eventId,
       name: "Northwind AI",
       tier: "Platinum",
       websiteUrl: "https://example.com/northwind",
+      fields: {
+        [linkedinFieldId]: "https://www.linkedin.com/company/example-northwind",
+        [boothFieldId]: "B12",
+      },
+      description:
+        "Northwind builds the evaluation and observability layer for teams shipping LLM agents to production.",
       sessionLimit: 2,
       notes: "Contract signed — two breakout slots, logo on the main stage.",
     })

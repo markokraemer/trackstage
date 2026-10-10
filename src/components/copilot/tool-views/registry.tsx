@@ -88,6 +88,8 @@ import {
 import {
   SessionSponsorView,
   SponsorContactView,
+  SponsorFieldView,
+  SponsorTierView,
   SponsorInvitesView,
   SponsorPortalSettingsView,
   SponsorSavedView,
@@ -310,6 +312,8 @@ export const TOOL_VIEWS: Record<string, ToolViewSpec | undefined> = {
 
   // ——— Sponsors ————————————————————————————————————————————————————————
   list_sponsors: { icon: RiBuilding2Line, OutputView: SponsorsView },
+  manage_sponsor_tier: { icon: RiBuilding2Line, OutputView: SponsorTierView },
+  manage_sponsor_field: { icon: RiBuilding2Line, OutputView: SponsorFieldView },
   manage_sponsor: { icon: RiBuilding2Line, OutputView: SponsorSavedView },
   manage_sponsor_contact: { icon: RiUserAddLine, OutputView: SponsorContactView },
   invite_sponsor_contacts: { icon: RiMailSendLine, OutputView: SponsorInvitesView },

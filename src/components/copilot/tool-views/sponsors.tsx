@@ -1,7 +1,9 @@
 import {
   RiBuilding2Line,
   RiDeleteBin6Line,
+  RiInputField,
   RiLinkM,
+  RiStackLine,
   RiMailSendLine,
   RiSettings3Line,
   RiUserAddLine,
@@ -182,6 +184,44 @@ export function SponsorInvitesView({ output }: ToolOutputProps) {
       ) : null}
       {str(output.note) ? <Note>{str(output.note)}</Note> : null}
       <GoLink to={commsLink}>Open the outbox</GoLink>
+    </Banner>
+  )
+}
+
+// ——— manage_sponsor_tier ——————————————————————————————————————————————————
+
+export function SponsorTierView({ output }: ToolOutputProps) {
+  const name = str(output.name) ?? "Tier"
+  const deleted = output.deleted === true
+  return (
+    <Banner
+      icon={deleted ? <RiDeleteBin6Line size={16} /> : <RiStackLine size={16} />}
+      tone={deleted ? "neutral" : "good"}
+      title={deleted ? `${name} tier removed` : output.created === true ? `${name} tier added` : `${name} tier saved`}
+    >
+      {str(output.note) ? <Note>{str(output.note)}</Note> : null}
+    </Banner>
+  )
+}
+
+// ——— manage_sponsor_field ——————————————————————————————————————————————————
+
+export function SponsorFieldView({ output }: ToolOutputProps) {
+  const label = str(output.label) ?? "Field"
+  const deleted = output.deleted === true
+  return (
+    <Banner
+      icon={deleted ? <RiDeleteBin6Line size={16} /> : <RiInputField size={16} />}
+      tone={deleted ? "neutral" : "good"}
+      title={
+        deleted
+          ? `“${label}” field removed`
+          : output.created === true
+            ? `“${label}” field added to every sponsor`
+            : `“${label}” field saved`
+      }
+    >
+      {str(output.note) ? <Note>{str(output.note)}</Note> : null}
     </Banner>
   )
 }

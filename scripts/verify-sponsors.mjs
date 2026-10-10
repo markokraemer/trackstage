@@ -327,6 +327,80 @@ const s3 = await anon.mutation(api.portal.addSponsorSession, {
 ok("accepted-by-default lands as Accepted", (await organizer.query(api.submissions.get, { submissionId: s3 })).status === "accepted")
 await organizer.mutation(api.sponsors.updatePortalRules, { eventId, newSessionStatus: "pending" })
 
+// ————— Tiers, profile, primary contact —————
+section("Tiers")
+const tierName = `Tier ${tag}`
+const tierId = await organizer.mutation(api.sponsors.saveTier, { eventId, name: tierName, sessionLimit: 4 })
+await organizer.mutation(api.sponsors.update, { sponsorId, tier: tierName })
+await organizer.mutation(api.sponsors.saveTier, { eventId, tierId, name: `${tierName} Plus`, sessionLimit: 4 })
+list = await organizer.query(api.sponsors.list, { eventId })
+ok("renaming a tier renames it on its sponsors", list.sponsors.find((s) => s._id === sponsorId)?.tier === `${tierName} Plus`)
+ok("tiers are listed in order", list.tiers.some((t) => t.name === `${tierName} Plus`))
+await throws(
+  "duplicate tier name refused",
+  () => organizer.mutation(api.sponsors.saveTier, { eventId, name: `${tierName} plus`, sessionLimit: 1 }),
+  "already a tier",
+)
+
+section("Company profile")
+await throws(
+  "over-long description refused",
+  () => organizer.mutation(api.sponsors.update, { sponsorId, description: "x".repeat(700) }),
+  "600",
+)
+const linkFieldId = await organizer.mutation(api.sponsors.saveField, {
+  eventId,
+  label: `Profile ${tag}`,
+  kind: "url",
+  public: true,
+})
+const boothFieldId = await organizer.mutation(api.sponsors.saveField, {
+  eventId,
+  label: `Booth ${tag}`,
+  kind: "text",
+  public: false,
+})
+await throws(
+  "a link field refuses javascript:",
+  () =>
+    anon.mutation(api.sponsorProfile.updateCompanyProfile, {
+      portalToken: token,
+      fields: { [linkFieldId]: "javascript:alert(1)" },
+    }),
+  "doesn't look right",
+)
+await anon.mutation(api.sponsorProfile.updateCompanyProfile, {
+  portalToken: token,
+  description: "We make evals boring.",
+  fields: { [linkFieldId]: "linkedin.com/company/acme", [boothFieldId]: "B7" },
+})
+list = await organizer.query(api.sponsors.list, { eventId })
+row = list.sponsors.find((s) => s._id === sponsorId)
+const valueOf = (id) => row.fields.find((f) => f.id === id)?.value
+ok(
+  "sponsor fills the event's own company fields from the portal",
+  row.description === "We make evals boring." &&
+    valueOf(linkFieldId) === "https://linkedin.com/company/acme" &&
+    valueOf(boothFieldId) === "B7",
+)
+await organizer.mutation(api.sponsors.update, { sponsorId, fields: { [boothFieldId]: "" } })
+list = await organizer.query(api.sponsors.list, { eventId })
+row = list.sponsors.find((s) => s._id === sponsorId)
+ok("an empty value clears just that field", valueOf(boothFieldId) === null && valueOf(linkFieldId) !== null)
+await organizer.mutation(api.sponsors.removeField, { fieldId: linkFieldId })
+list = await organizer.query(api.sponsors.list, { eventId })
+row = list.sponsors.find((s) => s._id === sponsorId)
+ok("removing a field removes it from every sponsor", !row.fields.some((f) => f.id === linkFieldId))
+ok("description drops off Still needed", !row.stillNeeded.some((n) => n.key === "description"))
+ok("logo still needed", row.stillNeeded.some((n) => n.key === "logo"))
+
+section("Primary contact")
+const colleagueRow = row.contacts.find((c) => c.email === colleagueEmail)
+await organizer.mutation(api.sponsors.setPrimaryContact, { sponsorId, personId: colleagueRow.personId })
+list = await organizer.query(api.sponsors.list, { eventId })
+row = list.sponsors.find((s) => s._id === sponsorId)
+ok("primary contact switches and sorts first", row.contacts[0].email === colleagueEmail && row.contacts[0].isPrimary)
+
 // ————— Link / unlink + delete —————
 section("Link, unlink, delete")
 await organizer.mutation(api.sponsors.setSessionSponsor, { submissionId: s3, sponsorId: null })

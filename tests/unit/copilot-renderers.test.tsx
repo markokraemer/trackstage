@@ -106,6 +106,14 @@ const SHAPES: Record<string, Payload> = {
       sponsor: { id: "sp3", name: "Acme AI", tier: "Gold", sessionLimit: 1, sessionsUsed: 0, contacts: [], sessions: [] },
     },
   },
+  manage_sponsor_field: {
+    input: { event: "ai-summit-2026", action: "create", label: "Booth number", kind: "text", public: false },
+    output: { created: true, id: "f1", label: "Booth number" },
+  },
+  manage_sponsor_tier: {
+    input: { event: "ai-summit-2026", action: "create", name: "Silver", sessionLimit: 1 },
+    output: { created: true, id: "t1", name: "Silver" },
+  },
   manage_sponsor_contact: {
     input: { event: "ai-summit-2026", sponsor: "Acme AI", action: "add", email: "grace@acme.ai" },
     output: { added: true, personId: "p9", created: true, invited: false, note: "Not emailed yet — call invite_sponsor_contacts to send their portal invite." },

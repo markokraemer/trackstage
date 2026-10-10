@@ -29,6 +29,7 @@ import { emitSponsorUpdated } from "./sponsors"
 import type { SponsorPortalRules } from "./lib/sponsors"
 import {
   MAX_SPONSOR_SESSION_SPEAKERS,
+  requireSponsorContact,
   addSessionBlocker,
   allowanceSentence,
   allowanceUsed,
@@ -39,6 +40,10 @@ import {
   sponsorPortalRules,
   sponsorSessions,
   sponsorWindowClosed,
+  primaryContactOf,
+  fieldsWithValues,
+  sponsorFieldsFor,
+  stillNeeded,
 } from "./lib/sponsors"
 
 // ————————————————————————————————————————————————————————————————————————
@@ -333,11 +338,28 @@ export const home = query({
       const sessions = await sponsorSessions(ctx, sponsorDoc._id)
       const used = allowanceUsed(sessions)
       const colleagues = await sponsorContacts(ctx, sponsorDoc._id)
+      const primary = primaryContactOf(sponsorDoc, colleagues)
       sponsor = {
         id: sponsorDoc._id,
         name: sponsorDoc.name,
         tier: sponsorDoc.tier ?? null,
         websiteUrl: sponsorDoc.websiteUrl ?? null,
+        // The event's company fields with this sponsor's values — what the
+        // Company page edits.
+        fields: fieldsWithValues(await sponsorFieldsFor(ctx, event._id), sponsorDoc.fields),
+        description: sponsorDoc.description ?? null,
+        logoUrl: sponsorDoc.logoId ? await ctx.storage.getUrl(sponsorDoc.logoId) : null,
+        publicVisible: sponsorDoc.publicVisible !== false,
+        // The sponsor's to-do list: profile gaps and sessions still to add —
+        // the same list the organizers see.
+        stillNeeded: stillNeeded({
+          sponsor: sponsorDoc,
+          // Organizer-side gaps (no contact / not invited) aren't theirs to
+          // act on — only the sponsor's own to-dos reach the portal.
+          contacts: colleagues.map(() => ({ invited: true })),
+          sessionsUsed: used,
+          windowOpen: !sponsorWindowClosed(sponsorRules, args.now),
+        }).filter((item) => item.owner === "sponsor"),
         sessionLimit: sponsorDoc.sessionLimit,
         sessionsUsed: used,
         closeAt: sponsorRules.closeAt,
@@ -361,6 +383,7 @@ export const home = query({
             name: `${c.firstName} ${c.lastName}`.trim() || c.email,
             email: c.email,
             isMe: c._id === person._id,
+            isPrimary: primary?._id === c._id,
           })),
         sessions: await Promise.all(
           sessions.map((s) =>
@@ -897,18 +920,6 @@ function actorFor(person: Doc<"people">) {
   }
 }
 
-async function requireSponsorContact(ctx: MutationCtx, portalToken: string) {
-  const person = await requirePerson(ctx, portalToken)
-  const sponsor = person.sponsorId ? await ctx.db.get(person.sponsorId) : null
-  if (!sponsor || sponsor.eventId !== person.eventId) {
-    throw new ConvexError(
-      "Only sponsor contacts can do this. Ask the organizers to add you to your company.",
-    )
-  }
-  const event = await ctx.db.get(person.eventId)
-  if (!event) throw new ConvexError("Event not found")
-  return { person, sponsor, event }
-}
 
 /** A sponsor session this contact may change right now — or the reason why not. */
 async function requireEditableSponsorSession(

@@ -4,7 +4,12 @@ import { useQuery } from "@tanstack/react-query"
 import { convexQuery, useConvexMutation } from "@convex-dev/react-query"
 import { api } from "@convex/_generated/api"
 import type { Id } from "@convex/_generated/dataModel"
-import { RiAddLine, RiBuilding2Line, RiMailSendLine, RiSettings3Line } from "@remixicon/react"
+import {
+  RiAddLine,
+  RiBuilding2Line,
+  RiMailSendLine,
+  RiSettings3Line,
+} from "@remixicon/react"
 import { toast } from "sonner"
 
 import { PageHeader } from "@/components/shared/page-header"
@@ -36,7 +41,7 @@ import { EmptyEventState } from "@/components/shell/empty-event-state"
 import { SponsorDrawer } from "@/components/sponsors/sponsor-drawer"
 import type { SponsorDrawerTab, SponsorRow } from "@/components/sponsors/sponsor-drawer"
 import { SponsorsTable, SponsorsTableSkeleton } from "@/components/sponsors/sponsors-table"
-import { SponsorPortalSettingsDialog } from "@/components/sponsors/sponsor-portal-settings-dialog"
+import { SponsorSettingsDrawer } from "@/components/sponsors/sponsor-settings-drawer"
 
 /**
  * Deep links: `?sponsor=<id>` opens that sponsor's drawer, `?add=1` opens the
@@ -127,10 +132,18 @@ function SponsorsPage() {
     () => (openId ? (rows ?? []).find((row) => row._id === openId) ?? null : null),
     [rows, openId],
   )
-  const tiers = useMemo(
-    () => [...new Set((rows ?? []).map((row) => row.tier).filter((t): t is string => !!t))],
-    [rows],
+  const tiers = useMemo(() => data?.tiers ?? [], [data])
+  // Filter choices: the managed tiers, plus any legacy free-text tier in use.
+  const tierNames = useMemo(
+    () => [
+      ...new Set([
+        ...tiers.map((t) => t.name),
+        ...(rows ?? []).map((row) => row.tier).filter((t): t is string => !!t),
+      ]),
+    ],
+    [tiers, rows],
   )
+
 
   useEffect(() => {
     if (!deepLinked || !rows) return
@@ -181,7 +194,7 @@ function SponsorsPage() {
 
   const tierOptions = [
     { value: ANY_TIER, label: "Any tier" },
-    ...tiers.map((t) => ({ value: t, label: t })),
+    ...tierNames.map((t) => ({ value: t, label: t })),
   ]
 
   function openSponsor(row: SponsorRow, tab: SponsorDrawerTab = "details") {
@@ -260,8 +273,9 @@ function SponsorsPage() {
             <>
               <Button size="sm" variant="outline" onClick={() => setSettingsOpen(true)}>
                 <RiSettings3Line aria-hidden />
-                Portal settings
+                Settings
               </Button>
+
               <Button size="sm" onClick={() => setCreating(true)}>
                 <RiAddLine aria-hidden />
                 Add sponsor
@@ -320,7 +334,7 @@ function SponsorsPage() {
                   ))}
                 </TabsList>
               </Tabs>
-              {tiers.length > 0 ? (
+              {tierNames.length > 0 ? (
                 <Select
                   items={tierOptions}
                   value={tier}
@@ -428,10 +442,12 @@ function SponsorsPage() {
             onDelete={setDeleting}
           />
           {rules ? (
-            <SponsorPortalSettingsDialog
+            <SponsorSettingsDrawer
               eventId={event._id}
               timezone={event.timezone}
               rules={rules}
+              tiers={tiers}
+              fields={data.fields}
               open={settingsOpen}
               onOpenChange={setSettingsOpen}
             />

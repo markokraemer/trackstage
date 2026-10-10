@@ -507,7 +507,27 @@ export const MCP_TOOL_GROUPS: Array<McpToolGroup> = [
         readOnly: false,
         destructive: true,
         requiresConfirm: true,
-        args: ["event","action","sponsor","name","tier","websiteUrl","sessionLimit","notes","confirm"],
+        args: ["event","action","sponsor","name","tier","websiteUrl","sessionLimit","notes","description","fields","publicVisible","confirm"],
+        required: ["event","action","confirm"],
+      },
+      {
+        name: "manage_sponsor_tier",
+        title: "Create, update or delete a sponsor tier",
+        description: "Sponsorship packages in display order (the sponsor wall shows them top-down). Each tier pre-fills how many sessions a sponsor in it may add (sessionLimit). Renaming a tier renames it on its sponsors; deleting one leaves its sponsors untiered.",
+        readOnly: false,
+        destructive: true,
+        requiresConfirm: true,
+        args: ["event","action","tier","name","sessionLimit","confirm"],
+        required: ["event","action","confirm"],
+      },
+      {
+        name: "manage_sponsor_field",
+        title: "Create, update or delete a sponsor company field",
+        description: "The event's own company fields every sponsor fills in (\"LinkedIn\", \"Booth number\", \"Industry\") — nothing beyond logo, website and description is built in. kind: text | longText | url. public: true shows the value on the sponsor wall; false keeps it between organizers and the sponsor. Set values with manage_sponsor(fields: {label: value}).",
+        readOnly: false,
+        destructive: true,
+        requiresConfirm: true,
+        args: ["event","action","field","label","kind","public","confirm"],
         required: ["event","action","confirm"],
       },
       {
@@ -1016,4 +1036,4 @@ export const MCP_TOOL_GROUPS: Array<McpToolGroup> = [
   },
 ]
 
-export const MCP_TOOL_COUNT = 91
+export const MCP_TOOL_COUNT = 93

@@ -1,6 +1,7 @@
 import { Link } from "@tanstack/react-router"
 import {
   RiBriefcase4Line,
+  RiBuilding2Line,
   RiCalendarEventLine,
   RiHome5Line,
   RiTeamLine,
@@ -80,13 +81,39 @@ export function portalTabMeta(value: string): PortalTabDef {
 
 export const SPONSOR_TABS = [
   {
+    value: "overview",
+    label: "Overview",
+    to: "/sponsor",
+    icon: RiHome5Line,
+    heading: "Overview",
+    blurb:
+      "What the organizers still need from you, by when — and where your sessions stand.",
+  },
+  {
     value: "sessions",
     label: "Sessions",
-    to: "/sponsor",
+    to: "/sponsor/sessions",
     icon: RiCalendarEventLine,
     heading: "Sessions",
     blurb:
       "Add the sessions your package includes, say who's presenting, and keep them up to date. The organizers review them and set the time and room.",
+  },
+  {
+    value: "company",
+    label: "Company",
+    to: "/sponsor/company",
+    icon: RiBuilding2Line,
+    heading: "Company",
+    blurb:
+      "Your logo, description and links — exactly what the event site shows about you. Everything saves as you go.",
+  },
+  {
+    value: "tasks",
+    label: "Tasks",
+    to: "/sponsor/tasks",
+    icon: RiBriefcase4Line,
+    heading: "Tasks",
+    blurb: "Anything the organizers asked you for, with the date they need it by.",
   },
   {
     value: "team",
@@ -96,20 +123,14 @@ export const SPONSOR_TABS = [
     heading: "Team",
     blurb: "Everyone here can add and edit your company's sessions — invite a colleague to share the work.",
   },
-  {
-    value: "tasks",
-    label: "Tasks",
-    to: "/sponsor/tasks",
-    icon: RiBriefcase4Line,
-    heading: "Tasks",
-    blurb: "Anything the organizers need from you before the event, with the date they need it by.",
-  },
 ] as const satisfies ReadonlyArray<PortalTabDef>
 
 export function activeSponsorTab(pathname: string): string {
-  if (pathname.startsWith("/sponsor/team")) return "team"
+  if (pathname.startsWith("/sponsor/sessions")) return "sessions"
+  if (pathname.startsWith("/sponsor/company")) return "company"
   if (pathname.startsWith("/sponsor/tasks")) return "tasks"
-  return "sessions"
+  if (pathname.startsWith("/sponsor/team")) return "team"
+  return "overview"
 }
 
 export function sponsorTabMeta(value: string): PortalTabDef {

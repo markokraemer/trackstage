@@ -397,5 +397,13 @@ export async function deleteEventBlobs(
   if (event?.logoId) await drop(event.logoId)
   if (event?.backgroundId) await drop(event.backgroundId)
 
+  const sponsors = await ctx.db
+    .query("sponsors")
+    .withIndex("by_eventId", (q) => q.eq("eventId", eventId))
+    .collect()
+  for (const sponsor of sponsors) {
+    if (sponsor.logoId) await drop(sponsor.logoId)
+  }
+
   return deleted
 }

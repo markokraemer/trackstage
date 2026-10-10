@@ -99,7 +99,8 @@ portal accounts are nice-to-have. Airtable read-only is fine (bonus, not core) �
   Rules live once in `convex/lib/sponsors.ts`; organizer CRUD + MCP cores in
   `convex/sponsors.ts`; the portal side at the bottom of `convex/portal.ts`.
   Sponsors have their OWN portal at **`/sponsor`** (sign-in `/sponsor/t/:token`, tabs
-  Sessions · Team · Tasks, plus "Your details" in the account menu) — same person token
+  Overview · Sessions · Company · Team, plus Tasks only when the organizers assigned
+  the contact one, and "Your details" in the account menu) — same person token
   and shared chrome (`src/components/portal/portal-frame.tsx`) as the speaker portal,
   never labelled "speaker". The SPEAKER profile (bio, headshot, links) exists only in
   `/portal`: a contact who presents nothing is sent from `/portal` to `/sponsor`; one
@@ -119,7 +120,9 @@ portal accounts are nice-to-have. Airtable read-only is fine (bonus, not core) �
    Welcome → Account → Submission → Participants → Review; then "Continue to portal".
 3. **Speaker portal** (`/portal`, entered through `/portal/t/:token`) — tabs: Home,
    Submissions, Profile, Tasks. **Sponsor portal** (`/sponsor`, via `/sponsor/t/:token`)
-   — tabs: Sessions, Team, Tasks.
+   — tabs: Overview, Sessions, Company, Team (+ Tasks when assigned). Sponsor company
+   fields beyond logo/website/description are ORGANIZER-DEFINED (`sponsorFields`) —
+   nothing like "LinkedIn" is hardcoded.
 4. **Form builder** — 6-step wizard (Submission Setup → Welcome Screen → Abstract
    Information → Participant Information → Form Settings → Notifications) with
    per-field Required/Enabled toggles, locked system fields

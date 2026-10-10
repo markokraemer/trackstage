@@ -1,68 +1,168 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router"
-import { RiAddLine, RiCalendarEventLine, RiInformationLine } from "@remixicon/react"
+import { useEffect } from "react"
+import { Link, createFileRoute, useNavigate } from "@tanstack/react-router"
+import {
+  RiArrowRightSLine,
+  RiCalendarEventLine,
+  RiCheckLine,
+  RiListCheck3,
+} from "@remixicon/react"
 
-import { Button } from "@/components/ui/button"
+import { buttonVariants } from "@/components/ui/button"
 import { EmptyState } from "@/components/shared/empty-state"
+import { StatusPill } from "@/components/shared/status-pill"
 import { Tag, tagTone } from "@/components/shared/tag"
 import { PanelCard } from "@/components/portal/panel-card"
-import { SubmissionCard } from "@/components/portal/submission-card"
+import { DueChip } from "@/components/portal/due-chip"
 import { usePortal } from "@/components/portal/portal-context"
-import {
-  AddSponsorSessionDrawer,
-  ManageSponsorSessionDrawer,
-} from "@/components/portal/sponsor-session-drawer"
-import { AllowanceMeter } from "@/components/sponsors/allowance-meter"
+import type { PortalHome } from "@/components/portal/portal-context"
 import { formatEventDateTime } from "@/components/portal/portal-utils"
+import { AllowanceMeter } from "@/components/sponsors/allowance-meter"
 
+/**
+ * `?open=` / `?add=` used to live on `/sponsor` (the sessions page, before it
+ * moved to `/sponsor/sessions`). Invite emails and old links still carry them,
+ * so the Overview forwards them instead of swallowing them.
+ */
 export const Route = createFileRoute("/sponsor/")({
   validateSearch: (search: Record<string, unknown>): { open?: string; add?: boolean } => ({
     open: typeof search.open === "string" ? search.open : undefined,
-    add: search.add === true || search.add === 1 || search.add === "1" || search.add === "true" ? true : undefined,
+    add:
+      search.add === true || search.add === 1 || search.add === "1" || search.add === "true"
+        ? true
+        : undefined,
   }),
-  component: PortalSponsorPage,
+  component: SponsorOverviewPage,
 })
 
+type Sponsor = NonNullable<PortalHome["sponsor"]>
+type Needed = Sponsor["stillNeeded"][number]
+
+/** Where each "still needed" item gets done. */
+function NeededLink({ item, children }: { item: Needed; children: React.ReactNode }) {
+  const className =
+    "flex items-center gap-3 px-6 py-3.5 outline-none transition-colors hover:bg-muted/40 focus-visible:bg-muted/40"
+  if (item.key === "logo" || item.key === "description") {
+    return (
+      <Link to="/sponsor/company" className={className}>
+        {children}
+      </Link>
+    )
+  }
+  if (item.key === "sessions") {
+    return (
+      <Link to="/sponsor/sessions" search={{ add: true }} className={className}>
+        {children}
+      </Link>
+    )
+  }
+  return <div className={className}>{children}</div>
+}
+
+const NEEDED_HINT: Record<string, string> = {
+  logo: "Shown on the event site and the stage screens",
+  description: "One or two sentences for the sponsor wall",
+  sessions: "Your package includes them — add title, description and speakers",
+}
+
 /**
- * Sponsor portal → Sessions, the portal's home (Kelsey's ask): a sponsor contact adds the sessions
- * their package includes — no call for papers — names who presents, and
- * keeps them current until the organizers' sponsor deadline. Same card
- * recipe as the portal's Home (a flush PanelCard with hairline rows), so a
- * contact who also speaks is never relearning a layout. Opening a session or
- * the add form is a real URL (`?open=`, `?add=1`).
+ * Sponsor portal → Overview: the first question a sponsor has — "what do you
+ * need from us, by when?" — answered before anything else, then where their
+ * sessions stand. The list is the server's `stillNeeded`, the same one the
+ * organizers read in their "Still needed" column, so the two can't disagree.
  */
-function PortalSponsorPage() {
+function SponsorOverviewPage() {
   const { home } = usePortal()
   const navigate = useNavigate()
   const { open, add } = Route.useSearch()
   const sponsor = home.sponsor
 
+  useEffect(() => {
+    if (open === undefined && add === undefined) return
+    void navigate({
+      to: "/sponsor/sessions",
+      search: { ...(open ? { open } : {}), ...(add ? { add: true } : {}) },
+      replace: true,
+    })
+  }, [open, add, navigate])
+
   // The layout never renders this page without a sponsor (src/routes/sponsor/route.tsx).
   if (!sponsor) return null
 
-  const total = sponsor.sessions.length
-  const active = sponsor.sessions.find((s) => s.id === open) ?? null
-  const setSearch = (next: { open?: string; add?: boolean }) =>
-    void navigate({ to: "/sponsor", search: next, replace: true })
+  // Only the sponsor's own to-dos — invites and contacts are the organizers' job.
+  const needed = sponsor.stillNeeded.filter((item) => item.owner === "sponsor")
+  const sessions = sponsor.sessions
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="grid gap-4 lg:grid-cols-[1.2fr_1fr] lg:items-start">
       <PanelCard
-        icon={RiCalendarEventLine}
-        title="Sessions"
-        count={total}
-        action={
-          sponsor.addBlocker ? null : (
-            <Button size="sm" onClick={() => setSearch({ add: true })}>
-              <RiAddLine aria-hidden />
-              Add a session
-            </Button>
-          )
+        icon={RiListCheck3}
+        title="Still needed from you"
+        count={needed.length}
+        description={
+          needed.length > 0
+            ? "Anyone on your team can do these. Each one opens where it's done."
+            : undefined
         }
         flush
         bodyClassName="gap-0"
       >
-        {/* The package, in one line: tier, how much of it is used, and the
-            deadline or the reason nothing more can be added. */}
+        {needed.length === 0 ? (
+          <EmptyState
+            variant="plain"
+            icon={RiCheckLine}
+            title="You're all set"
+            description="Nothing is waiting on you right now. If the organizers need anything else, it appears here — and in your inbox."
+            className="px-6 py-6"
+          />
+        ) : (
+          <ul className="divide-y divide-border">
+            {needed.map((item) => (
+              <li key={item.key}>
+                <NeededLink item={item}>
+                  <span
+                    aria-hidden
+                    className="size-5 shrink-0 rounded-full border border-dashed border-muted-foreground/50"
+                  />
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-sm font-medium text-foreground">
+                      {item.key === "logo"
+                        ? "Upload your logo"
+                        : item.key === "description"
+                          ? "Write your company description"
+                          : item.key === "sessions"
+                            ? `Add ${item.label.replace(/ to add$/, "")}`
+                            : item.label}
+                    </span>
+                    {NEEDED_HINT[item.key] ? (
+                      <span className="block truncate text-xs text-muted-foreground">
+                        {NEEDED_HINT[item.key]}
+                      </span>
+                    ) : null}
+                  </span>
+                  <DueChip dueAt={item.dueAt} />
+                  <RiArrowRightSLine size={16} aria-hidden className="shrink-0 text-muted-foreground" />
+                </NeededLink>
+              </li>
+            ))}
+          </ul>
+        )}
+      </PanelCard>
+
+      <PanelCard
+        icon={RiCalendarEventLine}
+        title="Your sessions"
+        count={sessions.length}
+        action={
+          <Link
+            to="/sponsor/sessions"
+            className="inline-flex min-h-9 items-center text-sm font-medium text-primary underline-offset-4 hover:underline"
+          >
+            View all
+          </Link>
+        }
+        flush
+        bodyClassName="gap-0"
+      >
         <div className="flex flex-col gap-2 border-b border-border px-6 pb-4">
           <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
             {sponsor.tier ? <Tag tone={tagTone(sponsor.tier)}>{sponsor.tier}</Tag> : null}
@@ -73,13 +173,10 @@ function PortalSponsorPage() {
             />
           </div>
           {sponsor.addBlocker ? (
-            <p className="flex items-start gap-1.5 text-xs text-muted-foreground">
-              <RiInformationLine size={14} aria-hidden className="mt-px shrink-0" />
-              {sponsor.addBlocker}
-            </p>
+            <p className="text-xs text-muted-foreground">{sponsor.addBlocker}</p>
           ) : sponsor.closeAt ? (
             <p className="text-xs text-muted-foreground">
-              You can add and edit sessions until{" "}
+              Add and edit sessions until{" "}
               <span className="font-medium text-foreground">
                 {formatEventDateTime(sponsor.closeAt, home.event.timezone)}
               </span>
@@ -88,7 +185,7 @@ function PortalSponsorPage() {
           ) : null}
         </div>
 
-        {total === 0 ? (
+        {sessions.length === 0 ? (
           <EmptyState
             variant="plain"
             icon={RiCalendarEventLine}
@@ -96,55 +193,48 @@ function PortalSponsorPage() {
             description={
               sponsor.addBlocker
                 ? "Sessions the organizers add for your company will appear here."
-                : `Add the session${sponsor.sessionLimit === 1 ? "" : "s"} your package includes — title, description and who's presenting. You can keep editing until the organizers close sponsor sessions.`
+                : "Add the sessions your package includes — the organizers review them and set the time and room."
             }
             action={
               sponsor.addBlocker ? undefined : (
-                <Button onClick={() => setSearch({ add: true })}>
-                  <RiAddLine aria-hidden />
+                <Link to="/sponsor/sessions" search={{ add: true }} className={buttonVariants()}>
                   Add a session
-                </Button>
+                </Link>
               )
             }
             className="px-6 py-6"
           />
         ) : (
           <ul className="divide-y divide-border">
-            {sponsor.sessions.map((session, index) => (
+            {sessions.map((session) => (
               <li key={session.id}>
-                <SubmissionCard
-                  submission={session}
-                  code={`SPON-${total - index}`}
-                  bare
-                  action={
-                    <Button variant="outline" size="sm" onClick={() => setSearch({ open: session.id })}>
-                      {session.editLock ? "View details" : "Manage"}
-                    </Button>
-                  }
-                />
+                <Link
+                  to="/sponsor/sessions"
+                  search={{ open: session.id }}
+                  className="flex items-start gap-3 px-6 py-3.5 outline-none transition-colors hover:bg-muted/40 focus-visible:bg-muted/40"
+                >
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-sm font-medium text-foreground">
+                      {session.title}
+                    </span>
+                    <span className="block truncate text-xs text-muted-foreground">
+                      {session.scheduled
+                        ? [
+                            formatEventDateTime(session.scheduled.startsAt, home.event.timezone),
+                            session.scheduled.room,
+                          ]
+                            .filter(Boolean)
+                            .join(" · ")
+                        : "Time and room set by the organizers"}
+                    </span>
+                  </span>
+                  <StatusPill status={session.status} size="sm" />
+                </Link>
               </li>
             ))}
           </ul>
         )}
       </PanelCard>
-
-      <AddSponsorSessionDrawer
-        open={add === true && !sponsor.addBlocker}
-        onOpenChange={(next) => {
-          if (!next) setSearch({})
-        }}
-      />
-      {active ? (
-        <ManageSponsorSessionDrawer
-          key={active.id}
-          session={active}
-          open
-          onOpenChange={(next) => {
-            if (!next) setSearch({})
-          }}
-        />
-      ) : null}
     </div>
   )
 }
-

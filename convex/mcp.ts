@@ -32,7 +32,7 @@ import {
   updatePortalRulesCore,
   updateSponsorCore,
 } from "./sponsors"
-import { sponsorPortalRules } from "./lib/sponsors"
+import { cleanSessionLimit, sponsorFieldsFor, sponsorPortalRules } from "./lib/sponsors"
 import { ensureOnboardingTasks, withJoins } from "./submissions"
 import { TASK_KINDS } from "./tasksAdmin"
 import {
@@ -3470,6 +3470,11 @@ function sponsorPayload(row: Awaited<ReturnType<typeof sponsorRow>>) {
     name: row.name,
     tier: row.tier,
     websiteUrl: row.websiteUrl,
+    // The event's own company fields, by label.
+    fields: Object.fromEntries(row.fields.map((f) => [f.label, f.value])),
+    description: row.description,
+    hasLogo: row.logoUrl !== null,
+    publicVisible: row.publicVisible,
     notes: row.notes,
     sessionLimit: row.sessionLimit,
     sessionsUsed: row.sessionsUsed,
@@ -3478,9 +3483,11 @@ function sponsorPayload(row: Awaited<ReturnType<typeof sponsorRow>>) {
       name: c.name,
       email: c.email,
       jobTitle: c.jobTitle,
+      isPrimary: c.isPrimary,
       invitedAt: iso(c.invitedAt),
     })),
     sessions: row.sessions,
+    stillNeeded: row.stillNeeded.map((n) => n.label),
   }
 }
 
@@ -3499,8 +3506,20 @@ export const listSponsors = internalQuery({
         .map(async (s) => sponsorPayload(await sponsorRow(ctx, s))),
     )
     const rules = sponsorPortalRules(event)
+    const tiers = (
+      await ctx.db
+        .query("sponsorTiers")
+        .withIndex("by_eventId", (q) => q.eq("eventId", event._id))
+        .take(100)
+    ).sort((a, b) => a.order - b.order)
     return {
       summary: `${rows.length} sponsor(s); ${rows.reduce((n, r) => n + r.sessionsUsed, 0)} sponsor session(s) counting against allowances.`,
+      tiers: tiers.map((t) => ({ name: t.name, sessionsIncluded: t.sessionLimit })),
+      fieldDefinitions: (await sponsorFieldsFor(ctx, event._id)).map((f) => ({
+        label: f.label,
+        kind: f.kind,
+        public: f.public,
+      })),
       portalSettings: {
         newSessionStatus: rules.newSessionStatus,
         closeAt: iso(rules.closeAt),
@@ -3522,6 +3541,9 @@ export const manageSponsor = internalMutation({
     websiteUrl: v.optional(v.string()),
     sessionLimit: v.optional(v.number()),
     notes: v.optional(v.string()),
+    description: v.optional(v.string()),
+    fields: v.optional(v.record(v.string(), v.string())),
+    publicVisible: v.optional(v.boolean()),
   },
   returns: v.any(),
   handler: async (ctx, args) => {
@@ -3552,6 +3574,9 @@ export const manageSponsor = internalMutation({
         websiteUrl: args.websiteUrl,
         sessionLimit: args.sessionLimit,
         notes: args.notes,
+        description: args.description,
+        fields: args.fields ? await fieldPatchByLabel(ctx, event._id, args.fields) : undefined,
+        publicVisible: args.publicVisible,
       })
       const updated = await ctx.db.get(sponsor._id)
       return { updated: true, sponsor: sponsorPayload(await sponsorRow(ctx, updated!)) }
@@ -3564,6 +3589,157 @@ export const manageSponsor = internalMutation({
         ...result,
         note: "Its sessions stay on the program and its contacts stay as people; both just lost the sponsor link.",
       }
+    }
+    throw new ConvexError('action must be "create", "update" or "delete".')
+  },
+})
+
+/** `{label or id → value}` from an agent → `{fieldId → value}` for the core. */
+async function fieldPatchByLabel(
+  ctx: MutationCtx,
+  eventId: Id<"events">,
+  byLabel: Record<string, string>,
+): Promise<Record<string, string>> {
+  const defs = await sponsorFieldsFor(ctx, eventId)
+  const out: Record<string, string> = {}
+  for (const [key, value] of Object.entries(byLabel)) {
+    const field = defs.find((f) => f._id === key || f.label.toLowerCase() === key.trim().toLowerCase())
+    if (!field) {
+      throw new ConvexError(
+        `No company field called "${key}". Fields on this event: ${defs.map((f) => f.label).join(", ") || "none — add one with manage_sponsor_field"}.`,
+      )
+    }
+    out[field._id] = value
+  }
+  return out
+}
+
+export const manageSponsorField = internalMutation({
+  args: {
+    userId: v.string(),
+    event: v.string(),
+    action: v.string(),
+    field: v.optional(v.string()),
+    label: v.optional(v.string()),
+    kind: v.optional(v.string()),
+    public: v.optional(v.boolean()),
+  },
+  returns: v.any(),
+  handler: async (ctx, args) => {
+    const event = await resolveEvent(ctx, args.userId, args.event)
+    const defs = await sponsorFieldsFor(ctx, event._id)
+    const kind = (args.kind ?? "text") as "text" | "longText" | "url"
+    if (!["text", "longText", "url"].includes(kind)) {
+      throw new ConvexError('kind must be "text", "longText" or "url".')
+    }
+    if (args.action === "create") {
+      const label = args.label?.trim()
+      if (!label) throw new ConvexError("Pass the field's label.")
+      if (defs.some((f) => f.label.toLowerCase() === label.toLowerCase())) {
+        throw new ConvexError(`There's already a field called ${label}.`)
+      }
+      const id = await ctx.db.insert("sponsorFields", {
+        eventId: event._id,
+        label,
+        kind,
+        public: args.public ?? false,
+        order: (defs.at(-1)?.order ?? 0) + 10,
+      })
+      return { created: true, id, label }
+    }
+    const found = args.field
+      ? defs.find((f) => f._id === args.field || f.label.toLowerCase() === args.field!.trim().toLowerCase())
+      : undefined
+    if (!found) throw new ConvexError(`No field matching "${args.field ?? ""}". Call list_sponsors to see them.`)
+    if (args.action === "update") {
+      await ctx.db.patch(found._id, {
+        label: args.label?.trim() || found.label,
+        kind: args.kind ? kind : found.kind,
+        public: args.public ?? found.public,
+      })
+      return { updated: true, label: args.label?.trim() || found.label }
+    }
+    if (args.action === "delete") {
+      const sponsors = await ctx.db
+        .query("sponsors")
+        .withIndex("by_eventId", (q) => q.eq("eventId", event._id))
+        .take(500)
+      for (const sponsor of sponsors) {
+        if (sponsor.fields && found._id in sponsor.fields) {
+          const { [found._id]: _dropped, ...rest } = sponsor.fields
+          await ctx.db.patch(sponsor._id, { fields: rest })
+        }
+      }
+      await ctx.db.delete(found._id)
+      return { deleted: true, label: found.label, note: "Every sponsor's value for it was removed too." }
+    }
+    throw new ConvexError('action must be "create", "update" or "delete".')
+  },
+})
+
+export const manageSponsorTier = internalMutation({
+  args: {
+    userId: v.string(),
+    event: v.string(),
+    action: v.string(),
+    tier: v.optional(v.string()),
+    name: v.optional(v.string()),
+    sessionLimit: v.optional(v.number()),
+  },
+  returns: v.any(),
+  handler: async (ctx, args) => {
+    const event = await resolveEvent(ctx, args.userId, args.event)
+    const tiers = (
+      await ctx.db
+        .query("sponsorTiers")
+        .withIndex("by_eventId", (q) => q.eq("eventId", event._id))
+        .take(100)
+    ).sort((a, b) => a.order - b.order)
+    const found = args.tier
+      ? tiers.find((t) => t._id === args.tier || t.name.toLowerCase() === args.tier!.trim().toLowerCase())
+      : undefined
+    if (args.action === "create") {
+      const name = args.name?.trim()
+      if (!name) throw new ConvexError("Pass the tier's name.")
+      if (tiers.some((t) => t.name.toLowerCase() === name.toLowerCase())) {
+        throw new ConvexError(`There's already a tier called ${name}.`)
+      }
+      const id = await ctx.db.insert("sponsorTiers", {
+        eventId: event._id,
+        name,
+        sessionLimit: cleanSessionLimit(args.sessionLimit ?? 1),
+        order: (tiers.at(-1)?.order ?? 0) + 10,
+      })
+      return { created: true, id, name }
+    }
+    if (!found) throw new ConvexError(`No tier matching "${args.tier ?? ""}". Call list_sponsors to see tiers.`)
+    if (args.action === "update") {
+      const name = args.name?.trim() || found.name
+      await ctx.db.patch(found._id, {
+        name,
+        sessionLimit: args.sessionLimit !== undefined ? cleanSessionLimit(args.sessionLimit) : found.sessionLimit,
+      })
+      if (name !== found.name) {
+        const sponsors = await ctx.db
+          .query("sponsors")
+          .withIndex("by_eventId", (q) => q.eq("eventId", event._id))
+          .take(500)
+        for (const sponsor of sponsors) {
+          if (sponsor.tier === found.name) await ctx.db.patch(sponsor._id, { tier: name })
+        }
+      }
+      return { updated: true, name }
+    }
+    if (args.action === "delete") {
+      const sponsors = await ctx.db
+        .query("sponsors")
+        .withIndex("by_eventId", (q) => q.eq("eventId", event._id))
+        .take(500)
+      for (const sponsor of sponsors) {
+        if (sponsor.tier === found.name) await ctx.db.patch(sponsor._id, { tier: undefined })
+      }
+      await ctx.db.delete(found._id)
+      return { deleted: true, name: found.name, note: "Its sponsors keep everything except the tier label." }
     }
     throw new ConvexError('action must be "create", "update" or "delete".')
   },
@@ -4336,6 +4512,13 @@ export const TOOLS: Array<ToolDef> = [
         websiteUrl: { type: "string" },
         sessionLimit: { type: "number", description: "Sessions the sponsor may add itself (0–50)." },
         notes: { type: "string", description: "Organizer-only notes." },
+        description: { type: "string", description: "Public blurb for the sponsor wall (≤600 chars)." },
+        fields: {
+          type: "object",
+          description:
+            "Company field values keyed by field label (see list_sponsors → fieldDefinitions), e.g. {\"LinkedIn\": \"https://…\"}. \"\" clears one.",
+        },
+        publicVisible: { type: "boolean", description: "false keeps the sponsor off the public site." },
       },
       ["event", "action"],
     ),
@@ -4352,6 +4535,65 @@ export const TOOLS: Array<ToolDef> = [
         websiteUrl: args.websiteUrl,
         sessionLimit: args.sessionLimit,
         notes: args.notes,
+        description: args.description,
+        fields: args.fields,
+        publicVisible: args.publicVisible,
+      }),
+  },
+  {
+    name: "manage_sponsor_field",
+    title: "Create, update or delete a sponsor company field",
+    description:
+      "The event's own company fields every sponsor fills in (\"LinkedIn\", \"Booth number\", \"Industry\") — nothing beyond logo, website and description is built in. kind: text | longText | url. public: true shows the value on the sponsor wall; false keeps it between organizers and the sponsor. Set values with manage_sponsor(fields: {label: value}).",
+    inputSchema: schema(
+      {
+        event: EVENT_ARG,
+        action: { type: "string", enum: ["create", "update", "delete"] },
+        field: { type: "string", description: "Existing field label or id — for update/delete." },
+        label: { type: "string" },
+        kind: { type: "string", enum: ["text", "longText", "url"] },
+        public: { type: "boolean" },
+      },
+      ["event", "action"],
+    ),
+    readOnly: false,
+    destructive: true,
+    run: (ctx, userId, args) =>
+      ctx.runMutation(internal.mcp.manageSponsorField, {
+        userId,
+        event: args.event,
+        action: args.action,
+        field: args.field,
+        label: args.label,
+        kind: args.kind,
+        public: args.public,
+      }),
+  },
+  {
+    name: "manage_sponsor_tier",
+    title: "Create, update or delete a sponsor tier",
+    description:
+      "Sponsorship packages in display order (the sponsor wall shows them top-down). Each tier pre-fills how many sessions a sponsor in it may add (sessionLimit). Renaming a tier renames it on its sponsors; deleting one leaves its sponsors untiered.",
+    inputSchema: schema(
+      {
+        event: EVENT_ARG,
+        action: { type: "string", enum: ["create", "update", "delete"] },
+        tier: { type: "string", description: "Existing tier name or id — for update/delete." },
+        name: { type: "string" },
+        sessionLimit: { type: "number" },
+      },
+      ["event", "action"],
+    ),
+    readOnly: false,
+    destructive: true,
+    run: (ctx, userId, args) =>
+      ctx.runMutation(internal.mcp.manageSponsorTier, {
+        userId,
+        event: args.event,
+        action: args.action,
+        tier: args.tier,
+        name: args.name,
+        sessionLimit: args.sessionLimit,
       }),
   },
   {

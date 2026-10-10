@@ -47,6 +47,12 @@ export interface SubmissionCardProps {
    * card inside a bordered card reads as clutter on a phone.
    */
   bare?: boolean
+  /**
+   * Show the scheduled time / room / add-to-calendar line. Defaults to
+   * `detailed`; the sponsor portal turns it on for its compact lists, where
+   * "when and where is our session" is the whole point.
+   */
+  showSchedule?: boolean
   className?: string
 }
 
@@ -61,6 +67,7 @@ export function SubmissionCard({
   action,
   detailed = false,
   bare = false,
+  showSchedule = detailed,
   className,
 }: SubmissionCardProps) {
   const { home } = usePortal()
@@ -108,7 +115,7 @@ export function SubmissionCard({
         </p>
       ) : null}
 
-      {detailed && submission.scheduled ? (
+      {showSchedule && submission.scheduled ? (
         <p className="mt-2.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs font-medium text-foreground">
           <span className="inline-flex items-center gap-1.5">
             <RiCalendarEventLine size={14} aria-hidden />

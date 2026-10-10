@@ -322,6 +322,13 @@ export const sweepOrphans = internalMutation({
       if (event.backgroundId) referenced.add(event.backgroundId)
     }
 
+    // Sponsor logos are a current value on the sponsor row, like event
+    // branding — referenced by nothing in `uploads`, so they must be named.
+    const sponsors = await ctx.db.query("sponsors").take(limit)
+    for (const sponsor of sponsors) {
+      if (sponsor.logoId) referenced.add(sponsor.logoId)
+    }
+
     const blobs = await ctx.db.system.query("_storage").take(limit)
     let unreferenced = 0
     let unreferencedBytes = 0

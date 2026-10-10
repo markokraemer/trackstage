@@ -121,3 +121,12 @@ proves the shape.
 **Deliberately out:** payments/invoicing (struck by swyx), booth map / booth selection
 (Kelsey's separate tool), lead retrieval, exhibitor as a separate record type (a tier
 named "Exhibitor" covers it until it doesn't), Accelevents sync.
+
+## 8. What shipped, and what changed on the way (2026-10-11)
+
+Wave 1 shipped as: managed **tiers** (order + default sessions), **company profile**
+(logo, website, description, public switch, primary contact), **organizer-defined
+company fields** (no hardcoded LinkedIn/X), the **still-needed** list shared by the
+organizer table and the portal, and the sponsor portal's **Overview · Sessions ·
+Company · Team**. **Deliverables were built and then cut** at Marko's review — too
+much for now and a duplicate of tasks; see DECISIONS.md 2026-10-11.

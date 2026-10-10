@@ -327,7 +327,51 @@ export default defineSchema({
     sessionLimit: v.number(),
     // Organizer-only notes ("contract signed 3 Aug, keynote slot promised").
     notes: v.optional(v.string()),
+    // ——— Company profile — what the event site shows ———
+    // The logo is a current value (like event branding): replacing it deletes
+    // the old blob. Registered with the orphan sweep in convex/files.ts.
+    logoId: v.optional(v.id("_storage")),
+    /** One or two sentences for the public sponsor wall. */
+    description: v.optional(v.string()),
+    // Values for the event's own COMPANY FIELDS (sponsorFields below), keyed
+    // by field id — LinkedIn, booth number, industry, whatever this event
+    // collects. Nothing beyond logo / website / description is hardcoded.
+    fields: v.optional(v.record(v.string(), v.string())),
+    // On the public sponsor wall / "Presented by" logos. Absent ⇒ shown —
+    // `false` keeps a sponsor embargoed until the announcement.
+    publicVisible: v.optional(v.boolean()),
+    // Who the organizers deal with — gets the company's mail first. Absent ⇒
+    // the first contact added (what every sponsor had before this existed).
+    primaryContactId: v.optional(v.id("people")),
+    /** Last change — for the REST `updated_at`. */
+    updatedAt: v.optional(v.number()),
   }).index("by_eventId", ["eventId"]),
+
+  // The organizer-defined fields every sponsor has on this event ("LinkedIn",
+  // "Booth number", "Industry"), in display order — Sessionboard's custom
+  // group fields. `public` puts the value on the sponsor wall; private fields
+  // are for the organizers and the sponsor only.
+  sponsorFields: defineTable({
+    eventId: v.id("events"),
+    label: v.string(),
+    kind: v.union(v.literal("text"), v.literal("longText"), v.literal("url")),
+    public: v.boolean(),
+    order: v.number(),
+  }).index("by_eventId", ["eventId"]),
+
+  // The event's sponsorship packages, in display order (Platinum above Gold).
+  // A sponsor's `tier` is the tier's NAME — kept as a string so the REST API
+  // and every existing row read unchanged; this table adds the order (public
+  // wall, filters) and the package default for "sessions included". Renaming
+  // a tier renames it on its sponsors (convex/sponsors.ts).
+  sponsorTiers: defineTable({
+    eventId: v.id("events"),
+    name: v.string(),
+    order: v.number(),
+    /** Pre-fills "Sessions included" when a sponsor is put in this tier. */
+    sessionLimit: v.number(),
+  }).index("by_eventId", ["eventId"]),
+
 
   // ——— CFP forms ————————————————————————————————————————————————————————
   forms: defineTable({
