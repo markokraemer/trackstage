@@ -777,3 +777,9 @@ stranger's event created seconds earlier.
   every organizer "copy/open portal link" use `/sponsor/t/:token`. A person who is
   both switches from the account menu (Sessionboard's "Switch portals", no second
   login). `/portal/sponsor` survives as a redirect that keeps `?open=`/`?add=`.
+  Refined the same evening (Marko: Profile showing in both portals is "weird"): the
+  speaker profile — bio, headshot, links "next to your talk" — belongs to SPEAKERS.
+  The sponsor portal has no Profile tab; a contact edits their name/title/phone in
+  "Your details". Who counts as a speaker is now who PRESENTS (participant on any
+  session), not who submitted: a contact who presents one of their company's
+  sessions gets the speaker portal too and switches from the account menu.

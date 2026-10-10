@@ -1,9 +1,12 @@
 import { Link, Outlet, createFileRoute, useLocation } from "@tanstack/react-router"
-import { RiBuilding2Line } from "@remixicon/react"
+import { useState } from "react"
+import { RiBuilding2Line, RiUser3Line } from "@remixicon/react"
 
 import { buttonVariants } from "@/components/ui/button"
 import { EmptyState } from "@/components/shared/empty-state"
 import { PortalSignedOut } from "@/components/portal/portal-signed-out"
+import { YourDetailsDialog } from "@/components/portal/your-details-dialog"
+import { DropdownMenuItem } from "@/components/ui/dropdown-menu"
 import {
   PortalFrame,
   PortalSkeleton,
@@ -33,6 +36,7 @@ export const Route = createFileRoute("/sponsor")({
 function SponsorPortalLayout() {
   const location = useLocation()
   const { token, setToken, ready, isPending, isError, value } = usePortalSession("/sponsor")
+  const [detailsOpen, setDetailsOpen] = useState(false)
 
   const isEntryRoute = location.pathname.startsWith("/sponsor/t/")
   if (isEntryRoute) return <Outlet />
@@ -73,9 +77,20 @@ function SponsorPortalLayout() {
       value={value}
       label={`Sponsor portal · ${sponsor.name}`}
       homePath="/sponsor"
-      profilePath="/sponsor/profile"
+      menuItems={
+        // The dialog lives outside the menu (below) — a closing menu
+        // unmounts its content, and would take the dialog with it.
+        <DropdownMenuItem onClick={() => setDetailsOpen(true)}>
+          <RiUser3Line aria-hidden />
+          Your details
+        </DropdownMenuItem>
+      }
       guidePath="/docs/guide/sponsors"
-      switchTo={mode === "both" ? { label: "Switch to your speaker portal", to: "/portal" } : undefined}
+      switchTo={
+        mode === "both"
+          ? { label: "Switch to speaker portal", to: "/portal" }
+          : undefined
+      }
       heading={activeTab === "sessions" ? sponsor.name : tab.heading}
       blurb={tab.blurb}
       tabs={
@@ -88,6 +103,7 @@ function SponsorPortalLayout() {
       }
     >
       <Outlet />
+      <YourDetailsDialog open={detailsOpen} onOpenChange={setDetailsOpen} />
     </PortalFrame>
   )
 }

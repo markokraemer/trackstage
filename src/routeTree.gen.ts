@@ -37,7 +37,6 @@ import { Route as PortalSubmissionsRouteImport } from './routes/portal/submissio
 import { Route as PortalTasksRouteImport } from './routes/portal/tasks'
 import { Route as ReviewTokenRouteImport } from './routes/review/$token'
 import { Route as SponsorIndexRouteImport } from './routes/sponsor/index'
-import { Route as SponsorProfileRouteImport } from './routes/sponsor/profile'
 import { Route as SponsorTasksRouteImport } from './routes/sponsor/tasks'
 import { Route as SponsorTeamRouteImport } from './routes/sponsor/team'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
@@ -252,11 +251,6 @@ const ReviewTokenRoute = ReviewTokenRouteImport.update({
 const SponsorIndexRoute = SponsorIndexRouteImport.update({
   id: '/',
   path: '/',
-  getParentRoute: () => SponsorRouteRoute,
-} as any)
-const SponsorProfileRoute = SponsorProfileRouteImport.update({
-  id: '/profile',
-  path: '/profile',
   getParentRoute: () => SponsorRouteRoute,
 } as any)
 const SponsorTasksRoute = SponsorTasksRouteImport.update({
@@ -696,7 +690,6 @@ export interface FileRoutesByFullPath {
   '/portal/submissions': typeof PortalSubmissionsRoute
   '/portal/tasks': typeof PortalTasksRoute
   '/review/$token': typeof ReviewTokenRoute
-  '/sponsor/profile': typeof SponsorProfileRoute
   '/sponsor/tasks': typeof SponsorTasksRoute
   '/sponsor/team': typeof SponsorTeamRoute
   '/app/': typeof AppIndexRoute
@@ -797,7 +790,6 @@ export interface FileRoutesByTo {
   '/portal/submissions': typeof PortalSubmissionsRoute
   '/portal/tasks': typeof PortalTasksRoute
   '/review/$token': typeof ReviewTokenRoute
-  '/sponsor/profile': typeof SponsorProfileRoute
   '/sponsor/tasks': typeof SponsorTasksRoute
   '/sponsor/team': typeof SponsorTeamRoute
   '/app': typeof AppIndexRoute
@@ -900,7 +892,6 @@ export interface FileRoutesById {
   '/portal/submissions': typeof PortalSubmissionsRoute
   '/portal/tasks': typeof PortalTasksRoute
   '/review/$token': typeof ReviewTokenRoute
-  '/sponsor/profile': typeof SponsorProfileRoute
   '/sponsor/tasks': typeof SponsorTasksRoute
   '/sponsor/team': typeof SponsorTeamRoute
   '/app/': typeof AppIndexRoute
@@ -1007,7 +998,6 @@ export interface FileRouteTypes {
     | '/portal/submissions'
     | '/portal/tasks'
     | '/review/$token'
-    | '/sponsor/profile'
     | '/sponsor/tasks'
     | '/sponsor/team'
     | '/app/'
@@ -1108,7 +1098,6 @@ export interface FileRouteTypes {
     | '/portal/submissions'
     | '/portal/tasks'
     | '/review/$token'
-    | '/sponsor/profile'
     | '/sponsor/tasks'
     | '/sponsor/team'
     | '/app'
@@ -1210,7 +1199,6 @@ export interface FileRouteTypes {
     | '/portal/submissions'
     | '/portal/tasks'
     | '/review/$token'
-    | '/sponsor/profile'
     | '/sponsor/tasks'
     | '/sponsor/team'
     | '/app/'
@@ -1511,13 +1499,6 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/sponsor/'
       preLoaderRoute: typeof SponsorIndexRouteImport
-      parentRoute: typeof SponsorRouteRoute
-    }
-    '/sponsor/profile': {
-      id: '/sponsor/profile'
-      path: '/profile'
-      fullPath: '/sponsor/profile'
-      preLoaderRoute: typeof SponsorProfileRouteImport
       parentRoute: typeof SponsorRouteRoute
     }
     '/sponsor/tasks': {
@@ -2258,7 +2239,6 @@ const PortalRouteRouteWithChildren = PortalRouteRoute._addFileChildren(
 )
 
 interface SponsorRouteRouteChildren {
-  SponsorProfileRoute: typeof SponsorProfileRoute
   SponsorTasksRoute: typeof SponsorTasksRoute
   SponsorTeamRoute: typeof SponsorTeamRoute
   SponsorIndexRoute: typeof SponsorIndexRoute
@@ -2266,7 +2246,6 @@ interface SponsorRouteRouteChildren {
 }
 
 const SponsorRouteRouteChildren: SponsorRouteRouteChildren = {
-  SponsorProfileRoute: SponsorProfileRoute,
   SponsorTasksRoute: SponsorTasksRoute,
   SponsorTeamRoute: SponsorTeamRoute,
   SponsorIndexRoute: SponsorIndexRoute,

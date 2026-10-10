@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router"
 
 import { ProfilePage } from "@/components/portal/profile-page"
 
-// The page body is shared with the sponsor portal (`/sponsor/profile`).
+// The speaker profile — bio, headshot, links — lives only in the speaker portal.
 export const Route = createFileRoute("/portal/profile")({
   component: ProfilePage,
 })

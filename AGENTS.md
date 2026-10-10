@@ -99,10 +99,12 @@ portal accounts are nice-to-have. Airtable read-only is fine (bonus, not core) �
   Rules live once in `convex/lib/sponsors.ts`; organizer CRUD + MCP cores in
   `convex/sponsors.ts`; the portal side at the bottom of `convex/portal.ts`.
   Sponsors have their OWN portal at **`/sponsor`** (sign-in `/sponsor/t/:token`, tabs
-  Sessions · Team · Profile · Tasks) — same person token and shared chrome
-  (`src/components/portal/portal-frame.tsx`) as the speaker portal, never labelled
-  "speaker". A sponsor-only contact hitting `/portal` is sent to `/sponsor`; a contact
-  who also speaks switches between the two from the account menu. A sponsor contact is ALWAYS a protected identity in
+  Sessions · Team · Tasks, plus "Your details" in the account menu) — same person token
+  and shared chrome (`src/components/portal/portal-frame.tsx`) as the speaker portal,
+  never labelled "speaker". The SPEAKER profile (bio, headshot, links) exists only in
+  `/portal`: a contact who presents nothing is sent from `/portal` to `/sponsor`; one
+  who presents (their own proposal or a company session they're on) is both, and
+  switches from the account menu (`portalModeFor`). A sponsor contact is ALWAYS a protected identity in
   `submit.identify` (their token opens the whole company). Asked for by Kelsey (AI
   Engineer ops) on 2026-10-10 — see `docs/reference/sponsors-cross-analysis.md`.
 
@@ -117,7 +119,7 @@ portal accounts are nice-to-have. Airtable read-only is fine (bonus, not core) �
    Welcome → Account → Submission → Participants → Review; then "Continue to portal".
 3. **Speaker portal** (`/portal`, entered through `/portal/t/:token`) — tabs: Home,
    Submissions, Profile, Tasks. **Sponsor portal** (`/sponsor`, via `/sponsor/t/:token`)
-   — tabs: Sessions, Team, Profile, Tasks.
+   — tabs: Sessions, Team, Tasks.
 4. **Form builder** — 6-step wizard (Submission Setup → Welcome Screen → Abstract
    Information → Participant Information → Form Settings → Notifications) with
    per-field Required/Enabled toggles, locked system fields

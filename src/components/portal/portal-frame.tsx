@@ -11,7 +11,6 @@ import {
   RiCalendarLine,
   RiLogoutBoxRLine,
   RiMapPin2Line,
-  RiUser3Line,
 } from "@remixicon/react"
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -100,7 +99,8 @@ export interface PortalFrameProps {
   label: string
   /** Where the logo goes — this portal's home. */
   homePath: "/portal" | "/sponsor"
-  profilePath: "/portal/profile" | "/sponsor/profile"
+  /** This portal's own account-menu items ("My profile", "Your details"). */
+  menuItems: ReactNode
   guidePath: "/docs/guide/speaker-portal" | "/docs/guide/sponsors"
   /** The other portal this person can open, when they have one. */
   switchTo?: { label: string; to: "/portal" | "/sponsor" }
@@ -114,7 +114,7 @@ export function PortalFrame({
   value,
   label,
   homePath,
-  profilePath,
+  menuItems,
   guidePath,
   switchTo,
   heading,
@@ -194,10 +194,7 @@ export function PortalFrame({
                       <DropdownMenuSeparator />
                     </>
                   ) : null}
-                  <DropdownMenuItem nativeButton={false} render={<Link to={profilePath} />}>
-                    <RiUser3Line aria-hidden />
-                    My profile
-                  </DropdownMenuItem>
+                  {menuItems}
                   <DropdownMenuItem nativeButton={false} render={<Link to={guidePath} />}>
                     <RiBookOpenLine aria-hidden />
                     How this works

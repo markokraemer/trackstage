@@ -97,15 +97,6 @@ export const SPONSOR_TABS = [
     blurb: "Everyone here can add and edit your company's sessions — invite a colleague to share the work.",
   },
   {
-    value: "profile",
-    label: "Profile",
-    to: "/sponsor/profile",
-    icon: RiUser3Line,
-    heading: "Profile",
-    blurb:
-      "Your name, bio, photo and links. If you present a session, this is what goes on the public programme.",
-  },
-  {
     value: "tasks",
     label: "Tasks",
     to: "/sponsor/tasks",
@@ -117,7 +108,6 @@ export const SPONSOR_TABS = [
 
 export function activeSponsorTab(pathname: string): string {
   if (pathname.startsWith("/sponsor/team")) return "team"
-  if (pathname.startsWith("/sponsor/profile")) return "profile"
   if (pathname.startsWith("/sponsor/tasks")) return "tasks"
   return "sessions"
 }
@@ -129,19 +119,27 @@ export function sponsorTabMeta(value: string): PortalTabDef {
 // ——— Who the portals are for ——————————————————————————————————————————————
 
 /**
- * A sponsor contact whose only sessions are their company's is a SPONSOR —
- * `/portal` has nothing of theirs and sends them to `/sponsor`. Anyone who
- * also has their own submissions is BOTH, and switches between the two
- * portals from the account menu. Everyone else is a speaker.
+ * A sponsor contact who presents nothing is a SPONSOR — `/portal` (a SPEAKER
+ * portal: bio, headshot, talks) has nothing for them and sends them to
+ * `/sponsor`. A contact who also presents — their own proposal or one of
+ * their company's sessions — is BOTH, and switches between the two portals
+ * from the account menu. Everyone else is a speaker.
  */
 export type PortalMode = "speaker" | "sponsor" | "both"
 
 export function portalModeFor(home: {
+  me: { id: string }
   sponsor: unknown
-  submissions: ReadonlyArray<{ sponsored: boolean }>
+  submissions: ReadonlyArray<{ sponsored: boolean; participants: ReadonlyArray<{ personId: string }> }>
 }): PortalMode {
   if (!home.sponsor) return "speaker"
-  return home.submissions.every((s) => s.sponsored) ? "sponsor" : "both"
+  // A sponsor contact is ALSO a speaker the moment they present something —
+  // their own proposal, or one of their company's sessions they're on. Only
+  // then do they need the speaker portal (bio, headshot, their talks).
+  const speaks = home.submissions.some(
+    (s) => !s.sponsored || s.participants.some((p) => p.personId === home.me.id),
+  )
+  return speaks ? "both" : "sponsor"
 }
 
 // ——— The strip ————————————————————————————————————————————————————————————

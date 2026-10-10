@@ -1,5 +1,8 @@
 import { useEffect } from "react"
-import { Outlet, createFileRoute, useLocation, useNavigate } from "@tanstack/react-router"
+import { Link, Outlet, createFileRoute, useLocation, useNavigate } from "@tanstack/react-router"
+import { RiUser3Line } from "@remixicon/react"
+
+import { DropdownMenuItem } from "@/components/ui/dropdown-menu"
 
 import { PortalSignedOut } from "@/components/portal/portal-signed-out"
 import {
@@ -69,9 +72,14 @@ function PortalLayout() {
       value={value}
       label="Speaker portal"
       homePath="/portal"
-      profilePath="/portal/profile"
+      menuItems={
+        <DropdownMenuItem nativeButton={false} render={<Link to="/portal/profile" />}>
+          <RiUser3Line aria-hidden />
+          My profile
+        </DropdownMenuItem>
+      }
       guidePath="/docs/guide/speaker-portal"
-      switchTo={sponsor ? { label: `Switch to ${sponsor.name}'s sponsor portal`, to: "/sponsor" } : undefined}
+      switchTo={sponsor ? { label: "Switch to sponsor portal", to: "/sponsor" } : undefined}
       heading={tab.heading}
       blurb={tab.blurb}
       tabs={<PortalTabs active={activeTab} openTaskCount={openTasks} showTasks={portal.tasksVisible} />}
