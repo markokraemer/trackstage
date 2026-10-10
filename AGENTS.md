@@ -189,8 +189,9 @@ prove the Worker boots; check both. Every flow must work via ordinary links/form
   dev Convex deployment — a separate environment from prod's Convex; the backend
   itself is pushed by local `convex dev` sessions, staging deploys the Worker).
 - **Promote to production:** `git push origin main:prod` (or `master:prod`). The push
-  runs verify + the full e2e suite, and only then `deploy.yml` ships Convex prod →
-  build → Worker → smoke. To release without the ~35-min e2e wait, put
+  runs verify + the full e2e suite (4 parallel shards, each with its own local
+  backend, side by side with verify — ~5 min), and only then `deploy.yml` ships
+  Convex prod → build → Worker → smoke (~1 min). To release without the e2e wait, put
   `[skip-gate]` in the promote's head commit message (verify still gates); manual
   `workflow_dispatch` on Deploy skips CI entirely and is the emergency escape hatch.
 

@@ -8,7 +8,7 @@ name: CI
 #              hermetic: no cloud deployment, no shared seed data, no secrets.
 #              Runs ONLY on a promote (push to `prod`) and on manual
 #              workflow_dispatch, NOT on every dev commit — the suite takes
-#              ~35 min and was gating every push.
+#              ~35 min and was gating every push (since sharded 4 ways: ~5 min).
 #
 # Deploy workflows (deploy.yml → trackstage.app, deploy-dev.yml →
 # dev.trackstage.app) trigger via workflow_run on THIS workflow's success. A
@@ -78,9 +78,20 @@ jobs:
         run: pnpm test
 
   e2e:
-    name: e2e flows (Playwright · local Convex)
+    name: e2e flows ${{ matrix.shard }}/4 (Playwright · local Convex)
     runs-on: ubuntu-latest
-    needs: verify
+    # No `needs: verify` — the two run side by side. Deploy (deploy.yml) waits
+    # for the WHOLE CI run to succeed, so the gate is exactly as strict; it
+    # just stops paying for verify's minutes before e2e can start.
+    #
+    # Sharded 4 ways: every shard boots its OWN anonymous local backend and
+    # seed, so shards can't see each other's fixtures — the "one shared
+    # deployment" reason the suite runs `workers: 1` holds within a shard and
+    # nothing crosses between them. ~13 min serial → ~4 min wall clock.
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
     # Promote-only (plus manual runs): the flows suite fires on a push to
     # `prod` — unless its head commit message carries `[skip-gate]` — and on
     # workflow_dispatch. Ordinary main/master pushes and PRs skip it, which
@@ -109,8 +120,26 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      # The browser binary is ~150 MB and identical run to run — cache it by
+      # the installed Playwright version; system deps still install each time.
+      - name: Playwright version
+        id: pw
+        run: echo "version=$(node -p "require('@playwright/test/package.json').version")" >> "$GITHUB_OUTPUT"
+
+      - name: Cache Playwright browsers
+        id: pw-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ steps.pw.outputs.version }}
+
       - name: Install Playwright Chromium
+        if: steps.pw-cache.outputs.cache-hit != 'true'
         run: pnpm exec playwright install --with-deps chromium
+
+      - name: Install Playwright system deps
+        if: steps.pw-cache.outputs.cache-hit == 'true'
+        run: pnpm exec playwright install-deps chromium
 
       # `convex dev` spawns the local backend as a subprocess and keeps it
       # alive while it watches — so it stays running in the background for the
@@ -206,8 +235,8 @@ jobs:
       # The full flows suite (`--project=flows` pulls in its `setup`
       # dependency, which signs the organizer in through the real UI). The
       # seed above already ran, so global-setup skips its reseed.
-      - name: Playwright flows
-        run: pnpm exec playwright test --project=flows
+      - name: Playwright flows (shard ${{ matrix.shard }}/4)
+        run: pnpm exec playwright test --project=flows --shard=${{ matrix.shard }}/4
         env:
           SB_SKIP_SEED: "1"
 
@@ -215,7 +244,7 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: e2e-artifacts
+          name: e2e-artifacts-shard-${{ matrix.shard }}
           if-no-files-found: ignore
           retention-days: 7
           path: |
