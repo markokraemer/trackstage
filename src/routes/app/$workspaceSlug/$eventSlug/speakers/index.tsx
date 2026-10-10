@@ -63,7 +63,7 @@ export const Route = createFileRoute("/app/$workspaceSlug/$eventSlug/speakers/")
         ? search.person
         : undefined,
     add:
-      search.add === true || search.add === "1" || search.add === "true"
+      search.add === true || search.add === 1 || search.add === "1" || search.add === "true"
         ? true
         : undefined,
   }),

@@ -21,6 +21,7 @@ import { completeTasksOfKind, syncProfileTasks } from "./lib/profileTasks"
 import { cfpClosedMessage, isFormOpen } from "./lib/formWindow"
 import { notifySubmissionAdmins } from "./platformEmails"
 import { emitWebhook } from "./webhooks"
+import { sponsorPortalLinkFor } from "./lib/email"
 import { queueMessage } from "./comms"
 import { internal } from "./_generated/api"
 import { scheduleAirtableSync } from "./airtable"
@@ -1217,6 +1218,7 @@ export const addSponsorColleague = mutation({
       extraVars: {
         sponsorName: sponsor.name,
         sessionAllowance: allowanceSentence(sponsor, allowanceUsed(sessions)),
+        portalLink: sponsorPortalLinkFor(colleague.portalToken),
       },
     })
     await ctx.scheduler.runAfter(0, internal.comms.deliverPending, {})

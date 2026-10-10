@@ -6,6 +6,8 @@ import {
   RiArrowUpLine,
   RiDeleteBin6Line,
   RiExpandUpDownLine,
+  RiCheckLine,
+  RiCloseLine,
   RiMore2Fill,
 } from "@remixicon/react"
 
@@ -133,7 +135,8 @@ export function SubmissionsTable({
     : []
   const pageAvgScore =
     scoredValues.length > 0
-      ? scoredValues.reduce((sum, value) => sum + value, 0) / scoredValues.length
+      ? scoredValues.reduce((sum, value) => sum + value, 0) /
+        scoredValues.length
       : null
   const totalCount = totals?.count ?? rows.length
   const avgScore = totals ? totals.avgScore : pageAvgScore
@@ -197,7 +200,9 @@ export function SubmissionsTable({
                 their clicks. A maximum is the one thing the algorithm won't
                 overrule. It has to be repeated on the body and footer cells:
                 a column is as wide as its widest cell. */}
-            <TableHead className="sticky right-0 z-20 w-12 max-w-28 bg-card pr-4" />
+            <TableHead className="sticky right-0 z-20 w-28 bg-card pr-4">
+              <span className="sr-only">Actions</span>
+            </TableHead>
           </TableRow>
         </TableHeader>
 
@@ -238,23 +243,29 @@ export function SubmissionsTable({
                   />
                 </TableCell>
 
-                <TableCell className="max-w-[380px]">
-                  <Link
-                    to={submissionsLink as never}
-                    search={{ ...currentSearch, id: row._id } as never}
-                    className="block truncate font-medium text-foreground underline-offset-4 outline-none hover:text-primary hover:underline focus-visible:text-primary focus-visible:underline"
-                    title={row.title}
-                  >
-                    {row.title}
-                  </Link>
-                  <span className="text-xs text-muted-foreground">
-                    {row.kind === "session" ? "Session" : "Abstract"}
-                    {row.sponsor
-                      ? ` · Sponsor: ${row.sponsor.name}`
-                      : row.formName
-                        ? ` · ${row.formName}`
-                        : " · Added manually"}
-                  </span>
+                {/* The title column takes what the fixed columns leave: it
+                    shrinks with the window (truncating) instead of pushing the
+                    table wider than its card, which used to slide "Submitted"
+                    under the pinned actions column on a laptop screen. */}
+                <TableCell>
+                  <div className="w-[clamp(200px,calc(100vw-1215px),420px)]">
+                    <Link
+                      to={submissionsLink as never}
+                      search={{ ...currentSearch, id: row._id } as never}
+                      className="block truncate font-medium text-foreground underline-offset-4 outline-none hover:text-primary hover:underline focus-visible:text-primary focus-visible:underline"
+                      title={row.title}
+                    >
+                      {row.title}
+                    </Link>
+                    <span className="block truncate text-xs text-muted-foreground">
+                      {row.kind === "session" ? "Session" : "Abstract"}
+                      {row.sponsor
+                        ? ` · Sponsor: ${row.sponsor.name}`
+                        : row.formName
+                          ? ` · ${row.formName}`
+                          : " · Added manually"}
+                    </span>
+                  </div>
                 </TableCell>
 
                 <TableCell>
@@ -323,39 +334,43 @@ export function SubmissionsTable({
                 </TableCell>
 
                 <TableCell
-                  className="text-sm text-muted-foreground"
+                  className="text-sm whitespace-nowrap text-muted-foreground"
                   title={absoluteDate(row._creationTime)}
                 >
                   {relativeDate(row._creationTime)}
                 </TableCell>
 
-                <TableCell className="sticky right-0 z-[1] max-w-28 bg-card pr-4 text-right group-hover:bg-muted group-data-[state=selected]:bg-muted">
-                  <div className="flex items-center justify-end gap-1">
+                <TableCell className="sticky right-0 z-[1] w-28 bg-card pr-4 text-right group-hover:bg-muted group-data-[state=selected]:bg-muted">
+                  <div className="flex items-center justify-end gap-0.5">
                     {status === "pending" ? (
                       <>
                         <Button
                           type="button"
                           variant="ghost"
-                          size="xs"
+                          size="icon-sm"
                           aria-label={`Stage ${row.title} for acceptance`}
-                          className="text-status-green-fg opacity-0 group-hover:opacity-100 focus-visible:opacity-100"
+                          title="Stage for acceptance"
+                          className="text-status-green-fg opacity-0 group-hover:opacity-100 hover:bg-status-green-bg hover:text-status-green-fg focus-visible:opacity-100"
                           onClick={(event) => {
                             event.stopPropagation()
                             void onStatusChange(row._id, {
                               status: "accept_queue",
-                              label: systemStatusOption(statuses, "accept_queue")
-                                .name,
+                              label: systemStatusOption(
+                                statuses,
+                                "accept_queue"
+                              ).name,
                             })
                           }}
                         >
-                          ✓ Accept
+                          <RiCheckLine aria-hidden />
                         </Button>
                         <Button
                           type="button"
                           variant="ghost"
-                          size="xs"
+                          size="icon-sm"
                           aria-label={`Stage ${row.title} for decline`}
-                          className="text-status-red-fg opacity-0 group-hover:opacity-100 focus-visible:opacity-100"
+                          title="Stage for decline"
+                          className="text-status-red-fg opacity-0 group-hover:opacity-100 hover:bg-status-red-bg hover:text-status-red-fg focus-visible:opacity-100"
                           onClick={(event) => {
                             event.stopPropagation()
                             void onStatusChange(row._id, {
@@ -367,7 +382,7 @@ export function SubmissionsTable({
                             })
                           }}
                         >
-                          ✕ Decline
+                          <RiCloseLine aria-hidden />
                         </Button>
                       </>
                     ) : null}
@@ -388,7 +403,9 @@ export function SubmissionsTable({
                           render={
                             <Link
                               to={submissionsLink as never}
-                              search={{ ...currentSearch, id: row._id } as never}
+                              search={
+                                { ...currentSearch, id: row._id } as never
+                              }
                             />
                           }
                         >
@@ -433,7 +450,7 @@ export function SubmissionsTable({
           <TableRow className="h-10 hover:bg-transparent">
             <TableCell className="pl-4" />
             <TableCell />
-            <TableCell className="font-normal text-xs text-muted-foreground">
+            <TableCell className="text-xs font-normal text-muted-foreground">
               {totalCount} submission{totalCount === 1 ? "" : "s"}
               {selectedIds.length > 0
                 ? ` · ${selectedIds.length} selected`
@@ -441,7 +458,7 @@ export function SubmissionsTable({
             </TableCell>
             <TableCell />
             <TableCell />
-            <TableCell className="text-right font-normal text-xs text-muted-foreground tabular-nums">
+            <TableCell className="text-right text-xs font-normal text-muted-foreground tabular-nums">
               {avgScore !== null ? `${formatScore(avgScore)} avg` : null}
             </TableCell>
             <TableCell />

@@ -23,4 +23,8 @@
  * event, so `formLinkFor` takes the workspace slug too
  * (docs/memory/DECISIONS.md, "Public URL scheme is hierarchical").
  */
-export { portalUrl as portalLinkFor, formUrl as formLinkFor } from "@/lib/public-links"
+export {
+  portalUrl as portalLinkFor,
+  sponsorPortalUrl as sponsorPortalLinkFor,
+  formUrl as formLinkFor,
+} from "@/lib/public-links"

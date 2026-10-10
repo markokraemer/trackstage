@@ -7,6 +7,7 @@ import { requireEventAccess } from "./lib/auth"
 import type { AuditActor } from "./lib/audit"
 import { record as recordAudit } from "./lib/audit"
 import { queueMessage } from "./comms"
+import { sponsorPortalLinkFor } from "./lib/email"
 import { scheduleAirtableSync } from "./airtable"
 import { emitWebhook } from "./webhooks"
 import { friendlyId } from "./lib/friendlyId"
@@ -63,6 +64,8 @@ export async function sponsorRow(ctx: QueryCtx, sponsor: Doc<"sponsors">) {
   )
   return {
     _id: sponsor._id,
+    _creationTime: sponsor._creationTime,
+    eventId: sponsor.eventId,
     name: sponsor.name,
     tier: sponsor.tier ?? null,
     websiteUrl: sponsor.websiteUrl ?? null,
@@ -404,7 +407,12 @@ export async function sendInvitesCore(
       eventId: sponsor.eventId,
       personId: person._id,
       templateKey: SPONSOR_INVITE_TEMPLATE_KEY,
-      extraVars: { sponsorName: sponsor.name, sessionAllowance },
+      // {{portalLink}} in this template opens the SPONSOR portal.
+      extraVars: {
+        sponsorName: sponsor.name,
+        sessionAllowance,
+        portalLink: sponsorPortalLinkFor(person.portalToken),
+      },
     })
   }
   await ctx.scheduler.runAfter(0, internal.comms.deliverPending, {})

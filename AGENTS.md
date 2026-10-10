@@ -97,8 +97,12 @@ portal accounts are nice-to-have. Airtable read-only is fine (bonus, not core) �
   by the sponsor's `sessionLimit` (withdrawn/declined hand the slot back) and the event's
   `sponsorPortal.closeAt`; new ones start Pending unless `newSessionStatus: "accepted"`.
   Rules live once in `convex/lib/sponsors.ts`; organizer CRUD + MCP cores in
-  `convex/sponsors.ts`; the portal side at the bottom of `convex/portal.ts`
-  (`/portal/sponsor`). A sponsor contact is ALWAYS a protected identity in
+  `convex/sponsors.ts`; the portal side at the bottom of `convex/portal.ts`.
+  Sponsors have their OWN portal at **`/sponsor`** (sign-in `/sponsor/t/:token`, tabs
+  Sessions · Team · Profile · Tasks) — same person token and shared chrome
+  (`src/components/portal/portal-frame.tsx`) as the speaker portal, never labelled
+  "speaker". A sponsor-only contact hitting `/portal` is sent to `/sponsor`; a contact
+  who also speaks switches between the two from the account menu. A sponsor contact is ALWAYS a protected identity in
   `submit.identify` (their token opens the whole company). Asked for by Kelsey (AI
   Engineer ops) on 2026-10-10 — see `docs/reference/sponsors-cross-analysis.md`.
 
@@ -112,7 +116,8 @@ portal accounts are nice-to-have. Airtable read-only is fine (bonus, not core) �
    resolve to the same canonical CFP; a bare event slug opens that event's primary form:
    Welcome → Account → Submission → Participants → Review; then "Continue to portal".
 3. **Speaker portal** (`/portal`, entered through `/portal/t/:token`) — tabs: Home,
-   Submissions, {Sponsor name} (sponsor contacts only), Profile, Tasks.
+   Submissions, Profile, Tasks. **Sponsor portal** (`/sponsor`, via `/sponsor/t/:token`)
+   — tabs: Sessions, Team, Profile, Tasks.
 4. **Form builder** — 6-step wizard (Submission Setup → Welcome Screen → Abstract
    Information → Participant Information → Form Settings → Notifications) with
    per-field Required/Enabled toggles, locked system fields

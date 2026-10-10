@@ -23,7 +23,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { Switch } from "@/components/ui/switch"
 import { Separator } from "@/components/ui/separator"
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field"
-import { SponsorPicker } from "@/components/sponsors/sponsor-picker"
+import { NO_SPONSOR, SponsorPicker } from "@/components/sponsors/sponsor-picker"
 import {
   Select,
   SelectContent,
@@ -90,6 +90,8 @@ interface Draft {
   level: string
   language: string
   tags: Array<string>
+  /** The sponsor this session belongs to, or NO_SPONSOR. */
+  sponsorId: string
   /** "Show on public schedule" — sbek CNT-12. Absent on the record ⇒ on. */
   publicVisible: boolean
 }
@@ -132,6 +134,7 @@ export function SubmissionDetailDrawer({
 
   const updateDetails = useConvexMutation(api.submissions.updateDetails)
   const setStatus = useConvexMutation(api.submissions.setStatus)
+  const setSponsor = useConvexMutation(api.sponsors.setSessionSponsor)
 
   // Re-seed the editable draft whenever a different submission is opened.
   useEffect(() => {
@@ -144,6 +147,7 @@ export function SubmissionDetailDrawer({
       level: submission.level ?? NONE,
       language: submission.language ?? NONE,
       tags: submission.tags,
+      sponsorId: submission.sponsor?._id ?? NO_SPONSOR,
       publicVisible: submission.publicVisible !== false,
     })
   }, [submission?._id])
@@ -161,7 +165,8 @@ export function SubmissionDetailDrawer({
       draft.format !== (submission.format ?? NONE) ||
       draft.level !== (submission.level ?? NONE) ||
       draft.language !== (submission.language ?? NONE) ||
-      draft.tags.join("|") !== submission.tags.join("|"))
+      draft.tags.join("|") !== submission.tags.join("|") ||
+      draft.sponsorId !== (submission.sponsor?._id ?? NO_SPONSOR))
 
   async function handleSave() {
     if (!submissionId || !draft || !dirty) return
@@ -184,6 +189,13 @@ export function SubmissionDetailDrawer({
           tags: draft.tags,
         },
       })
+      if (draft.sponsorId !== (submission.sponsor?._id ?? NO_SPONSOR)) {
+        await setSponsor({
+          submissionId,
+          sponsorId:
+            draft.sponsorId === NO_SPONSOR ? null : (draft.sponsorId as Id<"sponsors">),
+        })
+      }
       toast.success("Submission updated.")
     } catch (error) {
       toast.error(errorMessage(error, "Could not save your changes."))
@@ -568,8 +580,8 @@ export function SubmissionDetailDrawer({
 
                 <SponsorPicker
                   eventId={submission.eventId}
-                  submissionId={submission._id}
-                  sponsorId={submission.sponsor?._id ?? null}
+                  value={draft.sponsorId}
+                  onChange={(sponsorId) => setDraft({ ...draft, sponsorId })}
                 />
               </FieldGroup>
 

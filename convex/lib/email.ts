@@ -252,6 +252,11 @@ export function portalLinkFor(portalToken: string): string {
   return `${siteUrl()}/portal/t/${portalToken}`
 }
 
+/** The sponsor portal's own sign-in link (same token, `/sponsor/t/…`). */
+export function sponsorPortalLinkFor(portalToken: string): string {
+  return `${siteUrl()}/sponsor/t/${portalToken}`
+}
+
 /** `From:` header for outbound mail. */
 export function emailFrom(): string {
   return process.env.EMAIL_FROM ?? "Trackstage <onboarding@resend.dev>"

@@ -3523,3 +3523,17 @@ deadline lock; sponsor picker in the submission drawer and "Sponsor: X" in the t
 (Northwind AI — `demo-sponsor-northwind` opens Jordan's sponsor portal); docs guide
 page; `scripts/verify-sponsors.mjs` (`pnpm test:sponsors`). Cross-analysis of
 Sessionboard's sponsor API + docs in `docs/reference/sponsors-cross-analysis.md`.
+
+Follow-up (same evening, Marko's UX review): rebuilt every sponsor surface on the
+existing patterns — the sponsor drawer now mirrors the submission drawer (segmented
+icon tabs Details/Contacts/Sessions/History, status strip, footer actions, contact
+rows like the People tab with a ⋯ menu), the Sponsors table mirrors the Speakers
+roster (identity cell, x/y bar, amber "Still needed" chips, filter tabs with counts,
+tier filter, bulk "Email portal invites"), the submission drawer's Sponsor field
+joined the draft (saved with Save changes). Sponsors got their own portal at
+`/sponsor` (shared chrome extracted to portal-frame.tsx; profile/tasks page bodies
+shared). Fixed two pre-existing bugs found on the way: the Submissions table's hover
+Accept/Decline drew over the Submitted column (now compact icon buttons, and the
+title column shrinks with the viewport so the table never outgrows its card), and
+`?add=1` deep links were silently dropped because the router JSON-parses `1` to a
+number (Speakers and Sponsors validators now accept it).

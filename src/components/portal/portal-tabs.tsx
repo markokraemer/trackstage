@@ -1,9 +1,9 @@
 import { Link } from "@tanstack/react-router"
 import {
   RiBriefcase4Line,
-  RiBuilding2Line,
   RiCalendarEventLine,
   RiHome5Line,
+  RiTeamLine,
   RiUser3Line,
 } from "@remixicon/react"
 import type { RemixiconComponentType } from "@remixicon/react"
@@ -13,12 +13,15 @@ import { Tabs, TabsCount, TabsList, TabsTrigger } from "@/components/ui/tabs"
 export interface PortalTabDef {
   value: string
   label: string
+  to: string
   icon: RemixiconComponentType
   /** Page heading for this tab — the shell renders it, not the route. */
   heading: string
   /** One plain-English line under the heading. */
   blurb: string
 }
+
+// ——— Speaker portal (`/portal`) ————————————————————————————————————————————
 
 /** `to` stays a literal so TanStack Router can type-check every link. */
 export const PORTAL_TABS = [
@@ -41,15 +44,6 @@ export const PORTAL_TABS = [
       "Your talks and where each one stands. Open one to read it in full — and to edit it, for as long as this event allows changes.",
   },
   {
-    value: "sponsor",
-    label: "Sponsor",
-    to: "/portal/sponsor",
-    icon: RiBuilding2Line,
-    heading: "Sponsor sessions",
-    blurb:
-      "Your company's sessions at this event. Add the sessions your package includes, say who's presenting, and keep them up to date — no call for papers.",
-  },
-  {
     value: "profile",
     label: "Profile",
     to: "/portal/profile",
@@ -67,88 +61,159 @@ export const PORTAL_TABS = [
     blurb:
       "Everything the organizers need from you before the event, with the date they need it by.",
   },
-] as const satisfies ReadonlyArray<PortalTabDef & { to: string }>
+] as const satisfies ReadonlyArray<PortalTabDef>
 
-/** Which tab a pathname belongs to. */
+/** Which speaker-portal tab a pathname belongs to. */
 export function activePortalTab(pathname: string): string {
   if (pathname.startsWith("/portal/submissions")) return "submissions"
-  if (pathname.startsWith("/portal/sponsor")) return "sponsor"
   if (pathname.startsWith("/portal/profile")) return "profile"
   if (pathname.startsWith("/portal/tasks")) return "tasks"
   return "home"
 }
 
-/** Heading + blurb for a tab value, so the shell owns the page header. */
+/** Heading + blurb for a speaker-portal tab, so the shell owns the page header. */
 export function portalTabMeta(value: string): PortalTabDef {
   return PORTAL_TABS.find((tab) => tab.value === value) ?? PORTAL_TABS[0]
 }
 
+// ——— Sponsor portal (`/sponsor`) ———————————————————————————————————————————
+
+export const SPONSOR_TABS = [
+  {
+    value: "sessions",
+    label: "Sessions",
+    to: "/sponsor",
+    icon: RiCalendarEventLine,
+    heading: "Sessions",
+    blurb:
+      "Add the sessions your package includes, say who's presenting, and keep them up to date. The organizers review them and set the time and room.",
+  },
+  {
+    value: "team",
+    label: "Team",
+    to: "/sponsor/team",
+    icon: RiTeamLine,
+    heading: "Team",
+    blurb: "Everyone here can add and edit your company's sessions — invite a colleague to share the work.",
+  },
+  {
+    value: "profile",
+    label: "Profile",
+    to: "/sponsor/profile",
+    icon: RiUser3Line,
+    heading: "Profile",
+    blurb:
+      "Your name, bio, photo and links. If you present a session, this is what goes on the public programme.",
+  },
+  {
+    value: "tasks",
+    label: "Tasks",
+    to: "/sponsor/tasks",
+    icon: RiBriefcase4Line,
+    heading: "Tasks",
+    blurb: "Anything the organizers need from you before the event, with the date they need it by.",
+  },
+] as const satisfies ReadonlyArray<PortalTabDef>
+
+export function activeSponsorTab(pathname: string): string {
+  if (pathname.startsWith("/sponsor/team")) return "team"
+  if (pathname.startsWith("/sponsor/profile")) return "profile"
+  if (pathname.startsWith("/sponsor/tasks")) return "tasks"
+  return "sessions"
+}
+
+export function sponsorTabMeta(value: string): PortalTabDef {
+  return SPONSOR_TABS.find((tab) => tab.value === value) ?? SPONSOR_TABS[0]
+}
+
+// ——— Who the portals are for ——————————————————————————————————————————————
+
 /**
- * The portal's four tabs (docs/ux/03, image17). Real links, so a browser agent
- * — and the back button — can navigate them; the shadcn `Tabs` primitive in its
- * `line` variant supplies the look, identical to the organizer app's page-level
- * tabs (Settings, Account, Workspace). `flex-wrap` rather than a scroller: on a
- * 390px phone a tab that scrolls out of sight is a tab that never gets tapped.
+ * A sponsor contact whose only sessions are their company's is a SPONSOR —
+ * `/portal` has nothing of theirs and sends them to `/sponsor`. Anyone who
+ * also has their own submissions is BOTH, and switches between the two
+ * portals from the account menu. Everyone else is a speaker.
  */
-export function PortalTabs({
+export type PortalMode = "speaker" | "sponsor" | "both"
+
+export function portalModeFor(home: {
+  sponsor: unknown
+  submissions: ReadonlyArray<{ sponsored: boolean }>
+}): PortalMode {
+  if (!home.sponsor) return "speaker"
+  return home.submissions.every((s) => s.sponsored) ? "sponsor" : "both"
+}
+
+// ——— The strip ————————————————————————————————————————————————————————————
+
+/**
+ * The portal tab strip. Real links, so a browser agent — and the back button —
+ * can navigate them; the shadcn `Tabs` primitive in its `line` variant gives
+ * the look, identical to the organizer app's page-level tabs. `flex-wrap`
+ * rather than a scroller: on a 390px phone a tab that scrolls out of sight is
+ * a tab that never gets tapped.
+ */
+export function PortalTabStrip({
+  tabs,
   active,
-  openTaskCount = 0,
-  showTasks = true,
-  sponsorName,
+  label,
+  taskCount = 0,
 }: {
+  tabs: ReadonlyArray<PortalTabDef>
   active: string
-  openTaskCount?: number
-  /**
-   * False when the organizer has turned "Show tasks to everyone with portal
-   * access" off and this speaker has no accepted session yet — there is
-   * nothing behind the tab, so it isn't offered.
-   */
-  showTasks?: boolean
-  /**
-   * The sponsor this person is a contact for. Present ⇒ the Sponsor tab is
-   * offered, labelled with the company's own name ("Acme AI") so a contact
-   * who is also a speaker can tell their company's sessions from their own.
-   */
-  sponsorName?: string | null
+  label: string
+  /** Open tasks — shown as a count on the Tasks tab. */
+  taskCount?: number
 }) {
-  const tabs = PORTAL_TABS.filter(
-    (tab) =>
-      (showTasks || tab.value !== "tasks") &&
-      (sponsorName || tab.value !== "sponsor"),
-  )
   return (
     <Tabs value={active} className="w-full">
-      <TabsList
-        variant="line"
-        aria-label="Speaker portal sections"
-        className="h-auto w-full flex-wrap justify-start"
-      >
+      <TabsList variant="line" aria-label={label} className="h-auto w-full flex-wrap justify-start">
         {tabs.map((tab) => (
           <TabsTrigger
             key={tab.value}
             value={tab.value}
-            // Taller than the organizer's tabs on a phone: 44px is what a
-            // thumb needs, and this is the speaker's primary navigation.
+            // 44px on a phone — what a thumb needs for primary navigation.
             className="min-h-11 flex-none gap-1.5 px-3 sm:min-h-9"
             nativeButton={false}
             render={<Link to={tab.to} preload="intent" />}
           >
-            {/* Icons are recognition aids, not information — on a phone the
-                four labels only fit without them, and a nav row that wraps
-                under its own underline reads as broken. Text-only is also
-                exactly how the organizer app's page tabs look. */}
             <tab.icon size={16} aria-hidden className="hidden sm:block" />
-            {tab.value === "sponsor" && sponsorName ? (
-              <span className="max-w-[12rem] truncate">{sponsorName}</span>
-            ) : (
-              tab.label
-            )}
-            {tab.value === "tasks" && openTaskCount > 0 ? (
-              <TabsCount>{openTaskCount}</TabsCount>
-            ) : null}
+            {tab.label}
+            {tab.value === "tasks" && taskCount > 0 ? <TabsCount>{taskCount}</TabsCount> : null}
           </TabsTrigger>
         ))}
       </TabsList>
     </Tabs>
   )
+}
+
+/** The speaker portal's strip (Tasks hidden when the organizer gates it). */
+export function PortalTabs({
+  active,
+  openTaskCount = 0,
+  showTasks = true,
+}: {
+  active: string
+  openTaskCount?: number
+  showTasks?: boolean
+}) {
+  return (
+    <PortalTabStrip
+      tabs={showTasks ? PORTAL_TABS : PORTAL_TABS.filter((tab) => tab.value !== "tasks")}
+      active={active}
+      label="Speaker portal sections"
+      taskCount={openTaskCount}
+    />
+  )
+}
+
+/** The deep links an old `/portal/sponsor` URL may carry, for `/sponsor`. */
+export function legacySponsorSearch(query: string): { open?: string; add?: boolean } {
+  const params = new URLSearchParams(query)
+  const open = params.get("open")
+  const add = params.get("add")
+  return {
+    ...(open ? { open } : {}),
+    ...(add === "1" || add === "true" ? { add: true } : {}),
+  }
 }

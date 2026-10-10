@@ -19,8 +19,8 @@ import {
   FieldDescription,
   FieldGroup,
   FieldLabel,
-  FieldSeparator,
 } from "@/components/ui/field"
+import { Separator } from "@/components/ui/separator"
 import { Input } from "@/components/ui/input"
 import {
   Select,
@@ -346,7 +346,13 @@ export function AddSponsorSessionDrawer({
             idPrefix="sponsor-session"
           />
 
-          <FieldSeparator>Speakers</FieldSeparator>
+          <Separator className="my-1" />
+          <div>
+            <h3 className="text-sm font-semibold text-foreground">Speakers</h3>
+            <p className="text-xs text-muted-foreground">
+              Who presents it. Each speaker gets their own portal for their bio and photo.
+            </p>
+          </div>
           <Field orientation="horizontal">
             <Checkbox
               id="sponsor-session-me"
@@ -379,9 +385,7 @@ export function AddSponsorSessionDrawer({
               <RiUserAddLine aria-hidden />
               {includeMe || speakers.length > 0 ? "Add another speaker" : "Add a speaker"}
             </Button>
-            <p className="mt-2 text-xs text-muted-foreground">
-              Each speaker gets their own portal for their bio and photo. Up to 8 per session.
-            </p>
+            <p className="mt-2 text-xs text-muted-foreground">Up to 8 speakers per session.</p>
           </div>
         </FieldGroup>
       </form>
@@ -601,7 +605,8 @@ export function ManageSponsorSessionDrawer({
         </form>
 
         <div className="flex flex-col gap-3">
-          <p className="text-sm font-medium text-foreground">Speakers</p>
+          <Separator />
+          <h3 className="text-sm font-semibold text-foreground">Speakers</h3>
           <ul className="divide-y rounded-lg border">
             {session.participants.map((p) => (
               <li key={p.personId} className="flex items-center gap-3 p-3">

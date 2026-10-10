@@ -20,18 +20,19 @@ function Page() {
             <strong>Add sponsor</strong>. <em>Sessions included</em> is the
             number the sponsor can add itself — use 0 if you'll add their
             sessions for them. Add the person who handles the sponsorship as the
-            main contact and tick <em>Email them their sponsor portal link
-            now</em>.
+            main contact and leave <em>Email their portal link now</em> switched on.
           </p>
         </Step>
 
         <Step title="The contact opens their link and adds their sessions — title, description, format, length and who is presenting.">
           <p className="doc-prose">
-            No password and no call-for-papers form. Their portal gets a tab
-            named after their company with a counter like{" "}
-            <strong>1 of 2 sessions added</strong>. Each speaker they name gets
-            their own speaker portal for their bio and photo. They can also
-            invite a colleague, who gets their own sign-in link by email.
+            No password and no call-for-papers form. The link opens their own{" "}
+            <strong>sponsor portal</strong> (<code>/sponsor</code>) with a counter
+            like <strong>1 of 2 sessions added</strong>. Each speaker they name gets
+            their own speaker portal for their bio and photo. Under{" "}
+            <strong>Team</strong> they can invite a colleague, who gets their own
+            sign-in link by email. Someone who is also a speaker switches between
+            their speaker and sponsor portals from the account menu.
           </p>
         </Step>
 

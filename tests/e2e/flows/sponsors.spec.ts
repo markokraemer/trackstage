@@ -71,11 +71,16 @@ test.describe("sponsor portal", () => {
     // ——— Contact: magic link → company tab → add a session ————————————————
     const portal = await context.newPage()
     const portalWatcher = armed(portal)
-    await gotoStable(portal, `/portal/t/${token}`, "networkidle")
-    const tab = portal.getByRole("tab", { name: new RegExp(sponsorName) })
-    await expect(tab).toBeVisible({ timeout: 45_000 })
-    await expect(portal.getByText(/sponsor portal/i).first()).toBeVisible()
-    await tab.click()
+    // The sponsor portal has its own address — never the speaker portal.
+    await gotoStable(portal, `/sponsor/t/${token}`, "networkidle")
+    await portal.waitForURL(/\/sponsor(?:[/?#]|$)/, { timeout: 45_000 })
+    await expect(portal.getByText(`Sponsor portal · ${sponsorName}`).first()).toBeVisible({
+      timeout: 45_000,
+    })
+    await expect(portal.getByRole("heading", { name: sponsorName })).toBeVisible()
+    // A sponsor-only contact who opens the speaker portal is sent back here.
+    await gotoStable(portal, "/portal", "networkidle")
+    await portal.waitForURL(/\/sponsor(?:[/?#]|$)/, { timeout: 30_000 })
     await expect(portal.getByText(/0 of 2 sessions added/i).first()).toBeVisible({ timeout: 20_000 })
 
     await portal.getByRole("button", { name: /add a session/i }).first().click()

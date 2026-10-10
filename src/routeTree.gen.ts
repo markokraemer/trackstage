@@ -19,6 +19,7 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as LogoutRouteImport } from './routes/logout'
 import { Route as PortalRouteRouteImport } from './routes/portal/route'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
+import { Route as SponsorRouteRouteImport } from './routes/sponsor/route'
 import { Route as DotwellKnownOauthAuthorizationServerRouteImport } from './routes/[.]well-known/oauth-authorization-server'
 import { Route as ApiChatRouteImport } from './routes/api/chat'
 import { Route as AppIndexRouteImport } from './routes/app/index'
@@ -35,6 +36,10 @@ import { Route as PortalSponsorRouteImport } from './routes/portal/sponsor'
 import { Route as PortalSubmissionsRouteImport } from './routes/portal/submissions'
 import { Route as PortalTasksRouteImport } from './routes/portal/tasks'
 import { Route as ReviewTokenRouteImport } from './routes/review/$token'
+import { Route as SponsorIndexRouteImport } from './routes/sponsor/index'
+import { Route as SponsorProfileRouteImport } from './routes/sponsor/profile'
+import { Route as SponsorTasksRouteImport } from './routes/sponsor/tasks'
+import { Route as SponsorTeamRouteImport } from './routes/sponsor/team'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as AppWorkspaceSlugIndexRouteImport } from './routes/app/$workspaceSlug/index'
 import { Route as AppWorkspaceSlugEventSlugRouteRouteImport } from './routes/app/$workspaceSlug/$eventSlug/route'
@@ -74,6 +79,7 @@ import { Route as DocsGuideTeamAndWorkspacesRouteImport } from './routes/docs/gu
 import { Route as EWorkspaceSlugIndexRouteImport } from './routes/e/$workspaceSlug/index'
 import { Route as EWorkspaceSlugEventSlugRouteRouteImport } from './routes/e/$workspaceSlug/$eventSlug/route'
 import { Route as PortalTTokenRouteImport } from './routes/portal/t.$token'
+import { Route as SponsorTTokenRouteImport } from './routes/sponsor/t/$token'
 import { Route as SubmitWorkspaceSlugIndexRouteImport } from './routes/submit/$workspaceSlug/index'
 import { Route as AppWorkspaceSlugEventSlugIndexRouteImport } from './routes/app/$workspaceSlug/$eventSlug/index'
 import { Route as AppWorkspaceSlugEventSlugSettingsRouteRouteImport } from './routes/app/$workspaceSlug/$eventSlug/settings/route'
@@ -157,6 +163,11 @@ const ResetPasswordRoute = ResetPasswordRouteImport.update({
   path: '/reset-password',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SponsorRouteRoute = SponsorRouteRouteImport.update({
+  id: '/sponsor',
+  path: '/sponsor',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const DotwellKnownOauthAuthorizationServerRoute =
   DotwellKnownOauthAuthorizationServerRouteImport.update({
     id: '/.well-known/oauth-authorization-server',
@@ -237,6 +248,26 @@ const ReviewTokenRoute = ReviewTokenRouteImport.update({
   id: '/review/$token',
   path: '/review/$token',
   getParentRoute: () => rootRouteImport,
+} as any)
+const SponsorIndexRoute = SponsorIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => SponsorRouteRoute,
+} as any)
+const SponsorProfileRoute = SponsorProfileRouteImport.update({
+  id: '/profile',
+  path: '/profile',
+  getParentRoute: () => SponsorRouteRoute,
+} as any)
+const SponsorTasksRoute = SponsorTasksRouteImport.update({
+  id: '/tasks',
+  path: '/tasks',
+  getParentRoute: () => SponsorRouteRoute,
+} as any)
+const SponsorTeamRoute = SponsorTeamRouteImport.update({
+  id: '/team',
+  path: '/team',
+  getParentRoute: () => SponsorRouteRoute,
 } as any)
 const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   id: '/api/auth/$',
@@ -442,6 +473,11 @@ const PortalTTokenRoute = PortalTTokenRouteImport.update({
   path: '/t/$token',
   getParentRoute: () => PortalRouteRoute,
 } as any)
+const SponsorTTokenRoute = SponsorTTokenRouteImport.update({
+  id: '/t/$token',
+  path: '/t/$token',
+  getParentRoute: () => SponsorRouteRoute,
+} as any)
 const SubmitWorkspaceSlugIndexRoute =
   SubmitWorkspaceSlugIndexRouteImport.update({
     id: '/submit/$workspaceSlug/',
@@ -640,6 +676,7 @@ export interface FileRoutesByFullPath {
   '/app': typeof AppRouteRouteWithChildren
   '/docs': typeof DocsRouteRouteWithChildren
   '/portal': typeof PortalRouteRouteWithChildren
+  '/sponsor': typeof SponsorRouteRouteWithChildren
   '/confirm-email': typeof ConfirmEmailRoute
   '/design-system': typeof DesignSystemRoute
   '/get': typeof GetRoute
@@ -659,9 +696,13 @@ export interface FileRoutesByFullPath {
   '/portal/submissions': typeof PortalSubmissionsRoute
   '/portal/tasks': typeof PortalTasksRoute
   '/review/$token': typeof ReviewTokenRoute
+  '/sponsor/profile': typeof SponsorProfileRoute
+  '/sponsor/tasks': typeof SponsorTasksRoute
+  '/sponsor/team': typeof SponsorTeamRoute
   '/app/': typeof AppIndexRoute
   '/docs/': typeof DocsIndexRoute
   '/portal/': typeof PortalIndexRoute
+  '/sponsor/': typeof SponsorIndexRoute
   '/app/$workspaceSlug/$eventSlug': typeof AppWorkspaceSlugEventSlugRouteRouteWithChildren
   '/e/$workspaceSlug/$eventSlug': typeof EWorkspaceSlugEventSlugRouteRouteWithChildren
   '/api/auth/$': typeof ApiAuthSplatRoute
@@ -688,6 +729,7 @@ export interface FileRoutesByFullPath {
   '/docs/guide/sponsors': typeof DocsGuideSponsorsRoute
   '/docs/guide/team-and-workspaces': typeof DocsGuideTeamAndWorkspacesRoute
   '/portal/t/$token': typeof PortalTTokenRoute
+  '/sponsor/t/$token': typeof SponsorTTokenRoute
   '/app/$workspaceSlug/': typeof AppWorkspaceSlugIndexRoute
   '/app/agenda/': typeof AppAgendaIndexRoute
   '/app/communications/': typeof AppCommunicationsIndexRoute
@@ -755,9 +797,13 @@ export interface FileRoutesByTo {
   '/portal/submissions': typeof PortalSubmissionsRoute
   '/portal/tasks': typeof PortalTasksRoute
   '/review/$token': typeof ReviewTokenRoute
+  '/sponsor/profile': typeof SponsorProfileRoute
+  '/sponsor/tasks': typeof SponsorTasksRoute
+  '/sponsor/team': typeof SponsorTeamRoute
   '/app': typeof AppIndexRoute
   '/docs': typeof DocsIndexRoute
   '/portal': typeof PortalIndexRoute
+  '/sponsor': typeof SponsorIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/app/$workspaceSlug/workspace': typeof AppWorkspaceSlugWorkspaceRoute
   '/app/evaluation/$planId': typeof AppEvaluationPlanIdRoute
@@ -782,6 +828,7 @@ export interface FileRoutesByTo {
   '/docs/guide/sponsors': typeof DocsGuideSponsorsRoute
   '/docs/guide/team-and-workspaces': typeof DocsGuideTeamAndWorkspacesRoute
   '/portal/t/$token': typeof PortalTTokenRoute
+  '/sponsor/t/$token': typeof SponsorTTokenRoute
   '/app/$workspaceSlug': typeof AppWorkspaceSlugIndexRoute
   '/app/agenda': typeof AppAgendaIndexRoute
   '/app/communications': typeof AppCommunicationsIndexRoute
@@ -833,6 +880,7 @@ export interface FileRoutesById {
   '/app': typeof AppRouteRouteWithChildren
   '/docs': typeof DocsRouteRouteWithChildren
   '/portal': typeof PortalRouteRouteWithChildren
+  '/sponsor': typeof SponsorRouteRouteWithChildren
   '/confirm-email': typeof ConfirmEmailRoute
   '/design-system': typeof DesignSystemRoute
   '/get': typeof GetRoute
@@ -852,9 +900,13 @@ export interface FileRoutesById {
   '/portal/submissions': typeof PortalSubmissionsRoute
   '/portal/tasks': typeof PortalTasksRoute
   '/review/$token': typeof ReviewTokenRoute
+  '/sponsor/profile': typeof SponsorProfileRoute
+  '/sponsor/tasks': typeof SponsorTasksRoute
+  '/sponsor/team': typeof SponsorTeamRoute
   '/app/': typeof AppIndexRoute
   '/docs/': typeof DocsIndexRoute
   '/portal/': typeof PortalIndexRoute
+  '/sponsor/': typeof SponsorIndexRoute
   '/app/$workspaceSlug/$eventSlug': typeof AppWorkspaceSlugEventSlugRouteRouteWithChildren
   '/e/$workspaceSlug/$eventSlug': typeof EWorkspaceSlugEventSlugRouteRouteWithChildren
   '/api/auth/$': typeof ApiAuthSplatRoute
@@ -881,6 +933,7 @@ export interface FileRoutesById {
   '/docs/guide/sponsors': typeof DocsGuideSponsorsRoute
   '/docs/guide/team-and-workspaces': typeof DocsGuideTeamAndWorkspacesRoute
   '/portal/t/$token': typeof PortalTTokenRoute
+  '/sponsor/t/$token': typeof SponsorTTokenRoute
   '/app/$workspaceSlug/': typeof AppWorkspaceSlugIndexRoute
   '/app/agenda/': typeof AppAgendaIndexRoute
   '/app/communications/': typeof AppCommunicationsIndexRoute
@@ -934,6 +987,7 @@ export interface FileRouteTypes {
     | '/app'
     | '/docs'
     | '/portal'
+    | '/sponsor'
     | '/confirm-email'
     | '/design-system'
     | '/get'
@@ -953,9 +1007,13 @@ export interface FileRouteTypes {
     | '/portal/submissions'
     | '/portal/tasks'
     | '/review/$token'
+    | '/sponsor/profile'
+    | '/sponsor/tasks'
+    | '/sponsor/team'
     | '/app/'
     | '/docs/'
     | '/portal/'
+    | '/sponsor/'
     | '/app/$workspaceSlug/$eventSlug'
     | '/e/$workspaceSlug/$eventSlug'
     | '/api/auth/$'
@@ -982,6 +1040,7 @@ export interface FileRouteTypes {
     | '/docs/guide/sponsors'
     | '/docs/guide/team-and-workspaces'
     | '/portal/t/$token'
+    | '/sponsor/t/$token'
     | '/app/$workspaceSlug/'
     | '/app/agenda/'
     | '/app/communications/'
@@ -1049,9 +1108,13 @@ export interface FileRouteTypes {
     | '/portal/submissions'
     | '/portal/tasks'
     | '/review/$token'
+    | '/sponsor/profile'
+    | '/sponsor/tasks'
+    | '/sponsor/team'
     | '/app'
     | '/docs'
     | '/portal'
+    | '/sponsor'
     | '/api/auth/$'
     | '/app/$workspaceSlug/workspace'
     | '/app/evaluation/$planId'
@@ -1076,6 +1139,7 @@ export interface FileRouteTypes {
     | '/docs/guide/sponsors'
     | '/docs/guide/team-and-workspaces'
     | '/portal/t/$token'
+    | '/sponsor/t/$token'
     | '/app/$workspaceSlug'
     | '/app/agenda'
     | '/app/communications'
@@ -1126,6 +1190,7 @@ export interface FileRouteTypes {
     | '/app'
     | '/docs'
     | '/portal'
+    | '/sponsor'
     | '/confirm-email'
     | '/design-system'
     | '/get'
@@ -1145,9 +1210,13 @@ export interface FileRouteTypes {
     | '/portal/submissions'
     | '/portal/tasks'
     | '/review/$token'
+    | '/sponsor/profile'
+    | '/sponsor/tasks'
+    | '/sponsor/team'
     | '/app/'
     | '/docs/'
     | '/portal/'
+    | '/sponsor/'
     | '/app/$workspaceSlug/$eventSlug'
     | '/e/$workspaceSlug/$eventSlug'
     | '/api/auth/$'
@@ -1174,6 +1243,7 @@ export interface FileRouteTypes {
     | '/docs/guide/sponsors'
     | '/docs/guide/team-and-workspaces'
     | '/portal/t/$token'
+    | '/sponsor/t/$token'
     | '/app/$workspaceSlug/'
     | '/app/agenda/'
     | '/app/communications/'
@@ -1226,6 +1296,7 @@ export interface RootRouteChildren {
   AppRouteRoute: typeof AppRouteRouteWithChildren
   DocsRouteRoute: typeof DocsRouteRouteWithChildren
   PortalRouteRoute: typeof PortalRouteRouteWithChildren
+  SponsorRouteRoute: typeof SponsorRouteRouteWithChildren
   ConfirmEmailRoute: typeof ConfirmEmailRoute
   DesignSystemRoute: typeof DesignSystemRoute
   GetRoute: typeof GetRoute
@@ -1314,6 +1385,13 @@ declare module '@tanstack/react-router' {
       path: '/reset-password'
       fullPath: '/reset-password'
       preLoaderRoute: typeof ResetPasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/sponsor': {
+      id: '/sponsor'
+      path: '/sponsor'
+      fullPath: '/sponsor'
+      preLoaderRoute: typeof SponsorRouteRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/.well-known/oauth-authorization-server': {
@@ -1427,6 +1505,34 @@ declare module '@tanstack/react-router' {
       fullPath: '/review/$token'
       preLoaderRoute: typeof ReviewTokenRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/sponsor/': {
+      id: '/sponsor/'
+      path: '/'
+      fullPath: '/sponsor/'
+      preLoaderRoute: typeof SponsorIndexRouteImport
+      parentRoute: typeof SponsorRouteRoute
+    }
+    '/sponsor/profile': {
+      id: '/sponsor/profile'
+      path: '/profile'
+      fullPath: '/sponsor/profile'
+      preLoaderRoute: typeof SponsorProfileRouteImport
+      parentRoute: typeof SponsorRouteRoute
+    }
+    '/sponsor/tasks': {
+      id: '/sponsor/tasks'
+      path: '/tasks'
+      fullPath: '/sponsor/tasks'
+      preLoaderRoute: typeof SponsorTasksRouteImport
+      parentRoute: typeof SponsorRouteRoute
+    }
+    '/sponsor/team': {
+      id: '/sponsor/team'
+      path: '/team'
+      fullPath: '/sponsor/team'
+      preLoaderRoute: typeof SponsorTeamRouteImport
+      parentRoute: typeof SponsorRouteRoute
     }
     '/api/auth/$': {
       id: '/api/auth/$'
@@ -1700,6 +1806,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/portal/t/$token'
       preLoaderRoute: typeof PortalTTokenRouteImport
       parentRoute: typeof PortalRouteRoute
+    }
+    '/sponsor/t/$token': {
+      id: '/sponsor/t/$token'
+      path: '/t/$token'
+      fullPath: '/sponsor/t/$token'
+      preLoaderRoute: typeof SponsorTTokenRouteImport
+      parentRoute: typeof SponsorRouteRoute
     }
     '/submit/$workspaceSlug/': {
       id: '/submit/$workspaceSlug/'
@@ -2144,6 +2257,26 @@ const PortalRouteRouteWithChildren = PortalRouteRoute._addFileChildren(
   PortalRouteRouteChildren,
 )
 
+interface SponsorRouteRouteChildren {
+  SponsorProfileRoute: typeof SponsorProfileRoute
+  SponsorTasksRoute: typeof SponsorTasksRoute
+  SponsorTeamRoute: typeof SponsorTeamRoute
+  SponsorIndexRoute: typeof SponsorIndexRoute
+  SponsorTTokenRoute: typeof SponsorTTokenRoute
+}
+
+const SponsorRouteRouteChildren: SponsorRouteRouteChildren = {
+  SponsorProfileRoute: SponsorProfileRoute,
+  SponsorTasksRoute: SponsorTasksRoute,
+  SponsorTeamRoute: SponsorTeamRoute,
+  SponsorIndexRoute: SponsorIndexRoute,
+  SponsorTTokenRoute: SponsorTTokenRoute,
+}
+
+const SponsorRouteRouteWithChildren = SponsorRouteRoute._addFileChildren(
+  SponsorRouteRouteChildren,
+)
+
 interface EWorkspaceSlugEventSlugRouteRouteChildren {
   EWorkspaceSlugEventSlugSplatRoute: typeof EWorkspaceSlugEventSlugSplatRoute
   EWorkspaceSlugEventSlugMyScheduleRoute: typeof EWorkspaceSlugEventSlugMyScheduleRoute
@@ -2179,6 +2312,7 @@ const rootRouteChildren: RootRouteChildren = {
   AppRouteRoute: AppRouteRouteWithChildren,
   DocsRouteRoute: DocsRouteRouteWithChildren,
   PortalRouteRoute: PortalRouteRouteWithChildren,
+  SponsorRouteRoute: SponsorRouteRouteWithChildren,
   ConfirmEmailRoute: ConfirmEmailRoute,
   DesignSystemRoute: DesignSystemRoute,
   GetRoute: GetRoute,

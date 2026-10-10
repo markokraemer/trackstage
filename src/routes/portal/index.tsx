@@ -249,10 +249,10 @@ function SponsorHomeCard() {
       description="You manage this sponsor's sessions at the event."
       action={
         <Link
-          to="/portal/sponsor"
+          to="/sponsor"
           className="inline-flex min-h-9 items-center text-sm font-medium text-primary underline-offset-4 hover:underline"
         >
-          Open sponsor sessions
+          Open the sponsor portal
         </Link>
       }
     >
@@ -266,7 +266,7 @@ function SponsorHomeCard() {
           <p className="text-sm text-muted-foreground">{sponsor.addBlocker}</p>
         ) : (
           <Link
-            to="/portal/sponsor"
+            to="/sponsor"
             search={{ add: true }}
             className={cn(buttonVariants({ size: "sm" }))}
           >

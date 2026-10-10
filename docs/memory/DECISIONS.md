@@ -767,3 +767,13 @@ stranger's event created seconds earlier.
     and loses nothing an organizer would want back.
   · Out of scope, deliberately: booth selection, Accelevents sync, a public
     sponsor intake form, tier-specific portals, exhibitors as a separate type.
+
+- **2026-10-10 (later) · The sponsor portal gets its own address.** First cut put
+  sponsors inside the speaker portal as an extra tab; Marko: "do we want to clearly
+  distinguish… even in url?" Yes — a sponsor contact landing on a page labelled
+  "Speaker portal" with empty Submissions is confusing, and Sessionboard keeps People
+  and Group portals apart too. `/sponsor` (Sessions · Team · Profile · Tasks) and
+  `/portal` share ONE sign-in token and one chrome component; the invite email and
+  every organizer "copy/open portal link" use `/sponsor/t/:token`. A person who is
+  both switches from the account menu (Sessionboard's "Switch portals", no second
+  login). `/portal/sponsor` survives as a redirect that keeps `?open=`/`?add=`.

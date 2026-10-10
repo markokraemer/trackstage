@@ -97,3 +97,16 @@ export function portalPath(token: string): string {
 export function portalUrl(token: string): string {
   return `${origin()}${portalPath(token)}`
 }
+
+/**
+ * Sponsor-portal magic link — the same person token, the sponsor portal's own
+ * address (`/sponsor/t/<token>`), so a sponsor contact never lands in a page
+ * labelled "Speaker portal".
+ */
+export function sponsorPortalPath(token: string): string {
+  return `/sponsor/t/${token}`
+}
+
+export function sponsorPortalUrl(token: string): string {
+  return `${origin()}${sponsorPortalPath(token)}`
+}
