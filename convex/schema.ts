@@ -204,6 +204,11 @@ export default defineSchema({
         // Contacts may bring colleagues into their company's portal
         // (Sessionboard's "Add Contacts to Group"). Unset ⇒ allowed.
         allowColleagueInvites: v.optional(v.boolean()),
+        // Whose questions a sponsor answers when adding a session: one of the
+        // event's forms (title, description, track, format, level, language,
+        // tags and the organizer's own questions — same labels, same
+        // required flags, same conditional logic). Unset ⇒ the primary CFP.
+        formId: v.optional(v.id("forms")),
       }),
     ),
   })

@@ -144,6 +144,29 @@ section("Sponsor portal: add sessions")
 let home = await anon.query(api.portal.home, { portalToken: token, now: now() })
 ok("portal shows the sponsor with 0 of 2 used", home.sponsor?.sessionsUsed === 0 && home.sponsor.sessionLimit === 2)
 ok("Add session available", home.sponsor?.addBlocker === null)
+
+// Sponsor sessions answer the event's own CFP questions — not a thinner form.
+const questions = home.sponsor?.sessionQuestions ?? []
+const qIds = questions.map((q) => q.id)
+ok(
+  "the sponsor portal asks the CFP's questions (track, format, level, custom)",
+  ["title", "description", "format", "track", "level", "takeaways"].every((id) => qIds.includes(id)),
+)
+ok("file questions are left for tasks", questions.every((q) => q.type !== "file"))
+const trackName = questions.find((q) => q.id === "track")?.options?.[0]
+const ANSWERS = { format: "Talk", track: trackName, level: "Beginner" }
+await throws(
+  "the form's required questions are enforced",
+  () =>
+    anon.mutation(api.portal.addSponsorSession, {
+      portalToken: token,
+      title: "Missing answers",
+      description: "x",
+      includeMe: true,
+      speakers: [],
+    }),
+  "Missing required fields",
+)
 await throws(
   "a session needs a speaker",
   () =>
@@ -151,6 +174,7 @@ await throws(
       portalToken: token,
       title: "No speakers",
       description: "x",
+      answers: ANSWERS,
       includeMe: false,
       speakers: [],
     }),
@@ -163,6 +187,7 @@ await throws(
       portalToken: token,
       title: "Odd",
       description: "x",
+      answers: ANSWERS,
       durationMinutes: 37,
       includeMe: true,
       speakers: [],
@@ -173,6 +198,7 @@ const s1 = await anon.mutation(api.portal.addSponsorSession, {
   portalToken: token,
   title: `Sponsor talk one ${tag}`,
   description: "What we built.",
+  answers: { ...ANSWERS, takeaways: "Evals beat vibes." },
   durationMinutes: 30,
   includeMe: true,
   speakers: [{ firstName: "Sam", lastName: "Speaker", email: `speaker.${tag}@example.com` }],
@@ -181,6 +207,7 @@ const s2 = await anon.mutation(api.portal.addSponsorSession, {
   portalToken: token,
   title: `Sponsor talk two ${tag}`,
   description: "And what we learned.",
+  answers: ANSWERS,
   includeMe: true,
   speakers: [],
 })
@@ -196,6 +223,7 @@ await throws(
       portalToken: token,
       title: "Three",
       description: "x",
+      answers: ANSWERS,
       includeMe: true,
       speakers: [],
     }),
@@ -207,6 +235,8 @@ section("Organizer sees sponsor sessions")
 const sub = await organizer.query(api.submissions.get, { submissionId: s1 })
 ok("submission carries its sponsor", sub.sponsor?.name === sponsorName)
 ok("it is a session, not an abstract", sub.kind === "session")
+ok("its answers fill the session's columns (track, format, level)", !!sub.trackId && sub.format === "Talk" && sub.level === "Beginner")
+ok("it keeps custom answers, under the form they answered", sub.answers?.takeaways === "Evals beat vibes." && !!sub.formId)
 
 // ————— Edit, speakers, withdraw —————
 section("Sponsor portal: edit, speakers, withdraw")
@@ -218,6 +248,16 @@ await anon.mutation(api.portal.updateSponsorSession, {
 home = await anon.query(api.portal.home, { portalToken: token, now: now() })
 const edited = home.sponsor.sessions.find((s) => s.id === s1)
 ok("edit saved", edited.title.startsWith("Sponsor talk one (renamed)") && edited.durationMinutes === 45)
+await anon.mutation(api.portal.updateSponsorSession, {
+  portalToken: token,
+  submissionId: s1,
+  patch: { answers: { level: "Advanced" } },
+})
+const reLevelled = await organizer.query(api.submissions.get, { submissionId: s1 })
+ok(
+  "editing an answer moves its column, and leaves the rest",
+  reLevelled.level === "Advanced" && reLevelled.format === "Talk" && reLevelled.title.startsWith("Sponsor talk one (renamed)"),
+)
 const samId = edited.participants.find((p) => p.name.startsWith("Sam"))?.personId
 await anon.mutation(api.portal.removeSponsorSessionSpeaker, { portalToken: token, submissionId: s1, personId: samId })
 home = await anon.query(api.portal.home, { portalToken: token, now: now() })
@@ -321,6 +361,7 @@ const s3 = await anon.mutation(api.portal.addSponsorSession, {
   portalToken: token,
   title: `Pre-approved ${tag}`,
   description: "Guaranteed slot.",
+  answers: ANSWERS,
   includeMe: true,
   speakers: [],
 })
@@ -336,6 +377,15 @@ await organizer.mutation(api.sponsors.saveTier, { eventId, tierId, name: `${tier
 list = await organizer.query(api.sponsors.list, { eventId })
 ok("renaming a tier renames it on its sponsors", list.sponsors.find((s) => s._id === sponsorId)?.tier === `${tierName} Plus`)
 ok("tiers are listed in order", list.tiers.some((t) => t.name === `${tierName} Plus`))
+const settings = await organizer.query(api.sponsors.settings, { eventId })
+ok(
+  "Settings → Fields & options counts each tier's sponsors",
+  settings.tiers.find((t) => t.name === `${tierName} Plus`)?.sponsorCount === 1,
+)
+ok(
+  "sponsor sessions answer the primary CFP until another form is picked",
+  settings.rules.formId === null && settings.sessionFormId !== null && settings.forms.length > 0,
+)
 await throws(
   "duplicate tier name refused",
   () => organizer.mutation(api.sponsors.saveTier, { eventId, name: `${tierName} plus`, sessionLimit: 1 }),

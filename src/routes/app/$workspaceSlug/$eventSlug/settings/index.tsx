@@ -3,8 +3,10 @@ import { createFileRoute } from "@tanstack/react-router"
 import { EventDetailsForm } from "@/components/settings/event-details-form"
 import { EventBrandingCard } from "@/components/settings/event-branding-card"
 import { PortalBehaviorCard } from "@/components/settings/portal-behavior-card"
+import { SponsorPortalCard } from "@/components/settings/sponsor-portal-card"
 import { DeleteEventCard } from "@/components/settings/delete-event-card"
 import { useCurrentEvent } from "@/lib/current-event"
+import { useScrollToHash } from "@/lib/use-scroll-to-hash"
 
 export const Route = createFileRoute("/app/$workspaceSlug/$eventSlug/settings/")({
   component: EventDetailsPage,
@@ -13,6 +15,7 @@ export const Route = createFileRoute("/app/$workspaceSlug/$eventSlug/settings/")
 /** Settings → Event details (SPEC §4.1, docs/ux/01 image25). */
 function EventDetailsPage() {
   const { event } = useCurrentEvent()
+  useScrollToHash(event !== undefined)
   if (!event) return null
   return (
     <div className="flex flex-col gap-8">
@@ -28,7 +31,12 @@ function EventDetailsPage() {
         <EventDetailsForm key={event._id} event={event} />
         <EventBrandingCard key={`branding-${event._id}`} eventId={event._id} />
       </div>
-      <PortalBehaviorCard key={`portal-${event._id}`} event={event} />
+      {/* The two portals, side by side: what speakers can do, and what
+          sponsor contacts can do. */}
+      <div className="grid items-start gap-8 xl:grid-cols-2">
+        <PortalBehaviorCard key={`portal-${event._id}`} event={event} />
+        <SponsorPortalCard key={`sponsor-portal-${event._id}`} event={event} />
+      </div>
       {/* Who can open this event lives on its own Team tab now. */}
       <DeleteEventCard key={`danger-${event._id}`} event={event} />
     </div>

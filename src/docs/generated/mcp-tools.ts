@@ -563,11 +563,11 @@ export const MCP_TOOL_GROUPS: Array<McpToolGroup> = [
       {
         name: "update_sponsor_portal_settings",
         title: "Sponsor portal settings",
-        description: "How sponsor portals behave on this event: newSessionStatus (\"pending\" — sessions sponsors add wait for your review, the default; or \"accepted\" — straight onto the program) and closeAt (ISO date-time after which sponsors can no longer add or edit sessions; \"none\" clears it).",
+        description: "How sponsor portals behave on this event: newSessionStatus (\"pending\" — sessions sponsors add wait for your review, the default; or \"accepted\" — straight onto the program), closeAt (ISO date-time after which sponsors can no longer add or edit sessions; \"none\" clears it), and sessionForm (which form's questions sponsor sessions answer — a form id or slug; \"primary\" goes back to the event's main CFP, the default).",
         readOnly: false,
         destructive: true,
         requiresConfirm: true,
-        args: ["event","newSessionStatus","closeAt","allowColleagueInvites","confirm"],
+        args: ["event","newSessionStatus","closeAt","allowColleagueInvites","sessionForm","confirm"],
         required: ["event","confirm"],
       },
     ],

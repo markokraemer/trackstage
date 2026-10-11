@@ -8,7 +8,14 @@ import { emitWebhook } from "./webhooks"
 import { queueMessage } from "./comms"
 import { randomToken } from "./lib/auth"
 import { siteUrl } from "./lib/email"
-import { formAsSubmitted, eventTrackNames, publicQuestions } from "./lib/formQuestions"
+import {
+  eventTrackNames,
+  formAsSubmitted,
+  missingRequiredLabels,
+  primaryFormOf,
+  publicQuestions,
+  sessionColumnsFromAnswers,
+} from "./lib/formQuestions"
 import { isFormOpen } from "./lib/formWindow"
 import {
   formPath,
@@ -51,16 +58,6 @@ const participantArg = v.object({
 })
 
 /** Questions actually visible given current answers (conditional logic). */
-function visibleQuestions(
-  form: Doc<"forms">,
-  answers: Record<string, unknown>,
-) {
-  return form.questions.filter((q) => {
-    if (!q.enabled) return false
-    if (!q.showIf) return true
-    return answers[q.showIf.questionId] === q.showIf.equals
-  })
-}
 
 /**
  * The one public form lookup used by every mutation below. The canonical
@@ -131,17 +128,7 @@ export const resolveLegacyLink = query({
           .query("forms")
           .withIndex("by_eventId", (q) => q.eq("eventId", event.event._id))
           .take(100)
-        const primary = forms.sort((a, b) => {
-          const rank = (form: Doc<"forms">) =>
-            form.status === "open" && form.kind === "abstract"
-              ? 0
-              : form.status === "open"
-                ? 1
-                : form.kind === "abstract"
-                  ? 2
-                  : 3
-          return rank(a) - rank(b) || a._creationTime - b._creationTime
-        }).at(0)
+        const primary = primaryFormOf(forms)
         if (primary) {
           return {
             status: "found" as const,
@@ -572,17 +559,7 @@ async function validateSubmission(
     role: string
   }>,
 ) {
-  const missing: string[] = []
-  for (const q of visibleQuestions(form, answers)) {
-    if (!q.required) continue
-    const value = answers[q.id]
-    const empty =
-      value === undefined ||
-      value === null ||
-      (typeof value === "string" && value.trim() === "") ||
-      (Array.isArray(value) && value.length === 0)
-    if (empty) missing.push(q.label)
-  }
+  const missing = missingRequiredLabels(form.questions, answers)
   if (missing.length > 0) {
     throw new ConvexError(`Missing required fields: ${missing.join(", ")}`)
   }
@@ -620,21 +597,6 @@ async function validateSubmission(
   }
 }
 
-async function resolveTrackId(
-  ctx: MutationCtx,
-  form: Doc<"forms">,
-  answers: Record<string, unknown>,
-): Promise<Id<"tracks"> | undefined> {
-  const trackQuestion = form.questions.find((q) => q.isTrackQuestion && q.enabled)
-  if (!trackQuestion) return undefined
-  const answer = answers[trackQuestion.id]
-  if (typeof answer !== "string" || !answer) return undefined
-  const tracks = await ctx.db
-    .query("tracks")
-    .withIndex("by_eventId", (q) => q.eq("eventId", form.eventId))
-    .collect()
-  return tracks.find((t) => t.name === answer)?._id
-}
 
 async function upsertParticipants(
   ctx: MutationCtx,
@@ -719,16 +681,10 @@ export const saveDraft = mutation({
       throw new ConvexError("Session expired — please re-enter your email.")
     }
 
-    const trackId = await resolveTrackId(ctx, form, args.answers)
     const fields = {
       title: args.title || "Untitled draft",
-      description: typeof args.answers.description === "string" ? args.answers.description : undefined,
       answers: args.answers,
-      trackId,
-      format: typeof args.answers.format === "string" ? args.answers.format : undefined,
-      level: typeof args.answers.level === "string" ? args.answers.level : undefined,
-      language: typeof args.answers.language === "string" ? args.answers.language : undefined,
-      tags: Array.isArray(args.answers.tags) ? (args.answers.tags as string[]) : [],
+      ...(await sessionColumnsFromAnswers(ctx, form, args.answers)),
     }
 
     let submissionId: Id<"submissions">
@@ -786,8 +742,10 @@ export const submit = mutation({
         .collect()
       // KI-2: the builder copy promises the cap counts saved drafts too —
       // count everything on this form except the draft being promoted now.
+      // A sponsor contact's company sessions answer this form's questions
+      // too, but they're the sponsor's package — not this person's proposals.
       const submitted = mine.filter(
-        (s) => s.formId === form._id && s._id !== args.draftId,
+        (s) => s.formId === form._id && s._id !== args.draftId && s.sponsorId === undefined,
       )
       if (submitted.length >= form.settings.limitPerUser) {
         throw new ConvexError(
@@ -798,18 +756,10 @@ export const submit = mutation({
 
     if (!args.title.trim()) throw new ConvexError("Missing required fields: Title")
     await validateSubmission(ctx, form, args.answers, args.participants)
-    const trackId = await resolveTrackId(ctx, form, args.answers)
-
     const fields = {
       title: args.title.trim(),
-      description:
-        typeof args.answers.description === "string" ? args.answers.description : undefined,
       answers: args.answers,
-      trackId,
-      format: typeof args.answers.format === "string" ? args.answers.format : undefined,
-      level: typeof args.answers.level === "string" ? args.answers.level : undefined,
-      language: typeof args.answers.language === "string" ? args.answers.language : undefined,
-      tags: Array.isArray(args.answers.tags) ? (args.answers.tags as string[]) : [],
+      ...(await sessionColumnsFromAnswers(ctx, form, args.answers)),
       status: "pending",
     }
 

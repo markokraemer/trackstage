@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react"
-import { createFileRoute } from "@tanstack/react-router"
+import { Link, createFileRoute } from "@tanstack/react-router"
 import { useQuery } from "@tanstack/react-query"
 import { convexQuery, useConvexMutation } from "@convex-dev/react-query"
 import { api } from "@convex/_generated/api"
@@ -15,7 +15,7 @@ import { toast } from "sonner"
 import { PageHeader } from "@/components/shared/page-header"
 import { EmptyState } from "@/components/shared/empty-state"
 import { DataToolbar } from "@/components/shared/data-toolbar"
-import { Button } from "@/components/ui/button"
+import { Button, buttonVariants } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Tabs, TabsCount, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
@@ -41,7 +41,7 @@ import { EmptyEventState } from "@/components/shell/empty-event-state"
 import { SponsorDrawer } from "@/components/sponsors/sponsor-drawer"
 import type { SponsorDrawerTab, SponsorRow } from "@/components/sponsors/sponsor-drawer"
 import { SponsorsTable, SponsorsTableSkeleton } from "@/components/sponsors/sponsors-table"
-import { SponsorSettingsDrawer } from "@/components/sponsors/sponsor-settings-drawer"
+import { appLink } from "@/lib/app-links"
 
 /**
  * Deep links: `?sponsor=<id>` opens that sponsor's drawer, `?add=1` opens the
@@ -117,7 +117,6 @@ function SponsorsPage() {
   const [selected, setSelected] = useState<Array<string>>([])
   const [bulkBusy, setBulkBusy] = useState(false)
   const [creating, setCreating] = useState(false)
-  const [settingsOpen, setSettingsOpen] = useState(false)
   const [deleting, setDeleting] = useState<SponsorRow | null>(null)
   const [deleteBusy, setDeleteBusy] = useState(false)
 
@@ -271,10 +270,18 @@ function SponsorsPage() {
         actions={
           event ? (
             <>
-              <Button size="sm" variant="outline" onClick={() => setSettingsOpen(true)}>
-                <RiSettings3Line aria-hidden />
-                Settings
-              </Button>
+              {eventRef ? (
+                // Tiers and company fields live with every other option list
+                // (Settings → Fields & options); a real link, not a drawer.
+                <Link
+                  to={appLink.settingsSection(eventRef, "fields-and-options")}
+                  hash="sponsors"
+                  className={buttonVariants({ size: "sm", variant: "outline" })}
+                >
+                  <RiSettings3Line aria-hidden />
+                  Tiers &amp; fields
+                </Link>
+              ) : null}
 
               <Button size="sm" onClick={() => setCreating(true)}>
                 <RiAddLine aria-hidden />
@@ -301,14 +308,15 @@ function SponsorsPage() {
             label="Colleague invites"
             value={rules.allowColleagueInvites ? "Allowed" : "Organizers only"}
           />
-          <Button
-            variant="link"
-            size="sm"
-            className="ml-auto h-auto px-0"
-            onClick={() => setSettingsOpen(true)}
-          >
-            Change
-          </Button>
+          {eventRef ? (
+            <Link
+              to={appLink.settings(eventRef)}
+              hash="sponsor-portal"
+              className="ml-auto text-sm font-medium text-primary underline-offset-4 hover:underline"
+            >
+              Change
+            </Link>
+          ) : null}
         </div>
       ) : null}
 
@@ -441,17 +449,6 @@ function SponsorsPage() {
             }}
             onDelete={setDeleting}
           />
-          {rules ? (
-            <SponsorSettingsDrawer
-              eventId={event._id}
-              timezone={event.timezone}
-              rules={rules}
-              tiers={tiers}
-              fields={data.fields}
-              open={settingsOpen}
-              onOpenChange={setSettingsOpen}
-            />
-          ) : null}
         </>
       ) : null}
 

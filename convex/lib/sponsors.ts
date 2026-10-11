@@ -1,6 +1,14 @@
 import { ConvexError } from "convex/values"
 import type { Doc, Id } from "../_generated/dataModel"
 import type { MutationCtx, QueryCtx } from "../_generated/server"
+import type { FormQuestion } from "./formQuestions"
+import {
+  formAsSubmitted,
+  missingRequiredLabels,
+  primaryFormOf,
+  sessionColumnsFromAnswers,
+  visibleQuestions,
+} from "./formQuestions"
 import { randomToken, requirePerson } from "./auth"
 
 // ————————————————————————————————————————————————————————————————————————
@@ -142,6 +150,8 @@ export interface SponsorPortalRules {
   newSessionStatus: "pending" | "accepted"
   closeAt: number | null
   allowColleagueInvites: boolean
+  /** The form whose questions sponsor sessions answer; `null` ⇒ the primary CFP. */
+  formId: Id<"forms"> | null
 }
 
 export function sponsorPortalRules(event: Doc<"events"> | null): SponsorPortalRules {
@@ -149,7 +159,108 @@ export function sponsorPortalRules(event: Doc<"events"> | null): SponsorPortalRu
     newSessionStatus: event?.sponsorPortal?.newSessionStatus ?? "pending",
     closeAt: event?.sponsorPortal?.closeAt ?? null,
     allowColleagueInvites: event?.sponsorPortal?.allowColleagueInvites ?? true,
+    formId: event?.sponsorPortal?.formId ?? null,
   }
+}
+
+// ——— The questions a sponsor session answers ————————————————————————————
+//
+// A sponsor session is an ordinary session, so it answers the SAME questions
+// a CFP proposal does — the event's form, as the public flow shows it (track
+// options live, conditional logic, required flags). Not a second, thinner
+// form: Marko, 2026-10-11, "don't we lack a bunch of fields on the session
+// you usually have when adding through the CFP?". Two things differ, both
+// because the sponsor is not a stranger applying: the form's open/close state
+// does not apply (the sponsor window does), and file questions are left out
+// (files are collected later through tasks, as for every accepted speaker).
+
+/** The form sponsor sessions answer: the organizer's pick, else the primary CFP. */
+export async function sponsorSessionForm(
+  ctx: QueryCtx,
+  event: Doc<"events">,
+  preferredId?: Id<"forms">,
+): Promise<Doc<"forms"> | null> {
+  const forms = await ctx.db
+    .query("forms")
+    .withIndex("by_eventId", (q) => q.eq("eventId", event._id))
+    .take(100)
+  const wanted = preferredId ?? sponsorPortalRules(event).formId
+  const chosen = forms.find((f) => f._id === wanted) ?? primaryFormOf(forms)
+  return chosen ? await formAsSubmitted(ctx, chosen) : null
+}
+
+const TITLE_QUESTION: FormQuestion = {
+  id: "title",
+  label: "Session title",
+  type: "short_text",
+  required: true,
+  enabled: true,
+  locked: true,
+  maxChars: 200,
+}
+const DESCRIPTION_QUESTION: FormQuestion = {
+  id: "description",
+  label: "Description",
+  type: "long_text",
+  required: true,
+  enabled: true,
+  locked: true,
+  help: "What attendees read on the agenda — two or three sentences.",
+}
+
+/**
+ * The questions themselves: the form's enabled, non-file questions — always
+ * led by a title, since a session cannot exist without one. An event with no
+ * form at all asks for a title and a description.
+ */
+export function sponsorSessionQuestions(form: Doc<"forms"> | null): Array<FormQuestion> {
+  if (!form) return [TITLE_QUESTION, DESCRIPTION_QUESTION]
+  const questions = form.questions.filter((q) => q.enabled && q.type !== "file")
+  return questions.some((q) => q.id === "title") ? questions : [TITLE_QUESTION, ...questions]
+}
+
+/** Answers kept to the questions actually shown (hidden branches dropped). */
+export function cleanSponsorAnswers(
+  questions: Array<FormQuestion>,
+  answers: Record<string, unknown>,
+): Record<string, unknown> {
+  const kept: Record<string, unknown> = {}
+  for (const question of visibleQuestions(questions, answers)) {
+    const value = answers[question.id]
+    if (value === undefined || value === null) continue
+    kept[question.id] = typeof value === "string" ? value.trim() : value
+  }
+  return kept
+}
+
+/**
+ * Validate a sponsor session's answers and turn them into the session's
+ * columns — the one path for add and edit. Throws the sentence the drawer
+ * shows.
+ */
+export async function sponsorSessionFromAnswers(
+  ctx: QueryCtx,
+  event: Doc<"events">,
+  form: Doc<"forms"> | null,
+  rawAnswers: Record<string, unknown>,
+) {
+  const questions = sponsorSessionQuestions(form)
+  const answers = cleanSponsorAnswers(questions, rawAnswers)
+  const missing = missingRequiredLabels(questions, answers)
+  if (missing.length > 0) {
+    throw new ConvexError(`Missing required fields: ${missing.join(", ")}`)
+  }
+  const title = typeof answers.title === "string" ? answers.title : ""
+  if (!title) throw new ConvexError("Give the session a title.")
+  if (title.length > 200) {
+    throw new ConvexError("That title is long — keep it under 200 characters.")
+  }
+  const columns = await sessionColumnsFromAnswers(
+    ctx,
+    { eventId: event._id, questions },
+    answers,
+  )
+  return { title, answers, formId: form?._id, ...columns }
 }
 
 export function sponsorWindowClosed(rules: SponsorPortalRules, now: number): boolean {

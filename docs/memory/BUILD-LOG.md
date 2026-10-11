@@ -3537,3 +3537,17 @@ Accept/Decline drew over the Submitted column (now compact icon buttons, and the
 title column shrinks with the viewport so the table never outgrows its card), and
 `?add=1` deep links were silently dropped because the router JSON-parses `1` to a
 number (Speakers and Sponsors validators now accept it).
+
+**2026-10-11 (late) — sponsor setup into Settings; sponsor sessions get the CFP's questions.**
+Tiers + company fields moved to Settings → Fields & options (new `sponsor-tiers-card`,
+`sponsor-fields-card`), portal rules to an instant-save "Sponsor portal" card on Event
+details beside the Speaker portal card; `sponsor-settings-drawer.tsx` deleted. New
+`sponsors.settings` query (tiers with sponsor counts, fields with fill counts, forms,
+the resolved session form). Sponsor sessions now answer the event's CFP questions
+(`sponsorSessionForm/Questions/FromAnswers` in convex/lib/sponsors.ts; shared
+`visibleQuestions`, `missingRequiredLabels`, `resolveTrackId`,
+`sessionColumnsFromAnswers`, `primaryFormOf` extracted to convex/lib/formQuestions.ts
+and reused by convex/submit.ts). MCP `update_sponsor_portal_settings` takes
+`sessionForm`. Verified locally against a hermetic backend: verify-sponsors 62/62,
+e2e sponsors (3, incl. a new settings-placement test), cfp-submit, speakers-portal,
+forms-builder all green; unit 444/444.

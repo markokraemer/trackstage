@@ -16,7 +16,6 @@ import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import {
   Field,
-  FieldDescription,
   FieldGroup,
   FieldLabel,
 } from "@/components/ui/field"
@@ -29,17 +28,22 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { Textarea } from "@/components/ui/textarea"
 import { DrawerShell } from "@/components/shared/drawer-shell"
 import { StatusPill } from "@/components/shared/status-pill"
 import { errorMessage } from "@/lib/errors"
+import { QuestionField } from "@/components/submit/question-field"
+import {
+  answersForSubmit,
+  missingQuestionIds,
+  visibleQuestions,
+} from "@/components/submit/form-logic"
+import type { AnswerValue, Answers, SubmitQuestion } from "@/components/submit/types"
 import { usePortal } from "./portal-context"
 import type { PortalSubmission } from "./portal-context"
 
 /** Mirrors convex/portal.ts DURATIONS — the server refuses anything else. */
 const DURATIONS = [10, 15, 20, 25, 30, 40, 45, 50, 60, 90, 120] as const
 const DURATION_ITEMS = DURATIONS.map((m) => ({ value: String(m), label: `${m} minutes` }))
-const NO_FORMAT = "__none__"
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
@@ -55,73 +59,73 @@ function blankSpeaker(): SpeakerDraft {
   return { key: nextKey++, firstName: "", lastName: "", email: "" }
 }
 
-function FormatAndLength({
-  format,
-  onFormat,
+/** Session length — sponsor-specific: it tells the organizers what slot to find. */
+function LengthField({
   duration,
   onDuration,
-  formats,
   idPrefix,
-  disabled,
 }: {
-  format: string
-  onFormat: (value: string) => void
   duration: string
   onDuration: (value: string) => void
-  formats: Array<string>
   idPrefix: string
-  disabled?: boolean
 }) {
-  const formatItems = [
-    { value: NO_FORMAT, label: "Not sure yet" },
-    ...formats.map((f) => ({ value: f, label: f })),
-  ]
   return (
-    <div className="grid gap-4 sm:grid-cols-2">
-      {formats.length > 0 ? (
-        <Field>
-          <FieldLabel htmlFor={`${idPrefix}-format`}>Format</FieldLabel>
-          <Select
-            items={formatItems}
-            value={format || NO_FORMAT}
-            onValueChange={(value) => onFormat(value === NO_FORMAT ? "" : String(value))}
-            disabled={disabled}
-          >
-            <SelectTrigger id={`${idPrefix}-format`} className="w-full">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {formatItems.map((item) => (
-                <SelectItem key={item.value} value={item.value}>
-                  {item.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </Field>
-      ) : null}
-      <Field>
-        <FieldLabel htmlFor={`${idPrefix}-duration`}>Length</FieldLabel>
-        <Select
-          items={DURATION_ITEMS}
-          value={duration}
-          onValueChange={(value) => onDuration(String(value))}
-          disabled={disabled}
-        >
-          <SelectTrigger id={`${idPrefix}-duration`} className="w-full">
-            <SelectValue placeholder="Pick a length" />
-          </SelectTrigger>
-          <SelectContent>
-            {DURATION_ITEMS.map((item) => (
-              <SelectItem key={item.value} value={item.value}>
-                {item.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </Field>
-    </div>
+    <Field>
+      <FieldLabel htmlFor={`${idPrefix}-duration`}>Length</FieldLabel>
+      <Select items={DURATION_ITEMS} value={duration} onValueChange={(value) => onDuration(String(value))}>
+        <SelectTrigger id={`${idPrefix}-duration`} className="w-full sm:w-56">
+          <SelectValue placeholder="Pick a length" />
+        </SelectTrigger>
+        <SelectContent>
+          {DURATION_ITEMS.map((item) => (
+            <SelectItem key={item.value} value={item.value}>
+              {item.label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </Field>
   )
+}
+
+/**
+ * The event's own session questions — the CFP's, rendered by the CFP's own
+ * `QuestionField` with its conditional logic, so a sponsor session carries
+ * the same track, format, level, language, tags and custom answers as any
+ * proposal (convex/lib/sponsors.ts → sponsorSessionQuestions).
+ */
+function SessionQuestions({
+  questions,
+  answers,
+  onChange,
+  invalidIds,
+}: {
+  questions: Array<SubmitQuestion>
+  answers: Answers
+  onChange: (questionId: string, value: AnswerValue) => void
+  invalidIds: Array<string>
+}) {
+  return (
+    <>
+      {visibleQuestions(questions, answers).map((question) => (
+        <QuestionField
+          key={question.id}
+          question={question}
+          value={answers[question.id]}
+          invalid={invalidIds.includes(question.id)}
+          onChange={(value) => onChange(question.id, value)}
+        />
+      ))}
+    </>
+  )
+}
+
+/** Labels of the required questions still empty — for the toast. */
+function missingLabels(questions: Array<SubmitQuestion>, ids: Array<string>): string {
+  return questions
+    .filter((q) => ids.includes(q.id))
+    .map((q) => q.label)
+    .join(", ")
 }
 
 function SpeakerRow({
@@ -202,8 +206,9 @@ function speakerProblem(speakers: Array<SpeakerDraft>): string | null {
 
 /**
  * "Add a session" for a sponsor contact — the whole point of the sponsor
- * portal. Everything the organizer needs to place it on the agenda, nothing
- * a CFP would ask a stranger: title, description, format, length, speakers.
+ * portal. The event's own session questions (the same ones the CFP asks),
+ * plus a length and the speakers; nothing about the submitter, since the
+ * organizers already know who the sponsor is.
  */
 export function AddSponsorSessionDrawer({
   open,
@@ -215,36 +220,34 @@ export function AddSponsorSessionDrawer({
   const { portalToken, home } = usePortal()
   const sponsor = home.sponsor
   const add = useConvexMutation(api.portal.addSponsorSession)
-  const [title, setTitle] = React.useState("")
-  const [description, setDescription] = React.useState("")
-  const [format, setFormat] = React.useState("")
+  const [answers, setAnswers] = React.useState<Answers>({})
+  const [invalidIds, setInvalidIds] = React.useState<Array<string>>([])
   const [duration, setDuration] = React.useState("30")
   const [includeMe, setIncludeMe] = React.useState(true)
   const [speakers, setSpeakers] = React.useState<Array<SpeakerDraft>>([])
-  const [showErrors, setShowErrors] = React.useState(false)
   const [saving, setSaving] = React.useState(false)
 
   React.useEffect(() => {
     if (!open) return
-    setTitle("")
-    setDescription("")
-    setFormat("")
+    setAnswers({})
+    setInvalidIds([])
     setDuration("30")
     setIncludeMe(true)
     setSpeakers([])
-    setShowErrors(false)
   }, [open])
 
   if (!sponsor) return null
+  const questions = sponsor.sessionQuestions
 
   const filled = speakers.filter((s) => s.firstName.trim() || s.lastName.trim() || s.email.trim())
   const problem = speakerProblem(speakers)
 
   async function submit(event: React.FormEvent) {
     event.preventDefault()
-    if (!title.trim() || !description.trim()) {
-      setShowErrors(true)
-      toast.error("Add a title and a description")
+    const missing = missingQuestionIds(questions, answers)
+    setInvalidIds(missing)
+    if (missing.length > 0) {
+      toast.error("A few answers are missing", { description: missingLabels(questions, missing) })
       return
     }
     if (problem) {
@@ -259,9 +262,7 @@ export function AddSponsorSessionDrawer({
     try {
       await add({
         portalToken,
-        title: title.trim(),
-        description: description.trim(),
-        format: format || undefined,
+        answers: answersForSubmit(questions, answers),
         durationMinutes: Number(duration),
         includeMe,
         speakers: filled.map((s) => ({
@@ -309,42 +310,16 @@ export function AddSponsorSessionDrawer({
     >
       <form id="add-sponsor-session" onSubmit={(e) => void submit(e)}>
         <FieldGroup className="gap-5">
-          <Field>
-            <FieldLabel htmlFor="sponsor-session-title">
-              Session title<span className="required-asterisk">*</span>
-            </FieldLabel>
-            <Input
-              id="sponsor-session-title"
-              name="title"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              maxLength={200}
-              placeholder="Shipping agents to production with Acme"
-              aria-invalid={showErrors && !title.trim() ? true : undefined}
-            />
-          </Field>
-          <Field>
-            <FieldLabel htmlFor="sponsor-session-description">
-              Description<span className="required-asterisk">*</span>
-            </FieldLabel>
-            <FieldDescription>What attendees read on the agenda — two or three sentences.</FieldDescription>
-            <Textarea
-              id="sponsor-session-description"
-              name="description"
-              rows={5}
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              aria-invalid={showErrors && !description.trim() ? true : undefined}
-            />
-          </Field>
-          <FormatAndLength
-            format={format}
-            onFormat={setFormat}
-            duration={duration}
-            onDuration={setDuration}
-            formats={sponsor.formatOptions}
-            idPrefix="sponsor-session"
+          <SessionQuestions
+            questions={questions}
+            answers={answers}
+            invalidIds={invalidIds}
+            onChange={(id, value) => {
+              setAnswers((prev) => ({ ...prev, [id]: value }))
+              setInvalidIds((prev) => prev.filter((x) => x !== id))
+            }}
           />
+          <LengthField duration={duration} onDuration={setDuration} idPrefix="sponsor-session" />
 
           <Separator className="my-1" />
           <div>
@@ -393,6 +368,37 @@ export function AddSponsorSessionDrawer({
 
 // ——— Manage ———————————————————————————————————————————————————————————————
 
+/**
+ * A session's current answers: what it stored, with the system questions
+ * read from its columns — so a session added before sponsor sessions
+ * answered the form, or edited by the organizers since, shows what it is.
+ */
+function answersOf(session: PortalSubmission, questions: Array<SubmitQuestion>): Answers {
+  const answers: Answers = {}
+  for (const [key, value] of Object.entries(session.answers as Record<string, unknown>)) {
+    if (typeof value === "string" || typeof value === "boolean" || Array.isArray(value)) {
+      answers[key] = value as AnswerValue
+    }
+  }
+  const columns: Answers = {
+    title: session.title,
+    description: session.description ?? undefined,
+    format: session.format ?? undefined,
+    level: session.level ?? undefined,
+    language: session.language ?? undefined,
+    tags: session.tags.length > 0 ? session.tags : undefined,
+  }
+  const trackQuestion = questions.find((q) => q.isTrackQuestion)
+  if (trackQuestion) columns[trackQuestion.id] = session.track?.name
+  // The columns are the truth for the system questions: they're what the
+  // organizers edit and what every table shows.
+  for (const [key, value] of Object.entries(columns)) {
+    if (value === undefined) delete answers[key]
+    else answers[key] = value
+  }
+  return answers
+}
+
 export function ManageSponsorSessionDrawer({
   session,
   open,
@@ -407,26 +413,25 @@ export function ManageSponsorSessionDrawer({
   const addSpeaker = useConvexMutation(api.portal.addSponsorSessionSpeaker)
   const removeSpeaker = useConvexMutation(api.portal.removeSponsorSessionSpeaker)
   const withdraw = useConvexMutation(api.portal.withdrawSubmission)
-  const [title, setTitle] = React.useState(session.title)
-  const [description, setDescription] = React.useState(session.description ?? "")
-  const [format, setFormat] = React.useState(session.format ?? "")
+  const questions = React.useMemo(() => home.sponsor?.sessionQuestions ?? [], [home.sponsor])
+  const initialAnswers = React.useMemo(() => answersOf(session, questions), [session, questions])
+  const [answers, setAnswers] = React.useState<Answers>(initialAnswers)
+  const [invalidIds, setInvalidIds] = React.useState<Array<string>>([])
   const [duration, setDuration] = React.useState(String(session.durationMinutes ?? 30))
   const [newSpeaker, setNewSpeaker] = React.useState<SpeakerDraft>(blankSpeaker)
   const [busy, setBusy] = React.useState<string | null>(null)
   const [confirmWithdraw, setConfirmWithdraw] = React.useState(false)
 
   const locked = session.editLock
-  const formats = home.sponsor?.formatOptions ?? []
-  const dirty =
-    title !== session.title ||
-    description !== (session.description ?? "") ||
-    format !== (session.format ?? "") ||
-    duration !== String(session.durationMinutes ?? 30)
+  const answersDirty = JSON.stringify(answers) !== JSON.stringify(initialAnswers)
+  const dirty = answersDirty || duration !== String(session.durationMinutes ?? 30)
 
   async function save(event: React.FormEvent) {
     event.preventDefault()
-    if (!title.trim() || !description.trim()) {
-      toast.error("A session needs a title and a description")
+    const missing = missingQuestionIds(questions, answers)
+    setInvalidIds(missing)
+    if (missing.length > 0) {
+      toast.error("A few answers are missing", { description: missingLabels(questions, missing) })
       return
     }
     setBusy("save")
@@ -435,9 +440,7 @@ export function ManageSponsorSessionDrawer({
         portalToken,
         submissionId: session.id,
         patch: {
-          title: title.trim(),
-          description: description.trim(),
-          format,
+          ...(answersDirty ? { answers: answersForSubmit(questions, answers) } : {}),
           durationMinutes: Number(duration),
         },
       })
@@ -569,37 +572,21 @@ export function ManageSponsorSessionDrawer({
         ) : null}
 
         <form id="manage-sponsor-session" onSubmit={(e) => void save(e)}>
-          <FieldGroup className="gap-5">
-            <Field>
-              <FieldLabel htmlFor="manage-title">Session title</FieldLabel>
-              <Input
-                id="manage-title"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                maxLength={200}
-                disabled={!!locked}
+          {/* A native disabled fieldset greys out every question at once. */}
+          <fieldset disabled={!!locked} className="min-w-0">
+            <FieldGroup className="gap-5">
+              <SessionQuestions
+                questions={questions}
+                answers={answers}
+                invalidIds={invalidIds}
+                onChange={(id, value) => {
+                  setAnswers((prev) => ({ ...prev, [id]: value }))
+                  setInvalidIds((prev) => prev.filter((x) => x !== id))
+                }}
               />
-            </Field>
-            <Field>
-              <FieldLabel htmlFor="manage-description">Description</FieldLabel>
-              <Textarea
-                id="manage-description"
-                rows={5}
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                disabled={!!locked}
-              />
-            </Field>
-            <FormatAndLength
-              format={format}
-              onFormat={setFormat}
-              duration={duration}
-              onDuration={setDuration}
-              formats={formats}
-              idPrefix="manage"
-              disabled={!!locked}
-            />
-          </FieldGroup>
+              <LengthField duration={duration} onDuration={setDuration} idPrefix="manage" />
+            </FieldGroup>
+          </fieldset>
         </form>
 
         <div className="flex flex-col gap-3">

@@ -38,6 +38,9 @@ import {
   sponsorClosedMessage,
   sponsorContacts,
   sponsorPortalRules,
+  sponsorSessionForm,
+  sponsorSessionFromAnswers,
+  sponsorSessionQuestions,
   sponsorSessions,
   sponsorWindowClosed,
   primaryContactOf,
@@ -179,7 +182,9 @@ function editLockFor(
   // organizer can still change anything, and the message below says exactly
   // who to ask, so nothing is actually unfixable; it just goes through the
   // person accountable for the programme.
-  if (form && !isFormOpen(form, now).open) {
+  // Not for a sponsor's session: it answers the form's questions but never
+  // came through its call for papers, so the sponsor window below governs.
+  if (form && !submission.sponsorId && !isFormOpen(form, now).open) {
     return {
       code: "cfp_closed",
       title: "The call for speakers has closed",
@@ -215,8 +220,8 @@ function editableUntil(
   sponsorRules?: SponsorPortalRules,
 ): number | null {
   if (lock) return null
-  if (form) return form.closeAt ?? null
   if (submission.sponsorId) return sponsorRules?.closeAt ?? null
+  if (form) return form.closeAt ?? null
   return null
 }
 
@@ -373,9 +378,10 @@ export const home = query({
           event.timezone,
           args.now,
         ),
-        // The event's Format list (the CFP's own options), so a sponsor picks
-        // from the same words the organizer's program uses.
-        formatOptions: await eventFormatOptions(ctx, event._id),
+        // The questions a sponsor session answers — the event's own CFP
+        // questions (convex/lib/sponsors.ts → sponsorSessionQuestions), so a
+        // sponsor picks the same tracks, formats and tags as everyone else.
+        sessionQuestions: sponsorSessionQuestions(await sponsorSessionForm(ctx, event)),
         contacts: colleagues
           .sort((a, b) => a._creationTime - b._creationTime)
           .map((c) => ({
@@ -965,11 +971,29 @@ const speakerArg = v.object({
   lastName: v.string(),
 })
 
+/** Script/API shorthand (`title`, `description`, `format`) folded into answers. */
+function withShorthand(
+  answers: Record<string, unknown> | undefined,
+  shorthand: { title?: string; description?: string; format?: string },
+): Record<string, unknown> {
+  const merged: Record<string, unknown> = { ...(answers ?? {}) }
+  for (const key of ["title", "description", "format"] as const) {
+    if (shorthand[key] !== undefined && merged[key] === undefined) merged[key] = shorthand[key]
+  }
+  return merged
+}
+
 export const addSponsorSession = mutation({
   args: {
     portalToken: v.string(),
-    title: v.string(),
-    description: v.string(),
+    /**
+     * Answers keyed by question id — the event's own CFP questions, as listed
+     * in `home.sponsor.sessionQuestions` (title, description, track, format,
+     * level, language, tags and the organizer's custom ones).
+     */
+    answers: v.optional(v.record(v.string(), v.any())),
+    title: v.optional(v.string()),
+    description: v.optional(v.string()),
     format: v.optional(v.string()),
     durationMinutes: v.optional(v.number()),
     /** The contact is presenting it themselves. */
@@ -987,15 +1011,14 @@ export const addSponsorSession = mutation({
     const blocker = addSessionBlocker(sponsor, used, rules, event.timezone, Date.now())
     if (blocker) throw new ConvexError(blocker)
 
-    const title = args.title.trim()
-    const description = args.description.trim()
-    if (!title) throw new ConvexError("Give the session a title.")
-    if (title.length > 200) {
-      throw new ConvexError("That title is long — keep it under 200 characters.")
-    }
-    if (!description) {
-      throw new ConvexError("Add a short description — it's what attendees read.")
-    }
+    // The same questions, required flags and track routing as the CFP.
+    const session = await sponsorSessionFromAnswers(
+      ctx,
+      event,
+      await sponsorSessionForm(ctx, event),
+      withShorthand(args.answers, args),
+    )
+    const title = session.title
     const totalSpeakers = args.speakers.length + (args.includeMe ? 1 : 0)
     if (totalSpeakers === 0) {
       throw new ConvexError("Add at least one speaker — or tick “I'm presenting”.")
@@ -1010,12 +1033,8 @@ export const addSponsorSession = mutation({
     const submissionId = await ctx.db.insert("submissions", {
       eventId: event._id,
       kind: "session",
-      title,
-      description,
-      answers: {},
-      format: args.format?.trim() || undefined,
+      ...session,
       durationMinutes: cleanDuration(args.durationMinutes),
-      tags: [],
       status,
       decidedAt: status === "accepted" ? Date.now() : undefined,
       submitterId: person._id,
@@ -1064,6 +1083,8 @@ export const updateSponsorSession = mutation({
     portalToken: v.string(),
     submissionId: v.id("submissions"),
     patch: v.object({
+      /** Changed answers, keyed by question id (see `addSponsorSession`). */
+      answers: v.optional(v.record(v.string(), v.any())),
       title: v.optional(v.string()),
       description: v.optional(v.string()),
       format: v.optional(v.string()),
@@ -1072,25 +1093,56 @@ export const updateSponsorSession = mutation({
   },
   returns: v.null(),
   handler: async (ctx, args) => {
-    const { person, sponsor, submission } = await requireEditableSponsorSession(
+    const { person, sponsor, event, submission } = await requireEditableSponsorSession(
       ctx,
       args.portalToken,
       args.submissionId,
     )
     const next: Partial<Doc<"submissions">> = {}
-    if (args.patch.title !== undefined) {
-      const title = args.patch.title.trim()
-      if (!title) throw new ConvexError("A session needs a title.")
-      next.title = title
+    const answerPatch = withShorthand(args.patch.answers, args.patch)
+    if (Object.keys(answerPatch).length > 0) {
+      // Re-validate the whole session against its form, starting from what it
+      // holds today — a session added before it answered a form starts from
+      // its columns.
+      const form = await sponsorSessionForm(ctx, event, submission.formId)
+      const track = submission.trackId ? await ctx.db.get(submission.trackId) : null
+      // The columns win for the system questions: they're what the organizers
+      // edit and what every table shows.
+      const trackQuestion = sponsorSessionQuestions(form).find((q) => q.isTrackQuestion)
+      const current: Record<string, unknown> = {
+        ...submission.answers,
+        title: submission.title,
+        description: submission.description,
+        format: submission.format,
+        level: submission.level,
+        language: submission.language,
+        tags: submission.tags,
+        ...(trackQuestion ? { [trackQuestion.id]: track?.name } : {}),
+      }
+      const session = await sponsorSessionFromAnswers(ctx, event, form, {
+        ...current,
+        ...answerPatch,
+      })
+      // Only the columns this form actually asks about move; anything the
+      // organizers set by hand (a track on a form without a track question)
+      // stays put.
+      const asked = new Set(sponsorSessionQuestions(form).map((q) => q.id))
+      next.title = session.title
+      next.answers = session.answers
+      next.formId = session.formId
+      if (asked.has("description")) next.description = session.description
+      if (trackQuestion) next.trackId = session.trackId
+      for (const key of ["format", "level", "language"] as const) {
+        if (asked.has(key)) next[key] = session[key]
+      }
+      if (asked.has("tags")) next.tags = session.tags
     }
-    if (args.patch.description !== undefined) {
-      const description = args.patch.description.trim()
-      if (!description) throw new ConvexError("A session needs a description.")
-      next.description = description
-    }
-    if (args.patch.format !== undefined) next.format = args.patch.format.trim() || undefined
     if (args.patch.durationMinutes !== undefined) {
       next.durationMinutes = cleanDuration(args.patch.durationMinutes)
+    }
+    // Only what actually changed — the audit line names real edits.
+    for (const key of Object.keys(next) as Array<keyof typeof next>) {
+      if (JSON.stringify(next[key]) === JSON.stringify(submission[key])) delete next[key]
     }
     if (Object.keys(next).length === 0) return null
     await ctx.db.patch(submission._id, { ...next, updatedAt: Date.now() })
@@ -1247,23 +1299,6 @@ export const addSponsorColleague = mutation({
   },
 })
 
-async function eventFormatOptions(
-  ctx: QueryCtx,
-  eventId: Id<"events">,
-): Promise<Array<string>> {
-  const forms = await ctx.db
-    .query("forms")
-    .withIndex("by_eventId", (q) => q.eq("eventId", eventId))
-    .take(50)
-  const values: Array<string> = []
-  for (const form of forms) {
-    const question = form.questions.find((q) => q.id === "format")
-    for (const option of question?.options ?? []) {
-      if (!values.includes(option)) values.push(option)
-    }
-  }
-  return values
-}
 
 /** Session lengths a sponsor can pick — mirrored in the portal's select. */
 export const SPONSOR_SESSION_DURATIONS = DURATIONS

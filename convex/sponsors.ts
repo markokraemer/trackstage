@@ -12,6 +12,7 @@ import { scheduleAirtableSync } from "./airtable"
 import { assertImageUpload, releaseBlob, storageMeta } from "./lib/files"
 import { emitWebhook } from "./webhooks"
 import { friendlyId } from "./lib/friendlyId"
+import { primaryFormOf } from "./lib/formQuestions"
 import {
   allowanceSentence,
   allowanceUsed,
@@ -28,6 +29,7 @@ import {
   primaryContactOf,
   sponsorFieldsFor,
   sponsorPortalRules,
+  sponsorSessionForm,
   sponsorSessions,
   sponsorWindowClosed,
   stillNeeded,
@@ -245,6 +247,81 @@ export const list = query({
         label: f.label,
         kind: f.kind,
         public: f.public,
+      })),
+    }
+  },
+})
+
+/**
+ * Event settings → the sponsor setup: tiers and company fields (Fields &
+ * options) and the portal rules (Event details). Counts let each row say
+ * what a rename or removal touches, like the other option lists do.
+ */
+export const settings = query({
+  args: { eventId: v.id("events") },
+  returns: v.object({
+    rules: v.object({
+      newSessionStatus: v.union(v.literal("pending"), v.literal("accepted")),
+      closeAt: v.union(v.number(), v.null()),
+      allowColleagueInvites: v.boolean(),
+      formId: v.union(v.id("forms"), v.null()),
+    }),
+    /** The forms a sponsor session can answer, and the one it does today. */
+    forms: v.array(v.object({ _id: v.id("forms"), name: v.string(), status: v.string() })),
+    sessionFormId: v.union(v.id("forms"), v.null()),
+    primaryFormId: v.union(v.id("forms"), v.null()),
+    tiers: v.array(
+      v.object({
+        _id: v.id("sponsorTiers"),
+        name: v.string(),
+        sessionLimit: v.number(),
+        sponsorCount: v.number(),
+      }),
+    ),
+    fields: v.array(
+      v.object({
+        _id: v.id("sponsorFields"),
+        label: v.string(),
+        kind: v.union(v.literal("text"), v.literal("longText"), v.literal("url")),
+        public: v.boolean(),
+        filledCount: v.number(),
+      }),
+    ),
+  }),
+  handler: async (ctx, args) => {
+    const { event } = await requireEventAccess(ctx, args.eventId)
+    const [sponsors, tiers, fields, forms, sessionForm] = await Promise.all([
+      ctx.db
+        .query("sponsors")
+        .withIndex("by_eventId", (q) => q.eq("eventId", args.eventId))
+        .take(500),
+      tiersOf(ctx, args.eventId),
+      sponsorFieldsFor(ctx, args.eventId),
+      ctx.db
+        .query("forms")
+        .withIndex("by_eventId", (q) => q.eq("eventId", args.eventId))
+        .take(100),
+      sponsorSessionForm(ctx, event),
+    ])
+    return {
+      rules: sponsorPortalRules(event),
+      forms: forms
+        .sort((a, b) => a._creationTime - b._creationTime)
+        .map((f) => ({ _id: f._id, name: f.internalName, status: f.status })),
+      sessionFormId: sessionForm?._id ?? null,
+      primaryFormId: primaryFormOf(forms)?._id ?? null,
+      tiers: tiers.map((t) => ({
+        _id: t._id,
+        name: t.name,
+        sessionLimit: t.sessionLimit,
+        sponsorCount: sponsors.filter((s) => s.tier === t.name).length,
+      })),
+      fields: fields.map((f) => ({
+        _id: f._id,
+        label: f.label,
+        kind: f.kind,
+        public: f.public,
+        filledCount: sponsors.filter((s) => (s.fields?.[f._id] ?? "").trim() !== "").length,
       })),
     }
   },
@@ -519,12 +596,19 @@ export async function updatePortalRulesCore(
     newSessionStatus?: "pending" | "accepted"
     closeAt?: number | null
     allowColleagueInvites?: boolean
+    /** `null` ⇒ back to the primary CFP. */
+    formId?: Id<"forms"> | null
   },
   actor?: AuditActor,
 ): Promise<void> {
+  if (patch.formId) {
+    const form = await ctx.db.get(patch.formId)
+    if (!form || form.eventId !== event._id) throw new ConvexError("That form isn't on this event.")
+  }
   const current = event.sponsorPortal ?? {}
   const next = {
     ...current,
+    ...(patch.formId !== undefined ? { formId: patch.formId ?? undefined } : {}),
     ...(patch.newSessionStatus !== undefined ? { newSessionStatus: patch.newSessionStatus } : {}),
     ...(patch.closeAt !== undefined ? { closeAt: patch.closeAt ?? undefined } : {}),
     ...(patch.allowColleagueInvites !== undefined
@@ -542,6 +626,7 @@ export async function updatePortalRulesCore(
       newSessionStatus: next.newSessionStatus ?? "pending",
       closeAt: next.closeAt ? new Date(next.closeAt).toISOString() : "none",
       allowColleagueInvites: next.allowColleagueInvites ?? true,
+      form: next.formId ?? "primary",
     },
     actor,
   })
@@ -967,6 +1052,8 @@ export const updatePortalRules = mutation({
     /** `null` clears the deadline. */
     closeAt: v.optional(v.union(v.number(), v.null())),
     allowColleagueInvites: v.optional(v.boolean()),
+    /** `null` ⇒ the primary CFP. */
+    formId: v.optional(v.union(v.id("forms"), v.null())),
   },
   returns: v.null(),
   handler: async (ctx, args) => {
@@ -975,6 +1062,7 @@ export const updatePortalRules = mutation({
       newSessionStatus: args.newSessionStatus,
       closeAt: args.closeAt,
       allowColleagueInvites: args.allowColleagueInvites,
+      formId: args.formId,
     })
     return null
   },

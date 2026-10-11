@@ -2,6 +2,7 @@ import { expect, test } from "@playwright/test"
 import { api } from "../../../convex/_generated/api.js"
 import {
   ORGANIZER_STATE,
+  anonConvexClient,
   armed,
   clearToasts,
   expectToast,
@@ -45,7 +46,7 @@ test.describe("sponsor portal", () => {
     const drawer = page.locator('[data-slot="drawer-shell"]').first()
     await expect(drawer).toBeVisible({ timeout: 20_000 })
     await fillStable(drawer.locator("#new-sponsor-name"), sponsorName)
-    // Tier is a managed list now (Sponsor settings → Tiers; the seed has
+    // Tier is a managed list now (Settings → Fields & options; the seed has
     // Platinum / Gold / Community partner). Picking one pre-fills the
     // package's sessions, which we then override.
     await drawer.locator("#new-sponsor-tier").click()
@@ -96,11 +97,32 @@ test.describe("sponsor portal", () => {
     await portal.getByRole("button", { name: /add a session/i }).first().click()
     const form = portal.locator('[data-slot="drawer-shell"]').first()
     await expect(form).toBeVisible({ timeout: 20_000 })
-    await fillStable(form.locator("#sponsor-session-title"), sessionTitle)
+    // The SAME questions the CFP asks — the seed form requires format, track
+    // and audience level, and the portal refuses until they're answered.
+    await fillStable(form.locator("#question-title"), sessionTitle)
     await fillStable(
-      form.locator("#sponsor-session-description"),
+      form.locator("#question-description"),
       "How we run evals in production, with the numbers.",
     )
+    await form.getByRole("button", { name: /^add session$/i }).click()
+    await expectToast(portal, /a few answers are missing/i, 20_000)
+    await clearToasts(portal)
+    const asked = await anonConvexClient().query(api.portal.home, {
+      portalToken: token,
+      now: Date.now(),
+    })
+    const trackName = asked.sponsor?.sessionQuestions.find((q) => q.id === "track")?.options?.[0]
+    expect(trackName, "the track question offers the event's tracks").toBeTruthy()
+    for (const [id, pick] of [
+      ["format", "Talk"],
+      ["track", trackName!],
+      ["level", "Beginner"],
+    ] as const) {
+      await form.locator(`#question-${id}`).click()
+      const option = portal.getByRole("option", { name: pick, exact: true })
+      await option.first().click()
+      await expect(option).toHaveCount(0)
+    }
     await form.getByRole("button", { name: /^add session$/i }).click()
     await expectToast(portal, /session added/i, 30_000)
     await expect(portal.getByText(sessionTitle).first()).toBeVisible({ timeout: 20_000 })
@@ -111,6 +133,16 @@ test.describe("sponsor portal", () => {
     const row = page.getByRole("row").filter({ hasText: sessionTitle }).first()
     await expect(row).toBeVisible({ timeout: 30_000 })
     await expect(row).toContainText(`Sponsor: ${sponsorName}`)
+    const added = await until(
+      async () => await organizer.query(api.sponsors.list, { eventId: event._id }),
+      (data) => (data.sponsors.find((s) => s.name === sponsorName)?.sessions.length ?? 0) === 1,
+      { label: "the sponsor session is listed" },
+    )
+    const sessionId = added.sponsors.find((s) => s.name === sponsorName)!.sessions[0]._id
+    const session = await organizer.query(api.submissions.get, { submissionId: sessionId })
+    expect(session.format, "the answers fill the session like a CFP proposal").toBe("Talk")
+    expect(session.level).toBe("Beginner")
+    expect(session.trackId).toBeTruthy()
 
     await portal.close()
     portalWatcher.assertClean("sponsor portal")
@@ -118,5 +150,53 @@ test.describe("sponsor portal", () => {
 
     // Leave the shared seed as we found it: sessions stay, the link goes.
     await organizer.mutation(api.sponsors.remove, { sponsorId: sponsor._id })
+  })
+  test("sponsor setup lives in Settings, beside every other option list", async ({ page }) => {
+    const watcher = armed(page)
+    const organizer = await organizerConvexClient()
+    const event = await mainEvent(organizer)
+    const tierName = `Tier ${unique("t")}`
+
+    // Sponsors → "Tiers & fields" is a real link into Settings → Fields & options.
+    await gotoApp(page, "/app/sponsors")
+    await page.getByRole("link", { name: /tiers & fields/i }).click()
+    await page.waitForURL(/\/settings\/fields-and-options/, { timeout: 30_000 })
+    const tiers = page.locator("#sponsor-tiers")
+    await expect(tiers).toBeVisible({ timeout: 30_000 })
+    await expect(page.locator("#sponsor-fields")).toBeVisible()
+    // The CFP's own lists are on the same page.
+    await expect(page.getByText(/^formats$/i).first()).toBeVisible()
+
+    await fillStable(tiers.locator("#new-tier-name"), tierName)
+    await fillStable(tiers.locator("#new-tier-sessions"), "3")
+    await tiers.getByRole("button", { name: /^add tier$/i }).click()
+    await expectToast(page, new RegExp(`${tierName}.*added`, "i"), 20_000)
+    await expect(tiers.getByLabel(`Tier name (${tierName})`)).toBeVisible()
+
+    // Delete goes through the same confirm dialog as tracks and rooms.
+    await tiers.getByRole("button", { name: `Delete tier ${tierName}` }).click()
+    await page.getByRole("button", { name: /^delete tier$/i }).click()
+    await expectToast(page, new RegExp(`${tierName}.*deleted`, "i"), 20_000)
+
+    // The portal rules sit beside the Speaker portal card on Event details,
+    // and save the moment they change — no Save button.
+    await gotoApp(page, "/app/settings")
+    const portalCard = page.locator("#sponsor-portal")
+    await expect(portalCard).toBeVisible({ timeout: 30_000 })
+    await expect(portalCard.locator("#sponsor-session-form")).toBeVisible()
+    const colleagues = portalCard.getByRole("switch", { name: /invite colleagues/i })
+    await colleagues.click()
+    await until(
+      async () => await organizer.query(api.sponsors.settings, { eventId: event._id }),
+      (data) => data.rules.allowColleagueInvites === false,
+      { label: "the switch saved on its own" },
+    )
+    await colleagues.click()
+    await until(
+      async () => await organizer.query(api.sponsors.settings, { eventId: event._id }),
+      (data) => data.rules.allowColleagueInvites,
+      { label: "and back" },
+    )
+    watcher.assertClean("sponsor settings")
   })
 })

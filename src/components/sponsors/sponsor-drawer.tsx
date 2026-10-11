@@ -71,11 +71,11 @@ import {
   fieldValueMap,
 } from "@/components/sponsors/company-field-inputs"
 import type { CompanyField } from "@/components/sponsors/company-field-inputs"
-import type { SponsorTier } from "@/components/sponsors/sponsor-settings-drawer"
 import { copyText } from "@/lib/clipboard"
 import { errorMessage } from "@/lib/errors"
 import type { EventRef } from "@/lib/app-links"
 import { appLink } from "@/lib/app-links"
+import { useCurrentEvent } from "@/lib/current-event"
 
 export type SponsorRow = FunctionReturnType<typeof api.sponsors.list>["sponsors"][number]
 
@@ -142,6 +142,28 @@ export function SponsorDrawer({
 }
 
 // ——— Shared: the package + profile fields ———————————————————————————————
+
+/** A managed tier (Settings → Fields & options → Sponsor tiers). */
+export interface SponsorTier {
+  _id: Id<"sponsorTiers">
+  name: string
+  sessionLimit: number
+}
+
+/** "Manage tiers" / "Manage fields": where the event-wide sponsor setup lives. */
+function SettingsLink({ hash, children }: { hash: string; children: React.ReactNode }) {
+  const { eventRef } = useCurrentEvent()
+  if (!eventRef) return null
+  return (
+    <Link
+      to={appLink.settingsSection(eventRef, "fields-and-options")}
+      hash={hash}
+      className="font-medium text-primary underline-offset-4 hover:underline"
+    >
+      {children}
+    </Link>
+  )
+}
 
 interface PackageValues {
   name: string
@@ -222,7 +244,7 @@ function PackageFields({
   idPrefix: string
   /** Show the public profile fields (description + links). */
   withProfile: boolean
-  /** The event's own company fields (Sponsor settings → Company fields). */
+  /** The event's own company fields (Settings → Fields & options). */
   companyFields?: Array<CompanyField>
   fieldValues?: Record<string, string>
   onFieldChange?: (fieldId: string, value: string) => void
@@ -288,11 +310,11 @@ function PackageFields({
         </Field>
       </div>
       <FieldDescription className="-mt-3">
-        {tiers.length === 0
-          ? "Add your tiers in Sponsor settings and they pre-fill this. "
-          : ""}
         Sessions included is how many their contacts can add from the sponsor portal — 0 if
-        you add them yourself.
+        you add them yourself.{" "}
+        <SettingsLink hash="sponsor-tiers">
+          {tiers.length === 0 ? "Set up tiers" : "Manage tiers"}
+        </SettingsLink>
       </FieldDescription>
       <Field>
         <FieldLabel htmlFor={`${idPrefix}-website`}>Website</FieldLabel>
@@ -325,12 +347,22 @@ function PackageFields({
             </FieldDescription>
           </Field>
           {onFieldChange ? (
-            <CompanyFieldInputs
-              fields={companyFields}
-              values={fieldValues}
-              onChange={onFieldChange}
-              idPrefix={idPrefix}
-            />
+            <>
+              <CompanyFieldInputs
+                fields={companyFields}
+                values={fieldValues}
+                onChange={onFieldChange}
+                idPrefix={idPrefix}
+              />
+              <p className="-mt-3 text-xs text-muted-foreground">
+                {companyFields.length === 0
+                  ? "Need a LinkedIn, booth number or anything else from every sponsor? "
+                  : "These fields are the same for every sponsor. "}
+                <SettingsLink hash="sponsor-fields">
+                  {companyFields.length === 0 ? "Add company fields" : "Manage fields"}
+                </SettingsLink>
+              </p>
+            </>
           ) : null}
         </>
       ) : null}

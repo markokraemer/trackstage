@@ -105,7 +105,10 @@ portal accounts are nice-to-have. Airtable read-only is fine (bonus, not core) �
   never labelled "speaker". The SPEAKER profile (bio, headshot, links) exists only in
   `/portal`: a contact who presents nothing is sent from `/portal` to `/sponsor`; one
   who presents (their own proposal or a company session they're on) is both, and
-  switches from the account menu (`portalModeFor`). A sponsor contact is ALWAYS a protected identity in
+  switches from the account menu (`portalModeFor`). Sponsor sessions answer the event's
+  CFP questions (primary form, or the one picked in Settings → Event details → Sponsor
+  portal) minus file questions, and ignore the form's close date. Tiers and company
+  fields are set up in Settings → Fields & options. A sponsor contact is ALWAYS a protected identity in
   `submit.identify` (their token opens the whole company). Asked for by Kelsey (AI
   Engineer ops) on 2026-10-10 — see `docs/reference/sponsors-cross-analysis.md`.
 

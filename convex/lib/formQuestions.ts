@@ -170,3 +170,101 @@ export function assertReleasable(input: {
   )
   if (offending.length > 0) throw new ConvexError(offending[0].message)
 }
+
+// ——— Answers → the session's own columns ——————————————————————————————————
+//
+// A submission's answers are keyed by question id; the system questions also
+// live as real columns (title, description, track, format, level, language,
+// tags) so tables, filters and the agenda never have to read a form. The CFP
+// and the sponsor portal both write a session from answers, so the mapping is
+// written once, here.
+
+/** Enabled questions whose `showIf` condition is met by these answers. */
+export function visibleQuestions(
+  questions: Array<FormQuestion>,
+  answers: Record<string, unknown>,
+): Array<FormQuestion> {
+  return questions.filter((q) => {
+    if (!q.enabled) return false
+    if (!q.showIf) return true
+    return answers[q.showIf.questionId] === q.showIf.equals
+  })
+}
+
+export function isEmptyAnswer(value: unknown): boolean {
+  return (
+    value === undefined ||
+    value === null ||
+    (typeof value === "string" && value.trim() === "") ||
+    (Array.isArray(value) && value.length === 0)
+  )
+}
+
+/** Labels of visible, required questions left unanswered. */
+export function missingRequiredLabels(
+  questions: Array<FormQuestion>,
+  answers: Record<string, unknown>,
+  opts: { skipTypes?: Array<string> } = {},
+): Array<string> {
+  return visibleQuestions(questions, answers)
+    .filter((q) => q.required && !(opts.skipTypes ?? []).includes(q.type))
+    .filter((q) => isEmptyAnswer(answers[q.id]))
+    .map((q) => q.label)
+}
+
+/** The track a track-question answer routes to, by the event's track names. */
+export async function resolveTrackId(
+  ctx: QueryCtx,
+  form: Pick<Doc<"forms">, "eventId" | "questions">,
+  answers: Record<string, unknown>,
+): Promise<Id<"tracks"> | undefined> {
+  const trackQuestion = form.questions.find((q) => q.isTrackQuestion && q.enabled)
+  if (!trackQuestion) return undefined
+  const answer = answers[trackQuestion.id]
+  if (typeof answer !== "string" || !answer) return undefined
+  const tracks = await ctx.db
+    .query("tracks")
+    .withIndex("by_eventId", (q) => q.eq("eventId", form.eventId))
+    .collect()
+  return tracks.find((t) => t.name === answer)?._id
+}
+
+/** The session columns these answers fill in. */
+export async function sessionColumnsFromAnswers(
+  ctx: QueryCtx,
+  form: Pick<Doc<"forms">, "eventId" | "questions">,
+  answers: Record<string, unknown>,
+) {
+  const text = (key: string) => {
+    const value = answers[key]
+    return typeof value === "string" && value.trim() !== "" ? value : undefined
+  }
+  return {
+    description: text("description"),
+    trackId: await resolveTrackId(ctx, form, answers),
+    format: text("format"),
+    level: text("level"),
+    language: text("language"),
+    tags: Array.isArray(answers.tags) ? (answers.tags as Array<string>) : [],
+  }
+}
+
+/**
+ * An event's primary CFP form: an open abstract form, then any open form,
+ * then an abstract form, then the oldest. Creation time is the final
+ * tie-break, so adding a form never silently changes which one is primary.
+ */
+export function primaryFormOf(forms: Array<Doc<"forms">>): Doc<"forms"> | null {
+  const rank = (form: Doc<"forms">) =>
+    form.status === "open" && form.kind === "abstract"
+      ? 0
+      : form.status === "open"
+        ? 1
+        : form.kind === "abstract"
+          ? 2
+          : 3
+  return (
+    [...forms].sort((a, b) => rank(a) - rank(b) || a._creationTime - b._creationTime).at(0) ??
+    null
+  )
+}

@@ -800,3 +800,30 @@ stranger's event created seconds earlier.
     values live in `sponsors.fields` by field id. Both the organizer drawer and the
     sponsor's Company page render them; REST exposes them as Sessionboard-style
     `custom_fields`, MCP as `fields` by label + `manage_sponsor_field`.
+
+- **2026-10-11 · Sponsor setup lives in Event settings; sponsor sessions answer the CFP's questions.**
+  Marko: the custom fields and options all live in Settings → Fields & options, but
+  the sponsor ones sat in a slide-over on the Sponsors page — "a bit inconsistent".
+  And: "don't we lack a bunch of fields on the session you usually have when adding
+  through the CFP?" Both right.
+  · Placement follows what each thing IS, like everything else in Settings: sponsor
+    **tiers** and **company fields** are option lists → Settings → Fields & options,
+    under a "Sponsors" heading beside the CFP's Formats/Levels/Languages/Tags, edited
+    inline exactly like Tracks (rename on blur, arrows, confirm-to-delete, usage
+    counts). The **sponsor portal rules** are portal behaviour → Settings → Event
+    details, a "Sponsor portal" card beside the "Speaker portal" card, saving
+    instantly like it (no Save button). The slide-over is gone; the Sponsors page
+    links in ("Tiers & fields", "Change", and "Manage tiers/fields" in the drawer).
+  · A sponsor session answered title, description, format and length only — no
+    track (so no routing or agenda colour), no level/language/tags, none of the
+    organizer's own questions. Now it answers the **event's CFP form** (the primary
+    one, or another picked on the Sponsor portal card; `events.sponsorPortal.formId`):
+    same `QuestionField` renderer, labels, required flags, conditional logic and live
+    track options; answers map onto the session's columns through the one shared
+    `sessionColumnsFromAnswers` (convex/lib/formQuestions.ts) the CFP now uses too.
+    The session records `formId`, so the organizer drawer shows its answers like any
+    proposal. Two deliberate differences, because a sponsor is not a stranger
+    applying: the form's open/close date does not apply (the sponsor window does —
+    `editLockFor` skips the CFP lock for sponsor sessions), and file questions are
+    left out (files come later through tasks). Company sessions never count toward
+    the contact's own CFP `limitPerUser`.

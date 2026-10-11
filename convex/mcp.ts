@@ -32,7 +32,7 @@ import {
   updatePortalRulesCore,
   updateSponsorCore,
 } from "./sponsors"
-import { cleanSessionLimit, sponsorFieldsFor, sponsorPortalRules } from "./lib/sponsors"
+import { cleanSessionLimit, sponsorFieldsFor, sponsorPortalRules, sponsorSessionForm } from "./lib/sponsors"
 import { ensureOnboardingTasks, withJoins } from "./submissions"
 import { TASK_KINDS } from "./tasksAdmin"
 import {
@@ -3836,10 +3836,19 @@ export const updateSponsorPortalSettings = internalMutation({
     newSessionStatus: v.optional(v.string()),
     closeAt: v.optional(v.union(v.string(), v.null())),
     allowColleagueInvites: v.optional(v.boolean()),
+    /** A form id/slug, or null for the event's primary CFP. */
+    sessionForm: v.optional(v.union(v.string(), v.null())),
   },
   returns: v.any(),
   handler: async (ctx, args) => {
     const event = await resolveEvent(ctx, args.userId, args.event)
+    let formId: Id<"forms"> | null | undefined
+    if (args.sessionForm === null) formId = null
+    else if (args.sessionForm !== undefined) {
+      const form = await resolveForm(ctx, args.userId, args.sessionForm)
+      if (form.eventId !== event._id) throw new ConvexError("That form belongs to another event.")
+      formId = form._id
+    }
     if (
       args.newSessionStatus !== undefined &&
       args.newSessionStatus !== "pending" &&
@@ -3860,12 +3869,18 @@ export const updateSponsorPortalSettings = internalMutation({
       newSessionStatus: args.newSessionStatus,
       closeAt,
       allowColleagueInvites: args.allowColleagueInvites,
+      formId,
     })
-    const rules = sponsorPortalRules((await ctx.db.get(event._id)))
+    const updated = await ctx.db.get(event._id)
+    const rules = sponsorPortalRules(updated)
+    const sessionForm = updated ? await sponsorSessionForm(ctx, updated) : null
     return {
       newSessionStatus: rules.newSessionStatus,
       closeAt: iso(rules.closeAt),
       allowColleagueInvites: rules.allowColleagueInvites,
+      sessionForm: sessionForm
+        ? { id: sessionForm._id, name: sessionForm.internalName, chosen: rules.formId !== null }
+        : null,
     }
   },
 })
@@ -4683,7 +4698,7 @@ export const TOOLS: Array<ToolDef> = [
     name: "update_sponsor_portal_settings",
     title: "Sponsor portal settings",
     description:
-      "How sponsor portals behave on this event: newSessionStatus (\"pending\" — sessions sponsors add wait for your review, the default; or \"accepted\" — straight onto the program) and closeAt (ISO date-time after which sponsors can no longer add or edit sessions; \"none\" clears it).",
+      "How sponsor portals behave on this event: newSessionStatus (\"pending\" — sessions sponsors add wait for your review, the default; or \"accepted\" — straight onto the program), closeAt (ISO date-time after which sponsors can no longer add or edit sessions; \"none\" clears it), and sessionForm (which form's questions sponsor sessions answer — a form id or slug; \"primary\" goes back to the event's main CFP, the default).",
     inputSchema: schema(
       {
         event: EVENT_ARG,
@@ -4692,6 +4707,10 @@ export const TOOLS: Array<ToolDef> = [
         allowColleagueInvites: {
           type: "boolean",
           description: "Whether sponsor contacts may add colleagues to their company's portal (default true).",
+        },
+        sessionForm: {
+          type: "string",
+          description: "Form id or slug whose questions sponsor sessions answer; \"primary\" = the event's main CFP.",
         },
       },
       ["event"],
@@ -4709,6 +4728,10 @@ export const TOOLS: Array<ToolDef> = [
             ? null
             : args.closeAt,
         allowColleagueInvites: args.allowColleagueInvites,
+        sessionForm:
+          typeof args.sessionForm === "string" && args.sessionForm.trim().toLowerCase() === "primary"
+            ? null
+            : args.sessionForm,
       }),
   },
   {

@@ -247,6 +247,13 @@ export function SessionSponsorView({ output }: ToolOutputProps) {
 
 // ——— update_sponsor_portal_settings ———————————————————————————————————————
 
+function sessionFormLabel(value: unknown): string {
+  if (!value || typeof value !== "object") return "Title and description"
+  const form = value as { name?: unknown; chosen?: unknown }
+  const name = typeof form.name === "string" ? form.name : "a form"
+  return form.chosen === true ? name : `${name} (main CFP)`
+}
+
 export function SponsorPortalSettingsView({ output }: ToolOutputProps) {
   return (
     <Banner icon={<RiSettings3Line size={16} />} title="Sponsor portal settings saved">
@@ -260,6 +267,10 @@ export function SponsorPortalSettingsView({ output }: ToolOutputProps) {
           {
             label: "Colleague invites",
             value: output.allowColleagueInvites === false ? "Organizers only" : "Allowed",
+          },
+          {
+            label: "Session questions",
+            value: sessionFormLabel(output.sessionForm),
           },
         ]}
       />
