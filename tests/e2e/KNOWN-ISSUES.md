@@ -11,31 +11,6 @@ Delete a row when it's fixed, and delete the matching allowance with it.
 
 ---
 
-## KI-1 — Base UI console error on `Tabs` that render links · FIXED
-
-**Was:** every `TabsTrigger` rendered as a `<Link>` logged
-
-```
-Base UI: A component that acts as a button expected a native <button> because
-the `nativeButton` prop is true…
-```
-
-on every render, which made the console-cleanliness net unusable on half the
-app (`/app/submissions` in particular).
-
-**Fixed by** passing `nativeButton={false}` alongside `render={<Link …/>}` —
-see `src/components/submissions/status-tabs.tsx`, which now carries a comment
-explaining exactly why. Every link-rendering `TabsTrigger` in the tree now does
-this (`status-tabs`, `portal-tabs`, `settings-level-nav`, `app/settings/route`),
-verified by grep.
-
-**Next step:** the allowance is still listed in `KNOWN_CONSOLE_NOISE`. It was
-deliberately left in place for the three verification runs so they measured one
-constant configuration. Drop it, re-run `crawl.spec.ts` against every organizer
-route, and if that stays green delete this section too.
-
----
-
 ## KI-2 — Per-user submission limit copy contradicts the server
 
 **Severity:** medium — the organizer configures a rule that behaves differently
