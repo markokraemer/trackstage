@@ -137,8 +137,6 @@ export async function createSubmission(
  * KNOWN-ISSUES row is fixed — crawl.spec will tell you.
  */
 export const KNOWN_CONSOLE_NOISE = [
-  // KI-1: Base UI Tabs render Links via `render`, keeping nativeButton=true.
-  /Base UI: A component that acts as a button expected a native <button>/i,
   // Not a page error at all: the TanStack devtools bridge replays *server*
   // console output into every connected browser tab, so a log emitted while
   // handling someone else's request shows up here. Dev-only transport noise.
