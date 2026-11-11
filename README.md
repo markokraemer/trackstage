@@ -213,24 +213,29 @@ setting `VITE_SITE_URL` in `.env.production`, adding the `routes` entry to
 ## Tests and CI
 
 ```sh
-pnpm test          # 353 unit tests (vitest)
-pnpm test:e2e      # Playwright — 12 flow suites through the real UI
+pnpm test          # 444 unit tests (vitest)
+pnpm test:e2e      # Playwright — the 16 flow suites plus the smoke, crawl and accessibility checks
+pnpm test:flows    # Playwright — only the 16 flow suites (tests/e2e/flows)
 pnpm test:backend  # 585 live checks across 36 sections against a real Convex deployment
 ```
 
-`main` is the dev branch (`master` mirrors it); `prod` is the release branch. Every push
-runs the full CI gate — typecheck · lint · OpenAPI drift · unit tests, then the complete
-Playwright flow suite against a Convex backend booted inside the runner, so it is
-hermetic: no cloud data, no secrets, no mail. A green run on `main` auto-deploys staging
-to **https://dev.trackstage.app**.
+`main` is the dev branch (`master` mirrors it); `prod` is the release branch. CI has two
+tiers (`.github/workflows/ci.yml`). Every push and pull request runs `verify` —
+typecheck · lint · OpenAPI drift · unit tests, about 4 minutes. The complete Playwright
+flow suite (the 16 suites in `tests/e2e/flows`, 4 parallel shards, each against a local
+Convex backend booted inside the runner — hermetic: no cloud data, no secrets, no mail)
+runs only on promotes to `prod` and on manual dispatch, not on every dev commit. A green
+`verify` on `main` auto-deploys staging to **https://dev.trackstage.app**.
 
 ```sh
 git push origin main:prod   # promote to production
 ```
 
-That re-runs the same full gate and only then ships Convex → build → Worker → smoke test.
-Nothing reaches production without the whole suite green. Actions → Deploy → *Run
-workflow* is the manual escape hatch. See `.github/workflows/`.
+That runs `verify` plus the full flow suite and only then ships Convex → build → Worker →
+smoke test. Nothing reaches production without the gate green, unless a person dispatches
+Deploy by hand. To skip the flow suite on a low-risk promote, put `[skip-gate]` in the
+head commit message (`verify` still gates). Actions → Deploy → *Run workflow* is that
+manual escape hatch. See `.github/workflows/`.
 
 ## License
 
